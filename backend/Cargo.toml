@@ -1,0 +1,29 @@
+[package]
+name = "backend"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+engine = { path = "../engine" }
+
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+uuid = { workspace = true }
+time = { workspace = true }
+ts-rs = { workspace = true }
+
+axum = { version = "0.8", features = ["ws", "multipart", "macros"] }
+tower = "0.5"
+tower-http = { version = "0.7", features = ["fs", "cors", "trace", "compression-gzip"] }
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+sqlx = { version = "0.9", features = ["runtime-tokio", "sqlite", "postgres", "uuid", "time", "migrate"] }
+
+tower-sessions = "0.15"
+tower-sessions-sqlx-store = { version = "0.15", features = ["sqlite"] }
+argon2 = "0.5"
+garde = { version = "0.23", features = ["derive", "email"] }
