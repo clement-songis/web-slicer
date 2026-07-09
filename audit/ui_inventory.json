@@ -1,0 +1,3449 @@
+{
+  "generated_by": "audit/extract_ui_inventory.py",
+  "sources": [
+    "src/slic3r/GUI/Tab.cpp",
+    "src/slic3r/GUI/MainFrame.cpp",
+    "src/slic3r/GUI/GUI_Factories.cpp",
+    "src/slic3r/GUI/GLCanvas3D.cpp",
+    "src/slic3r/GUI/Gizmos/GLGizmosManager.cpp",
+    "src/slic3r/GUI/KBShortcutsDialog.cpp"
+  ],
+  "summary": {
+    "settings_pages": 21,
+    "settings_sections": 100,
+    "settings_option_lines": 525,
+    "main_menu_items": 103,
+    "context_menu_items": 70,
+    "toolbar_items": 11,
+    "gizmos": 16,
+    "keyboard_shortcuts": 92
+  },
+  "settings_tabs": [
+    {
+      "title": "Quality",
+      "icon": "custom-gcode_quality",
+      "defined_in": "TabPrint::build",
+      "line": 2317,
+      "sections": [
+        {
+          "title": "Layer height",
+          "options": [
+            "layer_height",
+            "initial_layer_print_height"
+          ]
+        },
+        {
+          "title": "Line width",
+          "options": [
+            "line_width",
+            "initial_layer_line_width",
+            "outer_wall_line_width",
+            "inner_wall_line_width",
+            "top_surface_line_width",
+            "sparse_infill_line_width",
+            "internal_solid_infill_line_width",
+            "support_line_width",
+            "bridge_line_width"
+          ]
+        },
+        {
+          "title": "Seam",
+          "options": [
+            "seam_position",
+            "staggered_inner_seams",
+            "seam_gap",
+            "seam_slope_type",
+            "seam_slope_conditional",
+            "scarf_angle_threshold",
+            "scarf_overhang_threshold",
+            "scarf_joint_speed",
+            "seam_slope_start_height",
+            "seam_slope_entire_loop",
+            "seam_slope_min_length",
+            "seam_slope_steps",
+            "scarf_joint_flow_ratio",
+            "seam_slope_inner_walls",
+            "role_based_wipe_speed",
+            "wipe_speed",
+            "wipe_on_loops",
+            "wipe_before_external_loop"
+          ]
+        },
+        {
+          "title": "Precision",
+          "options": [
+            "slice_closing_radius",
+            "resolution",
+            "enable_arc_fitting",
+            "xy_hole_compensation",
+            "xy_contour_compensation",
+            "elefant_foot_compensation",
+            "elefant_foot_layers_density",
+            "elefant_foot_compensation_layers",
+            "precise_outer_wall",
+            "precise_z_height",
+            "hole_to_polyhole",
+            "hole_to_polyhole_threshold",
+            "hole_to_polyhole_twisted"
+          ]
+        },
+        {
+          "title": "Ironing",
+          "options": [
+            "ironing_type",
+            "ironing_pattern",
+            "ironing_flow",
+            "ironing_spacing",
+            "ironing_inset",
+            "ironing_angle",
+            "ironing_angle_fixed"
+          ]
+        },
+        {
+          "title": "Z contouring",
+          "options": [
+            "zaa_enabled",
+            "zaa_minimize_perimeter_height",
+            "zaa_min_z",
+            "zaa_dont_alternate_fill_direction"
+          ]
+        },
+        {
+          "title": "Wall generator",
+          "options": [
+            "wall_generator",
+            "wall_transition_angle",
+            "wall_transition_filter_deviation",
+            "wall_transition_length",
+            "wall_distribution_count",
+            "initial_layer_min_bead_width",
+            "min_bead_width",
+            "min_feature_size",
+            "min_length_factor",
+            "wall_maximum_resolution",
+            "wall_maximum_deviation"
+          ]
+        },
+        {
+          "title": "Walls and surfaces",
+          "options": [
+            "wall_sequence",
+            "is_infill_first",
+            "wall_direction",
+            "print_flow_ratio",
+            "top_solid_infill_flow_ratio",
+            "bottom_solid_infill_flow_ratio",
+            "set_other_flow_ratios",
+            "first_layer_flow_ratio",
+            "outer_wall_flow_ratio",
+            "inner_wall_flow_ratio",
+            "overhang_flow_ratio",
+            "sparse_infill_flow_ratio",
+            "internal_solid_infill_flow_ratio",
+            "gap_fill_flow_ratio",
+            "support_flow_ratio",
+            "support_interface_flow_ratio",
+            "only_one_wall_first_layer",
+            "only_one_wall_top",
+            "min_width_top_surface",
+            "reduce_crossing_wall",
+            "max_travel_detour_distance",
+            "small_area_infill_flow_compensation",
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Bridging",
+          "options": [
+            "bridge_flow",
+            "internal_bridge_flow",
+            "bridge_density",
+            "internal_bridge_density",
+            "thick_bridges",
+            "thick_internal_bridges",
+            "enable_extra_bridge_layer",
+            "dont_filter_internal_bridges",
+            "counterbore_hole_bridging"
+          ]
+        },
+        {
+          "title": "Overhangs",
+          "options": [
+            "detect_overhang_wall",
+            "make_overhang_printable",
+            "make_overhang_printable_angle",
+            "make_overhang_printable_hole_size",
+            "extra_perimeters_on_overhangs",
+            "overhang_reverse",
+            "overhang_reverse_internal_only",
+            "overhang_reverse_threshold"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Strength",
+      "icon": "custom-gcode_strength",
+      "defined_in": "TabPrint::build",
+      "line": 2450,
+      "sections": [
+        {
+          "title": "Walls",
+          "options": [
+            "wall_loops",
+            "alternate_extra_wall",
+            "detect_thin_wall"
+          ]
+        },
+        {
+          "title": "Top/bottom shells",
+          "options": [
+            "top_shell_layers",
+            "top_shell_thickness",
+            "top_surface_density",
+            "top_surface_pattern",
+            "bottom_shell_layers",
+            "bottom_shell_thickness",
+            "bottom_surface_density",
+            "bottom_surface_pattern",
+            "top_bottom_infill_wall_overlap"
+          ]
+        },
+        {
+          "title": "Infill",
+          "options": [
+            "sparse_infill_density",
+            "fill_multiline",
+            "sparse_infill_pattern",
+            "gyroid_optimized",
+            "infill_direction",
+            "sparse_infill_rotate_template",
+            "skin_infill_density",
+            "skeleton_infill_density",
+            "infill_lock_depth",
+            "skin_infill_depth",
+            "skin_infill_line_width",
+            "skeleton_infill_line_width",
+            "symmetric_infill_y_axis",
+            "infill_shift_step",
+            "lateral_lattice_angle_1",
+            "lateral_lattice_angle_2",
+            "infill_overhang_angle",
+            "lightning_overhang_angle",
+            "lightning_prune_angle",
+            "lightning_straightening_angle",
+            "infill_anchor_max",
+            "infill_anchor",
+            "internal_solid_infill_pattern",
+            "solid_infill_direction",
+            "solid_infill_rotate_template",
+            "gap_fill_target",
+            "filter_out_gap_fill",
+            "infill_wall_overlap"
+          ]
+        },
+        {
+          "title": "Advanced",
+          "options": [
+            "align_infill_direction_to_model",
+            "extra_solid_infills",
+            "bridge_angle",
+            "internal_bridge_angle",
+            "relative_bridge_angle",
+            "minimum_sparse_infill_area",
+            "infill_combination",
+            "infill_combination_max_layer_height",
+            "detect_narrow_internal_solid_infill",
+            "ensure_vertical_shell_thickness"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Speed",
+      "icon": "custom-gcode_speed",
+      "defined_in": "TabPrint::build",
+      "line": 2510,
+      "sections": [
+        {
+          "title": "First layer speed",
+          "options": [
+            "initial_layer_speed",
+            "initial_layer_infill_speed",
+            "initial_layer_travel_speed",
+            "slow_down_layers"
+          ]
+        },
+        {
+          "title": "Other layers speed",
+          "options": [
+            "outer_wall_speed",
+            "inner_wall_speed",
+            "small_perimeter_speed",
+            "small_perimeter_threshold",
+            "sparse_infill_speed",
+            "internal_solid_infill_speed",
+            "top_surface_speed",
+            "gap_infill_speed",
+            "ironing_speed",
+            "support_speed",
+            "support_interface_speed"
+          ]
+        },
+        {
+          "title": "Overhang speed",
+          "options": [
+            "enable_overhang_speed",
+            "slowdown_for_curled_perimeters"
+          ]
+        },
+        {
+          "title": "Travel speed",
+          "options": [
+            "travel_speed"
+          ]
+        },
+        {
+          "title": "Acceleration",
+          "options": [
+            "default_acceleration",
+            "outer_wall_acceleration",
+            "inner_wall_acceleration",
+            "bridge_acceleration",
+            "sparse_infill_acceleration",
+            "internal_solid_infill_acceleration",
+            "initial_layer_acceleration",
+            "initial_layer_travel_acceleration",
+            "top_surface_acceleration",
+            "travel_acceleration",
+            "accel_to_decel_enable",
+            "accel_to_decel_factor"
+          ]
+        },
+        {
+          "title": "Junction Deviation",
+          "options": [
+            "default_junction_deviation"
+          ]
+        },
+        {
+          "title": "Jerk(XY)",
+          "options": [
+            "default_jerk",
+            "outer_wall_jerk",
+            "inner_wall_jerk",
+            "infill_jerk",
+            "top_surface_jerk",
+            "initial_layer_jerk",
+            "initial_layer_travel_jerk",
+            "travel_jerk"
+          ]
+        },
+        {
+          "title": "Advanced",
+          "options": [
+            "max_volumetric_extrusion_rate_slope",
+            "max_volumetric_extrusion_rate_slope_segment_length",
+            "extrusion_rate_smoothing_external_perimeter_only"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Support",
+      "icon": "custom-gcode_support",
+      "defined_in": "TabPrint::build",
+      "line": 2580,
+      "sections": [
+        {
+          "title": "Support",
+          "options": [
+            "enable_support",
+            "support_type",
+            "support_style",
+            "support_threshold_angle",
+            "support_threshold_overlap",
+            "raft_first_layer_density",
+            "raft_first_layer_expansion",
+            "support_on_build_plate_only",
+            "support_critical_regions_only",
+            "support_remove_small_overhang"
+          ]
+        },
+        {
+          "title": "Raft",
+          "options": [
+            "raft_layers",
+            "raft_contact_distance"
+          ]
+        },
+        {
+          "title": "Support filament",
+          "options": [
+            "support_filament",
+            "support_interface_filament",
+            "support_interface_not_for_body"
+          ]
+        },
+        {
+          "title": "Support ironing",
+          "options": [
+            "support_ironing",
+            "support_ironing_pattern",
+            "support_ironing_flow",
+            "support_ironing_spacing"
+          ]
+        },
+        {
+          "title": "Advanced",
+          "options": [
+            "support_top_z_distance",
+            "support_bottom_z_distance",
+            "tree_support_wall_count",
+            "support_base_pattern",
+            "support_base_pattern_spacing",
+            "support_angle",
+            "support_interface_top_layers",
+            "support_interface_bottom_layers",
+            "support_interface_pattern",
+            "support_interface_spacing",
+            "support_bottom_interface_spacing",
+            "support_expansion",
+            "support_object_xy_distance",
+            "support_object_first_layer_gap",
+            "bridge_no_support",
+            "max_bridge_length",
+            "independent_support_layer_height"
+          ]
+        },
+        {
+          "title": "Tree supports",
+          "options": [
+            "tree_support_tip_diameter",
+            "tree_support_branch_distance",
+            "tree_support_branch_distance_organic",
+            "tree_support_top_rate",
+            "tree_support_branch_diameter",
+            "tree_support_branch_diameter_organic",
+            "tree_support_branch_diameter_angle",
+            "tree_support_branch_angle",
+            "tree_support_branch_angle_organic",
+            "tree_support_angle_slow",
+            "tree_support_auto_brim",
+            "tree_support_brim_width"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Multimaterial",
+      "icon": "custom-gcode_multi_material",
+      "defined_in": "TabPrint::build",
+      "line": 2647,
+      "sections": [
+        {
+          "title": "Prime tower",
+          "options": [
+            "enable_prime_tower",
+            "prime_tower_skip_points",
+            "enable_tower_interface_features",
+            "enable_tower_interface_cooldown_during_tower",
+            "prime_tower_enable_framework",
+            "prime_tower_width",
+            "prime_volume",
+            "prime_tower_brim_width",
+            "prime_tower_infill_gap",
+            "wipe_tower_rotation_angle",
+            "wipe_tower_bridging",
+            "wipe_tower_extra_spacing",
+            "wipe_tower_extra_flow",
+            "wipe_tower_max_purge_speed",
+            "wipe_tower_wall_type",
+            "wipe_tower_cone_angle",
+            "wipe_tower_extra_rib_length",
+            "wipe_tower_rib_width",
+            "wipe_tower_fillet_wall",
+            "wipe_tower_no_sparse_layers",
+            "single_extruder_multi_material_priming"
+          ]
+        },
+        {
+          "title": "Filament for Features",
+          "options": [
+            "outer_wall_filament_id",
+            "inner_wall_filament_id",
+            "sparse_infill_filament_id",
+            "internal_solid_filament_id",
+            "top_surface_filament_id",
+            "bottom_surface_filament_id",
+            "wipe_tower_filament"
+          ]
+        },
+        {
+          "title": "Ooze prevention",
+          "options": [
+            "ooze_prevention",
+            "standby_temperature_delta",
+            "preheat_time",
+            "preheat_steps"
+          ]
+        },
+        {
+          "title": "Flush options",
+          "options": [
+            "flush_into_infill",
+            "flush_into_objects",
+            "flush_into_support"
+          ]
+        },
+        {
+          "title": "Advanced",
+          "options": [
+            "interlocking_beam",
+            "interface_shells",
+            "mmu_segmented_region_max_width",
+            "mmu_segmented_region_interlocking_depth",
+            "interlocking_beam_width",
+            "interlocking_orientation",
+            "interlocking_beam_layer_count",
+            "interlocking_depth",
+            "interlocking_boundary_avoidance"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Others",
+      "icon": "custom-gcode_other",
+      "defined_in": "TabPrint::build",
+      "line": 2701,
+      "sections": [
+        {
+          "title": "Skirt",
+          "options": [
+            "skirt_loops",
+            "skirt_type",
+            "min_skirt_length",
+            "skirt_distance",
+            "skirt_start_angle",
+            "skirt_speed",
+            "skirt_height",
+            "draft_shield",
+            "single_loop_draft_shield"
+          ]
+        },
+        {
+          "title": "Brim",
+          "options": [
+            "brim_type",
+            "brim_width",
+            "brim_object_gap",
+            "brim_flow_ratio",
+            "brim_use_efc_outline",
+            "combine_brims",
+            "brim_ears_max_angle",
+            "brim_ears_detection_length"
+          ]
+        },
+        {
+          "title": "Special mode",
+          "options": [
+            "slicing_mode",
+            "print_sequence",
+            "print_order",
+            "spiral_mode",
+            "spiral_mode_smooth",
+            "spiral_mode_max_xy_smoothing",
+            "spiral_starting_flow_ratio",
+            "spiral_finishing_flow_ratio",
+            "timelapse_type",
+            "enable_wrapping_detection"
+          ]
+        },
+        {
+          "title": "Fuzzy Skin",
+          "options": [
+            "fuzzy_skin",
+            "fuzzy_skin_mode",
+            "fuzzy_skin_noise_type",
+            "fuzzy_skin_point_distance",
+            "fuzzy_skin_thickness",
+            "fuzzy_skin_scale",
+            "fuzzy_skin_octaves",
+            "fuzzy_skin_persistence",
+            "fuzzy_skin_ripples_per_layer",
+            "fuzzy_skin_ripple_offset",
+            "fuzzy_skin_layers_between_ripple_offset",
+            "fuzzy_skin_first_layer"
+          ]
+        },
+        {
+          "title": "G-code output",
+          "options": [
+            "reduce_infill_retraction",
+            "gcode_add_line_number",
+            "gcode_comments",
+            "gcode_label_objects",
+            "exclude_object",
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Change extrusion role G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Post-processing Scripts",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Notes",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Frequent",
+      "icon": "empty",
+      "defined_in": "TabPrintModel::build",
+      "line": 2968,
+      "sections": [
+        {
+          "title": "",
+          "options": [
+            "layer_height",
+            "sparse_infill_density",
+            "wall_loops",
+            "enable_support"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Plate Settings",
+      "icon": "empty",
+      "defined_in": "TabPrintPlate::build",
+      "line": 3300,
+      "sections": [
+        {
+          "title": "",
+          "options": [
+            "curr_bed_type",
+            "skirt_start_angle",
+            "print_sequence",
+            "spiral_mode",
+            "first_layer_sequence_choice",
+            "other_layers_sequence_choice"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Setting Overrides",
+      "icon": "custom-gcode_setting_override",
+      "defined_in": "TabFilament::add_filament_overrides_page",
+      "line": 3623,
+      "sections": [
+        {
+          "title": "Retraction",
+          "options": [
+            "filament_retraction_length",
+            "filament_z_hop",
+            "filament_z_hop_types",
+            "filament_retract_lift_above",
+            "filament_retract_lift_below",
+            "filament_retract_lift_enforce",
+            "filament_retraction_speed",
+            "filament_deretraction_speed",
+            "filament_retract_restart_extra",
+            "filament_retraction_minimum_travel",
+            "filament_retract_when_changing_layer",
+            "filament_wipe",
+            "filament_wipe_distance",
+            "filament_retract_before_wipe",
+            "filament_long_retractions_when_cut",
+            "filament_retraction_distances_when_cut"
+          ]
+        },
+        {
+          "title": "Ironing",
+          "options": [
+            "filament_ironing_flow",
+            "filament_ironing_spacing",
+            "filament_ironing_inset",
+            "filament_ironing_speed"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Filament",
+      "icon": "custom-gcode_filament",
+      "defined_in": "TabFilament::build",
+      "line": 3897,
+      "sections": [
+        {
+          "title": "Basic information",
+          "options": [
+            "filament_type",
+            "filament_vendor",
+            "filament_soluble",
+            "filament_is_support",
+            "filament_change_length",
+            "required_nozzle_HRC",
+            "default_filament_colour",
+            "filament_diameter",
+            "filament_adhesiveness_category",
+            "filament_density",
+            "filament_shrink",
+            "filament_shrinkage_compensation_z",
+            "filament_cost",
+            "temperature_vitrification",
+            "idle_temperature"
+          ]
+        },
+        {
+          "title": "Flow ratio and Pressure Advance",
+          "options": [
+            "pellet_flow_coefficient",
+            "filament_flow_ratio",
+            "enable_pressure_advance",
+            "pressure_advance",
+            "adaptive_pressure_advance",
+            "adaptive_pressure_advance_overhangs",
+            "adaptive_pressure_advance_bridges",
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Print chamber temperature",
+          "options": [
+            "activate_chamber_temp_control"
+          ]
+        },
+        {
+          "title": "Print temperature",
+          "options": []
+        },
+        {
+          "title": "Bed temperature",
+          "options": []
+        },
+        {
+          "title": "Volumetric speed limitation",
+          "options": [
+            "filament_adaptive_volumetric_speed",
+            "filament_max_volumetric_speed"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Cooling",
+      "icon": "custom-gcode_cooling_fan",
+      "defined_in": "TabFilament::build",
+      "line": 4070,
+      "sections": [
+        {
+          "title": "Cooling for specific layer",
+          "options": [
+            "close_fan_the_first_x_layers",
+            "full_fan_speed_layer"
+          ]
+        },
+        {
+          "title": "Part cooling fan",
+          "options": [
+            "reduce_fan_stop_start_freq",
+            "slow_down_for_layer_cooling",
+            "dont_slow_down_outer_wall",
+            "slow_down_min_speed",
+            "enable_overhang_bridge_fan",
+            "overhang_fan_threshold",
+            "overhang_fan_speed",
+            "internal_bridge_fan_speed",
+            "support_material_interface_fan_speed",
+            "ironing_fan_speed"
+          ]
+        },
+        {
+          "title": "Auxiliary part cooling fan",
+          "options": [
+            "additional_cooling_fan_speed"
+          ]
+        },
+        {
+          "title": "Exhaust fan",
+          "options": [
+            "activate_air_filtration"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Advanced",
+      "icon": "custom-gcode_advanced",
+      "defined_in": "TabFilament::build",
+      "line": 4131,
+      "sections": [
+        {
+          "title": "Filament start G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Change extrusion role G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Filament end G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Multimaterial",
+      "icon": "custom-gcode_multi_material",
+      "defined_in": "TabFilament::build",
+      "line": 4165,
+      "sections": [
+        {
+          "title": "Wipe tower parameters",
+          "options": [
+            "filament_minimal_purge_on_wipe_tower",
+            "filament_tower_interface_pre_extrusion_dist",
+            "filament_tower_interface_pre_extrusion_length",
+            "filament_tower_ironing_area",
+            "filament_tower_interface_purge_volume",
+            "filament_tower_interface_print_temp"
+          ]
+        },
+        {
+          "title": "Multi Filament",
+          "options": [
+            "long_retractions_when_ec",
+            "retraction_distances_when_ec"
+          ]
+        },
+        {
+          "title": "Tool change parameters with single extruder MM printers",
+          "options": [
+            "filament_loading_speed_start",
+            "filament_loading_speed",
+            "filament_unloading_speed_start",
+            "filament_unloading_speed",
+            "filament_toolchange_delay",
+            "filament_cooling_moves",
+            "filament_cooling_initial_speed",
+            "filament_cooling_final_speed",
+            "filament_stamping_loading_speed",
+            "filament_stamping_distance"
+          ]
+        },
+        {
+          "title": "Tool change parameters with multi extruder MM printers",
+          "options": [
+            "filament_multitool_ramming",
+            "filament_multitool_ramming_volume",
+            "filament_multitool_ramming_flow"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Dependencies",
+      "icon": "advanced",
+      "defined_in": "TabFilament::build",
+      "line": 4215,
+      "sections": [
+        {
+          "title": "Compatible printers",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Compatible process profiles",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Notes",
+      "icon": "custom-gcode_note",
+      "defined_in": "TabFilament::build",
+      "line": 4234,
+      "sections": [
+        {
+          "title": "Notes",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Basic information",
+      "icon": "custom-gcode_object-info",
+      "defined_in": "TabPrinter::build_fff",
+      "line": 4475,
+      "sections": [
+        {
+          "title": "Printable space",
+          "options": [
+            "parallel_printheads_count",
+            {
+              "dynamic": "option"
+            },
+            "printable_height",
+            "support_multi_bed_types",
+            "best_object_pos",
+            "z_offset",
+            "preferred_orientation"
+          ]
+        },
+        {
+          "title": "Advanced",
+          "options": [
+            "printer_structure",
+            "gcode_flavor",
+            "pellet_modded_printer",
+            "bbl_use_printhost",
+            "use_3mf",
+            "scan_first_layer",
+            "enable_power_loss_recovery",
+            "disable_m73",
+            {
+              "dynamic": "option"
+            },
+            "use_relative_e_distances",
+            "use_firmware_retraction",
+            "time_cost"
+          ]
+        },
+        {
+          "title": "Cooling Fan",
+          "options": [
+            "fan_kickstart",
+            "part_cooling_fan_min_pwm"
+          ]
+        },
+        {
+          "title": "Extruder Clearance",
+          "options": [
+            "extruder_clearance_radius",
+            "extruder_clearance_height_to_rod",
+            "extruder_clearance_height_to_lid"
+          ]
+        },
+        {
+          "title": "Adaptive bed mesh",
+          "options": [
+            "bed_mesh_min",
+            "bed_mesh_max",
+            "bed_mesh_probe_distance",
+            "adaptive_bed_mesh_margin"
+          ]
+        },
+        {
+          "title": "Accessory",
+          "options": [
+            "nozzle_type",
+            "nozzle_hrc",
+            "auxiliary_fan",
+            "support_chamber_temp_control",
+            "support_air_filtration"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Machine G-code",
+      "icon": "custom-gcode_gcode",
+      "defined_in": "TabPrinter::build_fff",
+      "line": 4583,
+      "sections": [
+        {
+          "title": "File header G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Machine start G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Machine end G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Printing by object G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Before layer change G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Layer change G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Timelapse G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Clumping Detection G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Change filament G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Change extrusion role G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Pause G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Template Custom G-code",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Notes",
+      "icon": "custom-gcode_note",
+      "defined_in": "TabPrinter::build_fff",
+      "line": 4715,
+      "sections": [
+        {
+          "title": "Notes",
+          "options": [
+            {
+              "dynamic": "option"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Motion ability",
+      "icon": "custom-gcode_motion",
+      "defined_in": "TabPrinter::build_kinematics_page",
+      "line": 4831,
+      "sections": [
+        {
+          "title": "",
+          "options": []
+        },
+        {
+          "title": "Advanced",
+          "options": [
+            "emit_machine_limits_to_gcode"
+          ]
+        },
+        {
+          "title": "Resonance Compensation",
+          "options": [
+            "resonance_avoidance",
+            "input_shaping_emit",
+            "input_shaping_type"
+          ]
+        },
+        {
+          "title": "Speed limitation",
+          "options": []
+        },
+        {
+          "title": "Acceleration limitation",
+          "options": []
+        },
+        {
+          "title": "Jerk limitation",
+          "options": []
+        }
+      ]
+    },
+    {
+      "title": "Multimaterial",
+      "icon": "custom-gcode_multi_material",
+      "defined_in": "TabPrinter::build_unregular_pages",
+      "line": 4964,
+      "sections": [
+        {
+          "title": "Single extruder multi-material setup",
+          "options": [
+            "single_extruder_multi_material",
+            {
+              "dynamic": "option"
+            },
+            "manual_filament_change",
+            "bed_temperature_formula"
+          ]
+        },
+        {
+          "title": "Wipe tower",
+          "options": [
+            "wipe_tower_type",
+            "purge_in_prime_tower",
+            "enable_filament_ramming",
+            "tool_change_on_wipe_tower"
+          ]
+        },
+        {
+          "title": "Single extruder multi-material parameters",
+          "options": [
+            "cooling_tube_retraction",
+            "cooling_tube_length",
+            "parking_pos_retraction",
+            "extra_loading_move",
+            "high_current_on_filament_swap"
+          ]
+        },
+        {
+          "title": "Advanced",
+          "options": [
+            "machine_load_filament_time",
+            "machine_unload_filament_time",
+            "machine_tool_change_time"
+          ]
+        }
+      ]
+    },
+    {
+      "title": "page_name",
+      "icon": "custom-gcode_extruder",
+      "defined_in": "TabPrinter::build_unregular_pages",
+      "line": 5079,
+      "sections": [
+        {
+          "title": "Basic information",
+          "options": [
+            "nozzle_diameter",
+            "nozzle_volume",
+            "extruder_printable_height",
+            {
+              "dynamic": "option"
+            }
+          ]
+        },
+        {
+          "title": "Layer height limits",
+          "options": [
+            "min_layer_height",
+            "max_layer_height"
+          ]
+        },
+        {
+          "title": "Position",
+          "options": [
+            "extruder_offset"
+          ]
+        },
+        {
+          "title": "Retraction",
+          "options": [
+            "retraction_length",
+            "retract_restart_extra",
+            "retraction_speed",
+            "deretraction_speed",
+            "retraction_minimum_travel",
+            "retract_when_changing_layer",
+            "wipe",
+            "wipe_distance",
+            "retract_before_wipe"
+          ]
+        },
+        {
+          "title": "Z-Hop",
+          "options": [
+            "retract_lift_enforce",
+            "z_hop_types",
+            "z_hop",
+            "travel_slope",
+            "retract_lift_above",
+            "retract_lift_below"
+          ]
+        },
+        {
+          "title": "Retraction when switching material",
+          "options": [
+            "retract_length_toolchange",
+            "retract_restart_extra_toolchange",
+            "long_retractions_when_cut",
+            "retraction_distances_when_cut"
+          ]
+        }
+      ]
+    }
+  ],
+  "main_menus": {
+    "structure": [
+      {
+        "parent_variable": "fileMenu",
+        "submenu_variable": "recent_projects_menu",
+        "title": "Recent files"
+      },
+      {
+        "parent_variable": "fileMenu",
+        "submenu_variable": "import_menu",
+        "title": "Import"
+      },
+      {
+        "parent_variable": "fileMenu",
+        "submenu_variable": "export_menu",
+        "title": "Export"
+      },
+      {
+        "menubar_variable": "fileMenu",
+        "title": "&%sFile"
+      },
+      {
+        "menubar_variable": "editMenu",
+        "title": "&%sEdit"
+      },
+      {
+        "menubar_variable": "viewMenu",
+        "title": "&%sView"
+      },
+      {
+        "menubar_variable": "calib_menu",
+        "title": "&%sCalibration"
+      },
+      {
+        "menubar_variable": "helpMenu",
+        "title": "&%sHelp"
+      },
+      {
+        "menubar_variable": "fileMenu",
+        "title": "&File"
+      },
+      {
+        "menubar_variable": "viewMenu",
+        "title": "&View"
+      },
+      {
+        "menubar_variable": "helpMenu",
+        "title": "&Help"
+      }
+    ],
+    "items": [
+      {
+        "menu_variable": "menu",
+        "kind": "item",
+        "label": "New Window",
+        "shortcut": null,
+        "description": "Open a new window",
+        "defined_in": "?",
+        "line": 225
+      },
+      {
+        "menu_variable": "helpMenu",
+        "kind": "item",
+        "label": "Keyboard Shortcuts&?",
+        "shortcut": null,
+        "description": "Show the list of keyboard shortcuts",
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2563
+      },
+      {
+        "menu_variable": "helpMenu",
+        "kind": "item",
+        "label": "Setup Wizard",
+        "shortcut": null,
+        "description": "Setup Wizard",
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2566
+      },
+      {
+        "menu_variable": "helpMenu",
+        "kind": "item",
+        "label": "Show Configuration Folder",
+        "shortcut": null,
+        "description": "Show Configuration Folder",
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2571
+      },
+      {
+        "menu_variable": "helpMenu",
+        "kind": "item",
+        "label": "Troubleshoot Center",
+        "shortcut": null,
+        "description": null,
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2577
+      },
+      {
+        "menu_variable": "helpMenu",
+        "kind": "item",
+        "label": "Open Network Test",
+        "shortcut": null,
+        "description": "Open Network Test",
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2580
+      },
+      {
+        "menu_variable": "helpMenu",
+        "kind": "item",
+        "label": "Show Tip of the Day",
+        "shortcut": null,
+        "description": "Show Tip of the Day",
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2587
+      },
+      {
+        "menu_variable": "helpMenu",
+        "kind": "item",
+        "label": "Check for Updates",
+        "shortcut": null,
+        "description": "Check for Updates",
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2598
+      },
+      {
+        "menu_variable": "publish_menu",
+        "kind": "item",
+        "label": "Upload Models",
+        "shortcut": null,
+        "description": "Upload Models",
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2619
+      },
+      {
+        "menu_variable": "publish_menu",
+        "kind": "item",
+        "label": "Download Models",
+        "shortcut": null,
+        "description": "Download Models",
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2633
+      },
+      {
+        "menu_variable": "view_menu",
+        "kind": "item",
+        "label": "Default View",
+        "shortcut": "Ctrl+0",
+        "description": "Default View",
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2649
+      },
+      {
+        "menu_variable": "view_menu",
+        "kind": "item",
+        "label": "Top",
+        "shortcut": "Ctrl+1",
+        "description": "Top View",
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2656
+      },
+      {
+        "menu_variable": "view_menu",
+        "kind": "item",
+        "label": "Bottom",
+        "shortcut": "Ctrl+2",
+        "description": "Bottom View",
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2659
+      },
+      {
+        "menu_variable": "view_menu",
+        "kind": "item",
+        "label": "Front",
+        "shortcut": "Ctrl+3",
+        "description": "Front View",
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2661
+      },
+      {
+        "menu_variable": "view_menu",
+        "kind": "item",
+        "label": "Rear",
+        "shortcut": "Ctrl+4",
+        "description": "Rear View",
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2663
+      },
+      {
+        "menu_variable": "view_menu",
+        "kind": "item",
+        "label": "LeftCameraCamera",
+        "shortcut": "Ctrl+5",
+        "description": "Left View",
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2665
+      },
+      {
+        "menu_variable": "view_menu",
+        "kind": "item",
+        "label": "RightCameraCamera",
+        "shortcut": "Ctrl+6",
+        "description": "Right View",
+        "defined_in": "MainFrame::on_sys_color_changed",
+        "line": 2667
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "New Window",
+        "shortcut": null,
+        "description": "Start a new window",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2682
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "New Project",
+        "shortcut": "Ctrl+N",
+        "description": "Start a new project",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2687
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "Open Project…",
+        "shortcut": "Ctrl+O",
+        "description": "Open a project file",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2693
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "Open Project…",
+        "shortcut": "Ctrl+O",
+        "description": "Open a project file",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2697
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "Save Project",
+        "shortcut": "Ctrl+S",
+        "description": "Save current project to file",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2724
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "Save Project",
+        "shortcut": "Ctrl+S",
+        "description": "Save current project to file",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2728
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "Save Project as…",
+        "shortcut": "Ctrl+Shift+S",
+        "description": "Save current project as",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2734
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "Save Project as…",
+        "shortcut": "Ctrl+Shift+S",
+        "description": "Save current project as",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2738
+      },
+      {
+        "menu_variable": "import_menu",
+        "kind": "item",
+        "label": "Import 3MF/STL/STEP/SVG/OBJ/AMF…",
+        "shortcut": "Ctrl+I",
+        "description": "Load a model",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2749
+      },
+      {
+        "menu_variable": "import_menu",
+        "kind": "item",
+        "label": "Import 3MF/STL/STEP/SVG/OBJ/AMF…",
+        "shortcut": "Ctrl+I",
+        "description": "Load a model",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2755
+      },
+      {
+        "menu_variable": "import_menu",
+        "kind": "item",
+        "label": "Import Zip Archive…",
+        "shortcut": null,
+        "description": "Load models contained within a zip archive",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2759
+      },
+      {
+        "menu_variable": "import_menu",
+        "kind": "item",
+        "label": "Import Configs…",
+        "shortcut": null,
+        "description": "Load configs",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2762
+      },
+      {
+        "menu_variable": "export_menu",
+        "kind": "item",
+        "label": "Export all objects as one STL…",
+        "shortcut": null,
+        "description": "Export all objects as one STL",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2771
+      },
+      {
+        "menu_variable": "export_menu",
+        "kind": "item",
+        "label": "Export all objects as STLs…",
+        "shortcut": null,
+        "description": "Export all objects as STLs",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2774
+      },
+      {
+        "menu_variable": "export_menu",
+        "kind": "item",
+        "label": "Export all objects as one DRC…",
+        "shortcut": null,
+        "description": "Export all objects as one DRC",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2777
+      },
+      {
+        "menu_variable": "export_menu",
+        "kind": "item",
+        "label": "Export all objects as DRCs…",
+        "shortcut": null,
+        "description": "Export all objects as DRCs",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2780
+      },
+      {
+        "menu_variable": "export_menu",
+        "kind": "item",
+        "label": "Export Generic 3MF…",
+        "shortcut": null,
+        "description": "Export 3MF file without using some 3mf-extensions",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2783
+      },
+      {
+        "menu_variable": "export_menu",
+        "kind": "item",
+        "label": "Export plate sliced file…",
+        "shortcut": "Ctrl+G",
+        "description": "Export current sliced file",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2787
+      },
+      {
+        "menu_variable": "export_menu",
+        "kind": "item",
+        "label": "Export all plate sliced file…",
+        "shortcut": null,
+        "description": "Export all plate sliced file",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2791
+      },
+      {
+        "menu_variable": "export_menu",
+        "kind": "item",
+        "label": "Export G-code…",
+        "shortcut": null,
+        "description": "Export current plate as G-code",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2795
+      },
+      {
+        "menu_variable": "export_menu",
+        "kind": "item",
+        "label": "Export toolpaths as OBJ…",
+        "shortcut": null,
+        "description": "Export toolpaths as OBJ",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2799
+      },
+      {
+        "menu_variable": "export_menu",
+        "kind": "item",
+        "label": "Export Preset Bundle…",
+        "shortcut": null,
+        "description": "Export current configuration to files",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2803
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "Sync Presets",
+        "shortcut": null,
+        "description": "Pull and apply the latest presets from OrcaCloud",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2812
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "Quit",
+        "shortcut": null,
+        "description": "Quit",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2829
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "Quit",
+        "shortcut": null,
+        "description": "Quit",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2832
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "Undo",
+        "shortcut": "Ctrl+Z",
+        "description": "Undo",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2852
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "Redo",
+        "shortcut": "Ctrl+Y",
+        "description": "Redo",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2856
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "Cut",
+        "shortcut": "Ctrl+X",
+        "description": "Cut selection to clipboard",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2861
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "Copy",
+        "shortcut": "Ctrl+C",
+        "description": "Copy selection to clipboard",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2865
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "Paste",
+        "shortcut": "Ctrl+V",
+        "description": "Paste clipboard",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2869
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "Delete selected",
+        "shortcut": "Del",
+        "description": "Deletes the current selection",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2873
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "Delete all",
+        "shortcut": "Ctrl+D",
+        "description": "Deletes all objects",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2877
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "Clone selected",
+        "shortcut": null,
+        "description": "Clone copies of selections",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2882
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "Duplicate Current Plate",
+        "shortcut": null,
+        "description": "Duplicate the current plate",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2888
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "UndoZ",
+        "shortcut": null,
+        "description": "Undo",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2896
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "RedoY",
+        "shortcut": null,
+        "description": "Redo",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2908
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "CutX",
+        "shortcut": null,
+        "description": "Cut selection to clipboard",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2921
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "CopyC",
+        "shortcut": null,
+        "description": "Copy selection to clipboard",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2933
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "PasteV",
+        "shortcut": null,
+        "description": "Paste clipboard",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2945
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "Delete selected",
+        "shortcut": "Backspace",
+        "description": "Deletes the current selection",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2958
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "Delete all",
+        "shortcut": "Ctrl+D",
+        "description": "Deletes all objects",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2965
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "Clone selected",
+        "shortcut": "Ctrl+K",
+        "description": "Clone copies of selections",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2978
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "Duplicate Current Plate",
+        "shortcut": null,
+        "description": "Duplicate the current plate",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 2991
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "Select allA",
+        "shortcut": null,
+        "description": "Selects all objects",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3001
+      },
+      {
+        "menu_variable": "editMenu",
+        "kind": "item",
+        "label": "Deselect allEsc",
+        "shortcut": null,
+        "description": "Deselects all objects",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3013
+      },
+      {
+        "menu_variable": "viewMenu",
+        "kind": "radio_item",
+        "label": "Use Perspective View",
+        "shortcut": null,
+        "description": "Use Perspective View",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3058
+      },
+      {
+        "menu_variable": "viewMenu",
+        "kind": "radio_item",
+        "label": "Use Orthogonal View",
+        "shortcut": null,
+        "description": "Use Orthogonal View",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3064
+      },
+      {
+        "menu_variable": "viewMenu",
+        "kind": "check_item",
+        "label": "Auto Perspective",
+        "shortcut": null,
+        "description": "Automatically switch between orthographic and perspective when changing from top/bottom/side views.",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3075
+      },
+      {
+        "menu_variable": "viewMenu",
+        "kind": "check_item",
+        "label": "Show &G-code WindowC",
+        "shortcut": null,
+        "description": "Show G-code window in Preview scene.",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3084
+      },
+      {
+        "menu_variable": "viewMenu",
+        "kind": "check_item",
+        "label": "Show 3D Navigator",
+        "shortcut": null,
+        "description": "Show 3D navigator in Prepare and Preview scene.",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3092
+      },
+      {
+        "menu_variable": "viewMenu",
+        "kind": "check_item",
+        "label": "Show Gridlines",
+        "shortcut": null,
+        "description": "Show Gridlines on plate",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3101
+      },
+      {
+        "menu_variable": "viewMenu",
+        "kind": "item",
+        "label": "Reset Window Layout",
+        "shortcut": null,
+        "description": "Reset to default window layout",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3109
+      },
+      {
+        "menu_variable": "viewMenu",
+        "kind": "check_item",
+        "label": "Show &Labels",
+        "shortcut": "Ctrl+E",
+        "description": "Show object labels in 3D scene.",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3119
+      },
+      {
+        "menu_variable": "viewMenu",
+        "kind": "check_item",
+        "label": "Show &Overhang",
+        "shortcut": null,
+        "description": "Show object overhang highlight in 3D scene.",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3123
+      },
+      {
+        "menu_variable": "viewMenu",
+        "kind": "check_item",
+        "label": "Show Selected Outline (beta)",
+        "shortcut": null,
+        "description": "Show outline around selected object in 3D scene.",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3130
+      },
+      {
+        "menu_variable": "parent_menu",
+        "kind": "item",
+        "label": "Preferences",
+        "shortcut": "Ctrl+,",
+        "description": null,
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3265
+      },
+      {
+        "menu_variable": "m_topbar->GetTopMenu()",
+        "kind": "item",
+        "label": "Preferences",
+        "shortcut": "Ctrl+P",
+        "description": null,
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3284
+      },
+      {
+        "menu_variable": "m_topbar->GetTopMenu()",
+        "kind": "item",
+        "label": "Preset Bundle",
+        "shortcut": "",
+        "description": null,
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3292
+      },
+      {
+        "menu_variable": "m_topbar->GetTopMenu()",
+        "kind": "item",
+        "label": "Sync Presets",
+        "shortcut": null,
+        "description": "Pull and apply the latest presets from OrcaCloud",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3301
+      },
+      {
+        "menu_variable": "m_topbar->GetCalibMenu()",
+        "kind": "item",
+        "label": "Temperature",
+        "shortcut": null,
+        "description": "Temperature Calibration",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3328
+      },
+      {
+        "menu_variable": "m_topbar->GetCalibMenu()",
+        "kind": "item",
+        "label": "Max flowrate",
+        "shortcut": null,
+        "description": "Max flowrate",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3337
+      },
+      {
+        "menu_variable": "m_topbar->GetCalibMenu()",
+        "kind": "item",
+        "label": "Pressure advance",
+        "shortcut": null,
+        "description": "Pressure advance",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3346
+      },
+      {
+        "menu_variable": "m_topbar->GetCalibMenu()",
+        "kind": "item",
+        "label": "Flow ratio",
+        "shortcut": null,
+        "description": "Flow Rate Calibration",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3355
+      },
+      {
+        "menu_variable": "m_topbar->GetCalibMenu()",
+        "kind": "item",
+        "label": "Retraction",
+        "shortcut": null,
+        "description": "Retraction",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3365
+      },
+      {
+        "menu_variable": "m_topbar->GetCalibMenu()",
+        "kind": "item",
+        "label": "Cornering",
+        "shortcut": null,
+        "description": "Cornering calibration",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3374
+      },
+      {
+        "menu_variable": "input_shaping_menu",
+        "kind": "item",
+        "label": "Input Shaping Frequency",
+        "shortcut": null,
+        "description": "Input Shaping Frequency",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3384
+      },
+      {
+        "menu_variable": "input_shaping_menu",
+        "kind": "item",
+        "label": "Input Shaping Damping/zeta factor",
+        "shortcut": null,
+        "description": "Input Shaping Damping/zeta factor",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3393
+      },
+      {
+        "menu_variable": "m_topbar->GetCalibMenu()",
+        "kind": "item",
+        "label": "VFA",
+        "shortcut": null,
+        "description": "VFA",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3405
+      },
+      {
+        "menu_variable": "m_topbar->GetCalibMenu()",
+        "kind": "item",
+        "label": "Calibration Guide",
+        "shortcut": null,
+        "description": "Calibration Guide",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3414
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "Preset Bundle",
+        "shortcut": null,
+        "description": null,
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3421
+      },
+      {
+        "menu_variable": "calib_menu",
+        "kind": "item",
+        "label": "Temperature",
+        "shortcut": null,
+        "description": "Temperature",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3440
+      },
+      {
+        "menu_variable": "calib_menu",
+        "kind": "item",
+        "label": "Max flowrate",
+        "shortcut": null,
+        "description": "Max flowrate",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3449
+      },
+      {
+        "menu_variable": "calib_menu",
+        "kind": "item",
+        "label": "Pressure advance",
+        "shortcut": null,
+        "description": "Pressure advance",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3458
+      },
+      {
+        "menu_variable": "calib_menu",
+        "kind": "item",
+        "label": "Flow ratio",
+        "shortcut": null,
+        "description": "Flow Rate Calibration",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3468
+      },
+      {
+        "menu_variable": "calib_menu",
+        "kind": "item",
+        "label": "Retraction",
+        "shortcut": null,
+        "description": "Retraction",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3478
+      },
+      {
+        "menu_variable": "calib_menu",
+        "kind": "item",
+        "label": "Cornering",
+        "shortcut": null,
+        "description": "Cornering calibration",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3487
+      },
+      {
+        "menu_variable": "input_shaping_menu",
+        "kind": "item",
+        "label": "Input Shaping Frequency",
+        "shortcut": null,
+        "description": "Input Shaping Frequency",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3497
+      },
+      {
+        "menu_variable": "input_shaping_menu",
+        "kind": "item",
+        "label": "Input Shaping Damping/zeta factor",
+        "shortcut": null,
+        "description": "Input Shaping Damping/zeta factor",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3506
+      },
+      {
+        "menu_variable": "calib_menu",
+        "kind": "item",
+        "label": "VFA",
+        "shortcut": null,
+        "description": "VFA",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3518
+      },
+      {
+        "menu_variable": "calib_menu",
+        "kind": "item",
+        "label": "Calibration Guide",
+        "shortcut": null,
+        "description": "Calibration Guide",
+        "defined_in": "MainFrame::init_menubar_as_editor",
+        "line": 3526
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "&Open G-code…",
+        "shortcut": "Ctrl+O",
+        "description": "Open a G-code file",
+        "defined_in": "MainFrame::init_menubar_as_gcodeviewer",
+        "line": 3604
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "Re&load from Disk…",
+        "shortcut": "Ctrl+Shift+R",
+        "description": "Reload the plater from disk",
+        "defined_in": "MainFrame::init_menubar_as_gcodeviewer",
+        "line": 3608
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "Re&load from DiskF5",
+        "shortcut": null,
+        "description": "Reload the plater from disk",
+        "defined_in": "MainFrame::init_menubar_as_gcodeviewer",
+        "line": 3612
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "Export &Toolpaths as OBJ…",
+        "shortcut": null,
+        "description": "Export toolpaths as OBJ",
+        "defined_in": "MainFrame::init_menubar_as_gcodeviewer",
+        "line": 3617
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "Open &Slicer…",
+        "shortcut": null,
+        "description": "Open Slicer",
+        "defined_in": "MainFrame::init_menubar_as_gcodeviewer",
+        "line": 3620
+      },
+      {
+        "menu_variable": "fileMenu",
+        "kind": "item",
+        "label": "&Quit",
+        "shortcut": null,
+        "description": "Quit %s",
+        "defined_in": "MainFrame::init_menubar_as_gcodeviewer",
+        "line": 3624
+      }
+    ]
+  },
+  "plater_context_menus": [
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "HideShow",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_set_visible",
+      "line": 523
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Delete",
+      "shortcut": "Del",
+      "description": "Delete the selected object",
+      "defined_in": "MenuFactory::append_menu_item_delete",
+      "line": 531
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Delete",
+      "shortcut": "Backspace",
+      "description": "Delete the selected object",
+      "defined_in": "MenuFactory::append_menu_item_delete",
+      "line": 535
+    },
+    {
+      "menu_variable": "sub_menu",
+      "kind": "item",
+      "label": "Load...",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_submenu_add_generic",
+      "line": 545
+    },
+    {
+      "menu_variable": "sub_menu",
+      "kind": "item",
+      "label": "Cube",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_submenu_add_generic",
+      "line": 550
+    },
+    {
+      "menu_variable": "sub_menu",
+      "kind": "item",
+      "label": "Cylinder",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_submenu_add_generic",
+      "line": 553
+    },
+    {
+      "menu_variable": "sub_menu",
+      "kind": "item",
+      "label": "Sphere",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_submenu_add_generic",
+      "line": 556
+    },
+    {
+      "menu_variable": "sub_menu",
+      "kind": "item",
+      "label": "Cone",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_submenu_add_generic",
+      "line": 559
+    },
+    {
+      "menu_variable": "sub_menu",
+      "kind": "item",
+      "label": "Disc",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_submenu_add_generic",
+      "line": 562
+    },
+    {
+      "menu_variable": "sub_menu",
+      "kind": "item",
+      "label": "Torus",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_submenu_add_generic",
+      "line": 565
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Height range Modifier",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_layers_editing",
+      "line": 729
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Set as an individual object",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_instance_to_object",
+      "line": 873
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Fill bed with copies",
+      "shortcut": null,
+      "description": "Fill the remaining area of bed with copies of the selected object",
+      "defined_in": "MenuFactory::append_menu_item_fill_bed",
+      "line": 895
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "check_item",
+      "label": "Printable",
+      "shortcut": "V",
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_printable",
+      "line": 903
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Rename",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_rename",
+      "line": 948
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Fix model",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_fix_through_cgal",
+      "line": 956
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Export as one STL…",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_export_stl",
+      "line": 965
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Export as STLs…",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_export_stl",
+      "line": 976
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Export as one DRC…",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_export_drc",
+      "line": 986
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Export as DRCs…",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_export_drc",
+      "line": 997
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Reload from disk",
+      "shortcut": null,
+      "description": "Reload the selected parts from disk",
+      "defined_in": "MenuFactory::append_menu_item_reload_from_disk",
+      "line": 1007
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Replace 3D file…",
+      "shortcut": null,
+      "description": "Replace the selected part with a new 3D file",
+      "defined_in": "MenuFactory::append_menu_item_replace_with_stl",
+      "line": 1014
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Replace all with 3D files…",
+      "shortcut": null,
+      "description": "Replace all selected parts with 3D files from folder",
+      "defined_in": "MenuFactory::append_menu_item_replace_all_with_stl",
+      "line": 1021
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Scale to build volume",
+      "shortcut": null,
+      "description": "Scale an object to fit the build volume",
+      "defined_in": "MenuFactory::append_menu_item_scale_selection_to_fit_print_volume",
+      "line": 1093
+    },
+    {
+      "menu_variable": "flush_options_menu",
+      "kind": "check_item",
+      "label": "Flush into objects' infill",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_items_flush_options",
+      "line": 1128
+    },
+    {
+      "menu_variable": "flush_options_menu",
+      "kind": "check_item",
+      "label": "Flush into this object",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_items_flush_options",
+      "line": 1145
+    },
+    {
+      "menu_variable": "flush_options_menu",
+      "kind": "check_item",
+      "label": "Flush into objects' support",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_items_flush_options",
+      "line": 1162
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Assemble",
+      "shortcut": null,
+      "description": "Assemble the selected objects into an object with multiple parts",
+      "defined_in": "MenuFactory::append_menu_item_merge_to_multipart_object",
+      "line": 1248
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Assemble",
+      "shortcut": null,
+      "description": "Assemble the selected objects into an object with single part",
+      "defined_in": "MenuFactory::append_menu_item_merge_to_single_object",
+      "line": 1256
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Mesh boolean",
+      "shortcut": null,
+      "description": "Mesh boolean operations including union and subtraction",
+      "defined_in": "MenuFactory::append_menu_item_merge_parts_to_single_part",
+      "line": 1264
+    },
+    {
+      "menu_variable": "mirror_menu",
+      "kind": "item",
+      "label": "Along X axis",
+      "shortcut": null,
+      "description": "Mirror along the X axis",
+      "defined_in": "MenuFactory::append_menu_items_mirror",
+      "line": 1275
+    },
+    {
+      "menu_variable": "mirror_menu",
+      "kind": "item",
+      "label": "Along Y axis",
+      "shortcut": null,
+      "description": "Mirror along the Y axis",
+      "defined_in": "MenuFactory::append_menu_items_mirror",
+      "line": 1277
+    },
+    {
+      "menu_variable": "mirror_menu",
+      "kind": "item",
+      "label": "Along Z axis",
+      "shortcut": null,
+      "description": "Mirror along the Z axis",
+      "defined_in": "MenuFactory::append_menu_items_mirror",
+      "line": 1279
+    },
+    {
+      "menu_variable": "&m_default_menu",
+      "kind": "item",
+      "label": "Add Models",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::create_default_menu",
+      "line": 1393
+    },
+    {
+      "menu_variable": "&m_default_menu",
+      "kind": "item",
+      "label": "Add Models",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::create_default_menu",
+      "line": 1401
+    },
+    {
+      "menu_variable": "&m_default_menu",
+      "kind": "check_item",
+      "label": "Show Labels",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::create_default_menu",
+      "line": 1408
+    },
+    {
+      "menu_variable": "split_menu",
+      "kind": "item",
+      "label": "To objects",
+      "shortcut": null,
+      "description": "Split the selected object into multiple objects",
+      "defined_in": "MenuFactory::create_object_menu",
+      "line": 1439
+    },
+    {
+      "menu_variable": "split_menu",
+      "kind": "item",
+      "label": "To parts",
+      "shortcut": null,
+      "description": "Split the selected object into multiple parts",
+      "defined_in": "MenuFactory::create_object_menu",
+      "line": 1442
+    },
+    {
+      "menu_variable": "split_menu",
+      "kind": "item",
+      "label": "To objects",
+      "shortcut": null,
+      "description": "Split the selected object into multiple objects",
+      "defined_in": "MenuFactory::create_extra_object_menu",
+      "line": 1482
+    },
+    {
+      "menu_variable": "split_menu",
+      "kind": "item",
+      "label": "To parts",
+      "shortcut": null,
+      "description": "Split the selected object into multiple parts",
+      "defined_in": "MenuFactory::create_extra_object_menu",
+      "line": 1485
+    },
+    {
+      "menu_variable": "&m_sla_object_menu",
+      "kind": "item",
+      "label": "Split",
+      "shortcut": null,
+      "description": "Split the selected object into multiple objects",
+      "defined_in": "MenuFactory::create_sla_object_menu",
+      "line": 1535
+    },
+    {
+      "menu_variable": "&m_sla_object_menu",
+      "kind": "item",
+      "label": "Auto orientation",
+      "shortcut": null,
+      "description": "Auto orient the object to improve print quality",
+      "defined_in": "MenuFactory::create_sla_object_menu",
+      "line": 1542
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Split",
+      "shortcut": null,
+      "description": "Split the selected object into multiple parts",
+      "defined_in": "MenuFactory::create_part_menu",
+      "line": 1558
+    },
+    {
+      "menu_variable": "&m_part_menu",
+      "kind": "item",
+      "label": "Split",
+      "shortcut": null,
+      "description": "Split the selected object into multiple parts",
+      "defined_in": "MenuFactory::create_part_menu",
+      "line": 1565
+    },
+    {
+      "menu_variable": "split_menu",
+      "kind": "item",
+      "label": "To objects",
+      "shortcut": null,
+      "description": "Split the selected object into multiple objects",
+      "defined_in": "MenuFactory::create_bbl_part_menu",
+      "line": 1620
+    },
+    {
+      "menu_variable": "split_menu",
+      "kind": "item",
+      "label": "To parts",
+      "shortcut": null,
+      "description": "Split the selected object into multiple parts",
+      "defined_in": "MenuFactory::create_bbl_part_menu",
+      "line": 1623
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Edit",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::create_filament_action_menu",
+      "line": 1653
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Delete",
+      "shortcut": null,
+      "description": "Delete this filament",
+      "defined_in": "MenuFactory::create_filament_action_menu",
+      "line": 1685
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Select All",
+      "shortcut": null,
+      "description": "Select all objects on the current plate",
+      "defined_in": "MenuFactory::create_plate_menu",
+      "line": 1700
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Select All Plates",
+      "shortcut": null,
+      "description": "Select all objects on all plates",
+      "defined_in": "MenuFactory::create_plate_menu",
+      "line": 1710
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Delete All",
+      "shortcut": null,
+      "description": "Delete all objects on the current plate",
+      "defined_in": "MenuFactory::create_plate_menu",
+      "line": 1718
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Arrange",
+      "shortcut": null,
+      "description": "Arrange current plate",
+      "defined_in": "MenuFactory::create_plate_menu",
+      "line": 1728
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Reload All",
+      "shortcut": null,
+      "description": "Reload all from disk",
+      "defined_in": "MenuFactory::create_plate_menu",
+      "line": 1741
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Auto Rotate",
+      "shortcut": null,
+      "description": "Auto rotate current plate",
+      "defined_in": "MenuFactory::create_plate_menu",
+      "line": 1752
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Delete Plate",
+      "shortcut": null,
+      "description": "Remove the selected plate",
+      "defined_in": "MenuFactory::create_plate_menu",
+      "line": 1766
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Delete Plate",
+      "shortcut": null,
+      "description": "Remove the selected plate",
+      "defined_in": "MenuFactory::create_plate_menu",
+      "line": 1770
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Add Models",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::create_plate_menu",
+      "line": 1786
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Add Models",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::create_plate_menu",
+      "line": 1794
+    },
+    {
+      "menu_variable": "split_menu",
+      "kind": "item",
+      "label": "To objects",
+      "shortcut": null,
+      "description": "Split the selected object into multiple objects",
+      "defined_in": "MenuFactory::multi_selection_menu",
+      "line": 1967
+    },
+    {
+      "menu_variable": "split_menu",
+      "kind": "item",
+      "label": "To parts",
+      "shortcut": null,
+      "description": "Split the selected object into multiple parts",
+      "defined_in": "MenuFactory::multi_selection_menu",
+      "line": 1970
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Add instance",
+      "shortcut": "+",
+      "description": "Add one more instance of the selected object",
+      "defined_in": "MenuFactory::append_menu_items_instance_manipulation",
+      "line": 2011
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Remove instance",
+      "shortcut": "-",
+      "description": "Remove one instance of the selected object",
+      "defined_in": "MenuFactory::append_menu_items_instance_manipulation",
+      "line": 2014
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Set number of instances…",
+      "shortcut": null,
+      "description": "Change the number of instances of the selected object",
+      "defined_in": "MenuFactory::append_menu_items_instance_manipulation",
+      "line": 2017
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Fill bed with instances…",
+      "shortcut": null,
+      "description": "Fill the remaining area of bed with instances of the selected object",
+      "defined_in": "MenuFactory::append_menu_items_instance_manipulation",
+      "line": 2020
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Clone",
+      "shortcut": "Ctrl+K",
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_clone",
+      "line": 2081
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Simplify Model",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_simplify",
+      "line": 2092
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Subdivision mesh(Lost color)",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_smooth_mesh",
+      "line": 2099
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Center",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_center",
+      "line": 2106
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "item",
+      "label": "Drop",
+      "shortcut": null,
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_drop",
+      "line": 2125
+    },
+    {
+      "menu_variable": "menu",
+      "kind": "check_item",
+      "label": "Printable",
+      "shortcut": "V",
+      "description": null,
+      "defined_in": "MenuFactory::append_menu_item_set_printable",
+      "line": 2301
+    }
+  ],
+  "plater_toolbars": {
+    "GLCanvas3D::_init_main_toolbar": [
+      {
+        "name": "add",
+        "line": 6748,
+        "icon": "toolbar_open_dark.svgtoolbar_open.svg",
+        "tooltip": "Add [I]"
+      },
+      {
+        "name": "addplate",
+        "line": 6757,
+        "icon": "toolbar_add_plate_dark.svgtoolbar_add_plate.svg",
+        "tooltip": "Add plate"
+      },
+      {
+        "name": "orient",
+        "line": 6766,
+        "icon": "toolbar_orient_dark.svgtoolbar_orient.svg",
+        "tooltip": "Auto orient all/selected objects [Q]\nAuto orient all objects on current plate [Shift+Q]"
+      },
+      {
+        "name": "arrange",
+        "line": 6788,
+        "icon": "toolbar_arrange_dark.svgtoolbar_arrange.svg",
+        "tooltip": "Arrange all objects [A]\nArrange objects on selected plates [Shift+A]"
+      },
+      {
+        "name": "more",
+        "line": 6812,
+        "icon": "instance_add_dark.svginstance_add.svg",
+        "tooltip": "Add instance [+]"
+      },
+      {
+        "name": "fewer",
+        "line": 6824,
+        "icon": "instance_remove_dark.svginstance_remove.svg",
+        "tooltip": "Remove instance [-]"
+      },
+      {
+        "name": "splitobjects",
+        "line": 6836,
+        "icon": "split_objects_dark.svgsplit_objects.svg",
+        "tooltip": "Split to objects"
+      },
+      {
+        "name": "splitvolumes",
+        "line": 6848,
+        "icon": "split_parts_dark.svgsplit_parts.svg",
+        "tooltip": "Split to parts"
+      },
+      {
+        "name": "layersediting",
+        "line": 6858,
+        "icon": "toolbar_variable_layer_height_dark.svgtoolbar_variable_layer_height.svg",
+        "tooltip": "Variable layer height"
+      }
+    ],
+    "GLCanvas3D::_init_assemble_view_toolbar": [
+      {
+        "name": "assembly_view",
+        "line": 6966,
+        "icon": "toolbar_assemble_dark.svgtoolbar_assemble.svg",
+        "tooltip": "Assembly View"
+      }
+    ],
+    "GLCanvas3D::_init_separator_toolbar": [
+      {
+        "name": "start_seperator",
+        "line": 7021,
+        "icon": "seperator.svg"
+      }
+    ]
+  },
+  "plater_gizmos": [
+    {
+      "class": "GLGizmoMove3D",
+      "line": 206,
+      "icon": "toolbar_move.svg",
+      "type": "Move"
+    },
+    {
+      "class": "GLGizmoRotate3D",
+      "line": 207,
+      "icon": "toolbar_rotate.svg",
+      "type": "Rotate"
+    },
+    {
+      "class": "GLGizmoScale3D",
+      "line": 208,
+      "icon": "toolbar_scale.svg",
+      "type": "Scale"
+    },
+    {
+      "class": "GLGizmoFlatten",
+      "line": 209,
+      "icon": "toolbar_flatten.svg",
+      "type": "Flatten"
+    },
+    {
+      "class": "GLGizmoCut3D",
+      "line": 210,
+      "icon": "toolbar_cut.svg",
+      "type": "Cut"
+    },
+    {
+      "class": "GLGizmoMeshBoolean",
+      "line": 211,
+      "icon": "toolbar_meshboolean.svg",
+      "type": "MeshBoolean"
+    },
+    {
+      "class": "GLGizmoFdmSupports",
+      "line": 212,
+      "icon": "toolbar_support.svg",
+      "type": "FdmSupports"
+    },
+    {
+      "class": "GLGizmoSeam",
+      "line": 213,
+      "icon": "toolbar_seam.svg",
+      "type": "Seam"
+    },
+    {
+      "class": "GLGizmoFuzzySkin",
+      "line": 214,
+      "icon": "toolbar_fuzzy_skin_paint.svg",
+      "type": "FuzzySkin"
+    },
+    {
+      "class": "GLGizmoMmuSegmentation",
+      "line": 215,
+      "icon": "mmu_segmentation.svg",
+      "type": "MmSegmentation"
+    },
+    {
+      "class": "GLGizmoEmboss",
+      "line": 216,
+      "icon": "toolbar_text.svg",
+      "type": "Emboss"
+    },
+    {
+      "class": "GLGizmoSVG",
+      "line": 217
+    },
+    {
+      "class": "GLGizmoMeasure",
+      "line": 218,
+      "icon": "toolbar_measure.svg",
+      "type": "Measure"
+    },
+    {
+      "class": "GLGizmoAssembly",
+      "line": 219,
+      "icon": "toolbar_assembly.svg",
+      "type": "Assembly"
+    },
+    {
+      "class": "GLGizmoSimplify",
+      "line": 220,
+      "icon": "reduce_triangles.svg",
+      "type": "Simplify"
+    },
+    {
+      "class": "GLGizmoBrimEars",
+      "line": 221,
+      "icon": "toolbar_brimears.svg",
+      "type": "BrimEars"
+    }
+  ],
+  "keyboard_shortcuts": [
+    {
+      "group": "Global shortcuts",
+      "variable": "global_shortcuts",
+      "shortcuts": [
+        {
+          "keys": "Ctrl+N",
+          "action": "New Project"
+        },
+        {
+          "keys": "Ctrl+O",
+          "action": "Open Project"
+        },
+        {
+          "keys": "Ctrl+S",
+          "action": "Save Project"
+        },
+        {
+          "keys": "Ctrl+Shift+S",
+          "action": "Save Project as"
+        },
+        {
+          "keys": "Ctrl+I",
+          "action": "Import geometry data from STL/STEP/3MF/OBJ/AMF files"
+        },
+        {
+          "keys": "Ctrl+G",
+          "action": "Export plate sliced file"
+        },
+        {
+          "keys": "Ctrl+R",
+          "action": "Slice plate"
+        },
+        {
+          "keys": "Ctrl+Shift+G",
+          "action": "Print plate"
+        },
+        {
+          "keys": "Ctrl+X",
+          "action": "Cut"
+        },
+        {
+          "keys": "Ctrl+C",
+          "action": "Copy to clipboard"
+        },
+        {
+          "keys": "Ctrl+V",
+          "action": "Paste from clipboard"
+        },
+        {
+          "keys": "Ctrl+P",
+          "action": "Preferences"
+        },
+        {
+          "keys": "Ctrl+Shift+M",
+          "action": "Show/Hide 3Dconnexion devices settings dialog"
+        },
+        {
+          "keys": "Ctrl+M",
+          "action": "Show/Hide 3Dconnexion devices settings dialog"
+        },
+        {
+          "keys": "Ctrl+Tab",
+          "action": "Switch table page"
+        },
+        {
+          "keys": "fn+⌫",
+          "action": "Delete selected"
+        },
+        {
+          "keys": "Del",
+          "action": "Delete selected"
+        },
+        {
+          "keys": "?",
+          "action": "Show keyboard shortcuts list"
+        }
+      ]
+    },
+    {
+      "group": "Plater",
+      "variable": "plater_shortcuts",
+      "shortcuts": [
+        {
+          "keys": "Mouse wheel",
+          "action": "Zoom View"
+        },
+        {
+          "keys": "A",
+          "action": "Arrange all objects"
+        },
+        {
+          "keys": "Shift+A",
+          "action": "Arrange objects on selected plates"
+        },
+        {
+          "keys": "Q",
+          "action": "Auto orients selected objects or all objects. If there are selected objects, it just orients the selected ones. Otherwise, it will orient all objects in the current project."
+        },
+        {
+          "keys": "Shift+Q",
+          "action": "Auto orients all objects on the active plate."
+        },
+        {
+          "keys": "Shift+Tab",
+          "action": "Collapse/Expand the sidebar"
+        },
+        {
+          "keys": "Ctrl+Any arrow",
+          "action": "Movement in camera space"
+        },
+        {
+          "keys": "Alt+Left mouse button",
+          "action": "Select a part"
+        },
+        {
+          "keys": "Ctrl+Left mouse button",
+          "action": "Select multiple objects"
+        },
+        {
+          "keys": "Shift+Left mouse button",
+          "action": "Select objects by rectangle"
+        },
+        {
+          "keys": "Arrow Up",
+          "action": "Move selection 10 mm in positive Y direction"
+        },
+        {
+          "keys": "Arrow Down",
+          "action": "Move selection 10 mm in negative Y direction"
+        },
+        {
+          "keys": "Arrow Left",
+          "action": "Move selection 10 mm in negative X direction"
+        },
+        {
+          "keys": "Arrow Right",
+          "action": "Move selection 10 mm in positive X direction"
+        },
+        {
+          "keys": "Shift+Any arrow",
+          "action": "Movement step set to 1 mm"
+        },
+        {
+          "keys": "Esc",
+          "action": "Deselect all"
+        },
+        {
+          "keys": "1-9",
+          "action": "Keyboard 1-9: set filament for object/part"
+        },
+        {
+          "keys": "Ctrl+0",
+          "action": "Camera view - Default"
+        },
+        {
+          "keys": "Ctrl+1",
+          "action": "Camera view - Top"
+        },
+        {
+          "keys": "Ctrl+2",
+          "action": "Camera view - Bottom"
+        },
+        {
+          "keys": "Ctrl+3",
+          "action": "Camera view - Front"
+        },
+        {
+          "keys": "Ctrl+4",
+          "action": "Camera view - Behind"
+        },
+        {
+          "keys": "Ctrl+5",
+          "action": "Camera Angle - Left side"
+        },
+        {
+          "keys": "Ctrl+6",
+          "action": "Camera Angle - Right side"
+        },
+        {
+          "keys": "Ctrl+A",
+          "action": "Select all objects"
+        },
+        {
+          "keys": "Ctrl+D",
+          "action": "Delete all"
+        },
+        {
+          "keys": "Ctrl+Z",
+          "action": "Undo"
+        },
+        {
+          "keys": "Ctrl+Y",
+          "action": "Redo"
+        },
+        {
+          "keys": "M",
+          "action": "Gizmo move"
+        },
+        {
+          "keys": "R",
+          "action": "Gizmo rotate"
+        },
+        {
+          "keys": "S",
+          "action": "Gizmo scale"
+        },
+        {
+          "keys": "F",
+          "action": "Gizmo place face on bed"
+        },
+        {
+          "keys": "C",
+          "action": "Gizmo cut"
+        },
+        {
+          "keys": "B",
+          "action": "Gizmo mesh boolean"
+        },
+        {
+          "keys": "H",
+          "action": "Gizmo FDM paint-on fuzzy skin"
+        },
+        {
+          "keys": "L",
+          "action": "Gizmo SLA support points"
+        },
+        {
+          "keys": "P",
+          "action": "Gizmo FDM paint-on seam"
+        },
+        {
+          "keys": "T",
+          "action": "Gizmo text emboss/engrave"
+        },
+        {
+          "keys": "U",
+          "action": "Gizmo measure"
+        },
+        {
+          "keys": "Y",
+          "action": "Gizmo assemble"
+        },
+        {
+          "keys": "E",
+          "action": "Gizmo brim ears"
+        },
+        {
+          "keys": "I",
+          "action": "Zoom in"
+        },
+        {
+          "keys": "O",
+          "action": "Zoom out"
+        },
+        {
+          "keys": "V",
+          "action": "Toggle printable for object/part"
+        },
+        {
+          "keys": "Tab",
+          "action": "Switch between Prepare/Preview"
+        }
+      ]
+    },
+    {
+      "group": "Gizmo",
+      "variable": "gizmos_shortcuts",
+      "shortcuts": [
+        {
+          "keys": "Esc",
+          "action": "Deselect all"
+        },
+        {
+          "keys": "Shift+",
+          "action": "Move: press to snap by 1mm"
+        },
+        {
+          "keys": "Ctrl+Mouse wheel",
+          "action": "Support/Color Painting: adjust pen radius"
+        },
+        {
+          "keys": "Alt+Mouse wheel",
+          "action": "Support/Color Painting: adjust section position"
+        }
+      ]
+    },
+    {
+      "group": "Objects List",
+      "variable": "object_list_shortcuts",
+      "shortcuts": [
+        {
+          "keys": "1-9",
+          "action": "Set extruder number for the objects and parts"
+        },
+        {
+          "keys": "Del",
+          "action": "Delete objects, parts, modifiers"
+        },
+        {
+          "keys": "Esc",
+          "action": "Deselect all"
+        },
+        {
+          "keys": "Ctrl+C",
+          "action": "Copy to clipboard"
+        },
+        {
+          "keys": "Ctrl+V",
+          "action": "Paste from clipboard"
+        },
+        {
+          "keys": "Ctrl+X",
+          "action": "Cut"
+        },
+        {
+          "keys": "Ctrl+A",
+          "action": "Select all objects"
+        },
+        {
+          "keys": "Ctrl+K",
+          "action": "Clone selected"
+        },
+        {
+          "keys": "Ctrl+Z",
+          "action": "Undo"
+        },
+        {
+          "keys": "Ctrl+Y",
+          "action": "Redo"
+        },
+        {
+          "keys": "Space",
+          "action": "Select the object/part and press space to change the name"
+        },
+        {
+          "keys": "Mouse click",
+          "action": "Select the object/part and mouse click to change the name"
+        }
+      ]
+    },
+    {
+      "group": "Preview",
+      "variable": "preview_shortcuts",
+      "shortcuts": [
+        {
+          "keys": "Arrow Up",
+          "action": "Vertical slider - Move active thumb Up"
+        },
+        {
+          "keys": "Arrow Down",
+          "action": "Vertical slider - Move active thumb Down"
+        },
+        {
+          "keys": "Arrow Left",
+          "action": "Horizontal slider - Move active thumb Left"
+        },
+        {
+          "keys": "Arrow Right",
+          "action": "Horizontal slider - Move active thumb Right"
+        },
+        {
+          "keys": "L",
+          "action": "On/Off one layer mode of the vertical slider"
+        },
+        {
+          "keys": "C",
+          "action": "On/Off G-code window"
+        },
+        {
+          "keys": "Tab",
+          "action": "Switch between Prepare/Preview"
+        },
+        {
+          "keys": "Shift+Any arrow",
+          "action": "Move slider 5x faster"
+        },
+        {
+          "keys": "Shift+Mouse wheel",
+          "action": "Move slider 5x faster"
+        },
+        {
+          "keys": "Ctrl+Any arrow",
+          "action": "Move slider 5x faster"
+        },
+        {
+          "keys": "Ctrl+Mouse wheel",
+          "action": "Move slider 5x faster"
+        },
+        {
+          "keys": "Home",
+          "action": "Horizontal slider - Move to start position"
+        },
+        {
+          "keys": "End",
+          "action": "Horizontal slider - Move to last position"
+        }
+      ]
+    }
+  ]
+}

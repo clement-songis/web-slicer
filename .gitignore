@@ -1,1 +1,27 @@
 target/
+result
+result-*
+.idea/
+*.iml
+data/
+
+# Node / frontend
+node_modules/
+.svelte-kit/
+frontend/build/
+frontend/dist/
+*.log
+
+# Python
+__pycache__/
+*.pyc
+
+# IDE / OS
+.vscode/
+.DS_Store
+Thumbs.db
+*.swp
+
+# Secrets / env
+.env
+.env.*
