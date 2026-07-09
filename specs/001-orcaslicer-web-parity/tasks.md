@@ -54,7 +54,7 @@
 - [X] T013 [US1] FFI load_model (STL/OBJ/3MF) + convert_to_mesh (STEP via OCCT) dans engine/src/adapters/ffi/model.rs ; tests sur fixtures (dont STEP)
 - [X] T014 [P] [US1] FFI read/write_project_3mf (scène + config embarquée) dans engine/src/adapters/ffi/threemf.rs + module commun engine/src/threemf/ ; tests aller-retour sur 3MF Orca de fixture
 - [X] T015 [P] [US1] FFI repair_mesh + RepairedMeshErrors dans engine/src/adapters/ffi/mesh.rs ; tests sur maillage non-manifold de fixture
-- [ ] T016 [P] [US1] FFI arrange + orient (paramètres de dégagement machine) dans engine/src/adapters/ffi/arrange.rs ; tests : pas de collision, objets dans le volume
+- [X] T016 [P] [US1] FFI arrange + orient (paramètres de dégagement machine) dans engine/src/adapters/ffi/arrange.rs ; tests : pas de collision, objets dans le volume
 - [ ] T017 [US1] FFI resolve_preset_chain + validate_config dans engine/src/adapters/ffi/config.rs ; tests : chaîne BBL connue → valeurs effectives attendues, valeur hors bornes → ConfigWarning
 - [ ] T018 [US1] Process worker `engine/src/bin/engine-worker.rs` : slice isolé (crash C++ contenu), progression par pipe (callbacks statusbar libslic3r), annulation par kill (R1/R9) ; tests : progression monotone, kill → cancelled, crash simulé → EngineError
 - [ ] T019 [US1] FFI slice via engine-worker dans engine/src/adapters/ffi/slice.rs : SliceRequest → G-code + GCodeProcessorResult + thumbnails ; tests sur benchy

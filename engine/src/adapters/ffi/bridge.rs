@@ -80,6 +80,16 @@ pub(crate) mod ffi {
             out_path: &str,
         ) -> Result<()>;
 
+        /// Arrangement automatique dans le contour de plateau (mm).
+        fn arrange_raw(
+            objects: &Vec<RawObject>,
+            bed_xy: &Vec<f64>,
+            clearance_mm: f64,
+        ) -> Result<Vec<RawObject>>;
+
+        /// Orientation automatique d'un objet.
+        fn orient_raw(object: &RawObject) -> Result<RawObject>;
+
         /// Répare un maillage (admesh : arêtes, dégénérés, orientation).
         fn repair_mesh_raw(mesh: &RawMesh) -> Result<RawRepairResult>;
 

@@ -23,6 +23,11 @@ void write_project_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config
 
 RawRepairResult repair_mesh_raw(const RawMesh &mesh);
 
+rust::Vec<RawObject> arrange_raw(const rust::Vec<RawObject> &objects,
+                                 const rust::Vec<double> &bed_xy, double clearance_mm);
+
+RawObject orient_raw(const RawObject &object);
+
 size_t model_triangle_count(rust::Str path);
 
 size_t print_config_option_count();

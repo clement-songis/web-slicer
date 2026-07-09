@@ -129,3 +129,42 @@ fn repare_un_maillage_troue() {
         "triangle dégénéré détecté/supprimé : {report:?}"
     );
 }
+
+#[test]
+fn arrange_quatre_cubes_sans_collision() {
+    use engine::api::{ArrangeParams, BuildVolume, Model};
+    let cube = engine::adapters::ffi::load_model(&common::fixture("cube20.stl")).unwrap();
+    let mut model = Model::default();
+    for _ in 0..4 {
+        model.objects.extend(cube.objects.clone());
+    }
+    let bed = BuildVolume {
+        bed_shape: vec![[0.0, 0.0], [200.0, 0.0], [200.0, 200.0], [0.0, 200.0]],
+        max_height: 200.0,
+        excluded: vec![],
+    };
+    engine::adapters::ffi::arrange(&mut model, &bed, &ArrangeParams::default()).expect("arrange");
+    // les 4 instances ont des positions distinctes dans le plateau
+    let mut positions: Vec<(i64, i64)> = model
+        .objects
+        .iter()
+        .flat_map(|o| &o.instances)
+        .map(|i| {
+            let t = i.matrix.w_axis;
+            assert!((-100.0..=300.0).contains(&t.x), "x aberrant: {}", t.x);
+            ((t.x * 10.0) as i64, (t.y * 10.0) as i64)
+        })
+        .collect();
+    positions.sort_unstable();
+    positions.dedup();
+    assert_eq!(positions.len(), 4, "positions distinctes après arrangement");
+}
+
+#[test]
+fn oriente_un_objet() {
+    let mut object = engine::adapters::ffi::load_model(&common::fixture("overhang.stl"))
+        .unwrap()
+        .objects
+        .remove(0);
+    engine::adapters::ffi::orient(&mut object).expect("orient");
+}

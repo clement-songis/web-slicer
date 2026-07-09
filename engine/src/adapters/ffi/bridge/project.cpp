@@ -66,6 +66,29 @@ Slic3r::Transform3d from_col_major(const std::array<double, 16> &m)
 
 } // namespace
 
+void raw_into_model(const rust::Vec<RawObject> &objects, Slic3r::Model &model)
+{
+    for (const RawObject &raw_object : objects) {
+        Slic3r::ModelObject *object = model.add_object();
+        object->name = std::string(raw_object.name);
+        for (const RawVolume &raw_volume : raw_object.volumes) {
+            Slic3r::ModelVolume *volume =
+                object->add_volume(raw_to_mesh(raw_volume.mesh));
+            volume->name = std::string(raw_volume.name);
+            volume->set_type(static_cast<Slic3r::ModelVolumeType>(raw_volume.role));
+            volume->set_transformation(
+                Slic3r::Geometry::Transformation(from_col_major(raw_volume.matrix)));
+        }
+        for (const RawInstance &raw_instance : raw_object.instances) {
+            Slic3r::ModelInstance *instance = object->add_instance();
+            instance->set_transformation(
+                Slic3r::Geometry::Transformation(from_col_major(raw_instance.matrix)));
+        }
+        if (object->instances.empty())
+            object->add_instance();
+    }
+}
+
 RawProject read_project_3mf_raw(rust::Str path)
 {
     const std::string file(path);
@@ -96,25 +119,7 @@ void write_project_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config
                            rust::Str out_path)
 {
     Slic3r::Model model;
-    for (const RawObject &raw_object : objects) {
-        Slic3r::ModelObject *object = model.add_object();
-        object->name = std::string(raw_object.name);
-        for (const RawVolume &raw_volume : raw_object.volumes) {
-            Slic3r::ModelVolume *volume =
-                object->add_volume(raw_to_mesh(raw_volume.mesh));
-            volume->name = std::string(raw_volume.name);
-            volume->set_type(static_cast<Slic3r::ModelVolumeType>(raw_volume.role));
-            volume->set_transformation(
-                Slic3r::Geometry::Transformation(from_col_major(raw_volume.matrix)));
-        }
-        for (const RawInstance &raw_instance : raw_object.instances) {
-            Slic3r::ModelInstance *instance = object->add_instance();
-            instance->set_transformation(
-                Slic3r::Geometry::Transformation(from_col_major(raw_instance.matrix)));
-        }
-        if (object->instances.empty())
-            object->add_instance();
-    }
+    raw_into_model(objects, model);
 
     Slic3r::DynamicPrintConfig config;
     if (!config_json.empty())
