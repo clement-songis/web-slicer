@@ -52,9 +52,13 @@ def parse_number(raw: str, consts: dict[str, float]):
     raw = raw.strip()
     if raw in consts:
         return consts[raw]
+    if raw.startswith("-") and raw[1:].strip() in consts:
+        v = consts[raw[1:].strip()]
+        return -v if isinstance(v, (int, float)) else raw
+    lit = raw.rstrip("fF") if re.fullmatch(r"-?[\d.]+[fF]", raw) else raw
     try:
-        v = float(raw)
-        return int(v) if v.is_integer() and "." not in raw and "e" not in raw.lower() else v
+        v = float(lit)
+        return int(v) if v.is_integer() and "." not in lit and "e" not in lit.lower() else v
     except ValueError:
         return raw  # expression non résolue : garder le texte brut
 

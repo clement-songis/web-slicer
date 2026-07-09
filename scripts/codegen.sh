@@ -6,12 +6,15 @@
 #   1. audit/run_all.py              → audit/*.json (sources de vérité)
 #   2. audit/generate_parity_annexes → annexes normatives de la spec
 #   3. génération frontend/src/generated/ (params.ts, ui-layout.ts)
-#      — étoffée par T040 ; le registre Rust est généré par engine/build.rs.
+#      — étoffée par T040 ; le registre Rust : audit/generate_registry_rs.py → engine/src/params/registry.rs (committé).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 python3 audit/run_all.py
 python3 audit/generate_parity_annexes.py
+python3 audit/generate_registry_rs.py
+# le registre généré doit rester rustfmt-stable (gate cargo fmt --check)
+cargo fmt -p engine 2>/dev/null || true
 
 GEN_DIR=frontend/src/generated
 mkdir -p "$GEN_DIR"

@@ -18,6 +18,7 @@ glam = { version = "0.33", features = ["serde"] }
 nix = { version = "0.31", features = ["fs"] }
 tempfile = "3"
 which = "8"
+sha1_smol = "1"
 
 [dev-dependencies]
 # differential testing : slice via engine vs CLI direct

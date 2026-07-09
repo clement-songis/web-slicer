@@ -1,14 +1,7 @@
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
-}
+//! Moteur de slicing — trait `SlicerEngine` et registre de paramètres.
+//!
+//! Constitution II : ce crate encapsule libslic3r d'OrcaSlicer ; le backend
+//! ne dépend que du trait (défini ici, T011) et jamais des adaptateurs
+//! (`adapters::ffi` — bridge cxx principal ; `adapters::cli` — fallback).
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub mod params;
