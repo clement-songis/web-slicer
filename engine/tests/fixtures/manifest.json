@@ -1,0 +1,117 @@
+{
+  "generated_by": "engine/tests/fixtures/generate.py",
+  "purpose": "corpus de parité SC-003 : 10 modèles × 5 presets, G-code trait == orca-slicer desktop (métadonnées normalisées)",
+  "notes": [
+    "STL validés par chargement via orca-slicer CLI (--export-3mf)",
+    "cube20.step : validé par le lecteur STEP de libslic3r (T013, FFI) — le CLI orca-slicer n'accepte pas .step en entrée libre (fallback CLI : conversion STEP indisponible, à consigner dans exclusions.md si maintenu)"
+  ],
+  "models": [
+    {
+      "file": "cube20.stl",
+      "source": "vendor/OrcaSlicer/tests/data/20mm_cube.obj",
+      "role": "cube de calibration — cas nominal",
+      "triangles": 12
+    },
+    {
+      "file": "pyramid.stl",
+      "source": "vendor/OrcaSlicer/tests/data/pyramid.obj",
+      "role": "pentes régulières — hauteur de couche variable",
+      "triangles": 6
+    },
+    {
+      "file": "overhang.stl",
+      "source": "vendor/OrcaSlicer/tests/data/overhang.obj",
+      "role": "surplombs — seuils de support",
+      "triangles": 118
+    },
+    {
+      "file": "bridge.stl",
+      "source": "vendor/OrcaSlicer/tests/data/bridge.obj",
+      "role": "pontage — vitesses/détection bridge",
+      "triangles": 28
+    },
+    {
+      "file": "two_squares.stl",
+      "source": "vendor/OrcaSlicer/tests/data/two_hollow_squares.obj",
+      "role": "multi-corps disjoints — arrangement",
+      "triangles": 96
+    },
+    {
+      "file": "frog_legs.stl",
+      "source": "vendor/OrcaSlicer/tests/data/frog_legs.obj",
+      "role": "forme organique — supports auto",
+      "triangles": 18334
+    },
+    {
+      "file": "extruder_idler.stl",
+      "source": "vendor/OrcaSlicer/tests/data/extruder_idler.obj",
+      "role": "pièce mécanique réelle — trous/tolérances",
+      "triangles": 3586
+    },
+    {
+      "file": "ipadstand.stl",
+      "source": "vendor/OrcaSlicer/tests/data/ipadstand.obj",
+      "role": "grandes surfaces planes — remplissage/ironing",
+      "triangles": 56
+    },
+    {
+      "file": "V.stl",
+      "source": "vendor/OrcaSlicer/tests/data/V.obj",
+      "role": "parois fines en V — thin walls",
+      "triangles": 24
+    },
+    {
+      "file": "simplification.stl",
+      "source": "vendor/OrcaSlicer/tests/data/simplification.obj",
+      "role": "référence upstream du gizmo Simplify",
+      "triangles": 28
+    },
+    {
+      "file": "cube20.obj",
+      "source": "vendor/OrcaSlicer/tests/data/20mm_cube.obj",
+      "role": "import OBJ natif (FR-010)"
+    },
+    {
+      "file": "orca_project.3mf",
+      "source": "vendor/OrcaSlicer/tests/data/test_3mf/Geräte/Büchse.3mf",
+      "role": "3MF projet OrcaSlicer (scène + réglages embarqués, edge case unicode)"
+    },
+    {
+      "file": "cube20.step",
+      "source": "généré (faceted BREP)",
+      "role": "import STEP via OCCT (FR-010, R7)"
+    }
+  ],
+  "preset_combos": [
+    {
+      "id": "bbl-a1-standard",
+      "machine": "Bambu Lab A1 0.4 nozzle",
+      "filament": "Bambu PLA Basic @BBL A1",
+      "process": "0.20mm Standard @BBL A1"
+    },
+    {
+      "id": "bbl-a1-fine-02",
+      "machine": "Bambu Lab A1 0.2 nozzle",
+      "filament": "Bambu PLA Basic @BBL A1 0.2 nozzle",
+      "process": "0.06mm Fine @BBL A1 0.2 nozzle"
+    },
+    {
+      "id": "bbl-x1c-abs",
+      "machine": "Bambu Lab X1 Carbon 0.4 nozzle",
+      "filament": "Bambu ABS @BBL X1C",
+      "process": "0.20mm Standard @BBL X1C"
+    },
+    {
+      "id": "bbl-a1-draft-06",
+      "machine": "Bambu Lab A1 0.6 nozzle",
+      "filament": "Bambu PETG Basic @BBL A1",
+      "process": "0.30mm Standard @BBL A1 0.6 nozzle"
+    },
+    {
+      "id": "voron-generic-pla",
+      "machine": "Voron 2.4 300 0.4 nozzle",
+      "filament": "Generic PLA @Voron",
+      "process": "0.20mm Standard @Voron"
+    }
+  ]
+}
