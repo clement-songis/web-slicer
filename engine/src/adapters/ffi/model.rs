@@ -20,7 +20,7 @@ use super::bridge::ffi;
 static FFI_LOCK: Mutex<()> = Mutex::new(());
 static INIT: Once = Once::new();
 
-fn ffi_guard() -> MutexGuard<'static, ()> {
+pub(super) fn ffi_guard() -> MutexGuard<'static, ()> {
     let guard = FFI_LOCK.lock().unwrap_or_else(PoisonError::into_inner);
     INIT.call_once(|| {
         let tmp = std::env::temp_dir().join("web-slicer-engine");
@@ -71,7 +71,7 @@ pub fn convert_to_mesh(path: &Path) -> EngineResult<TriangleMesh> {
     Ok(merged)
 }
 
-fn to_object(raw: ffi::RawObject) -> ModelObject {
+pub(super) fn to_object(raw: ffi::RawObject) -> ModelObject {
     ModelObject {
         name: raw.name,
         volumes: raw.volumes.into_iter().map(to_volume).collect(),
@@ -127,4 +127,42 @@ pub fn model_triangle_count(path: &Path) -> EngineResult<usize> {
 /// Comptage runtime du registre C++ (croisement avec `params::REGISTRY`).
 pub fn print_config_option_count() -> usize {
     ffi::print_config_option_count()
+}
+
+/// Conversion inverse : scène `api` → structs brutes du bridge (écriture 3MF).
+pub(super) fn to_raw_objects(model: &Model) -> Vec<ffi::RawObject> {
+    model
+        .objects
+        .iter()
+        .map(|o| ffi::RawObject {
+            name: o.name.clone(),
+            volumes: o
+                .volumes
+                .iter()
+                .map(|v| ffi::RawVolume {
+                    name: v.name.clone(),
+                    matrix: v.matrix.to_cols_array(),
+                    role: match v.role {
+                        VolumeRole::ModelPart => 0,
+                        VolumeRole::NegativeVolume => 1,
+                        VolumeRole::ParameterModifier => 2,
+                        VolumeRole::SupportBlocker => 3,
+                        VolumeRole::SupportEnforcer => 4,
+                    },
+                    extruder: v.extruder.map_or(0, u32::from),
+                    mesh: ffi::RawMesh {
+                        vertices: v.mesh.vertices.iter().flatten().copied().collect(),
+                        indices: v.mesh.indices.iter().flatten().copied().collect(),
+                    },
+                })
+                .collect(),
+            instances: o
+                .instances
+                .iter()
+                .map(|i| ffi::RawInstance {
+                    matrix: i.matrix.to_cols_array(),
+                })
+                .collect(),
+        })
+        .collect()
 }

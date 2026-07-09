@@ -40,6 +40,14 @@ pub(crate) mod ffi {
         instances: Vec<RawInstance>,
     }
 
+    /// Projet 3MF : scène + config embarquée (clé → valeur sérialisée Orca,
+    /// transportée en JSON).
+    #[derive(Debug)]
+    struct RawProject {
+        objects: Vec<RawObject>,
+        config_json: String,
+    }
+
     unsafe extern "C++" {
         include!("engine/src/adapters/ffi/bridge/model.hpp");
 
@@ -50,6 +58,16 @@ pub(crate) mod ffi {
         /// Charge un fichier modèle via `Slic3r::Model::read_from_file`
         /// (STL/OBJ/3MF géométrie, STEP via OCCT) → scène brute.
         fn load_model_raw(path: &str) -> Result<Vec<RawObject>>;
+
+        /// Lit un projet 3MF OrcaSlicer : scène + config embarquée.
+        fn read_project_3mf_raw(path: &str) -> Result<RawProject>;
+
+        /// Écrit un projet 3MF compatible OrcaSlicer.
+        fn write_project_3mf_raw(
+            objects: &Vec<RawObject>,
+            config_json: &str,
+            out_path: &str,
+        ) -> Result<()>;
 
         /// Nombre total de triangles d'un fichier (smoke T012).
         fn model_triangle_count(path: &str) -> Result<usize>;

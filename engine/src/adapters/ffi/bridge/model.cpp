@@ -105,13 +105,8 @@ void init_runtime(rust::Str temp_dir, rust::Str data_dir)
     Slic3r::print_config_static_initializer();
 }
 
-rust::Vec<RawObject> load_model_raw(rust::Str path)
+rust::Vec<RawObject> model_to_raw(const Slic3r::Model &model)
 {
-    const std::string file(path);
-    Slic3r::Model model = read_any(file);
-    if (model.objects.empty())
-        throw std::runtime_error("aucun objet dans " + file);
-
     rust::Vec<RawObject> objects;
     for (const Slic3r::ModelObject *object : model.objects) {
         RawObject raw_object;
@@ -134,6 +129,15 @@ rust::Vec<RawObject> load_model_raw(rust::Str path)
         objects.push_back(std::move(raw_object));
     }
     return objects;
+}
+
+rust::Vec<RawObject> load_model_raw(rust::Str path)
+{
+    const std::string file(path);
+    Slic3r::Model model = read_any(file);
+    if (model.objects.empty())
+        throw std::runtime_error("aucun objet dans " + file);
+    return model_to_raw(model);
 }
 
 size_t model_triangle_count(rust::Str path)

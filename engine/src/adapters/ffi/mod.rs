@@ -5,5 +5,7 @@
 
 mod bridge;
 mod model;
+mod threemf;
 
 pub use model::{convert_to_mesh, load_model, model_triangle_count, print_config_option_count};
+pub use threemf::{read_project_3mf, write_project_3mf};

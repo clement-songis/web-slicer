@@ -4,6 +4,7 @@
 //! `registry.rs` est GÉNÉRÉ par `scripts/codegen.sh` et committé ; toute
 //! divergence avec l'audit fait échouer `registre_synchronise_avec_l_audit`.
 
+pub mod orca_values;
 mod registry;
 
 pub use registry::{REGISTRY, SOURCE_SHA1};

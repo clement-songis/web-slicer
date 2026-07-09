@@ -73,3 +73,39 @@ fn convertit_le_step_en_maillage() {
         );
     }
 }
+
+#[test]
+fn aller_retour_projet_3mf_avec_config() {
+    use engine::api::{ConfigValue, DynamicPrintConfig};
+    let model = engine::adapters::ffi::load_model(&common::fixture("cube20.stl")).unwrap();
+    let mut config = DynamicPrintConfig::new();
+    config
+        .set("layer_height", ConfigValue::Float(0.28))
+        .unwrap();
+    config
+        .set(
+            "sparse_infill_pattern",
+            ConfigValue::String("gyroid".into()),
+        )
+        .unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("roundtrip.3mf");
+    engine::adapters::ffi::write_project_3mf(&model, &config, &out).expect("écrit");
+    let (back_model, back_config) = engine::adapters::ffi::read_project_3mf(&out).expect("relit");
+    let n: usize = back_model
+        .objects
+        .iter()
+        .flat_map(|o| &o.volumes)
+        .map(|v| v.mesh.triangle_count())
+        .sum();
+    assert_eq!(n, 12, "géométrie préservée");
+    assert_eq!(
+        back_config.get("layer_height"),
+        Some(&ConfigValue::Float(0.28)),
+        "config embarquée préservée"
+    );
+    assert_eq!(
+        back_config.get("sparse_infill_pattern"),
+        Some(&ConfigValue::String("gyroid".into()))
+    );
+}
