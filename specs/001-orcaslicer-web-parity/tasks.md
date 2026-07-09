@@ -22,7 +22,7 @@
 **Purpose**: chaîne de build et gates prêts avant toute implémentation
 
 - [X] T001 Vérifier la chaîne Nix : `nix build .#libslic3r` et `nix build .#dump-config` passent ; documenter `$LIBSLIC3R_DIR` dans engine/README.md
-- [ ] T002 [P] Script de codegen racine `scripts/codegen.sh` : `audit/run_all.py` → `audit/generate_parity_annexes.py` → génération `frontend/src/generated/` (params.ts, ui-layout.ts vides pour l'instant) ; idempotent
+- [X] T002 [P] Script de codegen racine `scripts/codegen.sh` : `audit/run_all.py` → `audit/generate_parity_annexes.py` → génération `frontend/src/generated/` (params.ts, ui-layout.ts vides pour l'instant) ; idempotent
 - [ ] T003 [P] CI (`.github/workflows/ci.yml` ou équivalent) : gates constitution — `cargo fmt --check`, `cargo clippy --workspace -- -D warnings`, `cargo test --workspace`, `bun run lint`, `bun run check`, `bun test`, `python3 audit/run_all.py`
 - [ ] T004 [P] Fixtures de test : `engine/tests/fixtures/` — 10 modèles de référence (benchy, tour, pièce à supports, multi-corps, STEP, OBJ, 3MF projet Orca…) + manifest des 5 combinaisons de presets (SC-003)
 
