@@ -49,6 +49,7 @@ jobs:
             cargo fmt --check
             cargo clippy --workspace -- -D warnings
             cargo test --workspace
+            cargo test -p engine --features ffi
           '
       - name: Fraîcheur des bindings ts-rs (jamais édités à la main)
         run: git diff --exit-code -- frontend/src/generated/api

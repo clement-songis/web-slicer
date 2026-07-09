@@ -108,15 +108,20 @@
           d:
           lib.any (p: lib.hasPrefix p (d.pname or "")) [
             "boost"
-            "tbb"
+            "onetbb"
             "eigen"
-            "openssl"
             "gmp"
             "mpfr"
-            "libjpeg"
             "libpng"
-            "zlib"
             "cereal"
+            "opencascade"
+            "libnoise"
+            "nlopt"
+            "expat"
+            "openvdb"
+            "opencv"
+            "curl"
+            "draco"
           ]
         ) (libslic3r.buildInputs or [ ]);
       in
@@ -129,7 +134,12 @@
         };
 
         devShells.default = pkgs.mkShell.override { stdenv = pkgs.clangStdenv; } {
-          buildInputs = ffiDeps;
+          # ffiDeps (issus d'Orca) + libs absentes de ses buildInputs directs
+          buildInputs = ffiDeps ++ [
+            pkgs.libjpeg
+            pkgs.zlib
+            pkgs.openssl
+          ];
 
           packages = [
             # --- C++ / build ---

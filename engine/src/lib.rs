@@ -6,6 +6,7 @@
 //! (`adapters::ffi` — bridge cxx principal ; `adapters::cli` — fallback
 //! `orca-slicer`, sélection par `ENGINE_IMPL=ffi|cli`).
 
+pub mod adapters;
 pub mod api;
 pub mod params;
 
