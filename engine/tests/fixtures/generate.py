@@ -35,8 +35,13 @@ MODELS = {
 }
 
 # Variantes de format d'import (FR-010) : OBJ natif, 3MF projet Orca, STEP.
+# orca_project.3mf et cube20.step sont COMMITTÉS, générés par les vrais
+# outils (devShell) : régénération ci-dessous seulement si disponibles.
+#   orca_project.3mf : orca-slicer --export-3mf <out> cube20.stl
+#   cube20.step      : BRepPrimAPI_MakeBox + STEPControl_Writer (OCCT)
+# crasher_generic.3mf : 3MF générique de 2015 qui fait SIGSEGV le lecteur
+# bbs_3mf — conservé comme fixture de crash pour l'isolation worker (T018).
 OBJ_NATIVE = ("cube20.obj", "20mm_cube.obj")
-ORCA_3MF = ("orca_project.3mf", "test_3mf/Geräte/Büchse.3mf")
 
 # 5 combinaisons de presets du corpus de parité (SC-003) — résolues au
 # moment des tests depuis les profils système seedés (Annexe C).
@@ -110,66 +115,6 @@ def write_binary_stl(path: Path, verts, faces) -> None:
             f.write(struct.pack("<H", 0))
 
 
-def write_step_cube(path: Path, size: float = 20.0) -> None:
-    """Cube STEP en faceted BREP (2 triangles par face) — lisible par OCCT."""
-    s = size
-    pts = [
-        (0, 0, 0), (s, 0, 0), (s, s, 0), (0, s, 0),
-        (0, 0, s), (s, 0, s), (s, s, s), (0, s, s),
-    ]
-    tris = [
-        (0, 2, 1), (0, 3, 2),  # bas (z=0)
-        (4, 5, 6), (4, 6, 7),  # haut
-        (0, 1, 5), (0, 5, 4),  # y=0
-        (1, 2, 6), (1, 6, 5),  # x=s
-        (2, 3, 7), (2, 7, 6),  # y=s
-        (3, 0, 4), (3, 4, 7),  # x=0
-    ]
-    lines = []
-    eid = 0
-
-    def add(entity: str) -> int:
-        nonlocal eid
-        eid += 1
-        lines.append(f"#{eid}={entity};")
-        return eid
-
-    pt_ids = [add(f"CARTESIAN_POINT('',({p[0]:.1f},{p[1]:.1f},{p[2]:.1f}))") for p in pts]
-    face_ids = []
-    for a, b, c in tris:
-        loop = add(f"POLY_LOOP('',(#{pt_ids[a]},#{pt_ids[b]},#{pt_ids[c]}))")
-        bound = add(f"FACE_OUTER_BOUND('',#{loop},.T.)")
-        face_ids.append(add(f"FACE('',(#{bound}))"))
-    shell = add("CLOSED_SHELL('',(" + ",".join(f"#{f}" for f in face_ids) + "))")
-    brep = add(f"FACETED_BREP('cube',#{shell})")
-    origin = add("CARTESIAN_POINT('',(0.,0.,0.))")
-    dz = add("DIRECTION('',(0.,0.,1.))")
-    dx = add("DIRECTION('',(1.,0.,0.))")
-    axis = add(f"AXIS2_PLACEMENT_3D('',#{origin},#{dz},#{dx})")
-    add(f"SHAPE_REPRESENTATION('cube',(#{axis},#{brep}),#{eid + 2})")
-    ctx = add(
-        "(GEOMETRIC_REPRESENTATION_CONTEXT(3)"
-        "GLOBAL_UNCERTAINTY_ASSIGNED_CONTEXT((#" + str(eid + 2) + "))"
-        "GLOBAL_UNIT_ASSIGNED_CONTEXT((#" + str(eid + 3) + ",#" + str(eid + 4) + ",#" + str(eid + 5) + "))"
-        "REPRESENTATION_CONTEXT('cube','3D'))"
-    )
-    add("UNCERTAINTY_MEASURE_WITH_UNIT(LENGTH_MEASURE(1.E-07),#" + str(eid + 2) + ",'','')")
-    add("(LENGTH_UNIT()NAMED_UNIT(*)SI_UNIT(.MILLI.,.METRE.))")
-    add("(NAMED_UNIT(*)PLANE_ANGLE_UNIT()SI_UNIT($,.RADIAN.))")
-    add("(NAMED_UNIT(*)SI_UNIT($,.STERADIAN.)SOLID_ANGLE_UNIT())")
-    _ = ctx
-
-    header = """ISO-10303-21;
-HEADER;
-FILE_DESCRIPTION(('web-slicer fixture cube'),'2;1');
-FILE_NAME('cube20.step','2026-01-01T00:00:00',(''),(''),'','generate.py','');
-FILE_SCHEMA(('AUTOMOTIVE_DESIGN { 1 0 10303 214 1 1 1 1 }'));
-ENDSEC;
-DATA;
-"""
-    path.write_text(header + "\n".join(lines) + "\nENDSEC;\nEND-ISO-10303-21;\n")
-
-
 def main() -> None:
     models_meta = []
     for target, (source, role) in MODELS.items():
@@ -188,17 +133,27 @@ def main() -> None:
         "source": f"vendor/OrcaSlicer/tests/data/{OBJ_NATIVE[1]}",
         "role": "import OBJ natif (FR-010)",
     })
-    shutil.copyfile(DATA / ORCA_3MF[1], HERE / ORCA_3MF[0])
+    import subprocess
+    if shutil.which("orca-slicer") and not (HERE / "orca_project.3mf").exists():
+        subprocess.run(
+            ["orca-slicer", "--export-3mf", str(HERE / "orca_project.3mf"),
+             str(HERE / "cube20.stl")],
+            check=True, capture_output=True,
+        )
     models_meta.append({
-        "file": ORCA_3MF[0],
-        "source": f"vendor/OrcaSlicer/tests/data/{ORCA_3MF[1]}",
-        "role": "3MF projet OrcaSlicer (scène + réglages embarqués, edge case unicode)",
+        "file": "orca_project.3mf",
+        "source": "généré par orca-slicer --export-3mf (committé)",
+        "role": "3MF projet OrcaSlicer (scène + réglages embarqués)",
     })
-    write_step_cube(HERE / "cube20.step")
     models_meta.append({
         "file": "cube20.step",
-        "source": "généré (faceted BREP)",
+        "source": "généré par OCCT STEPControl_Writer (committé)",
         "role": "import STEP via OCCT (FR-010, R7)",
+    })
+    models_meta.append({
+        "file": "crasher_generic.3mf",
+        "source": "vendor/OrcaSlicer/tests/data/test_3mf/Geräte/Büchse.3mf",
+        "role": "3MF qui fait crasher le lecteur bbs_3mf — test d'isolation du worker (T018)",
     })
 
     manifest = {

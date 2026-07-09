@@ -73,13 +73,18 @@
     },
     {
       "file": "orca_project.3mf",
-      "source": "vendor/OrcaSlicer/tests/data/test_3mf/Geräte/Büchse.3mf",
-      "role": "3MF projet OrcaSlicer (scène + réglages embarqués, edge case unicode)"
+      "source": "généré par orca-slicer --export-3mf (committé)",
+      "role": "3MF projet OrcaSlicer (scène + réglages embarqués)"
     },
     {
       "file": "cube20.step",
-      "source": "généré (faceted BREP)",
+      "source": "généré par OCCT STEPControl_Writer (committé)",
       "role": "import STEP via OCCT (FR-010, R7)"
+    },
+    {
+      "file": "crasher_generic.3mf",
+      "source": "vendor/OrcaSlicer/tests/data/test_3mf/Geräte/Büchse.3mf",
+      "role": "3MF qui fait crasher le lecteur bbs_3mf — test d'isolation du worker (T018)"
     }
   ],
   "preset_combos": [
