@@ -58,8 +58,19 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
     if (model.objects.empty())
         throw std::runtime_error("aucun objet à trancher");
 
-    Slic3r::DynamicPrintConfig config;
-    load_config(config, std::string(config_json));
+    // Config = tous les défauts du registre + surcharges de la requête
+    // (contrat trait_suite : « complétée par les défauts côté implémentation »),
+    // puis normalisation FDM (vecteurs par extrudeur, cohérence).
+    // Surcharges de la requête désérialisées sur une config VIDE (voie sûre :
+    // `set_deserialize` sur une option existante peut planter dans libslic3r),
+    // puis appliquées par-dessus tous les défauts du registre (comme le
+    // superpose OrcaSlicer pour ses presets). Résultat : config complète et
+    // cohérente, que la requête soit minimale (cube) ou déjà complète (projet).
+    Slic3r::DynamicPrintConfig overrides;
+    load_config(overrides, std::string(config_json));
+    Slic3r::DynamicPrintConfig config = Slic3r::DynamicPrintConfig::full_print_config();
+    config.apply(overrides, /*ignore_nonexistent=*/true);
+    config.normalize_fdm();
 
     Slic3r::Print print;
     print.apply(model, config);

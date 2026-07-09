@@ -83,6 +83,10 @@ pub fn drive(args: &[&str], progress: &ProgressSink, cancel: &CancelToken) -> En
     let mut result: Option<String> = None;
     let mut error: Option<EngineError> = None;
     let mut cancelled = false;
+    // Le statusbar de libslic3r n'est pas strictement monotone (chaque
+    // sous-étape rapporte son propre pourcentage) ; on garantit une
+    // progression non décroissante aux consommateurs (barre de progression UI).
+    let mut max_ratio = 0.0_f32;
 
     loop {
         if cancel.is_cancelled() {
@@ -92,7 +96,10 @@ pub fn drive(args: &[&str], progress: &ProgressSink, cancel: &CancelToken) -> En
         }
         match rx.recv_timeout(Duration::from_millis(50)) {
             Ok(line) => match parse_line(&line) {
-                Some(Event::Progress { ratio, phase }) => progress(&phase, ratio),
+                Some(Event::Progress { ratio, phase }) => {
+                    max_ratio = max_ratio.max(ratio);
+                    progress(&phase, max_ratio);
+                }
                 Some(Event::Result(json)) => result = Some(json),
                 Some(Event::Error(e)) => error = Some(e),
                 None => {} // ligne hors protocole (log) : ignorée

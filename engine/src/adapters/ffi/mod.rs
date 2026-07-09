@@ -5,6 +5,7 @@
 
 mod arrange;
 mod bridge;
+mod engine;
 mod mesh;
 mod model;
 mod slice;
@@ -12,6 +13,7 @@ mod threemf;
 pub mod worker;
 
 pub use arrange::{arrange, orient};
+pub use engine::FfiEngine;
 pub use mesh::repair_mesh;
 pub use model::{convert_to_mesh, load_model, model_triangle_count, print_config_option_count};
 pub use slice::{run_in_worker, slice};
