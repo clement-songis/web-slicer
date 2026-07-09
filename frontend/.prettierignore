@@ -7,3 +7,6 @@ bun.lockb
 
 # Miscellaneous
 /static/
+
+# Code généré (ts-rs, codegen.sh) — vérifié par fraîcheur, pas par style
+src/generated/

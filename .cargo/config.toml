@@ -1,0 +1,4 @@
+# Répertoire d'export des DTO ts-rs (résolu depuis la racine du workspace).
+# Consommé par `cargo test -p backend export_bindings` ; fraîcheur vérifiée en CI.
+[env]
+TS_RS_EXPORT_DIR = { value = "frontend/src/generated/api", relative = true }

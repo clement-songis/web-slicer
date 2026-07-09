@@ -50,6 +50,8 @@ jobs:
             cargo clippy --workspace -- -D warnings
             cargo test --workspace
           '
+      - name: Fraîcheur des bindings ts-rs (jamais édités à la main)
+        run: git diff --exit-code -- frontend/src/generated/api
 
   frontend:
     name: Frontend (lint, check, tests)
