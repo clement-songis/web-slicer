@@ -46,6 +46,7 @@ fn main() {
         .file("src/adapters/ffi/bridge/model.cpp")
         .file("src/adapters/ffi/bridge/nanosvg_impl.cpp")
         .file("src/adapters/ffi/bridge/project.cpp")
+        .file("src/adapters/ffi/bridge/mesh.cpp")
         .std("c++17")
         .include(libslic3r_dir.join("include"))
         .include(libslic3r_dir.join("include/libslic3r"))
@@ -166,6 +167,7 @@ fn main() {
     println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/model.cpp");
     println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/nanosvg_impl.cpp");
     println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/project.cpp");
+    println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/mesh.cpp");
     println!("cargo:rerun-if-env-changed=LIBSLIC3R_DIR");
     println!("cargo:rerun-if-env-changed=ORCA_SRC");
 }

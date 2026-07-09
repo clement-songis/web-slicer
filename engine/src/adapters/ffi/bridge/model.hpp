@@ -9,6 +9,8 @@ namespace webslicer {
 
 struct RawObject;
 struct RawProject;
+struct RawMesh;
+struct RawRepairResult;
 
 void init_runtime(rust::Str temp_dir, rust::Str data_dir);
 
@@ -18,6 +20,8 @@ RawProject read_project_3mf_raw(rust::Str path);
 
 void write_project_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
                            rust::Str out_path);
+
+RawRepairResult repair_mesh_raw(const RawMesh &mesh);
 
 size_t model_triangle_count(rust::Str path);
 

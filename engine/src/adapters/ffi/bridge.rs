@@ -48,6 +48,17 @@ pub(crate) mod ffi {
         config_json: String,
     }
 
+    /// Résultat de réparation : maillage corrigé + compteurs admesh.
+    #[derive(Debug)]
+    struct RawRepairResult {
+        mesh: RawMesh,
+        edges_fixed: i32,
+        degenerate_facets: i32,
+        facets_removed: i32,
+        facets_reversed: i32,
+        backwards_edges: i32,
+    }
+
     unsafe extern "C++" {
         include!("engine/src/adapters/ffi/bridge/model.hpp");
 
@@ -68,6 +79,9 @@ pub(crate) mod ffi {
             config_json: &str,
             out_path: &str,
         ) -> Result<()>;
+
+        /// Répare un maillage (admesh : arêtes, dégénérés, orientation).
+        fn repair_mesh_raw(mesh: &RawMesh) -> Result<RawRepairResult>;
 
         /// Nombre total de triangles d'un fichier (smoke T012).
         fn model_triangle_count(path: &str) -> Result<usize>;

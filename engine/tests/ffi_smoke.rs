@@ -109,3 +109,23 @@ fn aller_retour_projet_3mf_avec_config() {
         Some(&ConfigValue::String("gyroid".into()))
     );
 }
+
+#[test]
+fn repare_un_maillage_troue() {
+    // cube valide + un triangle dégénéré (deux sommets identiques) :
+    // admesh le supprime (degenerate_facets/facets_removed)
+    let mut broken = engine::adapters::ffi::load_model(&common::fixture("cube20.stl"))
+        .unwrap()
+        .objects
+        .remove(0)
+        .volumes
+        .remove(0)
+        .mesh;
+    broken.indices.push([0, 0, 1]);
+    let (repaired, report) = engine::adapters::ffi::repair_mesh(&broken).expect("répare");
+    assert!(!repaired.is_empty());
+    assert!(
+        report.repaired_anything(),
+        "triangle dégénéré détecté/supprimé : {report:?}"
+    );
+}

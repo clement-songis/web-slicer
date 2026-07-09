@@ -110,21 +110,22 @@ pub fn convert_step(e: &dyn SlicerEngine) {
 }
 
 pub fn repair_reports(e: &dyn SlicerEngine) {
-    // maillage troué : un tétraèdre auquel il manque une face
-    let broken = TriangleMesh {
-        vertices: vec![
-            [0.0, 0.0, 0.0],
-            [10.0, 0.0, 0.0],
-            [0.0, 10.0, 0.0],
-            [0.0, 0.0, 10.0],
-        ],
-        indices: vec![[0, 2, 1], [0, 1, 3], [1, 2, 3]],
-    };
+    // cube valide + triangle dégénéré : admesh le supprime (les trous ne
+    // sont pas rebouchés — fill_holes retiré upstream)
+    let mut broken = e
+        .load_model(&fixture("cube20.stl"), ModelFormat::Stl)
+        .unwrap()
+        .objects
+        .remove(0)
+        .volumes
+        .remove(0)
+        .mesh;
+    broken.indices.push([0, 0, 1]);
     let (repaired, report) = e.repair_mesh(&broken).expect("répare");
     assert!(!repaired.is_empty());
     assert!(
         report.repaired_anything(),
-        "le trou doit être détecté/corrigé : {report:?}"
+        "le triangle dégénéré doit être détecté/supprimé : {report:?}"
     );
 }
 
