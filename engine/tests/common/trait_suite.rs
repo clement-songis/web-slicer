@@ -7,6 +7,11 @@
 //! Chaque adaptateur l'invoque depuis son test d'intégration :
 //! `common::trait_suite::run_all(&engine)`.
 
+// La suite est invoquée par les tests d'intégration des adaptateurs
+// (FFI en T019, CLI en T020) ; d'ici là ses fonctions sont volontairement
+// non appelées.
+#![allow(dead_code)]
+
 use std::sync::atomic::{AtomicU32, Ordering};
 use std::sync::{Arc, Mutex};
 
