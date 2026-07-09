@@ -2,3 +2,4 @@
 //! à venir, routes + handlers minces (T028+).
 
 pub mod dto;
+pub mod error;

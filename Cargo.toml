@@ -16,4 +16,4 @@ anyhow = "1"
 tracing = "0.1"
 uuid = { version = "1", features = ["v4", "serde"] }
 time = { version = "0.3", features = ["serde"] }
-ts-rs = { version = "12", features = ["serde-compat", "uuid-impl", "no-serde-warnings"] }
+ts-rs = { version = "12", features = ["serde-compat", "uuid-impl", "no-serde-warnings", "serde-json-impl"] }
