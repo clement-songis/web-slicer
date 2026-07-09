@@ -8,6 +8,7 @@ mod bridge;
 mod mesh;
 mod model;
 mod threemf;
+pub mod worker;
 
 pub use arrange::{arrange, orient};
 pub use mesh::repair_mesh;

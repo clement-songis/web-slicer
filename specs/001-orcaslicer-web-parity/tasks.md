@@ -56,7 +56,7 @@
 - [X] T015 [P] [US1] FFI repair_mesh + RepairedMeshErrors dans engine/src/adapters/ffi/mesh.rs ; tests sur maillage non-manifold de fixture
 - [X] T016 [P] [US1] FFI arrange + orient (paramètres de dégagement machine) dans engine/src/adapters/ffi/arrange.rs ; tests : pas de collision, objets dans le volume
 - [X] T017 [US1] FFI resolve_preset_chain + validate_config dans engine/src/presets/resolve.rs (fonction pure partagée FFI/CLI) ; tests : chaîne BBL réelle → valeurs effectives attendues, valeur hors bornes → ConfigWarning
-- [ ] T018 [US1] Process worker `engine/src/bin/engine-worker.rs` : slice isolé (crash C++ contenu), progression par pipe (callbacks statusbar libslic3r), annulation par kill (R1/R9) ; tests : progression monotone, kill → cancelled, crash simulé → EngineError
+- [X] T018 [US1] Process worker `engine/src/bin/engine_worker.rs` + pilote parent `engine/src/adapters/ffi/worker.rs` : protocole de pipe (`P`/`R`/`E`), crash C++ contenu, annulation par kill (R1/R9) ; tests `engine/tests/worker.rs` : progression monotone, kill → cancelled, crash simulé → EngineCrashed (pipeline de tranchage réel branché en T019)
 - [ ] T019 [US1] FFI slice via engine-worker dans engine/src/adapters/ffi/slice.rs : SliceRequest → G-code + GCodeProcessorResult + thumbnails ; tests sur benchy
 - [ ] T020 [US1] Adaptateur CLI complet `engine/src/adapters/cli/` : mêmes opérations via orca-slicer (--slice/--arrange/--orient/--repair/--export-3mf/--load-settings/--load-filaments, R1) ; la suite générique T011 passe telle quelle
 - [ ] T021 [US1] Parseur G-code `engine/src/gcode/` : couches/segments (;TYPE:, ;LAYER_CHANGE, F, rétractions), stats (temps, filament) → GcodePreview (R6) ; tests sur G-codes de fixture (tous types de lignes présents)
