@@ -1,0 +1,66 @@
+# Gates de la constitution (IV) + contrôle de parité (V).
+# Trois jobs indépendants : audit (Python pur), rust (via devShell Nix pour
+# $LIBSLIC3R_DIR), frontend (Bun).
+name: CI
+
+on:
+  push:
+    branches: [main, "0*"]
+  pull_request:
+
+jobs:
+  audit:
+    name: Parité (audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Inventaires ré-exécutables et déterministes
+        run: |
+          python3 audit/run_all.py
+          md5sum audit/*.json > /tmp/sums
+          python3 audit/run_all.py
+          md5sum -c /tmp/sums
+      - name: Annexes synchronisées avec la spec
+        run: |
+          python3 audit/generate_parity_annexes.py
+          git diff --exit-code -- specs audit
+      - name: Traçabilité (gate FR-003)
+        run: |
+          if [ -f audit/check_traceability.py ]; then python3 audit/check_traceability.py; fi
+
+  rust:
+    name: Backend + engine (fmt, clippy -D warnings, tests)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - uses: DeterminateSystems/magic-nix-cache-action@v9
+      - name: Gates Rust (devShell : toolchain + $LIBSLIC3R_DIR)
+        run: |
+          nix develop --command bash -c '
+            set -euo pipefail
+            cargo fmt --check
+            cargo clippy --workspace -- -D warnings
+            cargo test --workspace
+          '
+
+  frontend:
+    name: Frontend (lint, check, tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install --frozen-lockfile
+      - run: bun run lint
+      - run: bun run check
+      - run: bun test

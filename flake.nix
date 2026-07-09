@@ -97,6 +97,28 @@
 
         pwBrowsers = pkgs.playwright-driver.browsers;
         pwVersion = pkgs.playwright-driver.version;
+
+        # Sous-ensemble des deps d'Orca nécessaires au link du bridge FFI
+        # (référence : tools/dump-config/CMakeLists.txt).
+        # NB : ne PAS utiliser `inputsFrom = [ libslic3r ]` dans le devShell —
+        # les ~60 deps d'Orca gonflent NIX_CFLAGS_COMPILE au-delà de la limite
+        # kernel par argument et tout exec de cc/gcc échoue en E2BIG
+        # (« Argument list too long »).
+        ffiDeps = builtins.filter (
+          d:
+          lib.any (p: lib.hasPrefix p (d.pname or "")) [
+            "boost"
+            "tbb"
+            "eigen"
+            "openssl"
+            "gmp"
+            "mpfr"
+            "libjpeg"
+            "libpng"
+            "zlib"
+            "cereal"
+          ]
+        ) (libslic3r.buildInputs or [ ]);
       in
       {
         packages = {
@@ -107,7 +129,7 @@
         };
 
         devShells.default = pkgs.mkShell.override { stdenv = pkgs.clangStdenv; } {
-          inputsFrom = [ selfPkgs.libslic3r ];
+          buildInputs = ffiDeps;
 
           packages = [
             # --- C++ / build ---
