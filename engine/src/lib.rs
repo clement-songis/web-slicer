@@ -9,6 +9,7 @@
 pub mod adapters;
 pub mod api;
 pub mod params;
+pub mod presets;
 
 use std::path::Path;
 
