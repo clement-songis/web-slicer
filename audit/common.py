@@ -72,10 +72,18 @@ def find_matching_paren(text: str, open_pos: int, open_ch: str = "(", close_ch: 
     depth = 0
     i = open_pos
     n = len(text)
+    char_re = re.compile(r"'(?:[^'\\]|\\.)*'")
     while i < n:
         c = text[i]
         if c == '"':
             m = _STRING_RE.match(text, i)
+            if m:
+                i = m.end()
+                continue
+            i += 1
+            continue
+        if c == "'":
+            m = char_re.match(text, i)
             if m:
                 i = m.end()
                 continue

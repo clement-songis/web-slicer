@@ -32,7 +32,7 @@
 
 **Purpose**: artefacts générés et contrôles dont dépendent toutes les phases
 
-- [ ] T005 Extracteur `audit/extract_legacy_keys.py` : parse `PrintConfigDef::handle_legacy` + `handle_legacy_composite` de vendor/OrcaSlicer/src/libslic3r/PrintConfig.cpp → `audit/legacy_keys.json` (ré-exécutable, intégré à run_all.py) ; valider contre les 287 clés du contrôle croisé
+- [X] T005 Extracteur `audit/extract_legacy_keys.py` : parse `PrintConfigDef::handle_legacy` + `handle_legacy_composite` de vendor/OrcaSlicer/src/libslic3r/PrintConfig.cpp → `audit/legacy_keys.json` (ré-exécutable, intégré à run_all.py) ; valider contre les 287 clés du contrôle croisé
 - [ ] T006 Squelette `audit/check_traceability.py` (R4) : vérifie params registre ↔ parameters.json ↔ exclusions.md, comptages presets ; sort non-zéro sur écart ; branché en CI (les périmètres UI s'ajoutent en P3/P4)
 - [ ] T007 [P] Pipeline ts-rs : `backend/src/http/dto/mod.rs` exporte vers `frontend/src/generated/api/` via `cargo test export_bindings` ; test de fraîcheur en CI (diff vide après régénération)
 - [ ] T008 [P] Module d'erreurs backend `backend/src/http/error.rs` : enveloppe `{code, message, details}`, 404 pour ressources d'autrui (SC-008), conversions domaine→HTTP ; tests unitaires

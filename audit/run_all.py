@@ -16,6 +16,7 @@ import json
 import sys
 
 import extract_engine_api
+import extract_legacy_keys
 import extract_parameters
 import extract_presets_inventory
 import extract_ui_inventory
@@ -63,14 +64,16 @@ def cross_check() -> int:
 
 
 def main() -> int:
-    print("== 1/4 parameters.json ==")
+    print("== 1/5 parameters.json ==")
     extract_parameters.main()
-    print("== 2/4 ui_inventory.json ==")
+    print("== 2/5 ui_inventory.json ==")
     extract_ui_inventory.main()
-    print("== 3/4 engine_api.json ==")
+    print("== 3/5 engine_api.json ==")
     extract_engine_api.main()
-    print("== 4/4 presets_inventory.json ==")
+    print("== 4/5 presets_inventory.json ==")
     extract_presets_inventory.main()
+    print("== 5/5 legacy_keys.json ==")
+    extract_legacy_keys.main()
     print("== contrôles croisés ==")
     cross_check()
     return 0

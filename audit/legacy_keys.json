@@ -1,0 +1,418 @@
+{
+  "source": "src/libslic3r/PrintConfig.cpp",
+  "generated_by": "audit/extract_legacy_keys.py",
+  "summary": {
+    "renames": 28,
+    "erased_rules": 2,
+    "value_transforms": 28,
+    "ignored": 44,
+    "composite_keys": 4
+  },
+  "renames": {
+    "bridge_fan_speed": "overhang_fan_speed",
+    "chamber_temperatures": "chamber_temperature",
+    "compatible_printers_condition_cummulative": "compatible_machine_expression_group",
+    "compatible_prints_condition_cummulative": "compatible_process_expression_group",
+    "cooling": "slow_down_for_layer_cooling",
+    "counterbole_hole_bridging": "counterbore_hole_bridging",
+    "enable_wipe_tower": "enable_prime_tower",
+    "extruder_clearance_max_radius": "extruder_clearance_radius",
+    "inherits_cummulative": "inherits_group",
+    "initial_layer_flow_ratio": "bottom_solid_infill_flow_ratio",
+    "ironing_direction": "ironing_angle",
+    "machine_switch_extruder_time": "machine_tool_change_time",
+    "prime_tower_extra_rib_length": "wipe_tower_extra_rib_length",
+    "prime_tower_fillet_wall": "wipe_tower_fillet_wall",
+    "prime_tower_rib_width": "wipe_tower_rib_width",
+    "sparse_infill_anchor": "infill_anchor",
+    "sparse_infill_anchor_max": "infill_anchor_max",
+    "support_material_angle": "support_angle",
+    "support_material_enforce_layers": "enforce_support_layers",
+    "support_material_extruder": "support_filament",
+    "support_material_interface_extruder": "support_interface_filament",
+    "thumbnail_size": "thumbnails",
+    "timelapse_no_toolhead": "timelapse_type",
+    "tool_change_gcode": "change_filament_gcode",
+    "wipe_tower_brim_width": "prime_tower_brim_width",
+    "wipe_tower_extruder": "wipe_tower_filament",
+    "wipe_tower_width": "prime_tower_width",
+    "wiping_volume": "prime_volume"
+  },
+  "erased": [
+    {
+      "old_keys": [
+        "initial_layer_print_height",
+        "initial_layer_speed",
+        "internal_solid_infill_speed",
+        "top_surface_speed",
+        "support_interface_speed",
+        "outer_wall_speed",
+        "support_object_xy_distance"
+      ],
+      "condition_on_value": true,
+      "reason": "invalidé (opt_key effacée)",
+      "snippet": "opt_key = \"\";"
+    },
+    {
+      "old_keys": [
+        "prime_tower_rib_wall"
+      ],
+      "condition_on_value": false,
+      "reason": "invalidé (opt_key effacée)",
+      "snippet": "if (value == \"1\") { opt_key = \"wipe_tower_wall_type\"; value = \"rib\"; } else { opt_key = \"\"; }"
+    }
+  ],
+  "value_transforms": [
+    {
+      "old_keys": [
+        "curr_bed_type"
+      ],
+      "condition_on_value": true,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "value = \"Supertack Plate\";",
+      "snippet_sha1": "028027f0ff851a834c6c7b4ccf5ffc0202849ac9"
+    },
+    {
+      "old_keys": [
+        "infill_extruder",
+        "sparse_infill_filament"
+      ],
+      "condition_on_value": false,
+      "new_key": "sparse_infill_filament_id",
+      "value_changed": true,
+      "snippet": "opt_key = \"sparse_infill_filament_id\"; if (value == \"1\") value = \"0\";",
+      "snippet_sha1": "45f71283c83aeae117e8ad41260b891f18a7a624"
+    },
+    {
+      "old_keys": [
+        "solid_infill_extruder",
+        "solid_infill_filament"
+      ],
+      "condition_on_value": false,
+      "new_key": "internal_solid_filament_id",
+      "value_changed": true,
+      "snippet": "opt_key = \"internal_solid_filament_id\"; if (value == \"1\") value = \"0\";",
+      "snippet_sha1": "2225f1edb9bd766ac495564db8c89c0cd3f0db01"
+    },
+    {
+      "old_keys": [
+        "top_solid_infill_filament"
+      ],
+      "condition_on_value": false,
+      "new_key": "top_surface_filament_id",
+      "value_changed": true,
+      "snippet": "opt_key = \"top_surface_filament_id\"; if (value == \"1\") value = \"0\";",
+      "snippet_sha1": "07f72a0dbc4e16f250698b0f5e2712975e311dcd"
+    },
+    {
+      "old_keys": [
+        "bottom_solid_infill_filament"
+      ],
+      "condition_on_value": false,
+      "new_key": "bottom_surface_filament_id",
+      "value_changed": true,
+      "snippet": "opt_key = \"bottom_surface_filament_id\"; if (value == \"1\") value = \"0\";",
+      "snippet_sha1": "1fe4842e95b3a1dcc706d92289771cc14dfa4830"
+    },
+    {
+      "old_keys": [
+        "perimeter_extruder",
+        "wall_filament",
+        "wall_filament_id"
+      ],
+      "condition_on_value": false,
+      "new_key": "outer_wall_filament_id",
+      "value_changed": true,
+      "snippet": "opt_key = \"outer_wall_filament_id\"; if (value == \"1\") value = \"0\";",
+      "snippet_sha1": "ae28358965a84b452f3d29610db426e3f733a4e9"
+    },
+    {
+      "old_keys": [
+        "inner_wall_filament"
+      ],
+      "condition_on_value": false,
+      "new_key": "inner_wall_filament_id",
+      "value_changed": true,
+      "snippet": "opt_key = \"inner_wall_filament_id\"; if (value == \"1\") value = \"0\";",
+      "snippet_sha1": "4eaefb4b9d3937d2885c35125e79e494c21b0c74"
+    },
+    {
+      "old_keys": [
+        "outer_wall_filament"
+      ],
+      "condition_on_value": false,
+      "new_key": "outer_wall_filament_id",
+      "value_changed": true,
+      "snippet": "opt_key = \"outer_wall_filament_id\"; if (value == \"1\") value = \"0\";",
+      "snippet_sha1": "ae28358965a84b452f3d29610db426e3f733a4e9"
+    },
+    {
+      "old_keys": [
+        "timelapse_type"
+      ],
+      "condition_on_value": true,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "value = \"0\";",
+      "snippet_sha1": "c8154084eb5d89e6b1fff563c3f35986819dce42"
+    },
+    {
+      "old_keys": [
+        "support_type"
+      ],
+      "condition_on_value": true,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "value = \"normal(manual)\";",
+      "snippet_sha1": "799b23cc2cfc87a33287f26b6f3fca1fe2169f2f"
+    },
+    {
+      "old_keys": [
+        "support_type"
+      ],
+      "condition_on_value": true,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "value = \"tree(manual)\";",
+      "snippet_sha1": "681c7de40e0738c1d15b8462a7f21e47f9795326"
+    },
+    {
+      "old_keys": [
+        "support_type"
+      ],
+      "condition_on_value": true,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "value = \"tree(auto)\";",
+      "snippet_sha1": "cbe82b58ee709681aa14fe936c0b75fe0f6c3e9e"
+    },
+    {
+      "old_keys": [
+        "support_base_pattern"
+      ],
+      "condition_on_value": true,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "value = \"hollow\";",
+      "snippet_sha1": "d315275ed62093774e2143d47f2a24a898bfc2e2"
+    },
+    {
+      "old_keys": [
+        "different_settings_to_system"
+      ],
+      "condition_on_value": false,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "std::string copy_value = value; copy_value.erase(std::remove(copy_value.begin(), copy_value.end(), '\\\"'), copy_value.end()); std::set<std::string> split_keys = SplitStringAndRemoveDuplicateElement(copy_value, \";\"); for (std::string split_key : split_keys) { std::string copy_key = split_key, copy_value = \"\"; handle_legacy(copy_key, copy_value); if (copy_key != split_key) { ReplaceString(value, split_key, copy_key); } }",
+      "snippet_sha1": "a5370ee55661f15895b2dcb0dfea8b250e583204"
+    },
+    {
+      "old_keys": [
+        "overhang_fan_threshold"
+      ],
+      "condition_on_value": true,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "value = \"10%\";",
+      "snippet_sha1": "e1d9f025a2d9f76938c7fba26f552fb776b9f8b0"
+    },
+    {
+      "old_keys": [
+        "wall_infill_order"
+      ],
+      "condition_on_value": false,
+      "new_key": "wall_sequence",
+      "value_changed": true,
+      "snippet": "if (value == \"inner wall/outer wall/infill\" || value == \"infill/inner wall/outer wall\") { opt_key = \"wall_sequence\"; value = \"inner wall/outer wall\"; } else if (value == \"outer wall/inner wall/infill\" || value == \"infill/outer wall/inner wall\") { opt_key = \"wall_sequence\"; value = \"outer wall/inner wall\"; } else if (value == \"inner-outer-inner wall/infill\") { opt_key = \"wall_sequence\"; value = \"inner-outer-inner wall\"; } else { opt_key = \"wall_sequence\"; }",
+      "snippet_sha1": "7eb8e622ce52b4c69cd9b7e06059eb4d5239798b"
+    },
+    {
+      "old_keys": [
+        "nozzle_volume_type",
+        "default_nozzle_volume_type",
+        "printer_extruder_variant",
+        "print_extruder_variant",
+        "filament_extruder_variant",
+        "extruder_variant_list"
+      ],
+      "condition_on_value": false,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "ReplaceString(value, \"Normal\", \"Standard\"); ReplaceString(value, \"Big Traffic\", \"High Flow\");",
+      "snippet_sha1": "4bc3d2e159d0b26d75dbfdf964bc1c90b59719d6"
+    },
+    {
+      "old_keys": [
+        "extruder_type"
+      ],
+      "condition_on_value": false,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "ReplaceString(value, \"DirectDrive\", \"Direct Drive\");",
+      "snippet_sha1": "814c60d1c92281923fe6c825dcb32706f0f3e3f4"
+    },
+    {
+      "old_keys": [
+        "enable_power_loss_recovery"
+      ],
+      "condition_on_value": false,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "if (value == \"1\" || boost::iequals(value, \"true\")) { value = \"enable\"; } else if (value == \"0\" || boost::iequals(value, \"false\")) { value = \"disable\"; }",
+      "snippet_sha1": "7a397092ddc88cce14646d135a2eb7a87576e1b5"
+    },
+    {
+      "old_keys": [
+        "ensure_vertical_shell_thickness"
+      ],
+      "condition_on_value": false,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "if(value == \"1\") { value = \"ensure_all\"; } else if (value == \"0\"){ value = \"ensure_moderate\"; }",
+      "snippet_sha1": "8c7367906f87eae7cbdaf83ec5816b044cb04c17"
+    },
+    {
+      "old_keys": [
+        "rotate_solid_infill_direction"
+      ],
+      "condition_on_value": false,
+      "new_key": "solid_infill_rotate_template",
+      "value_changed": true,
+      "snippet": "opt_key = \"solid_infill_rotate_template\"; if (value == \"1\") { value = \"0,90\"; } else if (value == \"0\") { value = \"0\"; }",
+      "snippet_sha1": "a94eb66c1a3ae63ec32699c353b6295fcab73825"
+    },
+    {
+      "old_keys": [
+        "top_one_wall_type"
+      ],
+      "condition_on_value": true,
+      "new_key": "only_one_wall_top",
+      "value_changed": true,
+      "snippet": "opt_key = \"only_one_wall_top\"; value = \"1\";",
+      "snippet_sha1": "7d12918e89a380188de4a0ec3df430821455497d"
+    },
+    {
+      "old_keys": [
+        "ironing_angle"
+      ],
+      "condition_on_value": true,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "value = \"0\";",
+      "snippet_sha1": "c8154084eb5d89e6b1fff563c3f35986819dce42"
+    },
+    {
+      "old_keys": [
+        "draft_shield"
+      ],
+      "condition_on_value": true,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "value = \"disabled\";",
+      "snippet_sha1": "dcd8485810901f78ad5837cad1079945eb8392b1"
+    },
+    {
+      "old_keys": [
+        "sparse_infill_pattern",
+        "top_surface_pattern",
+        "bottom_surface_pattern",
+        "internal_solid_infill_pattern",
+        "ironing_pattern",
+        "support_ironing_pattern"
+      ],
+      "condition_on_value": true,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "value = \"rectilinear\";",
+      "snippet_sha1": "53adf910a69bd6810c356609cd6df167dac9cbba"
+    },
+    {
+      "old_keys": [
+        "filament_map_mode"
+      ],
+      "condition_on_value": false,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "if (value == \"Auto\") value = \"Auto For Flush\";",
+      "snippet_sha1": "6daa1a90420dc489d766a6083eb21b3ba947cd0a"
+    },
+    {
+      "old_keys": [
+        "filament_type"
+      ],
+      "condition_on_value": false,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "std::vector<std::string> type_list; std::stringstream ss(value); std::string token; bool rebuild_value = false; while (std::getline(ss, token, ';')) { if (token.size() >= 2 && token.front() == '\"' && token.back() == '\"') token = token.substr(1, token.size() - 2); if (token == \"ASA-Aero\") { token = \"ASA-AERO\"; rebuild_value = true; } type_list.emplace_back(token); } if (rebuild_value) { value.clear(); for (size_t idx = 0; idx < type_list.size(); ++idx) { if (idx != 0) value += ';'; value += \"\\\"\" + type_list[idx] + \"\\\"\"; } }",
+      "snippet_sha1": "73b567ad0ac7e39f97fb7569fb0795b5eb266bda"
+    },
+    {
+      "old_keys": [
+        "wall_direction"
+      ],
+      "condition_on_value": true,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "value = \"ccw\";",
+      "snippet_sha1": "bbe009b689af0575efe24586f6ad3f8839ef927f"
+    }
+  ],
+  "ignored": [
+    "acceleration",
+    "adaptive_layer_height",
+    "bed_size",
+    "bed_temperature",
+    "bed_temperature_difference",
+    "bed_temperature_initial_layer",
+    "can_add_auxiliary_fan",
+    "can_switch_nozzle_type",
+    "duplicate",
+    "duplicate_grid",
+    "extra_flush_volume",
+    "filament_load_time",
+    "filament_prime_volume",
+    "filament_unload_time",
+    "g0",
+    "internal_bridge_support_thickness",
+    "long_retraction_when_cut",
+    "max_print_speed",
+    "max_volumetric_speed",
+    "overhang_speed_classic",
+    "overhang_totally_speed",
+    "print_center",
+    "reduce_wall_solid_infill",
+    "remove_bed_leveling",
+    "remove_extrusion_calibration",
+    "remove_freq_sweep",
+    "retraction_distance_when_cut",
+    "rotate",
+    "scale",
+    "silent_mode",
+    "smooth_coefficient",
+    "spaghetti_detector",
+    "support_closing_radius",
+    "support_remove_small_overhangs",
+    "support_sharp_tails",
+    "support_transition_line_width",
+    "support_transition_speed",
+    "support_with_sheath",
+    "top_area_threshold",
+    "tree_support_collision_resolution",
+    "tree_support_with_infill",
+    "wipe_tower_per_color_wipe",
+    "z_hop_type",
+    "z_lift_type"
+  ],
+  "composite": {
+    "keys_mentioned": [
+      "thumbnails",
+      "thumbnails_format",
+      "wiping_volumes_matrix",
+      "wiping_volumes_use_custom_matrix"
+    ],
+    "body_sha1": "82434e78fd9d2b386d2ee1edd201cca4009b6928",
+    "note": "conversions composites (fusion de clés) — portage manuel dans engine::params::legacy, dérive vendor détectée par le hash"
+  },
+  "unknown_keys_behavior": "Le comportement final de handle_legacy efface toute clé absente du registre : les clés inconnues des presets vendeurs (fautes historiques, clés de forks) sont donc ignorées à l'import, à l'identique d'OrcaSlicer."
+}
