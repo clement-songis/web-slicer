@@ -8,6 +8,7 @@
 
 pub mod adapters;
 pub mod api;
+pub mod gcode;
 pub mod params;
 pub mod presets;
 

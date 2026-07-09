@@ -59,7 +59,7 @@
 - [X] T018 [US1] Process worker `engine/src/bin/engine_worker.rs` + pilote parent `engine/src/adapters/ffi/worker.rs` : protocole de pipe (`P`/`R`/`E`), crash C++ contenu, annulation par kill (R1/R9) ; tests `engine/tests/worker.rs` : progression monotone, kill → cancelled, crash simulé → EngineCrashed (pipeline de tranchage réel branché en T019)
 - [X] T019 [US1] FFI slice via engine-worker dans engine/src/adapters/ffi/slice.rs (+ bridge/slice.cpp) : SliceRequest → G-code + stats (temps/filament/couches) via `Slic3r::Print` ; test `engine/tests/slice.rs` sur projet 3MF réel (G-code écrit, temps>0, couches>0, progression par pipe). Vignettes headless consignées dans exclusions.md
 - [ ] T020 [US1] Adaptateur CLI complet `engine/src/adapters/cli/` : mêmes opérations via orca-slicer (--slice/--arrange/--orient/--repair/--export-3mf/--load-settings/--load-filaments, R1) ; la suite générique T011 passe telle quelle
-- [ ] T021 [US1] Parseur G-code `engine/src/gcode/` : couches/segments (;TYPE:, ;LAYER_CHANGE, F, rétractions), stats (temps, filament) → GcodePreview (R6) ; tests sur G-codes de fixture (tous types de lignes présents)
+- [X] T021 [US1] Parseur G-code `engine/src/gcode/` (pur Rust) : couches/segments (`; FEATURE:`, `; CHANGE_LAYER`, `; Z_HEIGHT:`, `; LINE_WIDTH:`, E relatif M83), stats (temps, filament, couches) → GcodePreview (R6) ; test `engine/tests/gcode.rs` sur G-code BBL réel (9 types de lignes présents, aucun Unknown)
 - [ ] T022 [US1] Test de parité `engine/tests/gcode_parity.rs` : triple diff normalisé FFI vs CLI vs sortie desktop enregistrée, corpus 10×5 ; temps estimés < 1 % (SC-003)
 - [ ] T023 [P] [US1] Démo `engine/examples/engine-cli.rs` : slice/arrange/repair/parse depuis le shell, sélection ENGINE_IMPL (démo gate P1)
 
