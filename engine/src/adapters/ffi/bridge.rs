@@ -48,6 +48,21 @@ pub(crate) mod ffi {
         config_json: String,
     }
 
+    /// Résultat de tranchage : chemin du G-code + statistiques minimales.
+    #[derive(Debug, Default)]
+    struct RawSliceResult {
+        gcode_path: String,
+        estimated_time_s: f64,
+        /// Filament consommé par extrudeur, en mm.
+        filament_mm: Vec<f64>,
+        /// Poids total du filament, en g (agrégé).
+        filament_g: f64,
+        layer_count: u32,
+        tool_changes: u32,
+        /// Vignettes PNG écrites dans work_dir.
+        thumbnails: Vec<String>,
+    }
+
     /// Résultat de réparation : maillage corrigé + compteurs admesh.
     #[derive(Debug)]
     struct RawRepairResult {
@@ -92,6 +107,16 @@ pub(crate) mod ffi {
 
         /// Répare un maillage (admesh : arêtes, dégénérés, orientation).
         fn repair_mesh_raw(mesh: &RawMesh) -> Result<RawRepairResult>;
+
+        /// Tranche un plateau via `Slic3r::Print` (apply → process →
+        /// export_gcode). La progression est émise directement sur la sortie
+        /// standard (`P <ratio> <phase>`) : appelé depuis le process
+        /// engine-worker dont stdout est le pipe de progression (T019).
+        fn slice_raw(
+            objects: &Vec<RawObject>,
+            config_json: &str,
+            work_dir: &str,
+        ) -> Result<RawSliceResult>;
 
         /// Nombre total de triangles d'un fichier (smoke T012).
         fn model_triangle_count(path: &str) -> Result<usize>;

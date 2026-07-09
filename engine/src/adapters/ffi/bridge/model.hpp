@@ -11,6 +11,7 @@ struct RawObject;
 struct RawProject;
 struct RawMesh;
 struct RawRepairResult;
+struct RawSliceResult;
 
 void init_runtime(rust::Str temp_dir, rust::Str data_dir);
 
@@ -22,6 +23,9 @@ void write_project_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config
                            rust::Str out_path);
 
 RawRepairResult repair_mesh_raw(const RawMesh &mesh);
+
+RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
+                         rust::Str work_dir);
 
 rust::Vec<RawObject> arrange_raw(const rust::Vec<RawObject> &objects,
                                  const rust::Vec<double> &bed_xy, double clearance_mm);

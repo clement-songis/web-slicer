@@ -29,6 +29,20 @@ fn main() {
         Some("config-count") => {
             println!("{}", engine::adapters::ffi::print_config_option_count());
         }
+        Some("slice") => {
+            let request = std::path::Path::new(args.get(2).expect("usage: slice <request.json>"));
+            match engine::adapters::ffi::run_in_worker(request) {
+                Ok(result) => {
+                    let json = serde_json::to_string(&result).expect("SliceResult sérialisable");
+                    println!("R {json}");
+                    let _ = std::io::stdout().flush();
+                }
+                Err(e) => {
+                    emit_error(&code_slug(e.code), &e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
         Some("self-test") => self_test(&args[2..]),
         _ => {
             eprintln!("usage: engine-worker <triangle-count|config-count|self-test> [args]");
@@ -100,6 +114,16 @@ fn progress(ratio: f32, phase: &str) {
 }
 
 fn emit_error(code: &str, message: &str) {
+    // le message peut contenir des sauts de ligne : une seule ligne attendue.
+    let message = message.replace('\n', " ");
     println!("E {code} {message}");
     let _ = std::io::stdout().flush();
+}
+
+/// Slug snake_case du code d'erreur (symétrique de `worker::parse_code`).
+fn code_slug(code: engine::api::EngineErrorCode) -> String {
+    serde_json::to_value(code)
+        .ok()
+        .and_then(|v| v.as_str().map(str::to_string))
+        .unwrap_or_else(|| "engine_crashed".to_string())
 }

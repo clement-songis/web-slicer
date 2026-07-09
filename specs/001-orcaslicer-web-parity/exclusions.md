@@ -33,6 +33,12 @@ ce registre. Statuts : `exclu-v1` (backlog v2 tracé dans spec.md) ou
 |---|---|---|
 | — | — | Aucune exclusion : les 11 895 presets des 65 vendeurs sont importés (FR-020) |
 
+## Comportement moteur (slicing FFI)
+
+| Entrée(s) | Statut | Justification |
+|---|---|---|
+| Vignettes PNG embarquées lors du tranchage FFI (`SliceResult.thumbnails`) | exclu-v1 | La génération des vignettes passe par le rendu OpenGL de la GUI (`ThumbnailsGeneratorCallback`) ; la lib `libslic3r-headless` n'embarque pas de contexte GL. Le tranchage renvoie G-code + stats ; les vignettes de préviz seront rendues côté frontend (Three.js) ou par un renderer offscreen dédié en v2 (backlog spec.md) |
+
 ## Règles de tenue du registre
 
 1. Une entrée « à trancher à l'implémentation » doit être résolue avant la
