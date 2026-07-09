@@ -1,6 +1,6 @@
 # Annexe A — Registre exhaustif des paramètres (normatif)
 
-Source : `audit/parameters.json` (846 paramètres, généré depuis
+Source : `audit/parameters.json` (858 paramètres, généré depuis
 `vendor/OrcaSlicer/src/libslic3r/PrintConfig.cpp`). Chaque ligne est une
 exigence : le paramètre DOIT être exposé par l'application (stockage,
 API, UI selon son groupe) ou inscrit au registre d'exclusions avec
@@ -47,7 +47,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `support_parallel_printheads` | coBool |  | advanced |  | Support parallel printheads |
 | `use_3mf` | coBool |  | advanced | False | Use 3MF instead of G-code |
 
-## Groupe `fff` (632 paramètres)
+## Groupe `fff` (644 paramètres)
 
 | Clé | Type | Catégorie | Mode | Défaut | Libellé |
 |---|---|---|---|---|---|
@@ -366,10 +366,22 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `long_retractions_when_ec` | coBools |  | advanced |  | Long retraction when extruder change |
 | `machine_end_gcode` | coString |  | advanced | M104 S0 ; turn off temperature G28 X0  ; home X axis M84     ; disable motors  | End G-code |
 | `machine_load_filament_time` | coFloat |  | advanced | 0.0 | Filament load time |
+| `machine_max_acceleration_e` | coFloats | Machine limits | simple | [5000, 5000] |  |
 | `machine_max_acceleration_extruding` | coFloats | Machine limits | simple |  |  |
 | `machine_max_acceleration_retracting` | coFloats | Machine limits | simple |  |  |
 | `machine_max_acceleration_travel` | coFloats | Machine limits | advanced |  |  |
+| `machine_max_acceleration_x` | coFloats | Machine limits | simple | [1000, 1000] |  |
+| `machine_max_acceleration_y` | coFloats | Machine limits | simple | [1000, 1000] |  |
+| `machine_max_acceleration_z` | coFloats | Machine limits | simple | [500, 200] |  |
+| `machine_max_jerk_e` | coFloats | Machine limits | simple | [2.5, 2.5] |  |
+| `machine_max_jerk_x` | coFloats | Machine limits | simple | [10, 10] |  |
+| `machine_max_jerk_y` | coFloats | Machine limits | simple | [10, 10] |  |
+| `machine_max_jerk_z` | coFloats | Machine limits | simple | [0.2, 0.4] |  |
 | `machine_max_junction_deviation` | coFloats | Machine limits | advanced |  |  |
+| `machine_max_speed_e` | coFloats | Machine limits | simple | [120, 120] |  |
+| `machine_max_speed_x` | coFloats | Machine limits | simple | [500, 200] |  |
+| `machine_max_speed_y` | coFloats | Machine limits | simple | [500, 200] |  |
+| `machine_max_speed_z` | coFloats | Machine limits | simple | [12, 12] |  |
 | `machine_min_extruding_rate` | coFloats | Machine limits | develop |  |  |
 | `machine_min_travel_rate` | coFloats | Machine limits | develop |  |  |
 | `machine_pause_gcode` | coString |  | advanced |  | Pause G-code |

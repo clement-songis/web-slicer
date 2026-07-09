@@ -40,13 +40,13 @@ C++ riches.
 
 **Decision** : `engine/build.rs` (ou script `cargo xtask codegen`) génère depuis
 `audit/parameters.json` : (1) `engine/src/params/registry.rs` — enum/const des
-846 clés avec type, défaut, bornes, enum values, mode, groupe ; (2)
+858 clés avec type, défaut, bornes, enum values, mode, groupe ; (2)
 `frontend/src/generated/params.ts` — le même registre pour la validation et le
 rendu côté client (via export JSON + script `bun run codegen`). La validation
 d'une valeur (type, bornes, enum) vit dans l'engine (source de vérité) et est
 répliquée mécaniquement côté TS.
 
-**Rationale** : FR-001 exige les 846 paramètres sans dérive ; toute mise à jour
+**Rationale** : FR-001 exige les 858 paramètres sans dérive ; toute mise à jour
 d'OrcaSlicer vendored se propage par régénération (`audit/run_all.py` →
 codegen) ; le diff de code généré rend les changements de parité visibles en
 revue.

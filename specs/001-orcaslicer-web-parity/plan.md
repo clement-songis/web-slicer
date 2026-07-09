@@ -11,7 +11,7 @@ progression, build Nix) et découpage en 6 phases livrables démontrables.
 
 Application web multi-utilisateurs répliquant l'intégralité d'OrcaSlicer :
 import STL/3MF/STEP/OBJ, scène 3D complète, onglets de réglages avec les
-846 paramètres du registre, 11 895 presets système avec héritage, tranchage
+858 paramètres du registre, 11 895 presets système avec héritage, tranchage
 serveur en file persistante, prévisualisation G-code par couches, export et
 envoi Moonraker. Le moteur est un **bridge cxx-FFI vers libslic3r** (statiques
 `libslic3r-headless` déjà produites par `flake.nix`) avec **fallback CLI**
@@ -110,7 +110,7 @@ engine/                      # Crate moteur (constitution II) — Phase P1
 ├── src/
 │   ├── lib.rs               # Trait SlicerEngine + sélection d'implémentation
 │   ├── api/                 # Types miroirs de libslic3r (Model, Print, PrintObject…)
-│   ├── params/              # Registre des 846 paramètres (généré, R2) + legacy
+│   ├── params/              # Registre des 858 paramètres (généré, R2) + legacy
 │   ├── presets/             # Héritage, profils vendor/user (P3)
 │   ├── threemf/             # Lecture/écriture 3MF projets Orca
 │   ├── gcode/               # Parseur G-code → couches/segments/stats (R6)
@@ -168,5 +168,5 @@ Aucune violation constitutionnelle. Choix tracés :
 | Choix | Pourquoi | Alternative rejetée |
 |---|---|---|
 | FFI cxx **et** fallback CLI maintenus tous deux | Directive utilisateur + constitution II ; le CLI sert de filet (crash FFI, environnement sans lib) et d'oracle de parité croisée dans les tests | FFI seul : perd l'oracle de comparaison et le mode dégradé ; CLI seul : perd les callbacks de progression fins, la conversion STEP directe et les perfs (pas de re-fork par job) |
-| Codegen depuis `audit/*.json` | Seule façon de tenir 846 paramètres + 525 options d'UI sans dérive | Écriture manuelle : ingérable, invérifiable |
+| Codegen depuis `audit/*.json` | Seule façon de tenir 858 paramètres + 525 options d'UI sans dérive | Écriture manuelle : ingérable, invérifiable |
 | Phasage 6 livrables | Directive utilisateur ; chaque phase a une démo et un gate | Livraison big-bang : risque d'intégration massif |

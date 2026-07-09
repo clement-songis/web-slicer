@@ -2,12 +2,12 @@
   "source": "src/libslic3r/PrintConfig.cpp",
   "generated_by": "audit/extract_parameters.py",
   "note": "mode_is_default=true : aucun def->mode explicite, comSimple s'applique (défaut de Config.hpp)",
-  "count": 846,
+  "count": 858,
   "mode_counts": {
     "advanced": 516,
     "develop": 33,
     "expert": 18,
-    "simple": 279
+    "simple": 291
   },
   "parameters": {
     "absolute_correction": {
@@ -5069,6 +5069,22 @@
       "default_raw": "0.0",
       "default": 0.0
     },
+    "machine_max_acceleration_e": {
+      "type": "coFloats",
+      "group": "fff",
+      "full_label": "Maximum acceleration E",
+      "category": "Machine limits",
+      "tooltip": "Maximum acceleration of the E axis",
+      "sidetext": "mm/s²",
+      "min": 0,
+      "mode": "simple",
+      "default_type": "Floats",
+      "default": [
+        5000,
+        5000
+      ],
+      "note": "généré par la boucle AxisDefault de PrintConfig.cpp (clé non littérale)"
+    },
     "machine_max_acceleration_extruding": {
       "type": "coFloats",
       "group": "fff",
@@ -5102,6 +5118,118 @@
       "min": 0,
       "mode": "advanced"
     },
+    "machine_max_acceleration_x": {
+      "type": "coFloats",
+      "group": "fff",
+      "full_label": "Maximum acceleration X",
+      "category": "Machine limits",
+      "tooltip": "Maximum acceleration of the X axis",
+      "sidetext": "mm/s²",
+      "min": 0,
+      "mode": "simple",
+      "default_type": "Floats",
+      "default": [
+        1000,
+        1000
+      ],
+      "note": "généré par la boucle AxisDefault de PrintConfig.cpp (clé non littérale)"
+    },
+    "machine_max_acceleration_y": {
+      "type": "coFloats",
+      "group": "fff",
+      "full_label": "Maximum acceleration Y",
+      "category": "Machine limits",
+      "tooltip": "Maximum acceleration of the Y axis",
+      "sidetext": "mm/s²",
+      "min": 0,
+      "mode": "simple",
+      "default_type": "Floats",
+      "default": [
+        1000,
+        1000
+      ],
+      "note": "généré par la boucle AxisDefault de PrintConfig.cpp (clé non littérale)"
+    },
+    "machine_max_acceleration_z": {
+      "type": "coFloats",
+      "group": "fff",
+      "full_label": "Maximum acceleration Z",
+      "category": "Machine limits",
+      "tooltip": "Maximum acceleration of the Z axis",
+      "sidetext": "mm/s²",
+      "min": 0,
+      "mode": "simple",
+      "default_type": "Floats",
+      "default": [
+        500,
+        200
+      ],
+      "note": "généré par la boucle AxisDefault de PrintConfig.cpp (clé non littérale)"
+    },
+    "machine_max_jerk_e": {
+      "type": "coFloats",
+      "group": "fff",
+      "full_label": "Maximum jerk E",
+      "category": "Machine limits",
+      "tooltip": "Maximum jerk of the E axis",
+      "sidetext": "mm/s",
+      "min": 0,
+      "mode": "simple",
+      "default_type": "Floats",
+      "default": [
+        2.5,
+        2.5
+      ],
+      "note": "généré par la boucle AxisDefault de PrintConfig.cpp (clé non littérale)"
+    },
+    "machine_max_jerk_x": {
+      "type": "coFloats",
+      "group": "fff",
+      "full_label": "Maximum jerk X",
+      "category": "Machine limits",
+      "tooltip": "Maximum jerk of the X axis",
+      "sidetext": "mm/s",
+      "min": 0,
+      "mode": "simple",
+      "default_type": "Floats",
+      "default": [
+        10,
+        10
+      ],
+      "note": "généré par la boucle AxisDefault de PrintConfig.cpp (clé non littérale)"
+    },
+    "machine_max_jerk_y": {
+      "type": "coFloats",
+      "group": "fff",
+      "full_label": "Maximum jerk Y",
+      "category": "Machine limits",
+      "tooltip": "Maximum jerk of the Y axis",
+      "sidetext": "mm/s",
+      "min": 0,
+      "mode": "simple",
+      "default_type": "Floats",
+      "default": [
+        10,
+        10
+      ],
+      "note": "généré par la boucle AxisDefault de PrintConfig.cpp (clé non littérale)"
+    },
+    "machine_max_jerk_z": {
+      "type": "coFloats",
+      "group": "fff",
+      "full_label": "Maximum jerk Z",
+      "category": "Machine limits",
+      "tooltip": "Maximum jerk of the Z axis",
+      "sidetext": "mm/s",
+      "min": 0,
+      "mode": "simple",
+      "default_type": "Floats",
+      "default": [
+        0.2,
+        0.4
+      ],
+      "note": "généré par la boucle AxisDefault de PrintConfig.cpp (clé non littérale)"
+    },
     "machine_max_junction_deviation": {
       "type": "coFloats",
       "group": "fff",
@@ -5113,6 +5241,70 @@
       "min": "0.f",
       "max": "0.3f",
       "mode": "advanced"
+    },
+    "machine_max_speed_e": {
+      "type": "coFloats",
+      "group": "fff",
+      "full_label": "Maximum speed E",
+      "category": "Machine limits",
+      "tooltip": "Maximum speed of E axis",
+      "sidetext": "mm/s",
+      "min": 0,
+      "mode": "simple",
+      "default_type": "Floats",
+      "default": [
+        120,
+        120
+      ],
+      "note": "généré par la boucle AxisDefault de PrintConfig.cpp (clé non littérale)"
+    },
+    "machine_max_speed_x": {
+      "type": "coFloats",
+      "group": "fff",
+      "full_label": "Maximum speed X",
+      "category": "Machine limits",
+      "tooltip": "Maximum speed of X axis",
+      "sidetext": "mm/s",
+      "min": 0,
+      "mode": "simple",
+      "default_type": "Floats",
+      "default": [
+        500,
+        200
+      ],
+      "note": "généré par la boucle AxisDefault de PrintConfig.cpp (clé non littérale)"
+    },
+    "machine_max_speed_y": {
+      "type": "coFloats",
+      "group": "fff",
+      "full_label": "Maximum speed Y",
+      "category": "Machine limits",
+      "tooltip": "Maximum speed of Y axis",
+      "sidetext": "mm/s",
+      "min": 0,
+      "mode": "simple",
+      "default_type": "Floats",
+      "default": [
+        500,
+        200
+      ],
+      "note": "généré par la boucle AxisDefault de PrintConfig.cpp (clé non littérale)"
+    },
+    "machine_max_speed_z": {
+      "type": "coFloats",
+      "group": "fff",
+      "full_label": "Maximum speed Z",
+      "category": "Machine limits",
+      "tooltip": "Maximum speed of Z axis",
+      "sidetext": "mm/s",
+      "min": 0,
+      "mode": "simple",
+      "default_type": "Floats",
+      "default": [
+        12,
+        12
+      ],
+      "note": "généré par la boucle AxisDefault de PrintConfig.cpp (clé non littérale)"
     },
     "machine_min_extruding_rate": {
       "type": "coFloats",

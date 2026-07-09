@@ -92,6 +92,7 @@
           buildInputs = libslic3r.buildInputs;
 
           LIBSLIC3R_DIR = libslic3r;
+          ORCA_SRC = orca.src;
         };
 
         pwBrowsers = pkgs.playwright-driver.browsers;

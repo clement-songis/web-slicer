@@ -13,7 +13,7 @@ Slicer 3D web multi-utilisateurs, parité totale avec OrcaSlicer
 
 ## Sources de vérité de parité
 
-- `audit/parameters.json` (846 paramètres), `audit/ui_inventory.json`,
+- `audit/parameters.json` (858 paramètres), `audit/ui_inventory.json`,
   `audit/presets_inventory.json` (11 895 presets), `audit/engine_api.json`.
 - Régénération : `python3 audit/run_all.py` puis
   `python3 audit/generate_parity_annexes.py`. Gate : `audit/check_traceability.py`.

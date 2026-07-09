@@ -15,7 +15,7 @@ La parité fonctionnelle est définie par les inventaires régénérables du dos
 
 | Annexe | Contenu normatif | Volume |
 |---|---|---|
-| [Annexe A](annexes/annexe-a-parametres.md) | Les 846 paramètres de `audit/parameters.json` — chaque ligne est une exigence | 846 paramètres |
+| [Annexe A](annexes/annexe-a-parametres.md) | Les 858 paramètres de `audit/parameters.json` — chaque ligne est une exigence | 858 paramètres |
 | [Annexe B](annexes/annexe-b-interface.md) | Tout `audit/ui_inventory.json` : 21 pages de réglages, 100 sections, 525 lignes d'options, 103 items de menus, 70 items contextuels, 11 items de barres d'outils, 16 gizmos, 92 raccourcis | inventaire complet |
 | [Annexe C](annexes/annexe-c-presets.md) | Les 65 vendeurs et 11 895 presets de `audit/presets_inventory.json` (liste nominative incorporée par référence, contrôlée par comptage exact) | 11 895 presets |
 
@@ -249,7 +249,7 @@ remonté (impression en cours, progression, pause/arrêt).
 
 **Parité (traçabilité normative)**
 
-- **FR-001**: Chacun des 846 paramètres de l'Annexe A DOIT être pris en charge de bout en bout (stockage, validation selon type/bornes/enum, valeur par défaut, exposition selon son groupe) ou inscrit au registre d'exclusions avec justification.
+- **FR-001**: Chacun des 858 paramètres de l'Annexe A DOIT être pris en charge de bout en bout (stockage, validation selon type/bornes/enum, valeur par défaut, exposition selon son groupe) ou inscrit au registre d'exclusions avec justification.
 - **FR-002**: Chaque élément de l'Annexe B (21 pages, 100 sections, 525 lignes d'options, 103 items de menus, 70 items contextuels, 11 items de barres d'outils, 16 gizmos, 92 raccourcis) DOIT être traçable vers un composant ou un point d'entrée de l'application, ou inscrit au registre d'exclusions.
 - **FR-003**: La traçabilité FR-001/FR-002 DOIT être vérifiable automatiquement (contrôle croisé entre les inventaires `audit/*.json` et une matrice de traçabilité maintenue dans le dépôt) et exécutée à chaque jalon.
 - **FR-004**: Les paramètres du groupe `sla` (76) DOIVENT être stockés et validés (parité de données) sans exposition UI, OrcaSlicer n'exposant pas d'onglet SLA — décision consignée au registre d'exclusions UI.
@@ -321,7 +321,7 @@ remonté (impression en cours, progression, pause/arrêt).
 
 ### Measurable Outcomes
 
-- **SC-001**: Le contrôle de traçabilité automatisé rapporte 100 % des 846 paramètres et 100 % des éléments d'interface de l'Annexe B couverts ou justifiés au registre d'exclusions ; le registre ne contient aucune entrée « non justifiée ».
+- **SC-001**: Le contrôle de traçabilité automatisé rapporte 100 % des 858 paramètres et 100 % des éléments d'interface de l'Annexe B couverts ou justifiés au registre d'exclusions ; le registre ne contient aucune entrée « non justifiée ».
 - **SC-002**: Les 11 895 presets système sont importés et résolus (héritage) sans erreur ; les comptages par type correspondent exactement à l'Annexe C ; 100 % des presets instanciables sont sélectionnables via le filtre de compatibilité.
 - **SC-003**: Pour un panel de 10 modèles de référence et 5 combinaisons de presets, le G-code produit est fonctionnellement identique à celui d'OrcaSlicer de bureau (mêmes trajectoires aux métadonnées près) et le temps estimé diffère de moins de 1 %.
 - **SC-004**: Un utilisateur qui connaît OrcaSlicer retrouve n'importe quel paramètre au même endroit (onglet + groupe) sans recherche dans 95 % des cas testés (test utilisateur sur 40 paramètres tirés au sort).

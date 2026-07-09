@@ -268,6 +268,42 @@ def main() -> None:
             entry["note"] = "généré dynamiquement (surcharge filament des réglages extrudeur, défaut nil)"
             params[key] = entry
 
+    # Définitions en boucle sur les axes (PrintConfig.cpp ~4498) :
+    # machine_max_{speed,acceleration,jerk}_{x,y,z,e} — clés non littérales,
+    # reconstruites depuis le tableau AxisDefault (défauts par axe).
+    m = re.search(r"std::vector<AxisDefault>\s+axes\s*\{(.*?)\};", code, re.S)
+    if m:
+        axis_rows = re.findall(
+            r'\{\s*"(\w)"\s*,\s*\{([^}]*)\}\s*,\s*\{([^}]*)\}\s*,\s*\{([^}]*)\}\s*\}',
+            m.group(1),
+        )
+        kinds = [
+            ("machine_max_speed_", "Maximum speed %s", "Maximum speed of %s axis", "mm/s", 1),
+            ("machine_max_acceleration_", "Maximum acceleration %s",
+             "Maximum acceleration of the %s axis", "mm/s²", 2),
+            ("machine_max_jerk_", "Maximum jerk %s", "Maximum jerk of the %s axis", "mm/s", 3),
+        ]
+        for row in axis_rows:
+            axis = row[0]
+            for prefix, label_fmt, tooltip_fmt, sidetext, idx in kinds:
+                nums = []
+                for x in row[idx].split(","):
+                    v = float(x)
+                    nums.append(int(v) if v.is_integer() else v)
+                params[prefix + axis] = {
+                    "type": "coFloats",
+                    "group": "fff",
+                    "full_label": label_fmt % axis.upper(),
+                    "category": "Machine limits",
+                    "tooltip": tooltip_fmt % axis.upper(),
+                    "sidetext": sidetext,
+                    "min": 0,
+                    "mode": "simple",
+                    "default_type": "Floats",
+                    "default": nums,
+                    "note": "généré par la boucle AxisDefault de PrintConfig.cpp (clé non littérale)",
+                }
+
     modes = {}
     for p in params.values():
         modes[p.get("mode", "unset")] = modes.get(p.get("mode", "unset"), 0) + 1
