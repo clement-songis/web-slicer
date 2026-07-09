@@ -48,7 +48,7 @@
 **Independent Test**: `ENGINE_IMPL=ffi cargo run -p engine --example engine-cli -- slice engine/tests/fixtures/benchy.stl` produit un G-code identique à orca-slicer desktop ; idem `ENGINE_IMPL=cli`
 
 - [X] T009 [US1] Codegen registre : `engine/build.rs` génère `engine/src/params/registry.rs` depuis audit/parameters.json (858 clés : type, défaut, bornes, enums, mode, groupe) ; tests : comptage exact, spot-checks (layer_height, sparse_infill_pattern, host_type)
-- [ ] T010 [P] [US1] Types miroirs `engine/src/api/` : Model/ModelObject/ModelVolume/ModelInstance, DynamicPrintConfig, TriangleMesh, BuildVolume, SliceRequest/SliceResult, EngineError (contrat slicer-engine-trait.md) ; tests de construction/validation
+- [X] T010 [P] [US1] Types miroirs `engine/src/api/` : Model/ModelObject/ModelVolume/ModelInstance, DynamicPrintConfig, TriangleMesh, BuildVolume, SliceRequest/SliceResult, EngineError (contrat slicer-engine-trait.md) ; tests de construction/validation
 - [ ] T011 [US1] Trait `SlicerEngine` dans engine/src/lib.rs + suite de tests générique `engine/tests/common/trait_suite.rs` (`fn test_engine(e: &dyn SlicerEngine)`) — écrite AVANT les implémentations (TDD)
 - [ ] T012 [US1] Bridge cxx : `engine/src/adapters/ffi/bridge.rs` (cxx::bridge) + `engine/src/adapters/ffi/bridge/model.cpp` ; build.rs linke `$LIBSLIC3R_DIR` (motif tools/dump-config) ; smoke test : charger un STL, compter les triangles
 - [ ] T013 [US1] FFI load_model (STL/OBJ/3MF) + convert_to_mesh (STEP via OCCT) dans engine/src/adapters/ffi/model.rs ; tests sur fixtures (dont STEP)
