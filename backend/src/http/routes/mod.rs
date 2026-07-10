@@ -1,6 +1,7 @@
 //! Assemblage du routeur HTTP. Les handlers sont minces et délèguent au
 //! domaine ; la session est posée par une couche `tower-sessions`.
 
+pub mod admin;
 pub mod auth;
 
 use axum::routing::{get, post};
@@ -26,6 +27,17 @@ where
         .route("/api/auth/login", post(auth::login))
         .route("/api/auth/logout", post(auth::logout))
         .route("/api/auth/me", get(auth::me))
+        .route(
+            "/api/admin/instance",
+            get(admin::get_instance).patch(admin::patch_instance),
+        )
+        .route("/api/admin/users", post(admin::create_user))
+        .route(
+            "/api/admin/users/{id}/reset-password",
+            post(admin::reset_password),
+        )
+        .route("/api/admin/invitations", post(admin::create_invitation))
+        .route("/api/admin/presets/reseed", post(admin::reseed_presets))
         .layer(session_layer)
         .with_state(state)
 }

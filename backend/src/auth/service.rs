@@ -2,7 +2,13 @@
 //! bootstrap du premier admin, vérification des identifiants. Logique métier
 //! pure au-dessus du trait `Storage` — aucune dépendance HTTP.
 
-use crate::domain::{NewUser, RegistrationPolicy, Role, Storage, StorageError, User, UserStatus};
+use time::{Duration, OffsetDateTime};
+use uuid::Uuid;
+
+use crate::domain::{
+    Invitation, NewInvitation, NewUser, RegistrationPolicy, Role, Storage, StorageError, User,
+    UserId, UserStatus,
+};
 
 use super::password::{hash_password, verify_password, PasswordError};
 
@@ -21,6 +27,8 @@ pub enum AuthError {
     InvalidCredentials,
     #[error("compte désactivé")]
     AccountDisabled,
+    #[error("compte introuvable")]
+    NotFound,
     #[error(transparent)]
     Password(#[from] PasswordError),
     #[error("erreur de stockage : {0}")]
@@ -89,6 +97,72 @@ async fn enforce_policy(
             Ok(())
         }
     }
+}
+
+/// Crée un compte géré par l'administrateur (rôle choisi, sans passer par la
+/// politique d'inscription ni ouvrir de session). Pas de SMTP en v1 : l'admin
+/// communique le mot de passe initial hors bande.
+pub async fn create_managed_user(
+    storage: &dyn Storage,
+    email: &str,
+    password: &str,
+    role: Role,
+) -> Result<User, AuthError> {
+    if password.len() < MIN_PASSWORD_LEN {
+        return Err(AuthError::WeakPassword);
+    }
+    let password_hash = hash_password(password)?;
+    let user = storage
+        .users()
+        .create(NewUser {
+            email: email.to_string(),
+            password_hash,
+            role,
+        })
+        .await?;
+    Ok(user)
+}
+
+/// Réinitialise le mot de passe d'un compte (admin, pas de SMTP en v1).
+/// `NotFound` remonte en erreur de stockage → l'appelant traduit.
+pub async fn reset_password(
+    storage: &dyn Storage,
+    id: UserId,
+    new_password: &str,
+) -> Result<(), AuthError> {
+    if new_password.len() < MIN_PASSWORD_LEN {
+        return Err(AuthError::WeakPassword);
+    }
+    // Vérifie l'existence pour renvoyer NotFound plutôt qu'un UPDATE sans effet.
+    storage.users().get(id).await.map_err(|e| match e {
+        StorageError::NotFound => AuthError::NotFound,
+        other => AuthError::Storage(other.to_string()),
+    })?;
+    let password_hash = hash_password(new_password)?;
+    storage
+        .users()
+        .set_password_hash(id, &password_hash)
+        .await?;
+    Ok(())
+}
+
+/// Émet une invitation à usage unique valable `valid_days` jours (défaut 7).
+pub async fn create_invitation(
+    storage: &dyn Storage,
+    issued_by: UserId,
+    valid_days: i64,
+) -> Result<Invitation, AuthError> {
+    let token = Uuid::new_v4().simple().to_string();
+    let expires_at = OffsetDateTime::now_utc() + Duration::days(valid_days.max(1));
+    let invitation = storage
+        .instance()
+        .create_invitation(NewInvitation {
+            token,
+            issued_by,
+            expires_at,
+        })
+        .await?;
+    Ok(invitation)
 }
 
 /// Vérifie des identifiants et renvoie le compte si actif.

@@ -6,4 +6,6 @@ pub mod password;
 pub mod service;
 
 pub use password::{hash_password, verify_password, PasswordError};
-pub use service::{authenticate, register, AuthError};
+pub use service::{
+    authenticate, create_invitation, create_managed_user, register, reset_password, AuthError,
+};

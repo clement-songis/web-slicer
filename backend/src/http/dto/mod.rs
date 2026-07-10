@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::domain::User;
+use crate::domain::{InstanceSettings, Invitation, User};
 
 /// Réponse de `GET /api/health`.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -67,6 +67,83 @@ impl From<User> for UserResponse {
             email: u.email,
             role: json_lower(&u.role),
             status: json_lower(&u.status),
+        }
+    }
+}
+
+/// Réglages d'instance exposés à l'admin (`GET /api/admin/instance`).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct InstanceResponse {
+    /// `open` | `closed` | `invite`.
+    pub registration_policy: String,
+    pub upload_limit_bytes: i64,
+}
+
+impl From<InstanceSettings> for InstanceResponse {
+    fn from(s: InstanceSettings) -> Self {
+        Self {
+            registration_policy: json_lower(&s.registration_policy),
+            upload_limit_bytes: s.upload_limit_bytes,
+        }
+    }
+}
+
+/// Corps de `PATCH /api/admin/instance` — champs optionnels (mise à jour partielle).
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct PatchInstanceRequest {
+    /// `open` | `closed` | `invite`.
+    #[ts(optional)]
+    pub registration_policy: Option<String>,
+    #[ts(optional)]
+    pub upload_limit_bytes: Option<i64>,
+}
+
+/// Corps de `POST /api/admin/users` (compte géré par l'admin).
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct AdminCreateUserRequest {
+    pub email: String,
+    pub password: String,
+    /// `admin` | `user` (défaut `user`).
+    #[ts(optional)]
+    pub role: Option<String>,
+}
+
+/// Corps de `POST /api/admin/users/{id}/reset-password`.
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct ResetPasswordRequest {
+    pub new_password: String,
+}
+
+/// Corps de `POST /api/admin/invitations`.
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct CreateInvitationRequest {
+    /// Durée de validité en jours (défaut 7).
+    #[ts(optional)]
+    pub valid_days: Option<i64>,
+}
+
+/// Invitation émise (`POST /api/admin/invitations`).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct InvitationResponse {
+    pub token: String,
+    /// Expiration au format RFC 3339.
+    pub expires_at: String,
+}
+
+impl From<Invitation> for InvitationResponse {
+    fn from(i: Invitation) -> Self {
+        Self {
+            token: i.token,
+            expires_at: i
+                .expires_at
+                .format(&time::format_description::well_known::Rfc3339)
+                .unwrap_or_default(),
         }
     }
 }

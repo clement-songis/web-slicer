@@ -75,6 +75,11 @@ impl ApiError {
         Self::new(StatusCode::CONFLICT, "conflict", message)
     }
 
+    /// Fonctionnalité pas encore câblée (placeholder de tâche à venir).
+    pub fn not_implemented(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::NOT_IMPLEMENTED, "not_implemented", message)
+    }
+
     /// Erreur interne : le détail part dans les logs, jamais au client.
     pub fn internal() -> Self {
         Self::new(
@@ -121,6 +126,7 @@ impl From<crate::auth::AuthError> for ApiError {
             E::RegistrationClosed | E::InvalidInvitation | E::AccountDisabled => {
                 ApiError::forbidden(e.to_string())
             }
+            E::NotFound => ApiError::not_found("Compte"),
             E::InvalidCredentials => ApiError::unauthorized(),
             E::Password(_) | E::Storage(_) => {
                 tracing::error!(error = %e, "erreur d'authentification");
