@@ -2,11 +2,11 @@
 
 Miroir 1:1 de l'API publique libslic3r consommée par la GUI —
 **`audit/engine_api.json` fait foi** (constitution II). Le backend ne dépend
-que de ce trait ; les implémentations sont choisies dans la composition root
-(`ENGINE_IMPL=ffi|cli`) : `adapters::ffi` (v1 principal — bridge cxx lié aux
-statiques Nix `libslic3r-headless`, slicing dans un process `engine-worker`
-isolé, décision R1) et `adapters::cli` (fallback `orca-slicer`, même trait,
-oracle de parité croisée dans les tests).
+que de ce trait ; l'implémentation v1 est **`adapters::ffi` uniquement**
+(`FfiEngine` — bridge cxx lié aux statiques Nix `libslic3r-headless`, slicing
+dans un process `engine-worker` isolé, décision R1). Une implémentation
+`adapters::cli` (`orca-slicer`, même trait) reste un objectif backlog de
+validation croisée, hors périmètre v1.
 
 ## Types miroirs (`engine::api`)
 

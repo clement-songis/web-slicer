@@ -43,9 +43,14 @@
 
 ## Phase 3: Livraison P1 — Engine wrapper + parité API C++ (US1 fondation)
 
-**Goal**: trait `SlicerEngine` complet, bridge cxx-FFI + fallback CLI, parité prouvée contre l'oracle C++ (gate : suite générique verte sur FFI **et** CLI, corpus 10×5 identique à orca desktop)
+**Goal**: trait `SlicerEngine` complet via bridge cxx-FFI (moteur v1 = FFI uniquement), parité prouvée contre l'oracle C++ (gate : suite générique verte sur FFI, corpus 10×5 identique à orca desktop)
 
-**Independent Test**: `ENGINE_IMPL=ffi cargo run -p engine --example engine-cli -- slice engine/tests/fixtures/benchy.stl` produit un G-code identique à orca-slicer desktop ; idem `ENGINE_IMPL=cli`
+**Independent Test**: `cargo run -p engine --example engine-cli -- slice engine/tests/fixtures/cube20.stl` produit un G-code cohérent (couches, stats) via le trait `SlicerEngine`
+
+> **Décision v1 (directive utilisateur)** : moteur **FFI uniquement**, pas
+> d'adaptateur CLI. Une implémentation CLI de *validation croisée* (confirmer
+> que le slicing correspond exactement à orca desktop) reste un objectif
+> backlog, non planifié.
 
 - [X] T009 [US1] Codegen registre : `engine/build.rs` génère `engine/src/params/registry.rs` depuis audit/parameters.json (858 clés : type, défaut, bornes, enums, mode, groupe) ; tests : comptage exact, spot-checks (layer_height, sparse_infill_pattern, host_type)
 - [X] T010 [P] [US1] Types miroirs `engine/src/api/` : Model/ModelObject/ModelVolume/ModelInstance, DynamicPrintConfig, TriangleMesh, BuildVolume, SliceRequest/SliceResult, EngineError (contrat slicer-engine-trait.md) ; tests de construction/validation
@@ -58,10 +63,15 @@
 - [X] T017 [US1] FFI resolve_preset_chain + validate_config dans engine/src/presets/resolve.rs (fonction pure partagée FFI/CLI) ; tests : chaîne BBL réelle → valeurs effectives attendues, valeur hors bornes → ConfigWarning
 - [X] T018 [US1] Process worker `engine/src/bin/engine_worker.rs` + pilote parent `engine/src/adapters/ffi/worker.rs` : protocole de pipe (`P`/`R`/`E`), crash C++ contenu, annulation par kill (R1/R9) ; tests `engine/tests/worker.rs` : progression monotone, kill → cancelled, crash simulé → EngineCrashed (pipeline de tranchage réel branché en T019)
 - [X] T019 [US1] FFI slice via engine-worker dans engine/src/adapters/ffi/slice.rs (+ bridge/slice.cpp) : SliceRequest → G-code + stats (temps/filament/couches) via `Slic3r::Print` ; test `engine/tests/slice.rs` sur projet 3MF réel (G-code écrit, temps>0, couches>0, progression par pipe). Vignettes headless consignées dans exclusions.md
-- [ ] T020 [US1] Adaptateur CLI complet `engine/src/adapters/cli/` : mêmes opérations via orca-slicer (--slice/--arrange/--orient/--repair/--export-3mf/--load-settings/--load-filaments, R1) ; la suite générique T011 passe telle quelle
+- [X] T020 [US1] `FfiEngine` implémente `SlicerEngine` (`engine/src/adapters/ffi/engine.rs`) : agrège les wrappers du bridge + les fonctions pures (presets, parseur G-code) ; preuve de substituabilité `engine/tests/ffi_trait_suite.rs` — la suite générique T011 passe intégralement sur FFI. *(remplace l'ancien adaptateur CLI : moteur v1 FFI uniquement)*
 - [X] T021 [US1] Parseur G-code `engine/src/gcode/` (pur Rust) : couches/segments (`; FEATURE:`, `; CHANGE_LAYER`, `; Z_HEIGHT:`, `; LINE_WIDTH:`, E relatif M83), stats (temps, filament, couches) → GcodePreview (R6) ; test `engine/tests/gcode.rs` sur G-code BBL réel (9 types de lignes présents, aucun Unknown)
-- [ ] T022 [US1] Test de parité `engine/tests/gcode_parity.rs` : triple diff normalisé FFI vs CLI vs sortie desktop enregistrée, corpus 10×5 ; temps estimés < 1 % (SC-003)
-- [ ] T023 [P] [US1] Démo `engine/examples/engine-cli.rs` : slice/arrange/repair/parse depuis le shell, sélection ENGINE_IMPL (démo gate P1)
+- [ ] T022 [US1] Test de parité `engine/tests/gcode_parity.rs` : diff normalisé FFI vs sortie orca desktop enregistrée, corpus 10×5 ; temps estimés < 1 % (SC-003)
+- [ ] T023 [P] [US1] Démo `engine/examples/engine-cli.rs` : slice/arrange/repair/parse depuis le shell via `FfiEngine` (démo gate P1)
+
+> **Backlog (non planifié)** : adaptateur CLI `engine/src/adapters/cli/`
+> pilotant `orca-slicer` derrière le même trait, pour *validation croisée*
+> du slicing FFI. Bloqué en l'état par un segfault d'`orca-slicer --slice`
+> en headless (non investigué, cf. mémoire projet).
 
 **Checkpoint**: gate P1 — moteur démontrable et prouvé, indépendant du backend
 
@@ -227,6 +237,6 @@ T041–T047 ; T052/T054 avant T055–T058 ; T063 (file) avant T064–T066.
   (quickstart §0) et une démo ; commit atomique par tâche, tests inclus
   (constitution IV) ; check_traceability s'étend phase par phase (T006 →
   T047 → T062 → T082) pour que la parité reste mesurée en continu.
-- **Risque en tête** : la Phase 3 (bridge FFI) est le chemin critique — le
-  fallback CLI (T020) débloque les phases aval si le FFI prend du retard,
-  sans changer aucun contrat.
+- **Risque en tête** : la Phase 3 (bridge FFI) était le chemin critique ;
+  elle est désormais franchie (chargement, 3MF, STEP, réparation, arrangement,
+  tranchage réel + préviz G-code, suite générique verte sur `FfiEngine`).

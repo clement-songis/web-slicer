@@ -2,14 +2,14 @@
 
 Guide de validation des scénarios de la spec. Prérequis : **`nix develop`**
 (fournit toolchain Rust, Bun, cmake/ninja/clang, et `$LIBSLIC3R_DIR` via le
-paquet `libslic3r` du flake) ; fallback CLI : `orca-slicer` dans le PATH
-(`nix run .#orca-slicer`). Vérification du link C++ : `nix build .#dump-config`.
+paquet `libslic3r` du flake). Moteur v1 = **FFI uniquement** (bridge cxx).
+Vérification du link C++ : `nix build .#dump-config`.
 
 ## 0. Démos par phase (gates de sortie, plan.md « Phasage livrable »)
 
 | Phase | Démo | Commande indicative |
 |---|---|---|
-| P1 | Slice d'une fixture via le trait, FFI puis CLI | `cargo run -p engine --example engine-cli -- slice tests/fixtures/benchy.stl` (`ENGINE_IMPL=ffi\|cli`) |
+| P1 | Slice d'une fixture via le trait (FFI) | `cargo run -p engine --example engine-cli -- slice tests/fixtures/cube20.stl` |
 | P2 | Comptes + isolation | `cargo test -p backend --test storage_contract auth_isolation` + UI login |
 | P3 | Onglets complets + presets | seed puis comparaison avec `references/orca-prepare.png` ; `check_traceability.py` |
 | P4 | Scène multi-plateaux sauvegardée/rouverte | scénario US4 (§4.5) |
@@ -66,10 +66,9 @@ admin.
 cargo test -p engine --test gcode_parity -- --nocapture
 ```
 
-Triple comparaison sur le corpus `engine/tests/fixtures/` (10 modèles ×
-5 presets), après normalisation des métadonnées : **FFI vs CLI** (diff vide
-attendu — même cœur libslic3r, tout écart = bug de bridge) et **trait vs
-orca-slicer desktop** (diff vide, temps estimés à < 1 %).
+Comparaison sur le corpus `engine/tests/fixtures/` (10 modèles × 5 presets),
+après normalisation des métadonnées : **trait FFI vs orca-slicer desktop
+enregistré** (diff vide, temps estimés à < 1 %).
 
 ## 6. Charge minimale (SC-006)
 

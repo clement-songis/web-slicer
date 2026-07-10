@@ -4,6 +4,10 @@ Toutes les inconnues du Technical Context sont résolues ci-dessous.
 Décisions numérotées R1–R11, référencées par plan.md et les contrats.
 Révision 2026-07-09 : R1 inversé (FFI principal, CLI fallback) sur directive
 utilisateur ; R9 ajusté en conséquence ; R11 ajouté (phasage livrable).
+Révision 2026-07-10 : **moteur v1 = FFI uniquement** (directive utilisateur) —
+l'adaptateur CLI est retiré du périmètre v1 ; une implémentation CLI de
+validation croisée devient un objectif backlog. Les mentions « fallback CLI »
+ci-dessous sont conservées comme historique mais **ne s'appliquent plus à v1**.
 
 ## R1 — Moteur v1 : bridge cxx-FFI vers libslic3r, fallback CLI (révisé)
 

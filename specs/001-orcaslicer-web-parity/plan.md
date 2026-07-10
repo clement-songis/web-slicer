@@ -7,6 +7,12 @@
 axum/sqlx/tower, **engine cxx-FFI vers libslic3r avec fallback CLI**, WebSocket
 progression, build Nix) et découpage en 6 phases livrables démontrables.
 
+> **Révision 2026-07-10 (directive utilisateur)** : moteur v1 = **FFI
+> uniquement**. Toutes les mentions « fallback CLI » / `adapters/cli` /
+> `ENGINE_IMPL=ffi|cli` ci-dessous sont **caduques pour v1** ; l'adaptateur
+> CLI devient un objectif backlog de validation croisée (non planifié).
+> Implémentation de référence : `FfiEngine` (suite générique du trait verte).
+
 ## Summary
 
 Application web multi-utilisateurs répliquant l'intégralité d'OrcaSlicer :
