@@ -105,7 +105,7 @@
 
 **Independent Test**: comparaison côte à côte avec references/orca-prepare.png ; dériver un preset filament et vérifier le diff
 
-- [ ] T035 [US3] Codegen legacy : `engine/src/params/legacy.rs` généré depuis audit/legacy_keys.json (T005) ; tests : les 287 clés converties (layer_heigth→layer_height, etc.)
+- [X] T035 [US3] Codegen legacy : tables générées `engine/src/params/legacy_tables.rs` (28 renommages + 44 clés ignorées) depuis audit/legacy_keys.json via `audit/generate_legacy_rs.py` (câblé dans scripts/codegen.sh, gardé par SHA-1) ; `engine/src/params/legacy.rs` porte fidèlement `PrintConfigDef::handle_legacy` (renommages, transformations conditionnées par la valeur, effacements %, `different_settings_to_system` récursif, abandon des clés ignorées/hors-registre). Tests engine (10) : sync audit, renommages, sélecteurs de filament 1→0, transformations conditionnelles, prime_tower_rib_wall, clés ignorées/inconnues abandonnées. **NB** : l'audit réel compte 28 renommages (pas « 287 » ; chiffre illustratif de la tâche corrigé)
 - [ ] T036 [US3] Import des profils système `engine/src/presets/import.rs` : parsing des 65 index vendeurs + presets bruts (inherits/instantiation/compatible_printers) ; tests : comptages exacts {384, 1158, 7012, 3341} (SC-002)
 - [ ] T037 [US3] Résolution d'héritage `engine/src/presets/resolve.rs` (fonction pure, R5) ; tests : chaîne « Bambu Lab A1 0.4 nozzle » → valeurs effectives connues ; preset user dérivé → surcharges seules stockées, parent mis à jour → propagation (US3-AS4)
 - [ ] T038 [US3] Seed au démarrage + commande admin reseed dans backend/src/domain/presets.rs + backend/src/http/routes/admin.rs ; tests : idempotence, presets user intacts après reseed

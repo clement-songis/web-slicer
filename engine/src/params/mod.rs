@@ -4,9 +4,13 @@
 //! `registry.rs` est GÉNÉRÉ par `scripts/codegen.sh` et committé ; toute
 //! divergence avec l'audit fait échouer `registry_synced_with_audit`.
 
+pub mod legacy;
+mod legacy_tables;
 pub mod orca_values;
 mod registry;
 
+pub use legacy::handle_legacy;
+pub use legacy_tables::SOURCE_SHA1 as LEGACY_SOURCE_SHA1;
 pub use registry::{REGISTRY, SOURCE_SHA1};
 
 /// Type de valeur d'un paramètre (miroir des `ConfigOptionType` co*).

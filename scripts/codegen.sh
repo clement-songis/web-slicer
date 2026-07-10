@@ -13,7 +13,8 @@ cd "$(dirname "$0")/.."
 python3 audit/run_all.py
 python3 audit/generate_parity_annexes.py
 python3 audit/generate_registry_rs.py
-# le registre généré doit rester rustfmt-stable (gate cargo fmt --check)
+python3 audit/generate_legacy_rs.py
+# les fichiers générés doivent rester rustfmt-stables (gate cargo fmt --check)
 cargo fmt -p engine 2>/dev/null || true
 
 GEN_DIR=frontend/src/generated
