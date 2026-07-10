@@ -9,4 +9,5 @@ pub mod auth;
 pub mod domain;
 pub mod http;
 pub mod mesh;
+pub mod scene;
 pub mod server;

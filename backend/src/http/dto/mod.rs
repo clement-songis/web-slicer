@@ -377,6 +377,68 @@ pub struct ImportPresetRequest {
     pub values: serde_json::Value,
 }
 
+// --- Outils de scène (T054) --------------------------------------------------
+
+/// Empreinte au sol d'un objet à arranger (`POST …/arrange`).
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct ArrangeItem {
+    pub id: String,
+    pub width: f64,
+    pub depth: f64,
+}
+
+/// Corps de `POST /api/projects/{id}/arrange`.
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct ArrangeRequest {
+    pub bed_width: f64,
+    pub bed_depth: f64,
+    /// Dégagement entre objets et vis-à-vis des bords (mm).
+    pub spacing: f64,
+    pub items: Vec<ArrangeItem>,
+}
+
+/// Position calculée du centre d'un objet (mm, repère plateau).
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct Placement {
+    pub id: String,
+    pub x: f64,
+    pub y: f64,
+}
+
+/// Réponse de `POST /api/projects/{id}/arrange`.
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct ArrangeResponse {
+    pub placements: Vec<Placement>,
+}
+
+/// Corps de `POST /api/projects/{id}/orient`.
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct OrientRequest {
+    pub model_id: String,
+}
+
+/// Réponse de `POST /api/projects/{id}/orient` : rotation Euler XYZ (degrés).
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct OrientResponse {
+    pub rotation: Vec<f64>,
+}
+
+/// Réponse de `POST /api/models/{id}/repair` : rapport d'analyse (FR-012).
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct RepairResponse {
+    pub triangles: u32,
+    pub degenerate: u32,
+    pub open_edges: u32,
+    pub watertight: bool,
+}
+
 /// Sérialise un enum unité du domaine en sa forme texte (serde `rename_all`).
 fn json_lower<T: Serialize>(v: &T) -> String {
     serde_json::to_value(v)
