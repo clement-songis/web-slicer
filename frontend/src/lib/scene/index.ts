@@ -37,7 +37,19 @@ export {
 	eulerDegFromQuaternion,
 	type Transform
 } from './transform';
-export { TransformGizmo, TransformPanel, GizmoToolbar, type GizmoMode } from './gizmos';
+export {
+	TransformGizmo,
+	TransformPanel,
+	GizmoToolbar,
+	PaintToolbar,
+	TrianglePainting,
+	trianglesInRadius,
+	encodeFacet,
+	decodeFacet,
+	type GizmoMode,
+	type PaintChannel,
+	type PaintDocument
+} from './gizmos';
 export { ObjectTree, type SceneNode, type NodeKind } from './objects';
 export { default as ObjectList } from './ObjectList.svelte';
 export {
