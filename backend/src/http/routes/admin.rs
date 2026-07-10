@@ -10,10 +10,10 @@ use serde_json::Value;
 use uuid::Uuid;
 
 use crate::auth;
-use crate::domain::{RegistrationPolicy, Role, UserId};
+use crate::domain::{self, RegistrationPolicy, Role, UserId};
 use crate::http::dto::{
     AdminCreateUserRequest, CreateInvitationRequest, InstanceResponse, InvitationResponse,
-    PatchInstanceRequest, ResetPasswordRequest, UserResponse,
+    PatchInstanceRequest, ReseedResponse, ResetPasswordRequest, UserResponse,
 };
 use crate::http::error::{ApiError, ApiResult};
 use crate::http::extract::AdminUser;
@@ -127,10 +127,20 @@ pub async fn create_invitation(
     Ok((StatusCode::CREATED, Json(invitation.into())))
 }
 
-/// `POST /api/admin/presets/reseed` — placeholder : le ré-import des profils
-/// système sera câblé à l'inventaire d'audit (tâche dédiée). 501 en attendant.
-pub async fn reseed_presets(_admin: AdminUser) -> ApiResult<()> {
-    Err(ApiError::not_implemented(
-        "Le ré-import des profils système n'est pas encore disponible",
-    ))
+/// `POST /api/admin/presets/reseed` — ré-importe les profils système depuis
+/// `profiles_dir` et remplace les presets système (presets utilisateur
+/// intacts). Idempotent.
+pub async fn reseed_presets(
+    _admin: AdminUser,
+    State(state): State<AppState>,
+) -> ApiResult<Json<ReseedResponse>> {
+    let imported = engine::presets::import_profiles(&state.profiles_dir).map_err(|e| {
+        tracing::error!(error = %e, "import des profils système");
+        ApiError::internal()
+    })?;
+    let reseeded =
+        domain::presets::reseed_system_presets(state.storage.as_ref(), &imported.presets).await?;
+    Ok(Json(ReseedResponse {
+        reseeded: reseeded as u32,
+    }))
 }

@@ -1,0 +1,7 @@
+{
+ "type": "machine_model",
+ "name": "Demo Printer",
+ "machine_tech": "FFF",
+ "family": "Demo",
+ "nozzle_diameter": "0.4"
+}

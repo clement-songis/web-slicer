@@ -1,0 +1,6 @@
+{
+ "type": "filament",
+ "name": "Demo PLA",
+ "instantiation": "true",
+ "filament_flow_ratio": "0.98"
+}

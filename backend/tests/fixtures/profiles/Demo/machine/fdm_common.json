@@ -1,0 +1,6 @@
+{
+ "type": "machine",
+ "name": "fdm_common",
+ "instantiation": "false",
+ "gcode_flavor": "marlin"
+}

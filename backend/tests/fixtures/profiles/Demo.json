@@ -1,0 +1,32 @@
+{
+ "name": "Demo",
+ "version": "1.0.0",
+ "machine_model_list": [
+  {
+   "name": "Demo Printer",
+   "sub_path": "machine/Demo Printer.json"
+  }
+ ],
+ "machine_list": [
+  {
+   "name": "fdm_common",
+   "sub_path": "machine/fdm_common.json"
+  },
+  {
+   "name": "Demo 0.4 nozzle",
+   "sub_path": "machine/Demo 0.4 nozzle.json"
+  }
+ ],
+ "filament_list": [
+  {
+   "name": "Demo PLA",
+   "sub_path": "filament/Demo PLA.json"
+  }
+ ],
+ "process_list": [
+  {
+   "name": "Demo 0.2",
+   "sub_path": "process/Demo 0.2.json"
+  }
+ ]
+}

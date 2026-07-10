@@ -16,11 +16,19 @@ use tower::ServiceExt;
 use tower_sessions::{MemoryStore, SessionManagerLayer};
 
 async fn app() -> (tempfile::TempDir, Router) {
+    app_with_profiles(None).await
+}
+
+/// Variante permettant de fixer le répertoire de profils (test de reseed).
+async fn app_with_profiles(profiles: Option<std::path::PathBuf>) -> (tempfile::TempDir, Router) {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("admin.db").display());
     let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
-    let state = AppState::new(storage, files);
+    let mut state = AppState::new(storage, files);
+    if let Some(p) = profiles {
+        state = state.with_profiles_dir(p);
+    }
     let session_layer = SessionManagerLayer::new(MemoryStore::default()).with_secure(false);
     (dir, router(state, session_layer))
 }
@@ -375,9 +383,44 @@ async fn admin_deletes_a_user_but_never_the_last_admin() {
 }
 
 #[tokio::test]
-async fn reseed_presets_is_not_yet_implemented() {
-    let (_d, app) = app().await;
+async fn reseed_imports_system_presets_and_is_admin_only() {
+    let fixture = std::path::PathBuf::from(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/tests/fixtures/profiles"
+    ));
+    let (_d, app) = app_with_profiles(Some(fixture)).await;
     let (admin, _) = register(&app, "boss@test.local", "password123").await;
+    let (member, body) = register(&app, "member@test.local", "password123").await;
+    assert_eq!(body["role"], "user");
+
+    // Un utilisateur simple ne peut pas re-seed.
+    let resp = app
+        .clone()
+        .oneshot(request(
+            "POST",
+            "/api/admin/presets/reseed",
+            serde_json::json!({}),
+            Some(&member),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+
+    // L'admin re-seed : la fixture compte 5 presets système.
+    let resp = app
+        .clone()
+        .oneshot(request(
+            "POST",
+            "/api/admin/presets/reseed",
+            serde_json::json!({}),
+            Some(&admin),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(json_body(resp).await["reseeded"], 5);
+
+    // Idempotent : un second re-seed renvoie le même compte.
     let resp = app
         .oneshot(request(
             "POST",
@@ -387,5 +430,6 @@ async fn reseed_presets_is_not_yet_implemented() {
         ))
         .await
         .unwrap();
-    assert_eq!(resp.status(), StatusCode::NOT_IMPLEMENTED);
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(json_body(resp).await["reseeded"], 5);
 }

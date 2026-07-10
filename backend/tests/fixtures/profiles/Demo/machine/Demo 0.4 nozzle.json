@@ -1,0 +1,7 @@
+{
+ "type": "machine",
+ "name": "Demo 0.4 nozzle",
+ "inherits": "fdm_common",
+ "instantiation": "true",
+ "printable_height": "200"
+}

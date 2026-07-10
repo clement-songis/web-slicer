@@ -134,6 +134,14 @@ pub struct CreateInvitationRequest {
     pub valid_days: Option<i64>,
 }
 
+/// Résultat d'un re-seed des presets système (`POST /api/admin/presets/reseed`).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ReseedResponse {
+    /// Nombre de presets système écrits.
+    pub reseeded: u32,
+}
+
 /// Invitation émise (`POST /api/admin/invitations`).
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]

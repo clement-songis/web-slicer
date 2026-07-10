@@ -4,6 +4,7 @@
 pub mod entities;
 pub mod error;
 pub mod id;
+pub mod presets;
 pub mod repo;
 
 pub use entities::*;

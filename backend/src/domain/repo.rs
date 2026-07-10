@@ -105,6 +105,8 @@ pub trait PresetRepo: Send + Sync {
     /// Remplace **tous** les presets système par ceux fournis (re-seed), sans
     /// toucher aux presets utilisateur.
     async fn reseed_system(&self, presets: Vec<Preset>) -> StorageResult<u64>;
+    /// Nombre de presets système en base (pour le seed conditionnel au boot).
+    async fn system_count(&self) -> StorageResult<i64>;
     /// Presets système + presets de l'utilisateur, filtrés `instantiation` et
     /// compatibilité imprimante (FR-021).
     async fn list_compatible(

@@ -524,6 +524,14 @@ impl PresetRepo for SqlitePresetRepo {
         Ok(count)
     }
 
+    async fn system_count(&self) -> StorageResult<i64> {
+        let (count,): (i64,) = sqlx::query_as("SELECT COUNT(*) FROM presets WHERE user_id IS NULL")
+            .fetch_one(&self.pool)
+            .await
+            .map_err(map_sqlx)?;
+        Ok(count)
+    }
+
     async fn list_compatible(
         &self,
         kind: PresetKind,
