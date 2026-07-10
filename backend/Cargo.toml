@@ -24,8 +24,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 sqlx = { version = "0.9", features = ["runtime-tokio", "sqlite", "postgres", "uuid", "time", "migrate"] }
 
 tower-sessions = "0.15"
-tower-sessions-sqlx-store = { version = "0.15", features = ["sqlite"] }
-argon2 = "0.5"
+argon2 = { version = "0.5", features = ["std"] }
 garde = { version = "0.23", features = ["derive", "email"] }
 async-trait = "0.1"
 
@@ -33,3 +32,4 @@ async-trait = "0.1"
 tokio = { workspace = true }
 futures = "0.3"
 tempfile = "3"
+tower = { version = "0.5", features = ["util"] }

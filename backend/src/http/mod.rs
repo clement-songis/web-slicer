@@ -1,5 +1,8 @@
-//! Couche HTTP : DTO typés (exportés vers le frontend via ts-rs) et,
-//! à venir, routes + handlers minces (T028+).
+//! Couche HTTP : DTO typés (exportés vers le frontend via ts-rs), état
+//! applicatif, extracteurs de session et routes/handlers minces.
 
 pub mod dto;
 pub mod error;
+pub mod extract;
+pub mod routes;
+pub mod state;

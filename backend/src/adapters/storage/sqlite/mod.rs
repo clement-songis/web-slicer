@@ -55,6 +55,12 @@ impl SqliteStorage {
         Ok(Self::from_pool(pool))
     }
 
+    /// Pool sous-jacent (pour le store de sessions `tower-sessions`, qui
+    /// partage la même base). Spécifique SQLite, hors du trait `Storage`.
+    pub fn pool(&self) -> SqlitePool {
+        self.users.pool()
+    }
+
     fn from_pool(pool: SqlitePool) -> Self {
         Self {
             users: SqliteUserRepo::new(pool.clone()),

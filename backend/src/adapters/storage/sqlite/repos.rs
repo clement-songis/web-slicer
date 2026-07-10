@@ -145,6 +145,9 @@ impl SqliteUserRepo {
     pub(crate) fn new(pool: SqlitePool) -> Self {
         Self { pool }
     }
+    pub(crate) fn pool(&self) -> SqlitePool {
+        self.pool.clone()
+    }
 }
 
 #[async_trait]

@@ -91,6 +91,45 @@ impl IntoResponse for ApiError {
     }
 }
 
+impl From<crate::domain::StorageError> for ApiError {
+    fn from(e: crate::domain::StorageError) -> Self {
+        use crate::domain::StorageError as E;
+        match e {
+            E::NotFound => ApiError::not_found("Ressource"),
+            E::Conflict(m) => ApiError::conflict(m),
+            E::VersionConflict { .. } => {
+                ApiError::conflict("Version dépassée (rechargez le projet)")
+            }
+            E::Forbidden(m) => ApiError::forbidden(m),
+            // Le détail SQL part dans les logs, jamais au client.
+            E::Backend(m) => {
+                tracing::error!(error = %m, "erreur de stockage");
+                ApiError::internal()
+            }
+        }
+    }
+}
+
+impl From<crate::auth::AuthError> for ApiError {
+    fn from(e: crate::auth::AuthError) -> Self {
+        use crate::auth::AuthError as E;
+        match e {
+            E::WeakPassword => {
+                ApiError::validation(e.to_string(), serde_json::json!({ "field": "password" }))
+            }
+            E::EmailTaken => ApiError::conflict(e.to_string()),
+            E::RegistrationClosed | E::InvalidInvitation | E::AccountDisabled => {
+                ApiError::forbidden(e.to_string())
+            }
+            E::InvalidCredentials => ApiError::unauthorized(),
+            E::Password(_) | E::Storage(_) => {
+                tracing::error!(error = %e, "erreur d'authentification");
+                ApiError::internal()
+            }
+        }
+    }
+}
+
 /// Résultat standard des handlers.
 pub type ApiResult<T> = Result<T, ApiError>;
 
@@ -108,7 +147,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn not_found_repond_404_avec_enveloppe() {
+    async fn not_found_responds_404_with_envelope() {
         let (status, json) = body_json(ApiError::not_found("Projet")).await;
         assert_eq!(status, StatusCode::NOT_FOUND);
         assert_eq!(json["code"], "not_found");
@@ -117,7 +156,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn validation_repond_422_avec_details() {
+    async fn validation_responds_422_with_details() {
         let (status, json) = body_json(ApiError::validation(
             "layer_height hors bornes",
             serde_json::json!({"key": "layer_height", "min": 0}),
@@ -129,7 +168,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn conflit_et_session() {
+    async fn conflict_and_session() {
         let (s1, j1) = body_json(ApiError::conflict("Version dépassée")).await;
         assert_eq!(s1, StatusCode::CONFLICT);
         assert_eq!(j1["code"], "conflict");
@@ -138,7 +177,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn interne_ne_fuit_aucun_detail() {
+    async fn internal_leaks_no_detail() {
         let (status, json) = body_json(ApiError::internal()).await;
         assert_eq!(status, StatusCode::INTERNAL_SERVER_ERROR);
         assert_eq!(json["message"], "Erreur interne");
