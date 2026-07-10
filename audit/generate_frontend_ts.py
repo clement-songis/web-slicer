@@ -81,6 +81,7 @@ def build_params() -> str:
             "max": num_or_null(p.get("max")),
             "enumValues": p.get("enum_values") or [],
             "enumLabels": p.get("enum_labels") or [],
+            "guiType": p.get("gui_type") or "",
             "ratioOver": p.get("ratio_over") or "",
             "default": p.get("default", None),
         }
@@ -116,6 +117,8 @@ export interface ParamDef {{
   max: number | null;
   enumValues: string[];
   enumLabels: string[];
+  /** Indice de rendu Orca (ex. « color », « i_enum_open ») ou "" si absent. */
+  guiType: string;
   /** Paramètre de référence d'un pourcentage (FloatOrPercent). */
   ratioOver: string;
   default: unknown;
