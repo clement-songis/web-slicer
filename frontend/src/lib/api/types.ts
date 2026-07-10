@@ -6,6 +6,7 @@ export type { LoginRequest } from '../../generated/api/LoginRequest';
 export type { RegisterRequest } from '../../generated/api/RegisterRequest';
 export type { ProjectResponse } from '../../generated/api/ProjectResponse';
 export type { CreateProjectRequest } from '../../generated/api/CreateProjectRequest';
+export type { ModelResponse } from '../../generated/api/ModelResponse';
 export type { ErrorBody } from '../../generated/api/ErrorBody';
 export type { PresetSummary } from '../../generated/api/PresetSummary';
 export type { PresetDetail } from '../../generated/api/PresetDetail';

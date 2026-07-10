@@ -15,3 +15,13 @@ export {
 export { frameBed, fitDistance, type CameraPose } from './camera';
 export { applyPick, isSelected } from './selection';
 export { decodeMesh, type SceneMesh, type SceneObject } from './mesh';
+export {
+	previewFormat,
+	parseStl,
+	parseObj,
+	parse3mf,
+	loadPreview,
+	uploadModel,
+	fetchMesh,
+	type PreviewFormat
+} from './loaders';
