@@ -38,3 +38,5 @@ export {
 	type Transform
 } from './transform';
 export { TransformGizmo, TransformPanel, GizmoToolbar, type GizmoMode } from './gizmos';
+export { ObjectTree, type SceneNode, type NodeKind } from './objects';
+export { default as ObjectList } from './ObjectList.svelte';
