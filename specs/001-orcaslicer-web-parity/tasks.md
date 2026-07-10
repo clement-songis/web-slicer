@@ -117,7 +117,7 @@
 - [X] T044 [US2] Pages spéciales : `frontend/src/lib/settings/special/OverridesPage.svelte` (cases N/A filament_*), MachineGcode.svelte (éditeurs multilignes), MultimaterialTables.svelte ; conformes Annexe B
 - [X] T045 [US2] Dialogs spéciaux de paramètres `frontend/src/lib/settings/special/` : éditeur de forme de plateau (BedShape.svelte : `printable_area`, `bed_exclude_area`, `bed_custom_model`, `bed_custom_texture`), volumes de purge (FlushVolumes.svelte : `flush_volumes_matrix/vector`, `flush_multiplier`), table des températures par type de plaque (PlateTemps.svelte : `cool/eng/hot/textured*_plate_temp*`) — couvre les clés hors lignes d'option (analyse G6) ; tests de sérialisation des valeurs
 - [X] T046 [P] [US3] Sélecteurs de presets `frontend/src/lib/presets/` : imprimante (vendeurs/modèles/buses, cover images), filament/process filtrés, dériver/sauvegarder/supprimer, badge héritage ; tests du filtre de compatibilité
-- [ ] T047 [US2] Étendre audit/check_traceability.py au périmètre UI réglages : chaque option de ui_inventory ↔ ui-layout.ts ∪ exclusions.md, y compris les clés portées par les dialogs T045 ; gate CI vert (SC-001 partiel)
+- [X] T047 [US2] Étendre audit/check_traceability.py au périmètre UI réglages : chaque option de ui_inventory ↔ ui-layout.ts ∪ exclusions.md, y compris les clés portées par les dialogs T045 ; gate CI vert (SC-001 partiel)
 
 **Checkpoint**: gate P3 — onglets complets démontrables contre orca-prepare.png
 

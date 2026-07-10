@@ -29,6 +29,12 @@ EXCLUSIONS = REPO / "specs" / "001-orcaslicer-web-parity" / "exclusions.md"
 REGISTRY_RS = REPO / "engine" / "src" / "params" / "registry.rs"
 UI_LAYOUT_TS = REPO / "frontend" / "src" / "generated" / "ui-layout.ts"
 TRACE_MAP = REPO / "frontend" / "src" / "generated" / "traceability-map.json"
+# Pages/dialogs de réglages construits à la main (clés hors lignes d'option,
+# analyse G6) : sources de vérité des paramètres portés par l'UI hors ui-layout.
+SPECIAL_TS = [
+    REPO / "frontend" / "src" / "lib" / "settings" / "special" / "groups.ts",
+    REPO / "frontend" / "src" / "lib" / "settings" / "special" / "dialogs.ts",
+]
 
 failures: list[str] = []
 pending: list[str] = []
@@ -113,12 +119,28 @@ def check_presets() -> None:
     passed.append(f"presets : {s['presets_total']} sans erreur, comptages {s['presets_by_type']}")
 
 
+def special_settings_keys() -> set[str]:
+    """Clés de paramètres portées par les pages/dialogs spéciaux (T044/T045).
+
+    Extraites des littéraux `'snake_case'` de leurs sources TS — source de
+    vérité unique des clés hors lignes d'option (forme de plateau, matrice de
+    purge, températures par plaque, surcharges filament, G-code machine…).
+    """
+    keys: set[str] = set()
+    for path in SPECIAL_TS:
+        if path.exists():
+            tokens = re.findall(r"'([a-z][a-z0-9_]+)'", path.read_text(encoding="utf-8"))
+            keys |= {t for t in tokens if "_" in t and len(t) >= 4}
+    return keys
+
+
 def check_ui_layout(ui: dict) -> None:
     if not UI_LAYOUT_TS.exists() or "PLACEHOLDER" in UI_LAYOUT_TS.read_text(encoding="utf-8"):
         pending.append("P3 — layout UI non généré (T040) : contrôle en attente")
         return
     layout = UI_LAYOUT_TS.read_text(encoding="utf-8")
-    vocab = exclusion_vocabulary()
+    # Périmètre couvert : layout généré ∪ dialogs spéciaux ∪ exclusions.
+    vocab = exclusion_vocabulary() | special_settings_keys()
     missing = []
     for page in ui["settings_tabs"]:
         for section in page["sections"]:
@@ -129,6 +151,23 @@ def check_ui_layout(ui: dict) -> None:
         failures.append(f"P3 — {len(missing)} option(s) d'onglet absentes du layout : {missing[:10]}…")
     else:
         passed.append("P3 — layout UI ↔ ui_inventory : aucun écart")
+
+
+def check_settings_special(params: dict) -> None:
+    """T047 — les clés portées par les dialogs/pages spéciaux (hors lignes
+    d'option) sont tracées : chacune doit exister dans le registre (sinon
+    l'UI référence un paramètre fantôme). SC-001 partiel."""
+    if not all(p.exists() for p in SPECIAL_TS):
+        pending.append("P3 — pages/dialogs spéciaux absents (T044/T045) : contrôle en attente")
+        return
+    keys = special_settings_keys()
+    unknown = sorted(k for k in keys if k not in params)
+    if unknown:
+        failures.append(
+            f"P3 — {len(unknown)} clé(s) de dialog spécial absente(s) du registre : {unknown[:10]}…"
+        )
+    else:
+        passed.append(f"P3 — dialogs spéciaux ↔ registre : {len(keys)} clés tracées, aucun écart")
 
 
 def check_trace_map(ui: dict) -> None:
@@ -163,6 +202,7 @@ def main() -> int:
     check_runtime_parity(params)
     check_presets()
     check_ui_layout(ui)
+    check_settings_special(params)
     check_trace_map(ui)
 
     for p in passed:
