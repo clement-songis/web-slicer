@@ -83,7 +83,7 @@
 
 **Independent Test**: 2 comptes via l'UI minimale ; le projet de A est en 404 pour B (accès direct URL) ; persistance après reconnexion
 
-- [ ] T024 [US6] Entités domaine + traits `backend/src/domain/` : User, Project, Model, Preset, Printer, SlicingJob, Gcode, InstanceSettings + traits UserRepo/ProjectRepo/…/Storage (contrat storage-trait.md, signatures scopées par UserId) — AVANT les impls, avec suite de contrat générique `backend/tests/storage_contract.rs` (TDD)
+- [X] T024 [US6] Entités domaine + traits `backend/src/domain/` : User, Project, Model, Preset, Printer, SlicingJob, Gcode, InstanceSettings/Invitation + IDs typés + traits UserRepo/ProjectRepo/…/Storage (contrat storage-trait.md, signatures scopées par UserId, async-trait) — AVANT les impls, avec suite de contrat générique `backend/tests/common/storage_suite.rs` (isolation, unicité, claim_next concurrent, cascade, re-seed, verrou optimiste) + compile-check `storage_contract_compiles.rs` (TDD)
 - [ ] T025 [US6] Migrations SQLite `backend/migrations/sqlite/0001_init.sql` (schéma data-model.md complet, y c. slicing_jobs/gcodes pour P5) + impl `backend/src/adapters/storage/sqlite/` ; suite T024 verte
 - [ ] T026 [US6] Migrations + impl Postgres `backend/src/adapters/storage/postgres/` (feature `postgres`) ; suite T024 verte sur Postgres (job CI optionnel)
 - [ ] T027 [P] [US6] Adaptateur fichiers `backend/src/adapters/files/` : espaces `data/users/<id>/{models,gcodes,thumbnails}`, écriture atomique, purge par cascade ; tests (traversée de chemin impossible)

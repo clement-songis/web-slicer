@@ -4,4 +4,5 @@
 //! `http` ne contient que des handlers minces et des DTO ; les adaptateurs
 //! (storage, files, moonraker) implémentent les traits du domaine.
 
+pub mod domain;
 pub mod http;

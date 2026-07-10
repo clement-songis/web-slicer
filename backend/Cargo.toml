@@ -27,3 +27,8 @@ tower-sessions = "0.15"
 tower-sessions-sqlx-store = { version = "0.15", features = ["sqlite"] }
 argon2 = "0.5"
 garde = { version = "0.23", features = ["derive", "email"] }
+async-trait = "0.1"
+
+[dev-dependencies]
+tokio = { workspace = true }
+futures = "0.3"
