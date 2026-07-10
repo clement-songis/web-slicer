@@ -579,6 +579,41 @@ impl PresetRepo for SqlitePresetRepo {
         Ok(preset)
     }
 
+    async fn list_by_kind(&self, kind: PresetKind, user: UserId) -> StorageResult<Vec<Preset>> {
+        let rows = sqlx::query(
+            "SELECT * FROM presets \
+             WHERE kind = ? AND (user_id IS NULL OR user_id = ?) ORDER BY name",
+        )
+        .bind(enum_str(&kind))
+        .bind(id_str(user))
+        .fetch_all(&self.pool)
+        .await
+        .map_err(map_sqlx)?;
+        rows.iter().map(row_to_preset).collect()
+    }
+
+    async fn update_user_preset(
+        &self,
+        owner: UserId,
+        id: PresetId,
+        name: &str,
+        values: serde_json::Value,
+    ) -> StorageResult<Preset> {
+        let row = sqlx::query(
+            "UPDATE presets SET name = ?, values_json = ? \
+             WHERE id = ? AND user_id = ? RETURNING *",
+        )
+        .bind(name)
+        .bind(json_text(&values))
+        .bind(id_str(id))
+        .bind(id_str(owner))
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(map_sqlx)?
+        .ok_or(StorageError::NotFound)?;
+        row_to_preset(&row)
+    }
+
     async fn delete_user_preset(&self, owner: UserId, id: PresetId) -> StorageResult<()> {
         let n = sqlx::query("DELETE FROM presets WHERE id = ? AND user_id = ?")
             .bind(id_str(id))

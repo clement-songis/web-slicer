@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::domain::{InstanceSettings, Invitation, Project, User};
+use crate::domain::{InstanceSettings, Invitation, Preset, Project, User};
 
 /// Réponse de `GET /api/health`.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -227,6 +227,118 @@ impl From<Project> for ProjectResponse {
             updated_at: p.updated_at.format(&rfc3339).unwrap_or_default(),
         }
     }
+}
+
+/// Ligne de liste de presets (léger, sans les valeurs).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct PresetSummary {
+    pub id: String,
+    /// `machine_model` | `machine` | `filament` | `process`.
+    pub kind: String,
+    pub name: String,
+    /// `system` | `user`.
+    pub origin: String,
+    #[ts(optional)]
+    pub vendor: Option<String>,
+    #[ts(optional)]
+    pub inherits: Option<String>,
+    pub instantiation: bool,
+}
+
+impl From<Preset> for PresetSummary {
+    fn from(p: Preset) -> Self {
+        Self {
+            id: p.id.to_string(),
+            kind: json_lower(&p.kind),
+            name: p.name,
+            origin: json_lower(&p.origin),
+            vendor: p.vendor,
+            inherits: p.inherits,
+            instantiation: p.instantiation,
+        }
+    }
+}
+
+/// Preset complet avec ses valeurs brutes (format JSON Orca).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct PresetDetail {
+    pub id: String,
+    pub kind: String,
+    pub name: String,
+    pub origin: String,
+    #[ts(optional)]
+    pub vendor: Option<String>,
+    #[ts(optional)]
+    pub inherits: Option<String>,
+    pub instantiation: bool,
+    #[ts(type = "unknown")]
+    pub values: serde_json::Value,
+    #[ts(optional, type = "unknown")]
+    pub compatible_printers: Option<serde_json::Value>,
+}
+
+impl From<Preset> for PresetDetail {
+    fn from(p: Preset) -> Self {
+        Self {
+            id: p.id.to_string(),
+            kind: json_lower(&p.kind),
+            name: p.name,
+            origin: json_lower(&p.origin),
+            vendor: p.vendor,
+            inherits: p.inherits,
+            instantiation: p.instantiation,
+            values: p.values,
+            compatible_printers: p.compatible_printers,
+        }
+    }
+}
+
+/// Valeurs effectives d'un preset après résolution d'héritage.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ResolvedPreset {
+    pub id: String,
+    /// Valeurs effectives aplaties (clé → valeur au format JSON simple).
+    #[ts(type = "Record<string, unknown>")]
+    pub values: serde_json::Value,
+}
+
+/// Corps de `POST /api/presets` — crée un preset utilisateur.
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct CreatePresetRequest {
+    /// `machine_model` | `machine` | `filament` | `process`.
+    pub kind: String,
+    pub name: String,
+    #[ts(optional)]
+    pub inherits: Option<String>,
+    #[ts(type = "unknown")]
+    pub values: serde_json::Value,
+}
+
+/// Corps de `PUT /api/presets/{id}` — renomme et/ou remplace les valeurs.
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct UpdatePresetRequest {
+    #[ts(optional)]
+    pub name: Option<String>,
+    #[ts(optional, type = "unknown")]
+    pub values: Option<serde_json::Value>,
+}
+
+/// Corps de `POST /api/presets/import` — profil JSON Orca (clés legacy tolérées).
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct ImportPresetRequest {
+    pub kind: String,
+    pub name: String,
+    #[ts(optional)]
+    pub inherits: Option<String>,
+    /// Valeurs Orca brutes (peuvent contenir des clés legacy, converties FR-023).
+    #[ts(type = "unknown")]
+    pub values: serde_json::Value,
 }
 
 /// Sérialise un enum unité du domaine en sa forme texte (serde `rename_all`).

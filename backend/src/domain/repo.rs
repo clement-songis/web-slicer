@@ -116,8 +116,21 @@ pub trait PresetRepo: Send + Sync {
         user: UserId,
     ) -> StorageResult<Vec<Preset>>;
     async fn get(&self, id: PresetId) -> StorageResult<Preset>;
+    /// Tous les presets d'un type (système + ceux de l'utilisateur), **sans**
+    /// filtre d'instanciation ni de compatibilité — pour reconstruire une
+    /// chaîne d'héritage (parents abstraits inclus).
+    async fn list_by_kind(&self, kind: PresetKind, user: UserId) -> StorageResult<Vec<Preset>>;
     /// `Conflict` si (kind, name) existe déjà pour cet utilisateur.
     async fn create_user_preset(&self, owner: UserId, preset: Preset) -> StorageResult<Preset>;
+    /// Met à jour le nom et les valeurs d'un preset **utilisateur** (rename /
+    /// reset). `NotFound` s'il n'existe pas ou n'appartient pas à `owner`.
+    async fn update_user_preset(
+        &self,
+        owner: UserId,
+        id: PresetId,
+        name: &str,
+        values: serde_json::Value,
+    ) -> StorageResult<Preset>;
     async fn delete_user_preset(&self, owner: UserId, id: PresetId) -> StorageResult<()>;
 }
 

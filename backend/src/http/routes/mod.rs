@@ -3,6 +3,7 @@
 
 pub mod admin;
 pub mod auth;
+pub mod presets;
 pub mod projects;
 
 use axum::routing::{get, patch, post};
@@ -53,6 +54,16 @@ where
         .route("/api/projects/{id}/duplicate", post(projects::duplicate))
         .route("/api/projects/{id}/rename", patch(projects::rename))
         .route("/api/projects/{id}/thumbnail", get(projects::thumbnail))
+        .route("/api/presets", get(presets::list).post(presets::create))
+        .route(
+            "/api/presets/{id}",
+            get(presets::get)
+                .put(presets::update)
+                .delete(presets::delete),
+        )
+        .route("/api/presets/{id}/resolved", get(presets::resolved))
+        .route("/api/presets/{id}/export", get(presets::export))
+        .route("/api/presets/import", post(presets::import))
         .layer(session_layer)
         .with_state(state)
 }
