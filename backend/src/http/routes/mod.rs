@@ -60,6 +60,7 @@ where
             "/api/projects/{id}/models",
             post(models::upload).layer(DefaultBodyLimit::max(models::MAX_BODY_BYTES)),
         )
+        .route("/api/models/{id}/mesh", get(models::mesh))
         .route("/api/presets", get(presets::list).post(presets::create))
         .route(
             "/api/presets/{id}",

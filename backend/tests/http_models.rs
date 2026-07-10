@@ -253,6 +253,123 @@ async fn upload_into_others_project_is_404() {
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 }
 
+async fn upload_model(
+    app: &Router,
+    project: &str,
+    cookie: &str,
+    name: &str,
+    body: &[u8],
+) -> String {
+    let resp = app
+        .clone()
+        .oneshot(upload_req(project, cookie, name, body))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    json_body(resp).await["id"].as_str().unwrap().to_string()
+}
+
+/// Un STL binaire avec une facette réelle (pour un maillage non vide).
+fn binary_stl_triangle() -> Vec<u8> {
+    let mut v = vec![0u8; 80];
+    v.extend_from_slice(&1u32.to_le_bytes());
+    for f in [0.0f32, 0.0, 1.0] {
+        v.extend_from_slice(&f.to_le_bytes());
+    }
+    for f in [0.0f32, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0] {
+        v.extend_from_slice(&f.to_le_bytes());
+    }
+    v.extend_from_slice(&0u16.to_le_bytes());
+    v
+}
+
+#[tokio::test]
+async fn serves_stl_mesh_as_compact_binary() {
+    let (_d, app) = app().await;
+    let user = register(&app, "boss@test.local").await;
+    let project = create_project(&app, &user).await;
+    let model = upload_model(&app, &project, &user, "cube.stl", &binary_stl_triangle()).await;
+
+    let resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!("/api/models/{model}/mesh"))
+                .header(header::COOKIE, &user)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(
+        resp.headers().get(header::CONTENT_TYPE).unwrap(),
+        "application/octet-stream"
+    );
+    let bytes = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+    // En-tête « WSMh » + version 1 + 3 sommets + 3 indices.
+    assert_eq!(&bytes[0..4], b"WSMh");
+    let vertex_count = u32::from_le_bytes([bytes[8], bytes[9], bytes[10], bytes[11]]);
+    let index_count = u32::from_le_bytes([bytes[12], bytes[13], bytes[14], bytes[15]]);
+    assert_eq!(vertex_count, 3);
+    assert_eq!(index_count, 3);
+    assert_eq!(bytes.len(), 16 + 9 * 4 + 9 * 4 + 3 * 4);
+}
+
+#[tokio::test]
+async fn step_mesh_is_conflict_until_converted() {
+    let (_d, app) = app().await;
+    let user = register(&app, "boss@test.local").await;
+    let project = create_project(&app, &user).await;
+    let model = upload_model(
+        &app,
+        &project,
+        &user,
+        "part.step",
+        b"ISO-10303-21;\nHEADER;\nENDSEC;\n",
+    )
+    .await;
+
+    let resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!("/api/models/{model}/mesh"))
+                .header(header::COOKIE, &user)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CONFLICT);
+}
+
+/// SC-008 : le maillage d'un modèle d'autrui répond 404.
+#[tokio::test]
+async fn mesh_of_others_model_is_404() {
+    let (_d, app) = app().await;
+    let alice = register(&app, "alice@test.local").await;
+    let bob = register(&app, "bob@test.local").await;
+    let project = create_project(&app, &alice).await;
+    let model = upload_model(&app, &project, &alice, "cube.stl", &binary_stl_triangle()).await;
+
+    let resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!("/api/models/{model}/mesh"))
+                .header(header::COOKIE, &bob)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+}
+
 #[tokio::test]
 async fn upload_requires_a_session() {
     let (_d, app) = app().await;

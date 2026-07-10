@@ -12,8 +12,11 @@
 //! l'état (`conversion_pending`), un 3MF est stocké comme modèle. La détection,
 //! la validation et le stockage — testés — sont complets.
 
+use std::path::Path as FsPath;
+
 use axum::extract::{Multipart, Path, State};
-use axum::http::StatusCode;
+use axum::http::{header, StatusCode};
+use axum::response::{IntoResponse, Response};
 use axum::Json;
 
 use crate::domain::{ModelFormat, ModelId, NewModel, ProjectId};
@@ -21,6 +24,7 @@ use crate::http::dto::ModelResponse;
 use crate::http::error::{ApiError, ApiResult};
 use crate::http::extract::CurrentUser;
 use crate::http::state::AppState;
+use crate::mesh::parse_stl;
 
 /// Plafond dur de la requête multipart (garde-fou couche transport, 500 Mo).
 pub const MAX_BODY_BYTES: usize = 500 * 1024 * 1024;
@@ -95,6 +99,56 @@ pub async fn upload(
         .await?;
 
     Ok((StatusCode::CREATED, Json(model.into())))
+}
+
+fn parse_model_id(raw: &str) -> ApiResult<ModelId> {
+    uuid::Uuid::parse_str(raw)
+        .map(ModelId)
+        .map_err(|_| ApiError::not_found("Modèle"))
+}
+
+/// `GET /api/models/{id}/mesh` — maillage affichable au format binaire compact
+/// (positions/normales/indices, little-endian) pour Threlte.
+///
+/// STL (binaire/ASCII) est décodé en pur Rust. Les autres formats dépendent du
+/// moteur : un STEP renvoie 409 tant que la conversion (T065) n'a pas produit de
+/// mesh ; OBJ/3MF s'appuient sur l'aperçu client (T051) — 501 côté serveur.
+pub async fn mesh(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> ApiResult<Response> {
+    let id = parse_model_id(&id)?;
+    let model = state.storage.models().get(user.id, id).await?; // 404 si autre compte
+
+    if model.format != ModelFormat::Stl {
+        return Err(match model.format {
+            ModelFormat::Step => {
+                ApiError::conflict("conversion STEP en cours (voir l'événement model.converted)")
+            }
+            _ => ApiError::not_implemented("maillage serveur indisponible (aperçu côté client)"),
+        });
+    }
+
+    let bytes = state
+        .files
+        .read(FsPath::new(&model.file_path))
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "lecture du modèle");
+            ApiError::internal()
+        })?;
+    let mesh = parse_stl(&bytes).map_err(|e| {
+        tracing::error!(error = %e, "décodage STL");
+        ApiError::validation("STL illisible", serde_json::json!({}))
+    })?;
+
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/octet-stream")],
+        mesh.encode(),
+    )
+        .into_response())
 }
 
 /// Lit le premier champ fichier du multipart → (nom, octets).
