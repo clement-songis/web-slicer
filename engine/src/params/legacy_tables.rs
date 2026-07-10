@@ -10,8 +10,14 @@ pub const SOURCE_SHA1: &str = "a098bfee6bf2b5b64583f9c16ac73c346dbad461";
 pub static RENAMES: &[(&str, &str)] = &[
     ("bridge_fan_speed", "overhang_fan_speed"),
     ("chamber_temperatures", "chamber_temperature"),
-    ("compatible_printers_condition_cummulative", "compatible_machine_expression_group"),
-    ("compatible_prints_condition_cummulative", "compatible_process_expression_group"),
+    (
+        "compatible_printers_condition_cummulative",
+        "compatible_machine_expression_group",
+    ),
+    (
+        "compatible_prints_condition_cummulative",
+        "compatible_process_expression_group",
+    ),
     ("cooling", "slow_down_for_layer_cooling"),
     ("counterbole_hole_bridging", "counterbore_hole_bridging"),
     ("enable_wipe_tower", "enable_prime_tower"),
@@ -20,7 +26,10 @@ pub static RENAMES: &[(&str, &str)] = &[
     ("initial_layer_flow_ratio", "bottom_solid_infill_flow_ratio"),
     ("ironing_direction", "ironing_angle"),
     ("machine_switch_extruder_time", "machine_tool_change_time"),
-    ("prime_tower_extra_rib_length", "wipe_tower_extra_rib_length"),
+    (
+        "prime_tower_extra_rib_length",
+        "wipe_tower_extra_rib_length",
+    ),
     ("prime_tower_fillet_wall", "wipe_tower_fillet_wall"),
     ("prime_tower_rib_width", "wipe_tower_rib_width"),
     ("sparse_infill_anchor", "infill_anchor"),
@@ -28,14 +37,17 @@ pub static RENAMES: &[(&str, &str)] = &[
     ("support_material_angle", "support_angle"),
     ("support_material_enforce_layers", "enforce_support_layers"),
     ("support_material_extruder", "support_filament"),
-    ("support_material_interface_extruder", "support_interface_filament"),
+    (
+        "support_material_interface_extruder",
+        "support_interface_filament",
+    ),
     ("thumbnail_size", "thumbnails"),
     ("timelapse_no_toolhead", "timelapse_type"),
     ("tool_change_gcode", "change_filament_gcode"),
     ("wipe_tower_brim_width", "prime_tower_brim_width"),
     ("wipe_tower_extruder", "wipe_tower_filament"),
     ("wipe_tower_width", "prime_tower_width"),
-    ("wiping_volume", "prime_volume")
+    ("wiping_volume", "prime_volume"),
 ];
 
 /// Clés obsolètes explicitement ignorées à l'import (triées).
@@ -83,5 +95,5 @@ pub static IGNORED: &[&str] = &[
     "tree_support_with_infill",
     "wipe_tower_per_color_wipe",
     "z_hop_type",
-    "z_lift_type"
+    "z_lift_type",
 ];
