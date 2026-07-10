@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::domain::{InstanceSettings, Invitation, User};
+use crate::domain::{InstanceSettings, Invitation, Project, User};
 
 /// Réponse de `GET /api/health`.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -144,6 +144,72 @@ impl From<Invitation> for InvitationResponse {
                 .expires_at
                 .format(&time::format_description::well_known::Rfc3339)
                 .unwrap_or_default(),
+        }
+    }
+}
+
+/// Corps de `POST /api/projects` — crée un projet. `scene`/`active_presets`
+/// sont optionnels (documents JSON par défaut si absents).
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct CreateProjectRequest {
+    pub name: String,
+    #[ts(optional, type = "unknown")]
+    pub scene: Option<serde_json::Value>,
+    #[ts(optional, type = "unknown")]
+    pub active_presets: Option<serde_json::Value>,
+}
+
+/// Corps de `PUT /api/projects/{id}` — sauvegarde avec verrou optimiste.
+/// `expected_version` doit égaler la version stockée, sinon 409.
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct SaveProjectRequest {
+    pub expected_version: i64,
+    #[ts(type = "unknown")]
+    pub scene: serde_json::Value,
+    #[ts(type = "unknown")]
+    pub active_presets: serde_json::Value,
+}
+
+/// Corps de `PATCH /api/projects/{id}/rename`.
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct RenameProjectRequest {
+    pub name: String,
+}
+
+/// Représentation d'un projet renvoyée par l'API.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ProjectResponse {
+    pub id: String,
+    pub name: String,
+    /// Version courante (verrou optimiste).
+    pub version: i64,
+    #[ts(type = "unknown")]
+    pub scene: serde_json::Value,
+    #[ts(type = "unknown")]
+    pub active_presets: serde_json::Value,
+    /// Vrai si une vignette est associée (servie par `…/thumbnail`).
+    pub has_thumbnail: bool,
+    /// Dates au format RFC 3339.
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+impl From<Project> for ProjectResponse {
+    fn from(p: Project) -> Self {
+        let rfc3339 = time::format_description::well_known::Rfc3339;
+        Self {
+            id: p.id.to_string(),
+            name: p.name,
+            version: p.version,
+            scene: p.scene,
+            active_presets: p.active_presets,
+            has_thumbnail: p.thumbnail_path.is_some(),
+            created_at: p.created_at.format(&rfc3339).unwrap_or_default(),
+            updated_at: p.updated_at.format(&rfc3339).unwrap_or_default(),
         }
     }
 }

@@ -3,8 +3,9 @@
 
 pub mod admin;
 pub mod auth;
+pub mod projects;
 
-use axum::routing::{get, post};
+use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use tower_sessions::{SessionManagerLayer, SessionStore};
 
@@ -38,6 +39,16 @@ where
         )
         .route("/api/admin/invitations", post(admin::create_invitation))
         .route("/api/admin/presets/reseed", post(admin::reseed_presets))
+        .route("/api/projects", get(projects::list).post(projects::create))
+        .route(
+            "/api/projects/{id}",
+            get(projects::get)
+                .put(projects::save)
+                .delete(projects::delete),
+        )
+        .route("/api/projects/{id}/duplicate", post(projects::duplicate))
+        .route("/api/projects/{id}/rename", patch(projects::rename))
+        .route("/api/projects/{id}/thumbnail", get(projects::thumbnail))
         .layer(session_layer)
         .with_state(state)
 }
