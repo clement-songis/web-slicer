@@ -20,22 +20,8 @@ cargo fmt -p engine 2>/dev/null || true
 GEN_DIR=frontend/src/generated
 mkdir -p "$GEN_DIR"
 
-if [ ! -f "$GEN_DIR/params.ts" ]; then
-  cat > "$GEN_DIR/params.ts" << 'EOF'
-// GÉNÉRÉ par scripts/codegen.sh — NE PAS ÉDITER À LA MAIN (constitution V).
-// Registre des paramètres : étoffé par la tâche T040 (codegen complet
-// depuis audit/parameters.json).
-export const PARAMS_PLACEHOLDER = true;
-EOF
-fi
-
-if [ ! -f "$GEN_DIR/ui-layout.ts" ]; then
-  cat > "$GEN_DIR/ui-layout.ts" << 'EOF'
-// GÉNÉRÉ par scripts/codegen.sh — NE PAS ÉDITER À LA MAIN (constitution V).
-// Layout des onglets : étoffé par la tâche T040 (codegen complet
-// depuis audit/ui_inventory.json).
-export const UI_LAYOUT_PLACEHOLDER = true;
-EOF
-fi
+# Registre params + layout UI (T040) depuis audit/parameters.json et
+# audit/ui_inventory.json — sortie déterministe, fraîcheur testée en vitest.
+python3 audit/generate_frontend_ts.py
 
 echo "codegen OK — audit/, annexes/ et $GEN_DIR synchronisés"
