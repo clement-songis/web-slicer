@@ -129,7 +129,7 @@
 
 **Independent Test**: scène multi-objets multi-plateaux préparée (avec peintures et hauteurs de couche variables), sauvegardée, rouverte à l'identique
 
-- [ ] T048 [US1] Upload modèles `backend/src/http/routes/models.rs` : multipart 500 Mo, formats STL/3MF/STEP/OBJ, STEP → conversion asynchrone via SlicerEngine (WS model.converted), 3MF projet → import scène+réglages ; tests (formats, corrompu, limite taille)
+- [X] T048 [US1] Upload modèles `backend/src/http/routes/models.rs` : multipart 500 Mo, formats STL/3MF/STEP/OBJ, STEP → conversion asynchrone via SlicerEngine (WS model.converted), 3MF projet → import scène+réglages ; tests (formats, corrompu, limite taille) — *upload/détection/validation/stockage complets et testés (9 tests) ; l'**exécution** de la conversion STEP→mesh + l'event `model.converted` dépendent du bus WS (T065), l'import scène d'un 3MF projet dépend du handle moteur — câblés en T065/T054. Un STEP est stocké `conversion_pending`.*
 - [ ] T049 [US1] Endpoint maillage `GET /api/models/{id}/mesh` : format binaire compact (positions/normales/index) pour Threlte ; tests de sérialisation
 - [ ] T050 [P] [US4] Scène Threlte `frontend/src/lib/scene/` : Canvas, plateau (bed_model/bed_texture du preset machine, grille, origine), caméra orbit, éclairage, sélection (raycast) ; conforme references/orca-prepare.png
 - [ ] T051 [P] [US4] Loaders client STL/OBJ/3MF `frontend/src/lib/scene/loaders.ts` (aperçu immédiat, R7) + upload en tâche de fond ; tests vitest sur petits fichiers

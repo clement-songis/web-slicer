@@ -80,6 +80,11 @@ impl ApiError {
         Self::new(StatusCode::NOT_IMPLEMENTED, "not_implemented", message)
     }
 
+    /// Fichier trop volumineux (limite d'upload de l'instance, FR-053).
+    pub fn too_large(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::PAYLOAD_TOO_LARGE, "too_large", message)
+    }
+
     /// Erreur interne : le détail part dans les logs, jamais au client.
     pub fn internal() -> Self {
         Self::new(

@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::domain::{InstanceSettings, Invitation, Preset, Project, User};
+use crate::domain::{InstanceSettings, Invitation, Model, Preset, Project, User};
 
 /// Réponse de `GET /api/health`.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -225,6 +225,42 @@ impl From<Project> for ProjectResponse {
             has_thumbnail: p.thumbnail_path.is_some(),
             created_at: p.created_at.format(&rfc3339).unwrap_or_default(),
             updated_at: p.updated_at.format(&rfc3339).unwrap_or_default(),
+        }
+    }
+}
+
+/// Modèle 3D importé, renvoyé après upload (`POST …/models`).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ModelResponse {
+    pub id: String,
+    #[ts(optional)]
+    pub project_id: Option<String>,
+    pub filename: String,
+    /// `stl` | `3mf` | `step` | `obj`.
+    pub format: String,
+    pub size_bytes: i64,
+    /// Nombre de triangles (0 si non déterminé à l'import — ex. STEP avant conversion).
+    pub triangle_count: i64,
+    /// STEP en attente de conversion mesh asynchrone (R7) — voir `model.converted`.
+    pub conversion_pending: bool,
+    /// Vrai si un maillage affichable est disponible (`…/mesh`).
+    pub has_mesh: bool,
+}
+
+impl From<Model> for ModelResponse {
+    fn from(m: Model) -> Self {
+        use crate::domain::ModelFormat;
+        let conversion_pending = m.format == ModelFormat::Step && m.mesh_path.is_none();
+        Self {
+            id: m.id.to_string(),
+            project_id: m.project_id.map(|p| p.to_string()),
+            filename: m.filename,
+            format: json_lower(&m.format),
+            size_bytes: m.size_bytes,
+            triangle_count: m.triangle_count,
+            conversion_pending,
+            has_mesh: m.mesh_path.is_some(),
         }
     }
 }

@@ -3,9 +3,11 @@
 
 pub mod admin;
 pub mod auth;
+pub mod models;
 pub mod presets;
 pub mod projects;
 
+use axum::extract::DefaultBodyLimit;
 use axum::routing::{get, patch, post};
 use axum::{Json, Router};
 use tower_sessions::{SessionManagerLayer, SessionStore};
@@ -54,6 +56,10 @@ where
         .route("/api/projects/{id}/duplicate", post(projects::duplicate))
         .route("/api/projects/{id}/rename", patch(projects::rename))
         .route("/api/projects/{id}/thumbnail", get(projects::thumbnail))
+        .route(
+            "/api/projects/{id}/models",
+            post(models::upload).layer(DefaultBodyLimit::max(models::MAX_BODY_BYTES)),
+        )
         .route("/api/presets", get(presets::list).post(presets::create))
         .route(
             "/api/presets/{id}",
