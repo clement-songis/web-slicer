@@ -67,11 +67,22 @@ export {
 	RepairTool,
 	SimplifyTool,
 	BooleanTool,
+	LayerHeight,
+	AssemblyView,
 	signedDistance,
 	splitByPlane,
 	connectorGrid,
 	simplifyGrid,
 	triangleCount,
-	type CutPlane
+	uniformProfile,
+	heightAt,
+	setBand,
+	smooth,
+	serializeLayerProfile,
+	deserializeLayerProfile,
+	explode,
+	type CutPlane,
+	type LayerBand,
+	type AssemblyPart
 } from './tools';
 export { meshFromTriangleSoup } from './loaders';
