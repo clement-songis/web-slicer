@@ -5,5 +5,6 @@
 //! (storage, files, moonraker) implémentent les traits du domaine.
 
 pub mod adapters;
+pub mod auth;
 pub mod domain;
 pub mod http;
