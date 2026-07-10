@@ -4,6 +4,16 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
+	server: {
+		// En dev, les appels `/api/*` sont relayés au backend axum (cookie de
+		// session same-origin). Surcharger la cible via BACKEND_URL au besoin.
+		proxy: {
+			'/api': {
+				target: process.env.BACKEND_URL ?? 'http://127.0.0.1:8080',
+				changeOrigin: true
+			}
+		}
+	},
 	plugins: [
 		tailwindcss(),
 		sveltekit({
