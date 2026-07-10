@@ -46,9 +46,19 @@ export {
 	trianglesInRadius,
 	encodeFacet,
 	decodeFacet,
+	MeasureTool,
+	BrimEarsTool,
+	EmbossTool,
+	measurePoints,
+	angleDeg,
+	BrimEars,
+	defaultEmbossParams,
+	validateEmboss,
 	type GizmoMode,
 	type PaintChannel,
-	type PaintDocument
+	type PaintDocument,
+	type EmbossParams,
+	type BrimEarPoint
 } from './gizmos';
 export { ObjectTree, type SceneNode, type NodeKind } from './objects';
 export { default as ObjectList } from './ObjectList.svelte';
