@@ -40,3 +40,16 @@ export {
 export { TransformGizmo, TransformPanel, GizmoToolbar, type GizmoMode } from './gizmos';
 export { ObjectTree, type SceneNode, type NodeKind } from './objects';
 export { default as ObjectList } from './ObjectList.svelte';
+export {
+	CutTool,
+	RepairTool,
+	SimplifyTool,
+	BooleanTool,
+	signedDistance,
+	splitByPlane,
+	connectorGrid,
+	simplifyGrid,
+	triangleCount,
+	type CutPlane
+} from './tools';
+export { meshFromTriangleSoup } from './loaders';

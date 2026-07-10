@@ -26,7 +26,7 @@ export function previewFormat(filename: string): PreviewFormat | null {
  * (9 floats par triangle). Les normales sont calculées par face (aspect
  * facetté volontaire pour l'aperçu) et les index sont séquentiels.
  */
-function meshFromTriangleSoup(positions: number[]): SceneMesh {
+export function meshFromTriangleSoup(positions: number[]): SceneMesh {
 	const count = positions.length / 3; // nombre de sommets
 	const normals = new Float32Array(positions.length);
 	for (let i = 0; i < positions.length; i += 9) {
