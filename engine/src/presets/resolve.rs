@@ -76,7 +76,7 @@ mod tests {
     }
 
     #[test]
-    fn la_feuille_surcharge_la_racine() {
+    fn leaf_overrides_root() {
         let chain = [
             preset(
                 "base",
@@ -93,7 +93,7 @@ mod tests {
     }
 
     #[test]
-    fn tableaux_json_orca_en_vecteurs() {
+    fn orca_json_arrays_become_vectors() {
         let chain = [preset(
             "machine",
             &[("nozzle_diameter", serde_json::json!(["0.4", "0.6"]))],
@@ -106,7 +106,7 @@ mod tests {
     }
 
     #[test]
-    fn cles_inconnues_ignorees_comme_orca() {
+    fn unknown_keys_ignored_like_orca() {
         let chain = [preset(
             "legacy",
             &[
@@ -120,13 +120,13 @@ mod tests {
     }
 
     #[test]
-    fn chaine_vide_refusee() {
+    fn empty_chain_rejected() {
         assert!(resolve_preset_chain(&[]).is_err());
     }
 
     /// Chaîne réelle BBL : fdm_process_common → 0.20 Standard @BBL A1.
     #[test]
-    fn chaine_bbl_reelle() {
+    fn real_bbl_chain() {
         let profiles = PathBuf::from(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../vendor/OrcaSlicer/resources/profiles/BBL/process"

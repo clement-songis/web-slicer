@@ -8,7 +8,7 @@ use engine::api::LineKind;
 use engine::gcode::parse_gcode;
 
 #[test]
-fn reconstruit_couches_types_et_stats() {
+fn reconstructs_layers_types_and_stats() {
     let preview = parse_gcode(&common::fixture("cube_bbl.gcode")).expect("parse du G-code");
 
     // Couches : le cube fait 100 couches (en-tête « total layer number: 100 »).

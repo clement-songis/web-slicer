@@ -11,7 +11,7 @@ use std::sync::{Arc, Mutex};
 use engine::api::{CancelToken, ProgressSink, SliceRequest};
 
 #[test]
-fn tranche_un_projet_reel_avec_progression() {
+fn slices_real_project_with_progress() {
     // Projet OrcaSlicer complet (cube 20 mm + config projet embarquée).
     let (model, config) =
         engine::adapters::ffi::read_project_3mf(&common::fixture("orca_project.3mf"))

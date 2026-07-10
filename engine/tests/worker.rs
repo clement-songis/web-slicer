@@ -24,7 +24,7 @@ fn collecting_sink() -> (ProgressSink, Arc<Mutex<Vec<f32>>>) {
 }
 
 #[test]
-fn progression_monotone_et_resultat() {
+fn monotonic_progress_and_result() {
     let work = tempfile::tempdir().unwrap();
     let (sink, seen) = collecting_sink();
     let cancel = CancelToken::new();
@@ -53,7 +53,7 @@ fn progression_monotone_et_resultat() {
 }
 
 #[test]
-fn annulation_tue_le_worker() {
+fn cancellation_kills_worker() {
     let work = tempfile::tempdir().unwrap();
     let cancel = CancelToken::new();
 
@@ -74,7 +74,7 @@ fn annulation_tue_le_worker() {
 }
 
 #[test]
-fn crash_du_worker_devient_erreur() {
+fn worker_crash_becomes_error() {
     let work = tempfile::tempdir().unwrap();
     let (sink, _seen) = collecting_sink();
     let cancel = CancelToken::new();

@@ -10,6 +10,6 @@ use common::trait_suite;
 use engine::adapters::ffi::FfiEngine;
 
 #[test]
-fn ffi_engine_respecte_le_contrat() {
+fn ffi_engine_satisfies_contract() {
     trait_suite::run_all(&FfiEngine);
 }

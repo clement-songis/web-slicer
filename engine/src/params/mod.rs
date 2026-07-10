@@ -2,7 +2,7 @@
 //! (source de vérité : audit/parameters.json, Annexe A de la spec).
 //!
 //! `registry.rs` est GÉNÉRÉ par `scripts/codegen.sh` et committé ; toute
-//! divergence avec l'audit fait échouer `registre_synchronise_avec_l_audit`.
+//! divergence avec l'audit fait échouer `registry_synced_with_audit`.
 
 pub mod orca_values;
 mod registry;
@@ -90,7 +90,7 @@ mod tests {
 
     /// Le registre committé correspond exactement à audit/parameters.json.
     #[test]
-    fn registre_synchronise_avec_l_audit() {
+    fn registry_synced_with_audit() {
         let path = concat!(env!("CARGO_MANIFEST_DIR"), "/../audit/parameters.json");
         let bytes = std::fs::read(path).expect("audit/parameters.json lisible");
         let mut hasher = sha1_smol::Sha1::new();
@@ -162,14 +162,14 @@ mod tests {
     }
 
     #[test]
-    fn spot_check_surcharge_filament_nullable() {
+    fn spot_check_nullable_filament_override() {
         let p = get("filament_retraction_length").unwrap();
         assert!(p.nullable);
         assert_eq!(p.kind, ParamKind::Floats);
     }
 
     #[test]
-    fn groupes_exhaustifs() {
+    fn groups_exhaustive() {
         let fff_common_sla = REGISTRY
             .iter()
             .filter(|p| {

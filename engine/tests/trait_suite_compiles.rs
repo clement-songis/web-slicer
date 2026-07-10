@@ -13,7 +13,7 @@ fn suite_est_generique(e: &dyn SlicerEngine) {
 }
 
 #[test]
-fn fixtures_du_corpus_presentes() {
+fn corpus_fixtures_present() {
     for f in [
         "cube20.stl",
         "cube20.obj",

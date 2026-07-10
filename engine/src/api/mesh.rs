@@ -78,7 +78,7 @@ mod tests {
     }
 
     #[test]
-    fn erreurs_reparees() {
+    fn repaired_errors_counted() {
         let mut e = RepairedMeshErrors::default();
         assert!(!e.repaired_anything());
         e.edges_fixed = 2;

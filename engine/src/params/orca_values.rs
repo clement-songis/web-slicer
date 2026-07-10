@@ -139,7 +139,7 @@ fn split_vector(s: &str) -> impl Iterator<Item = &str> {
 }
 
 /// Les vecteurs de chaînes Orca sont séparés par `;` (avec guillemets
-/// optionnels) ; les scalaires multilignes ne passent pas par ici.
+/// optionnels) ; les scalars multilignes ne passent pas par ici.
 fn split_strings(s: &str) -> impl Iterator<Item = &str> {
     s.split(';').map(str::trim).filter(|t| !t.is_empty())
 }
@@ -162,7 +162,7 @@ mod tests {
     }
 
     #[test]
-    fn scalaires() {
+    fn scalars() {
         assert_eq!(roundtrip("layer_height", "0.2"), "0.2");
         assert_eq!(roundtrip("wall_loops", "3"), "3");
         assert_eq!(roundtrip("enable_support", "1"), "1");
@@ -171,7 +171,7 @@ mod tests {
     }
 
     #[test]
-    fn float_ou_pourcentage() {
+    fn float_or_percent() {
         assert_eq!(roundtrip("initial_layer_line_width", "0.5"), "0.5");
         // sparse_infill_density est un Percent : « 15% » accepté
         let def = get("sparse_infill_density").unwrap();
@@ -218,7 +218,7 @@ mod tests {
     }
 
     #[test]
-    fn chaines_multiples_avec_guillemets() {
+    fn multiple_strings_with_quotes() {
         let def = get("filament_type").unwrap();
         assert_eq!(
             parse_orca_value(def, "\"PLA\";\"PETG\""),
@@ -227,7 +227,7 @@ mod tests {
     }
 
     #[test]
-    fn valeur_invalide_refusee() {
+    fn invalid_value_rejected() {
         let def = get("layer_height").unwrap();
         assert_eq!(parse_orca_value(def, "abc"), None);
     }

@@ -32,6 +32,18 @@ Slicer 3D web multi-utilisateurs, parité totale avec OrcaSlicer
 - `frontend/` : SvelteKit 2 + TS strict + Tailwind, Three.js/Threlte ;
   types API générés par ts-rs ; aucune logique métier dans les composants.
 
+## Conventions de code
+
+- **Identifiants en anglais, obligatoire** : tous les noms de fonctions,
+  variables, types, modules, tests, champs — Rust, TypeScript, C++ — sont en
+  anglais (`resolve_preset_chain`, `slices_a_real_project`, `worker_binary`).
+  Les commentaires et docstrings restent en français (style du dépôt).
+- **Moteur v1 = FFI uniquement** : l'implémentation du trait `SlicerEngine`
+  passe par `adapters/ffi` (bridge cxx vers `libslic3r-headless`). Pas
+  d'adaptateur CLI en v1 ; une implémentation CLI de *validation croisée*
+  (vérifier que le slicing donne le même résultat qu'orca desktop) est un
+  objectif backlog, non planifié.
+
 ## Commandes
 
 ```sh

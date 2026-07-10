@@ -79,7 +79,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn cancel_token_partage_entre_clones() {
+    fn cancel_token_shared_across_clones() {
         let t = CancelToken::new();
         let t2 = t.clone();
         assert!(!t2.is_cancelled());

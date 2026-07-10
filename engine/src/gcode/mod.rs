@@ -328,7 +328,7 @@ mod tests {
     }
 
     #[test]
-    fn feature_labels_mappes() {
+    fn feature_labels_mapped() {
         assert_eq!(feature_to_kind("Outer wall"), LineKind::OuterWall);
         assert_eq!(
             feature_to_kind("Internal solid infill"),

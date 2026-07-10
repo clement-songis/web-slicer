@@ -6,14 +6,14 @@
 mod common;
 
 #[test]
-fn charge_un_stl_et_compte_les_triangles() {
+fn loads_stl_and_counts_triangles() {
     let n = engine::adapters::ffi::model_triangle_count(&common::fixture("cube20.stl"))
         .expect("libslic3r charge le STL");
     assert_eq!(n, 12, "cube = 12 triangles");
 }
 
 #[test]
-fn erreur_propre_sur_fichier_inexistant() {
+fn clean_error_on_missing_file() {
     let err = engine::adapters::ffi::model_triangle_count(std::path::Path::new(
         "/nulle/part/fantome.stl",
     ))
@@ -38,7 +38,7 @@ fn registre_runtime_aligne_avec_le_registre_genere() {
 }
 
 #[test]
-fn charge_la_scene_complete_stl() {
+fn loads_full_stl_scene() {
     let model = engine::adapters::ffi::load_model(&common::fixture("cube20.stl")).unwrap();
     assert_eq!(model.objects.len(), 1);
     let obj = &model.objects[0];
@@ -48,7 +48,7 @@ fn charge_la_scene_complete_stl() {
 }
 
 #[test]
-fn charge_un_projet_3mf_orca() {
+fn loads_orca_3mf_project() {
     let model = engine::adapters::ffi::load_model(&common::fixture("orca_project.3mf")).unwrap();
     assert!(!model.is_empty());
     let n: usize = model
@@ -61,7 +61,7 @@ fn charge_un_projet_3mf_orca() {
 }
 
 #[test]
-fn convertit_le_step_en_maillage() {
+fn converts_step_to_mesh() {
     let mesh = engine::adapters::ffi::convert_to_mesh(&common::fixture("cube20.step"))
         .expect("libslic3r (OCCT) lit le STEP de fixture");
     assert!(!mesh.is_empty());
@@ -75,7 +75,7 @@ fn convertit_le_step_en_maillage() {
 }
 
 #[test]
-fn aller_retour_projet_3mf_avec_config() {
+fn roundtrip_3mf_project_with_config() {
     use engine::api::{ConfigValue, DynamicPrintConfig};
     let model = engine::adapters::ffi::load_model(&common::fixture("cube20.stl")).unwrap();
     let mut config = DynamicPrintConfig::new();
@@ -111,7 +111,7 @@ fn aller_retour_projet_3mf_avec_config() {
 }
 
 #[test]
-fn repare_un_maillage_troue() {
+fn repairs_a_broken_mesh() {
     // cube valide + un triangle dégénéré (deux sommets identiques) :
     // admesh le supprime (degenerate_facets/facets_removed)
     let mut broken = engine::adapters::ffi::load_model(&common::fixture("cube20.stl"))
@@ -161,7 +161,7 @@ fn arrange_quatre_cubes_sans_collision() {
 }
 
 #[test]
-fn oriente_un_objet() {
+fn orients_an_object() {
     let mut object = engine::adapters::ffi::load_model(&common::fixture("overhang.stl"))
         .unwrap()
         .objects

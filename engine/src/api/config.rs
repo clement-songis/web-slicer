@@ -195,7 +195,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn set_refuse_cle_inconnue() {
+    fn set_rejects_unknown_key() {
         let mut cfg = DynamicPrintConfig::new();
         let err = cfg.set("pas_une_cle", ConfigValue::Bool(true)).unwrap_err();
         assert_eq!(err.code, EngineErrorCode::InvalidConfig);
@@ -203,7 +203,7 @@ mod tests {
     }
 
     #[test]
-    fn set_refuse_type_incompatible() {
+    fn set_rejects_incompatible_type() {
         let mut cfg = DynamicPrintConfig::new();
         // layer_height est un Float, pas un Bool
         assert!(cfg.set("layer_height", ConfigValue::Bool(true)).is_err());
@@ -246,7 +246,7 @@ mod tests {
     }
 
     #[test]
-    fn surcharge_filament_nullable_acceptee() {
+    fn nullable_filament_override_accepted() {
         let mut cfg = DynamicPrintConfig::new();
         cfg.set(
             "filament_retraction_length",
