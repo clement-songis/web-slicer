@@ -24,3 +24,22 @@ export {
 	defaultFor,
 	type SpecialGroup
 } from './special/groups';
+export { default as BedShape } from './special/BedShape.svelte';
+export { default as FlushVolumes } from './special/FlushVolumes.svelte';
+export { default as PlateTemps } from './special/PlateTemps.svelte';
+export {
+	parsePoints,
+	serializePoints,
+	rectangularBed,
+	bedExtents,
+	parseNumbers,
+	serializeNumbers,
+	toMatrix,
+	flattenMatrix,
+	matrixSize,
+	PLATE_TYPES,
+	BED_SHAPE_KEYS,
+	FLUSH_KEYS,
+	type Point,
+	type PlateType
+} from './special/dialogs';
