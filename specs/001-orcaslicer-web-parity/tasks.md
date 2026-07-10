@@ -66,7 +66,7 @@
 - [X] T020 [US1] `FfiEngine` implémente `SlicerEngine` (`engine/src/adapters/ffi/engine.rs`) : agrège les wrappers du bridge + les fonctions pures (presets, parseur G-code) ; preuve de substituabilité `engine/tests/ffi_trait_suite.rs` — la suite générique T011 passe intégralement sur FFI. *(remplace l'ancien adaptateur CLI : moteur v1 FFI uniquement)*
 - [X] T021 [US1] Parseur G-code `engine/src/gcode/` (pur Rust) : couches/segments (`; FEATURE:`, `; CHANGE_LAYER`, `; Z_HEIGHT:`, `; LINE_WIDTH:`, E relatif M83), stats (temps, filament, couches) → GcodePreview (R6) ; test `engine/tests/gcode.rs` sur G-code BBL réel (9 types de lignes présents, aucun Unknown)
 - [ ] T022 [US1] Test de parité `engine/tests/gcode_parity.rs` : diff normalisé FFI vs sortie orca desktop enregistrée, corpus 10×5 ; temps estimés < 1 % (SC-003)
-- [ ] T023 [P] [US1] Démo `engine/examples/engine-cli.rs` : slice/arrange/repair/parse depuis le shell via `FfiEngine` (démo gate P1)
+- [X] T023 [P] [US1] Démo `engine/examples/engine-cli.rs` : slice/arrange/repair/parse depuis le shell via `FfiEngine` (démo gate P1) — progression du statusbar en direct, G-code + stats, préviz par couches
 
 > **Backlog (non planifié)** : adaptateur CLI `engine/src/adapters/cli/`
 > pilotant `orca-slicer` derrière le même trait, pour *validation croisée*

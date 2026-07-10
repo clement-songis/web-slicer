@@ -39,3 +39,8 @@ ffi = ["dep:cxx"]
 name = "engine-worker"
 path = "src/bin/engine_worker.rs"
 required-features = ["ffi"]
+
+[[example]]
+name = "engine-cli"
+path = "examples/engine-cli.rs"
+required-features = ["ffi"]
