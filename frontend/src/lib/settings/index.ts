@@ -13,3 +13,14 @@ export {
 } from './filter';
 export { SettingsStore, type SettingValues } from './store';
 export { validateValue, type Validation } from './validate';
+export { default as OverridesPage } from './special/OverridesPage.svelte';
+export { default as MachineGcode } from './special/MachineGcode.svelte';
+export { default as MultimaterialTables } from './special/MultimaterialTables.svelte';
+export {
+	FILAMENT_OVERRIDES,
+	MACHINE_GCODE,
+	FILAMENT_MULTIMATERIAL,
+	isOverrideActive,
+	defaultFor,
+	type SpecialGroup
+} from './special/groups';
