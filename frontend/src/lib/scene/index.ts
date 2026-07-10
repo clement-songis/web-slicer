@@ -25,3 +25,16 @@ export {
 	fetchMesh,
 	type PreviewFormat
 } from './loaders';
+export {
+	IDENTITY,
+	MIN_SCALE,
+	clampScale,
+	normalizeAngle,
+	uniformScale,
+	layFlatRotation,
+	rotateVectorByEulerDeg,
+	quaternionFromUnitVectors,
+	eulerDegFromQuaternion,
+	type Transform
+} from './transform';
+export { TransformGizmo, TransformPanel, GizmoToolbar, type GizmoMode } from './gizmos';
