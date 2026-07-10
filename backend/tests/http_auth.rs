@@ -142,3 +142,114 @@ async fn logout_clears_the_session() {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
 }
+
+/// T031 : `DELETE /api/auth/me` exige la confirmation par mot de passe, puis
+/// supprime le compte (cascade) et détruit la session. La garde « dernier
+/// administrateur » bloque l'auto-suppression du seul admin.
+#[tokio::test]
+async fn delete_me_requires_the_password_then_removes_the_account() {
+    let (_d, app) = app().await;
+
+    // 1er compte = admin ; 2e = simple utilisateur (politique open par défaut).
+    let resp = app
+        .clone()
+        .oneshot(json_request(
+            "POST",
+            "/api/auth/register",
+            serde_json::json!({ "email": "boss@test.local", "password": "password123" }),
+            None,
+        ))
+        .await
+        .unwrap();
+    let admin = session_cookie(resp.headers());
+    let resp = app
+        .clone()
+        .oneshot(json_request(
+            "POST",
+            "/api/auth/register",
+            serde_json::json!({ "email": "member@test.local", "password": "password123" }),
+            None,
+        ))
+        .await
+        .unwrap();
+    let member = session_cookie(resp.headers());
+
+    // Le seul admin ne peut pas s'auto-supprimer (garde dernier admin) → 403.
+    let resp = app
+        .clone()
+        .oneshot(json_request(
+            "DELETE",
+            "/api/auth/me",
+            serde_json::json!({ "password": "password123" }),
+            Some(&admin),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(
+        resp.status(),
+        StatusCode::FORBIDDEN,
+        "dernier administrateur protégé"
+    );
+
+    // Mauvais mot de passe → 403, compte intact.
+    let resp = app
+        .clone()
+        .oneshot(json_request(
+            "DELETE",
+            "/api/auth/me",
+            serde_json::json!({ "password": "wrong-password" }),
+            Some(&member),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+
+    let resp = app
+        .clone()
+        .oneshot(json_request(
+            "GET",
+            "/api/auth/me",
+            serde_json::json!({}),
+            Some(&member),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK, "compte toujours là");
+
+    // Bon mot de passe → 204, session détruite (cookie inutilisable).
+    let resp = app
+        .clone()
+        .oneshot(json_request(
+            "DELETE",
+            "/api/auth/me",
+            serde_json::json!({ "password": "password123" }),
+            Some(&member),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+
+    let resp = app
+        .clone()
+        .oneshot(json_request(
+            "GET",
+            "/api/auth/me",
+            serde_json::json!({}),
+            Some(&member),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+
+    // Le compte ne peut plus se reconnecter.
+    let resp = app
+        .oneshot(json_request(
+            "POST",
+            "/api/auth/login",
+            serde_json::json!({ "email": "member@test.local", "password": "password123" }),
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+}

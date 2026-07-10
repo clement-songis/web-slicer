@@ -48,6 +48,13 @@ pub struct LoginRequest {
     pub password: String,
 }
 
+/// Corps de `DELETE /api/auth/me` — confirmation par mot de passe.
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct DeleteAccountRequest {
+    pub password: String,
+}
+
 /// Représentation publique d'un compte (jamais le hash).
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]

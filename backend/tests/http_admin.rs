@@ -313,6 +313,68 @@ async fn admin_issues_an_invitation_usable_under_invite_policy() {
 }
 
 #[tokio::test]
+async fn admin_deletes_a_user_but_never_the_last_admin() {
+    let (_d, app) = app().await;
+    let (admin, admin_body) = register(&app, "boss@test.local", "password123").await;
+    let admin_id = admin_body["id"].as_str().unwrap().to_string();
+
+    // Un simple utilisateur (2e compte, politique open).
+    let (_user, user_body) = register(&app, "member@test.local", "password123").await;
+    let user_id = user_body["id"].as_str().unwrap().to_string();
+
+    // L'admin supprime l'utilisateur → 204, puis login impossible.
+    let resp = app
+        .clone()
+        .oneshot(request(
+            "DELETE",
+            &format!("/api/admin/users/{user_id}"),
+            serde_json::json!({}),
+            Some(&admin),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+
+    let resp = app
+        .clone()
+        .oneshot(request(
+            "POST",
+            "/api/auth/login",
+            serde_json::json!({ "email": "member@test.local", "password": "password123" }),
+            None,
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+
+    // L'admin est désormais le dernier : sa suppression est refusée (403).
+    let resp = app
+        .clone()
+        .oneshot(request(
+            "DELETE",
+            &format!("/api/admin/users/{admin_id}"),
+            serde_json::json!({}),
+            Some(&admin),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::FORBIDDEN);
+
+    // Suppression d'un id inconnu → 404.
+    let ghost = uuid::Uuid::new_v4();
+    let resp = app
+        .oneshot(request(
+            "DELETE",
+            &format!("/api/admin/users/{ghost}"),
+            serde_json::json!({}),
+            Some(&admin),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
 async fn reseed_presets_is_not_yet_implemented() {
     let (_d, app) = app().await;
     let (admin, _) = register(&app, "boss@test.local", "password123").await;

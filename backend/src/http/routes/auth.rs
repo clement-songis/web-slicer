@@ -7,7 +7,7 @@ use axum::Json;
 use tower_sessions::Session;
 
 use crate::auth;
-use crate::http::dto::{LoginRequest, RegisterRequest, UserResponse};
+use crate::http::dto::{DeleteAccountRequest, LoginRequest, RegisterRequest, UserResponse};
 use crate::http::error::{ApiError, ApiResult};
 use crate::http::extract::{CurrentUser, SESSION_USER_KEY};
 use crate::http::state::AppState;
@@ -56,4 +56,25 @@ pub async fn logout(session: Session) -> ApiResult<StatusCode> {
 /// `GET /api/auth/me` — compte connecté.
 pub async fn me(CurrentUser(user): CurrentUser) -> Json<UserResponse> {
     Json(user.into())
+}
+
+/// `DELETE /api/auth/me` — suppression de son propre compte, confirmée par mot
+/// de passe. Cascade BDD + purge fichiers, puis destruction de la session.
+pub async fn delete_me(
+    CurrentUser(user): CurrentUser,
+    session: Session,
+    State(state): State<AppState>,
+    Json(body): Json<DeleteAccountRequest>,
+) -> ApiResult<StatusCode> {
+    if !auth::verify_password(&body.password, &user.password_hash) {
+        return Err(ApiError::forbidden("Mot de passe incorrect"));
+    }
+    auth::delete_account(state.storage.as_ref(), user.id).await?;
+    state
+        .files
+        .purge_user(user.id)
+        .await
+        .map_err(|_| ApiError::internal())?;
+    session.flush().await.map_err(|_| ApiError::internal())?;
+    Ok(StatusCode::NO_CONTENT)
 }

@@ -29,6 +29,8 @@ pub enum AuthError {
     AccountDisabled,
     #[error("compte introuvable")]
     NotFound,
+    #[error("impossible de supprimer le dernier administrateur")]
+    LastAdmin,
     #[error(transparent)]
     Password(#[from] PasswordError),
     #[error("erreur de stockage : {0}")]
@@ -163,6 +165,32 @@ pub async fn create_invitation(
         })
         .await?;
     Ok(invitation)
+}
+
+/// Supprime un compte (cascade BDD via le repo). La purge fichiers est
+/// orchestrée par l'appelant HTTP (side effect infra). Refuse de retirer le
+/// dernier administrateur — sinon l'instance devient ingérable (edge case spec).
+pub async fn delete_account(storage: &dyn Storage, id: UserId) -> Result<(), AuthError> {
+    let target = storage.users().get(id).await.map_err(|e| match e {
+        StorageError::NotFound => AuthError::NotFound,
+        other => AuthError::Storage(other.to_string()),
+    })?;
+
+    if target.role == Role::Admin {
+        let admins = storage
+            .users()
+            .list()
+            .await?
+            .into_iter()
+            .filter(|u| u.role == Role::Admin)
+            .count();
+        if admins <= 1 {
+            return Err(AuthError::LastAdmin);
+        }
+    }
+
+    storage.users().delete(id).await?;
+    Ok(())
 }
 
 /// Vérifie des identifiants et renvoie le compte si actif.

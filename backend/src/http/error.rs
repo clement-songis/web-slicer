@@ -127,6 +127,7 @@ impl From<crate::auth::AuthError> for ApiError {
                 ApiError::forbidden(e.to_string())
             }
             E::NotFound => ApiError::not_found("Compte"),
+            E::LastAdmin => ApiError::forbidden(e.to_string()),
             E::InvalidCredentials => ApiError::unauthorized(),
             E::Password(_) | E::Storage(_) => {
                 tracing::error!(error = %e, "erreur d'authentification");

@@ -98,6 +98,24 @@ pub async fn reset_password(
     Ok(StatusCode::NO_CONTENT)
 }
 
+/// `DELETE /api/admin/users/{id}` — suppression d'un compte par l'admin.
+/// Refuse de retirer le dernier administrateur (garde côté service). Cascade
+/// BDD + purge fichiers.
+pub async fn delete_user(
+    _admin: AdminUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> ApiResult<StatusCode> {
+    let user_id = parse_user_id(&id)?;
+    auth::delete_account(state.storage.as_ref(), user_id).await?;
+    state
+        .files
+        .purge_user(user_id)
+        .await
+        .map_err(|_| ApiError::internal())?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// `POST /api/admin/invitations` — émet une invitation à usage unique.
 pub async fn create_invitation(
     AdminUser(admin): AdminUser,

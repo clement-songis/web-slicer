@@ -27,12 +27,16 @@ where
         .route("/api/auth/register", post(auth::register))
         .route("/api/auth/login", post(auth::login))
         .route("/api/auth/logout", post(auth::logout))
-        .route("/api/auth/me", get(auth::me))
+        .route("/api/auth/me", get(auth::me).delete(auth::delete_me))
         .route(
             "/api/admin/instance",
             get(admin::get_instance).patch(admin::patch_instance),
         )
         .route("/api/admin/users", post(admin::create_user))
+        .route(
+            "/api/admin/users/{id}",
+            axum::routing::delete(admin::delete_user),
+        )
         .route(
             "/api/admin/users/{id}/reset-password",
             post(admin::reset_password),
