@@ -11,3 +11,5 @@ export {
 	MODE_RANK,
 	type DisplayMode
 } from './filter';
+export { SettingsStore, type SettingValues } from './store';
+export { validateValue, type Validation } from './validate';
