@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
-use crate::domain::{InstanceSettings, Invitation, Model, Preset, Project, User};
+use crate::domain::{InstanceSettings, Invitation, Model, Preset, Printer, Project, User};
 
 /// Réponse de `GET /api/health`.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
@@ -622,6 +622,111 @@ fn json_lower<T: Serialize>(v: &T) -> String {
         .ok()
         .and_then(|x| x.as_str().map(str::to_string))
         .unwrap_or_default()
+}
+
+// --- Imprimantes (Moonraker, T075) -------------------------------------------
+
+/// Imprimante déclarée renvoyée au client. La clé API n'est **jamais** exposée :
+/// seul `has_api_key` indique sa présence (FR-060).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct PrinterResponse {
+    pub id: String,
+    pub name: String,
+    pub moonraker_url: String,
+    pub has_api_key: bool,
+    pub machine_preset_id: String,
+}
+
+impl From<Printer> for PrinterResponse {
+    fn from(p: Printer) -> Self {
+        Self {
+            id: p.id.to_string(),
+            name: p.name,
+            moonraker_url: p.moonraker_url,
+            has_api_key: p.api_key.is_some(),
+            machine_preset_id: p.machine_preset_id.to_string(),
+        }
+    }
+}
+
+/// Corps de `POST`/`PUT /api/printers` : déclaration ou mise à jour. `api_key`
+/// est chiffrée au repos avant stockage (T075).
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct SavePrinterRequest {
+    pub name: String,
+    pub moonraker_url: String,
+    #[ts(optional)]
+    pub api_key: Option<String>,
+    pub machine_preset_id: String,
+}
+
+/// Résultat de `POST /api/printers/{id}/test` : relais de `GET /server/info`.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct TestPrinterResponse {
+    pub connected: bool,
+    pub klippy_state: String,
+    pub moonraker_version: String,
+}
+
+/// Corps de `POST /api/printers/{id}/upload` : envoi d'un G-code du compte.
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct UploadToPrinterRequest {
+    pub gcode_id: String,
+    /// Démarrer l'impression immédiatement (`print=true`, FR-061).
+    pub start_now: bool,
+}
+
+/// Résultat d'un envoi vers l'imprimante (`POST /api/printers/{id}/upload`).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct PrinterUploadResponse {
+    /// Chemin du fichier tel qu'enregistré côté Moonraker.
+    pub path: String,
+    /// Impression démarrée immédiatement.
+    pub print_started: bool,
+}
+
+impl From<crate::adapters::moonraker::UploadResult> for PrinterUploadResponse {
+    fn from(r: crate::adapters::moonraker::UploadResult) -> Self {
+        Self {
+            path: r.path,
+            print_started: r.print_started,
+        }
+    }
+}
+
+/// État d'impression instantané (`GET /api/printers/{id}/status`).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct PrinterStatusResponse {
+    pub state: String,
+    #[ts(optional)]
+    pub filename: Option<String>,
+    pub progress: f64,
+    pub print_duration: f64,
+    pub extruder_temp: f64,
+    pub extruder_target: f64,
+    pub bed_temp: f64,
+    pub bed_target: f64,
+}
+
+impl From<crate::adapters::moonraker::PrinterStatus> for PrinterStatusResponse {
+    fn from(s: crate::adapters::moonraker::PrinterStatus) -> Self {
+        Self {
+            state: s.state,
+            filename: s.filename,
+            progress: s.progress,
+            print_duration: s.print_duration,
+            extruder_temp: s.extruder_temp,
+            extruder_target: s.extruder_target,
+            bed_temp: s.bed_temp,
+            bed_target: s.bed_target,
+        }
+    }
 }
 
 #[cfg(test)]

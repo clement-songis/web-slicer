@@ -3,9 +3,11 @@
 //! gérées par `tower-sessions` au niveau HTTP.
 
 pub mod password;
+pub mod secrets;
 pub mod service;
 
 pub use password::{hash_password, verify_password, PasswordError};
+pub use secrets::SecretBox;
 pub use service::{
     authenticate, create_invitation, create_managed_user, delete_account, register, reset_password,
     AuthError,

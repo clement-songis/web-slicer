@@ -93,6 +93,12 @@ impl ApiError {
             "Erreur interne",
         )
     }
+
+    /// Hôte d'impression injoignable ou en erreur (FR-062) : échec propre, pas
+    /// une 500. Le client peut réessayer sans que l'instance soit compromise.
+    pub fn bad_gateway(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::BAD_GATEWAY, "printer_unreachable", message)
+    }
 }
 
 impl IntoResponse for ApiError {
@@ -117,6 +123,15 @@ impl From<crate::domain::StorageError> for ApiError {
                 ApiError::internal()
             }
         }
+    }
+}
+
+impl From<crate::adapters::moonraker::MoonrakerError> for ApiError {
+    fn from(e: crate::adapters::moonraker::MoonrakerError) -> Self {
+        // L'imprimante distante est hors du périmètre de confiance : toute panne
+        // (réseau, statut, décodage) se traduit par un 502 propre (FR-062).
+        tracing::warn!(error = %e, "dialogue Moonraker en échec");
+        ApiError::bad_gateway(e.to_string())
     }
 }
 

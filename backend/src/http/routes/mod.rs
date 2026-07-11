@@ -9,6 +9,7 @@ pub mod jobs;
 pub mod models;
 pub mod presets;
 pub mod preview;
+pub mod printers;
 pub mod projects;
 pub mod scene;
 pub mod slice;
@@ -91,6 +92,19 @@ where
         .route("/api/presets/{id}/resolved", get(presets::resolved))
         .route("/api/presets/{id}/export", get(presets::export))
         .route("/api/presets/import", post(presets::import))
+        .route("/api/printers", get(printers::list).post(printers::create))
+        .route(
+            "/api/printers/{id}",
+            get(printers::get)
+                .put(printers::update)
+                .delete(printers::delete),
+        )
+        .route("/api/printers/{id}/test", post(printers::test))
+        .route("/api/printers/{id}/upload", post(printers::upload))
+        .route("/api/printers/{id}/status", get(printers::status))
+        .route("/api/printers/{id}/pause", post(printers::pause))
+        .route("/api/printers/{id}/resume", post(printers::resume))
+        .route("/api/printers/{id}/cancel", post(printers::cancel))
         .layer(session_layer)
         .with_state(state)
 }

@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::adapters::files::FileStore;
+use crate::auth::SecretBox;
 use crate::domain::Storage;
 use crate::http::ws::EventHub;
 
@@ -18,6 +19,8 @@ pub struct AppState {
     pub profiles_dir: PathBuf,
     /// Bus d'événements WebSocket (progression des jobs, conversions), T065.
     pub events: Arc<EventHub>,
+    /// Coffre de chiffrement des secrets d'instance (clés API imprimante), T075.
+    pub secrets: SecretBox,
 }
 
 impl AppState {
@@ -27,7 +30,14 @@ impl AppState {
             files,
             profiles_dir: default_profiles_dir(),
             events: Arc::new(EventHub::new()),
+            secrets: SecretBox::from_env(),
         }
+    }
+
+    /// Surcharge le coffre de secrets (tests avec clé déterministe).
+    pub fn with_secrets(mut self, secrets: SecretBox) -> Self {
+        self.secrets = secrets;
+        self
     }
 
     /// Surcharge le répertoire des profils (tests, déploiement).

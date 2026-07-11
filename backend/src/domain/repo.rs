@@ -147,6 +147,12 @@ pub trait PrinterRepo: Send + Sync {
     async fn create(&self, owner: UserId, printer: NewPrinter) -> StorageResult<Printer>;
     async fn get(&self, owner: UserId, id: PrinterId) -> StorageResult<Printer>;
     async fn list(&self, owner: UserId) -> StorageResult<Vec<Printer>>;
+    async fn update(
+        &self,
+        owner: UserId,
+        id: PrinterId,
+        printer: NewPrinter,
+    ) -> StorageResult<Printer>;
     async fn delete(&self, owner: UserId, id: PrinterId) -> StorageResult<()>;
 }
 

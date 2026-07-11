@@ -680,6 +680,32 @@ impl PrinterRepo for SqlitePrinterRepo {
         rows.iter().map(row_to_printer).collect()
     }
 
+    async fn update(
+        &self,
+        owner: UserId,
+        id: PrinterId,
+        printer: NewPrinter,
+    ) -> StorageResult<Printer> {
+        let n = sqlx::query(
+            "UPDATE printers SET name = ?, moonraker_url = ?, api_key = ?, machine_preset_id = ? \
+             WHERE id = ? AND user_id = ?",
+        )
+        .bind(&printer.name)
+        .bind(&printer.moonraker_url)
+        .bind(&printer.api_key)
+        .bind(id_str(printer.machine_preset_id))
+        .bind(id_str(id))
+        .bind(id_str(owner))
+        .execute(&self.pool)
+        .await
+        .map_err(map_sqlx)?
+        .rows_affected();
+        if n == 0 {
+            return Err(StorageError::NotFound);
+        }
+        self.get(owner, id).await
+    }
+
     async fn delete(&self, owner: UserId, id: PrinterId) -> StorageResult<()> {
         let n = sqlx::query("DELETE FROM printers WHERE id = ? AND user_id = ?")
             .bind(id_str(id))
