@@ -22,10 +22,11 @@
 
 	const pages = $derived(filterLayout(UI_LAYOUT, mode, query));
 
-	// Page active suivie par titre pour survivre au refiltrage ; repli sur la
-	// première page encore visible.
-	let activeTitle = $state('');
-	const activePage = $derived(pages.find((p) => p.title === activeTitle) ?? pages[0]);
+	// Page active suivie par position : les titres de page ne sont pas uniques
+	// (OrcaSlicer répète « Notes », « Multimaterial »… entre catégories), donc
+	// on repère l'onglet par son index et on se replie sur le premier visible.
+	let activeIndex = $state(0);
+	const activePage = $derived(pages[activeIndex] ?? pages[0]);
 </script>
 
 <div class="flex flex-col gap-3">
@@ -56,11 +57,11 @@
 		<p class="py-6 text-center text-sm text-gray-500">Aucun paramètre ne correspond.</p>
 	{:else}
 		<div class="flex flex-wrap gap-1 border-b border-gray-200 dark:border-gray-700">
-			{#each pages as page (page.title)}
+			{#each pages as page, i (i)}
 				<button
 					type="button"
-					onclick={() => (activeTitle = page.title)}
-					class="rounded-t px-3 py-1 text-sm {activePage?.title === page.title
+					onclick={() => (activeIndex = i)}
+					class="rounded-t px-3 py-1 text-sm {activeIndex === i
 						? 'border-b-2 border-blue-600 font-medium text-blue-600'
 						: 'text-gray-600 dark:text-gray-400'}"
 				>
@@ -71,7 +72,7 @@
 
 		{#if activePage}
 			<div class="flex flex-col gap-4">
-				{#each activePage.sections as section (section.title)}
+				{#each activePage.sections as section, si (si)}
 					<section>
 						<h3
 							class="mb-1 text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400"
@@ -79,7 +80,7 @@
 							{section.title}
 						</h3>
 						<div class="divide-y divide-gray-100 dark:divide-gray-800">
-							{#each section.options as option (typeof option === 'string' ? option : `dyn:${section.title}`)}
+							{#each section.options as option, oi (typeof option === 'string' ? option : `dyn:${oi}`)}
 								{#if typeof option === 'string' && PARAMS[option]}
 									<OptionLine def={PARAMS[option]} bind:value={values[option]} />
 								{:else}
