@@ -11,6 +11,7 @@ pub mod api;
 pub mod gcode;
 pub mod params;
 pub mod presets;
+pub mod threemf;
 
 use std::path::Path;
 

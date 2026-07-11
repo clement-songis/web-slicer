@@ -106,6 +106,17 @@ async fn resolve_active(
     user: crate::domain::UserId,
     active: &Value,
 ) -> ApiResult<(Value, Vec<SliceWarning>)> {
+    let (merged, warnings) = resolve_active_config(state, user, active).await?;
+    Ok((Value::Object(presets::config_to_json(&merged)), warnings))
+}
+
+/// Comme [`resolve_active`], mais renvoie la `DynamicPrintConfig` typée (export
+/// 3MF, T072) plutôt que sa projection JSON.
+pub(crate) async fn resolve_active_config(
+    state: &AppState,
+    user: crate::domain::UserId,
+    active: &Value,
+) -> ApiResult<(engine::api::DynamicPrintConfig, Vec<SliceWarning>)> {
     let mut ids: Vec<PresetId> = Vec::new();
     for key in ["printer", "process"] {
         if let Some(s) = active.get(key).and_then(Value::as_str) {
@@ -145,7 +156,7 @@ async fn resolve_active(
         })
         .collect();
 
-    Ok((Value::Object(presets::config_to_json(&merged)), warnings))
+    Ok((merged, warnings))
 }
 
 fn parse_preset_id(raw: &str) -> ApiResult<PresetId> {

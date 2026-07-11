@@ -3,6 +3,7 @@
 
 pub mod admin;
 pub mod auth;
+pub mod export;
 pub mod gcodes;
 pub mod jobs;
 pub mod models;
@@ -71,6 +72,7 @@ where
         .route("/api/projects/{id}/arrange", post(scene::arrange))
         .route("/api/projects/{id}/orient", post(scene::orient))
         .route("/api/projects/{id}/slice", post(slice::slice))
+        .route("/api/projects/{id}/export/3mf", get(export::export_3mf))
         .route("/api/jobs", get(jobs::list))
         .route("/api/jobs/{id}", get(jobs::get))
         .route("/api/jobs/{id}/cancel", post(jobs::cancel))

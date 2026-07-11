@@ -27,6 +27,16 @@
 		<a href={resolve('/library')} class="text-sm text-blue-600 hover:underline">← Bibliothèque</a>
 		<h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{data.project.name}</h1>
 	</div>
+	<!-- Export projet 3MF (FR-044) : ressource API backend, pas une route SvelteKit. -->
+	<!-- eslint-disable svelte/no-navigation-without-resolve -->
+	<a
+		class="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-500"
+		href="/api/projects/{data.project.id}/export/3mf"
+		download
+	>
+		Exporter 3MF
+	</a>
+	<!-- eslint-enable svelte/no-navigation-without-resolve -->
 </header>
 
 {#if pendingDraft}
