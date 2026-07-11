@@ -1,4 +1,9 @@
 <script lang="ts">
+	// Accueil / bibliothèque (T118, US6 ; parité orca-home.png) : barre latérale
+	// (compte + Récent + OrcaCloud), deux cartes d'entrée (Nouveau projet / Ouvrir
+	// un projet 3mf) et la grille « Récemment ouvert » des vignettes de projet.
+	// La logique testable est pure (`lib/library/library.ts`) ; ce composant
+	// orchestre transport (API projets) + disposition.
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
@@ -13,8 +18,14 @@
 	import { isAccepted } from '$lib/editor';
 	import { ThemeToggle } from '$lib/theme';
 	import { logout } from '$lib/api/session';
+	import { sortByUpdated, formatDate, thumbnailUrl } from '$lib/library/library';
 	import type { ProjectResponse } from '$lib/api/types';
 	import type { PageData } from './$types';
+	import IconNew from '~icons/lucide/file-plus';
+	import IconOpen from '~icons/lucide/download';
+	import IconClock from '~icons/lucide/clock';
+	import IconExternal from '~icons/lucide/external-link';
+	import IconTrash from '~icons/lucide/trash-2';
 
 	let { data }: { data: PageData } = $props();
 
@@ -22,24 +33,16 @@
 	// liste est ensuite gérée localement au fil des opérations CRUD.
 	let projects = $state<ProjectResponse[]>([]);
 	onMount(() => {
-		projects = data.projects;
+		projects = sortByUpdated(data.projects);
 	});
 
-	let newName = $state('');
 	let renamingId = $state<string | null>(null);
 	let renameValue = $state('');
 	let error = $state<string | null>(null);
 	let busy = $state(false);
-
-	/** Réordonne par date de mise à jour décroissante (comme le backend). */
-	function sorted(list: ProjectResponse[]): ProjectResponse[] {
-		return [...list].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
-	}
-
-	function formatDate(rfc3339: string): string {
-		const d = new Date(rfc3339);
-		return Number.isNaN(d.getTime()) ? rfc3339 : d.toLocaleString();
-	}
+	// Mode suppression (pastille « Supprimer » de la parité) : révèle les
+	// boutons de suppression sur chaque vignette.
+	let removeMode = $state(false);
 
 	async function run(action: () => Promise<void>) {
 		busy = true;
@@ -53,18 +56,16 @@
 		}
 	}
 
-	function create() {
-		const name = newName.trim();
-		if (!name) return;
+	// « Nouveau projet » : crée un projet par défaut et ouvre l'éditeur dessus.
+	function createAndOpen() {
 		return run(async () => {
-			const project = await createProject({ name });
-			projects = sorted([project, ...projects]);
-			newName = '';
+			const project = await createProject({ name: 'Sans titre' });
+			await goto(resolve('/projects/[id]', { id: project.id }));
 		});
 	}
 
-	// Import (T090) : un `.3mf` projet ou un modèle 3D → nouveau projet, puis on
-	// ouvre l'éditeur dessus.
+	// « Ouvrir un projet » (T090) : un `.3mf` projet ou un modèle 3D → nouveau
+	// projet, puis on ouvre l'éditeur dessus.
 	let importInput: HTMLInputElement | null = null;
 	const IMPORT_ACCEPT = '.stl,.obj,.3mf,.oltp,.step,.stp,.amf,.svg,.drc';
 
@@ -86,7 +87,7 @@
 	function duplicate(id: string) {
 		return run(async () => {
 			const copy = await duplicateProject(id);
-			projects = sorted([copy, ...projects]);
+			projects = sortByUpdated([copy, ...projects]);
 		});
 	}
 
@@ -110,7 +111,7 @@
 		}
 		return run(async () => {
 			const updated = await renameProject(id, name);
-			projects = sorted(projects.map((p) => (p.id === id ? updated : p)));
+			projects = sortByUpdated(projects.map((p) => (p.id === id ? updated : p)));
 			renamingId = null;
 		});
 	}
@@ -123,106 +124,170 @@
 	}
 </script>
 
-<header class="flex items-center justify-between border-b border-border px-6 py-4">
-	<h1 class="text-lg font-semibold text-content">Ma bibliothèque</h1>
-	<div class="flex items-center gap-4 text-sm">
-		<ThemeToggle />
-		<span class="text-content-muted">{data.user.email}</span>
-		<button onclick={signOut} class="text-primary hover:underline">Déconnexion</button>
-	</div>
-</header>
+<div class="flex h-screen bg-surface text-content">
+	<!-- Barre latérale : compte + navigation (parité orca-home.png) -->
+	<aside class="flex w-64 shrink-0 flex-col border-r border-border bg-surface-raised">
+		<div class="flex flex-col items-center gap-2 border-b border-border px-4 py-6">
+			<span class="text-sm font-semibold text-content">Mon compte</span>
+			<div
+				class="flex h-16 w-16 items-center justify-center rounded-xl bg-overlay text-2xl font-semibold text-content-muted"
+				aria-hidden="true"
+			>
+				{data.user.email.charAt(0).toUpperCase()}
+			</div>
+			<span class="max-w-full truncate text-xs text-content-muted" title={data.user.email}>
+				{data.user.email}
+			</span>
+			<button onclick={signOut} disabled={busy} class="text-xs text-primary hover:underline">
+				Déconnexion
+			</button>
+		</div>
+		<nav class="flex flex-col gap-1 p-2 text-sm">
+			<span
+				class="flex items-center gap-2 rounded bg-primary/10 px-3 py-2 font-medium text-primary"
+			>
+				<IconClock class="h-4 w-4" /> Récent
+			</span>
+			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+			<a
+				href="https://github.com/SoftFever/OrcaSlicer"
+				target="_blank"
+				rel="noreferrer"
+				class="flex items-center justify-between rounded px-3 py-2 text-content-muted hover:bg-overlay"
+			>
+				<span>OrcaSlicer</span>
+				<IconExternal class="h-3.5 w-3.5" />
+			</a>
+		</nav>
+		<div class="mt-auto flex items-center justify-between border-t border-border px-3 py-3">
+			<span class="text-xs text-content-subtle">Web-Slicer</span>
+			<ThemeToggle />
+		</div>
+	</aside>
 
-<main class="mx-auto max-w-4xl p-6">
-	<form class="mb-6 flex gap-2" onsubmit={(e) => (e.preventDefault(), create())}>
-		<input
-			type="text"
-			bind:value={newName}
-			placeholder="Nom du nouveau projet"
-			class="flex-1 rounded border border-border-strong px-3 py-2 bg-surface-raised text-content"
-		/>
-		<button
-			type="submit"
-			disabled={busy || !newName.trim()}
-			class="rounded bg-primary px-4 py-2 font-medium text-white hover:bg-primary-hover disabled:opacity-50"
-		>
-			Nouveau projet
-		</button>
-		<button
-			type="button"
-			disabled={busy}
-			onclick={() => importInput?.click()}
-			class="rounded border border-border-strong px-4 py-2 font-medium text-content-muted hover:bg-overlay disabled:opacity-50"
-			title="Importer un projet .3mf ou un modèle 3D"
-		>
-			Importer…
-		</button>
-		<input
-			bind:this={importInput}
-			type="file"
-			accept={IMPORT_ACCEPT}
-			class="hidden"
-			onchange={importFile}
-		/>
-	</form>
+	<!-- Zone principale -->
+	<main class="flex-1 overflow-auto p-8">
+		<!-- Deux cartes d'entrée -->
+		<div class="flex flex-wrap gap-4">
+			<button
+				onclick={createAndOpen}
+				disabled={busy}
+				class="flex w-72 items-center gap-4 rounded-lg border border-border bg-surface-raised p-5 text-left hover:border-primary disabled:opacity-50"
+			>
+				<span
+					class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-primary text-primary"
+				>
+					<IconNew class="h-7 w-7" />
+				</span>
+				<span class="flex flex-col">
+					<span class="font-medium text-content">Nouveau projet</span>
+					<span class="text-sm text-content-muted">Créer un nouveau projet</span>
+				</span>
+			</button>
+			<button
+				onclick={() => importInput?.click()}
+				disabled={busy}
+				class="flex w-72 items-center gap-4 rounded-lg border border-border bg-surface-raised p-5 text-left hover:border-primary disabled:opacity-50"
+			>
+				<span
+					class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-primary text-primary"
+				>
+					<IconOpen class="h-7 w-7" />
+				</span>
+				<span class="flex flex-col">
+					<span class="font-medium text-content">Ouvrir un projet</span>
+					<span class="text-sm text-content-muted">3mf</span>
+				</span>
+			</button>
+			<input
+				bind:this={importInput}
+				type="file"
+				accept={IMPORT_ACCEPT}
+				class="hidden"
+				onchange={importFile}
+			/>
+		</div>
 
-	{#if error}
-		<p class="mb-4 text-sm text-danger" role="alert">{error}</p>
-	{/if}
+		{#if error}
+			<p class="mt-4 text-sm text-danger" role="alert">{error}</p>
+		{/if}
 
-	{#if projects.length === 0}
-		<p class="text-content-subtle">Aucun projet pour le moment.</p>
-	{:else}
-		<ul class="grid gap-3 sm:grid-cols-2">
-			{#each projects as project (project.id)}
-				<li class="rounded-lg border border-border p-4">
-					{#if renamingId === project.id}
-						<input
-							type="text"
-							bind:value={renameValue}
-							onblur={() => commitRename(project.id)}
-							onkeydown={(e) => e.key === 'Enter' && commitRename(project.id)}
-							class="mb-2 w-full rounded border border-border-strong px-2 py-1 bg-surface-raised text-content"
-						/>
-					{:else}
+		<!-- Récemment ouvert -->
+		<div class="mt-8 flex items-center gap-3">
+			<h2 class="text-base font-semibold text-content">Récemment ouvert</h2>
+			{#if projects.length}
+				<button
+					onclick={() => (removeMode = !removeMode)}
+					class="flex items-center gap-1 rounded-full px-3 py-1 text-xs {removeMode
+						? 'bg-danger-soft text-danger-content'
+						: 'bg-overlay text-content-muted hover:bg-overlay/70'}"
+				>
+					<IconTrash class="h-3.5 w-3.5" /> Supprimer
+				</button>
+			{/if}
+		</div>
+
+		{#if projects.length === 0}
+			<p class="mt-4 text-content-subtle">Aucun projet pour le moment.</p>
+		{:else}
+			<ul class="mt-4 grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-5">
+				{#each projects as project (project.id)}
+					{@const thumb = thumbnailUrl(project)}
+					<li class="group relative flex flex-col gap-2">
 						<a
 							href={resolve('/projects/[id]', { id: project.id })}
-							class="block truncate font-medium text-content hover:text-primary"
+							class="block aspect-square overflow-hidden rounded-lg border border-border bg-overlay hover:border-primary"
+							aria-label="Ouvrir {project.name}"
 						>
-							{project.name}
+							{#if thumb}
+								<img src={thumb} alt="" class="h-full w-full object-cover" />
+							{:else}
+								<span class="flex h-full w-full items-center justify-center text-content-subtle">
+									<IconNew class="h-10 w-10 opacity-40" />
+								</span>
+							{/if}
 						</a>
-					{/if}
-					<p class="mt-1 text-xs text-content-subtle">
-						Modifié le {formatDate(project.updated_at)}
-					</p>
-					<div class="mt-3 flex gap-3 text-sm">
-						<a
-							href={resolve('/projects/[id]', { id: project.id })}
-							class="text-primary hover:underline">Ouvrir</a
-						>
-						<button
-							onclick={() => startRename(project)}
-							disabled={busy}
-							class="text-content-muted hover:underline"
-						>
-							Renommer
-						</button>
-						<button
-							onclick={() => duplicate(project.id)}
-							disabled={busy}
-							class="text-content-muted hover:underline"
-						>
-							Dupliquer
-						</button>
-						<button
-							onclick={() => remove(project.id)}
-							disabled={busy}
-							class="text-danger hover:underline"
-						>
-							Supprimer
-						</button>
-					</div>
-				</li>
-			{/each}
-		</ul>
-	{/if}
-</main>
+						{#if removeMode}
+							<button
+								onclick={() => remove(project.id)}
+								disabled={busy}
+								title="Supprimer {project.name}"
+								class="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-danger text-white shadow hover:bg-danger/90"
+							>
+								<IconTrash class="h-4 w-4" />
+							</button>
+						{/if}
+						{#if renamingId === project.id}
+							<!-- svelte-ignore a11y_autofocus -->
+							<input
+								type="text"
+								bind:value={renameValue}
+								autofocus
+								onblur={() => commitRename(project.id)}
+								onkeydown={(e) => e.key === 'Enter' && commitRename(project.id)}
+								class="w-full rounded border border-border-strong bg-surface-raised px-2 py-1 text-sm text-content"
+							/>
+						{:else}
+							<button
+								ondblclick={() => startRename(project)}
+								class="truncate text-left text-sm font-medium text-content"
+								title={project.name}
+							>
+								{project.name}
+							</button>
+						{/if}
+						<p class="text-xs text-content-subtle">Modifié le {formatDate(project.updated_at)}</p>
+						<div class="flex gap-3 text-xs text-content-muted opacity-0 group-hover:opacity-100">
+							<button onclick={() => startRename(project)} disabled={busy} class="hover:underline">
+								Renommer
+							</button>
+							<button onclick={() => duplicate(project.id)} disabled={busy} class="hover:underline">
+								Dupliquer
+							</button>
+						</div>
+					</li>
+				{/each}
+			</ul>
+		{/if}
+	</main>
+</div>
