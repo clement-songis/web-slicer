@@ -251,6 +251,97 @@ def check_trace_map(ui: dict) -> None:
         )
 
 
+FRONTEND_SRC = REPO / "frontend" / "src"
+_IMPORT_RE = re.compile(r"""(?:from|import)\s*\(?\s*['"]([^'"]+)['"]""")
+
+
+def _resolve_import(spec: str, importer: Path) -> Path | None:
+    """Résout un spécificateur d'import TS/Svelte en chemin de fichier réel.
+
+    Gère les alias SvelteKit `$lib/…` et les imports relatifs `./`/`../` ;
+    ignore l'externe (`$app`, `$env`, `~icons`, paquets nus). Essaie les
+    extensions et `index.ts` comme le résolveur Vite."""
+    if spec.startswith("$lib/"):
+        base = FRONTEND_SRC / "lib" / spec[len("$lib/"):]
+    elif spec.startswith("."):
+        base = importer.parent / spec
+    else:
+        return None
+    for cand in (
+        base, base.with_suffix(".ts"), base.with_suffix(".svelte"),
+        base.with_suffix(".js"), base / "index.ts", base / "index.js",
+    ):
+        if cand.exists() and cand.is_file():
+            return cand.resolve()
+    return None
+
+
+def _reachable_from_routes() -> set[str]:
+    """Clôture transitive des modules importés depuis `frontend/src/routes`.
+
+    Point d'entrée = tout fichier de route (`+page`/`+layout`/… `.svelte`/`.ts`) ;
+    on suit les imports résolus jusqu'à saturation. Renvoie des chemins
+    repo-relatifs (séparateur `/`)."""
+    routes = FRONTEND_SRC / "routes"
+    roots = [p for p in routes.rglob("*") if p.suffix in (".svelte", ".ts", ".js")]
+    seen: set[Path] = set()
+    stack = [p.resolve() for p in roots]
+    while stack:
+        cur = stack.pop()
+        if cur in seen:
+            continue
+        seen.add(cur)
+        try:
+            text = cur.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        for spec in _IMPORT_RE.findall(text):
+            dep = _resolve_import(spec, cur)
+            if dep and dep not in seen:
+                stack.append(dep)
+    return {str(p.relative_to(REPO)).replace("\\", "/") for p in seen}
+
+
+def _trace_map_targets(tmap: dict) -> set[str]:
+    """Chemins cibles uniques de la carte de traçabilité (tous registres)."""
+    targets: set[str] = set()
+    for key in ("gizmos", "toolbars", "context_menu", "main_menu"):
+        targets.update(tmap.get(key, {}).values())
+    for _grp, chords in tmap.get("shortcuts", {}).items():
+        targets.update(chords.values())
+    return targets
+
+
+def check_wired() -> None:
+    """P4 (T119) — garde « construit-mais-non-câblé » : chaque chemin cible de
+    traceability-map.json (gizmos/toolbars/context_menu/main_menu/shortcuts)
+    doit être *effectivement importé par une route* (clôture transitive depuis
+    `frontend/src/routes`). Un composant tracé mais monté nulle part est un
+    écart de parité réel. On tolère les cibles justifiées desktop-only
+    (chemin backtické dans exclusions.md)."""
+    if not TRACE_MAP.exists() or not (FRONTEND_SRC / "routes").exists():
+        pending.append("P4 — garde câblage (T119) : routes ou carte absentes, en attente")
+        return
+    tmap = json.loads(TRACE_MAP.read_text(encoding="utf-8"))
+    targets = _trace_map_targets(tmap)
+    reachable = _reachable_from_routes()
+    tolerated = exclusion_vocabulary()
+    unwired = sorted(
+        t for t in targets
+        if t not in reachable and t not in tolerated
+    )
+    if unwired:
+        failures.append(
+            f"P4 — {len(unwired)} cible(s) tracée(s) construite(s) mais non "
+            f"câblée(s) à une route : {unwired[:10]}…"
+        )
+    else:
+        passed.append(
+            f"P4 — câblage : {len(targets)} cible(s) tracée(s) importée(s) "
+            "par une route, aucun élément construit-mais-non-câblé"
+        )
+
+
 def check_import_formats() -> None:
     """Chaque format importable par OrcaSlicer est soit accepté par
     `backend::detect_format`, soit justifié dans exclusions.md (T091). Aucun
@@ -294,6 +385,7 @@ def main() -> int:
     check_ui_layout(ui)
     check_settings_special(params)
     check_trace_map(ui)
+    check_wired()
     check_import_formats()
 
     for p in passed:
