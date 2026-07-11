@@ -75,6 +75,7 @@ export {
 	ASSEMBLE_TOOLBAR,
 	PLATER_MENU,
 	OBJECT_CONTEXT_ITEMS,
+	SCENE_ADD_ITEMS,
 	PLATER_SHORTCUTS,
 	OBJECTS_LIST_SHORTCUTS,
 	GIZMO_SHORTCUTS,
@@ -125,3 +126,13 @@ export {
 	type AssemblyPart
 } from './tools';
 export { meshFromTriangleSoup } from './loaders';
+export {
+	cube,
+	cylinder,
+	cone,
+	sphere,
+	disc,
+	torus,
+	primitiveMesh,
+	type PrimitiveKind
+} from './primitives';

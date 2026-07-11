@@ -13,6 +13,9 @@
 		PlateToolbar,
 		ContextMenu,
 		OBJECT_CONTEXT_ITEMS,
+		SCENE_ADD_ITEMS,
+		primitiveMesh,
+		type PrimitiveKind,
 		arrangeItems,
 		applyPlacements,
 		SaveControls,
@@ -156,6 +159,8 @@
 		y: 0,
 		targetId: null
 	});
+	// Menu d'ajout (T113) : Load + primitives, au curseur ou sous le bouton `add`.
+	let addMenu = $state<{ open: boolean; x: number; y: number }>({ open: false, x: 0, y: 0 });
 
 	// Modèle de scène (mutations en place → proxysées par `$state`, réactives).
 	let tree = $state(new ObjectTree());
@@ -573,7 +578,8 @@
 	async function onPlateAction(id: string) {
 		switch (id) {
 			case 'add':
-				fileInput?.click();
+				// Menu d'ajout (Load + primitives) ancré sous la barre de plateau (T113).
+				addMenu = { open: true, x: Math.max(12, window.innerWidth / 2 - 380), y: 96 };
 				break;
 			case 'addplate':
 				plates.addPlate();
@@ -720,11 +726,35 @@
 	function closeContext() {
 		contextMenu = { ...contextMenu, open: false };
 	}
-	// Ouvre le menu contextuel sur la scène pour l'objet sélectionné (clic droit).
+	// Clic droit sur la scène : menu objet si un objet est sélectionné, sinon menu
+	// d'ajout (plateau vide) — parité OrcaSlicer.
 	function onSceneContext(e: MouseEvent) {
-		if (layout.tab !== 'prepare' || !selId) return;
+		if (layout.tab !== 'prepare') return;
 		e.preventDefault();
-		openContext(selId, e.clientX, e.clientY);
+		if (selId) openContext(selId, e.clientX, e.clientY);
+		else addMenu = { open: true, x: e.clientX, y: e.clientY };
+	}
+	function closeAddMenu() {
+		addMenu = { ...addMenu, open: false };
+	}
+	// Ajoute une primitive paramétrique au plateau actif, centrée, et la sélectionne.
+	function addPrimitive(kind: PrimitiveKind) {
+		const id = tree.add(kind.charAt(0).toUpperCase() + kind.slice(1)).id;
+		if (plates.activeId) plates.assign(id, plates.activeId);
+		sceneObjects = [
+			...sceneObjects,
+			{ id, mesh: primitiveMesh(kind), position: [bed.center.x, bed.center.y, 0] }
+		];
+		ws = setSelection(ws, new Set([id]));
+	}
+	// Dispatch du menu d'ajout (T113) : Load (import) ou primitive.
+	function onAddAction(action: string) {
+		if (action === 'add.load') {
+			fileInput?.click();
+			return;
+		}
+		const kind = action.replace('add.', '') as PrimitiveKind;
+		addPrimitive(kind);
 	}
 	// Déplace un objet de la scène (position absolue, mm).
 	function moveObject(id: string, position: [number, number, number]) {
@@ -1046,6 +1076,16 @@
 		items={OBJECT_CONTEXT_ITEMS}
 		onaction={onObjectAction}
 		onclose={closeContext}
+	/>
+
+	<!-- Menu d'ajout (T113) : Load + primitives (plateau vide / bouton add). -->
+	<ContextMenu
+		open={addMenu.open}
+		x={addMenu.x}
+		y={addMenu.y}
+		items={SCENE_ADD_ITEMS}
+		onaction={onAddAction}
+		onclose={closeAddMenu}
 	/>
 
 	{#if pendingDraft}

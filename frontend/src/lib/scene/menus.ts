@@ -127,6 +127,21 @@ export const OBJECT_CONTEXT_ITEMS: ObjectMenuEntry[] = [
 	{ label: 'Delete', action: 'object.delete' }
 ];
 
+/**
+ * Menu d'ajout de la scène (clic droit plateau vide + bouton `add`, T113).
+ * Libellés = clés de parité (`context_menu`) : Load + primitives.
+ */
+export const SCENE_ADD_ITEMS: ObjectMenuEntry[] = [
+	{ label: 'Load...', action: 'add.load' },
+	'separator',
+	{ label: 'Cube', action: 'add.cube' },
+	{ label: 'Cylinder', action: 'add.cylinder' },
+	{ label: 'Sphere', action: 'add.sphere' },
+	{ label: 'Cone', action: 'add.cone' },
+	{ label: 'Disc', action: 'add.disc' },
+	{ label: 'Torus', action: 'add.torus' }
+];
+
 /** Raccourci clavier : combinaison (verbatim Annexe B) → action. */
 export interface Shortcut {
 	keys: string;
