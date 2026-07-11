@@ -67,6 +67,8 @@
 	"device": "Appareil",
 	"project": "Projet",
 	"process": "Traitement",
+	"printer": "Imprimante",
+	"filament": "Filament",
 	"slice_plate": "Trancher le plateau",
 	"close": "Fermer"
 }

@@ -22,6 +22,7 @@
 		type SceneObject
 	} from '$lib/scene';
 	import { SettingsTabs } from '$lib/settings';
+	import { PrinterSelect, PresetSelect } from '$lib/presets';
 	import {
 		PreviewScene,
 		StatsPanel,
@@ -32,8 +33,9 @@
 	import type { PreviewGeometry } from '$lib/preview/geometry';
 	import { sliceProject, listProjectModels } from '$lib/api/projects';
 	import { fetchPreviewLayers, getPreviewMeta } from '$lib/api/preview';
+	import { listPresets, createPreset, updatePreset, deletePreset } from '$lib/api/presets';
 	import { subscribeEvents, type EventSubscription } from '$lib/queue/events';
-	import type { PreviewMeta, ServerEvent } from '$lib/api/types';
+	import type { PreviewMeta, PresetSummary, ServerEvent } from '$lib/api/types';
 	import { ApiError } from '$lib/api/client';
 	import { t } from '$lib/i18n';
 	import {
@@ -57,6 +59,12 @@
 		initialLayout,
 		setTab,
 		EDITOR_DEFAULT_THEME,
+		emptyActivePresets,
+		parseActivePresets,
+		serializeActivePresets,
+		primaryFilament,
+		setProcess,
+		setFilament,
 		type EditorTab,
 		type ImportItem
 	} from '$lib/editor';
@@ -85,6 +93,37 @@
 	// Plateau par défaut tant que le preset machine n'est pas résolu (le layout
 	// et les dimensions réelles viennent des valeurs `printable_area` du preset).
 	const bed = $derived(bedFromValues({}));
+
+	// Presets actifs du projet (T098) : imprimante / filament / process. Peuplés
+	// depuis le blob `active_presets` au montage (lecture non réactive de `data`),
+	// modifiés par les sélecteurs, persistés au save.
+	let activePresets = $state(emptyActivePresets());
+	let machinePresets = $state<PresetSummary[]>([]);
+	let filamentPresets = $state<PresetSummary[]>([]);
+	let processPresets = $state<PresetSummary[]>([]);
+	// Filament principal (mono-extrudeur v1) : liable par le sélecteur, resynchronisé
+	// vers le tableau `filaments` de l'orchestrateur.
+	let filamentSel = $state<string | null>(null);
+	// Recharge filament/process compatibles quand l'imprimante change (baseline
+	// posée à la première exécution de l'effet, d'où le sentinel `undefined`).
+	let lastPrinter: string | null | undefined = undefined;
+	$effect(() => {
+		const printer = activePresets.printer;
+		if (lastPrinter === undefined) {
+			lastPrinter = printer;
+			return;
+		}
+		if (printer !== lastPrinter) {
+			lastPrinter = printer;
+			void loadPresets();
+		}
+	});
+	// Propage la sélection filament du composant vers l'état des presets actifs.
+	$effect(() => {
+		if (filamentSel !== primaryFilament(activePresets)) {
+			activePresets = setFilament(activePresets, filamentSel);
+		}
+	});
 
 	// Onglet de la colonne de configuration : liste d'objets/plateaux ou réglages.
 	let configTab = $state<'objects' | 'settings'>('settings');
@@ -125,11 +164,17 @@
 		applyDark();
 		const rafId = requestAnimationFrame(applyDark);
 
+		// Presets actifs du projet (lecture non réactive de `data` au montage, T098).
+		activePresets = parseActivePresets(data.project.active_presets);
+		filamentSel = primaryFilament(activePresets);
+
 		draftStore.pendingRestore(data.project.id, data.project.updated_at).then((d) => {
 			if (alive) pendingDraft = d;
 		});
 		// Repeuple la scène depuis les modèles déjà rattachés au projet (T092).
 		void loadProjectModels();
+		// Charge les catalogues de presets pour les sélecteurs (T098).
+		void loadPresets();
 		// Flux d'événements du compte (T065) : progression et fin des jobs.
 		const sub: EventSubscription = subscribeEvents({ onEvent });
 		return () => {
@@ -168,6 +213,66 @@
 					patchImport(objectId, (i) => markFailed(i, 'aperçu indisponible'));
 				}
 			}
+		}
+	}
+
+	// Charge les catalogues de presets (T098). Filament/process sont filtrés par
+	// compatibilité avec l'imprimante sélectionnée (FR-021, côté serveur).
+	async function loadPresets() {
+		const printerName = machinePresets.find((p) => p.id === activePresets.printer)?.name;
+		try {
+			const [machines, filaments, processes] = await Promise.all([
+				listPresets('machine'),
+				listPresets('filament', printerName),
+				listPresets('process', printerName)
+			]);
+			machinePresets = machines;
+			filamentPresets = filaments;
+			processPresets = processes;
+		} catch (e) {
+			importError = e instanceof ApiError ? e.message : 'chargement des presets impossible';
+		}
+	}
+
+	// Dérive un preset utilisateur (copie modifiable) puis le sélectionne.
+	async function derivePreset(kind: 'filament' | 'process', base: PresetSummary) {
+		try {
+			const created = await createPreset({
+				kind: base.kind,
+				name: `${base.name} (copie)`,
+				inherits: base.id,
+				values: {}
+			});
+			await loadPresets();
+			if (kind === 'filament') filamentSel = created.id;
+			else activePresets = setProcess(activePresets, created.id);
+		} catch (e) {
+			importError = e instanceof ApiError ? e.message : 'dérivation du preset impossible';
+		}
+	}
+
+	async function removePreset(kind: 'filament' | 'process', preset: PresetSummary) {
+		try {
+			await deletePreset(preset.id);
+			if (kind === 'filament' && filamentSel === preset.id) filamentSel = null;
+			if (kind === 'process' && activePresets.process === preset.id)
+				activePresets = setProcess(activePresets, null);
+			await loadPresets();
+		} catch (e) {
+			importError = e instanceof ApiError ? e.message : 'suppression du preset impossible';
+		}
+	}
+
+	// Enregistre les valeurs éditées dans le preset utilisateur courant. Les
+	// valeurs proviennent du panneau de réglages (raffiné par le cadrage par type
+	// en T099–T102 ; ici on pousse l'état de réglages courant).
+	async function savePreset(preset: PresetSummary) {
+		try {
+			await updatePreset(preset.id, { values: settingsValues });
+			await loadPresets();
+			saveMessage = 'Preset enregistré.';
+		} catch (e) {
+			importError = e instanceof ApiError ? e.message : 'enregistrement du preset impossible';
 		}
 	}
 
@@ -315,7 +420,7 @@
 			data.project.id,
 			Number(data.project.version),
 			scene,
-			data.project.active_presets
+			serializeActivePresets(activePresets)
 		);
 		saveMessage =
 			outcome.status === 'saved'
@@ -465,7 +570,34 @@
 						ongroup={() => tree.group([...ws.selection])}
 					/>
 				{:else}
-					<SettingsTabs bind:mode={settingsMode} bind:values={settingsValues} />
+					<div class="flex flex-col gap-4">
+						<!-- Sélecteurs Imprimante / Filament / Process (T098). -->
+						<section class="flex flex-col gap-3 border-b border-border pb-3">
+							<div class="flex flex-col gap-1">
+								<span class="text-xs font-semibold tracking-wide text-content-subtle uppercase"
+									>{$t('Printer')}</span
+								>
+								<PrinterSelect presets={machinePresets} bind:selectedId={activePresets.printer} />
+							</div>
+							<PresetSelect
+								presets={filamentPresets}
+								bind:selectedId={filamentSel}
+								label={$t('Filament')}
+								onderive={(p) => derivePreset('filament', p)}
+								onsave={savePreset}
+								ondelete={(p) => removePreset('filament', p)}
+							/>
+							<PresetSelect
+								presets={processPresets}
+								bind:selectedId={activePresets.process}
+								label={$t('Process')}
+								onderive={(p) => derivePreset('process', p)}
+								onsave={savePreset}
+								ondelete={(p) => removePreset('process', p)}
+							/>
+						</section>
+						<SettingsTabs bind:mode={settingsMode} bind:values={settingsValues} />
+					</div>
 				{/if}
 			</div>
 		</aside>

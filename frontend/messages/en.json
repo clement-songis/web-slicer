@@ -67,6 +67,8 @@
 	"device": "Device",
 	"project": "Project",
 	"process": "Process",
+	"printer": "Printer",
+	"filament": "Filament",
 	"slice_plate": "Slice plate",
 	"close": "Close"
 }
