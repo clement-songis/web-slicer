@@ -11,6 +11,7 @@
 		importProject
 	} from '$lib/api/projects';
 	import { isAccepted } from '$lib/editor';
+	import { ThemeToggle } from '$lib/theme';
 	import { logout } from '$lib/api/session';
 	import type { ProjectResponse } from '$lib/api/types';
 	import type { PageData } from './$types';
@@ -127,6 +128,7 @@
 >
 	<h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Ma bibliothèque</h1>
 	<div class="flex items-center gap-4 text-sm">
+		<ThemeToggle />
 		<span class="text-gray-600 dark:text-gray-400">{data.user.email}</span>
 		<button onclick={signOut} class="text-blue-600 hover:underline">Déconnexion</button>
 	</div>

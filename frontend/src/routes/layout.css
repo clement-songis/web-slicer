@@ -1,1 +1,118 @@
 @import 'tailwindcss';
+
+/* Système de design (T093) — jetons sémantiques clair/sombre.
+ *
+ * Principe : les composants n'utilisent QUE ces jetons (`bg-surface`,
+ * `text-content-muted`, `border-border`, `bg-primary`…), jamais une échelle de
+ * gris brute (`bg-gray-800`). Deux thèmes, une seule source de vérité.
+ *
+ * Bascule manuelle : le store `lib/theme` pose toujours `data-theme=light|dark`
+ * concret sur <html> (il résout `system` via `matchMedia`). Le variant `dark:`
+ * de Tailwind est donc piloté par `data-theme` — data-driven, pas OS-only. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/* --- Thème clair (défaut, aussi le rendu SSR/sans-JS) ---------------------- */
+:root {
+	--ws-surface: #f8fafc; /* fond de page */
+	--ws-surface-raised: #ffffff; /* cartes, panneaux, barres */
+	--ws-surface-sunken: #f1f5f9; /* canvas 3D, puits, zones creuses */
+	--ws-overlay: #eef2f7; /* survol discret, ligne active */
+
+	--ws-content: #0f172a; /* texte principal */
+	--ws-content-muted: #475569; /* texte secondaire */
+	--ws-content-subtle: #94a3b8; /* texte tertiaire, indices */
+
+	--ws-border: #e2e8f0; /* bordures, séparateurs */
+	--ws-border-strong: #cbd5e1; /* bordures marquées, champs */
+
+	--ws-primary: #2563eb; /* action primaire */
+	--ws-primary-hover: #1d4ed8;
+	--ws-primary-content: #ffffff; /* texte sur primaire */
+	--ws-accent: #3b82f6; /* sélection, anneau de focus */
+
+	--ws-success: #059669;
+	--ws-success-soft: #ecfdf5; /* fond de bandeau */
+	--ws-success-content: #065f46; /* texte sur fond soft */
+
+	--ws-warning: #d97706;
+	--ws-warning-soft: #fffbeb;
+	--ws-warning-content: #92400e;
+
+	--ws-danger: #dc2626;
+	--ws-danger-soft: #fef2f2;
+	--ws-danger-content: #991b1b;
+}
+
+/* --- Thème sombre --------------------------------------------------------- */
+:root[data-theme='dark'] {
+	--ws-surface: #0f172a;
+	--ws-surface-raised: #1e293b;
+	--ws-surface-sunken: #020617;
+	--ws-overlay: #334155;
+
+	--ws-content: #f1f5f9;
+	--ws-content-muted: #94a3b8;
+	--ws-content-subtle: #64748b;
+
+	--ws-border: #334155;
+	--ws-border-strong: #475569;
+
+	--ws-primary: #3b82f6;
+	--ws-primary-hover: #60a5fa;
+	--ws-primary-content: #ffffff;
+	--ws-accent: #60a5fa;
+
+	--ws-success: #34d399;
+	--ws-success-soft: #064e3b;
+	--ws-success-content: #a7f3d0;
+
+	--ws-warning: #fbbf24;
+	--ws-warning-soft: #451a03;
+	--ws-warning-content: #fde68a;
+
+	--ws-danger: #f87171;
+	--ws-danger-soft: #450a0a;
+	--ws-danger-content: #fecaca;
+}
+
+/* --- Exposition des jetons en utilitaires Tailwind ------------------------ */
+@theme inline {
+	--color-surface: var(--ws-surface);
+	--color-surface-raised: var(--ws-surface-raised);
+	--color-surface-sunken: var(--ws-surface-sunken);
+	--color-overlay: var(--ws-overlay);
+
+	--color-content: var(--ws-content);
+	--color-content-muted: var(--ws-content-muted);
+	--color-content-subtle: var(--ws-content-subtle);
+
+	--color-border: var(--ws-border);
+	--color-border-strong: var(--ws-border-strong);
+
+	--color-primary: var(--ws-primary);
+	--color-primary-hover: var(--ws-primary-hover);
+	--color-primary-content: var(--ws-primary-content);
+	--color-accent: var(--ws-accent);
+
+	--color-success: var(--ws-success);
+	--color-success-soft: var(--ws-success-soft);
+	--color-success-content: var(--ws-success-content);
+
+	--color-warning: var(--ws-warning);
+	--color-warning-soft: var(--ws-warning-soft);
+	--color-warning-content: var(--ws-warning-content);
+
+	--color-danger: var(--ws-danger);
+	--color-danger-soft: var(--ws-danger-soft);
+	--color-danger-content: var(--ws-danger-content);
+}
+
+/* Fond/texte de page par défaut : évite les zones non peintes hors surfaces. */
+:root {
+	color-scheme: light;
+	background-color: var(--ws-surface);
+	color: var(--ws-content);
+}
+:root[data-theme='dark'] {
+	color-scheme: dark;
+}

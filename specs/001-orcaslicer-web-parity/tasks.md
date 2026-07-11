@@ -215,6 +215,20 @@
 
 ---
 
+## Phase 11: Système de design & thème clair/sombre (cohérence UI globale)
+
+Problème : chaque composant code en dur des paires `dark:bg-gray-800` sur des
+échelles de gris brutes, sans jeton sémantique ni bascule (le sombre suit
+uniquement l'OS) → rendu clair/sombre incohérent et non commutable. Fondation
+`@theme` Tailwind v4 (CSS-first, aucun fichier de config) + bibliothèque de
+composants + migration. Aucune logique métier dans les `.svelte` (constitution).
+
+- [X] T093 Fondation du thème : jetons de design sémantiques (`--ws-surface`, `--ws-surface-raised`, `--ws-content`, `--ws-content-muted`, `--ws-border`, `--ws-primary`, `--ws-accent`, variantes `success/warning/danger` + `*-soft`/`*-content`) dans `routes/layout.css`, valeurs claires par défaut + override sombre, `@custom-variant dark` piloté par `data-theme`, `@theme inline` → utilitaires (`bg-surface`, `text-content-muted`, `border-border`…). Store `lib/theme` (préférence `light|dark|system` persistée, miroir du store i18n) qui **résout toujours** en `data-theme=light|dark` concret sur `<html>` (résolution `system` via `matchMedia`) → le variant `dark:` devient data-driven (les composants non migrés continuent de fonctionner). `ThemeToggle` (contrôle segmenté). Script anti-FOUC dans `app.html`. `initTheme()` dans `+layout`. Tests purs (`resolveTheme`, persistance). — *`routes/layout.css` : `@custom-variant dark` sur `data-theme`, jetons `--ws-*` (surface/raised/sunken/overlay, content/muted/subtle, border/strong, primary/hover/content, accent, success/warning/danger + `*-soft`/`*-content`) en clair (`:root`) + sombre (`:root[data-theme=dark]`), `@theme inline` → utilitaires (`bg-surface`, `text-content-muted`, `border-border`, `bg-primary`…). `lib/theme/theme.ts` : store `themePref` (`light|dark|system`, défaut `system`), `resolveTheme`/`parseThemePref` purs, `setTheme` (persiste `web-slicer.theme` + applique `data-theme`), `initTheme` (lecture stockage + écoute `matchMedia` tant que `system`). `ThemeToggle.svelte` (segmenté clair/sombre/système, i18n). Script anti-FOUC dans `app.html` (pose `data-theme` avant 1er rendu, même clé/résolution). `+layout` appelle `initTheme`. Toggle câblé dans les en-têtes bibliothèque + éditeur ; libellés fr (Thème/Clair/Sombre/Système). Tests `theme.test.ts` (résolution explicite/system, normalisation stockage). Gates verts : svelte-check 0/0, lint, 287 tests bun (+4), build prod OK, utilitaires jetons présents dans le CSS émis. **Note** : les composants non encore migrés (T095) restent corrects car `dark:` est désormais data-driven.*
+- [ ] T094 Bibliothèque de composants UI : `lib/ui/` primitives présentationnelles bâties **uniquement** sur les jetons T093 — `Button` (variants primary/secondary/ghost/danger, tailles), `IconButton`, `Card`, `Field` (label+input+erreur), `Banner` (info/success/warning/danger via `*-soft`/`*-content`), `SegmentedControl`, `Tabs`. Props typées, aucune logique métier (`.svelte` = présentation). Tests de rendu bun (variants → classes attendues). Dépend de T093.
+- [ ] T095 Migration UI : remplacer les 137 occurrences `dark:` ad-hoc (23 fichiers) par jetons/composants — bibliothèque, éditeur (`projects/[id]`), auth (login/register), réglages (`SettingsTabs`), composants partagés. Objectif : plus aucune échelle de gris brute côté surfaces/contenu ; thème cohérent clair/sombre + bascule dans les en-têtes. Dépend de T093/T094. **Périmètre** : migration incrémentale possible (les non-migrés restent fonctionnels via `dark:` data-driven de T093) ; consigner tout reliquat.
+
+---
+
 ## Dependencies & Execution Order
 
 ```text

@@ -5,6 +5,12 @@
 
 /** Dictionnaire anglais → français (libellés d'interface). */
 export const fr: Record<string, string> = {
+	// Thème clair/sombre (T093)
+	Theme: 'Thème',
+	Light: 'Clair',
+	Dark: 'Sombre',
+	System: 'Système',
+
 	// Titres de menus (Annexe B §B.2)
 	File: 'Fichier',
 	Edit: 'Édition',

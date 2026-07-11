@@ -22,6 +22,7 @@
 		type SceneObject
 	} from '$lib/scene';
 	import { SettingsTabs } from '$lib/settings';
+	import { ThemeToggle } from '$lib/theme';
 	import {
 		PreviewScene,
 		StatsPanel,
@@ -354,6 +355,7 @@
 				Trancher
 			</button>
 			<SaveControls {save} />
+			<ThemeToggle />
 			<!-- Export projet 3MF (FR-044) : ressource API backend, pas une route SvelteKit. -->
 			<!-- eslint-disable svelte/no-navigation-without-resolve -->
 			<a
