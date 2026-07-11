@@ -377,6 +377,62 @@ pub struct ImportPresetRequest {
     pub values: serde_json::Value,
 }
 
+// --- Tranchage (T064) --------------------------------------------------------
+
+/// Job de tranchage renvoyé par l'API (état + progression).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct JobResponse {
+    pub id: String,
+    pub project_id: String,
+    pub plate_index: i64,
+    /// `queued` | `running` | `succeeded` | `failed` | `cancelled`.
+    pub status: String,
+    pub progress: f64,
+    pub phase: String,
+}
+
+impl From<crate::domain::SlicingJob> for JobResponse {
+    fn from(j: crate::domain::SlicingJob) -> Self {
+        Self {
+            id: j.id.to_string(),
+            project_id: j.project_id.to_string(),
+            plate_index: j.plate_index,
+            status: json_lower(&j.status),
+            progress: j.progress,
+            phase: j.phase,
+        }
+    }
+}
+
+/// Corps de `POST /api/projects/{id}/slice` : cible un plateau ou tous.
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct SliceRequest {
+    /// Plateau ciblé (0-based). Absent ⇒ tous les plateaux si `all`.
+    #[ts(optional)]
+    pub plate_index: Option<i64>,
+    /// Trancher tous les plateaux préparés.
+    #[ts(optional)]
+    pub all: Option<bool>,
+}
+
+/// Avertissement de configuration moteur (FR-032).
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct SliceWarning {
+    pub key: String,
+    pub message: String,
+}
+
+/// Réponse de `POST /api/projects/{id}/slice` : jobs créés + avertissements.
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct SliceResponse {
+    pub jobs: Vec<JobResponse>,
+    pub warnings: Vec<SliceWarning>,
+}
+
 // --- Outils de scène (T054) --------------------------------------------------
 
 /// Empreinte au sol d'un objet à arranger (`POST …/arrange`).

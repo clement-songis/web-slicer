@@ -68,7 +68,7 @@ fn parse_preset_id(raw: &str) -> ApiResult<PresetId> {
 
 /// Charge un preset et applique l'isolation : un preset **utilisateur** d'un
 /// autre compte est traité comme inexistant (404, SC-008).
-async fn load_visible(state: &AppState, user: UserId, id: PresetId) -> ApiResult<Preset> {
+pub(crate) async fn load_visible(state: &AppState, user: UserId, id: PresetId) -> ApiResult<Preset> {
     let preset = state.storage.presets().get(id).await?;
     if preset.origin == PresetOrigin::User && preset.user_id != Some(user) {
         return Err(ApiError::not_found("Preset"));
@@ -299,7 +299,7 @@ fn convert_legacy(values: &Value) -> Map<String, Value> {
 /// Reconstruit la chaîne racine→feuille depuis les presets stockés en suivant
 /// `inherits` (même vendeur préféré en cas d'homonymie ; parent manquant =
 /// racine ; cycle stoppé).
-fn build_chain(candidates: &[Preset], leaf: &Preset) -> Vec<RawPreset> {
+pub(crate) fn build_chain(candidates: &[Preset], leaf: &Preset) -> Vec<RawPreset> {
     let mut by_name: HashMap<&str, Vec<&Preset>> = HashMap::new();
     for p in candidates {
         by_name.entry(p.name.as_str()).or_default().push(p);
@@ -347,7 +347,7 @@ fn to_raw(p: &Preset) -> RawPreset {
 }
 
 /// Aplati un `DynamicPrintConfig` en objet JSON simple (valeurs lisibles).
-fn config_to_json(config: &engine::api::DynamicPrintConfig) -> Map<String, Value> {
+pub(crate) fn config_to_json(config: &engine::api::DynamicPrintConfig) -> Map<String, Value> {
     config
         .0
         .iter()

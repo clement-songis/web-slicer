@@ -7,6 +7,7 @@ pub mod models;
 pub mod presets;
 pub mod projects;
 pub mod scene;
+pub mod slice;
 
 use axum::extract::DefaultBodyLimit;
 use axum::routing::{get, patch, post};
@@ -65,6 +66,7 @@ where
         .route("/api/models/{id}/repair", post(scene::repair))
         .route("/api/projects/{id}/arrange", post(scene::arrange))
         .route("/api/projects/{id}/orient", post(scene::orient))
+        .route("/api/projects/{id}/slice", post(slice::slice))
         .route("/api/presets", get(presets::list).post(presets::create))
         .route(
             "/api/presets/{id}",
