@@ -433,6 +433,77 @@ pub struct SliceResponse {
     pub warnings: Vec<SliceWarning>,
 }
 
+// --- Prévisualisation G-code (T067) ------------------------------------------
+
+/// Rôle d'extrusion présent dans la préviz (id stable ↔ nom pour la légende).
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct PreviewSegmentType {
+    pub id: u32,
+    pub name: String,
+}
+
+/// Méta d'une couche : hauteur `z` et nombre de segments (dimensionnement client).
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct PreviewLayerMeta {
+    pub z: f64,
+    pub segment_count: u32,
+}
+
+/// Méta-données de prévisualisation (`GET /api/gcodes/{id}/preview/meta`, R6) :
+/// couches, types présents et échelles pour les 7 colorations (FR-041).
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct PreviewMeta {
+    pub layer_count: u32,
+    pub layers: Vec<PreviewLayerMeta>,
+    pub types_present: Vec<PreviewSegmentType>,
+    pub extruders_present: Vec<u32>,
+    /// Bornes (min, max) des attributs continus (mm/min, mm).
+    pub feedrate_min: f64,
+    pub feedrate_max: f64,
+    pub width_min: f64,
+    pub width_max: f64,
+    pub height_min: f64,
+    pub height_max: f64,
+    /// Taille d'un enregistrement segment dans les buffers `/preview/layers`.
+    pub segment_record_bytes: u32,
+}
+
+impl From<crate::gcode::PreviewSummary> for PreviewMeta {
+    fn from(s: crate::gcode::PreviewSummary) -> Self {
+        Self {
+            layer_count: s.layer_count,
+            layers: s
+                .layer_z
+                .iter()
+                .zip(s.layer_segment_counts.iter())
+                .map(|(z, c)| PreviewLayerMeta {
+                    z: *z as f64,
+                    segment_count: *c,
+                })
+                .collect(),
+            types_present: s
+                .kinds_present
+                .iter()
+                .map(|id| PreviewSegmentType {
+                    id: *id as u32,
+                    name: crate::gcode::kind_name(*id).to_string(),
+                })
+                .collect(),
+            extruders_present: s.extruders_present.iter().map(|e| *e as u32).collect(),
+            feedrate_min: s.feedrate_range.0 as f64,
+            feedrate_max: s.feedrate_range.1 as f64,
+            width_min: s.width_range.0 as f64,
+            width_max: s.width_range.1 as f64,
+            height_min: s.height_range.0 as f64,
+            height_max: s.height_range.1 as f64,
+            segment_record_bytes: crate::gcode::PREVIEW_RECORD_BYTES,
+        }
+    }
+}
+
 // --- Événements WebSocket (T065) ---------------------------------------------
 
 /// Événement serveur→client du canal `/api/ws` (contrat http-api.md). Le champ

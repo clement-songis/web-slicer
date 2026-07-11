@@ -6,6 +6,7 @@ pub mod auth;
 pub mod gcodes;
 pub mod models;
 pub mod presets;
+pub mod preview;
 pub mod projects;
 pub mod scene;
 pub mod slice;
@@ -71,6 +72,8 @@ where
         .route("/api/projects/{id}/slice", post(slice::slice))
         .route("/api/gcodes/{id}/download", get(gcodes::download))
         .route("/api/gcodes/{id}/stats", get(gcodes::stats))
+        .route("/api/gcodes/{id}/preview/meta", get(preview::meta))
+        .route("/api/gcodes/{id}/preview/layers", get(preview::layers))
         .route("/api/ws", get(ws::ws))
         .route("/api/presets", get(presets::list).post(presets::create))
         .route(

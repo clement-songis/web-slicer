@@ -21,3 +21,6 @@ export type { CreatePresetRequest } from '../../generated/api/CreatePresetReques
 export type { UpdatePresetRequest } from '../../generated/api/UpdatePresetRequest';
 export type { ImportPresetRequest } from '../../generated/api/ImportPresetRequest';
 export type { ServerEvent } from '../../generated/api/ServerEvent';
+export type { PreviewMeta } from '../../generated/api/PreviewMeta';
+export type { PreviewLayerMeta } from '../../generated/api/PreviewLayerMeta';
+export type { PreviewSegmentType } from '../../generated/api/PreviewSegmentType';
