@@ -1,9 +1,15 @@
 # Registre d'exclusions de parité (constitution V)
 
-Toute entrée des Annexes A/B/C non implémentée est consignée ici avec
-justification. `audit/check_traceability.py` échoue sur tout écart absent de
-ce registre. Statuts : `exclu-v1` (backlog v2 tracé dans spec.md) ou
-`exclu-définitif` (sans objet en web, justifié).
+Toute entrée des Annexes A/B/C non implémentée (ou implémentée hors UI) est
+consignée ici avec justification. `audit/check_traceability.py` échoue sur tout
+écart absent de ce registre. Statuts employés :
+
+- `exclu-v1` — backlog v2 tracé dans spec.md ;
+- `exclu-définitif` — sans objet en web, justifié ;
+- `partiel-v1` — partiellement couvert en v1, complété en v2 ;
+- `adaptation` — équivalent web fonctionnel, accélérateur/forme adaptés ;
+- `implémenté` / `implémenté hors UI` — présent (données et/ou UI), documenté
+  ici pour lever toute ambiguïté (aucun droit à l'oubli).
 
 ## Paramètres (Annexe A)
 
@@ -23,7 +29,7 @@ ce registre. Statuts : `exclu-v1` (backlog v2 tracé dans spec.md) ou
 | Menus `Upload Models` / `Download Models` (publish) | exclu-définitif | Service cloud MakerWorld/BBL, hors périmètre auto-hébergé |
 | Menu Aide : `Setup Wizard`, `Troubleshoot Center`, `Check for Updates`, `Show Tip of the Day` | exclu-définitif | Assistant de première configuration, diagnostic et mise à jour propres au bureau ; en web l'app est servie à jour et l'onboarding diffère |
 | `Show Configuration Folder`, `New Window`, `Reset Window Layout` | exclu-définitif | Notions de bureau (fenêtres, dossiers locaux) sans objet web |
-| `Open Network Test`, `Troubleshoot Center` | exclu-définitif | Diagnostics réseau/services Bambu propriétaires ; équivalent web : test de connexion Moonraker (US8) |
+| `Open Network Test` | exclu-définitif | Diagnostic réseau/services Bambu propriétaires ; équivalent web : test de connexion Moonraker (US8) |
 | Fichier : `Quit`, `&Quit`, `Open &Slicer…` | exclu-définitif | Quitter/lancer une autre instance = notions d'application de bureau (l'onglet du navigateur en tient lieu) |
 | Fichier : `Sync Presets` | exclu-v1 | Synchronisation cloud BBL des presets ; le système de presets web est autonome (import/export de bundle assurés) |
 | Vue : `Show 3D Navigator` | exclu-v1 | Cube de navigation 3Dconnexion/overlay ; backlog v2 (orbite caméra couverte par les vues Ctrl+0–6) |
