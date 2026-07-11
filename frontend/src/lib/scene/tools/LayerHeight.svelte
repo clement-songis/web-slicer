@@ -43,43 +43,43 @@
 </script>
 
 <div class="flex gap-3 text-sm">
-	<svg viewBox="0 0 100 100" class="h-40 w-16 rounded border border-slate-700 bg-slate-900">
+	<svg viewBox="0 0 100 100" class="h-40 w-16 rounded border border-border bg-surface-raised">
 		<polyline points={samples} fill="none" stroke="#38bdf8" stroke-width="1.5" />
 	</svg>
 
 	<div class="flex flex-1 flex-col gap-2">
 		<div class="grid grid-cols-3 gap-1">
 			<label class="flex flex-col">
-				<span class="text-slate-400">Z de</span>
+				<span class="text-content-muted">Z de</span>
 				<input
 					type="number"
 					min={0}
 					max={zMax}
 					step={0.1}
 					bind:value={z0}
-					class="rounded border border-slate-600 bg-slate-900 px-1"
+					class="rounded border border-border-strong bg-surface-raised px-1"
 				/>
 			</label>
 			<label class="flex flex-col">
-				<span class="text-slate-400">Z à</span>
+				<span class="text-content-muted">Z à</span>
 				<input
 					type="number"
 					min={0}
 					max={zMax}
 					step={0.1}
 					bind:value={z1}
-					class="rounded border border-slate-600 bg-slate-900 px-1"
+					class="rounded border border-border-strong bg-surface-raised px-1"
 				/>
 			</label>
 			<label class="flex flex-col">
-				<span class="text-slate-400">Hauteur</span>
+				<span class="text-content-muted">Hauteur</span>
 				<input
 					type="number"
 					min={DEFAULT_MIN_HEIGHT}
 					max={DEFAULT_MAX_HEIGHT}
 					step={0.01}
 					bind:value={bandHeight}
-					class="rounded border border-slate-600 bg-slate-900 px-1"
+					class="rounded border border-border-strong bg-surface-raised px-1"
 				/>
 			</label>
 		</div>
@@ -87,17 +87,17 @@
 		<div class="flex flex-wrap gap-2">
 			<button
 				type="button"
-				class="rounded bg-sky-600 px-3 py-1 text-white hover:bg-sky-500"
+				class="rounded bg-primary px-3 py-1 text-white hover:bg-primary-hover"
 				onclick={() => onchange(setBand(profile, z0, z1, bandHeight))}>Appliquer la bande</button
 			>
 			<button
 				type="button"
-				class="rounded border border-slate-600 px-3 py-1 hover:bg-slate-700"
+				class="rounded border border-border-strong px-3 py-1 hover:bg-overlay"
 				onclick={() => onchange(smooth(profile, 0.5))}>Lisser</button
 			>
 			<button
 				type="button"
-				class="rounded border border-slate-600 px-3 py-1 hover:bg-slate-700"
+				class="rounded border border-border-strong px-3 py-1 hover:bg-overlay"
 				onclick={() => onchange(uniformProfile(zMax, baseHeight))}>Réinitialiser</button
 			>
 		</div>

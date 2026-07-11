@@ -15,11 +15,11 @@
 
 <div class="flex flex-col gap-2 text-sm">
 	{#if points.length === 0}
-		<p class="text-slate-500">Cliquez sur le modèle pour poser des oreilles de bord.</p>
+		<p class="text-content-subtle">Cliquez sur le modèle pour poser des oreilles de bord.</p>
 	{:else}
 		<ul class="flex flex-col gap-1">
 			{#each points as p, i (i)}
-				<li class="flex items-center justify-between rounded bg-slate-800 px-2 py-0.5">
+				<li class="flex items-center justify-between rounded bg-surface-sunken px-2 py-0.5">
 					<span>{p.x.toFixed(1)}, {p.y.toFixed(1)}</span>
 					<button
 						type="button"
@@ -32,7 +32,7 @@
 		</ul>
 		<button
 			type="button"
-			class="self-start rounded border border-slate-600 px-3 py-1 hover:bg-slate-700"
+			class="self-start rounded border border-border-strong px-3 py-1 hover:bg-overlay"
 			onclick={() => onclear?.()}>Tout effacer</button
 		>
 	{/if}

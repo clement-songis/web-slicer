@@ -22,7 +22,7 @@
 		onclick={onClose}
 	>
 		<div
-			class="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 p-6 text-slate-200 shadow-xl"
+			class="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-border bg-surface-raised p-6 text-content shadow-xl"
 			role="dialog"
 			aria-modal="true"
 			aria-label="Raccourcis clavier"
@@ -31,13 +31,13 @@
 			tabindex="-1"
 		>
 			<div class="mb-4 flex items-center justify-between">
-				<h2 class="text-lg font-semibold text-slate-100">
+				<h2 class="text-lg font-semibold text-content">
 					{$t('Keyboard Shortcuts')}
-					<span class="text-sm text-slate-500">({totalShortcuts()})</span>
+					<span class="text-sm text-content-subtle">({totalShortcuts()})</span>
 				</h2>
 				<button
 					type="button"
-					class="rounded bg-slate-700 px-2 py-1 text-sm hover:bg-slate-600"
+					class="rounded bg-overlay px-2 py-1 text-sm hover:bg-border-strong"
 					onclick={onClose}
 				>
 					{$t('Close')}
@@ -47,14 +47,14 @@
 			<div class="grid gap-6 sm:grid-cols-2">
 				{#each SHORTCUT_GROUPS as group (group.group)}
 					<section aria-label={group.group}>
-						<h3 class="mb-2 text-sm font-semibold text-sky-300">{$t(group.group)}</h3>
+						<h3 class="mb-2 text-sm font-semibold text-primary">{$t(group.group)}</h3>
 						<dl class="flex flex-col gap-1">
 							{#each group.shortcuts as shortcut (shortcut.keys + shortcut.action)}
 								<div class="flex items-start justify-between gap-3 text-xs">
-									<dt class="text-slate-400">{shortcut.action}</dt>
+									<dt class="text-content-muted">{shortcut.action}</dt>
 									<dd>
 										<kbd
-											class="whitespace-nowrap rounded border border-slate-600 bg-slate-800 px-1.5 py-0.5 font-mono text-slate-200"
+											class="whitespace-nowrap rounded border border-border-strong bg-surface-sunken px-1.5 py-0.5 font-mono text-content"
 										>
 											{shortcut.keys}
 										</kbd>

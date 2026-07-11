@@ -82,7 +82,7 @@ describe('applyEvent', () => {
 describe('statusMeta & progressPercent', () => {
 	test('known status yields a label and badge class', () => {
 		expect(statusMeta('running').label).toBe('En cours');
-		expect(statusMeta('failed').badge).toContain('red');
+		expect(statusMeta('failed').badge).toContain('danger');
 	});
 
 	test('unknown status falls back to a neutral badge', () => {

@@ -24,8 +24,11 @@
 
 <div class="flex flex-col gap-2 text-sm">
 	<label class="flex items-center gap-2">
-		<span class="text-slate-300">Opération</span>
-		<select bind:value={op} class="rounded border border-slate-600 bg-slate-900 px-1 py-0.5">
+		<span class="text-content-muted">Opération</span>
+		<select
+			bind:value={op}
+			class="rounded border border-border-strong bg-surface-raised px-1 py-0.5"
+		>
 			{#each ops as key (key)}
 				<option value={key}>{labels[key]}</option>
 			{/each}
@@ -34,12 +37,12 @@
 
 	<button
 		type="button"
-		class="self-start rounded bg-sky-600 px-3 py-1 text-white hover:bg-sky-500 disabled:opacity-50"
+		class="self-start rounded bg-primary px-3 py-1 text-white hover:bg-primary-hover disabled:opacity-50"
 		disabled={!available}
 		onclick={() => onapply(op)}>Appliquer</button
 	>
 
 	{#if !available}
-		<p class="text-slate-500">Nécessite le moteur (à venir).</p>
+		<p class="text-content-subtle">Nécessite le moteur (à venir).</p>
 	{/if}
 </div>

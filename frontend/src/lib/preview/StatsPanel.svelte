@@ -27,16 +27,16 @@
 	const money = (v: number) => v.toFixed(2);
 </script>
 
-<section class="flex w-72 flex-col gap-4 p-3 text-sm text-slate-200" aria-label="Statistiques">
+<section class="flex w-72 flex-col gap-4 p-3 text-sm text-content" aria-label="Statistiques">
 	<!-- Estimation globale -->
 	<div class="flex flex-col gap-1">
-		<h3 class="font-semibold text-slate-100">Estimation</h3>
+		<h3 class="font-semibold text-content">Estimation</h3>
 		<dl class="grid grid-cols-2 gap-x-2 gap-y-0.5">
-			<dt class="text-slate-400">Temps total</dt>
+			<dt class="text-content-muted">Temps total</dt>
 			<dd class="text-right tabular-nums">{stats.totalTimeText}</dd>
-			<dt class="text-slate-400">Couches</dt>
+			<dt class="text-content-muted">Couches</dt>
 			<dd class="text-right tabular-nums">{stats.layerCount}</dd>
-			<dt class="text-slate-400">Changements d'outil</dt>
+			<dt class="text-content-muted">Changements d'outil</dt>
 			<dd class="text-right tabular-nums">{stats.toolchanges}</dd>
 		</dl>
 	</div>
@@ -44,10 +44,10 @@
 	<!-- Répartition par type de ligne -->
 	{#if stats.types.length}
 		<div class="flex flex-col gap-1">
-			<h3 class="font-semibold text-slate-100">Par type de ligne</h3>
+			<h3 class="font-semibold text-content">Par type de ligne</h3>
 			<table class="w-full border-collapse">
 				<thead>
-					<tr class="text-xs text-slate-400">
+					<tr class="text-xs text-content-muted">
 						<th class="text-left font-normal">Type</th>
 						<th class="text-right font-normal">Temps</th>
 						<th class="text-right font-normal">%</th>
@@ -64,7 +64,7 @@
 								<span class="truncate">{t.name}</span>
 							</td>
 							<td class="text-right tabular-nums">{formatDuration(t.timeSeconds)}</td>
-							<td class="text-right tabular-nums text-slate-400">{pct(t.timePercent)}</td>
+							<td class="text-right tabular-nums text-content-muted">{pct(t.timePercent)}</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -75,10 +75,10 @@
 	<!-- Consommation de filament -->
 	{#if stats.filaments.length}
 		<div class="flex flex-col gap-1">
-			<h3 class="font-semibold text-slate-100">Filament</h3>
+			<h3 class="font-semibold text-content">Filament</h3>
 			<table class="w-full border-collapse">
 				<thead>
-					<tr class="text-xs text-slate-400">
+					<tr class="text-xs text-content-muted">
 						<th class="text-left font-normal">#</th>
 						<th class="text-right font-normal">Longueur</th>
 						<th class="text-right font-normal">Volume</th>
@@ -89,7 +89,7 @@
 				<tbody>
 					{#each stats.filaments as f (f.extruder)}
 						<tr class="tabular-nums">
-							<td class="text-left text-slate-400">{f.extruder + 1}</td>
+							<td class="text-left text-content-muted">{f.extruder + 1}</td>
 							<td class="text-right">{mm(f.lengthMm)}</td>
 							<td class="text-right">{cm3(f.volumeCm3)}</td>
 							<td class="text-right">{grams(f.massG)}</td>
@@ -98,8 +98,8 @@
 					{/each}
 				</tbody>
 				<tfoot>
-					<tr class="border-t border-slate-700 tabular-nums font-medium">
-						<td class="text-left text-slate-400">Σ</td>
+					<tr class="border-t border-border tabular-nums font-medium">
+						<td class="text-left text-content-muted">Σ</td>
 						<td></td>
 						<td></td>
 						<td class="text-right">{grams(stats.totalMassG)}</td>

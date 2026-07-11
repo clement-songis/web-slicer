@@ -25,17 +25,17 @@
 		{#each plates as plate (plate.id)}
 			<div
 				class="flex items-center rounded border {plate.id === activeId
-					? 'border-sky-500 bg-slate-700'
-					: 'border-slate-600 bg-slate-800'}"
+					? 'border-accent bg-overlay'
+					: 'border-border-strong bg-surface-sunken'}"
 			>
 				<button type="button" class="px-2 py-0.5" onclick={() => onselect(plate.id)}>
 					{plate.name}
-					<span class="text-slate-500">({plate.objectIds.length})</span>
+					<span class="text-content-subtle">({plate.objectIds.length})</span>
 				</button>
 				{#if plates.length > 1}
 					<button
 						type="button"
-						class="px-1 text-xs text-slate-400 hover:text-white"
+						class="px-1 text-xs text-content-muted hover:text-white"
 						aria-label={`Supprimer ${plate.name}`}
 						onclick={() => onremove(plate.id)}>✕</button
 					>
@@ -44,7 +44,7 @@
 		{/each}
 		<button
 			type="button"
-			class="rounded border border-slate-600 px-2 py-0.5 hover:bg-slate-700"
+			class="rounded border border-border-strong px-2 py-0.5 hover:bg-overlay"
 			aria-label="Ajouter un plateau"
 			onclick={() => onadd()}>+</button
 		>
@@ -52,9 +52,9 @@
 
 	{#if active}
 		<label class="flex items-center gap-2">
-			<span class="text-slate-400">Type de plaque</span>
+			<span class="text-content-muted">Type de plaque</span>
 			<select
-				class="rounded border border-slate-600 bg-slate-900 px-1 py-0.5"
+				class="rounded border border-border-strong bg-surface-raised px-1 py-0.5"
 				value={active.plateType}
 				onchange={(e) => ontype(active.id, e.currentTarget.value)}
 			>

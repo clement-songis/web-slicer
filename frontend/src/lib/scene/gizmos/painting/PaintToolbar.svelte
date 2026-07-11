@@ -37,8 +37,11 @@
 
 <div class="flex flex-col gap-2 text-sm" role="toolbar" tabindex="0" {onwheel}>
 	<label class="flex items-center gap-2">
-		<span class="w-16 text-slate-300">Canal</span>
-		<select bind:value={channel} class="rounded border border-slate-600 bg-slate-900 px-1 py-0.5">
+		<span class="w-16 text-content-muted">Canal</span>
+		<select
+			bind:value={channel}
+			class="rounded border border-border-strong bg-surface-raised px-1 py-0.5"
+		>
 			{#each CHANNELS as c (c)}
 				<option value={c}>{CHANNEL_LABELS[c]}</option>
 			{/each}
@@ -46,13 +49,13 @@
 	</label>
 
 	<div class="flex items-center gap-2">
-		<span class="w-16 text-slate-300">Outil</span>
+		<span class="w-16 text-content-muted">Outil</span>
 		{#each tools as t (t)}
 			<button
 				type="button"
-				class="rounded border border-slate-600 px-2 py-0.5 {tool === t
-					? 'bg-slate-600 text-white'
-					: 'bg-slate-800'}"
+				class="rounded border border-border-strong px-2 py-0.5 {tool === t
+					? 'bg-primary text-primary-content'
+					: 'bg-surface-sunken'}"
 				aria-pressed={tool === t}
 				onclick={() => (tool = t)}>{PAINT_TOOL_LABELS[t]}</button
 			>
@@ -61,31 +64,31 @@
 
 	{#if channel !== 'mmu'}
 		<div class="flex items-center gap-2">
-			<span class="w-16 text-slate-300">Peindre</span>
+			<span class="w-16 text-content-muted">Peindre</span>
 			<button
 				type="button"
-				class="rounded border border-slate-600 px-2 py-0.5 {state === ENFORCER
-					? 'bg-emerald-600 text-white'
-					: 'bg-slate-800'}"
+				class="rounded border border-border-strong px-2 py-0.5 {state === ENFORCER
+					? 'bg-success text-white'
+					: 'bg-surface-sunken'}"
 				onclick={() => (state = ENFORCER)}>Forcer</button
 			>
 			<button
 				type="button"
-				class="rounded border border-slate-600 px-2 py-0.5 {state === BLOCKER
-					? 'bg-red-600 text-white'
-					: 'bg-slate-800'}"
+				class="rounded border border-border-strong px-2 py-0.5 {state === BLOCKER
+					? 'bg-danger text-white'
+					: 'bg-surface-sunken'}"
 				onclick={() => (state = BLOCKER)}>Bloquer</button
 			>
 		</div>
 	{:else}
 		<label class="flex items-center gap-2">
-			<span class="w-16 text-slate-300">Extrudeur</span>
+			<span class="w-16 text-content-muted">Extrudeur</span>
 			<input
 				type="number"
 				min={1}
 				step={1}
 				bind:value={state}
-				class="w-16 rounded border border-slate-600 bg-slate-900 px-1 text-right"
+				class="w-16 rounded border border-border-strong bg-surface-raised px-1 text-right"
 				aria-label="Index d'extrudeur"
 			/>
 		</label>
@@ -93,7 +96,7 @@
 
 	{#if tool !== 'fill'}
 		<label class="flex items-center gap-2">
-			<span class="w-16 text-slate-300">Rayon</span>
+			<span class="w-16 text-content-muted">Rayon</span>
 			<input
 				type="range"
 				min={MIN_RADIUS}
@@ -102,8 +105,8 @@
 				bind:value={radius}
 				class="flex-1"
 			/>
-			<span class="w-10 text-right text-slate-400">{radius.toFixed(1)}</span>
+			<span class="w-10 text-right text-content-muted">{radius.toFixed(1)}</span>
 		</label>
-		<p class="text-xs text-slate-500">Ctrl/Alt + molette : ajuster le rayon</p>
+		<p class="text-xs text-content-subtle">Ctrl/Alt + molette : ajuster le rayon</p>
 	{/if}
 </div>

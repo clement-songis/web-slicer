@@ -40,8 +40,8 @@
 	<li>
 		<div
 			class="flex items-center gap-1 rounded px-1 py-0.5 {selected
-				? 'bg-slate-600 text-white'
-				: 'hover:bg-slate-800'}"
+				? 'bg-primary text-primary-content'
+				: 'hover:bg-surface-sunken'}"
 			style="padding-left: {depth * 1 + 0.25}rem"
 		>
 			<button
@@ -49,13 +49,13 @@
 				class="flex-1 truncate text-left text-sm {tree.isHidden(node.id) ? 'opacity-40' : ''}"
 				onclick={(e) => onselect(node.id, e.shiftKey || e.ctrlKey || e.metaKey)}
 			>
-				<span class="text-slate-500">{node.kind === 'group' ? '▾' : '•'}</span>
+				<span class="text-content-subtle">{node.kind === 'group' ? '▾' : '•'}</span>
 				{node.name}
 			</button>
 
 			{#if node.kind !== 'group'}
 				<select
-					class="rounded border border-slate-600 bg-slate-900 text-xs"
+					class="rounded border border-border-strong bg-surface-raised text-xs"
 					aria-label={`Extrudeur de ${node.name}`}
 					value={node.extruder}
 					onchange={(e) => onextruder(node.id, Number(e.currentTarget.value))}
@@ -107,10 +107,10 @@
 
 <div class="flex flex-col gap-2">
 	<div class="flex items-center justify-between">
-		<span class="text-sm font-medium text-slate-200">Objets</span>
+		<span class="text-sm font-medium text-content">Objets</span>
 		<button
 			type="button"
-			class="rounded border border-slate-600 bg-slate-800 px-2 py-0.5 text-xs hover:bg-slate-700 disabled:opacity-40"
+			class="rounded border border-border-strong bg-surface-sunken px-2 py-0.5 text-xs hover:bg-overlay disabled:opacity-40"
 			disabled={selection.size < 2}
 			onclick={() => ongroup()}>Grouper</button
 		>

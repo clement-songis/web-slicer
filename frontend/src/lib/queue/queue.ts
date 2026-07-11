@@ -64,18 +64,16 @@ export interface StatusMeta {
 }
 
 const STATUS_META: Record<JobStatus, StatusMeta> = {
-	queued: { label: 'En file', badge: 'bg-slate-600 text-slate-100' },
-	running: { label: 'En cours', badge: 'bg-sky-600 text-white' },
-	succeeded: { label: 'Terminé', badge: 'bg-green-600 text-white' },
-	failed: { label: 'Échec', badge: 'bg-red-600 text-white' },
-	cancelled: { label: 'Annulé', badge: 'bg-amber-600 text-white' }
+	queued: { label: 'En file', badge: 'bg-overlay text-content' },
+	running: { label: 'En cours', badge: 'bg-primary text-primary-content' },
+	succeeded: { label: 'Terminé', badge: 'bg-success text-white' },
+	failed: { label: 'Échec', badge: 'bg-danger text-white' },
+	cancelled: { label: 'Annulé', badge: 'bg-warning text-white' }
 };
 
 /** Métadonnées d'affichage d'un état (repli neutre si inconnu). */
 export function statusMeta(status: string): StatusMeta {
-	return (
-		STATUS_META[status as JobStatus] ?? { label: status, badge: 'bg-slate-600 text-slate-100' }
-	);
+	return STATUS_META[status as JobStatus] ?? { label: status, badge: 'bg-overlay text-content' };
 }
 
 /** Progression en pourcentage entier borné (0–100). */

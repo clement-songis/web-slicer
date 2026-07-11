@@ -14,7 +14,7 @@ export interface WidgetProps<T> {
 	disabled?: boolean;
 }
 
-/** Classe Tailwind commune des champs de saisie. */
+/** Classe Tailwind commune des champs de saisie (jetons du design system). */
 export const FIELD_CLASS =
-	'w-full rounded border border-gray-300 px-2 py-1 text-sm ' +
-	'disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100';
+	'w-full rounded border border-border-strong bg-surface-raised px-2 py-1 text-sm ' +
+	'text-content disabled:opacity-50';

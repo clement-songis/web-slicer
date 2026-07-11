@@ -19,12 +19,12 @@
 <div class="flex flex-col gap-2 text-sm">
 	<label class="flex items-center gap-2">
 		<input type="checkbox" bind:checked={exploded} onchange={emit} />
-		<span class="text-slate-300">Vue éclatée</span>
+		<span class="text-content-muted">Vue éclatée</span>
 	</label>
 
 	{#if exploded}
 		<label class="flex items-center gap-2">
-			<span class="w-20 text-slate-400">Écartement</span>
+			<span class="w-20 text-content-muted">Écartement</span>
 			<input
 				type="range"
 				min={0}
@@ -34,7 +34,7 @@
 				oninput={emit}
 				class="flex-1"
 			/>
-			<span class="w-8 text-right text-slate-400">{factor.toFixed(1)}</span>
+			<span class="w-8 text-right text-content-muted">{factor.toFixed(1)}</span>
 		</label>
 	{/if}
 </div>

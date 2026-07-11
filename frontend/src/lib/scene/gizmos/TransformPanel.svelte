@@ -41,16 +41,16 @@
 <div class="flex flex-col gap-2 text-sm">
 	{#each rows as row (row.field)}
 		<div class="grid grid-cols-[6rem_repeat(3,1fr)] items-center gap-2">
-			<span class="text-slate-300">{row.label}</span>
+			<span class="text-content-muted">{row.label}</span>
 			{#each axes as axis, i (axis)}
 				<label class="flex items-center gap-1">
-					<span class="text-slate-500">{axis}</span>
+					<span class="text-content-subtle">{axis}</span>
 					<input
 						type="number"
 						step={row.field === 'scale' ? 0.01 : 1}
 						value={transform[row.field][i]}
 						oninput={(e) => setAxis(row.field, i, e.currentTarget.value)}
-						class="w-full rounded border border-slate-600 bg-slate-900 px-1 py-0.5 text-right"
+						class="w-full rounded border border-border-strong bg-surface-raised px-1 py-0.5 text-right"
 						aria-label={`${row.label} ${axis}`}
 					/>
 				</label>
@@ -60,7 +60,7 @@
 
 	<button
 		type="button"
-		class="mt-1 self-start rounded border border-slate-600 bg-slate-800 px-3 py-1 text-slate-200 hover:bg-slate-700 disabled:opacity-40"
+		class="mt-1 self-start rounded border border-border-strong bg-surface-sunken px-3 py-1 text-content hover:bg-overlay disabled:opacity-40"
 		disabled={!canLayFlat}
 		onclick={() => onlayflat?.()}
 	>

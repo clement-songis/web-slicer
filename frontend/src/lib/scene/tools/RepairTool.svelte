@@ -32,7 +32,7 @@
 <div class="flex flex-col gap-2 text-sm">
 	<button
 		type="button"
-		class="self-start rounded bg-sky-600 px-3 py-1 text-white hover:bg-sky-500 disabled:opacity-50"
+		class="self-start rounded bg-primary px-3 py-1 text-white hover:bg-primary-hover disabled:opacity-50"
 		disabled={loading}
 		onclick={analyze}>{loading ? 'Analyse…' : 'Analyser le maillage'}</button
 	>
@@ -43,13 +43,13 @@
 
 	{#if report}
 		<dl class="grid grid-cols-2 gap-x-4 gap-y-1">
-			<dt class="text-slate-400">Triangles</dt>
+			<dt class="text-content-muted">Triangles</dt>
 			<dd>{report.triangles}</dd>
-			<dt class="text-slate-400">Facettes dégénérées</dt>
+			<dt class="text-content-muted">Facettes dégénérées</dt>
 			<dd>{report.degenerate}</dd>
-			<dt class="text-slate-400">Arêtes de bord</dt>
+			<dt class="text-content-muted">Arêtes de bord</dt>
 			<dd>{report.open_edges}</dd>
-			<dt class="text-slate-400">Étanche</dt>
+			<dt class="text-content-muted">Étanche</dt>
 			<dd class={report.watertight ? 'text-success' : 'text-warning'}>
 				{report.watertight ? 'oui' : 'non'}
 			</dd>

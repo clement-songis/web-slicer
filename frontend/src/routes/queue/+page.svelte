@@ -83,43 +83,43 @@
 
 <svelte:head><title>File de tranchage</title></svelte:head>
 
-<main class="mx-auto flex max-w-3xl flex-col gap-6 p-6 text-slate-200">
-	<h1 class="text-xl font-semibold text-slate-100">File de tranchage</h1>
+<main class="mx-auto flex max-w-3xl flex-col gap-6 p-6 text-content">
+	<h1 class="text-xl font-semibold text-content">File de tranchage</h1>
 
 	{#if error}
-		<p class="rounded bg-red-900/40 px-3 py-2 text-red-300" role="alert">{error}</p>
+		<p class="rounded bg-danger-soft px-3 py-2 text-danger-content" role="alert">{error}</p>
 	{/if}
 
 	{#if justFinished}
-		<p class="rounded bg-green-900/40 px-3 py-2 text-green-300" role="status">
+		<p class="rounded bg-success-soft px-3 py-2 text-success-content" role="status">
 			Tranchage terminé — G-code disponible.
 		</p>
 	{/if}
 
 	<!-- File active -->
 	<section class="flex flex-col gap-2" aria-label="File active">
-		<h2 class="text-sm font-semibold text-slate-300">En cours ({parts.active.length})</h2>
+		<h2 class="text-sm font-semibold text-content-muted">En cours ({parts.active.length})</h2>
 		{#if parts.active.length === 0}
-			<p class="text-sm text-slate-500">Aucun tranchage en cours.</p>
+			<p class="text-sm text-content-subtle">Aucun tranchage en cours.</p>
 		{:else}
 			{#each parts.active as job (job.id)}
-				<article class="flex items-center gap-3 rounded border border-slate-700 p-3">
+				<article class="flex items-center gap-3 rounded border border-border p-3">
 					<span class="rounded px-2 py-0.5 text-xs {statusMeta(job.status).badge}">
 						{statusMeta(job.status).label}
 					</span>
 					<div class="flex min-w-0 flex-1 flex-col gap-1">
 						<div class="flex justify-between text-sm">
 							<span class="truncate">Plateau {Number(job.plate_index) + 1}</span>
-							<span class="tabular-nums text-slate-400">{progressPercent(job)}%</span>
+							<span class="tabular-nums text-content-muted">{progressPercent(job)}%</span>
 						</div>
-						<div class="h-1.5 overflow-hidden rounded bg-slate-700">
-							<div class="h-full bg-sky-500" style:width="{progressPercent(job)}%"></div>
+						<div class="h-1.5 overflow-hidden rounded bg-overlay">
+							<div class="h-full bg-primary" style:width="{progressPercent(job)}%"></div>
 						</div>
-						{#if job.phase}<span class="text-xs text-slate-500">{job.phase}</span>{/if}
+						{#if job.phase}<span class="text-xs text-content-subtle">{job.phase}</span>{/if}
 					</div>
 					<button
 						type="button"
-						class="rounded bg-slate-700 px-2 py-1 text-xs hover:bg-slate-600 disabled:opacity-50"
+						class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
 						disabled={busy[job.id]}
 						onclick={() => cancel(job.id)}
 					>
@@ -132,13 +132,13 @@
 
 	<!-- Historique -->
 	<section class="flex flex-col gap-2" aria-label="Historique">
-		<h2 class="text-sm font-semibold text-slate-300">Historique ({parts.history.length})</h2>
+		<h2 class="text-sm font-semibold text-content-muted">Historique ({parts.history.length})</h2>
 		{#if parts.history.length === 0}
-			<p class="text-sm text-slate-500">Aucun tranchage terminé.</p>
+			<p class="text-sm text-content-subtle">Aucun tranchage terminé.</p>
 		{:else}
 			<table class="w-full border-collapse text-sm">
 				<thead>
-					<tr class="text-left text-xs text-slate-400">
+					<tr class="text-left text-xs text-content-muted">
 						<th class="font-normal">État</th>
 						<th class="font-normal">Plateau</th>
 						<th class="font-normal">Date</th>
@@ -147,21 +147,21 @@
 				</thead>
 				<tbody>
 					{#each parts.history as job (job.id)}
-						<tr class="border-t border-slate-800">
+						<tr class="border-t border-border">
 							<td class="py-1">
 								<span class="rounded px-2 py-0.5 text-xs {statusMeta(job.status).badge}">
 									{statusMeta(job.status).label}
 								</span>
 							</td>
 							<td class="tabular-nums">{Number(job.plate_index) + 1}</td>
-							<td class="text-slate-400">{formatDate(job.updated_at)}</td>
+							<td class="text-content-muted">{formatDate(job.updated_at)}</td>
 							<td>
 								{#if job.gcode_id}
 									<div class="flex flex-col gap-1">
 										<!-- Ressource API (téléchargement backend), pas une route SvelteKit. -->
 										<!-- eslint-disable svelte/no-navigation-without-resolve -->
 										<a
-											class="text-sky-400 hover:underline"
+											class="text-primary hover:underline"
 											href="/api/gcodes/{job.gcode_id}/download"
 											download
 										>
@@ -172,7 +172,7 @@
 											<!-- Envoi vers une imprimante déclarée (start_now, FR-061). -->
 											<div class="flex flex-wrap items-center gap-1 text-xs">
 												<select
-													class="rounded border border-slate-600 bg-slate-800 px-1 py-0.5"
+													class="rounded border border-border-strong bg-surface-raised text-content px-1 py-0.5"
 													bind:value={sendTarget[job.id]}
 													aria-label="Imprimante cible"
 												>
@@ -180,13 +180,13 @@
 														<option value={printer.id}>{printer.name}</option>
 													{/each}
 												</select>
-												<label class="flex items-center gap-1 text-slate-400">
+												<label class="flex items-center gap-1 text-content-muted">
 													<input type="checkbox" bind:checked={sendStart[job.id]} />
 													Démarrer
 												</label>
 												<button
 													type="button"
-													class="rounded bg-slate-700 px-2 py-0.5 hover:bg-slate-600 disabled:opacity-50"
+													class="rounded border border-border-strong bg-surface-raised px-2 py-0.5 text-content hover:bg-overlay disabled:opacity-50"
 													disabled={busy[job.id]}
 													onclick={() => sendToPrinter(job)}
 												>
@@ -194,14 +194,14 @@
 												</button>
 											</div>
 											{#if sent[job.id]}
-												<span class="text-xs text-green-400" role="status">{sent[job.id]}</span>
+												<span class="text-xs text-success" role="status">{sent[job.id]}</span>
 											{/if}
 										{/if}
 									</div>
 								{:else if job.status === 'failed'}
-									<span class="text-red-400">Échec</span>
+									<span class="text-danger">Échec</span>
 								{:else}
-									<span class="text-slate-500">—</span>
+									<span class="text-content-subtle">—</span>
 								{/if}
 							</td>
 						</tr>

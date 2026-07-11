@@ -17,27 +17,27 @@
 <div class="flex flex-col gap-2 text-sm">
 	{#if measurement}
 		<dl class="grid grid-cols-2 gap-x-4 gap-y-1">
-			<dt class="text-slate-400">Distance</dt>
+			<dt class="text-content-muted">Distance</dt>
 			<dd>{measurement.distance.toFixed(2)} mm</dd>
-			<dt class="text-slate-400">ΔX / ΔY / ΔZ</dt>
+			<dt class="text-content-muted">ΔX / ΔY / ΔZ</dt>
 			<dd>{measurement.delta.map((d) => d.toFixed(2)).join(' / ')}</dd>
 		</dl>
 	{/if}
 
 	{#if angle !== null}
 		<div class="flex justify-between">
-			<span class="text-slate-400">Angle</span>
+			<span class="text-content-muted">Angle</span>
 			<span>{angle.toFixed(1)}°</span>
 		</div>
 	{/if}
 
 	{#if !measurement && angle === null}
-		<p class="text-slate-500">Cliquez deux points ou deux facettes à mesurer.</p>
+		<p class="text-content-subtle">Cliquez deux points ou deux facettes à mesurer.</p>
 	{/if}
 
 	<button
 		type="button"
-		class="self-start rounded border border-slate-600 px-3 py-1 hover:bg-slate-700"
+		class="self-start rounded border border-border-strong px-3 py-1 hover:bg-overlay"
 		onclick={() => onclear?.()}>Effacer</button
 	>
 </div>

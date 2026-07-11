@@ -34,20 +34,20 @@
 
 <div class="flex flex-col gap-2 text-sm">
 	<div class="flex items-center gap-2">
-		<span class="text-slate-300">Axe</span>
+		<span class="text-content-muted">Axe</span>
 		{#each ['x', 'y', 'z'] as const as a (a)}
 			<button
 				type="button"
-				class="rounded border border-slate-600 px-2 py-0.5 {axis === a
-					? 'bg-slate-600 text-white'
-					: 'bg-slate-800'}"
+				class="rounded border border-border-strong px-2 py-0.5 {axis === a
+					? 'bg-primary text-primary-content'
+					: 'bg-surface-sunken'}"
 				onclick={() => (axis = a)}>{a.toUpperCase()}</button
 			>
 		{/each}
 	</div>
 
 	<label class="flex items-center gap-2">
-		<span class="w-20 text-slate-300">Décalage</span>
+		<span class="w-20 text-content-muted">Décalage</span>
 		<input
 			type="range"
 			min={bounds.lo}
@@ -59,32 +59,32 @@
 		<input
 			type="number"
 			bind:value={offset}
-			class="w-20 rounded border border-slate-600 bg-slate-900 px-1 text-right"
+			class="w-20 rounded border border-border-strong bg-surface-raised px-1 text-right"
 		/>
 	</label>
 
 	<label class="flex items-center gap-2">
-		<span class="w-20 text-slate-300">Connecteurs</span>
+		<span class="w-20 text-content-muted">Connecteurs</span>
 		<input
 			type="number"
 			min={0}
 			step={1}
 			bind:value={connectorSpacing}
-			class="w-20 rounded border border-slate-600 bg-slate-900 px-1 text-right"
+			class="w-20 rounded border border-border-strong bg-surface-raised px-1 text-right"
 			aria-label="Pas des connecteurs (mm, 0 = aucun)"
 		/>
-		<span class="text-slate-500">mm (0 = aucun)</span>
+		<span class="text-content-subtle">mm (0 = aucun)</span>
 	</label>
 
 	<div class="flex gap-2">
 		<button
 			type="button"
-			class="rounded bg-sky-600 px-3 py-1 text-white hover:bg-sky-500"
+			class="rounded bg-primary px-3 py-1 text-white hover:bg-primary-hover"
 			onclick={() => oncut(plane(), connectorSpacing)}>Couper</button
 		>
 		<button
 			type="button"
-			class="rounded border border-slate-600 px-3 py-1 hover:bg-slate-700"
+			class="rounded border border-border-strong px-3 py-1 hover:bg-overlay"
 			onclick={() => oncancel?.()}>Annuler</button
 		>
 	</div>

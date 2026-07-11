@@ -61,17 +61,17 @@ export interface StateMeta {
 }
 
 const STATE_META: Record<string, StateMeta> = {
-	standby: { label: 'En veille', badge: 'bg-slate-600 text-slate-100' },
-	printing: { label: 'Impression', badge: 'bg-sky-600 text-white' },
-	paused: { label: 'En pause', badge: 'bg-amber-600 text-white' },
-	complete: { label: 'Terminé', badge: 'bg-green-600 text-white' },
-	cancelled: { label: 'Annulé', badge: 'bg-slate-500 text-white' },
-	error: { label: 'Erreur', badge: 'bg-red-600 text-white' }
+	standby: { label: 'En veille', badge: 'bg-overlay text-content' },
+	printing: { label: 'Impression', badge: 'bg-primary text-primary-content' },
+	paused: { label: 'En pause', badge: 'bg-warning text-white' },
+	complete: { label: 'Terminé', badge: 'bg-success text-white' },
+	cancelled: { label: 'Annulé', badge: 'bg-content-subtle text-white' },
+	error: { label: 'Erreur', badge: 'bg-danger text-white' }
 };
 
 /** Métadonnées d'un état (repli neutre si inconnu ou vide). */
 export function stateMeta(state: string): StateMeta {
-	return STATE_META[state] ?? { label: state || 'Inconnu', badge: 'bg-slate-600 text-slate-100' };
+	return STATE_META[state] ?? { label: state || 'Inconnu', badge: 'bg-overlay text-content' };
 }
 
 /** Progression en pourcentage entier borné (0–100). */

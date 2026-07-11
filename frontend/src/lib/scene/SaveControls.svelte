@@ -30,7 +30,7 @@
 <div class="flex flex-col gap-2 text-sm">
 	<button
 		type="button"
-		class="self-start rounded bg-sky-600 px-3 py-1 text-white hover:bg-sky-500 disabled:opacity-50"
+		class="self-start rounded bg-primary px-3 py-1 text-white hover:bg-primary-hover disabled:opacity-50"
 		disabled={saveState === 'saving'}
 		onclick={run}
 	>
