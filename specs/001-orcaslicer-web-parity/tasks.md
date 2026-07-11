@@ -200,6 +200,15 @@
 - [X] T085 [P] Campagne SC-004 : protocole de test utilisateur (40 paramètres tirés au sort, cible 95 % trouvés au même endroit qu'OrcaSlicer) documenté et exécuté ; résultats dans specs/001-orcaslicer-web-parity/validation-sc004.md (analyse G4) — *`validation-sc004.md` : protocole (population = 489 params UI-exposés, tirage rejouable graine 4, emplacement = onglet+groupe) + script reproductible + résultat exécuté **40/40 = 100 %** (cible 95 %) contre l'artefact généré `ui-layout.ts` vs `ui_inventory`. Tableau des 40 paramètres, notes de lecture (Plate Settings sans groupe, titres non résolus identiques des deux côtés), limite méthodologique (concordance structurelle, test utilisateur final recommandé).*
 - [X] T086 Documentation finale : README racine (installation nix, démarrage), engine/README.md (FFI/CLI), parcours quickstart.md rejoué intégralement — *`README.md` racine créé (architecture 3 couches, prérequis Nix, démarrage back/front, portes qualité, sources de parité, fonctionnalités par domaine, liens quickstart/validation). `engine/README.md` + doc `lib.rs` réconciliés au moteur v1 = FFI seul (CLI = backlog de validation croisée, non livré). Parcours quickstart §2 rejoué intégralement, vert : cargo fmt/clippy/test workspace, frontend lint/check/test (259), parité 6/6.*
 
+## Phase 10: Assemblage de l'éditeur frontend (intégration P4–P6)
+
+**Purpose**: composer les composants de scène (P4/US4), de réglages (P3/US2) et de préviz (P5/US5) — tous construits et testés isolément mais **orphelins de route** — dans la page projet `routes/projects/[id]`, seule livraison qui rende l'éditeur réellement utilisable. Comble l'écart identifié après T086 : aucune tâche P4–P6 ne capturait la composition du workspace, la route restant un placeholder « Éditeur à venir » (les gates de parité et les tests unitaires ne détectent pas qu'aucune page ne monte les composants).
+
+**Independent Test**: ouvrir un projet → importer un modèle → le transformer via gizmo → régler un paramètre dans la sidebar → sauvegarder → trancher → basculer en aperçu G-code, sans quitter la page.
+
+- [ ] T087 [US4] Shell du workspace éditeur : orchestrateur pur `frontend/src/lib/editor/workspace.ts` (état de disposition — panneau actif Préparer/Aperçu, onglet de réglages courant, pont de sélection scène↔`ObjectList`↔réglages, déclencheurs save/slice ; **aucune logique dans le `.svelte`**) + montage `routes/projects/[id]/+page.svelte` remplaçant le placeholder : `Viewport` (scène T050 + `GizmoToolbar`/gizmos T052–T058 + `MAIN_TOOLBAR` T061) au centre, sidebar `SettingsTabs` (T042) + sélecteurs de presets (T046), `ObjectList` (T053) + `PlateBar` (T059), `SaveControls`/Ctrl+S (T060), restauration de brouillon (T034, déjà en place) ; câblé sur `scene/document.ts` et `settings/store.ts` existants. Tests bun de l'orchestrateur (bascule de panneau, sélection propagée, mapping état→déclencheur). Respecte « aucune logique métier dans les composants » (CLAUDE.md).
+- [ ] T088 [US5] [US7] Branchement slice + aperçu dans le workspace : réducteur d'état pur `frontend/src/lib/editor/session.ts` (transitions prepare→slicing→preview, progression, erreurs figées) + bouton « Trancher » (`POST /api/projects/{id}/slice`, plateau courant/tous — T064), souscription WebSocket (T065) → progression du job et bascule auto en panneau Aperçu à `job.finished` ; rendu `PreviewLines` (T068) alimenté par `LazyPreviewLoader` (T084), curseurs `sliders.ts` (T069) et `StatsPanel` (T070). Tests bun du réducteur (progression, bascule, isolation des erreurs) ; le `.svelte` reste présentational. Dépend de T087.
+
 ---
 
 ## Dependencies & Execution Order
@@ -218,6 +227,8 @@ Phase 9 après Phase 8
 Dépendances intra-phase notables : T011 (suite générique) avant T012–T020 ;
 T024 (traits + suite de contrat) avant T025–T031 ; T040 (codegen UI) avant
 T041–T047 ; T052/T054 avant T055–T058 ; T063 (file) avant T064–T066.
+Assemblage (Phase 10) : les composants scène (T050–T061), réglages (T042/T046)
+et préviz (T068–T070/T084) précèdent T087 ; T087 (shell) avant T088 (slice/aperçu).
 
 ## Parallel Execution Examples
 
@@ -226,6 +237,7 @@ T041–T047 ; T052/T054 avant T055–T058 ; T063 (file) avant T064–T066.
 - **Phase 6** : T056 ∥ T057 ∥ T058 (gizmos indépendants) après T052/T054.
 - **Phase 7** : T068 ∥ T070 ∥ T071 côté frontend pendant T063–T067 côté backend.
 - **Phase 9** : T079 ∥ T080 ∥ T083 ∥ T084 ∥ T085.
+- **Phase 10** : séquentielle (T087 → T088) ; s'appuie sur des composants déjà livrés.
 
 ## Implementation Strategy
 
