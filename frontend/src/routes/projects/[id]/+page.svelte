@@ -3,6 +3,7 @@
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import MenuBar from '$lib/menus/MenuBar.svelte';
+	import ShortcutsDialog from '$lib/menus/ShortcutsDialog.svelte';
 	import { MAIN_MENUS } from '$lib/menus/menus';
 	import { draftStore, type DraftRecord } from '$lib/stores/draft';
 	import {
@@ -142,6 +143,9 @@
 	// Vue caméra + affichage (menu Vue, T109).
 	let cameraView = $state<NamedView>('default');
 	let showGrid = $state(true);
+
+	// Dialogue des raccourcis clavier (menu Aide, T111).
+	let showShortcuts = $state(false);
 
 	// Modèle de scène (mutations en place → proxysées par `$state`, réactives).
 	let tree = $state(new ObjectTree());
@@ -806,6 +810,10 @@
 			case 'view.gridlines':
 				showGrid = !showGrid;
 				break;
+			// — Aide (T111) —
+			case 'help.shortcuts':
+				showShortcuts = true;
+				break;
 			default:
 				menuTodo(action);
 		}
@@ -941,6 +949,9 @@
 			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		</div>
 	</header>
+
+	<!-- Dialogue des raccourcis clavier (menu Aide, T111). -->
+	<ShortcutsDialog open={showShortcuts} onClose={() => (showShortcuts = false)} />
 
 	{#if pendingDraft}
 		<div
