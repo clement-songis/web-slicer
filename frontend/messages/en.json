@@ -69,6 +69,7 @@
 	"process": "Process",
 	"printer": "Printer",
 	"filament": "Filament",
+	"tools": "Tools",
 	"slice_plate": "Slice plate",
 	"close": "Close"
 }

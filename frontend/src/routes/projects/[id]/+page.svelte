@@ -8,6 +8,14 @@
 		PlateBar,
 		SaveControls,
 		ToolRail,
+		TransformPanel,
+		CutTool,
+		BooleanTool,
+		SimplifyTool,
+		AssemblyView,
+		MeasureTool,
+		EmbossTool,
+		BrimEarsTool,
 		ObjectTree,
 		PlateSet,
 		bedFromValues,
@@ -20,6 +28,7 @@
 		fetchModelFile,
 		type SaveOutcome,
 		type SceneObject,
+		type SceneMesh,
 		type Transform
 	} from '$lib/scene';
 	import { SettingsTabs } from '$lib/settings';
@@ -59,6 +68,7 @@
 		findByModel,
 		isAccepted,
 		isPreviewable,
+		isTransformTool,
 		type EditorTool,
 		initialLayout,
 		setTab,
@@ -405,6 +415,55 @@
 		);
 	}
 
+	// Contexte des panneaux d'outils (T104) : objet unique sélectionné + dérivés.
+	const selId = $derived(ws.selection.size === 1 ? [...ws.selection][0] : null);
+	const activeObject = $derived(selId ? (sceneObjects.find((o) => o.id === selId) ?? null) : null);
+	const activeTransform = $derived<Transform>({
+		position: activeObject?.position ?? [0, 0, 0],
+		rotation: activeObject?.rotation ?? [0, 0, 0],
+		scale: activeObject?.scale ?? [1, 1, 1]
+	});
+	const activeBounds = $derived(
+		activeObject
+			? meshBounds(activeObject.mesh)
+			: {
+					min: [-100, -100, -100] as [number, number, number],
+					max: [100, 100, 100] as [number, number, number]
+				}
+	);
+	// État local des outils sans persistance moteur.
+	let assemblyExploded = $state(false);
+	let assemblyFactor = $state(0.5);
+
+	// Emprise (mm) d'un maillage, pour borner les curseurs (ex. plan de coupe).
+	function meshBounds(mesh: SceneMesh): {
+		min: [number, number, number];
+		max: [number, number, number];
+	} {
+		const p = mesh.positions;
+		const min: [number, number, number] = [Infinity, Infinity, Infinity];
+		const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+		for (let i = 0; i < p.length; i += 3) {
+			for (let a = 0; a < 3; a++) {
+				const v = p[i + a];
+				if (v < min[a]) min[a] = v;
+				if (v > max[a]) max[a] = v;
+			}
+		}
+		if (!Number.isFinite(min[0])) return { min: [-100, -100, -100], max: [100, 100, 100] };
+		return { min, max };
+	}
+
+	// Outils dont l'exécution passe par le moteur FFI (endpoints backlog v1) :
+	// on informe l'utilisateur au lieu d'échouer silencieusement.
+	function toolNeedsEngine(feature: string) {
+		saveMessage = `${feature} : opération moteur non disponible en v1 (backlog FFI).`;
+	}
+
+	function closeTool() {
+		if (tools.active) tools = setTool(tools, tools.active);
+	}
+
 	function showTab(tab: EditorTab) {
 		layout = setTab(layout, tab);
 	}
@@ -675,6 +734,59 @@
 					{gizmoMode}
 					ontransform={onTransform}
 				/>
+
+				<!-- Panneau de l'outil actif (T104) : flottant, agit sur l'objet sélectionné. -->
+				{#if tools.active && !isTransformTool(tools.active)}
+					<div
+						class="absolute top-3 left-3 z-10 w-72 rounded border border-border bg-surface-raised/95 p-3 shadow-lg"
+					>
+						<div class="mb-2 flex items-center justify-between">
+							<span class="text-xs font-semibold tracking-wide text-content-subtle uppercase">
+								{$t('Tools')}
+							</span>
+							<button
+								class="text-content-muted hover:text-content"
+								onclick={closeTool}
+								aria-label={$t('Close')}>✕</button
+							>
+						</div>
+						{#if !activeObject && tools.active !== 'assembly'}
+							<p class="text-sm text-content-subtle">Sélectionnez un objet.</p>
+						{:else if tools.active === 'flatten'}
+							<TransformPanel
+								transform={activeTransform}
+								onchange={(tr) => selId && onTransform(selId, tr)}
+							/>
+						{:else if tools.active === 'cut'}
+							<CutTool
+								min={activeBounds.min}
+								max={activeBounds.max}
+								oncut={() => toolNeedsEngine('Découpe')}
+								oncancel={closeTool}
+							/>
+						{:else if tools.active === 'boolean'}
+							<BooleanTool onapply={() => toolNeedsEngine('Booléen de maillage')} />
+						{:else if tools.active === 'simplify'}
+							<SimplifyTool
+								onsimplify={() => toolNeedsEngine('Simplification')}
+								oncancel={closeTool}
+							/>
+						{:else if tools.active === 'brim-ears'}
+							<BrimEarsTool points={[]} onremove={() => {}} onclear={closeTool} />
+						{:else if tools.active === 'measure'}
+							<MeasureTool measurement={null} />
+						{:else if tools.active === 'emboss'}
+							<EmbossTool onsubmit={() => toolNeedsEngine('Emboss / texte')} />
+						{:else if tools.active === 'svg'}
+							<EmbossTool onsubmit={() => toolNeedsEngine('Forme SVG')} />
+						{:else if tools.active === 'assembly'}
+							<AssemblyView bind:exploded={assemblyExploded} bind:factor={assemblyFactor} />
+						{:else}
+							<!-- Outils de peinture (support/seam/fuzzy/mm) : câblés par T105. -->
+							<p class="text-sm text-content-subtle">Peinture : outil câblé par T105.</p>
+						{/if}
+					</div>
+				{/if}
 
 				{#if sceneObjects.length === 0}
 					<div

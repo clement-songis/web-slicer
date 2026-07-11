@@ -69,6 +69,7 @@
 	"process": "Traitement",
 	"printer": "Imprimante",
 	"filament": "Filament",
+	"tools": "Outils",
 	"slice_plate": "Trancher le plateau",
 	"close": "Fermer"
 }
