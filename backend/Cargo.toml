@@ -28,6 +28,19 @@ argon2 = { version = "0.5", features = ["std"] }
 garde = { version = "0.23", features = ["derive", "email"] }
 async-trait = "0.1"
 
+# Client Moonraker (T074, R10) : REST multipart + WebSocket JSON-RPC.
+reqwest = { version = "0.13", default-features = false, features = [
+    "json",
+    "multipart",
+    "rustls",
+    "stream",
+] }
+tokio-tungstenite = { version = "0.29", default-features = false, features = [
+    "connect",
+    "handshake",
+] }
+futures-util = "0.3"
+
 [dev-dependencies]
 tokio = { workspace = true }
 futures = "0.3"
