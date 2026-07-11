@@ -379,7 +379,7 @@ pub struct ImportPresetRequest {
 
 // --- Tranchage (T064) --------------------------------------------------------
 
-/// Job de tranchage renvoyé par l'API (état + progression).
+/// Job de tranchage renvoyé par l'API (état, progression, résultat).
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct JobResponse {
@@ -390,10 +390,20 @@ pub struct JobResponse {
     pub status: String,
     pub progress: f64,
     pub phase: String,
+    /// G-code produit (jobs `succeeded`).
+    #[ts(optional)]
+    pub gcode_id: Option<String>,
+    /// Détail d'échec (jobs `failed`), langage clair (FR-032).
+    #[ts(optional, type = "unknown")]
+    pub error: Option<serde_json::Value>,
+    /// Dates au format RFC 3339 (tri file/historique).
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 impl From<crate::domain::SlicingJob> for JobResponse {
     fn from(j: crate::domain::SlicingJob) -> Self {
+        let rfc3339 = time::format_description::well_known::Rfc3339;
         Self {
             id: j.id.to_string(),
             project_id: j.project_id.to_string(),
@@ -401,6 +411,10 @@ impl From<crate::domain::SlicingJob> for JobResponse {
             status: json_lower(&j.status),
             progress: j.progress,
             phase: j.phase,
+            gcode_id: j.gcode_id.map(|g| g.to_string()),
+            error: j.error,
+            created_at: j.created_at.format(&rfc3339).unwrap_or_default(),
+            updated_at: j.updated_at.format(&rfc3339).unwrap_or_default(),
         }
     }
 }

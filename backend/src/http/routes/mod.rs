@@ -4,6 +4,7 @@
 pub mod admin;
 pub mod auth;
 pub mod gcodes;
+pub mod jobs;
 pub mod models;
 pub mod presets;
 pub mod preview;
@@ -70,6 +71,9 @@ where
         .route("/api/projects/{id}/arrange", post(scene::arrange))
         .route("/api/projects/{id}/orient", post(scene::orient))
         .route("/api/projects/{id}/slice", post(slice::slice))
+        .route("/api/jobs", get(jobs::list))
+        .route("/api/jobs/{id}", get(jobs::get))
+        .route("/api/jobs/{id}/cancel", post(jobs::cancel))
         .route("/api/gcodes/{id}/download", get(gcodes::download))
         .route("/api/gcodes/{id}/stats", get(gcodes::stats))
         .route("/api/gcodes/{id}/preview/meta", get(preview::meta))
