@@ -107,3 +107,42 @@ Leviers de tenue de charge implémentés côté scène : géométrie indexée co
 avec libération au démontage (`ModelObject.svelte`, T050), aucun recalcul de
 maillage pendant les manipulations (transformations = matrices, T052), et
 décimation optionnelle (`simplifyGrid`, T055) pour les maillages très lourds.
+
+## 8. Flux complet (SC-005) & charge de la file (SC-006, gate P5)
+
+### SC-005 — import → tranchage → prévisualisation → export < 3 min
+
+Cible : le flux complet **import STL (< 20 Mo) → tranchage (preset standard) →
+prévisualisation → export** s'accomplit en moins de **3 minutes**, dont moins de
+**90 s de tranchage** pour un modèle de **100 000 triangles**.
+
+Protocole de mesure (à faire tourner sur un poste de bureau courant, moteur FFI
+`ENGINE_IMPL=ffi` requis pour le tranchage réel) :
+
+| Étape | Endpoint / composant | Chrono | Cible |
+|---|---|---|---|
+| Import STL | `POST /api/projects/{id}/models` (T048) | upload → `ModelResponse` | inclus dans la marge |
+| Aperçu scène | `GET /api/models/{id}/mesh` (T049) + Threlte (T050) | décodage `WSMh` → premier rendu | < 2 s |
+| Tranchage | `POST …/slice` (T064) → file (T063) → runner FFI (T066) | `queued` → `succeeded` (WS `job.finished`) | **< 90 s** (100 k triangles) |
+| Prévisualisation | `…/preview/meta` + `…/preview/layers` (T067) + rendu (T068) | méta → buffers → géométrie | < 5 s |
+| Export | `GET …/export/3mf` (T072) ou `…/gcodes/{id}/download` (T066) | requête → fichier | < 2 s |
+
+Instrumentation : la progression et l'horodatage des transitions d'état de job
+sont exposés en temps réel via WebSocket (`job.updated`/`job.finished`, T065) ;
+mesurer `created_at → updated_at` du job succeeded pour le temps de tranchage
+pur. Le budget hors-tranchage (import + aperçu + préviz + export ≈ < 15 s) laisse
+une large marge sous les 3 minutes. La mesure de bout en bout dépend du runner
+FFI réel (T066) ; d'ici là, elle se documente ici et se rejoue à l'activation du
+moteur.
+
+### SC-006 — 10 tranchages simultanés, comptes différents
+
+Couvert par le test de charge `backend/tests/queue_concurrency.rs` (T073) :
+**10 jobs répartis sur 5 comptes**, pool de 4 workers, tous menés à `succeeded`
+sans mélange de résultats — chaque G-code reste lié à son job (`gcode.job_id`) et
+cloisonné à son compte (`GcodeRepo::get(owner, id)` → 404 pour un autre compte,
+SC-008). L'exactitude « un job traité une seule fois » sous concurrence est
+garantie par `claim_next` transactionnel (`queue_worker.rs`, T063). La
+disponibilité de l'interface pendant la charge tient au découplage file ↔ HTTP :
+le tranchage s'exécute dans un pool de workers hors du chemin des requêtes, et
+les notifications passent par le bus WebSocket sans bloquer les handlers.
