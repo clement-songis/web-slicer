@@ -65,6 +65,17 @@ export { default as ObjectList } from './ObjectList.svelte';
 export { PlateSet, DEFAULT_PLATE_TYPE, type Plate, type PlatesDocument } from './plates';
 export { default as PlateBar } from './PlateBar.svelte';
 export {
+	MAIN_TOOLBAR,
+	ASSEMBLE_TOOLBAR,
+	PLATER_MENU,
+	PLATER_SHORTCUTS,
+	OBJECTS_LIST_SHORTCUTS,
+	GIZMO_SHORTCUTS,
+	type ToolbarButton,
+	type ContextMenuItem,
+	type Shortcut
+} from './menus';
+export {
 	serializeScene,
 	parseScene,
 	serializeObject,
