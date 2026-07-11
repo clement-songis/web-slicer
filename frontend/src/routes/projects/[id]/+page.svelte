@@ -41,7 +41,8 @@
 		type SaveOutcome,
 		type SceneObject,
 		type SceneMesh,
-		type Transform
+		type Transform,
+		type NamedView
 	} from '$lib/scene';
 	import { SettingsTabs } from '$lib/settings';
 	import { PrinterSelect, PresetSelect } from '$lib/presets';
@@ -137,6 +138,10 @@
 
 	// Presse-papier de scène (menu Édition, T108) : objets copiés/coupés.
 	let clipboard = $state<SceneObject[]>([]);
+
+	// Vue caméra + affichage (menu Vue, T109).
+	let cameraView = $state<NamedView>('default');
+	let showGrid = $state(true);
 
 	// Modèle de scène (mutations en place → proxysées par `$state`, réactives).
 	let tree = $state(new ObjectTree());
@@ -776,6 +781,31 @@
 				plates.addPlate();
 				saveMessage = 'Plateau ajouté (copie du plateau courant : contenu à venir).';
 				break;
+			// — Vue (T109) : vues caméra nommées + affichage de la grille —
+			case 'view.default':
+				cameraView = 'default';
+				break;
+			case 'view.top':
+				cameraView = 'top';
+				break;
+			case 'view.bottom':
+				cameraView = 'bottom';
+				break;
+			case 'view.front':
+				cameraView = 'front';
+				break;
+			case 'view.rear':
+				cameraView = 'rear';
+				break;
+			case 'view.left':
+				cameraView = 'left';
+				break;
+			case 'view.right':
+				cameraView = 'right';
+				break;
+			case 'view.gridlines':
+				showGrid = !showGrid;
+				break;
 			default:
 				menuTodo(action);
 		}
@@ -1051,6 +1081,8 @@
 					objects={sceneObjects}
 					bind:selection={ws.selection}
 					{gizmoMode}
+					view={cameraView}
+					{showGrid}
 					ontransform={onTransform}
 				/>
 

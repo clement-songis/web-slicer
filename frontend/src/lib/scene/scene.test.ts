@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'bun:test';
 
 import { bedFromValues, gridDivisions, isRectangular, parseAreaPoints } from './bed';
-import { fitDistance, frameBed } from './camera';
+import { fitDistance, frameBed, viewPose, viewUp } from './camera';
 import { decodeMesh } from './mesh';
 import { applyPick, isSelected } from './selection';
 
@@ -86,6 +86,29 @@ describe('caméra', () => {
 		expect(Math.hypot(dx, dy, dz)).toBeGreaterThan(100);
 		// Vue de dessus/avant : Z caméra au-dessus de la cible.
 		expect(pose.position[2]).toBeGreaterThan(100);
+	});
+
+	it('vues nommées : cible au centre, direction attendue', () => {
+		const bed = bedFromValues({
+			printable_area: ['0x0', '200x0', '200x200', '0x200'],
+			printable_height: 200
+		});
+		const target: [number, number, number] = [100, 100, 100];
+		// Dessus : caméra au-dessus, X/Y au centre.
+		const top = viewPose(bed, 'top');
+		expect(top.target).toEqual(target);
+		expect(top.position[0]).toBeCloseTo(100);
+		expect(top.position[1]).toBeCloseTo(100);
+		expect(top.position[2]).toBeGreaterThan(100);
+		expect(viewUp('top')).toEqual([0, 1, 0]);
+		// Face : caméra en Y négatif.
+		expect(viewPose(bed, 'front').position[1]).toBeLessThan(100);
+		// Droite : caméra en X positif.
+		expect(viewPose(bed, 'right').position[0]).toBeGreaterThan(100);
+		// Gauche : caméra en X négatif.
+		expect(viewPose(bed, 'left').position[0]).toBeLessThan(100);
+		// Haut par défaut = Z+.
+		expect(viewUp('front')).toEqual([0, 0, 1]);
 	});
 });
 

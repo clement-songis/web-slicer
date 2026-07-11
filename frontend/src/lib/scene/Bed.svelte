@@ -6,9 +6,11 @@
 
 	interface Props {
 		bed: BedShape;
+		/** Affiche la grille du plateau (menu Vue → Show Gridlines, T109). */
+		showGrid?: boolean;
 	}
 
-	let { bed }: Props = $props();
+	let { bed, showGrid = true }: Props = $props();
 
 	const size = $derived(Math.max(bed.width, bed.depth));
 </script>
@@ -20,11 +22,13 @@
 </T.Mesh>
 
 <!-- GridHelper repose dans le plan XZ : on le bascule dans le plan XY. -->
-<T.GridHelper
-	args={[size, gridDivisions(size), 0x64748b, 0x334155]}
-	rotation={[Math.PI / 2, 0, 0]}
-	position={[bed.center.x, bed.center.y, 0]}
-/>
+{#if showGrid}
+	<T.GridHelper
+		args={[size, gridDivisions(size), 0x64748b, 0x334155]}
+		rotation={[Math.PI / 2, 0, 0]}
+		position={[bed.center.x, bed.center.y, 0]}
+	/>
+{/if}
 
 <!-- Repère d'origine (0,0,0) du plateau. -->
 <T.AxesHelper args={[Math.min(bed.width, bed.depth) * 0.15]} />

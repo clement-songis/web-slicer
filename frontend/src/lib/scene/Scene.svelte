@@ -6,6 +6,7 @@
 	import type { BedShape } from './bed';
 	import type { SceneObject } from './mesh';
 	import type { GizmoMode } from './gizmos/types';
+	import type { NamedView } from './camera';
 	import type { Transform } from './transform';
 	import Viewport from './Viewport.svelte';
 
@@ -15,6 +16,10 @@
 		selection?: Set<string>;
 		/** Mode du gizmo de transformation, ou null pour le masquer (T103). */
 		gizmoMode?: GizmoMode | null;
+		/** Vue caméra nommée du menu Vue (T109). */
+		view?: NamedView;
+		/** Affichage de la grille du plateau (menu Vue → Show Gridlines). */
+		showGrid?: boolean;
 		/** Remonte la transformation de l'objet manipulé (T103). */
 		ontransform?: (id: string, transform: Transform) => void;
 	}
@@ -24,12 +29,14 @@
 		objects = [],
 		selection = $bindable(new Set<string>()),
 		gizmoMode = null,
+		view = 'default',
+		showGrid = true,
 		ontransform
 	}: Props = $props();
 </script>
 
 <div class="h-full w-full">
 	<Canvas>
-		<Viewport {bed} {objects} bind:selection {gizmoMode} {ontransform} />
+		<Viewport {bed} {objects} bind:selection {gizmoMode} {view} {showGrid} {ontransform} />
 	</Canvas>
 </div>

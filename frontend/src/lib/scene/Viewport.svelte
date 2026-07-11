@@ -7,7 +7,7 @@
 	import type { Object3D } from 'three';
 	import Bed from './Bed.svelte';
 	import type { BedShape } from './bed';
-	import { frameBed } from './camera';
+	import { viewPose, viewUp, type NamedView } from './camera';
 	import type { SceneObject } from './mesh';
 	import ModelObject from './ModelObject.svelte';
 	import TransformGizmo from './gizmos/TransformGizmo.svelte';
@@ -21,6 +21,10 @@
 		selection?: Set<string>;
 		/** Mode du gizmo de transformation, ou null pour le masquer (T103). */
 		gizmoMode?: GizmoMode | null;
+		/** Vue caméra nommée du menu Vue (T109). */
+		view?: NamedView;
+		/** Affichage de la grille du plateau (menu Vue → Show Gridlines). */
+		showGrid?: boolean;
 		/** Remonte la transformation de l'objet manipulé (T103). */
 		ontransform?: (id: string, transform: Transform) => void;
 	}
@@ -30,13 +34,16 @@
 		objects = [],
 		selection = $bindable(new Set<string>()),
 		gizmoMode = null,
+		view = 'default',
+		showGrid = true,
 		ontransform
 	}: Props = $props();
 
 	// Active le raycasting Threlte (événements de pointeur sur les meshes).
 	interactivity();
 
-	const pose = $derived(frameBed(bed));
+	const pose = $derived(viewPose(bed, view));
+	const up = $derived(viewUp(view));
 
 	function pick(id: string | null, additive: boolean) {
 		selection = applyPick(selection, id, additive);
@@ -57,14 +64,7 @@
 	let dragging = $state(false);
 </script>
 
-<T.PerspectiveCamera
-	makeDefault
-	position={pose.position}
-	up={[0, 0, 1]}
-	fov={50}
-	near={1}
-	far={20000}
->
+<T.PerspectiveCamera makeDefault position={pose.position} {up} fov={50} near={1} far={20000}>
 	<OrbitControls enableDamping enabled={!dragging} target={pose.target} />
 </T.PerspectiveCamera>
 
@@ -75,7 +75,7 @@
 	castShadow
 />
 
-<Bed {bed} />
+<Bed {bed} {showGrid} />
 
 {#each objects as obj (obj.id)}
 	<ModelObject
