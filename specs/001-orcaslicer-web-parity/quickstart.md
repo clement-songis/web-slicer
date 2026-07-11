@@ -108,6 +108,35 @@ avec libération au démontage (`ModelObject.svelte`, T050), aucun recalcul de
 maillage pendant les manipulations (transformations = matrices, T052), et
 décimation optionnelle (`simplifyGrid`, T055) pour les maillages très lourds.
 
+### Prévisualisation G-code : budget mémoire & chargement paresseux (T084)
+
+Un G-code volumineux compte des millions de segments d'extrusion. Le format de
+transfert `WSPv` (T067/T068) est une **structure de tableaux** : chaque segment
+occupe exactement **40 octets** résidents (`RECORD_BYTES` = 6×f32 positions +
+feedrate/width/height f32 + kind u8 + extruder u8 + layer u16), sans surcoût
+d'objets JS. Ordre de grandeur : 5 M segments ⇒ ≈ 200 Mo — trop pour tout garder.
+
+Levier : **chargement paresseux par fenêtre** (`lib/preview/loader.ts`,
+`LazyPreviewLoader`). Les couches sont découpées en tranches (défaut 20 couches),
+seules les tranches de la **fenêtre** autour du curseur (défaut ±40 couches) sont
+chargées via `GET …/preview/layers?from=&to=` (T067), et les tranches lointaines
+sont **évincées (LRU)** pour tenir un **budget mémoire** (défaut **64 Mio** de
+segments résidents). La fenêtre courante n'est jamais évincée ; revenir sur une
+tranche évincée la recharge à la demande.
+
+| Grandeur | Valeur (défaut) | Effet |
+|---|---|---|
+| Taille d'un segment résident | 40 o | tableaux typés, zéro surcoût objet |
+| Tranche | 20 couches | granularité de fetch/éviction |
+| Fenêtre | ±40 couches | ~4 tranches préchargées autour du curseur |
+| Budget résident | 64 Mio | ≈ 1,6 M segments simultanés max |
+
+Protocole de mesure (préviz) : après tranchage d'un modèle dense, parcourir les
+couches au curseur et observer via DevTools → Memory que le tas des buffers de
+préviz reste borné par le budget (les tranches hors fenêtre sont libérées), et
+que le défilement reste fluide (fetch d'une tranche = un `GET` binaire décodé en
+tableaux typés, sans reparcours des couches déjà rendues).
+
 ## 8. Flux complet (SC-005) & charge de la file (SC-006, gate P5)
 
 ### SC-005 — import → tranchage → prévisualisation → export < 3 min
