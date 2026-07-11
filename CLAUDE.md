@@ -55,3 +55,8 @@ python3 audit/run_all.py   # contrôle de parité
 Commits atomiques par tâche ; chaque tâche backend/engine livre ses tests
 (TDD). Les écarts de parité passent par `specs/001-orcaslicer-web-parity/exclusions.md`,
 jamais par omission.
+
+**Messages de commit en anglais, obligatoire** — sujet et corps (`feat(engine):
+add inheritance flattener`, pas `ajoute…`). Seuls les messages de commit sont en
+anglais ; les commentaires et docstrings du code restent en français (règle
+ci-dessus). Conserver les *trailers* `Co-Authored-By` / `Claude-Session`.
