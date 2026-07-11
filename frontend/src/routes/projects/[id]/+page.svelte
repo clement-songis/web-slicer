@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
+	import { goto } from '$app/navigation';
+	import MenuBar from '$lib/menus/MenuBar.svelte';
+	import { MAIN_MENUS } from '$lib/menus/menus';
 	import { draftStore, type DraftRecord } from '$lib/stores/draft';
 	import {
 		Scene,
@@ -50,7 +53,12 @@
 		type GcodeStats
 	} from '$lib/preview';
 	import type { PreviewGeometry } from '$lib/preview/geometry';
-	import { sliceProject, listProjectModels } from '$lib/api/projects';
+	import {
+		sliceProject,
+		listProjectModels,
+		createProject,
+		duplicateProject
+	} from '$lib/api/projects';
 	import { arrangeScene, orientModel } from '$lib/api/scene';
 	import { fetchPreviewLayers, getPreviewMeta } from '$lib/api/preview';
 	import { listPresets, createPreset, updatePreset, deletePreset } from '$lib/api/presets';
@@ -629,6 +637,63 @@
 		ws = pick(ws, null, false);
 	}
 
+	// Item de menu sans commande câblée en v1 : informe au lieu d'un no-op muet.
+	function menuTodo(action: string) {
+		saveMessage = `Menu « ${action} » : commande non disponible en v1.`;
+	}
+
+	// Déclenche le téléchargement d'une ressource API (export) via un lien éphémère.
+	function downloadUrl(url: string) {
+		const a = document.createElement('a');
+		a.href = url;
+		a.download = '';
+		document.body.appendChild(a);
+		a.click();
+		a.remove();
+	}
+
+	// Dispatch de la barre de menus (T107 : menu Fichier). Édition/Vue/Aide sont
+	// câblés par T108/T109/T111 ; les items sans objet renvoient un message.
+	async function onMenuAction(action: string) {
+		switch (action) {
+			// — Fichier —
+			case 'project.new':
+				try {
+					const p = await createProject({ name: 'Nouveau projet' });
+					await goto(resolve('/projects/[id]', { id: p.id }));
+				} catch (e) {
+					saveMessage = e instanceof ApiError ? e.message : 'création de projet impossible';
+				}
+				break;
+			case 'project.open':
+				await goto(resolve('/library'));
+				break;
+			case 'project.save':
+				await save();
+				break;
+			case 'project.saveAs':
+				try {
+					const dup = await duplicateProject(data.project.id);
+					await goto(resolve('/projects/[id]', { id: dup.id }));
+				} catch (e) {
+					saveMessage = e instanceof ApiError ? e.message : 'duplication impossible';
+				}
+				break;
+			case 'import.geometry':
+				fileInput?.click();
+				break;
+			case 'export.generic3mf':
+				downloadUrl(`/api/projects/${data.project.id}/export/3mf`);
+				break;
+			case 'project.reload':
+				await loadProjectModels();
+				saveMessage = 'Modèles rechargés depuis le disque.';
+				break;
+			default:
+				menuTodo(action);
+		}
+	}
+
 	function showTab(tab: EditorTab) {
 		layout = setTab(layout, tab);
 	}
@@ -705,6 +770,8 @@
 				class="text-sm text-primary hover:underline"
 				title="Bibliothèque">←</a
 			>
+			<!-- Barre de menus principale (T107–T111) : Fichier/Édition/Vue/Aide. -->
+			<MenuBar menus={MAIN_MENUS} onaction={onMenuAction} />
 			<nav class="flex items-center gap-1" aria-label="Vues de l'éditeur">
 				{#each TABS as tab (tab.id)}
 					<button
