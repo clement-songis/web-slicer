@@ -13,7 +13,8 @@ export type PreviewFormat = 'stl' | 'obj' | '3mf';
 /** Déduit le format d'aperçu depuis l'extension du nom de fichier. */
 export function previewFormat(filename: string): PreviewFormat | null {
 	const ext = filename.split('.').pop()?.toLowerCase();
-	if (ext === 'stl') return 'stl';
+	// `.oltp` est un alias STL chez OrcaSlicer (Model.cpp).
+	if (ext === 'stl' || ext === 'oltp') return 'stl';
 	if (ext === 'obj') return 'obj';
 	if (ext === '3mf') return '3mf';
 	return null;

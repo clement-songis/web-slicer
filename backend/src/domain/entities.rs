@@ -94,6 +94,18 @@ pub enum ModelFormat {
     ThreeMf,
     Step,
     Obj,
+    Amf,
+    Svg,
+    Drc,
+}
+
+impl ModelFormat {
+    /// Formats dont le maillage n'est produit que par le moteur FFI (ni aperçu
+    /// serveur natif, ni parseur JS client) : conversion asynchrone (R7), l'objet
+    /// reste `conversion_pending` jusqu'à l'event `model.converted`.
+    pub fn needs_engine_conversion(self) -> bool {
+        matches!(self, Self::Step | Self::Amf | Self::Svg | Self::Drc)
+    }
 }
 
 /// Fichier 3D importé (source conservée + maillage converti éventuel).

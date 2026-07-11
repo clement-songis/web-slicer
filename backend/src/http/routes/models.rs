@@ -62,7 +62,10 @@ pub async fn upload(
     }
 
     let format = detect_format(&filename).ok_or_else(|| {
-        ApiError::validation("format non supporté (STL/3MF/STEP/OBJ)", details(&filename))
+        ApiError::validation(
+            "format non supporté (STL/OBJ/3MF/STEP/AMF/SVG/DRC)",
+            details(&filename),
+        )
     })?;
     validate_content(format, &bytes)
         .map_err(|reason| ApiError::validation(reason, details(&filename)))?;
@@ -122,11 +125,11 @@ pub async fn mesh(
     let model = state.storage.models().get(user.id, id).await?; // 404 si autre compte
 
     if model.format != ModelFormat::Stl {
-        return Err(match model.format {
-            ModelFormat::Step => {
-                ApiError::conflict("conversion STEP en cours (voir l'événement model.converted)")
-            }
-            _ => ApiError::not_implemented("maillage serveur indisponible (aperçu côté client)"),
+        return Err(if model.format.needs_engine_conversion() {
+            ApiError::conflict("conversion en cours (voir l'événement model.converted)")
+        } else {
+            // OBJ/3MF : aperçu produit côté client (T051).
+            ApiError::not_implemented("maillage serveur indisponible (aperçu côté client)")
         });
     }
 
@@ -181,11 +184,16 @@ fn details(filename: &str) -> serde_json::Value {
 /// Détermine le format à partir de l'extension du nom de fichier.
 pub fn detect_format(filename: &str) -> Option<ModelFormat> {
     let ext = filename.rsplit('.').next()?.to_ascii_lowercase();
+    // Jeu cross-plateforme d'OrcaSlicer (T091) : `.oltp` = alias STL ; `.amf`,
+    // `.xml` (et `.zip.amf`, dont l'ext finale est `.amf`) → AMF.
     match ext.as_str() {
-        "stl" => Some(ModelFormat::Stl),
+        "stl" | "oltp" => Some(ModelFormat::Stl),
         "obj" => Some(ModelFormat::Obj),
         "3mf" => Some(ModelFormat::ThreeMf),
         "step" | "stp" => Some(ModelFormat::Step),
+        "amf" | "xml" => Some(ModelFormat::Amf),
+        "svg" => Some(ModelFormat::Svg),
+        "drc" => Some(ModelFormat::Drc),
         _ => None,
     }
 }
@@ -197,6 +205,9 @@ fn format_ext(format: ModelFormat) -> &'static str {
         ModelFormat::Obj => "obj",
         ModelFormat::ThreeMf => "3mf",
         ModelFormat::Step => "step",
+        ModelFormat::Amf => "amf",
+        ModelFormat::Svg => "svg",
+        ModelFormat::Drc => "drc",
     }
 }
 
@@ -241,6 +252,36 @@ pub fn validate_content(format: ModelFormat, bytes: &[u8]) -> Result<(), &'stati
                 Err("OBJ invalide (texte UTF-8 attendu)")
             }
         }
+        // AMF : XML texte (`<amf`/`<?xml`) ou conteneur `.zip.amf` (« PK »).
+        ModelFormat::Amf => {
+            let head = &bytes[..bytes.len().min(256)];
+            if bytes.starts_with(b"PK\x03\x04")
+                || contains(head, b"<amf")
+                || contains(head, b"<?xml")
+            {
+                Ok(())
+            } else {
+                Err("AMF invalide (XML ou archive .zip.amf attendus)")
+            }
+        }
+        // SVG : XML texte contenant une balise `<svg`.
+        ModelFormat::Svg => {
+            if std::str::from_utf8(bytes).is_ok()
+                && contains(&bytes[..bytes.len().min(512)], b"<svg")
+            {
+                Ok(())
+            } else {
+                Err("SVG invalide (balise <svg absente)")
+            }
+        }
+        // DRC : maillage Draco, en-tête magique « DRACO ».
+        ModelFormat::Drc => {
+            if bytes.starts_with(b"DRACO") {
+                Ok(())
+            } else {
+                Err("Draco invalide (en-tête DRACO absent)")
+            }
+        }
     }
 }
 
@@ -278,8 +319,29 @@ mod tests {
         assert_eq!(detect_format("c.3mf"), Some(ModelFormat::ThreeMf));
         assert_eq!(detect_format("d.step"), Some(ModelFormat::Step));
         assert_eq!(detect_format("d.stp"), Some(ModelFormat::Step));
+        // Jeu OrcaSlicer étendu (T091) : oltp→STL, amf/xml→AMF, svg, drc.
+        assert_eq!(detect_format("f.oltp"), Some(ModelFormat::Stl));
+        assert_eq!(detect_format("g.amf"), Some(ModelFormat::Amf));
+        assert_eq!(detect_format("g.zip.amf"), Some(ModelFormat::Amf));
+        assert_eq!(detect_format("h.xml"), Some(ModelFormat::Amf));
+        assert_eq!(detect_format("i.svg"), Some(ModelFormat::Svg));
+        assert_eq!(detect_format("j.drc"), Some(ModelFormat::Drc));
+        // `.zip` conteneur et formats Apple-only = hors jeu v1 (exclusions.md).
+        assert_eq!(detect_format("k.zip"), None);
+        assert_eq!(detect_format("l.ply"), None);
         assert_eq!(detect_format("e.gif"), None);
         assert_eq!(detect_format("noext"), None);
+    }
+
+    #[test]
+    fn conversion_flag_covers_engine_formats() {
+        assert!(ModelFormat::Step.needs_engine_conversion());
+        assert!(ModelFormat::Amf.needs_engine_conversion());
+        assert!(ModelFormat::Svg.needs_engine_conversion());
+        assert!(ModelFormat::Drc.needs_engine_conversion());
+        assert!(!ModelFormat::Stl.needs_engine_conversion());
+        assert!(!ModelFormat::Obj.needs_engine_conversion());
+        assert!(!ModelFormat::ThreeMf.needs_engine_conversion());
     }
 
     #[test]
@@ -305,5 +367,13 @@ mod tests {
         assert!(validate_content(ModelFormat::Step, b"nope").is_err());
         assert!(validate_content(ModelFormat::Obj, b"v 0 0 0\n").is_ok());
         assert!(validate_content(ModelFormat::Stl, b"").is_err());
+        // Formats étendus (T091).
+        assert!(validate_content(ModelFormat::Amf, b"<?xml version=\"1.0\"?><amf>").is_ok());
+        assert!(validate_content(ModelFormat::Amf, b"PK\x03\x04rest").is_ok());
+        assert!(validate_content(ModelFormat::Amf, b"garbage").is_err());
+        assert!(validate_content(ModelFormat::Svg, b"<svg xmlns=\"...\">").is_ok());
+        assert!(validate_content(ModelFormat::Svg, b"not svg").is_err());
+        assert!(validate_content(ModelFormat::Drc, b"DRACO\x00\x01").is_ok());
+        assert!(validate_content(ModelFormat::Drc, b"nope").is_err());
     }
 }

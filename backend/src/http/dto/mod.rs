@@ -250,8 +250,7 @@ pub struct ModelResponse {
 
 impl From<Model> for ModelResponse {
     fn from(m: Model) -> Self {
-        use crate::domain::ModelFormat;
-        let conversion_pending = m.format == ModelFormat::Step && m.mesh_path.is_none();
+        let conversion_pending = m.format.needs_engine_conversion() && m.mesh_path.is_none();
         Self {
             id: m.id.to_string(),
             project_id: m.project_id.map(|p| p.to_string()),

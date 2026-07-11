@@ -18,11 +18,24 @@ export interface ImportItem {
 	error: string | null;
 }
 
-// Jeu de formats accepté à l'upload en v1 (aligné sur `backend::detect_format` ;
-// étendu au jeu OrcaSlicer complet par T091). `.oltp` = alias STL.
-const UPLOADABLE = new Set(['stl', 'obj', '3mf', 'step', 'stp']);
-// Formats dont on sait produire un aperçu client immédiat (parseurs JS, T051).
-const PREVIEWABLE = new Set(['stl', 'obj', '3mf']);
+// Jeu de formats accepté à l'upload (aligné sur `backend::detect_format` et le
+// jeu cross-plateforme d'OrcaSlicer, T091). `.oltp` = alias STL ; `.amf`/`.xml`
+// = AMF. `.usd*/.abc/.ply` (Apple-only) et `.zip` (conteneur) → exclusions.md.
+const UPLOADABLE = new Set([
+	'stl',
+	'obj',
+	'3mf',
+	'oltp',
+	'step',
+	'stp',
+	'amf',
+	'xml',
+	'svg',
+	'drc'
+]);
+// Formats dont on sait produire un aperçu client immédiat (parseurs JS, T051) ;
+// les autres passent par la conversion moteur (event `model.converted`).
+const PREVIEWABLE = new Set(['stl', 'obj', '3mf', 'oltp']);
 
 /** Extension en minuscules d'un nom de fichier (sans le point). */
 export function importExt(filename: string): string {

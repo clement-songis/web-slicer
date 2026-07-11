@@ -29,6 +29,14 @@ EXCLUSIONS = REPO / "specs" / "001-orcaslicer-web-parity" / "exclusions.md"
 REGISTRY_RS = REPO / "engine" / "src" / "params" / "registry.rs"
 UI_LAYOUT_TS = REPO / "frontend" / "src" / "generated" / "ui-layout.ts"
 TRACE_MAP = REPO / "specs" / "001-orcaslicer-web-parity" / "traceability-map.json"
+MODELS_RS = REPO / "backend" / "src" / "http" / "routes" / "models.rs"
+# Jeu faisant foi des extensions importables par OrcaSlicer (vendor 2.4.1) :
+# `GUI_App.cpp` file_wildcards_by_type (FT_MODEL/FT_PROJECT/FT_ZIP/FT_AMF) ∪
+# glisser-déposer `Plater.cpp` (stp|step|stl|oltp|obj|amf|3mf|svg|zip|drc).
+ORCA_IMPORT_EXTS = {
+    "3mf", "stl", "oltp", "stp", "step", "svg", "amf", "obj", "drc", "xml",
+    "zip", "usd", "usda", "usdc", "usdz", "abc", "ply",
+}
 # Pages/dialogs de réglages construits à la main (clés hors lignes d'option,
 # analyse G6) : sources de vérité des paramètres portés par l'UI hors ui-layout.
 SPECIAL_TS = [
@@ -243,6 +251,38 @@ def check_trace_map(ui: dict) -> None:
         )
 
 
+def check_import_formats() -> None:
+    """Chaque format importable par OrcaSlicer est soit accepté par
+    `backend::detect_format`, soit justifié dans exclusions.md (T091). Aucun
+    format Orca silencieusement omis."""
+    if not MODELS_RS.exists():
+        pending.append("import : models.rs absent — contrôle en attente")
+        return
+    text = MODELS_RS.read_text(encoding="utf-8")
+    # Corps de detect_format : arms `"ext" => Some(ModelFormat::…)`.
+    body = re.search(r"fn detect_format.*?\n\}", text, re.DOTALL)
+    accepted = set(re.findall(r'"([a-z0-9]+)"', body.group(0))) if body else set()
+    # Extensions justifiées comme exclues : backtickées dans exclusions.md
+    # (forme `.ext`).
+    excluded = {tok.lstrip(".") for tok in exclusion_vocabulary() if re.fullmatch(r"\.[a-z0-9]+", tok)}
+    untracked = sorted(
+        ext for ext in ORCA_IMPORT_EXTS if ext not in accepted and ext not in excluded
+    )
+    if untracked:
+        failures.append(
+            f"import : {len(untracked)} format(s) OrcaSlicer non tracé(s) "
+            f"(ni acceptés ni exclus) : {untracked}"
+        )
+    else:
+        n_acc = len(ORCA_IMPORT_EXTS & accepted)
+        # Exclus « purs » : justifiés dans exclusions.md et non acceptés.
+        n_exc = len((ORCA_IMPORT_EXTS & excluded) - accepted)
+        passed.append(
+            f"import — formats OrcaSlicer : {n_acc} acceptés, {n_exc} exclus justifiés, "
+            "aucun format non tracé"
+        )
+
+
 def main() -> int:
     params = load("parameters.json")["parameters"]
     ui = load("ui_inventory.json")
@@ -254,6 +294,7 @@ def main() -> int:
     check_ui_layout(ui)
     check_settings_special(params)
     check_trace_map(ui)
+    check_import_formats()
 
     for p in passed:
         print(f"✓ {p}")

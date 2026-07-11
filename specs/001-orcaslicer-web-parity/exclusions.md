@@ -51,6 +51,23 @@ consignée ici avec justification. `audit/check_traceability.py` échoue sur tou
 |---|---|---|
 | Vignettes PNG embarquées lors du tranchage FFI (`SliceResult.thumbnails`) | exclu-v1 | La génération des vignettes passe par le rendu OpenGL de la GUI (`ThumbnailsGeneratorCallback`) ; la lib `libslic3r-headless` n'embarque pas de contexte GL. Le tranchage renvoie G-code + stats ; les vignettes de préviz seront rendues côté frontend (Three.js) ou par un renderer offscreen dédié en v2 (backlog spec.md) |
 
+## Import de fichiers (formats)
+
+Jeu faisant foi : OrcaSlicer `GUI_App.cpp` `file_wildcards_by_type`
+(`FT_MODEL`/`FT_PROJECT`/`FT_ZIP`/`FT_AMF`) et le glisser-déposer `Plater.cpp`
+(`stp|step|stl|oltp|obj|amf|3mf|svg|zip|drc`). Le jeu accepté par l'app est
+`backend::detect_format` / `engine::api::ModelFormat` (T091).
+
+| Extension(s) | Statut | Justification |
+|---|---|---|
+| `.stl`, `.obj`, `.3mf`, `.oltp` | implémenté | Import + aperçu client immédiat (`.oltp` = alias STL, Model.cpp) ; maillage servi/rendu sans conversion moteur |
+| `.step`, `.stp` | partiel-v1 | Accepté et stocké ; conversion en maillage via lecteur OCCT du moteur FFI (`libslic3r-headless`) → event `model.converted`. Sans FFI actif, l'objet reste `conversion_pending` |
+| `.amf` (+ `.zip.amf`, `.xml`) | partiel-v1 | Accepté et stocké ; lecture via `Format/AMF` du moteur FFI → `model.converted`. Pas de parseur JS d'aperçu en v1 |
+| `.svg` | partiel-v1 | Accepté et stocké ; extrusion en volume via `Format/svg` du moteur FFI (même chemin que le gizmo Emboss/SVG, T057) → `model.converted` |
+| `.drc` | partiel-v1 | Accepté et stocké ; décodage Draco via `Format/DRC` du moteur FFI → `model.converted` |
+| `.zip` (conteneur de modèles, `FT_ZIP`) | exclu-v1 | Import d'archive multi-modèles ; backlog v2 (dézippage + import par entrée). `.zip.amf` reste accepté comme AMF |
+| `.usd`, `.usda`, `.usdc`, `.usdz`, `.abc`, `.ply` | exclu-v1 | **Apple-only chez OrcaSlicer** (`FT_MODEL` macOS uniquement, absents du glisser-déposer cross-plateforme) ; lecteurs OpenUSD/Alembic hors périmètre web v1 ; backlog v2 spec.md |
+
 ## Règles de tenue du registre
 
 1. Une entrée « à trancher à l'implémentation » doit être résolue avant la

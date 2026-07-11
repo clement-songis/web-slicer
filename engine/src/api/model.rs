@@ -14,16 +14,24 @@ pub enum ModelFormat {
     Obj,
     ThreeMf,
     Step,
+    Amf,
+    Svg,
+    Drc,
 }
 
 impl ModelFormat {
-    /// Détection par extension (insensible à la casse).
+    /// Détection par extension (insensible à la casse). Jeu cross-plateforme
+    /// d'OrcaSlicer (`GUI_App.cpp` FT_MODEL non-Apple ∪ drag-drop `Plater.cpp`) :
+    /// `.oltp` est un alias STL ; `.amf`/`.xml` (et `.zip.amf`) → AMF.
     pub fn from_path(path: &std::path::Path) -> Option<Self> {
         match path.extension()?.to_str()?.to_ascii_lowercase().as_str() {
-            "stl" => Some(Self::Stl),
+            "stl" | "oltp" => Some(Self::Stl),
             "obj" => Some(Self::Obj),
             "3mf" => Some(Self::ThreeMf),
             "step" | "stp" => Some(Self::Step),
+            "amf" | "xml" => Some(Self::Amf),
+            "svg" => Some(Self::Svg),
+            "drc" => Some(Self::Drc),
             _ => None,
         }
     }
@@ -117,6 +125,24 @@ mod tests {
             ModelFormat::from_path(Path::new("projet.3mf")),
             Some(ModelFormat::ThreeMf)
         );
+        // Jeu OrcaSlicer étendu (T091).
+        assert_eq!(
+            ModelFormat::from_path(Path::new("piece.oltp")),
+            Some(ModelFormat::Stl)
+        );
+        assert_eq!(
+            ModelFormat::from_path(Path::new("piece.amf")),
+            Some(ModelFormat::Amf)
+        );
+        assert_eq!(
+            ModelFormat::from_path(Path::new("logo.svg")),
+            Some(ModelFormat::Svg)
+        );
+        assert_eq!(
+            ModelFormat::from_path(Path::new("mesh.drc")),
+            Some(ModelFormat::Drc)
+        );
+        // `.zip` conteneur = hors jeu v1 (exclusions.md).
         assert_eq!(ModelFormat::from_path(Path::new("archive.zip")), None);
         assert_eq!(ModelFormat::from_path(Path::new("sans_extension")), None);
     }

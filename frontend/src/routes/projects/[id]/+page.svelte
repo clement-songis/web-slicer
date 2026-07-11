@@ -103,7 +103,7 @@
 	let importError = $state<string | null>(null);
 	let dragOver = $state(false);
 	let fileInput: HTMLInputElement | null = null;
-	const ACCEPT = '.stl,.obj,.3mf,.step,.stp';
+	const ACCEPT = '.stl,.obj,.3mf,.oltp,.step,.stp,.amf,.svg,.drc';
 
 	onMount(() => {
 		let alive = true;
@@ -385,7 +385,7 @@
 						class="pointer-events-none absolute inset-0 flex items-center justify-center text-center text-sm text-gray-500 dark:text-gray-400"
 					>
 						<p>
-							Glissez un modèle ici (STL, OBJ, 3MF, STEP)<br />ou cliquez sur
+							Glissez un modèle ici (STL, OBJ, 3MF, STEP, AMF, SVG, DRC)<br />ou cliquez sur
 							<span class="font-medium">Importer</span>.
 						</p>
 					</div>

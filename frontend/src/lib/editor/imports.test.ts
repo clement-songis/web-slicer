@@ -20,10 +20,21 @@ describe('imports', () => {
 		expect(isAccepted('part.3mf')).toBe(true);
 		expect(isAccepted('part.step')).toBe(true);
 		expect(isAccepted('part.stp')).toBe(true);
+		// Jeu OrcaSlicer étendu (T091).
+		expect(isAccepted('part.oltp')).toBe(true);
+		expect(isAccepted('part.amf')).toBe(true);
+		expect(isAccepted('part.svg')).toBe(true);
+		expect(isAccepted('part.drc')).toBe(true);
+		// Hors jeu v1 (exclusions.md) et formats non-modèles.
+		expect(isAccepted('part.zip')).toBe(false);
+		expect(isAccepted('part.ply')).toBe(false);
 		expect(isAccepted('part.gcode')).toBe(false);
-		// STEP est accepté mais non prévisualisable côté client (conversion moteur).
+		// STEP/AMF/SVG/DRC acceptés mais non prévisualisables (conversion moteur) ;
+		// `.oltp` = alias STL, prévisualisable.
 		expect(isPreviewable('part.stl')).toBe(true);
+		expect(isPreviewable('part.oltp')).toBe(true);
 		expect(isPreviewable('part.step')).toBe(false);
+		expect(isPreviewable('part.amf')).toBe(false);
 	});
 
 	it('démarre un import en aperçu', () => {
