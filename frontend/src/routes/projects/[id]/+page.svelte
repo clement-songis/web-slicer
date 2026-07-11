@@ -57,6 +57,12 @@
 		StatsPanel,
 		LazyPreviewLoader,
 		buildPreviewStats,
+		makeLayerRange,
+		moveThumb,
+		setActiveThumb,
+		toggleOneLayerMode,
+		type LayerRange,
+		type Coloration,
 		type GcodeStats
 	} from '$lib/preview';
 	import type { PreviewGeometry } from '$lib/preview/geometry';
@@ -225,6 +231,20 @@
 	let rawStats = $state<unknown>(null);
 	let topLayer = $state(0);
 	let loader: LazyPreviewLoader | null = null;
+	// Contrôles d'aperçu (T116) : coloration active, plage de couches (double
+	// curseur), types de ligne masqués.
+	let coloration = $state<Coloration>('type');
+	let layerRange = $state<LayerRange>(makeLayerRange(1));
+	let hiddenTypes = $state<number[]>([]);
+	const COLORATIONS: { id: Coloration; label: string }[] = [
+		{ id: 'type', label: 'Type de ligne' },
+		{ id: 'speed', label: 'Vitesse' },
+		{ id: 'height', label: 'Hauteur de couche' },
+		{ id: 'width', label: 'Largeur de ligne' },
+		{ id: 'flow', label: 'Débit' },
+		{ id: 'temperature', label: 'Température' },
+		{ id: 'filament', label: 'Filament' }
+	];
 
 	const previewStats = $derived(rawStats ? buildPreviewStats(rawStats as GcodeStats) : null);
 	const canSliceNow = $derived(tree.list().length > 0);
@@ -990,17 +1010,38 @@
 			fetchRange: (from, to) => fetchPreviewLayers(gcodeId, from, to)
 		});
 		topLayer = Math.max(0, previewMeta.layer_count - 1);
+		layerRange = makeLayerRange(previewMeta.layer_count);
 		await refreshGeometry();
 	}
 
-	// Reconstruit la géométrie de lignes pour la fenêtre autour de `topLayer`.
+	// Reconstruit la géométrie de lignes pour la couche haute visible, avec la
+	// coloration active et les types de ligne visibles (T116).
 	async function refreshGeometry() {
 		if (!loader || !previewMeta) return;
+		topLayer = layerRange.high;
 		await loader.ensure(topLayer);
+		const visibleTypes = hiddenTypes.length
+			? new Set(
+					(previewStats?.types ?? []).map((t) => t.kind).filter((k) => !hiddenTypes.includes(k))
+				)
+			: undefined;
 		previewGeometry = buildWindowGeometry(loader.window(topLayer), {
-			coloration: 'type',
-			ranges: rangesFromMeta(previewMeta)
+			coloration,
+			ranges: rangesFromMeta(previewMeta),
+			visibleTypes
 		});
+	}
+	// Bascule la visibilité d'un type de ligne et rafraîchit la géométrie.
+	function toggleType(kind: number) {
+		hiddenTypes = hiddenTypes.includes(kind)
+			? hiddenTypes.filter((k) => k !== kind)
+			: [...hiddenTypes, kind];
+		void refreshGeometry();
+	}
+	// Déplace une poignée du double curseur de couches (T116).
+	function moveLayerThumb(delta: number) {
+		layerRange = moveThumb(layerRange, delta);
+		void refreshGeometry();
 	}
 
 	async function save(): Promise<SaveOutcome> {
@@ -1429,24 +1470,100 @@
 					{:else if session.phase === 'preview' && previewGeometry && previewMeta}
 						<div class="relative min-h-0 flex-1">
 							<PreviewScene geometry={previewGeometry} {bed} />
+
+							<!-- Sélecteur de coloration (T116, FR-041). -->
+							<div
+								class="absolute left-3 top-3 flex items-center gap-2 rounded bg-surface-raised/85 p-2 text-xs text-content-muted"
+							>
+								<span>Couleur</span>
+								<select
+									class="rounded border border-border-strong bg-surface-raised px-1 py-0.5"
+									bind:value={coloration}
+									onchange={refreshGeometry}
+									aria-label="Coloration de l'aperçu"
+								>
+									{#each COLORATIONS as c (c.id)}
+										<option value={c.id}>{c.label}</option>
+									{/each}
+								</select>
+							</div>
+
+							<!-- Double curseur vertical de couches (T116, sliders.ts). -->
 							{#if previewMeta.layer_count > 1}
 								<div
-									class="absolute right-3 top-3 flex flex-col items-center gap-2 rounded bg-surface-raised/80 p-2 text-xs text-content-muted"
+									class="absolute right-3 top-3 flex flex-col items-center gap-2 rounded bg-surface-raised/85 p-2 text-xs text-content-muted"
 								>
-									<span>Couche {topLayer + 1}/{previewMeta.layer_count}</span>
-									<input
-										type="range"
-										min="0"
-										max={previewMeta.layer_count - 1}
-										bind:value={topLayer}
-										oninput={refreshGeometry}
-									/>
+									<span class="tabular-nums"
+										>{layerRange.oneLayerMode
+											? `Couche ${layerRange.high + 1}`
+											: `${layerRange.low + 1}–${layerRange.high + 1}`}/{previewMeta.layer_count}</span
+									>
+									<div class="flex gap-2">
+										<!-- Poignée haute. -->
+										<div class="flex flex-col items-center gap-1">
+											<button
+												class="rounded px-1 {layerRange.active === 'high'
+													? 'bg-primary text-primary-content'
+													: 'hover:bg-overlay'}"
+												onclick={() => (layerRange = setActiveThumb(layerRange, 'high'))}
+												title="Poignée haute">▲</button
+											>
+											<input
+												type="range"
+												class="preview-vslider"
+												min="0"
+												max={previewMeta.layer_count - 1}
+												value={layerRange.high}
+												oninput={(e) =>
+													moveLayerThumb(Number(e.currentTarget.value) - layerRange.high)}
+												aria-label="Couche haute"
+											/>
+										</div>
+										{#if !layerRange.oneLayerMode}
+											<!-- Poignée basse. -->
+											<div class="flex flex-col items-center gap-1">
+												<button
+													class="rounded px-1 {layerRange.active === 'low'
+														? 'bg-primary text-primary-content'
+														: 'hover:bg-overlay'}"
+													onclick={() => (layerRange = setActiveThumb(layerRange, 'low'))}
+													title="Poignée basse">▼</button
+												>
+												<input
+													type="range"
+													class="preview-vslider"
+													min="0"
+													max={previewMeta.layer_count - 1}
+													value={layerRange.low}
+													oninput={(e) => {
+														layerRange = setActiveThumb(layerRange, 'low');
+														moveLayerThumb(Number(e.currentTarget.value) - layerRange.low);
+													}}
+													aria-label="Couche basse"
+												/>
+											</div>
+										{/if}
+									</div>
+									<button
+										class="rounded border border-border-strong px-1.5 py-0.5 {layerRange.oneLayerMode
+											? 'bg-primary text-primary-content'
+											: 'hover:bg-overlay'}"
+										onclick={() => {
+											layerRange = toggleOneLayerMode(layerRange);
+											void refreshGeometry();
+										}}
+										title="Mode une couche (L)">1 couche</button
+									>
 								</div>
 							{/if}
 						</div>
 						{#if previewStats}
 							<div class="max-h-64 overflow-auto border-t border-border">
-								<StatsPanel stats={previewStats} />
+								<StatsPanel
+									stats={previewStats}
+									hidden={new Set(hiddenTypes)}
+									ontoggletype={coloration === 'type' ? toggleType : undefined}
+								/>
 							</div>
 						{/if}
 					{:else}
@@ -1471,3 +1588,13 @@
 		{/if}
 	</div>
 </div>
+
+<style>
+	/* Curseur de couches vertical (T116). */
+	.preview-vslider {
+		writing-mode: vertical-lr;
+		direction: rtl;
+		width: 1rem;
+		height: 8rem;
+	}
+</style>

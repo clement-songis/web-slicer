@@ -10,9 +10,13 @@
 
 	interface Props {
 		stats: PreviewStats;
+		/** Types de ligne masqués (kind) — bascule de visibilité de la légende (T116). */
+		hidden?: Set<number>;
+		/** Bascule la visibilité d'un type de ligne. */
+		ontoggletype?: (kind: number) => void;
 	}
 
-	let { stats }: Props = $props();
+	let { stats, hidden, ontoggletype }: Props = $props();
 
 	/** Couleur normalisée (0–1) → `rgb()` CSS. */
 	function css(color: Rgb): string {
@@ -55,13 +59,32 @@
 				</thead>
 				<tbody>
 					{#each stats.types as t (t.kind)}
-						<tr>
-							<td class="flex items-center gap-1.5 py-0.5">
-								<span
-									class="inline-block h-3 w-3 shrink-0 rounded-sm"
-									style:background-color={css(t.color)}
-								></span>
-								<span class="truncate">{t.name}</span>
+						{@const off = hidden?.has(t.kind) ?? false}
+						<tr class={off ? 'opacity-40' : ''}>
+							<td class="py-0.5">
+								{#if ontoggletype}
+									<button
+										type="button"
+										class="flex items-center gap-1.5 text-left"
+										aria-pressed={!off}
+										title="Afficher/masquer ce type"
+										onclick={() => ontoggletype(t.kind)}
+									>
+										<span
+											class="inline-block h-3 w-3 shrink-0 rounded-sm"
+											style:background-color={css(t.color)}
+										></span>
+										<span class="truncate">{t.name}</span>
+									</button>
+								{:else}
+									<span class="flex items-center gap-1.5">
+										<span
+											class="inline-block h-3 w-3 shrink-0 rounded-sm"
+											style:background-color={css(t.color)}
+										></span>
+										<span class="truncate">{t.name}</span>
+									</span>
+								{/if}
 							</td>
 							<td class="text-right tabular-nums">{formatDuration(t.timeSeconds)}</td>
 							<td class="text-right tabular-nums text-content-muted">{pct(t.timePercent)}</td>
