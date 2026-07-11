@@ -69,6 +69,9 @@
 	import {
 		initialWorkspace,
 		pick,
+		setSelection,
+		copyObjects,
+		pastedPosition,
 		initialTools,
 		setTool,
 		gizmoModeOf,
@@ -131,6 +134,9 @@
 	// profil par objet. La vue d'assemblage réutilise l'outil « assembly » du rail.
 	let showLayerHeight = $state(false);
 	let layerProfiles = $state<Record<string, LayerBand[]>>({});
+
+	// Presse-papier de scène (menu Édition, T108) : objets copiés/coupés.
+	let clipboard = $state<SceneObject[]>([]);
 
 	// Modèle de scène (mutations en place → proxysées par `$state`, réactives).
 	let tree = $state(new ObjectTree());
@@ -637,6 +643,57 @@
 		ws = pick(ws, null, false);
 	}
 
+	// — Actions du menu Édition (T108) : opèrent sur `sceneObjects`, l'arbre et le
+	//   presse-papier. Identifiants d'objets = identifiants de nœuds d'arbre.
+	// Ensemble des objets actuellement sélectionnés (liste stable).
+	const selectedIds = $derived([...ws.selection]);
+
+	function copySelection() {
+		clipboard = copyObjects(sceneObjects, ws.selection);
+	}
+	function pasteClipboard() {
+		if (clipboard.length === 0) return;
+		const pasted: string[] = [];
+		for (const o of clipboard) {
+			const id = tree.add('Objet collé').id;
+			if (plates.activeId) plates.assign(id, plates.activeId);
+			sceneObjects = [...sceneObjects, { ...o, id, position: pastedPosition(o.position) }];
+			pasted.push(id);
+		}
+		ws = setSelection(ws, new Set(pasted));
+	}
+	function deleteSelection() {
+		if (ws.selection.size === 0) return;
+		const doomed = new Set(ws.selection);
+		for (const id of doomed) tree.remove(id);
+		sceneObjects = sceneObjects.filter((o) => !doomed.has(o.id));
+		ws = setSelection(ws, new Set());
+	}
+	function deleteAllObjects() {
+		for (const o of [...sceneObjects]) tree.remove(o.id);
+		sceneObjects = [];
+		ws = setSelection(ws, new Set());
+	}
+	function cloneSelection() {
+		for (const id of selectedIds) {
+			tree.duplicate(id);
+			const src = sceneObjects.find((o) => o.id === id);
+			if (src) {
+				const copyId = `${id}-copy-${sceneObjects.length}`;
+				sceneObjects = [
+					...sceneObjects,
+					{ ...src, id: copyId, position: pastedPosition(src.position) }
+				];
+			}
+		}
+	}
+	function selectAllObjects() {
+		ws = setSelection(ws, new Set(sceneObjects.map((o) => o.id)));
+	}
+	function deselectAllObjects() {
+		ws = setSelection(ws, new Set());
+	}
+
 	// Item de menu sans commande câblée en v1 : informe au lieu d'un no-op muet.
 	function menuTodo(action: string) {
 		saveMessage = `Menu « ${action} » : commande non disponible en v1.`;
@@ -688,6 +745,36 @@
 			case 'project.reload':
 				await loadProjectModels();
 				saveMessage = 'Modèles rechargés depuis le disque.';
+				break;
+			// — Édition (T108) —
+			case 'edit.copy':
+				copySelection();
+				break;
+			case 'edit.cut':
+				copySelection();
+				deleteSelection();
+				break;
+			case 'edit.paste':
+				pasteClipboard();
+				break;
+			case 'edit.deleteSelected':
+				deleteSelection();
+				break;
+			case 'edit.deleteAll':
+				deleteAllObjects();
+				break;
+			case 'edit.clone':
+				cloneSelection();
+				break;
+			case 'edit.selectAll':
+				selectAllObjects();
+				break;
+			case 'edit.deselectAll':
+				deselectAllObjects();
+				break;
+			case 'edit.duplicatePlate':
+				plates.addPlate();
+				saveMessage = 'Plateau ajouté (copie du plateau courant : contenu à venir).';
 				break;
 			default:
 				menuTodo(action);

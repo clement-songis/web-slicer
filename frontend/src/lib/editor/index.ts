@@ -14,6 +14,7 @@ export {
 	type EditorPanel,
 	type WorkspaceState
 } from './workspace';
+export { copyObjects, pastedPosition, PASTE_OFFSET } from './clipboard';
 export {
 	applyJobEvent,
 	prepareSession,
