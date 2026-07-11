@@ -61,6 +61,8 @@
 		moveThumb,
 		setActiveThumb,
 		toggleOneLayerMode,
+		resolvePreviewKey,
+		FAST_STEP,
 		type LayerRange,
 		type Coloration,
 		type GcodeStats
@@ -755,9 +757,38 @@
 		else if (isToolAction(action)) selectTool(action as EditorTool);
 		else void onMenuAction(action);
 	}
+	// Raccourcis du groupe Preview (T115) : navigation de couches (flèches / L),
+	// bascule Préparer↔Aperçu (Tab). Prioritaires sur les raccourcis d'éditeur
+	// quand l'onglet Aperçu est actif. Renvoie `true` si la touche est consommée.
+	function handlePreviewKey(e: KeyboardEvent): boolean {
+		const action = resolvePreviewKey({ key: e.key, shiftKey: e.shiftKey, ctrlKey: e.ctrlKey });
+		if (!action) return false;
+		e.preventDefault();
+		const step = (fast: boolean) => (fast ? FAST_STEP : 1);
+		switch (action.type) {
+			case 'thumb':
+				moveLayerThumb(action.dir === 'up' ? step(action.fast) : -step(action.fast));
+				break;
+			case 'toggle-one-layer':
+				layerRange = toggleOneLayerMode(layerRange);
+				void refreshGeometry();
+				break;
+			case 'switch-tab':
+				showTab(layout.tab === 'preview' ? 'prepare' : 'preview');
+				break;
+			// Scrubber horizontal intra-couche (cursor / gcode window) : raffinement T116.
+			default:
+				break;
+		}
+		return true;
+	}
+
 	function onEditorKeydown(e: KeyboardEvent) {
 		// Laisse les dialogues modaux gérer leurs propres touches.
 		if (showShortcuts) return;
+		if (isEditableTarget(e.target)) return;
+		// En Aperçu, les touches de navigation de couches priment sur les outils.
+		if (layout.tab === 'preview' && handlePreviewKey(e)) return;
 		const action = resolveShortcut(
 			{ key: e.key, ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey, meta: e.metaKey },
 			isEditableTarget(e.target)
