@@ -1,6 +1,9 @@
 import tailwindcss from '@tailwindcss/vite';
 import adapter from '@sveltejs/adapter-auto';
 import { sveltekit } from '@sveltejs/kit/vite';
+import { paraglideVitePlugin } from '@inlang/paraglide-js';
+import Icons from 'unplugin-icons/vite';
+import { FileSystemIconLoader } from 'unplugin-icons/loaders';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
@@ -16,6 +19,21 @@ export default defineConfig({
 	},
 	plugins: [
 		tailwindcss(),
+		// i18n : compile messages/{en,fr}.json → src/lib/paraglide/ (généré).
+		paraglideVitePlugin({
+			project: './project.inlang',
+			outdir: './src/lib/paraglide',
+			strategy: ['localStorage', 'preferredLanguage', 'baseLocale']
+		}),
+		// Icônes : sets Iconify (Lucide…) + collection locale `~icons/custom/*`
+		// alimentée par les SVG de `src/lib/icons/custom/` (tree-shakées à froid).
+		// Convention : les SVG custom utilisent `currentColor` (cf. le README du dossier).
+		Icons({
+			compiler: 'svelte',
+			customCollections: {
+				custom: FileSystemIconLoader('./src/lib/icons/custom')
+			}
+		}),
 		sveltekit({
 			compilerOptions: {
 				// Force runes mode for the project, except for libraries. Can be removed in svelte 6.

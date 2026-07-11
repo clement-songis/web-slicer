@@ -1,32 +1,59 @@
-// i18n **additif** fr/en (T080, FR-072). Principe : les libellés de parité
-// anglais d'OrcaSlicer sont les **clés**. `translate` renvoie la traduction si
-// elle existe pour la locale, sinon la clé anglaise elle-même — la parité prime,
-// la traduction est un supplément. Sans dépendance externe : un store de locale
-// + un helper réactif `t`.
+// i18n **additif** fr/en (T080, FR-072) — adossé à Paraglide JS (inlang).
+// Principe de parité inchangé : les libellés anglais d'OrcaSlicer sont les
+// **clés** (source de vérité, tracées dans `menus.ts`/`shortcuts.ts`) ; la
+// traduction est un supplément, repli sur l'anglais si absente.
+//
+// Paraglide compile `messages/{en,fr}.json` en fonctions typées et
+// tree-shakées (`src/lib/paraglide/`, généré — jamais édité). Comme le reste de
+// l'app adresse les libellés par leur **texte anglais** (données de menu…), on
+// construit un index inverse « libellé anglais → fonction de message », puis on
+// expose l'API historique (`t`, `tr`, `translate`, `setLocale`, `locale`). Le
+// store Svelte garde la réactivité au changement de locale (Paraglide bascule
+// sans rechargement via `reload: false`).
 
 import { derived, get, writable } from 'svelte/store';
-import { fr } from './fr';
+import { m } from '$lib/paraglide/messages';
+import {
+	baseLocale,
+	getLocale,
+	locales,
+	setLocale as setParaglideLocale
+} from '$lib/paraglide/runtime';
 
-/** Locales prises en charge. `en` = identité (clés = libellés de parité). */
-export type Locale = 'en' | 'fr';
+/** Locales prises en charge (dérivées du projet inlang). */
+export type Locale = (typeof locales)[number];
 
-export const LOCALES: readonly Locale[] = ['en', 'fr'] as const;
+export const LOCALES: readonly Locale[] = locales;
 
-/** Dictionnaires par locale. `en` est vide : la clé est déjà l'anglais. */
-export const DICTIONARIES: Record<Locale, Record<string, string>> = {
-	en: {},
-	fr
-};
+/** Signature d'une fonction de message Paraglide (nos messages sont sans paramètre). */
+type MessageFn = (inputs?: Record<string, never>, options?: { locale?: Locale }) => string;
 
-const STORAGE_KEY = 'web-slicer.locale';
-
-/** Locale courante (store réactif). Défaut `en` (parité). */
-export const locale = writable<Locale>('en');
-
-/** Traduit une clé pour une locale ; repli additif sur la clé (anglais). */
-export function translate(loc: Locale, key: string): string {
-	return DICTIONARIES[loc][key] ?? key;
+/**
+ * Index inverse : libellé anglais (clé de parité) → fonction de message. Construit
+ * une fois en appelant chaque message en `baseLocale` (anglais). Robuste aux
+ * identifiants générés (ex. « Import » → export `"import"`) : on mappe par sortie.
+ */
+const byEnglish = new Map<string, MessageFn>();
+for (const value of Object.values(m)) {
+	if (typeof value === 'function') {
+		const fn = value as MessageFn;
+		byEnglish.set(fn({}, { locale: baseLocale }), fn);
+	}
 }
+
+/** Vrai si le libellé anglais dispose d'un message traduisible (couverture parité). */
+export function isTranslatable(label: string): boolean {
+	return byEnglish.has(label);
+}
+
+/** Traduit une clé (libellé anglais) pour une locale ; repli additif sur la clé. */
+export function translate(loc: Locale, key: string): string {
+	const fn = byEnglish.get(key);
+	return fn ? fn({}, { locale: loc }) : key;
+}
+
+/** Locale courante (store réactif) ; synchronisée avec Paraglide. */
+export const locale = writable<Locale>(currentLocale());
 
 /**
  * Helper réactif : `$t('New Project')`. Se réévalue au changement de locale.
@@ -38,32 +65,25 @@ export function tr(key: string): string {
 	return translate(get(locale), key);
 }
 
-/** Change la locale et la mémorise (si le stockage local est disponible). */
+/** Change la locale (persistée par la stratégie Paraglide) sans recharger la page. */
 export function setLocale(next: Locale): void {
+	setParaglideLocale(next, { reload: false });
 	locale.set(next);
-	try {
-		localStorage.setItem(STORAGE_KEY, next);
-	} catch {
-		// Stockage indisponible (SSR, mode privé) : ignoré.
-	}
 }
 
 /**
- * Initialise la locale au démarrage (navigateur) : préférence mémorisée, sinon
- * langue du navigateur (`fr*` → français), sinon anglais. Sans effet côté SSR.
+ * Initialise la locale au démarrage : Paraglide résout via sa stratégie
+ * (localStorage → langue du navigateur → anglais). On synchronise le store.
  */
 export function initLocale(): void {
-	if (typeof window === 'undefined') return;
-	let chosen: Locale = 'en';
+	locale.set(currentLocale());
+}
+
+/** Locale Paraglide courante, repli sur l'anglais si non résolue (SSR). */
+function currentLocale(): Locale {
 	try {
-		const saved = localStorage.getItem(STORAGE_KEY);
-		if (saved === 'en' || saved === 'fr') {
-			chosen = saved;
-		} else if (navigator.language?.toLowerCase().startsWith('fr')) {
-			chosen = 'fr';
-		}
+		return getLocale();
 	} catch {
-		// Accès stockage/navigator indisponible : anglais par défaut.
+		return baseLocale;
 	}
-	locale.set(chosen);
 }

@@ -10,3 +10,6 @@ bun.lockb
 
 # Code généré (ts-rs, codegen.sh) — vérifié par fraîcheur, pas par style
 src/generated/
+
+# i18n généré par Paraglide (compilé depuis messages/*.json)
+src/lib/paraglide/

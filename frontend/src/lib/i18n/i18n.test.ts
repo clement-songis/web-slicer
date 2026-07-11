@@ -1,9 +1,9 @@
-// Tests de l'i18n additif (T080, FR-072) : l'anglais est l'identité (clé =
-// libellé de parité), le français est un supplément, et la couverture française
-// des menus/raccourcis est complète.
+// Tests de l'i18n additif (T080, FR-072) adossé à Paraglide : l'anglais est
+// l'identité (clé = libellé de parité), le français est un supplément, et la
+// couverture française des menus/raccourcis est complète.
 import { describe, expect, test } from 'bun:test';
 import { get } from 'svelte/store';
-import { DICTIONARIES, locale, setLocale, t, translate, tr } from './index';
+import { isTranslatable, locale, setLocale, t, translate, tr } from './index';
 import { allMenuLabels, MAIN_MENUS } from '$lib/menus/menus';
 import { SHORTCUT_GROUPS } from '$lib/menus/shortcuts';
 
@@ -18,8 +18,9 @@ describe('translate', () => {
 		expect(translate('fr', 'Undo')).toBe('Annuler');
 	});
 
-	test('additive fallback: unknown French key returns the English key', () => {
+	test('additive fallback: unknown key returns the English key', () => {
 		expect(translate('fr', 'Totally new label')).toBe('Totally new label');
+		expect(isTranslatable('Totally new label')).toBe(false);
 	});
 });
 
@@ -35,21 +36,20 @@ describe('locale store + helpers', () => {
 });
 
 describe('French coverage (additive completeness)', () => {
-	test('every main-menu label and title has a French translation', () => {
-		const keys = new Set<string>(MAIN_MENUS.map((m) => m.title));
+	test('every main-menu title and label is translatable and non-empty in French', () => {
+		const keys = new Set<string>(MAIN_MENUS.map((menu) => menu.title));
 		for (const label of allMenuLabels()) keys.add(label);
-		const missing = [...keys].filter((k) => !(k in DICTIONARIES.fr));
+		const missing = [...keys].filter((k) => !isTranslatable(k) || translate('fr', k).length === 0);
 		expect(missing).toEqual([]);
 	});
 
-	test('every shortcut group name has a French translation', () => {
-		const missing = SHORTCUT_GROUPS.map((g) => g.group).filter((g) => !(g in DICTIONARIES.fr));
+	test('every shortcut group name is translatable in French', () => {
+		const missing = SHORTCUT_GROUPS.map((g) => g.group).filter((g) => !isTranslatable(g));
 		expect(missing).toEqual([]);
 	});
 
-	test('no French entry is empty', () => {
-		for (const [key, value] of Object.entries(DICTIONARIES.fr)) {
-			expect(value.length, `traduction vide pour ${key}`).toBeGreaterThan(0);
-		}
+	test('a French translation differs from English where expected', () => {
+		// Garde-fou : la table française n'est pas un simple miroir de l'anglais.
+		expect(translate('fr', 'New Project')).not.toBe(translate('en', 'New Project'));
 	});
 });
