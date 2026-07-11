@@ -51,6 +51,7 @@ export function applyEvent(jobs: JobResponse[], event: ServerEvent): JobResponse
 					: j
 			);
 		case 'model.converted':
+		case 'printer.status':
 			return jobs; // sans effet sur la file
 	}
 }

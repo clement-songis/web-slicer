@@ -552,6 +552,21 @@ pub enum ServerEvent {
     /// Fin de conversion STEP → mesh (R7) : maillage désormais servi par `mesh_url`.
     #[serde(rename = "model.converted")]
     ModelConverted { model_id: String, mesh_url: String },
+    /// Suivi d'impression en direct (relais Moonraker, T076). Diffusé au seul
+    /// propriétaire de l'imprimante (isolation SC-008).
+    #[serde(rename = "printer.status")]
+    PrinterStatus {
+        printer_id: String,
+        state: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        filename: Option<String>,
+        progress: f64,
+        extruder_temp: f64,
+        extruder_target: f64,
+        bed_temp: f64,
+        bed_target: f64,
+    },
 }
 
 // --- Outils de scène (T054) --------------------------------------------------

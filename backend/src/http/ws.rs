@@ -71,6 +71,28 @@ impl EventHub {
             },
         );
     }
+
+    /// Publie `printer.status` (suivi Moonraker relayé, T076) au propriétaire.
+    pub fn publish_printer_status(
+        &self,
+        user: UserId,
+        printer_id: crate::domain::PrinterId,
+        status: crate::adapters::moonraker::PrinterStatus,
+    ) {
+        self.publish(
+            user,
+            ServerEvent::PrinterStatus {
+                printer_id: printer_id.to_string(),
+                state: status.state,
+                filename: status.filename,
+                progress: status.progress,
+                extruder_temp: status.extruder_temp,
+                extruder_target: status.extruder_target,
+                bed_temp: status.bed_temp,
+                bed_target: status.bed_target,
+            },
+        );
+    }
 }
 
 /// Adaptateur : la file de tranchage relaie ses événements via le bus. Traduit le

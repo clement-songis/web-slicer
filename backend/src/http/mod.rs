@@ -4,6 +4,7 @@
 pub mod dto;
 pub mod error;
 pub mod extract;
+pub mod printer_relay;
 pub mod routes;
 pub mod state;
 pub mod ws;

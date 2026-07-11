@@ -7,6 +7,7 @@ use std::sync::Arc;
 use crate::adapters::files::FileStore;
 use crate::auth::SecretBox;
 use crate::domain::Storage;
+use crate::http::printer_relay::PrinterRelays;
 use crate::http::ws::EventHub;
 
 /// État applicatif injecté dans chaque handler (axum `State`).
@@ -21,6 +22,8 @@ pub struct AppState {
     pub events: Arc<EventHub>,
     /// Coffre de chiffrement des secrets d'instance (clés API imprimante), T075.
     pub secrets: SecretBox,
+    /// Relais de suivi d'impression Moonraker → canal WS (T076).
+    pub relays: Arc<PrinterRelays>,
 }
 
 impl AppState {
@@ -31,6 +34,7 @@ impl AppState {
             profiles_dir: default_profiles_dir(),
             events: Arc::new(EventHub::new()),
             secrets: SecretBox::from_env(),
+            relays: Arc::new(PrinterRelays::new()),
         }
     }
 

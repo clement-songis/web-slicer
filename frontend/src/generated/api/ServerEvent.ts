@@ -9,4 +9,4 @@ export type ServerEvent = { "event": "job.updated", id: string,
 /**
  * `queued` | `running` | `succeeded` | `failed` | `cancelled`.
  */
-status: string, progress: number, phase: string, error?: unknown, } | { "event": "job.finished", id: string, gcode_id?: string, stats: unknown, } | { "event": "model.converted", model_id: string, mesh_url: string, };
+status: string, progress: number, phase: string, error?: unknown, } | { "event": "job.finished", id: string, gcode_id?: string, stats: unknown, } | { "event": "model.converted", model_id: string, mesh_url: string, } | { "event": "printer.status", printer_id: string, state: string, filename?: string, progress: number, extruder_temp: number, extruder_target: number, bed_temp: number, bed_target: number, };

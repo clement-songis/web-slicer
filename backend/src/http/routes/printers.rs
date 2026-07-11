@@ -13,6 +13,7 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::Json;
 use std::path::Path as FsPath;
+use std::sync::Arc;
 
 use crate::adapters::moonraker::MoonrakerClient;
 use crate::domain::repo::NewPrinter;
@@ -183,6 +184,8 @@ pub async fn upload(
 }
 
 /// `GET /api/printers/{id}/status` — état instantané (interrogation Moonraker).
+/// Amorce aussi le relais WS `printer.status` : les mises à jour en direct
+/// commencent à circuler sur le canal du compte (T076, idempotent).
 pub async fn status(
     CurrentUser(user): CurrentUser,
     State(state): State<AppState>,
@@ -191,6 +194,10 @@ pub async fn status(
     let id = parse_printer_id(&id)?;
     let (_printer, client) = load_client(&state, user.id, id).await?;
     let status = client.query_status().await?;
+    // Suivi en direct : abonnement WebSocket relayé au canal du propriétaire.
+    state
+        .relays
+        .ensure(Arc::clone(&state.events), user.id, id, client);
     Ok(Json(PrinterStatusResponse::from(status)))
 }
 
