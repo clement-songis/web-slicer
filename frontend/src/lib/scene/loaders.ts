@@ -145,25 +145,17 @@ export function parseObj(text: string): SceneMesh {
 
 // --- 3MF (unzip + XML du modèle) ---------------------------------------------
 
-/**
- * Parse un 3MF : dézippe, lit `3D/3dmodel.model` et combine tous les maillages
- * `<mesh>` rencontrés. Extraction par regex (pas de DOMParser → testable sous
- * bun). Les transformations d'assemblage sont ignorées pour l'aperçu.
- */
-export function parse3mf(buffer: ArrayBuffer): SceneMesh {
-	const files = unzipSync(new Uint8Array(buffer));
-	const key = Object.keys(files).find((k) => k.toLowerCase().endsWith('.model'));
-	if (!key) throw new Error('3MF invalide (modèle 3D absent)');
-	const xml = strFromU8(files[key]);
-
-	const positions: number[] = [];
+/** Accumule dans `positions` les triangles de tous les `<mesh>` d'un modèle XML. */
+function collect3mfMeshes(xml: string, positions: number[]): void {
 	const meshRe = /<mesh\b[\s\S]*?<\/mesh>/g;
 	let meshMatch: RegExpExecArray | null;
 	while ((meshMatch = meshRe.exec(xml)) !== null) {
 		const block = meshMatch[0];
 		const verts: number[][] = [];
-		const vRe =
-			/<vertex\b[^>]*\bx="(-?[\d.eE+]+)"[^>]*\by="(-?[\d.eE+]+)"[^>]*\bz="(-?[\d.eE+]+)"/g;
+		// Valeurs capturées en bloc (`[^"]+`) puis converties par `Number` : robuste
+		// à la notation scientifique à exposant négatif (`-5.57e-14`) qu'OrcaSlicer
+		// émet couramment, que `[\d.eE+]` tronquait au `-` de l'exposant.
+		const vRe = /<vertex\b[^>]*\bx="([^"]+)"[^>]*\by="([^"]+)"[^>]*\bz="([^"]+)"/g;
 		let v: RegExpExecArray | null;
 		while ((v = vRe.exec(block)) !== null) {
 			verts.push([Number(v[1]), Number(v[2]), Number(v[3])]);
@@ -177,6 +169,28 @@ export function parse3mf(buffer: ArrayBuffer): SceneMesh {
 				positions.push(p[0], p[1], p[2]);
 			}
 		}
+	}
+}
+
+/**
+ * Parse un 3MF : dézippe et combine les maillages `<mesh>` de **tous** les
+ * fichiers `.model` de l'archive. OrcaSlicer/Bambu (extension « production »)
+ * scinde la géométrie : `3D/3dmodel.model` ne porte que des `<component>`
+ * référençant des `3D/Objects/*.model` où vivent réellement les sommets — on
+ * les agrège donc tous, plutôt que le seul premier fichier. Extraction par
+ * regex (pas de DOMParser → testable sous bun). Les transformations
+ * d'assemblage sont ignorées pour l'aperçu.
+ */
+export function parse3mf(buffer: ArrayBuffer): SceneMesh {
+	const files = unzipSync(new Uint8Array(buffer));
+	// `.rels` (ex. `3dmodel.model.rels`) est exclu naturellement : il finit par
+	// `.rels`, pas `.model`.
+	const modelKeys = Object.keys(files).filter((k) => k.toLowerCase().endsWith('.model'));
+	if (modelKeys.length === 0) throw new Error('3MF invalide (modèle 3D absent)');
+
+	const positions: number[] = [];
+	for (const key of modelKeys) {
+		collect3mfMeshes(strFromU8(files[key]), positions);
 	}
 	if (positions.length === 0) throw new Error('3MF sans géométrie exploitable');
 	return meshFromTriangleSoup(positions);

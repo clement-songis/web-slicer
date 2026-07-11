@@ -112,6 +112,57 @@ describe('parse3mf', () => {
 		expect([...mesh.normals.slice(0, 3)]).toEqual([0, 0, 1]);
 	});
 
+	// Structure OrcaSlicer/Bambu (extension « production ») : le 3dmodel.model
+	// racine ne contient que des <component>, la géométrie vit dans un fichier
+	// 3D/Objects/*.model séparé. Régression : l'aperçu doit les agréger.
+	function makeSplit3mf(): ArrayBuffer {
+		const root = `<?xml version="1.0"?>
+<model unit="millimeter"><resources><object id="1" type="model"><components>
+<component p:path="/3D/Objects/part.model" objectid="1"/>
+</components></object></resources>
+<build><item objectid="1" transform="1 0 0 0 1 0 0 0 1 110 110 0"/></build></model>`;
+		const object = `<?xml version="1.0"?>
+<model unit="millimeter"><resources><object id="1" type="model"><mesh>
+<vertices>
+<vertex x="0" y="0" z="0"/>
+<vertex x="2" y="0" z="0"/>
+<vertex x="0" y="2" z="0"/>
+</vertices>
+<triangles><triangle v1="0" v2="1" v3="2"/></triangles>
+</mesh></object></resources></model>`;
+		const zipped = zipSync({
+			'3D/3dmodel.model': strToU8(root),
+			'3D/_rels/3dmodel.model.rels': strToU8('<Relationships/>'),
+			'3D/Objects/part.model': strToU8(object)
+		});
+		return zipped.buffer.slice(zipped.byteOffset, zipped.byteOffset + zipped.byteLength);
+	}
+
+	test('agrège la géométrie des fichiers .model séparés (structure OrcaSlicer)', () => {
+		const mesh = parse3mf(makeSplit3mf());
+		expect(mesh.positions.length).toBe(9);
+		expect([...mesh.positions.slice(3, 6)]).toEqual([2, 0, 0]);
+	});
+
+	test('gère les coordonnées en notation scientifique à exposant négatif', () => {
+		const model = `<?xml version="1.0"?>
+<model unit="millimeter"><resources><object id="1" type="model"><mesh>
+<vertices>
+<vertex x="-5.57945075e-14" y="0" z="0"/>
+<vertex x="1" y="2.5e-3" z="0"/>
+<vertex x="0" y="1" z="-1.2E-5"/>
+</vertices>
+<triangles><triangle v1="0" v2="1" v3="2"/></triangles>
+</mesh></object></resources></model>`;
+		const zipped = zipSync({ '3D/3dmodel.model': strToU8(model) });
+		const buf = zipped.buffer.slice(zipped.byteOffset, zipped.byteOffset + zipped.byteLength);
+		const mesh = parse3mf(buf);
+		expect(mesh.positions.length).toBe(9);
+		expect(mesh.positions[0]).toBeCloseTo(-5.57945075e-14);
+		expect(mesh.positions[4]).toBeCloseTo(2.5e-3);
+		expect(mesh.positions[8]).toBeCloseTo(-1.2e-5);
+	});
+
 	test('lève si le modèle 3D est absent', () => {
 		const zipped = zipSync({ 'meta.txt': strToU8('rien') });
 		const buf = zipped.buffer.slice(zipped.byteOffset, zipped.byteOffset + zipped.byteLength);
