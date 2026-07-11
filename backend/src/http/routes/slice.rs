@@ -123,7 +123,11 @@ async fn resolve_active(
     let mut merged = engine::api::DynamicPrintConfig::new();
     for id in ids {
         let leaf = presets::load_visible(state, user, id).await?;
-        let candidates = state.storage.presets().list_by_kind(leaf.kind, user).await?;
+        let candidates = state
+            .storage
+            .presets()
+            .list_by_kind(leaf.kind, user)
+            .await?;
         let chain = presets::build_chain(&candidates, &leaf);
         let cfg = engine::presets::resolve_preset_chain(&chain).map_err(|e| {
             tracing::error!(error = %e, "résolution de preset pour le slice");
@@ -169,7 +173,11 @@ fn plate_object_ids(scene: &Value) -> Vec<Vec<String>> {
         .map(|p| {
             p.get("objectIds")
                 .and_then(Value::as_array)
-                .map(|a| a.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                .map(|a| {
+                    a.iter()
+                        .filter_map(|v| v.as_str().map(String::from))
+                        .collect()
+                })
                 .unwrap_or_default()
         })
         .collect()

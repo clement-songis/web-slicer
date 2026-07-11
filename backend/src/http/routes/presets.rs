@@ -68,7 +68,11 @@ fn parse_preset_id(raw: &str) -> ApiResult<PresetId> {
 
 /// Charge un preset et applique l'isolation : un preset **utilisateur** d'un
 /// autre compte est traité comme inexistant (404, SC-008).
-pub(crate) async fn load_visible(state: &AppState, user: UserId, id: PresetId) -> ApiResult<Preset> {
+pub(crate) async fn load_visible(
+    state: &AppState,
+    user: UserId,
+    id: PresetId,
+) -> ApiResult<Preset> {
     let preset = state.storage.presets().get(id).await?;
     if preset.origin == PresetOrigin::User && preset.user_id != Some(user) {
         return Err(ApiError::not_found("Preset"));

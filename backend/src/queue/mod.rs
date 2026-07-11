@@ -18,7 +18,34 @@ use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
 use crate::domain::repo::{JobOutcome, Storage};
-use crate::domain::{GcodeId, JobId, SlicingJob};
+use crate::domain::{GcodeId, JobId, JobStatus, SlicingJob, UserId};
+
+/// Événement de job à diffuser à son propriétaire. Port découplé du transport :
+/// la file relaie sa progression sans connaître le WebSocket (l'implémentation
+/// concrète est le bus `EventHub` de la couche HTTP, T065).
+#[derive(Debug, Clone)]
+pub enum JobEvent {
+    /// Progression / changement d'état d'un job (file en direct).
+    Updated {
+        id: JobId,
+        status: JobStatus,
+        progress: f64,
+        phase: String,
+        error: Option<serde_json::Value>,
+    },
+    /// Job terminé avec succès (notification US7-AS1).
+    Finished {
+        id: JobId,
+        gcode_id: Option<GcodeId>,
+        stats: serde_json::Value,
+    },
+}
+
+/// Port de diffusion des événements de job (implémenté par le bus WS).
+pub trait JobEventSink: Send + Sync {
+    /// Diffuse un événement au seul compte propriétaire (isolation).
+    fn publish(&self, user: UserId, event: JobEvent);
+}
 
 /// Signal d'annulation coopératif partagé avec le runner d'un job.
 #[derive(Clone, Default)]
@@ -61,17 +88,32 @@ pub enum RunOutcome {
 pub struct JobContext {
     storage: Arc<dyn Storage>,
     job_id: JobId,
+    user_id: UserId,
     cancel: Cancel,
+    events: Option<Arc<dyn JobEventSink>>,
 }
 
 impl JobContext {
-    /// Relaie la progression (0–1) et la phase courante (persistées, relayées WS en T065).
+    /// Relaie la progression (0–1) et la phase courante : persistée en base puis
+    /// diffusée à son propriétaire via le bus (event `job.updated`, T065).
     pub async fn report(&self, progress: f64, phase: &str) {
         let _ = self
             .storage
             .jobs()
             .update_progress(self.job_id, progress, phase)
             .await;
+        if let Some(sink) = &self.events {
+            sink.publish(
+                self.user_id,
+                JobEvent::Updated {
+                    id: self.job_id,
+                    status: JobStatus::Running,
+                    progress,
+                    phase: phase.to_string(),
+                    error: None,
+                },
+            );
+        }
     }
 
     /// Signal d'annulation à surveiller pendant l'exécution.
@@ -117,6 +159,8 @@ pub struct Queue {
     cancels: Mutex<HashMap<JobId, Cancel>>,
     shutdown: Notify,
     stopping: AtomicBool,
+    /// Bus d'événements (optionnel) : relaie la progression et la fin des jobs.
+    events: Option<Arc<dyn JobEventSink>>,
 }
 
 /// Poignée de contrôle d'un pool démarré.
@@ -152,7 +196,15 @@ impl Queue {
             cancels: Mutex::new(HashMap::new()),
             shutdown: Notify::new(),
             stopping: AtomicBool::new(false),
+            events: None,
         }
+    }
+
+    /// Branche le bus d'événements : la progression et la fin des jobs sont
+    /// relayées à leur propriétaire (WebSocket, T065).
+    pub fn with_event_sink(mut self, sink: Arc<dyn JobEventSink>) -> Self {
+        self.events = Some(sink);
+        self
     }
 
     /// Reprend les jobs orphelins puis lance les workers.
@@ -203,13 +255,16 @@ impl Queue {
 
     async fn run_job(&self, job: SlicingJob) {
         let id = job.id;
+        let owner = job.user_id;
         let cancel = Cancel::default();
         self.cancels.lock().unwrap().insert(id, cancel.clone());
 
         let ctx = JobContext {
             storage: Arc::clone(&self.storage),
             job_id: id,
+            user_id: owner,
             cancel,
+            events: self.events.clone(),
         };
         let outcome = self.runner.run(job, ctx).await;
         self.cancels.lock().unwrap().remove(&id);
@@ -221,17 +276,58 @@ impl Queue {
                     .jobs()
                     .finish(id, JobOutcome::Succeeded { gcode_id })
                     .await;
+                self.emit(
+                    owner,
+                    JobEvent::Finished {
+                        id,
+                        gcode_id: Some(gcode_id),
+                        stats: serde_json::Value::Null,
+                    },
+                );
             }
             RunOutcome::Failed(error) => {
                 let _ = self
                     .storage
                     .jobs()
-                    .finish(id, JobOutcome::Failed { error })
+                    .finish(
+                        id,
+                        JobOutcome::Failed {
+                            error: error.clone(),
+                        },
+                    )
                     .await;
+                self.emit(
+                    owner,
+                    JobEvent::Updated {
+                        id,
+                        status: JobStatus::Failed,
+                        progress: 1.0,
+                        phase: "failed".into(),
+                        error: Some(error),
+                    },
+                );
             }
             // L'état `cancelled` est déjà posé par `JobRepo::cancel` (chemin API) ;
-            // le worker n'écrase pas cette transition.
-            RunOutcome::Cancelled => {}
+            // le worker n'écrase pas cette transition, mais notifie le client.
+            RunOutcome::Cancelled => {
+                self.emit(
+                    owner,
+                    JobEvent::Updated {
+                        id,
+                        status: JobStatus::Cancelled,
+                        progress: 1.0,
+                        phase: "cancelled".into(),
+                        error: None,
+                    },
+                );
+            }
+        }
+    }
+
+    /// Diffuse un événement de job si un bus est branché.
+    fn emit(&self, owner: UserId, event: JobEvent) {
+        if let Some(sink) = &self.events {
+            sink.publish(owner, event);
         }
     }
 }

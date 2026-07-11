@@ -6,6 +6,7 @@ use std::sync::Arc;
 
 use crate::adapters::files::FileStore;
 use crate::domain::Storage;
+use crate::http::ws::EventHub;
 
 /// État applicatif injecté dans chaque handler (axum `State`).
 #[derive(Clone)]
@@ -15,6 +16,8 @@ pub struct AppState {
     /// Répertoire des profils système OrcaSlicer (`resources/profiles`), source
     /// du seed/reseed des presets (T038).
     pub profiles_dir: PathBuf,
+    /// Bus d'événements WebSocket (progression des jobs, conversions), T065.
+    pub events: Arc<EventHub>,
 }
 
 impl AppState {
@@ -23,6 +26,7 @@ impl AppState {
             storage,
             files,
             profiles_dir: default_profiles_dir(),
+            events: Arc::new(EventHub::new()),
         }
     }
 

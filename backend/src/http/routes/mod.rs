@@ -16,6 +16,7 @@ use tower_sessions::{SessionManagerLayer, SessionStore};
 
 use super::dto::HealthResponse;
 use super::state::AppState;
+use super::ws;
 
 async fn health() -> Json<HealthResponse> {
     Json(HealthResponse::ok())
@@ -67,6 +68,7 @@ where
         .route("/api/projects/{id}/arrange", post(scene::arrange))
         .route("/api/projects/{id}/orient", post(scene::orient))
         .route("/api/projects/{id}/slice", post(slice::slice))
+        .route("/api/ws", get(ws::ws))
         .route("/api/presets", get(presets::list).post(presets::create))
         .route(
             "/api/presets/{id}",

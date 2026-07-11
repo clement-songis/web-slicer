@@ -20,3 +20,4 @@ export type { ResolvedPreset } from '../../generated/api/ResolvedPreset';
 export type { CreatePresetRequest } from '../../generated/api/CreatePresetRequest';
 export type { UpdatePresetRequest } from '../../generated/api/UpdatePresetRequest';
 export type { ImportPresetRequest } from '../../generated/api/ImportPresetRequest';
+export type { ServerEvent } from '../../generated/api/ServerEvent';

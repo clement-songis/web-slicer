@@ -433,6 +433,42 @@ pub struct SliceResponse {
     pub warnings: Vec<SliceWarning>,
 }
 
+// --- Événements WebSocket (T065) ---------------------------------------------
+
+/// Événement serveur→client du canal `/api/ws` (contrat http-api.md). Le champ
+/// discriminant `event` vaut `job.updated` | `job.finished` | `model.converted`.
+/// Chaque événement n'est diffusé qu'au compte propriétaire (isolation).
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+#[serde(tag = "event")]
+pub enum ServerEvent {
+    /// File en direct : progression / changement d'état d'un job.
+    #[serde(rename = "job.updated")]
+    JobUpdated {
+        id: String,
+        /// `queued` | `running` | `succeeded` | `failed` | `cancelled`.
+        status: String,
+        progress: f64,
+        phase: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[ts(optional, type = "unknown")]
+        error: Option<serde_json::Value>,
+    },
+    /// Job terminé avec succès (notification US7-AS1).
+    #[serde(rename = "job.finished")]
+    JobFinished {
+        id: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[ts(optional)]
+        gcode_id: Option<String>,
+        #[ts(type = "unknown")]
+        stats: serde_json::Value,
+    },
+    /// Fin de conversion STEP → mesh (R7) : maillage désormais servi par `mesh_url`.
+    #[serde(rename = "model.converted")]
+    ModelConverted { model_id: String, mesh_url: String },
+}
+
 // --- Outils de scène (T054) --------------------------------------------------
 
 /// Empreinte au sol d'un objet à arranger (`POST …/arrange`).

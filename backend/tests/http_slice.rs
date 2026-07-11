@@ -75,12 +75,7 @@ async fn create_project(
     active_presets: Value,
 ) -> (String, UserId, String) {
     let session = register(app, email).await;
-    let user = storage
-        .users()
-        .find_by_email(email)
-        .await
-        .unwrap()
-        .unwrap();
+    let user = storage.users().find_by_email(email).await.unwrap().unwrap();
     let project = storage
         .projects()
         .create(
