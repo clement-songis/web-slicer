@@ -20,11 +20,17 @@ ce registre. Statuts : `exclu-v1` (backlog v2 tracé dans spec.md) ou
 
 | Entrée(s) | Statut | Justification |
 |---|---|---|
-| Menus « Upload Models » / « Download Models » (publish) | exclu-définitif | Service cloud MakerWorld/BBL, hors périmètre auto-hébergé |
-| « Show/Hide 3Dconnexion settings » (Ctrl+M) | exclu-définitif | Périphérique local inaccessible depuis un navigateur |
-| « Open Network Test », « Show Configuration Folder », « New Window » | exclu-définitif | Notions de bureau (fenêtres, dossiers locaux) sans objet web ; équivalents : diagnostic Moonraker, export de presets |
-| Menu Calibration (8 items) + assistants CalibrationWizard | exclu-v1 | Backlog v2 exhaustif dans spec.md (décision utilisateur) |
-| Raccourcis en conflit navigateur (ex. Ctrl+W, F5 si présents) | adaptation | Remappés, documentés dans l'aide raccourcis in-app ; liste finale complétée à l'implémentation |
+| Menus `Upload Models` / `Download Models` (publish) | exclu-définitif | Service cloud MakerWorld/BBL, hors périmètre auto-hébergé |
+| Menu Aide : `Setup Wizard`, `Troubleshoot Center`, `Check for Updates`, `Show Tip of the Day` | exclu-définitif | Assistant de première configuration, diagnostic et mise à jour propres au bureau ; en web l'app est servie à jour et l'onboarding diffère |
+| `Show Configuration Folder`, `New Window`, `Reset Window Layout` | exclu-définitif | Notions de bureau (fenêtres, dossiers locaux) sans objet web |
+| `Open Network Test`, `Troubleshoot Center` | exclu-définitif | Diagnostics réseau/services Bambu propriétaires ; équivalent web : test de connexion Moonraker (US8) |
+| Fichier : `Quit`, `&Quit`, `Open &Slicer…` | exclu-définitif | Quitter/lancer une autre instance = notions d'application de bureau (l'onglet du navigateur en tient lieu) |
+| Fichier : `Sync Presets` | exclu-v1 | Synchronisation cloud BBL des presets ; le système de presets web est autonome (import/export de bundle assurés) |
+| Vue : `Show 3D Navigator` | exclu-v1 | Cube de navigation 3Dconnexion/overlay ; backlog v2 (orbite caméra couverte par les vues Ctrl+0–6) |
+| `Show/Hide 3Dconnexion settings` — raccourcis `Ctrl+M`, `Ctrl+Shift+M` | exclu-définitif | Périphérique local inaccessible depuis un navigateur |
+| Raccourci `Ctrl+Tab` (Switch table page) | adaptation | Réservé par le navigateur (changement d'onglet) ; remappé in-app, documenté dans l'aide raccourcis |
+| Autres raccourcis en conflit navigateur (ex. `Ctrl+W`, `F5` si présents) | adaptation | Remappés, documentés dans l'aide raccourcis in-app ; liste finale complétée à l'implémentation |
+| Menu Calibration (`Temperature`, `Max flowrate`, `Pressure advance`, `Flow ratio`, `Retraction`, `Cornering`, `VFA`, `Calibration Guide`, `Input Shaping Frequency`, `Input Shaping Damping/zeta factor`) + assistants CalibrationWizard | exclu-v1 | Backlog v2 exhaustif dans spec.md (décision utilisateur) |
 | Écrans « Device »/monitor Bambu (AMS, caméra) | exclu-définitif | Matériel propriétaire ; supervision assurée via Moonraker (US8) |
 
 ## Presets (Annexe C)

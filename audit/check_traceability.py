@@ -183,6 +183,7 @@ def check_trace_map(ui: dict) -> None:
     gizmos_map = set(tmap.get("gizmos", {}))
     toolbars_map = set(tmap.get("toolbars", {}))
     menus_map = set(tmap.get("context_menu", {}))
+    main_menu_map = set(tmap.get("main_menu", {}))
     shortcuts_map = tmap.get("shortcuts", {})
 
     missing: list[str] = []
@@ -204,6 +205,12 @@ def check_trace_map(ui: dict) -> None:
         label = m["label"]
         if label not in menus_map and label not in vocab:
             missing.append(f"menu:{label}")
+
+    # Menus principaux Fichier/Édition/Vue/Aide (Annexe B §B.2, T079).
+    for item in ui["main_menus"]["items"]:
+        label = item["label"]
+        if label not in main_menu_map and label not in vocab:
+            missing.append(f"mainmenu:{label}")
 
     # Raccourcis des groupes couverts par la carte (Plater / Objects List / Gizmo).
     for grp in ui["keyboard_shortcuts"]:

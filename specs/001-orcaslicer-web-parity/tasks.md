@@ -191,7 +191,7 @@
 
 **Purpose**: parité finale vérifiée, i18n, aide, performance, validation utilisateur
 
-- [ ] T079 [P] Menus principaux restants (Fichier/Édition/Vue/Aide, Annexe B §B.2) + dialogue d'aide raccourcis (92 entrées, adaptations navigateur consignées dans exclusions.md) dans frontend/src/lib/menus/
+- [X] T079 [P] Menus principaux restants (Fichier/Édition/Vue/Aide, Annexe B §B.2) + dialogue d'aide raccourcis (92 entrées, adaptations navigateur consignées dans exclusions.md) dans frontend/src/lib/menus/ — *`menus.ts` (MAIN_MENUS Fichier/Édition/Vue/Aide + sous-menus Import/Export, libellés verbatim), `shortcuts.ts` (92 raccourcis des 5 groupes), `ShortcutsDialog.svelte` (aide modale), `menus.test.ts` (9 tests). Traçabilité : `main_menu` (55 libellés impl) + groupe `Global shortcuts` ajoutés à traceability-map.json ; 25 libellés + Ctrl+M/Ctrl+Shift+M/Ctrl+Tab consignés dans exclusions.md. `check_traceability.py` étendu (main_menus §B.2 enforced ; test négatif vérifié).*
 - [ ] T080 [P] i18n additive fr/en `frontend/src/lib/i18n/` (libellés de parité anglais = clés, FR-072)
 - [ ] T081 Résolution des entrées « à trancher à l'implémentation » d'exclusions.md (classement final de chaque clé restante) — check_traceability sans catégorie provisoire
 - [ ] T082 Passe finale de traçabilité : `python3 audit/run_all.py && python3 audit/check_traceability.py` vert complet (SC-001) ; annexes resynchronisées ; registre d'exclusions revu
