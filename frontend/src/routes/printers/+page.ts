@@ -1,8 +1,8 @@
-// Garde de session + chargement de la file (T071). Rendu client uniquement
-// (session par cookie navigateur, WebSocket temps réel au montage).
+// Garde de session + chargement des imprimantes et des presets machine (T077).
+// Rendu client uniquement (session par cookie, WebSocket temps réel au montage).
 import { redirect } from '@sveltejs/kit';
-import { listJobs } from '$lib/api/jobs';
 import { listPrinters } from '$lib/api/printers';
+import { listPresets } from '$lib/api/presets';
 import { refreshSession } from '$lib/api/session';
 import type { PageLoad } from './$types';
 
@@ -13,6 +13,6 @@ export const load: PageLoad = async () => {
 	if (!user) {
 		redirect(302, '/login');
 	}
-	const [jobs, printers] = await Promise.all([listJobs(), listPrinters()]);
-	return { user, jobs, printers };
+	const [printers, machines] = await Promise.all([listPrinters(), listPresets('machine')]);
+	return { user, printers, machines };
 };

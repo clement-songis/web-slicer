@@ -6,7 +6,8 @@
 	import { onMount } from 'svelte';
 	import { ApiError } from '$lib/api/client';
 	import { cancelJob } from '$lib/api/jobs';
-	import type { JobResponse } from '$lib/api/types';
+	import { uploadToPrinter } from '$lib/api/printers';
+	import type { JobResponse, PrinterResponse } from '$lib/api/types';
 	import { subscribeEvents } from '$lib/queue/events';
 	import { applyEvent, partitionJobs, progressPercent, statusMeta } from '$lib/queue/queue';
 	import type { PageData } from './$types';
@@ -14,9 +15,14 @@
 	let { data }: { data: PageData } = $props();
 
 	let jobs = $state<JobResponse[]>([]);
+	const printers = $derived(data.printers as PrinterResponse[]);
 	let error = $state<string | null>(null);
 	let justFinished = $state<string | null>(null);
 	let busy = $state<Record<string, boolean>>({});
+	// Cible d'envoi par job (imprimante sélectionnée + démarrage immédiat).
+	let sendTarget = $state<Record<string, string>>({});
+	let sendStart = $state<Record<string, boolean>>({});
+	let sent = $state<Record<string, string>>({});
 
 	const parts = $derived(partitionJobs(jobs));
 
@@ -48,6 +54,24 @@
 			error = e instanceof ApiError ? e.message : 'Annulation impossible';
 		} finally {
 			busy = { ...busy, [id]: false };
+		}
+	}
+
+	async function sendToPrinter(job: JobResponse) {
+		const printerId = sendTarget[job.id] || printers[0]?.id;
+		if (!job.gcode_id || !printerId) return;
+		busy = { ...busy, [job.id]: true };
+		error = null;
+		try {
+			await uploadToPrinter(printerId, {
+				gcode_id: job.gcode_id,
+				start_now: sendStart[job.id] ?? false
+			});
+			sent = { ...sent, [job.id]: 'Envoyé à l’imprimante' };
+		} catch (e) {
+			error = e instanceof ApiError ? e.message : 'Envoi impossible';
+		} finally {
+			busy = { ...busy, [job.id]: false };
 		}
 	}
 
@@ -133,16 +157,47 @@
 							<td class="text-slate-400">{formatDate(job.updated_at)}</td>
 							<td>
 								{#if job.gcode_id}
-									<!-- Ressource API (téléchargement backend), pas une route SvelteKit. -->
-									<!-- eslint-disable svelte/no-navigation-without-resolve -->
-									<a
-										class="text-sky-400 hover:underline"
-										href="/api/gcodes/{job.gcode_id}/download"
-										download
-									>
-										Télécharger
-									</a>
-									<!-- eslint-enable svelte/no-navigation-without-resolve -->
+									<div class="flex flex-col gap-1">
+										<!-- Ressource API (téléchargement backend), pas une route SvelteKit. -->
+										<!-- eslint-disable svelte/no-navigation-without-resolve -->
+										<a
+											class="text-sky-400 hover:underline"
+											href="/api/gcodes/{job.gcode_id}/download"
+											download
+										>
+											Télécharger
+										</a>
+										<!-- eslint-enable svelte/no-navigation-without-resolve -->
+										{#if printers.length > 0}
+											<!-- Envoi vers une imprimante déclarée (start_now, FR-061). -->
+											<div class="flex flex-wrap items-center gap-1 text-xs">
+												<select
+													class="rounded border border-slate-600 bg-slate-800 px-1 py-0.5"
+													bind:value={sendTarget[job.id]}
+													aria-label="Imprimante cible"
+												>
+													{#each printers as printer (printer.id)}
+														<option value={printer.id}>{printer.name}</option>
+													{/each}
+												</select>
+												<label class="flex items-center gap-1 text-slate-400">
+													<input type="checkbox" bind:checked={sendStart[job.id]} />
+													Démarrer
+												</label>
+												<button
+													type="button"
+													class="rounded bg-slate-700 px-2 py-0.5 hover:bg-slate-600 disabled:opacity-50"
+													disabled={busy[job.id]}
+													onclick={() => sendToPrinter(job)}
+												>
+													Envoyer
+												</button>
+											</div>
+											{#if sent[job.id]}
+												<span class="text-xs text-green-400" role="status">{sent[job.id]}</span>
+											{/if}
+										{/if}
+									</div>
 								{:else if job.status === 'failed'}
 									<span class="text-red-400">Échec</span>
 								{:else}
