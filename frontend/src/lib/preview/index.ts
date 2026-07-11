@@ -41,3 +41,6 @@ export type {
 	Thumb,
 	KeyLike
 } from './sliders';
+export { buildPreviewStats, perTypeStats, formatDuration } from './stats';
+export type { PreviewStats, TypeStat, FilamentStat, GcodeStats } from './stats';
+export { default as StatsPanel } from './StatsPanel.svelte';
