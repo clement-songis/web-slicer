@@ -154,6 +154,21 @@
       "Shift+": "frontend/src/lib/scene/menus.ts",
       "Ctrl+Mouse wheel": "frontend/src/lib/scene/menus.ts",
       "Alt+Mouse wheel": "frontend/src/lib/scene/menus.ts"
+    },
+    "Preview": {
+      "Arrow Up": "frontend/src/lib/preview/sliders.ts",
+      "Arrow Down": "frontend/src/lib/preview/sliders.ts",
+      "Arrow Left": "frontend/src/lib/preview/sliders.ts",
+      "Arrow Right": "frontend/src/lib/preview/sliders.ts",
+      "L": "frontend/src/lib/preview/sliders.ts",
+      "C": "frontend/src/lib/preview/sliders.ts",
+      "Tab": "frontend/src/lib/preview/sliders.ts",
+      "Shift+Any arrow": "frontend/src/lib/preview/sliders.ts",
+      "Shift+Mouse wheel": "frontend/src/lib/preview/sliders.ts",
+      "Ctrl+Any arrow": "frontend/src/lib/preview/sliders.ts",
+      "Ctrl+Mouse wheel": "frontend/src/lib/preview/sliders.ts",
+      "Home": "frontend/src/lib/preview/sliders.ts",
+      "End": "frontend/src/lib/preview/sliders.ts"
     }
   }
 }

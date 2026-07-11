@@ -16,3 +16,28 @@ export type { Coloration, Rgb, Legend, LegendScale, LegendList, LegendEntry } fr
 export { buildPreviewGeometry, buildLegend, computeFlowRange, flowValue } from './geometry';
 export type { PreviewGeometry, GeometryOptions, PreviewRanges, PreviewType } from './geometry';
 export { default as PreviewLines } from './PreviewLines.svelte';
+export {
+	makeLayerRange,
+	moveThumb,
+	setActiveThumb,
+	toggleOneLayerMode,
+	visibleRange,
+	makeMoveCursor,
+	moveCursorBy,
+	moveCursorToStart,
+	moveCursorToEnd,
+	retargetCursor,
+	resolvePreviewKey,
+	applyPreviewKey,
+	makePreviewState,
+	PREVIEW_SHORTCUTS,
+	FAST_STEP
+} from './sliders';
+export type {
+	LayerRange,
+	MoveCursor,
+	PreviewState,
+	PreviewAction,
+	Thumb,
+	KeyLike
+} from './sliders';
