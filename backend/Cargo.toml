@@ -21,7 +21,7 @@ tower = "0.5"
 tower-http = { version = "0.7", features = ["fs", "cors", "trace", "compression-gzip"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
-sqlx = { version = "0.9", features = ["runtime-tokio", "sqlite", "postgres", "uuid", "time", "migrate"] }
+sqlx = { version = "0.9", features = ["runtime-tokio", "sqlite", "postgres", "uuid", "time", "json", "migrate"] }
 
 tower-sessions = "0.15"
 argon2 = { version = "0.5", features = ["std"] }
@@ -44,6 +44,12 @@ tokio-tungstenite = { version = "0.29", default-features = false, features = [
     "handshake",
 ] }
 futures-util = "0.3"
+
+[features]
+# Active l'adaptateur de stockage Postgres (T026). Le pilote sqlx `postgres`
+# est déjà compilé ; ce drapeau conditionne le module et la suite de contrat
+# (validée contre un Postgres réel via `TEST_DATABASE_URL`).
+postgres = []
 
 [dev-dependencies]
 tokio = { workspace = true }
