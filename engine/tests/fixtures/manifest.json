@@ -115,7 +115,7 @@
     {
       "id": "voron-generic-pla",
       "machine": "Voron 2.4 300 0.4 nozzle",
-      "filament": "Generic PLA @Voron",
+      "filament": "Generic PLA @System",
       "process": "0.20mm Standard @Voron"
     }
   ]

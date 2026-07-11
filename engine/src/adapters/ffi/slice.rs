@@ -13,7 +13,7 @@ use crate::api::{
     CancelToken, DynamicPrintConfig, EngineError, EngineErrorCode, EngineResult, ProgressSink,
     SliceRequest, SliceResult, SliceStats,
 };
-use crate::params::orca_values;
+use crate::params::{self, orca_values};
 
 use super::bridge::ffi;
 use super::model::to_raw_objects;
@@ -75,7 +75,15 @@ fn config_to_orca_json(config: &DynamicPrintConfig) -> String {
     let map: std::collections::BTreeMap<&str, String> = config
         .0
         .iter()
-        .map(|(k, v)| (k.as_str(), orca_values::serialize_orca_value(v)))
+        .map(|(k, v)| {
+            // Sérialisation pilotée par le registre : réimpose `%` aux pourcentages
+            // (que `ConfigValue::Float` ne porte pas), sinon repli sur la forme nue.
+            let s = match params::get(k) {
+                Some(def) => orca_values::serialize_orca_value_for(def, v),
+                None => orca_values::serialize_orca_value(v),
+            };
+            (k.as_str(), s)
+        })
         .collect();
     serde_json::to_string(&map).expect("map de chaînes toujours sérialisable")
 }

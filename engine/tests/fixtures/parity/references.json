@@ -1,0 +1,321 @@
+{
+  "generated_by": "generate_parity_corpus.py",
+  "bed_type": "Textured PEI Plate",
+  "cases": {
+    "cube20__bbl-a1-standard": {
+      "model": "cube20.stl",
+      "preset_id": "bbl-a1-standard",
+      "layers": 100,
+      "time_s": 1199.0,
+      "filament_mm": 1211.31
+    },
+    "pyramid__bbl-a1-standard": {
+      "model": "pyramid.stl",
+      "preset_id": "bbl-a1-standard",
+      "layers": 196,
+      "time_s": 1654.0,
+      "filament_mm": 902.05
+    },
+    "overhang__bbl-a1-standard": {
+      "model": "overhang.stl",
+      "preset_id": "bbl-a1-standard",
+      "layers": 31,
+      "time_s": 1032.0,
+      "filament_mm": 2079.61
+    },
+    "bridge__bbl-a1-standard": {
+      "model": "bridge.stl",
+      "preset_id": "bbl-a1-standard",
+      "layers": 40,
+      "time_s": 774.0,
+      "filament_mm": 565.87
+    },
+    "two_squares__bbl-a1-standard": {
+      "model": "two_squares.stl",
+      "preset_id": "bbl-a1-standard",
+      "layers": 14,
+      "time_s": 492.0,
+      "filament_mm": 98.01
+    },
+    "frog_legs__bbl-a1-standard": {
+      "model": "frog_legs.stl",
+      "preset_id": "bbl-a1-standard",
+      "layers": 10,
+      "time_s": 716.0,
+      "filament_mm": 502.51
+    },
+    "extruder_idler__bbl-a1-standard": {
+      "model": "extruder_idler.stl",
+      "preset_id": "bbl-a1-standard",
+      "layers": 189,
+      "time_s": 1975.0,
+      "filament_mm": 1424.45
+    },
+    "ipadstand__bbl-a1-standard": {
+      "model": "ipadstand.stl",
+      "preset_id": "bbl-a1-standard",
+      "layers": 150,
+      "time_s": 1990.0,
+      "filament_mm": 3026.25
+    },
+    "V__bbl-a1-standard": {
+      "model": "V.stl",
+      "preset_id": "bbl-a1-standard",
+      "layers": 75,
+      "time_s": 1030.0,
+      "filament_mm": 1019.99
+    },
+    "cube20__bbl-a1-fine-02": {
+      "model": "cube20.stl",
+      "preset_id": "bbl-a1-fine-02",
+      "layers": 333,
+      "time_s": 3978.0,
+      "filament_mm": 1132.89
+    },
+    "pyramid__bbl-a1-fine-02": {
+      "model": "pyramid.stl",
+      "preset_id": "bbl-a1-fine-02",
+      "layers": 659,
+      "time_s": 5360.0,
+      "filament_mm": 944.77
+    },
+    "overhang__bbl-a1-fine-02": {
+      "model": "overhang.stl",
+      "preset_id": "bbl-a1-fine-02",
+      "layers": 104,
+      "time_s": 4184.0,
+      "filament_mm": 1773.29
+    },
+    "bridge__bbl-a1-fine-02": {
+      "model": "bridge.stl",
+      "preset_id": "bbl-a1-fine-02",
+      "layers": 133,
+      "time_s": 2062.0,
+      "filament_mm": 506.28
+    },
+    "two_squares__bbl-a1-fine-02": {
+      "model": "two_squares.stl",
+      "preset_id": "bbl-a1-fine-02",
+      "layers": 46,
+      "time_s": 838.0,
+      "filament_mm": 103.18
+    },
+    "frog_legs__bbl-a1-fine-02": {
+      "model": "frog_legs.stl",
+      "preset_id": "bbl-a1-fine-02",
+      "layers": 34,
+      "time_s": 1959.0,
+      "filament_mm": 465.25
+    },
+    "extruder_idler__bbl-a1-fine-02": {
+      "model": "extruder_idler.stl",
+      "preset_id": "bbl-a1-fine-02",
+      "layers": 631,
+      "time_s": 6977.0,
+      "filament_mm": 1420.41
+    },
+    "ipadstand__bbl-a1-fine-02": {
+      "model": "ipadstand.stl",
+      "preset_id": "bbl-a1-fine-02",
+      "layers": 499,
+      "time_s": 8749.0,
+      "filament_mm": 2861.79
+    },
+    "V__bbl-a1-fine-02": {
+      "model": "V.stl",
+      "preset_id": "bbl-a1-fine-02",
+      "layers": 249,
+      "time_s": 3329.0,
+      "filament_mm": 961.81
+    },
+    "cube20__bbl-x1c-abs": {
+      "model": "cube20.stl",
+      "preset_id": "bbl-x1c-abs",
+      "layers": 100,
+      "time_s": 1716.0,
+      "filament_mm": 1262.41
+    },
+    "pyramid__bbl-x1c-abs": {
+      "model": "pyramid.stl",
+      "preset_id": "bbl-x1c-abs",
+      "layers": 196,
+      "time_s": 1769.0,
+      "filament_mm": 962.59
+    },
+    "overhang__bbl-x1c-abs": {
+      "model": "overhang.stl",
+      "preset_id": "bbl-x1c-abs",
+      "layers": 31,
+      "time_s": 1121.0,
+      "filament_mm": 2103.76
+    },
+    "bridge__bbl-x1c-abs": {
+      "model": "bridge.stl",
+      "preset_id": "bbl-x1c-abs",
+      "layers": 40,
+      "time_s": 881.0,
+      "filament_mm": 636.85
+    },
+    "two_squares__bbl-x1c-abs": {
+      "model": "two_squares.stl",
+      "preset_id": "bbl-x1c-abs",
+      "layers": 14,
+      "time_s": 607.0,
+      "filament_mm": 183.63
+    },
+    "frog_legs__bbl-x1c-abs": {
+      "model": "frog_legs.stl",
+      "preset_id": "bbl-x1c-abs",
+      "layers": 10,
+      "time_s": 728.0,
+      "filament_mm": 573.64
+    },
+    "extruder_idler__bbl-x1c-abs": {
+      "model": "extruder_idler.stl",
+      "preset_id": "bbl-x1c-abs",
+      "layers": 189,
+      "time_s": 2616.0,
+      "filament_mm": 1476.65
+    },
+    "ipadstand__bbl-x1c-abs": {
+      "model": "ipadstand.stl",
+      "preset_id": "bbl-x1c-abs",
+      "layers": 150,
+      "time_s": 2272.0,
+      "filament_mm": 3159.52
+    },
+    "V__bbl-x1c-abs": {
+      "model": "V.stl",
+      "preset_id": "bbl-x1c-abs",
+      "layers": 75,
+      "time_s": 1413.0,
+      "filament_mm": 1069.98
+    },
+    "cube20__bbl-a1-draft-06": {
+      "model": "cube20.stl",
+      "preset_id": "bbl-a1-draft-06",
+      "layers": 67,
+      "time_s": 1284.0,
+      "filament_mm": 1343.17
+    },
+    "pyramid__bbl-a1-draft-06": {
+      "model": "pyramid.stl",
+      "preset_id": "bbl-a1-draft-06",
+      "layers": 130,
+      "time_s": 1707.0,
+      "filament_mm": 1039.2
+    },
+    "overhang__bbl-a1-draft-06": {
+      "model": "overhang.stl",
+      "preset_id": "bbl-a1-draft-06",
+      "layers": 21,
+      "time_s": 1006.0,
+      "filament_mm": 2280.83
+    },
+    "bridge__bbl-a1-draft-06": {
+      "model": "bridge.stl",
+      "preset_id": "bbl-a1-draft-06",
+      "layers": 27,
+      "time_s": 782.0,
+      "filament_mm": 618.77
+    },
+    "two_squares__bbl-a1-draft-06": {
+      "model": "two_squares.stl",
+      "preset_id": "bbl-a1-draft-06",
+      "layers": 9,
+      "time_s": 504.0,
+      "filament_mm": 105.07
+    },
+    "frog_legs__bbl-a1-draft-06": {
+      "model": "frog_legs.stl",
+      "preset_id": "bbl-a1-draft-06",
+      "layers": 7,
+      "time_s": 623.0,
+      "filament_mm": 526.52
+    },
+    "extruder_idler__bbl-a1-draft-06": {
+      "model": "extruder_idler.stl",
+      "preset_id": "bbl-a1-draft-06",
+      "layers": 126,
+      "time_s": 2058.0,
+      "filament_mm": 1580.72
+    },
+    "ipadstand__bbl-a1-draft-06": {
+      "model": "ipadstand.stl",
+      "preset_id": "bbl-a1-draft-06",
+      "layers": 100,
+      "time_s": 2053.0,
+      "filament_mm": 3984.06
+    },
+    "V__bbl-a1-draft-06": {
+      "model": "V.stl",
+      "preset_id": "bbl-a1-draft-06",
+      "layers": 50,
+      "time_s": 1077.0,
+      "filament_mm": 1165.95
+    },
+    "cube20__voron-generic-pla": {
+      "model": "cube20.stl",
+      "preset_id": "voron-generic-pla",
+      "layers": 100,
+      "time_s": 596.0,
+      "filament_mm": 1327.49
+    },
+    "pyramid__voron-generic-pla": {
+      "model": "pyramid.stl",
+      "preset_id": "voron-generic-pla",
+      "layers": 196,
+      "time_s": 803.0,
+      "filament_mm": 1017.56
+    },
+    "overhang__voron-generic-pla": {
+      "model": "overhang.stl",
+      "preset_id": "voron-generic-pla",
+      "layers": 31,
+      "time_s": 757.0,
+      "filament_mm": 2030.95
+    },
+    "bridge__voron-generic-pla": {
+      "model": "bridge.stl",
+      "preset_id": "voron-generic-pla",
+      "layers": 40,
+      "time_s": 329.0,
+      "filament_mm": 569.38
+    },
+    "two_squares__voron-generic-pla": {
+      "model": "two_squares.stl",
+      "preset_id": "voron-generic-pla",
+      "layers": 14,
+      "time_s": 72.0,
+      "filament_mm": 78.97
+    },
+    "frog_legs__voron-generic-pla": {
+      "model": "frog_legs.stl",
+      "preset_id": "voron-generic-pla",
+      "layers": 10,
+      "time_s": 369.0,
+      "filament_mm": 474.9
+    },
+    "extruder_idler__voron-generic-pla": {
+      "model": "extruder_idler.stl",
+      "preset_id": "voron-generic-pla",
+      "layers": 189,
+      "time_s": 1233.0,
+      "filament_mm": 1613.18
+    },
+    "ipadstand__voron-generic-pla": {
+      "model": "ipadstand.stl",
+      "preset_id": "voron-generic-pla",
+      "layers": 150,
+      "time_s": 1491.0,
+      "filament_mm": 3419.15
+    },
+    "V__voron-generic-pla": {
+      "model": "V.stl",
+      "preset_id": "voron-generic-pla",
+      "layers": 75,
+      "time_s": 487.0,
+      "filament_mm": 1135.82
+    }
+  }
+}

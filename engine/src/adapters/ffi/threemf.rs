@@ -56,9 +56,18 @@ fn config_to_orca_json(config: &DynamicPrintConfig) -> String {
     let map: BTreeMap<&str, String> = config
         .0
         .iter()
-        .map(|(k, v)| (k.as_str(), orca_values::serialize_orca_value(v)))
+        .map(|(k, v)| (k.as_str(), serialize_for_key(k, v)))
         .collect();
     serde_json::to_string(&map).expect("map de chaînes toujours sérialisable")
+}
+
+/// Sérialise une valeur selon le type du registre (réimpose `%` aux pourcentages) ;
+/// repli sur la sérialisation nue si la clé est hors registre.
+fn serialize_for_key(key: &str, value: &ConfigValue) -> String {
+    match params::get(key) {
+        Some(def) => orca_values::serialize_orca_value_for(def, value),
+        None => orca_values::serialize_orca_value(value),
+    }
 }
 
 #[allow(dead_code)]

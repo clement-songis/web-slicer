@@ -100,6 +100,37 @@ pub fn serialize_orca_value(value: &ConfigValue) -> String {
     }
 }
 
+/// Sérialise en tenant compte du type du registre. `ConfigValue::Float` ne
+/// porte pas la nature « pourcentage » ; sans le type, le round-trip perd le
+/// suffixe `%` (« 85% » → « 85 »). On le réimpose aux clés `Percent`/`Percents`
+/// pour rester **fidèle à la forme canonique d'OrcaSlicer** : un 3MF exporté
+/// (FR-044) doit sérialiser « 85% », pas « 85 ». libslic3r relit un pourcentage
+/// nu à l'identique (d'où aucun écart de tranchage mesuré, cf. `gcode_parity`),
+/// mais la fidélité évite toute divergence latente et garde l'interop 3MF valide.
+pub fn serialize_orca_value_for(def: &ParamDef, value: &ConfigValue) -> String {
+    use ParamKind as K;
+    let raw = serialize_orca_value(value);
+    match def.kind {
+        K::Percent => ensure_percent(&raw),
+        K::Percents => raw
+            .split(',')
+            .map(ensure_percent)
+            .collect::<Vec<_>>()
+            .join(","),
+        _ => raw,
+    }
+}
+
+/// Ajoute `%` à une valeur numérique qui ne l'a pas (laisse `nil`/vide tels quels).
+fn ensure_percent(s: &str) -> String {
+    let t = s.trim();
+    if t.is_empty() || t == "nil" || t.ends_with('%') {
+        t.to_string()
+    } else {
+        format!("{t}%")
+    }
+}
+
 fn join(items: impl Iterator<Item = String>) -> String {
     items.collect::<Vec<_>>().join(",")
 }
@@ -230,5 +261,19 @@ mod tests {
     fn invalid_value_rejected() {
         let def = get("layer_height").unwrap();
         assert_eq!(parse_orca_value(def, "abc"), None);
+    }
+
+    #[test]
+    fn serialize_for_key_reimpose_le_pourcent() {
+        // Un Percent lu depuis Orca (« 15% ») repart « 15% », pas « 15 ».
+        let def = get("sparse_infill_density").unwrap();
+        let v = parse_orca_value(def, "15%").unwrap();
+        assert_eq!(serialize_orca_value(&v), "15"); // forme nue (perte du %)
+        assert_eq!(serialize_orca_value_for(def, &v), "15%"); // forme canonique
+
+        // Un Float ordinaire n'est pas affublé de %.
+        let lh = get("layer_height").unwrap();
+        let hv = parse_orca_value(lh, "0.2").unwrap();
+        assert_eq!(serialize_orca_value_for(lh, &hv), "0.2");
     }
 }

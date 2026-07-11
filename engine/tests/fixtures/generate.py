@@ -73,7 +73,9 @@ PRESET_COMBOS = [
     {
         "id": "voron-generic-pla",
         "machine": "Voron 2.4 300 0.4 nozzle",
-        "filament": "Generic PLA @Voron",
+        # Le vendeur Voron n'a pas de dossier filament : on prend le PLA générique
+        # de la bibliothèque OrcaFilamentLibrary (compatible toute buse 0.4).
+        "filament": "Generic PLA @System",
         "process": "0.20mm Standard @Voron",
     },
 ]
