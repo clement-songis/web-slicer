@@ -22,7 +22,6 @@
 		type SceneObject
 	} from '$lib/scene';
 	import { SettingsTabs } from '$lib/settings';
-	import { ThemeToggle } from '$lib/theme';
 	import {
 		PreviewScene,
 		StatsPanel,
@@ -36,12 +35,11 @@
 	import { subscribeEvents, type EventSubscription } from '$lib/queue/events';
 	import type { PreviewMeta, ServerEvent } from '$lib/api/types';
 	import { ApiError } from '$lib/api/client';
+	import { t } from '$lib/i18n';
 	import {
 		initialWorkspace,
 		pick,
 		setGizmoMode,
-		setPanel,
-		type EditorPanel,
 		prepareSession,
 		startSlicing,
 		sliceFailed,
@@ -56,6 +54,10 @@
 		findByModel,
 		isAccepted,
 		isPreviewable,
+		initialLayout,
+		setTab,
+		EDITOR_DEFAULT_THEME,
+		type EditorTab,
 		type ImportItem
 	} from '$lib/editor';
 	import type { GizmoMode } from '$lib/scene/gizmos/types';
@@ -68,8 +70,9 @@
 	// restauration après une fermeture accidentelle (l'éditeur le consommera).
 	let pendingDraft = $state<DraftRecord | null>(null);
 
-	// État de disposition (orchestrateur pur `lib/editor`) : panneau actif, mode
-	// gizmo, sélection partagée scène↔liste.
+	// État de disposition supérieur (onglets Préparer/Aperçu/Appareil/Projet).
+	let layout = $state(initialLayout());
+	// État de sélection/gizmo partagé scène↔liste (orchestrateur pur `lib/editor`).
 	let ws = $state(initialWorkspace());
 
 	// Modèle de scène (mutations en place → proxysées par `$state`, réactives).
@@ -83,8 +86,8 @@
 	// et les dimensions réelles viennent des valeurs `printable_area` du preset).
 	const bed = $derived(bedFromValues({}));
 
-	// Onglet latéral : liste d'objets / plateaux, ou arbre de réglages.
-	let sidebarTab = $state<'objects' | 'settings'>('objects');
+	// Onglet de la colonne de configuration : liste d'objets/plateaux ou réglages.
+	let configTab = $state<'objects' | 'settings'>('settings');
 	let settingsMode = $state<DisplayMode>('simple');
 	let settingsValues = $state<Record<string, unknown>>({});
 	let saveMessage = $state<string | null>(null);
@@ -110,6 +113,18 @@
 
 	onMount(() => {
 		let alive = true;
+		// Thème sombre par défaut dans l'éditeur (parité OrcaSlicer) : on force
+		// `data-theme` au niveau racine le temps de l'éditeur, sans toucher à la
+		// préférence persistée de l'utilisateur (restaurée à la sortie). Le
+		// `initTheme` du layout parent s'exécute juste après ce `onMount` enfant :
+		// on réaffirme donc le thème via un `requestAnimationFrame` qui a le
+		// dernier mot après le montage complet.
+		const root = document.documentElement;
+		const previousTheme = root.dataset.theme;
+		const applyDark = () => (root.dataset.theme = EDITOR_DEFAULT_THEME);
+		applyDark();
+		const rafId = requestAnimationFrame(applyDark);
+
 		draftStore.pendingRestore(data.project.id, data.project.updated_at).then((d) => {
 			if (alive) pendingDraft = d;
 		});
@@ -120,6 +135,9 @@
 		return () => {
 			alive = false;
 			sub.close();
+			cancelAnimationFrame(rafId);
+			if (previousTheme) root.dataset.theme = previousTheme;
+			else delete root.dataset.theme;
 		};
 	});
 
@@ -154,14 +172,14 @@
 	}
 
 	function onEvent(event: ServerEvent) {
-		const wasPreview = session.phase === 'preview';
+		const wasPreview = layout.tab === 'preview';
 		session = applyJobEvent(session, event);
 		if (event.event === 'job.finished' && session.jobIds.includes(event.id)) {
 			rawStats = event.stats;
 		}
 		// Bascule automatique vers l'aperçu au premier G-code produit.
 		if (!wasPreview && session.phase === 'preview' && session.gcodeId) {
-			ws = setPanel(ws, 'preview');
+			layout = setTab(layout, 'preview');
 			void loadPreview(session.gcodeId);
 		}
 		// Fin de conversion moteur (STEP…) : récupère le maillage et l'affiche.
@@ -250,8 +268,8 @@
 		ws = setGizmoMode(ws, mode);
 	}
 
-	function showPanel(panel: EditorPanel) {
-		ws = setPanel(ws, panel);
+	function showTab(tab: EditorTab) {
+		layout = setTab(layout, tab);
 	}
 
 	// Lance le tranchage du plateau actif et affiche la progression dans l'aperçu.
@@ -263,10 +281,10 @@
 				res.jobs.map((j) => j.id),
 				res.warnings
 			);
-			ws = setPanel(ws, 'preview');
+			layout = setTab(layout, 'preview');
 		} catch (e) {
 			session = sliceFailed(e instanceof ApiError ? e.message : 'échec du lancement du tranchage');
-			ws = setPanel(ws, 'preview');
+			layout = setTab(layout, 'preview');
 		}
 	}
 
@@ -307,34 +325,47 @@
 					: outcome.message;
 		return outcome;
 	}
+
+	// Onglets supérieurs : libellé de parité anglais → i18n.
+	const TABS: { id: EditorTab; label: string }[] = [
+		{ id: 'prepare', label: 'Prepare' },
+		{ id: 'preview', label: 'Preview' },
+		{ id: 'device', label: 'Device' },
+		{ id: 'project', label: 'Project' }
+	];
 </script>
 
-<div class="flex h-screen flex-col">
-	<header class="flex items-center justify-between border-b border-border px-6 py-3">
+<div class="flex h-screen flex-col bg-surface text-content">
+	<!-- Barre supérieure : onglets de vue (parité OrcaSlicer) + actions plateau. -->
+	<header class="flex items-center justify-between border-b border-border px-4 py-2">
 		<div class="flex items-center gap-4">
-			<a href={resolve('/library')} class="text-sm text-primary hover:underline">← Bibliothèque</a>
-			<h1 class="text-lg font-semibold text-content">{data.project.name}</h1>
+			<a
+				href={resolve('/library')}
+				class="text-sm text-primary hover:underline"
+				title="Bibliothèque">←</a
+			>
+			<nav class="flex items-center gap-1" aria-label="Vues de l'éditeur">
+				{#each TABS as tab (tab.id)}
+					<button
+						class="rounded px-3 py-1.5 text-sm font-medium {layout.tab === tab.id
+							? 'bg-primary text-primary-content'
+							: 'text-content-muted hover:bg-overlay'}"
+						onclick={() => showTab(tab.id)}
+						aria-current={layout.tab === tab.id ? 'page' : undefined}
+					>
+						{$t(tab.label)}
+					</button>
+				{/each}
+			</nav>
+			<span class="ml-2 text-sm text-content-subtle">{data.project.name}</span>
 		</div>
-		<div class="flex items-center gap-3">
-			<div class="flex overflow-hidden rounded border border-border-strong">
-				<button
-					class="px-3 py-1 text-sm {ws.panel === 'prepare'
-						? 'bg-primary text-white'
-						: 'text-content-muted'}"
-					onclick={() => showPanel('prepare')}>Préparer</button
-				>
-				<button
-					class="px-3 py-1 text-sm {ws.panel === 'preview'
-						? 'bg-primary text-white'
-						: 'text-content-muted'}"
-					onclick={() => showPanel('preview')}>Aperçu</button
-				>
-			</div>
+
+		<div class="flex items-center gap-2">
 			<button
 				class="rounded border border-border-strong px-3 py-1 text-sm text-content-muted hover:bg-overlay"
 				onclick={() => fileInput?.click()}
 			>
-				Importer
+				{$t('Import')}
 			</button>
 			<input
 				bind:this={fileInput}
@@ -350,18 +381,17 @@
 				disabled={!canSliceNow}
 				title={canSliceNow ? 'Trancher le plateau actif' : 'Ajoutez un objet à trancher'}
 			>
-				Trancher
+				{$t('Slice plate')}
 			</button>
 			<SaveControls {save} />
-			<ThemeToggle />
 			<!-- Export projet 3MF (FR-044) : ressource API backend, pas une route SvelteKit. -->
 			<!-- eslint-disable svelte/no-navigation-without-resolve -->
 			<a
-				class="rounded bg-primary px-3 py-1.5 text-sm text-white hover:bg-primary-hover"
+				class="rounded bg-primary px-3 py-1.5 text-sm text-primary-content hover:bg-primary-hover"
 				href="/api/projects/{data.project.id}/export/3mf"
 				download
 			>
-				Exporter 3MF
+				{$t('Export Generic 3MF…')}
 			</a>
 			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		</div>
@@ -396,11 +426,55 @@
 	{/if}
 
 	<div class="flex min-h-0 flex-1">
-		<!-- Zone centrale : scène 3D (Préparer) ou aperçu G-code (Aperçu, T088). -->
+		<!-- Zone gauche : colonne de configuration (objets / réglages). -->
+		<aside class="flex w-96 flex-col border-r border-border bg-surface-raised">
+			<div class="flex border-b border-border">
+				<button
+					class="flex-1 px-3 py-2 text-sm {configTab === 'settings'
+						? 'border-b-2 border-primary font-medium text-primary'
+						: 'text-content-muted'}"
+					onclick={() => (configTab = 'settings')}>{$t('Process')}</button
+				>
+				<button
+					class="flex-1 px-3 py-2 text-sm {configTab === 'objects'
+						? 'border-b-2 border-primary font-medium text-primary'
+						: 'text-content-muted'}"
+					onclick={() => (configTab = 'objects')}>Objets</button
+				>
+			</div>
+
+			<div class="min-h-0 flex-1 overflow-auto p-3">
+				{#if configTab === 'objects'}
+					<PlateBar
+						plates={plates.list()}
+						activeId={plates.activeId}
+						onselect={(id) => (plates.activeId = id)}
+						onadd={() => plates.addPlate()}
+						onremove={(id) => plates.removePlate(id)}
+						ontype={(id, plateType) => plates.setPlateType(id, plateType)}
+					/>
+					<ObjectList
+						{tree}
+						selection={ws.selection}
+						onselect={selectObject}
+						ontogglelock={(id) => tree.setLocked(id, !tree.isLocked(id))}
+						ontogglehide={(id) => tree.setHidden(id, !tree.isHidden(id))}
+						onextruder={(id, extruder) => tree.setExtruder(id, extruder)}
+						onduplicate={(id) => tree.duplicate(id)}
+						ondelete={(id) => tree.remove(id)}
+						ongroup={() => tree.group([...ws.selection])}
+					/>
+				{:else}
+					<SettingsTabs bind:mode={settingsMode} bind:values={settingsValues} />
+				{/if}
+			</div>
+		</aside>
+
+		<!-- Zone centrale : scène 3D (Préparer) / aperçu G-code (Aperçu) / autres vues. -->
 		<main
-			class="relative min-w-0 flex-1 bg-surface"
+			class="relative min-w-0 flex-1 bg-surface-sunken"
 			ondragover={(e) => {
-				if (ws.panel === 'prepare') {
+				if (layout.tab === 'prepare') {
 					e.preventDefault();
 					dragOver = true;
 				}
@@ -408,10 +482,7 @@
 			ondragleave={() => (dragOver = false)}
 			ondrop={onDrop}
 		>
-			{#if ws.panel === 'prepare'}
-				<div class="absolute left-3 top-3 z-10">
-					<GizmoToolbar mode={ws.gizmoMode} onmode={changeGizmo} />
-				</div>
+			{#if layout.tab === 'prepare'}
 				<Scene {bed} objects={sceneObjects} bind:selection={ws.selection} />
 
 				{#if sceneObjects.length === 0}
@@ -420,7 +491,7 @@
 					>
 						<p>
 							Glissez un modèle ici (STL, OBJ, 3MF, STEP, AMF, SVG, DRC)<br />ou cliquez sur
-							<span class="font-medium">Importer</span>.
+							<span class="font-medium">{$t('Import')}</span>.
 						</p>
 					</div>
 				{/if}
@@ -447,7 +518,7 @@
 						{/each}
 					</div>
 				{/if}
-			{:else}
+			{:else if layout.tab === 'preview'}
 				<div class="flex h-full flex-col">
 					{#if session.phase === 'slicing'}
 						<div
@@ -497,51 +568,19 @@
 						</div>
 					{/if}
 				</div>
+			{:else}
+				<!-- Onglets Appareil / Projet : contenu livré par T108 / T117. -->
+				<div class="flex h-full items-center justify-center p-6 text-content-subtle">
+					<p>{$t(layout.tab === 'device' ? 'Device' : 'Project')} — bientôt disponible.</p>
+				</div>
 			{/if}
 		</main>
 
-		<!-- Panneau latéral : objets/plateaux ou réglages. -->
-		<aside class="flex w-96 flex-col border-l border-border bg-surface-raised">
-			<div class="flex border-b border-border">
-				<button
-					class="flex-1 px-3 py-2 text-sm {sidebarTab === 'objects'
-						? 'border-b-2 border-primary font-medium text-primary'
-						: 'text-content-muted'}"
-					onclick={() => (sidebarTab = 'objects')}>Objets</button
-				>
-				<button
-					class="flex-1 px-3 py-2 text-sm {sidebarTab === 'settings'
-						? 'border-b-2 border-primary font-medium text-primary'
-						: 'text-content-muted'}"
-					onclick={() => (sidebarTab = 'settings')}>Réglages</button
-				>
-			</div>
-
-			<div class="min-h-0 flex-1 overflow-auto">
-				{#if sidebarTab === 'objects'}
-					<PlateBar
-						plates={plates.list()}
-						activeId={plates.activeId}
-						onselect={(id) => (plates.activeId = id)}
-						onadd={() => plates.addPlate()}
-						onremove={(id) => plates.removePlate(id)}
-						ontype={(id, plateType) => plates.setPlateType(id, plateType)}
-					/>
-					<ObjectList
-						{tree}
-						selection={ws.selection}
-						onselect={selectObject}
-						ontogglelock={(id) => tree.setLocked(id, !tree.isLocked(id))}
-						ontogglehide={(id) => tree.setHidden(id, !tree.isHidden(id))}
-						onextruder={(id, extruder) => tree.setExtruder(id, extruder)}
-						onduplicate={(id) => tree.duplicate(id)}
-						ondelete={(id) => tree.remove(id)}
-						ongroup={() => tree.group([...ws.selection])}
-					/>
-				{:else}
-					<SettingsTabs bind:mode={settingsMode} bind:values={settingsValues} />
-				{/if}
-			</div>
-		</aside>
+		<!-- Zone droite : rail d'outils vertical (gizmos). Actif en préparation. -->
+		{#if layout.tab === 'prepare'}
+			<aside class="flex flex-col items-center gap-1 border-l border-border bg-surface-raised p-2">
+				<GizmoToolbar mode={ws.gizmoMode} onmode={changeGizmo} />
+			</aside>
+		{/if}
 	</div>
 </div>

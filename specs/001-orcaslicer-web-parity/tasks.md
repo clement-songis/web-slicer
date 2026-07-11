@@ -230,6 +230,64 @@ composants + migration. Aucune logique métier dans les `.svelte` (constitution)
 
 ---
 
+## Phase 12: Parité UI de l'éditeur — câblage réel & disposition OrcaSlicer
+
+**Problème (gap d'intégration constaté).** Les composants d'outils ont été
+**construits et testés tâche par tâche** (gizmos T052–T058, outils de scène
+T054/T059/T061, sélecteurs de presets T046, `SettingsTabs` T042) mais **ne sont
+importés dans aucune route** : `grep -r` sur `frontend/src` confirme que
+`TransformGizmo`, `TransformPanel`, `CutTool`, `BooleanTool`, `PaintToolbar`,
+`EmbossTool`, `MeasureTool`, `AssemblyView`, `SimplifyTool`, `BrimEarsTool`,
+`RepairTool`, `LayerHeight`, `PresetSelect` et `PrinterSelect` sont câblés **nulle
+part**. T087 (« assemblage ») annonçait avoir monté « GizmoToolbar/gizmos
+T052–T058 + MAIN_TOOLBAR T061 + sélecteurs de presets T046 » et T096 leur
+migration de thème — **sur-estimation** : seuls `GizmoToolbar` (3 modes
+déplacer/tourner/échelle), `Scene`, `ObjectList`, `PlateBar`, `SettingsTabs` et la
+préviz sont réellement montés. En plus, la disposition de l'éditeur ne suit pas les
+captures de référence OrcaSlicer (`specs/001-orcaslicer-web-parity/references/orca-{home,prepare,preview}.png`)
+et `SettingsTabs` est visiblement cassé (18 onglets à plat sur 5 rangs mêlant
+process/filament/machine, onglet fantôme `page_name`, « Notes » en double, libellés
+anglais non i18n, débordement à droite).
+
+**Périmètre dérivé de `audit/ui_inventory.json` + `traceability-map.json`** (surfaces
+non câblées, comptées par catégorie) : **gizmos 16** (10 fichiers, 0 câblé),
+**barre d'outils 11** (seuls add-plate + more/fewer réellement câblés),
+**menu contextuel 54** (`scene/menus.ts`, 0 route), **barre de menus 55**
+(`menus/menus.ts`, 0 route), **raccourcis clavier 92 / 5 groupes** (liés nulle part),
+**réglages 21 pages / 100 sections / 525 options** (à plat, cassé), **sélecteurs
+imprimante/filament/process** (0 route), **panneau d'aperçu** (légende par type +
+double curseur `sliders.ts` non câblés), **accueil** (grille récente + cartes).
+Cette phase **câble réellement** l'existant sur ces surfaces, aligne la disposition
+sur OrcaSlicer, et **ajoute une garde de traçabilité** (T119) pour qu'un composant
+construit-mais-non-câblé échoue désormais le gate (empêche la récidive). Aucune
+logique métier dans les `.svelte` (constitution).
+
+- [X] T097 [US4] Refonte de la disposition de l'éditeur en 3 zones OrcaSlicer (fondation de phase) dans `frontend/src/routes/projects/[id]/+page.svelte` + orchestrateur pur `frontend/src/lib/editor/layout.ts` : **colonne de config à gauche** (hôte Imprimante → Filament → Traitement), **viewport 3D central** (`Scene`), **rail d'outils vertical à droite** (hôte gizmos), **onglets supérieurs** Préparer/Aperçu/Appareil/Projet ; thème sombre par défaut dans l'éditeur (`data-theme` local ou préférence). État de disposition pur dans `lib/editor/layout.ts` + tests bun (zones, onglet actif, défaut sombre). `.svelte` = disposition uniquement. — *`lib/editor/layout.ts` : `LayoutState` immuable (onglet `prepare/preview/device/project`), `initialLayout`/`setTab`/`showsPrepare`/`showsPreview`, `EDITOR_TABS`, `EDITOR_DEFAULT_THEME='dark'` ; barrel `lib/editor` étendu. `layout.test.ts` (4 tests). Page réécrite en 3 zones : barre supérieure = onglets de vue i18n (`$t('Prepare'/'Preview'/'Device'/'Project')`) + actions (Import/Slice plate/Save/Export 3MF) ; colonne gauche (Traitement `SettingsTabs` / Objets `PlateBar`+`ObjectList`) ; centre = `Scene` (prepare) / `PreviewScene` (preview) / placeholder (device/projet, → T108/T117) ; rail droit = `GizmoToolbar`. Thème sombre forcé au montage via `data-theme` racine (réaffirmé en `requestAnimationFrame` pour gagner sur `initTheme` du layout parent), restauré à la sortie. Nouvelles clés i18n en/fr (prepare/device/project/process/slice_plate). Bascule auto vers l'aperçu portée sur `layout.tab`. Gates verts : svelte-check 0/0, prettier+eslint, 301 tests bun (+4), + vérif visuelle Playwright (sombre, 3 zones, onglets). **Périmètre** : rail encore horizontal (→ T100), onglets à plat des réglages (→ T099), Appareil/Projet en placeholder.*
+- [ ] T098 [US3] Câbler les sélecteurs Imprimante + Filament + Process dans la colonne de gauche : monter `frontend/src/lib/presets/PrinterSelect.svelte` + `PresetSelect.svelte` dans `routes/projects/[id]`, charger les presets via `GET /api/presets?kind=…`, lier à `project.active_presets`, persister au save ; orchestrateur pur `frontend/src/lib/editor/presets.ts` (sélection courante par type, dérivation/enregistrement/suppression délégués à l'API) + tests bun. Dépend de T097.
+- [ ] T099 [US2] Recadrer le châssis de réglages `frontend/src/lib/settings/SettingsTabs.svelte` : **onglets cadrés par type de preset** (process / filament / machine) au lieu du vidage à plat des 21 pages, **renommer l'onglet fantôme `page_name` en « Extruder »** (`TabPrinter::build_unregular_pages`), **dédoublonner « Notes »**, **libellés d'onglets/sections via i18n** (`$t`), corriger le **débordement à droite** (recherche, bascule Simple/Avancé, colonne d'unités), bascule Global/Objets. La structure vient du généré `frontend/src/generated/ui-layout` (jamais édité) ; ajuster `frontend/src/lib/settings/filter.ts` si besoin + tests bun (cadrage par type, absence de `page_name`/doublon, i18n). Dépend de T097.
+- [ ] T100 [US2] Monter le **groupe de réglages process (8 pages `TabPrint*`)** dans la colonne de gauche via `frontend/src/lib/settings/SettingsTabs.svelte` (source `frontend/src/generated/ui-layout`) : Quality, Strength, Speed, Support, Multimaterial, Others, Frequent, Plate Settings (~50 sections). Test bun de couverture des 8 pages. Dépend de T099.
+- [ ] T101 [US2] Monter le **groupe de réglages filament (7 pages `TabFilament`)** : Setting Overrides, Filament, Cooling, Advanced, Multimaterial, Dependencies, Notes, + widgets spéciaux `frontend/src/lib/settings/special/FlushVolumes.svelte` et `PlateTemps.svelte` aux emplacements attendus. Test bun de couverture. Dépend de T099.
+- [ ] T102 [US2] Monter le **groupe de réglages machine (6 pages `TabPrinter`)** : Basic information, Machine G-code, Notes, Motion ability, Multimaterial, Extruder, + widgets spéciaux `frontend/src/lib/settings/special/BedShape.svelte`, `MachineGcode.svelte`, `MultimaterialTables.svelte`, `OverridesPage.svelte`. Test bun de couverture. Dépend de T099.
+- [ ] T103 [US4] Remplacer la `GizmoToolbar` à 3 modes par le **rail d'outils vertical complet** et monter le `TransformGizmo` **dans la scène** : `frontend/src/lib/scene/gizmos/GizmoToolbar.svelte` (rail exposant tous les outils de `traceability-map.json#gizmos`) piloté par un état d'outil actif dans `frontend/src/lib/editor/tools.ts` ; `frontend/src/lib/scene/gizmos/TransformGizmo.svelte` monté dans `Scene` pour déplacer/tourner/échelle sur `ws.selection` + tests bun de l'orchestrateur d'outil. Dépend de T097.
+- [ ] T104 [P] [US4] Câbler les panneaux d'outils objet ouverts depuis le rail dans `routes/projects/[id]` (pilotés par l'état d'outil T103, agissant sur `ws.selection`) : `frontend/src/lib/scene/tools/CutTool.svelte`, `BooleanTool.svelte`, `SimplifyTool.svelte`, `RepairTool.svelte`, `LayerHeight.svelte`, `AssemblyView.svelte` et `frontend/src/lib/scene/gizmos/TransformPanel.svelte` (Flatten), `MeasureTool.svelte`, `EmbossTool.svelte`, `BrimEarsTool.svelte`. Dépend de T103.
+- [ ] T105 [P] [US4] Câbler la barre de peinture + superposition sur le maillage sélectionné : `frontend/src/lib/scene/gizmos/painting/PaintToolbar.svelte` (FDM supports / Couture / Peau floue / Segmentation multi-matériaux) montée dans `routes/projects/[id]` et branchée sur la scène (`TrianglePainting`). Dépend de T103.
+- [ ] T106 [US4] Câbler la **barre d'outils de plateau (11 items `traceability-map.json#toolbars`)** dans la barre de `routes/projects/[id]` : `add` (menu d'ajout `frontend/src/lib/scene/menus.ts`), `arrange`, `orient` (via `frontend/src/lib/api/scene.ts`), `splitobjects`/`splitvolumes` (`frontend/src/lib/scene/objects.ts`), `more`/`fewer` (`ObjectList`), `addplate` (`PlateBar`), `layersediting` (`frontend/src/lib/scene/tools/LayerHeight.svelte`), `assembly_view` (`AssemblyView`) ; vérifier le déclenchement réel de chaque item. Dépend de T097.
+- [ ] T107 [US1] Câbler le **menu Fichier** (`frontend/src/lib/menus/menus.ts` — importé par aucune route) dans l'en-tête de `routes/projects/[id]` : New Project, Open Project, Save Project, Save Project as, Import (3MF/STL/STEP/SVG/OBJ/AMF, Zip, Configs), Export (G-code, Generic 3MF, all objects STL/DRC, Preset Bundle, toolpaths OBJ), Sync Presets, Quit ; chaque item déclenche l'action/route réelle. Items desktop-only (New Window…) → `exclusions.md`. Dépend de T097.
+- [ ] T108 [US4] Câbler le **menu Édition** (`frontend/src/lib/menus/menus.ts`) : Undo, Redo, Cut, Copy, Paste, Delete selected, Delete all, Clone selected, Select all, Deselect all, Duplicate Current Plate, sur `ObjectTree`/`PlateSet` et le presse-papier de scène. Dépend de T097.
+- [ ] T109 [US4] Câbler le **menu Vue** (`frontend/src/lib/menus/menus.ts`) : Default/Top/Bottom/Front/Rear/Left/Right View, Use Perspective/Orthogonal, Auto Perspective, Show Gridlines/Labels/Overhang/Selected Outline/3D Navigator/G-code Window, sur la caméra et les options de `Scene`/`Viewport`. Dépend de T097.
+- [ ] T110 [US1] Câbler le **menu Calibration** (`frontend/src/lib/menus/menus.ts`) : Temperature, Flow ratio, Pressure advance, Retraction, Cornering, VFA, Input Shaping (Frequency/Damping), Max flowrate, Calibration Guide — générateurs de plateaux de calibration ; consigner en `exclusions.md` (partiel-v1) ceux dépendant d'un appareil connecté. Dépend de T097.
+- [ ] T111 [US1] Câbler le **menu Aide** (`frontend/src/lib/menus/menus.ts`) : Keyboard Shortcuts (ouvre `ShortcutsDialog` existant), et consigner en `exclusions.md` les items desktop-only (Setup Wizard, Show Configuration Folder, Open Network Test, Show Tip of the Day, Check for Updates, Troubleshoot Center). Dépend de T097.
+- [ ] T112 [US4] Câbler les **actions objet du menu contextuel** (sous-ensemble de `traceability-map.json#context_menu`, `frontend/src/lib/scene/menus.ts`) sur la scène et l'`ObjectList` de `routes/projects/[id]` : Hide/Show, Delete, Fix Model, Simplify Model, Set as Support Blocker/Enforcer, Split to Objects/Parts, Edit in place, changement d'extrudeur, Center/Drop, etc. Composant de menu contextuel présentational dans `frontend/src/lib/scene/`. Dépend de T097.
+- [ ] T113 [US4] Câbler l'**ajout de primitives et le chargement du menu contextuel** (reste de `traceability-map.json#context_menu`, `frontend/src/lib/scene/menus.ts`) : Add (Cube, Cylinder, Sphere, Cone, Disc, Torus, Bambu primitives…), Load/Replace with model, Add modifier/negative/support blocker volume. Dépend de T112.
+- [ ] T114 [US4] Lier les **raccourcis éditeur** (groupes Global + Plater + Objects List + Gizmo de `traceability-map.json#shortcuts`, `frontend/src/lib/menus/menus.ts` + `frontend/src/lib/scene/menus.ts`) aux actions câblées par T107–T113 : orchestrateur pur de dispatch clavier dans `frontend/src/lib/editor/shortcuts.ts` + tests bun (mapping touche→action, isolation par contexte). Dépend de T107–T113.
+- [ ] T115 [US5] Lier les **raccourcis d'aperçu** (groupe Preview de `traceability-map.json#shortcuts`, `frontend/src/lib/preview/sliders.ts`) dans le panneau Aperçu : navigation de couches (flèches, L, C, Home/End, molette + modificateurs). Test bun du dispatch. Dépend de T116.
+- [ ] T116 [US5] Parité du **panneau d'aperçu G-code** (`specs/.../references/orca-preview.png`) : légende par **type de ligne** (durée, %, longueur/poids + bascule de visibilité par type), **double curseur de couches** vertical + scrubber horizontal (`frontend/src/lib/preview/sliders.ts`, aujourd'hui non câblé), bloc « Estimation totale » (filament total/modèle, coût, temps de préparation/impression, durée totale) via `StatsPanel`, listing G-code optionnel. Monté dans le panneau Aperçu de `routes/projects/[id]`. Dépend de T097 ; complète T088.
+- [ ] T117 [P] [US8] Câbler les **onglets supérieurs Appareil et Projet** : Appareil = statut/commande imprimante Moonraker (`frontend/src/lib/printers/`), Projet = métadonnées du projet ; nouveaux panneaux montés dans `routes/projects/[id]/+page.svelte` sous les onglets T097. Dépend de T097.
+- [ ] T118 [P] [US6] Parité de l'**accueil / bibliothèque** (`specs/.../references/orca-home.png`) : cartes « Nouveau projet » / « Ouvrir un projet (3mf) » + grille « Récemment ouvert » (vignettes de projet) + barre latérale (compte/récent) dans `frontend/src/routes/library/+page.svelte`. Réutilise l'API projets existante ; `.svelte` = disposition. Dépend de T097 (non bloquant).
+- [ ] T119 Validation de parité UI + **garde anti-récidive** : passe Playwright (piloter `playwright-core` depuis le store Nix) capturant chaque écran (accueil, préparer, aperçu, appareil, projet) face à `specs/001-orcaslicer-web-parity/references/orca-{home,prepare,preview}.png` (résultats dans `specs/001-orcaslicer-web-parity/validation-ui-parity.md`) ; **étendre `audit/check_traceability.py`** d'une garde vérifiant que **chaque chemin cible** de `traceability-map.json#gizmos`/`#toolbars`/`#context_menu`/`#main_menu`/`#shortcuts` est **effectivement importé par une route** (échec « construit-mais-non-câblé »), en tolérant les exclusions desktop-only déclarées ; `python3 audit/run_all.py && python3 audit/check_traceability.py` vert. Dépend de T097–T118.
+
+---
+
 ## Dependencies & Execution Order
 
 ```text
@@ -241,6 +299,7 @@ Phase 6 (P4 scène) → Phase 7 (scène à trancher)
 Phase 7 → Phase 8 (P6 Moonraker : envoie les G-codes produits)
 Phases 5 ∥ 6 (parallélisables après Phase 4 ; Phase 3 indépendante d'elles)
 Phase 9 après Phase 8
+Phase 10 (assemblage) → Phase 11 (thème) → Phase 12 (câblage réel + disposition OrcaSlicer)
 ```
 
 Dépendances intra-phase notables : T011 (suite générique) avant T012–T020 ;
@@ -249,6 +308,14 @@ T041–T047 ; T052/T054 avant T055–T058 ; T063 (file) avant T064–T066.
 Assemblage (Phase 10) : les composants scène (T050–T061), réglages (T042/T046)
 et préviz (T068–T070/T084) précèdent T087 ; T087 (shell) avant T088 (slice/aperçu)
 et T089 (import éditeur) ; T091 (parité formats) étend le jeu accepté par T089/T090.
+Câblage réel (Phase 12, dérivée de `ui_inventory.json`) : T097 (refonte 3 zones)
+est la fondation. T098 (sélecteurs), T099 (châssis réglages), T103 (rail gizmos),
+T106 (barre plateau), T107–T111 (menus Fichier/Édition/Vue/Calibration/Aide), T112
+(menu contextuel objet), T116 (aperçu), T117/T118 (onglets/accueil) dépendent de
+T097. T100/T101/T102 (groupes de réglages) dépendent de T099 ; T104/T105 (outils/
+peinture) de T103 ; T113 (primitives) de T112 ; T114 (raccourcis éditeur) de
+T107–T113 ; T115 (raccourcis aperçu) de T116 ; T119 (validation + garde) clôt la
+phase après T097–T118.
 
 ## Parallel Execution Examples
 
@@ -258,6 +325,7 @@ et T089 (import éditeur) ; T091 (parité formats) étend le jeu accepté par T0
 - **Phase 7** : T068 ∥ T070 ∥ T071 côté frontend pendant T063–T067 côté backend.
 - **Phase 9** : T079 ∥ T080 ∥ T083 ∥ T084 ∥ T085.
 - **Phase 10** : séquentielle (T087 → T088) ; s'appuie sur des composants déjà livrés.
+- **Phase 12** : T097 d'abord (fondation) ; puis en parallèle T098 ∥ T099 ∥ T103 ∥ T106 ∥ T107 ∥ T108 ∥ T109 ∥ T110 ∥ T111 ∥ T112 ∥ T116 ∥ T117 ∥ T118 ; T100 ∥ T101 ∥ T102 après T099 ; T104 ∥ T105 après T103 ; T113 après T112 ; T114 après T107–T113 ; T115 après T116 ; T119 en clôture.
 
 ## Implementation Strategy
 
@@ -272,3 +340,9 @@ et T089 (import éditeur) ; T091 (parité formats) étend le jeu accepté par T0
 - **Risque en tête** : la Phase 3 (bridge FFI) était le chemin critique ;
   elle est désormais franchie (chargement, 3MF, STEP, réparation, arrangement,
   tranchage réel + préviz G-code, suite générique verte sur `FfiEngine`).
+- **Dette d'intégration (Phase 12)** : les tests unitaires par composant ont
+  masqué l'absence de câblage dans les pages (composants verts mais importés
+  nulle part). La garde de traçabilité de T119 (chaque cible tracée gizmo/toolbar/
+  menu/contextuel/raccourci doit être importée par une route) transforme ce
+  silence en échec de gate — à câbler
+  avant de considérer une future tâche « composant » comme livrée.

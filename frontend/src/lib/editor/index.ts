@@ -25,6 +25,16 @@ export {
 } from './session';
 export { buildWindowGeometry, rangesFromMeta, sliceRequestFor } from './preview';
 export {
+	EDITOR_DEFAULT_THEME,
+	EDITOR_TABS,
+	initialLayout,
+	setTab,
+	showsPrepare,
+	showsPreview,
+	type EditorTab,
+	type LayoutState
+} from './layout';
+export {
 	findByModel,
 	importExt,
 	isAccepted,

@@ -63,5 +63,10 @@
 	"gizmo": "Gizmo",
 	"objects_list": "Objects List",
 	"preview": "Preview",
+	"prepare": "Prepare",
+	"device": "Device",
+	"project": "Project",
+	"process": "Process",
+	"slice_plate": "Slice plate",
 	"close": "Close"
 }

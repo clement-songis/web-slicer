@@ -63,5 +63,10 @@
 	"gizmo": "Gizmo",
 	"objects_list": "Liste d'objets",
 	"preview": "Prévisualisation",
+	"prepare": "Préparer",
+	"device": "Appareil",
+	"project": "Projet",
+	"process": "Traitement",
+	"slice_plate": "Trancher le plateau",
 	"close": "Fermer"
 }
