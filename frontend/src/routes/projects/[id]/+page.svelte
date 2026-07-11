@@ -4,6 +4,7 @@
 	import { goto } from '$app/navigation';
 	import MenuBar from '$lib/menus/MenuBar.svelte';
 	import ShortcutsDialog from '$lib/menus/ShortcutsDialog.svelte';
+	import DevicePanel from '$lib/printers/DevicePanel.svelte';
 	import { MAIN_MENUS } from '$lib/menus/menus';
 	import { draftStore, type DraftRecord } from '$lib/stores/draft';
 	import {
@@ -72,7 +73,8 @@
 		sliceProject,
 		listProjectModels,
 		createProject,
-		duplicateProject
+		duplicateProject,
+		renameProject
 	} from '$lib/api/projects';
 	import { arrangeScene, orientModel } from '$lib/api/scene';
 	import { fetchPreviewLayers, getPreviewMeta } from '$lib/api/preview';
@@ -161,6 +163,21 @@
 
 	// Dialogue des raccourcis clavier (menu Aide, T111).
 	let showShortcuts = $state(false);
+
+	// Onglet Projet (T117) : nom éditable (renommage via l'API projets).
+	let projectName = $state(data.project.name);
+	let savedName = $state(data.project.name);
+	async function renameCurrentProject() {
+		const name = projectName.trim();
+		if (!name || name === savedName) return;
+		try {
+			await renameProject(data.project.id, name);
+			savedName = name;
+			saveMessage = 'Projet renommé.';
+		} catch (e) {
+			saveMessage = e instanceof ApiError ? e.message : 'renommage impossible';
+		}
+	}
 
 	// Menu contextuel objet (T112) : cible + position au curseur.
 	let contextMenu = $state<{ open: boolean; x: number; y: number; targetId: string | null }>({
@@ -1603,10 +1620,48 @@
 						</div>
 					{/if}
 				</div>
+			{:else if layout.tab === 'device'}
+				<!-- Onglet Appareil (T117, US8) : imprimantes Moonraker + contrôles. -->
+				<div class="h-full overflow-auto">
+					<DevicePanel />
+				</div>
 			{:else}
-				<!-- Onglets Appareil / Projet : contenu livré par T108 / T117. -->
-				<div class="flex h-full items-center justify-center p-6 text-content-subtle">
-					<p>{$t(layout.tab === 'device' ? 'Device' : 'Project')} — bientôt disponible.</p>
+				<!-- Onglet Projet (T117) : métadonnées du projet + renommage. -->
+				<div class="h-full overflow-auto p-6">
+					<div class="mx-auto flex w-full max-w-2xl flex-col gap-4">
+						<h2 class="text-lg font-semibold text-content">Projet</h2>
+						{#if data.project.has_thumbnail}
+							<img
+								src="/api/projects/{data.project.id}/thumbnail"
+								alt="Vignette du projet"
+								class="max-h-48 w-auto self-start rounded border border-border"
+							/>
+						{/if}
+						<label class="flex flex-col gap-1">
+							<span class="text-sm text-content-muted">Nom</span>
+							<div class="flex gap-2">
+								<input
+									class="flex-1 rounded border border-border-strong bg-surface-raised px-2 py-1 text-sm"
+									bind:value={projectName}
+								/>
+								<button
+									class="rounded bg-primary px-3 py-1 text-sm text-primary-content hover:bg-primary-hover disabled:opacity-40"
+									disabled={projectName.trim() === '' || projectName === savedName}
+									onclick={renameCurrentProject}>Renommer</button
+								>
+							</div>
+						</label>
+						<dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+							<dt class="text-content-muted">Identifiant</dt>
+							<dd class="truncate font-mono text-xs text-content">{data.project.id}</dd>
+							<dt class="text-content-muted">Version</dt>
+							<dd class="tabular-nums text-content">{data.project.version}</dd>
+							<dt class="text-content-muted">Créé le</dt>
+							<dd class="text-content">{new Date(data.project.created_at).toLocaleString()}</dd>
+							<dt class="text-content-muted">Modifié le</dt>
+							<dd class="text-content">{new Date(data.project.updated_at).toLocaleString()}</dd>
+						</dl>
+					</div>
 				</div>
 			{/if}
 		</main>
