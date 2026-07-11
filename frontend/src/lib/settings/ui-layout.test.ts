@@ -18,9 +18,23 @@ const audit = JSON.parse(readFileSync(AUDIT, 'utf-8')) as {
 	settings_tabs: Array<{
 		title: string;
 		icon: string;
+		defined_in: string;
 		sections: Array<{ title: string; options: UiOption[] }>;
 	}>;
 };
+
+// Miroir des transformations du générateur (audit/generate_frontend_ts.py) :
+// type de preset déduit de `defined_in`, titre `page_name` → « Extruder ».
+function kindOf(definedIn: string): 'process' | 'filament' | 'machine' {
+	const cls = (definedIn || '').split('::')[0];
+	if (cls.startsWith('TabFilament')) return 'filament';
+	if (cls.startsWith('TabPrinter')) return 'machine';
+	return 'process';
+}
+
+function titleOf(title: string): string {
+	return title === 'page_name' ? 'Extruder' : title;
+}
 
 function countSections(): number {
 	return UI_LAYOUT.reduce((n, p) => n + p.sections.length, 0);
@@ -42,8 +56,9 @@ describe('layout UI généré', () => {
 
 	it('reproduit fidèlement l’arbre pages → sections → options', () => {
 		const expected = audit.settings_tabs.map((tab) => ({
-			title: tab.title,
+			title: titleOf(tab.title),
 			icon: tab.icon,
+			kind: kindOf(tab.defined_in),
 			sections: tab.sections.map((s) => ({ title: s.title, options: s.options }))
 		}));
 		expect(UI_LAYOUT).toEqual(expected);

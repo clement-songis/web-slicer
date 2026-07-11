@@ -134,6 +134,25 @@ export const PARAM_COUNT = {len(params)};
 """
 
 
+# Type de preset d'une page de réglages, déduit de la classe C++ qui la construit
+# (`defined_in`). Sert au cadrage par onglet côté frontend (T099).
+def page_kind(defined_in: str) -> str:
+    cls = (defined_in or "").split("::", 1)[0]
+    if cls.startswith("TabFilament"):
+        return "filament"
+    if cls.startswith("TabPrinter"):
+        return "machine"
+    # TabPrint / TabPrintModel / TabPrintPlate → réglages process
+    return "process"
+
+
+# Corrige le titre parasite `page_name` (nom de variable C++ capté par
+# l'extraction) : c'est la page « Extruder » de `TabPrinter::build_unregular_pages`.
+def page_title(tab: dict) -> str:
+    title = tab.get("title") or ""
+    return "Extruder" if title == "page_name" else title
+
+
 def build_layout() -> str:
     data = json.load(open(AUDIT_DIR / "ui_inventory.json", encoding="utf-8"))
     tabs = data["settings_tabs"]
@@ -147,8 +166,9 @@ def build_layout() -> str:
         ]
         pages.append(
             {
-                "title": tab.get("title") or "",
+                "title": page_title(tab),
                 "icon": tab.get("icon") or "",
+                "kind": page_kind(tab.get("defined_in") or ""),
                 "sections": sections,
             }
         )
@@ -158,6 +178,7 @@ def build_layout() -> str:
         lines.append("  {")
         lines.append(f"    title: {ts(page['title'])},")
         lines.append(f"    icon: {ts(page['icon'])},")
+        lines.append(f"    kind: {ts(page['kind'])},")
         lines.append("    sections: [")
         for s in page["sections"]:
             lines.append(
@@ -183,10 +204,14 @@ export interface UiSection {{
   options: UiOption[];
 }}
 
+/** Type de preset auquel une page de réglages appartient (cadrage des onglets). */
+export type PresetKind = "process" | "filament" | "machine";
+
 /** Une page d'onglet de réglages (Quality, Strength, Speed…). */
 export interface UiPage {{
   title: string;
   icon: string;
+  kind: PresetKind;
   sections: UiSection[];
 }}
 

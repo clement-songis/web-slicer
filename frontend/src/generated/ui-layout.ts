@@ -13,10 +13,14 @@ export interface UiSection {
   options: UiOption[];
 }
 
+/** Type de preset auquel une page de réglages appartient (cadrage des onglets). */
+export type PresetKind = "process" | "filament" | "machine";
+
 /** Une page d'onglet de réglages (Quality, Strength, Speed…). */
 export interface UiPage {
   title: string;
   icon: string;
+  kind: PresetKind;
   sections: UiSection[];
 }
 
@@ -24,6 +28,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Quality",
     icon: "custom-gcode_quality",
+    kind: "process",
     sections: [
       { title: "Layer height", options: ["layer_height","initial_layer_print_height"] },
       { title: "Line width", options: ["line_width","initial_layer_line_width","outer_wall_line_width","inner_wall_line_width","top_surface_line_width","sparse_infill_line_width","internal_solid_infill_line_width","support_line_width","bridge_line_width"] },
@@ -40,6 +45,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Strength",
     icon: "custom-gcode_strength",
+    kind: "process",
     sections: [
       { title: "Walls", options: ["wall_loops","alternate_extra_wall","detect_thin_wall"] },
       { title: "Top/bottom shells", options: ["top_shell_layers","top_shell_thickness","top_surface_density","top_surface_pattern","bottom_shell_layers","bottom_shell_thickness","bottom_surface_density","bottom_surface_pattern","top_bottom_infill_wall_overlap"] },
@@ -50,6 +56,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Speed",
     icon: "custom-gcode_speed",
+    kind: "process",
     sections: [
       { title: "First layer speed", options: ["initial_layer_speed","initial_layer_infill_speed","initial_layer_travel_speed","slow_down_layers"] },
       { title: "Other layers speed", options: ["outer_wall_speed","inner_wall_speed","small_perimeter_speed","small_perimeter_threshold","sparse_infill_speed","internal_solid_infill_speed","top_surface_speed","gap_infill_speed","ironing_speed","support_speed","support_interface_speed"] },
@@ -64,6 +71,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Support",
     icon: "custom-gcode_support",
+    kind: "process",
     sections: [
       { title: "Support", options: ["enable_support","support_type","support_style","support_threshold_angle","support_threshold_overlap","raft_first_layer_density","raft_first_layer_expansion","support_on_build_plate_only","support_critical_regions_only","support_remove_small_overhang"] },
       { title: "Raft", options: ["raft_layers","raft_contact_distance"] },
@@ -76,6 +84,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Multimaterial",
     icon: "custom-gcode_multi_material",
+    kind: "process",
     sections: [
       { title: "Prime tower", options: ["enable_prime_tower","prime_tower_skip_points","enable_tower_interface_features","enable_tower_interface_cooldown_during_tower","prime_tower_enable_framework","prime_tower_width","prime_volume","prime_tower_brim_width","prime_tower_infill_gap","wipe_tower_rotation_angle","wipe_tower_bridging","wipe_tower_extra_spacing","wipe_tower_extra_flow","wipe_tower_max_purge_speed","wipe_tower_wall_type","wipe_tower_cone_angle","wipe_tower_extra_rib_length","wipe_tower_rib_width","wipe_tower_fillet_wall","wipe_tower_no_sparse_layers","single_extruder_multi_material_priming"] },
       { title: "Filament for Features", options: ["outer_wall_filament_id","inner_wall_filament_id","sparse_infill_filament_id","internal_solid_filament_id","top_surface_filament_id","bottom_surface_filament_id","wipe_tower_filament"] },
@@ -87,6 +96,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Others",
     icon: "custom-gcode_other",
+    kind: "process",
     sections: [
       { title: "Skirt", options: ["skirt_loops","skirt_type","min_skirt_length","skirt_distance","skirt_start_angle","skirt_speed","skirt_height","draft_shield","single_loop_draft_shield"] },
       { title: "Brim", options: ["brim_type","brim_width","brim_object_gap","brim_flow_ratio","brim_use_efc_outline","combine_brims","brim_ears_max_angle","brim_ears_detection_length"] },
@@ -101,6 +111,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Frequent",
     icon: "empty",
+    kind: "process",
     sections: [
       { title: "", options: ["layer_height","sparse_infill_density","wall_loops","enable_support"] },
     ],
@@ -108,6 +119,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Plate Settings",
     icon: "empty",
+    kind: "process",
     sections: [
       { title: "", options: ["curr_bed_type","skirt_start_angle","print_sequence","spiral_mode","first_layer_sequence_choice","other_layers_sequence_choice"] },
     ],
@@ -115,6 +127,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Setting Overrides",
     icon: "custom-gcode_setting_override",
+    kind: "filament",
     sections: [
       { title: "Retraction", options: ["filament_retraction_length","filament_z_hop","filament_z_hop_types","filament_retract_lift_above","filament_retract_lift_below","filament_retract_lift_enforce","filament_retraction_speed","filament_deretraction_speed","filament_retract_restart_extra","filament_retraction_minimum_travel","filament_retract_when_changing_layer","filament_wipe","filament_wipe_distance","filament_retract_before_wipe","filament_long_retractions_when_cut","filament_retraction_distances_when_cut"] },
       { title: "Ironing", options: ["filament_ironing_flow","filament_ironing_spacing","filament_ironing_inset","filament_ironing_speed"] },
@@ -123,6 +136,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Filament",
     icon: "custom-gcode_filament",
+    kind: "filament",
     sections: [
       { title: "Basic information", options: ["filament_type","filament_vendor","filament_soluble","filament_is_support","filament_change_length","required_nozzle_HRC","default_filament_colour","filament_diameter","filament_adhesiveness_category","filament_density","filament_shrink","filament_shrinkage_compensation_z","filament_cost","temperature_vitrification","idle_temperature"] },
       { title: "Flow ratio and Pressure Advance", options: ["pellet_flow_coefficient","filament_flow_ratio","enable_pressure_advance","pressure_advance","adaptive_pressure_advance","adaptive_pressure_advance_overhangs","adaptive_pressure_advance_bridges",{"dynamic":"option"}] },
@@ -135,6 +149,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Cooling",
     icon: "custom-gcode_cooling_fan",
+    kind: "filament",
     sections: [
       { title: "Cooling for specific layer", options: ["close_fan_the_first_x_layers","full_fan_speed_layer"] },
       { title: "Part cooling fan", options: ["reduce_fan_stop_start_freq","slow_down_for_layer_cooling","dont_slow_down_outer_wall","slow_down_min_speed","enable_overhang_bridge_fan","overhang_fan_threshold","overhang_fan_speed","internal_bridge_fan_speed","support_material_interface_fan_speed","ironing_fan_speed"] },
@@ -145,6 +160,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Advanced",
     icon: "custom-gcode_advanced",
+    kind: "filament",
     sections: [
       { title: "Filament start G-code", options: [{"dynamic":"option"}] },
       { title: "Change extrusion role G-code", options: [{"dynamic":"option"}] },
@@ -154,6 +170,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Multimaterial",
     icon: "custom-gcode_multi_material",
+    kind: "filament",
     sections: [
       { title: "Wipe tower parameters", options: ["filament_minimal_purge_on_wipe_tower","filament_tower_interface_pre_extrusion_dist","filament_tower_interface_pre_extrusion_length","filament_tower_ironing_area","filament_tower_interface_purge_volume","filament_tower_interface_print_temp"] },
       { title: "Multi Filament", options: ["long_retractions_when_ec","retraction_distances_when_ec"] },
@@ -164,6 +181,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Dependencies",
     icon: "advanced",
+    kind: "filament",
     sections: [
       { title: "Compatible printers", options: [{"dynamic":"option"}] },
       { title: "Compatible process profiles", options: [{"dynamic":"option"}] },
@@ -172,6 +190,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Notes",
     icon: "custom-gcode_note",
+    kind: "filament",
     sections: [
       { title: "Notes", options: [{"dynamic":"option"}] },
     ],
@@ -179,6 +198,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Basic information",
     icon: "custom-gcode_object-info",
+    kind: "machine",
     sections: [
       { title: "Printable space", options: ["parallel_printheads_count",{"dynamic":"option"},"printable_height","support_multi_bed_types","best_object_pos","z_offset","preferred_orientation"] },
       { title: "Advanced", options: ["printer_structure","gcode_flavor","pellet_modded_printer","bbl_use_printhost","use_3mf","scan_first_layer","enable_power_loss_recovery","disable_m73",{"dynamic":"option"},"use_relative_e_distances","use_firmware_retraction","time_cost"] },
@@ -191,6 +211,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Machine G-code",
     icon: "custom-gcode_gcode",
+    kind: "machine",
     sections: [
       { title: "File header G-code", options: [{"dynamic":"option"}] },
       { title: "Machine start G-code", options: [{"dynamic":"option"}] },
@@ -209,6 +230,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Notes",
     icon: "custom-gcode_note",
+    kind: "machine",
     sections: [
       { title: "Notes", options: [{"dynamic":"option"}] },
     ],
@@ -216,6 +238,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Motion ability",
     icon: "custom-gcode_motion",
+    kind: "machine",
     sections: [
       { title: "", options: [] },
       { title: "Advanced", options: ["emit_machine_limits_to_gcode"] },
@@ -228,6 +251,7 @@ export const UI_LAYOUT: UiPage[] = [
   {
     title: "Multimaterial",
     icon: "custom-gcode_multi_material",
+    kind: "machine",
     sections: [
       { title: "Single extruder multi-material setup", options: ["single_extruder_multi_material",{"dynamic":"option"},"manual_filament_change","bed_temperature_formula"] },
       { title: "Wipe tower", options: ["wipe_tower_type","purge_in_prime_tower","enable_filament_ramming","tool_change_on_wipe_tower"] },
@@ -236,8 +260,9 @@ export const UI_LAYOUT: UiPage[] = [
     ],
   },
   {
-    title: "page_name",
+    title: "Extruder",
     icon: "custom-gcode_extruder",
+    kind: "machine",
     sections: [
       { title: "Basic information", options: ["nozzle_diameter","nozzle_volume","extruder_printable_height",{"dynamic":"option"}] },
       { title: "Layer height limits", options: ["min_layer_height","max_layer_height"] },
