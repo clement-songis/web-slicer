@@ -14,3 +14,13 @@ export {
 	type EditorPanel,
 	type WorkspaceState
 } from './workspace';
+export {
+	applyJobEvent,
+	prepareSession,
+	resetSession,
+	sliceFailed,
+	startSlicing,
+	type SlicePhase,
+	type SliceSession
+} from './session';
+export { buildWindowGeometry, rangesFromMeta, sliceRequestFor } from './preview';

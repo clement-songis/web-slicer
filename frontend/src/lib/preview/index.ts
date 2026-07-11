@@ -16,6 +16,7 @@ export type { Coloration, Rgb, Legend, LegendScale, LegendList, LegendEntry } fr
 export { buildPreviewGeometry, buildLegend, computeFlowRange, flowValue } from './geometry';
 export type { PreviewGeometry, GeometryOptions, PreviewRanges, PreviewType } from './geometry';
 export { default as PreviewLines } from './PreviewLines.svelte';
+export { default as PreviewScene } from './PreviewScene.svelte';
 export {
 	makeLayerRange,
 	moveThumb,
@@ -41,6 +42,8 @@ export type {
 	Thumb,
 	KeyLike
 } from './sliders';
+export { LazyPreviewLoader, segmentsBytes } from './loader';
+export type { LoaderOptions, FetchRange } from './loader';
 export { buildPreviewStats, perTypeStats, formatDuration } from './stats';
 export type { PreviewStats, TypeStat, FilamentStat, GcodeStats } from './stats';
 export { default as StatsPanel } from './StatsPanel.svelte';

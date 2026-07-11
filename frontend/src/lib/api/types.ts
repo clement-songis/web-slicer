@@ -22,6 +22,9 @@ export type { UpdatePresetRequest } from '../../generated/api/UpdatePresetReques
 export type { ImportPresetRequest } from '../../generated/api/ImportPresetRequest';
 export type { ServerEvent } from '../../generated/api/ServerEvent';
 export type { JobResponse } from '../../generated/api/JobResponse';
+export type { SliceRequest } from '../../generated/api/SliceRequest';
+export type { SliceResponse } from '../../generated/api/SliceResponse';
+export type { SliceWarning } from '../../generated/api/SliceWarning';
 export type { PreviewMeta } from '../../generated/api/PreviewMeta';
 export type { PreviewLayerMeta } from '../../generated/api/PreviewLayerMeta';
 export type { PreviewSegmentType } from '../../generated/api/PreviewSegmentType';

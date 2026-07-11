@@ -1,6 +1,6 @@
 // Appels de la bibliothèque de projets, typés sur les DTO générés.
 import { api } from './client';
-import type { CreateProjectRequest, ProjectResponse } from './types';
+import type { CreateProjectRequest, ProjectResponse, SliceRequest, SliceResponse } from './types';
 
 export const listProjects = () => api.get<ProjectResponse[]>('/projects');
 
@@ -24,6 +24,14 @@ export const saveProject = (
 		scene,
 		active_presets: activePresets
 	});
+
+/**
+ * Lance le tranchage d'un projet (`POST /api/projects/{id}/slice`, T064) : cible
+ * un plateau (`plate_index`) ou tous (`all`). Renvoie les jobs créés et les
+ * avertissements moteur figés (FR-032).
+ */
+export const sliceProject = (id: string, body: SliceRequest) =>
+	api.post<SliceResponse>(`/projects/${id}/slice`, body);
 
 export const deleteProject = (id: string) => api.del<void>(`/projects/${id}`);
 
