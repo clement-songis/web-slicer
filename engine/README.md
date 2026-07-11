@@ -1,9 +1,13 @@
 # engine — moteur de slicing (trait `SlicerEngine`)
 
 Crate Rust encapsulant libslic3r d'OrcaSlicer derrière le trait `SlicerEngine`
-(constitution II). Deux implémentations derrière le même trait :
-`adapters/ffi` (bridge cxx, principal) et `adapters/cli` (fallback
-`orca-slicer`). Sélection à l'exécution : `ENGINE_IMPL=ffi|cli` (défaut `ffi`).
+(constitution II).
+
+**Moteur v1 = FFI uniquement.** L'unique implémentation livrée est
+`adapters/ffi` (bridge cxx vers `libslic3r-headless`, compilée derrière la
+feature `ffi`). Le trait laisse la place à une seconde implémentation, mais
+l'adaptateur **CLI `orca-slicer` (`ENGINE_IMPL=cli`) est un objectif backlog
+de validation croisée** — non présent en v1 (CLAUDE.md, décision R1 révisée).
 
 ## Chaîne de build C++ (`$LIBSLIC3R_DIR`)
 
@@ -46,6 +50,9 @@ contrôle `audit/check_traceability.py`.
 
 ```sh
 cargo test -p engine                      # unitaires + suite générique du trait
-ENGINE_IMPL=cli cargo test -p engine      # même suite sur le fallback CLI
 cargo test -p engine --test gcode_parity  # corpus 10×5 vs orca desktop (SC-003)
 ```
+
+> Backlog : la suite générique du trait est conçue pour rejouer à l'identique
+> sur une future implémentation CLI (`ENGINE_IMPL=cli`) à des fins de validation
+> croisée ; cet adaptateur n'existe pas en v1.

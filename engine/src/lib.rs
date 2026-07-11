@@ -2,9 +2,9 @@
 //! miroirs de libslic3r.
 //!
 //! Constitution II : ce crate encapsule libslic3r d'OrcaSlicer ; le backend
-//! ne dépend que du trait défini ici et jamais des adaptateurs
-//! (`adapters::ffi` — bridge cxx principal ; `adapters::cli` — fallback
-//! `orca-slicer`, sélection par `ENGINE_IMPL=ffi|cli`).
+//! ne dépend que du trait défini ici et jamais des adaptateurs. Implémentation
+//! v1 = `adapters::ffi` (bridge cxx) uniquement ; un adaptateur CLI de
+//! validation croisée (`ENGINE_IMPL=cli`) est un objectif backlog, non livré.
 
 pub mod adapters;
 pub mod api;
