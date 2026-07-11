@@ -438,6 +438,108 @@ async fn mesh_of_others_model_is_404() {
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 }
 
+/// T092 : la scène est repeuplée à l'ouverture — le projet expose la liste de
+/// ses modèles.
+#[tokio::test]
+async fn lists_models_of_a_project() {
+    let (_d, app) = app().await;
+    let user = register(&app, "boss@test.local").await;
+    let project = create_project(&app, &user).await;
+    upload_model(&app, &project, &user, "a.stl", &binary_stl_triangle()).await;
+    upload_model(&app, &project, &user, "b.obj", b"v 0 0 0\nf 1 1 1\n").await;
+
+    let resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!("/api/projects/{project}/models"))
+                .header(header::COOKIE, &user)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let list = json_body(resp).await;
+    let arr = list.as_array().unwrap();
+    assert_eq!(arr.len(), 2);
+    assert!(arr.iter().all(|m| m["project_id"] == project));
+}
+
+/// SC-008 : la liste des modèles d'un projet d'autrui répond 404.
+#[tokio::test]
+async fn list_models_of_others_project_is_404() {
+    let (_d, app) = app().await;
+    let alice = register(&app, "alice@test.local").await;
+    let bob = register(&app, "bob@test.local").await;
+    let project = create_project(&app, &alice).await;
+
+    let resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!("/api/projects/{project}/models"))
+                .header(header::COOKIE, &bob)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+}
+
+/// T092 : le fichier source brut est servi pour un aperçu client (OBJ/3MF…).
+#[tokio::test]
+async fn downloads_raw_model_file() {
+    let (_d, app) = app().await;
+    let user = register(&app, "boss@test.local").await;
+    let project = create_project(&app, &user).await;
+    let obj = b"v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n";
+    let model = upload_model(&app, &project, &user, "part.obj", obj).await;
+
+    let resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!("/api/models/{model}/file"))
+                .header(header::COOKIE, &user)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let bytes = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+    assert_eq!(bytes.as_ref(), obj.as_ref());
+}
+
+/// SC-008 : le fichier d'un modèle d'autrui répond 404.
+#[tokio::test]
+async fn download_file_of_others_model_is_404() {
+    let (_d, app) = app().await;
+    let alice = register(&app, "alice@test.local").await;
+    let bob = register(&app, "bob@test.local").await;
+    let project = create_project(&app, &alice).await;
+    let model = upload_model(&app, &project, &alice, "cube.stl", &binary_stl_triangle()).await;
+
+    let resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!("/api/models/{model}/file"))
+                .header(header::COOKIE, &bob)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+}
+
 #[tokio::test]
 async fn upload_requires_a_session() {
     let (_d, app) = app().await;

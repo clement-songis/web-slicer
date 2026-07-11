@@ -21,8 +21,10 @@ export {
 	parseObj,
 	parse3mf,
 	loadPreview,
+	previewFromBuffer,
 	uploadModel,
 	fetchMesh,
+	fetchModelFile,
 	type PreviewFormat
 } from './loaders';
 export {

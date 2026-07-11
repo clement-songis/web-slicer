@@ -14,8 +14,10 @@
 		serializeScene,
 		saveScene,
 		loadPreview as loadModelPreview,
+		previewFromBuffer,
 		uploadModel,
 		fetchMesh,
+		fetchModelFile,
 		type SaveOutcome,
 		type SceneObject
 	} from '$lib/scene';
@@ -28,7 +30,7 @@
 		type GcodeStats
 	} from '$lib/preview';
 	import type { PreviewGeometry } from '$lib/preview/geometry';
-	import { sliceProject } from '$lib/api/projects';
+	import { sliceProject, listProjectModels } from '$lib/api/projects';
 	import { fetchPreviewLayers, getPreviewMeta } from '$lib/api/preview';
 	import { subscribeEvents, type EventSubscription } from '$lib/queue/events';
 	import type { PreviewMeta, ServerEvent } from '$lib/api/types';
@@ -72,8 +74,8 @@
 	// Modèle de scène (mutations en place → proxysées par `$state`, réactives).
 	let tree = $state(new ObjectTree());
 	let plates = $state(new PlateSet());
-	// Maillages rendus dans la scène 3D : peuplés par l'import de modèles (T051,
-	// câblé au prochain incrément) — vide à l'ouverture d'un projet neuf.
+	// Maillages rendus dans la scène 3D : peuplés à l'ouverture depuis les modèles
+	// du projet (T092) puis par les imports (T089).
 	let sceneObjects = $state<SceneObject[]>([]);
 
 	// Plateau par défaut tant que le preset machine n'est pas résolu (le layout
@@ -110,6 +112,8 @@
 		draftStore.pendingRestore(data.project.id, data.project.updated_at).then((d) => {
 			if (alive) pendingDraft = d;
 		});
+		// Repeuple la scène depuis les modèles déjà rattachés au projet (T092).
+		void loadProjectModels();
 		// Flux d'événements du compte (T065) : progression et fin des jobs.
 		const sub: EventSubscription = subscribeEvents({ onEvent });
 		return () => {
@@ -117,6 +121,36 @@
 			sub.close();
 		};
 	});
+
+	// Ouvre le projet : charge ses modèles, reconstruit l'arbre d'objets et les
+	// maillages affichables. Les formats non décodés client (STEP/AMF/SVG/DRC)
+	// restent en attente de conversion moteur (badge « conversion en cours »).
+	async function loadProjectModels() {
+		let models;
+		try {
+			models = await listProjectModels(data.project.id);
+		} catch (e) {
+			importError = e instanceof ApiError ? e.message : 'chargement des modèles impossible';
+			return;
+		}
+		for (const model of models) {
+			const objectId = tree.add(model.filename).id;
+			if (plates.activeId) plates.assign(objectId, plates.activeId);
+			// Suivi de l'import (permet la résolution via `model.converted`).
+			imports = [
+				...imports,
+				markUploaded(startImport(objectId, model.filename), model.id, model.conversion_pending)
+			];
+			if (isPreviewable(model.filename)) {
+				try {
+					const mesh = previewFromBuffer(model.filename, await fetchModelFile(model.id));
+					sceneObjects = [...sceneObjects, { id: objectId, mesh }];
+				} catch {
+					patchImport(objectId, (i) => markFailed(i, 'aperçu indisponible'));
+				}
+			}
+		}
+	}
 
 	function onEvent(event: ServerEvent) {
 		const wasPreview = session.phase === 'preview';

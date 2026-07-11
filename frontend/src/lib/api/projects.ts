@@ -3,12 +3,16 @@ import { api, API_BASE, ApiError } from './client';
 import type {
 	CreateProjectRequest,
 	ErrorBody,
+	ModelResponse,
 	ProjectResponse,
 	SliceRequest,
 	SliceResponse
 } from './types';
 
 export const listProjects = () => api.get<ProjectResponse[]>('/projects');
+
+/** Modèles rattachés à un projet, pour repeupler la scène à l'ouverture (T092). */
+export const listProjectModels = (id: string) => api.get<ModelResponse[]>(`/projects/${id}/models`);
 
 export const createProject = (body: CreateProjectRequest) =>
 	api.post<ProjectResponse>('/projects', body);

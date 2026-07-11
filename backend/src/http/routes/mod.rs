@@ -70,9 +70,12 @@ where
         .route("/api/projects/{id}/thumbnail", get(projects::thumbnail))
         .route(
             "/api/projects/{id}/models",
-            post(models::upload).layer(DefaultBodyLimit::max(models::MAX_BODY_BYTES)),
+            get(models::list_for_project)
+                .post(models::upload)
+                .layer(DefaultBodyLimit::max(models::MAX_BODY_BYTES)),
         )
         .route("/api/models/{id}/mesh", get(models::mesh))
+        .route("/api/models/{id}/file", get(models::download_file))
         .route("/api/models/{id}/repair", post(scene::repair))
         .route("/api/projects/{id}/arrange", post(scene::arrange))
         .route("/api/projects/{id}/orient", post(scene::orient))

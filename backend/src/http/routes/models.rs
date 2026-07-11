@@ -176,6 +176,49 @@ pub async fn mesh(
         .into_response())
 }
 
+/// `GET /api/projects/{id}/models` — modèles rattachés à un projet (T092), pour
+/// repeupler la scène à l'ouverture. Isolation : projet d'autrui → 404 (SC-008).
+pub async fn list_for_project(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(project_raw): Path<String>,
+) -> ApiResult<Json<Vec<ModelResponse>>> {
+    let project_id = parse_project_id(&project_raw)?;
+    state.storage.projects().get(user.id, project_id).await?; // 404 si autre compte
+    let models = state
+        .storage
+        .models()
+        .list(user.id, Some(project_id))
+        .await?;
+    Ok(Json(models.into_iter().map(Into::into).collect()))
+}
+
+/// `GET /api/models/{id}/file` — fichier source brut (T092) : permet à
+/// l'aperçu client de parser les formats non décodés côté serveur (OBJ/3MF/…).
+/// 404 inter-comptes (SC-008).
+pub async fn download_file(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> ApiResult<Response> {
+    let id = parse_model_id(&id)?;
+    let model = state.storage.models().get(user.id, id).await?; // 404 si autre compte
+    let bytes = state
+        .files
+        .read(FsPath::new(&model.file_path))
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "lecture du modèle");
+            ApiError::internal()
+        })?;
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/octet-stream")],
+        bytes,
+    )
+        .into_response())
+}
+
 /// Lit le premier champ fichier du multipart → (nom, octets).
 async fn read_upload(mut multipart: Multipart) -> ApiResult<(String, Vec<u8>)> {
     while let Some(field) = multipart

@@ -184,14 +184,18 @@ export function parse3mf(buffer: ArrayBuffer): SceneMesh {
 
 // --- Dispatch d'aperçu --------------------------------------------------------
 
-/** Produit un aperçu maillé depuis un fichier local, selon son extension. */
-export async function loadPreview(file: File): Promise<SceneMesh> {
-	const fmt = previewFormat(file.name);
-	if (!fmt) throw new Error(`format non prévisualisable : ${file.name}`);
-	const buffer = await file.arrayBuffer();
+/** Parse un tampon selon l'extension du nom de fichier (aperçu / repeuplement). */
+export function previewFromBuffer(filename: string, buffer: ArrayBuffer): SceneMesh {
+	const fmt = previewFormat(filename);
+	if (!fmt) throw new Error(`format non prévisualisable : ${filename}`);
 	if (fmt === 'stl') return parseStl(buffer);
 	if (fmt === 'obj') return parseObj(new TextDecoder().decode(buffer));
 	return parse3mf(buffer);
+}
+
+/** Produit un aperçu maillé depuis un fichier local, selon son extension. */
+export async function loadPreview(file: File): Promise<SceneMesh> {
+	return previewFromBuffer(file.name, await file.arrayBuffer());
 }
 
 // --- Upload en tâche de fond + récupération du maillage backend ---------------
@@ -226,4 +230,18 @@ export async function fetchMesh(modelId: string): Promise<SceneMesh> {
 		throw new ApiError(res.status, err.code ?? 'error', err.message ?? res.statusText, err.details);
 	}
 	return decodeMesh(await res.arrayBuffer());
+}
+
+/**
+ * Récupère le fichier source brut d'un modèle (`GET …/file`, T092) : sert à
+ * reconstruire l'aperçu client des formats non décodés serveur (OBJ/3MF).
+ */
+export async function fetchModelFile(modelId: string): Promise<ArrayBuffer> {
+	const res = await fetch(`${API_BASE}/models/${modelId}/file`, { credentials: 'include' });
+	if (!res.ok) {
+		const text = await res.text();
+		const err = (text ? JSON.parse(text) : {}) as Partial<ErrorBody>;
+		throw new ApiError(res.status, err.code ?? 'error', err.message ?? res.statusText, err.details);
+	}
+	return res.arrayBuffer();
 }
