@@ -6,6 +6,9 @@
 		Scene,
 		ObjectList,
 		PlateBar,
+		PlateToolbar,
+		arrangeItems,
+		applyPlacements,
 		SaveControls,
 		ToolRail,
 		TransformPanel,
@@ -16,6 +19,9 @@
 		MeasureTool,
 		EmbossTool,
 		BrimEarsTool,
+		LayerHeight,
+		uniformProfile,
+		type LayerBand,
 		PaintToolbar,
 		TrianglePainting,
 		type PaintChannel,
@@ -45,6 +51,7 @@
 	} from '$lib/preview';
 	import type { PreviewGeometry } from '$lib/preview/geometry';
 	import { sliceProject, listProjectModels } from '$lib/api/projects';
+	import { arrangeScene, orientModel } from '$lib/api/scene';
 	import { fetchPreviewLayers, getPreviewMeta } from '$lib/api/preview';
 	import { listPresets, createPreset, updatePreset, deletePreset } from '$lib/api/presets';
 	import { subscribeEvents, type EventSubscription } from '$lib/queue/events';
@@ -111,6 +118,11 @@
 	// Document de peinture par objet (indexé par id) : créé paresseusement pour
 	// l'objet sélectionné, sérialisable au format 3MF Orca via `serialize`.
 	let paintings = $state<Record<string, TrianglePainting>>({});
+
+	// Barre d'outils de plateau (T106) : édition de hauteur de couche variable et
+	// profil par objet. La vue d'assemblage réutilise l'outil « assembly » du rail.
+	let showLayerHeight = $state(false);
+	let layerProfiles = $state<Record<string, LayerBand[]>>({});
 
 	// Modèle de scène (mutations en place → proxysées par `$state`, réactives).
 	let tree = $state(new ObjectTree());
@@ -502,6 +514,121 @@
 		paintings = { ...paintings };
 	}
 
+	// Items de la barre de plateau en état actif (bascules visuelles).
+	const plateToolActive = $derived(
+		new Set([
+			...(showLayerHeight ? ['layersediting'] : []),
+			...(tools.active === 'assembly' ? ['assembly_view'] : [])
+		])
+	);
+	// Étendue Z (mm) de l'objet sélectionné, pour l'éditeur de hauteur de couche.
+	const activeZMax = $derived(activeBounds.max[2] - activeBounds.min[2] || 10);
+	// Profil de couche courant (par objet, uniforme par défaut).
+	const activeLayerProfile = $derived(
+		selId
+			? (layerProfiles[selId] ?? uniformProfile(activeZMax, 0.2))
+			: uniformProfile(activeZMax, 0.2)
+	);
+	// Persiste le profil de couche édité pour l'objet sélectionné.
+	function setLayerProfile(profile: LayerBand[]) {
+		if (!selId) return;
+		layerProfiles = { ...layerProfiles, [selId]: profile };
+	}
+
+	// Orchestration de la barre d'outils de plateau (T106) : chaque item déclenche
+	// une action réelle (locale, ou moteur via `lib/api/scene` avec repli message).
+	async function onPlateAction(id: string) {
+		switch (id) {
+			case 'add':
+				fileInput?.click();
+				break;
+			case 'addplate':
+				plates.addPlate();
+				break;
+			case 'arrange':
+				await arrangeActive();
+				break;
+			case 'orient':
+				await orientActive();
+				break;
+			case 'more':
+				duplicateSelected();
+				break;
+			case 'fewer':
+				removeSelected();
+				break;
+			case 'splitobjects':
+			case 'splitvolumes':
+				toolNeedsEngine('Découpe en objets/pièces');
+				break;
+			case 'layersediting':
+				showLayerHeight = !showLayerHeight;
+				break;
+			case 'assembly_view':
+				selectTool('assembly');
+				break;
+		}
+	}
+
+	// Arrangement sans collision : empreintes → endpoint moteur → placements appliqués.
+	async function arrangeActive() {
+		if (sceneObjects.length === 0) return;
+		try {
+			const res = await arrangeScene(data.project.id, {
+				bed_width: bed.width,
+				bed_depth: bed.depth,
+				spacing: 6,
+				items: arrangeItems(sceneObjects)
+			});
+			sceneObjects = applyPlacements(sceneObjects, res.placements);
+			saveMessage = `Arrangement : ${res.placements.length} objet(s) repositionné(s).`;
+		} catch (e) {
+			saveMessage = e instanceof ApiError ? e.message : 'arrangement indisponible';
+		}
+	}
+
+	// Orientation auto de l'objet sélectionné : rotation Euler renvoyée par le moteur.
+	async function orientActive() {
+		if (!selId) return;
+		const modelId = imports.find((i) => i.objectId === selId)?.modelId;
+		if (!modelId) {
+			saveMessage = 'Orientation : modèle non résolu (conversion en cours).';
+			return;
+		}
+		try {
+			const res = await orientModel(data.project.id, modelId);
+			const [rx, ry, rz] = res.rotation;
+			onTransform(selId, { ...activeTransform, rotation: [rx, ry, rz] });
+			saveMessage = 'Orientation auto appliquée.';
+		} catch (e) {
+			saveMessage = e instanceof ApiError ? e.message : 'orientation indisponible';
+		}
+	}
+
+	// Ajoute une instance de l'objet sélectionné (clone d'arbre + copie de scène décalée).
+	function duplicateSelected() {
+		if (!selId) return;
+		tree.duplicate(selId);
+		const src = sceneObjects.find((o) => o.id === selId);
+		if (src) {
+			const pos = src.position ?? [0, 0, 0];
+			const copyId = `${selId}-copy-${sceneObjects.length}`;
+			sceneObjects = [
+				...sceneObjects,
+				{ ...src, id: copyId, position: [pos[0] + 10, pos[1] + 10, pos[2]] }
+			];
+		}
+	}
+
+	// Retire l'objet sélectionné (arbre + scène + sélection vidée).
+	function removeSelected() {
+		if (!selId) return;
+		const id = selId;
+		tree.remove(id);
+		sceneObjects = sceneObjects.filter((o) => o.id !== id);
+		ws = pick(ws, null, false);
+	}
+
 	function showTab(tab: EditorTab) {
 		layout = setTab(layout, tab);
 	}
@@ -772,6 +899,43 @@
 					{gizmoMode}
 					ontransform={onTransform}
 				/>
+
+				<!-- Barre d'outils de plateau (T106) : horizontale, en haut au centre. -->
+				<div class="absolute top-3 left-1/2 z-10 -translate-x-1/2">
+					<PlateToolbar
+						active={plateToolActive}
+						hasSelection={selId !== null}
+						hasObjects={sceneObjects.length > 0}
+						onaction={onPlateAction}
+					/>
+				</div>
+
+				<!-- Éditeur de hauteur de couche variable (T106, item layersediting). -->
+				{#if showLayerHeight}
+					<div
+						class="absolute top-3 right-3 z-10 w-72 rounded border border-border bg-surface-raised/95 p-3 shadow-lg"
+					>
+						<div class="mb-2 flex items-center justify-between">
+							<span class="text-xs font-semibold tracking-wide text-content-subtle uppercase">
+								{$t('Variable layer height')}
+							</span>
+							<button
+								class="text-content-muted hover:text-content"
+								onclick={() => (showLayerHeight = false)}
+								aria-label={$t('Close')}>✕</button
+							>
+						</div>
+						{#if selId}
+							<LayerHeight
+								profile={activeLayerProfile}
+								zMax={activeZMax}
+								onchange={setLayerProfile}
+							/>
+						{:else}
+							<p class="text-sm text-content-subtle">Sélectionnez un objet.</p>
+						{/if}
+					</div>
+				{/if}
 
 				<!-- Panneau de l'outil actif (T104) : flottant, agit sur l'objet sélectionné. -->
 				{#if tools.active && !isTransformTool(tools.active)}
