@@ -11,7 +11,7 @@ use std::net::SocketAddr;
 use std::sync::{Arc, Mutex};
 
 use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
-use axum::extract::{Multipart, State};
+use axum::extract::{DefaultBodyLimit, Multipart, State};
 use axum::http::{HeaderMap, StatusCode};
 use axum::response::IntoResponse;
 use axum::routing::{get, post};
@@ -86,7 +86,12 @@ impl MockServer {
 
         let app = Router::new()
             .route("/server/info", get(server_info))
-            .route("/server/files/upload", post(upload))
+            .route(
+                "/server/files/upload",
+                // Un vrai Moonraker accepte de gros G-codes ; on lève la limite
+                // de corps par défaut d'axum (2 Mo) pour couvrir SC-009 (50 Mo).
+                post(upload).layer(DefaultBodyLimit::disable()),
+            )
             .route("/printer/print/pause", post(pause))
             .route("/printer/print/resume", post(resume))
             .route("/printer/print/cancel", post(cancel))

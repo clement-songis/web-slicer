@@ -181,7 +181,7 @@
 - [X] T075 [US8] Endpoints imprimantes `backend/src/http/routes/printers.rs` : CRUD (api_key chiffrée au repos), test, upload (gcode_id, start_now), status, contrôles ; tests de contrat + échec réseau propre (FR-062)
 - [X] T076 [US8] Relay WS printer.status : subscription Moonraker → événements clients ; tests d'isolation (imprimante de A invisible pour B)
 - [X] T077 [P] [US8] Frontend imprimantes `frontend/src/routes/printers/+page.svelte` : déclaration/test, envoi depuis la préviz/file (start_now), panneau état (progression, températures), pause/reprise/annulation
-- [ ] T078 [US8] Test d'intégration CI `backend/tests/moonraker_integration.rs` contre le mock complet (upload 50 Mo simulé, suivi, SC-009)
+- [X] T078 [US8] Test d'intégration CI `backend/tests/moonraker_integration.rs` contre le mock complet (upload 50 Mo simulé, suivi, SC-009)
 
 **Checkpoint**: gate P6 — chaîne complète modèle → impression démontrable
 
