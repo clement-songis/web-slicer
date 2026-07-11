@@ -8,8 +8,12 @@ use backend::domain::{NewUser, Preset, PresetId, PresetKind, PresetOrigin, Role,
 use engine::presets::{ImportedPreset, PresetKind as EngineKind};
 
 fn imported(name: &str, kind: EngineKind) -> ImportedPreset {
+    imported_vendor(name, kind, "TestVendor")
+}
+
+fn imported_vendor(name: &str, kind: EngineKind, vendor: &str) -> ImportedPreset {
     ImportedPreset {
-        vendor: "TestVendor".into(),
+        vendor: vendor.into(),
         kind,
         name: name.into(),
         sub_path: String::new(),
@@ -50,6 +54,44 @@ async fn reseed_is_idempotent() {
         3,
         "le re-seed remplace au lieu de cumuler"
     );
+}
+
+#[tokio::test]
+async fn reseed_allows_same_name_across_vendors() {
+    // Les presets de base (`fdm_process_common`, `fdm_filament_pla`…) sont livrés
+    // une fois par vendeur avec le même nom mais des valeurs différentes :
+    // l'identité système est (kind, name, vendor), pas (kind, name). Le seed réel
+    // (11 895 profils) en contient 129 ; la régression doit les accepter.
+    let (_d, storage) = storage().await;
+    let batch = vec![
+        imported_vendor("fdm_process_common", EngineKind::Process, "BBL"),
+        imported_vendor("fdm_process_common", EngineKind::Process, "Creality"),
+        imported_vendor("fdm_filament_pla", EngineKind::Filament, "BBL"),
+    ];
+
+    let n = reseed_system_presets(&storage, &batch).await.unwrap();
+    assert_eq!(n, 3, "homonymes de vendeurs distincts coexistent");
+    assert_eq!(storage.presets().system_count().await.unwrap(), 3);
+}
+
+#[tokio::test]
+async fn reseed_real_orca_profiles_seeds_without_conflict() {
+    // Régression du crash de démarrage « UNIQUE constraint failed:
+    // presets.kind, presets.name » : le seed réel importe les 11 895 profils
+    // OrcaSlicer, dont 129 presets de base homonymes distingués par vendeur.
+    // Ce test rejoue le chemin de production exact (import + reseed_system).
+    let dir = backend::http::state::default_profiles_dir();
+    let imported = match engine::presets::import_profiles(&dir) {
+        Ok(i) => i,
+        // Profils absents (build hors dépôt) : rien à vérifier.
+        Err(_) => return,
+    };
+    let (_d, storage) = storage().await;
+    let n = reseed_system_presets(&storage, &imported.presets)
+        .await
+        .unwrap();
+    assert!(n > 10_000, "seed complet attendu, obtenu {n}");
+    assert_eq!(storage.presets().system_count().await.unwrap(), n as i64);
 }
 
 #[tokio::test]

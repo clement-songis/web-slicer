@@ -60,7 +60,7 @@ Sauvegarde manuelle (FR-052) ; le brouillon de session est côté client
 |---|---|---|
 | id | uuid PK | |
 | kind | enum `machine_model` \| `machine` \| `filament` \| `process` | Annexe C |
-| name | text | unique par (kind, origin, user_id) |
+| name | text | unicité système par (kind, name, vendor) — les presets de base sont livrés une fois par vendeur ; unicité utilisateur par (kind, name, user_id) |
 | origin | enum `system` \| `user` | system : lecture seule, re-seedable |
 | user_id | uuid FK nullable | NULL pour les presets système |
 | vendor | text nullable | ex. `BBL` (presets système) |
