@@ -25,23 +25,23 @@
 	}
 </script>
 
-<h1 class="mb-6 text-xl font-semibold text-gray-900 dark:text-gray-100">Créer un compte</h1>
+<h1 class="mb-6 text-xl font-semibold text-content">Créer un compte</h1>
 
 <form class="space-y-4" onsubmit={submit}>
 	<label class="block">
-		<span class="mb-1 block text-sm text-gray-700 dark:text-gray-300">Email</span>
+		<span class="mb-1 block text-sm text-content-muted">Email</span>
 		<input
 			type="email"
 			bind:value={email}
 			required
 			autocomplete="email"
-			class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+			class="w-full rounded border border-border-strong px-3 py-2 bg-surface-raised text-content"
 		/>
 	</label>
 
 	<label class="block">
-		<span class="mb-1 block text-sm text-gray-700 dark:text-gray-300">
-			Mot de passe <span class="text-gray-400">(8 caractères min.)</span>
+		<span class="mb-1 block text-sm text-content-muted">
+			Mot de passe <span class="text-content-subtle">(8 caractères min.)</span>
 		</span>
 		<input
 			type="password"
@@ -49,35 +49,35 @@
 			required
 			minlength={8}
 			autocomplete="new-password"
-			class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+			class="w-full rounded border border-border-strong px-3 py-2 bg-surface-raised text-content"
 		/>
 	</label>
 
 	<label class="block">
-		<span class="mb-1 block text-sm text-gray-700 dark:text-gray-300">
-			Jeton d'invitation <span class="text-gray-400">(si requis)</span>
+		<span class="mb-1 block text-sm text-content-muted">
+			Jeton d'invitation <span class="text-content-subtle">(si requis)</span>
 		</span>
 		<input
 			type="text"
 			bind:value={inviteToken}
 			autocomplete="off"
-			class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+			class="w-full rounded border border-border-strong px-3 py-2 bg-surface-raised text-content"
 		/>
 	</label>
 
 	{#if error}
-		<p class="text-sm text-red-600" role="alert">{error}</p>
+		<p class="text-sm text-danger" role="alert">{error}</p>
 	{/if}
 
 	<button
 		type="submit"
 		disabled={busy}
-		class="w-full rounded bg-blue-600 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+		class="w-full rounded bg-primary py-2 font-medium text-white hover:bg-primary-hover disabled:opacity-50"
 	>
 		{busy ? 'Création…' : 'Créer le compte'}
 	</button>
 </form>
 
-<p class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
-	Déjà inscrit ? <a href={resolve('/login')} class="text-blue-600 hover:underline">Se connecter</a>
+<p class="mt-4 text-center text-sm text-content-muted">
+	Déjà inscrit ? <a href={resolve('/login')} class="text-primary hover:underline">Se connecter</a>
 </p>

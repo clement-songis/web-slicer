@@ -10,5 +10,5 @@
 	bind:checked={value}
 	{disabled}
 	aria-label={def.label}
-	class="h-4 w-4 rounded border-gray-300 dark:border-gray-600"
+	class="h-4 w-4 rounded border-border-strong"
 />

@@ -21,12 +21,10 @@
 <div class="flex flex-col gap-4">
 	{#each FILAMENT_OVERRIDES as group (group.title)}
 		<section>
-			<h3
-				class="mb-1 text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400"
-			>
+			<h3 class="mb-1 text-xs font-semibold tracking-wide text-content-subtle uppercase">
 				{group.title}
 			</h3>
-			<div class="divide-y divide-gray-100 dark:divide-gray-800">
+			<div class="divide-y divide-border">
 				{#each group.options as key (key)}
 					{@const active = isOverrideActive(values[key])}
 					<div class="flex items-center gap-3 py-1">
@@ -35,16 +33,16 @@
 							checked={active}
 							onchange={(e) => toggle(key, e.currentTarget.checked)}
 							aria-label="Activer {PARAMS[key].label}"
-							class="h-4 w-4 shrink-0 rounded border-gray-300 dark:border-gray-600"
+							class="h-4 w-4 shrink-0 rounded border-border-strong"
 						/>
 						{#if active}
 							<div class="flex-1">
 								<OptionLine def={PARAMS[key]} bind:value={values[key]} />
 							</div>
 						{:else}
-							<span class="flex-1 text-sm text-gray-700 dark:text-gray-300">
+							<span class="flex-1 text-sm text-content-muted">
 								{PARAMS[key].label}
-								<span class="ml-2 text-xs text-gray-400 italic">N/A</span>
+								<span class="ml-2 text-xs text-content-subtle italic">N/A</span>
 							</span>
 						{/if}
 					</div>

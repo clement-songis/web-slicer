@@ -17,6 +17,6 @@
 		class={FIELD_CLASS}
 	/>
 	{#if def.sidetext}
-		<span class="text-xs text-gray-500 dark:text-gray-400">{def.sidetext}</span>
+		<span class="text-xs text-content-subtle">{def.sidetext}</span>
 	{/if}
 </span>

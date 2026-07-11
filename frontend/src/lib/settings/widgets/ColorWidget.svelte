@@ -11,7 +11,7 @@
 		bind:value
 		{disabled}
 		aria-label={def.label}
-		class="h-8 w-10 rounded border border-gray-300 dark:border-gray-600"
+		class="h-8 w-10 rounded border border-border-strong"
 	/>
 	<input type="text" bind:value {disabled} aria-label="{def.label} (hex)" class={FIELD_CLASS} />
 </span>

@@ -23,13 +23,13 @@
 	}
 
 	const FIELD =
-		'w-full rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100';
+		'w-full rounded border border-border-strong px-2 py-1 text-sm bg-surface-raised text-content';
 </script>
 
 <div class="flex flex-col gap-3">
 	<div class="grid grid-cols-2 gap-3">
 		<label class="text-sm">
-			<span class="mb-1 block text-gray-700 dark:text-gray-300">Largeur (mm)</span>
+			<span class="mb-1 block text-content-muted">Largeur (mm)</span>
 			<input
 				type="number"
 				min="0"
@@ -39,7 +39,7 @@
 			/>
 		</label>
 		<label class="text-sm">
-			<span class="mb-1 block text-gray-700 dark:text-gray-300">Profondeur (mm)</span>
+			<span class="mb-1 block text-content-muted">Profondeur (mm)</span>
 			<input
 				type="number"
 				min="0"
@@ -51,7 +51,7 @@
 	</div>
 
 	<label class="text-sm">
-		<span class="mb-1 block text-gray-700 dark:text-gray-300"
+		<span class="mb-1 block text-content-muted"
 			>Zone d'exclusion (points « XxY », séparés par ;)</span
 		>
 		<input
@@ -67,7 +67,7 @@
 	</label>
 
 	<label class="text-sm">
-		<span class="mb-1 block text-gray-700 dark:text-gray-300">Modèle de plateau (fichier)</span>
+		<span class="mb-1 block text-content-muted">Modèle de plateau (fichier)</span>
 		<input
 			type="text"
 			value={String(values[BED_SHAPE_KEYS.customModel] ?? '')}
@@ -77,7 +77,7 @@
 	</label>
 
 	<label class="text-sm">
-		<span class="mb-1 block text-gray-700 dark:text-gray-300">Texture de plateau (fichier)</span>
+		<span class="mb-1 block text-content-muted">Texture de plateau (fichier)</span>
 		<input
 			type="text"
 			value={String(values[BED_SHAPE_KEYS.customTexture] ?? '')}

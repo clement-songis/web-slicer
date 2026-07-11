@@ -38,7 +38,7 @@
 	>
 
 	{#if error}
-		<p class="text-red-400" role="alert">{error}</p>
+		<p class="text-danger" role="alert">{error}</p>
 	{/if}
 
 	{#if report}
@@ -50,7 +50,7 @@
 			<dt class="text-slate-400">Arêtes de bord</dt>
 			<dd>{report.open_edges}</dd>
 			<dt class="text-slate-400">Étanche</dt>
-			<dd class={report.watertight ? 'text-green-400' : 'text-amber-400'}>
+			<dd class={report.watertight ? 'text-success' : 'text-warning'}>
 				{report.watertight ? 'oui' : 'non'}
 			</dd>
 		</dl>

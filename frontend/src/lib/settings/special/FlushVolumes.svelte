@@ -33,12 +33,12 @@
 	}
 
 	const CELL =
-		'w-16 rounded border border-gray-300 px-1 py-0.5 text-center text-xs dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100';
+		'w-16 rounded border border-border-strong px-1 py-0.5 text-center text-xs bg-surface-raised text-content';
 </script>
 
 <div class="flex flex-col gap-3">
 	<label class="flex items-center gap-2 text-sm">
-		<span class="text-gray-700 dark:text-gray-300">Multiplicateur de purge</span>
+		<span class="text-content-muted">Multiplicateur de purge</span>
 		<input
 			type="number"
 			step="any"
@@ -74,6 +74,8 @@
 			</table>
 		</div>
 	{:else}
-		<p class="text-xs text-gray-500">Matrice de purge indisponible (aucun filament configuré).</p>
+		<p class="text-xs text-content-subtle">
+			Matrice de purge indisponible (aucun filament configuré).
+		</p>
 	{/if}
 </div>

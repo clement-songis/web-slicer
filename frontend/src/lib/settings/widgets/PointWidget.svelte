@@ -22,7 +22,7 @@
 		aria-label="{def.label} X"
 		class={FIELD_CLASS}
 	/>
-	<span class="text-xs text-gray-500 dark:text-gray-400">×</span>
+	<span class="text-xs text-content-subtle">×</span>
 	<input
 		type="number"
 		step="any"

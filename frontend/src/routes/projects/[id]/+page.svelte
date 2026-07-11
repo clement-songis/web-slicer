@@ -310,30 +310,28 @@
 </script>
 
 <div class="flex h-screen flex-col">
-	<header
-		class="flex items-center justify-between border-b border-gray-200 px-6 py-3 dark:border-gray-700"
-	>
+	<header class="flex items-center justify-between border-b border-border px-6 py-3">
 		<div class="flex items-center gap-4">
-			<a href={resolve('/library')} class="text-sm text-blue-600 hover:underline">← Bibliothèque</a>
-			<h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">{data.project.name}</h1>
+			<a href={resolve('/library')} class="text-sm text-primary hover:underline">← Bibliothèque</a>
+			<h1 class="text-lg font-semibold text-content">{data.project.name}</h1>
 		</div>
 		<div class="flex items-center gap-3">
-			<div class="flex overflow-hidden rounded border border-gray-300 dark:border-gray-600">
+			<div class="flex overflow-hidden rounded border border-border-strong">
 				<button
 					class="px-3 py-1 text-sm {ws.panel === 'prepare'
-						? 'bg-blue-600 text-white'
-						: 'text-gray-700 dark:text-gray-200'}"
+						? 'bg-primary text-white'
+						: 'text-content-muted'}"
 					onclick={() => showPanel('prepare')}>Préparer</button
 				>
 				<button
 					class="px-3 py-1 text-sm {ws.panel === 'preview'
-						? 'bg-blue-600 text-white'
-						: 'text-gray-700 dark:text-gray-200'}"
+						? 'bg-primary text-white'
+						: 'text-content-muted'}"
 					onclick={() => showPanel('preview')}>Aperçu</button
 				>
 			</div>
 			<button
-				class="rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+				class="rounded border border-border-strong px-3 py-1 text-sm text-content-muted hover:bg-overlay"
 				onclick={() => fileInput?.click()}
 			>
 				Importer
@@ -347,7 +345,7 @@
 				onchange={onFilePicked}
 			/>
 			<button
-				class="rounded bg-emerald-600 px-3 py-1 text-sm text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+				class="rounded bg-success px-3 py-1 text-sm text-white hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
 				onclick={sliceActive}
 				disabled={!canSliceNow}
 				title={canSliceNow ? 'Trancher le plateau actif' : 'Ajoutez un objet à trancher'}
@@ -359,7 +357,7 @@
 			<!-- Export projet 3MF (FR-044) : ressource API backend, pas une route SvelteKit. -->
 			<!-- eslint-disable svelte/no-navigation-without-resolve -->
 			<a
-				class="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-500"
+				class="rounded bg-primary px-3 py-1.5 text-sm text-white hover:bg-primary-hover"
 				href="/api/projects/{data.project.id}/export/3mf"
 				download
 			>
@@ -371,7 +369,7 @@
 
 	{#if pendingDraft}
 		<div
-			class="flex items-center justify-between gap-4 bg-amber-50 px-6 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200"
+			class="flex items-center justify-between gap-4 bg-warning-soft px-6 py-2 text-sm text-warning-content"
 			role="status"
 		>
 			<span>Un brouillon local plus récent existe pour ce projet.</span>
@@ -380,14 +378,14 @@
 	{/if}
 
 	{#if saveMessage}
-		<div class="bg-gray-100 px-6 py-2 text-sm text-gray-700 dark:bg-gray-800 dark:text-gray-200">
+		<div class="bg-overlay px-6 py-2 text-sm text-content-muted">
 			{saveMessage}
 		</div>
 	{/if}
 
 	{#if importError}
 		<div
-			class="flex items-center justify-between bg-red-50 px-6 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300"
+			class="flex items-center justify-between bg-danger-soft px-6 py-2 text-sm text-danger-content"
 			role="alert"
 		>
 			<span>{importError}</span>
@@ -400,7 +398,7 @@
 	<div class="flex min-h-0 flex-1">
 		<!-- Zone centrale : scène 3D (Préparer) ou aperçu G-code (Aperçu, T088). -->
 		<main
-			class="relative min-w-0 flex-1 bg-gray-50 dark:bg-gray-900"
+			class="relative min-w-0 flex-1 bg-surface"
 			ondragover={(e) => {
 				if (ws.panel === 'prepare') {
 					e.preventDefault();
@@ -418,7 +416,7 @@
 
 				{#if sceneObjects.length === 0}
 					<div
-						class="pointer-events-none absolute inset-0 flex items-center justify-center text-center text-sm text-gray-500 dark:text-gray-400"
+						class="pointer-events-none absolute inset-0 flex items-center justify-center text-center text-sm text-content-subtle"
 					>
 						<p>
 							Glissez un modèle ici (STL, OBJ, 3MF, STEP, AMF, SVG, DRC)<br />ou cliquez sur
@@ -429,7 +427,7 @@
 
 				{#if dragOver}
 					<div
-						class="pointer-events-none absolute inset-0 z-20 flex items-center justify-center border-2 border-dashed border-blue-500 bg-blue-500/10 text-sm font-medium text-blue-700 dark:text-blue-300"
+						class="pointer-events-none absolute inset-0 z-20 flex items-center justify-center border-2 border-dashed border-accent bg-primary/10 text-sm font-medium text-primary"
 					>
 						Déposez pour importer
 					</div>
@@ -440,8 +438,8 @@
 						{#each imports.filter((i) => i.status === 'converting' || i.status === 'failed') as it (it.objectId)}
 							<div
 								class="rounded px-2 py-1 text-xs {it.status === 'failed'
-									? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
-									: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}"
+									? 'bg-danger-soft text-danger-content'
+									: 'bg-overlay text-content-muted'}"
 							>
 								{it.filename} —
 								{it.status === 'failed' ? (it.error ?? 'échec') : 'conversion en cours…'}
@@ -453,21 +451,21 @@
 				<div class="flex h-full flex-col">
 					{#if session.phase === 'slicing'}
 						<div
-							class="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-gray-600 dark:text-gray-300"
+							class="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-content-muted"
 						>
 							<p>Tranchage en cours… ({session.jobPhase})</p>
-							<div class="h-2 w-64 overflow-hidden rounded bg-gray-200 dark:bg-gray-700">
+							<div class="h-2 w-64 overflow-hidden rounded bg-overlay">
 								<div
-									class="h-full bg-blue-600 transition-all"
+									class="h-full bg-primary transition-all"
 									style="width: {Math.round(session.progress * 100)}%"
 								></div>
 							</div>
 							{#each session.warnings as w (w.key)}
-								<p class="text-sm text-amber-600 dark:text-amber-400">⚠ {w.message}</p>
+								<p class="text-sm text-warning">⚠ {w.message}</p>
 							{/each}
 						</div>
 					{:else if session.phase === 'error'}
-						<div class="flex flex-1 items-center justify-center p-6 text-red-600 dark:text-red-400">
+						<div class="flex flex-1 items-center justify-center p-6 text-danger">
 							<p>Échec du tranchage : {session.error}</p>
 						</div>
 					{:else if session.phase === 'preview' && previewGeometry && previewMeta}
@@ -475,7 +473,7 @@
 							<PreviewScene geometry={previewGeometry} {bed} />
 							{#if previewMeta.layer_count > 1}
 								<div
-									class="absolute right-3 top-3 flex flex-col items-center gap-2 rounded bg-white/80 p-2 text-xs text-gray-700 dark:bg-gray-900/80 dark:text-gray-200"
+									class="absolute right-3 top-3 flex flex-col items-center gap-2 rounded bg-surface-raised/80 p-2 text-xs text-content-muted"
 								>
 									<span>Couche {topLayer + 1}/{previewMeta.layer_count}</span>
 									<input
@@ -489,14 +487,12 @@
 							{/if}
 						</div>
 						{#if previewStats}
-							<div class="max-h-64 overflow-auto border-t border-gray-200 dark:border-gray-700">
+							<div class="max-h-64 overflow-auto border-t border-border">
 								<StatsPanel stats={previewStats} />
 							</div>
 						{/if}
 					{:else}
-						<div
-							class="flex flex-1 items-center justify-center p-6 text-gray-500 dark:text-gray-400"
-						>
+						<div class="flex flex-1 items-center justify-center p-6 text-content-subtle">
 							<p>Aperçu G-code : tranchez la scène pour l'afficher.</p>
 						</div>
 					{/if}
@@ -505,20 +501,18 @@
 		</main>
 
 		<!-- Panneau latéral : objets/plateaux ou réglages. -->
-		<aside
-			class="flex w-96 flex-col border-l border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-950"
-		>
-			<div class="flex border-b border-gray-200 dark:border-gray-700">
+		<aside class="flex w-96 flex-col border-l border-border bg-surface-raised">
+			<div class="flex border-b border-border">
 				<button
 					class="flex-1 px-3 py-2 text-sm {sidebarTab === 'objects'
-						? 'border-b-2 border-blue-600 font-medium text-blue-600'
-						: 'text-gray-600 dark:text-gray-300'}"
+						? 'border-b-2 border-primary font-medium text-primary'
+						: 'text-content-muted'}"
 					onclick={() => (sidebarTab = 'objects')}>Objets</button
 				>
 				<button
 					class="flex-1 px-3 py-2 text-sm {sidebarTab === 'settings'
-						? 'border-b-2 border-blue-600 font-medium text-blue-600'
-						: 'text-gray-600 dark:text-gray-300'}"
+						? 'border-b-2 border-primary font-medium text-primary'
+						: 'text-content-muted'}"
 					onclick={() => (sidebarTab = 'settings')}>Réglages</button
 				>
 			</div>

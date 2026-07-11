@@ -21,10 +21,10 @@
 <div class="flex items-center gap-3 py-1">
 	<!-- Le contrôle porte son propre `aria-label` (def.label) ; ce texte est
 	     purement visuel, d'où un span plutôt qu'un <label>. -->
-	<span class="flex-1 text-sm text-gray-700 dark:text-gray-300" title={def.tooltip}>
+	<span class="flex-1 text-sm text-content-muted" title={def.tooltip}>
 		{def.label}
 		{#if def.tooltip}
-			<span class="ml-1 cursor-help text-gray-400" aria-hidden="true">ⓘ</span>
+			<span class="ml-1 cursor-help text-content-subtle" aria-hidden="true">ⓘ</span>
 		{/if}
 	</span>
 	<div class="w-56 shrink-0">

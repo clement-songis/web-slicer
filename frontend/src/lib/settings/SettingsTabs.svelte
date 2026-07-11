@@ -31,14 +31,14 @@
 
 <div class="flex flex-col gap-3">
 	<div class="flex items-center gap-3">
-		<div class="inline-flex overflow-hidden rounded border border-gray-300 dark:border-gray-600">
+		<div class="inline-flex overflow-hidden rounded border border-border-strong">
 			{#each MODES as m (m)}
 				<button
 					type="button"
 					onclick={() => (mode = m)}
 					class="px-3 py-1 text-sm capitalize {mode === m
-						? 'bg-blue-600 text-white'
-						: 'bg-white text-gray-700 dark:bg-gray-800 dark:text-gray-300'}"
+						? 'bg-primary text-white'
+						: 'bg-surface-raised text-content-muted'}"
 				>
 					{m}
 				</button>
@@ -49,21 +49,21 @@
 			bind:value={query}
 			placeholder="Rechercher un paramètre…"
 			aria-label="Rechercher un paramètre"
-			class="flex-1 rounded border border-gray-300 px-3 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+			class="flex-1 rounded border border-border-strong px-3 py-1 text-sm bg-surface-raised text-content"
 		/>
 	</div>
 
 	{#if pages.length === 0}
-		<p class="py-6 text-center text-sm text-gray-500">Aucun paramètre ne correspond.</p>
+		<p class="py-6 text-center text-sm text-content-subtle">Aucun paramètre ne correspond.</p>
 	{:else}
-		<div class="flex flex-wrap gap-1 border-b border-gray-200 dark:border-gray-700">
+		<div class="flex flex-wrap gap-1 border-b border-border">
 			{#each pages as page, i (i)}
 				<button
 					type="button"
 					onclick={() => (activeIndex = i)}
 					class="rounded-t px-3 py-1 text-sm {activeIndex === i
-						? 'border-b-2 border-blue-600 font-medium text-blue-600'
-						: 'text-gray-600 dark:text-gray-400'}"
+						? 'border-b-2 border-primary font-medium text-primary'
+						: 'text-content-muted'}"
 				>
 					{page.title}
 				</button>
@@ -74,17 +74,15 @@
 			<div class="flex flex-col gap-4">
 				{#each activePage.sections as section, si (si)}
 					<section>
-						<h3
-							class="mb-1 text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400"
-						>
+						<h3 class="mb-1 text-xs font-semibold tracking-wide text-content-subtle uppercase">
 							{section.title}
 						</h3>
-						<div class="divide-y divide-gray-100 dark:divide-gray-800">
+						<div class="divide-y divide-border">
 							{#each section.options as option, oi (typeof option === 'string' ? option : `dyn:${oi}`)}
 								{#if typeof option === 'string' && PARAMS[option]}
 									<OptionLine def={PARAMS[option]} bind:value={values[option]} />
 								{:else}
-									<p class="py-1 text-xs text-gray-400 italic">
+									<p class="py-1 text-xs text-content-subtle italic">
 										Options générées dynamiquement (par extrudeur)
 									</p>
 								{/if}

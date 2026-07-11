@@ -38,13 +38,13 @@
 	</button>
 
 	{#if saveState === 'saved'}
-		<p class="text-green-400">Projet sauvegardé.</p>
+		<p class="text-success">Projet sauvegardé.</p>
 	{:else if saveState === 'conflict'}
-		<p class="text-amber-400" role="alert">
+		<p class="text-warning" role="alert">
 			Conflit : le projet a été modifié dans un autre onglet. Rechargez avant de sauvegarder pour ne
 			pas écraser ces changements.
 		</p>
 	{:else if saveState === 'error'}
-		<p class="text-red-400" role="alert">{message}</p>
+		<p class="text-danger" role="alert">{message}</p>
 	{/if}
 </div>

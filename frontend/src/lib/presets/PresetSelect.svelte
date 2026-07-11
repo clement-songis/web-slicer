@@ -35,14 +35,14 @@
 	const isUser = $derived(selected?.origin === 'user');
 
 	const FIELD =
-		'w-full rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100';
+		'w-full rounded border border-border-strong px-2 py-1 text-sm bg-surface-raised text-content';
 	const BTN =
-		'rounded border border-gray-300 px-2 py-1 text-xs hover:bg-gray-100 disabled:opacity-40 dark:border-gray-600 dark:hover:bg-gray-700';
+		'rounded border border-border-strong px-2 py-1 text-xs hover:bg-overlay disabled:opacity-40';
 </script>
 
 <div class="flex flex-col gap-1">
 	<div class="flex items-center gap-2">
-		<span class="w-16 shrink-0 text-sm text-gray-700 dark:text-gray-300">{label}</span>
+		<span class="w-16 shrink-0 text-sm text-content-muted">{label}</span>
 		<select bind:value={selectedId} aria-label={label} class={FIELD}>
 			<option value={null} disabled>Choisir…</option>
 			{#if groups.system.length}
@@ -64,9 +64,7 @@
 
 	<div class="flex items-center gap-2 pl-18">
 		{#if badge}
-			<span
-				class="rounded bg-blue-50 px-1.5 py-0.5 text-xs text-blue-700 dark:bg-blue-900/40 dark:text-blue-300"
-			>
+			<span class="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
 				{badge}
 			</span>
 		{/if}

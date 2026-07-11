@@ -24,45 +24,45 @@
 	}
 </script>
 
-<h1 class="mb-6 text-xl font-semibold text-gray-900 dark:text-gray-100">Connexion</h1>
+<h1 class="mb-6 text-xl font-semibold text-content">Connexion</h1>
 
 <form class="space-y-4" onsubmit={submit}>
 	<label class="block">
-		<span class="mb-1 block text-sm text-gray-700 dark:text-gray-300">Email</span>
+		<span class="mb-1 block text-sm text-content-muted">Email</span>
 		<input
 			type="email"
 			bind:value={email}
 			required
 			autocomplete="email"
-			class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+			class="w-full rounded border border-border-strong px-3 py-2 bg-surface-raised text-content"
 		/>
 	</label>
 
 	<label class="block">
-		<span class="mb-1 block text-sm text-gray-700 dark:text-gray-300">Mot de passe</span>
+		<span class="mb-1 block text-sm text-content-muted">Mot de passe</span>
 		<input
 			type="password"
 			bind:value={password}
 			required
 			autocomplete="current-password"
-			class="w-full rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+			class="w-full rounded border border-border-strong px-3 py-2 bg-surface-raised text-content"
 		/>
 	</label>
 
 	{#if error}
-		<p class="text-sm text-red-600" role="alert">{error}</p>
+		<p class="text-sm text-danger" role="alert">{error}</p>
 	{/if}
 
 	<button
 		type="submit"
 		disabled={busy}
-		class="w-full rounded bg-blue-600 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+		class="w-full rounded bg-primary py-2 font-medium text-white hover:bg-primary-hover disabled:opacity-50"
 	>
 		{busy ? 'Connexion…' : 'Se connecter'}
 	</button>
 </form>
 
-<p class="mt-4 text-center text-sm text-gray-600 dark:text-gray-400">
+<p class="mt-4 text-center text-sm text-content-muted">
 	Pas de compte ?
-	<a href={resolve('/register')} class="text-blue-600 hover:underline">Créer un compte</a>
+	<a href={resolve('/register')} class="text-primary hover:underline">Créer un compte</a>
 </p>

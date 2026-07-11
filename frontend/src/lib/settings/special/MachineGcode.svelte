@@ -19,10 +19,7 @@
 		{@const key = group.options[0]}
 		{@const Widget = widgetFor(PARAMS[key])}
 		<section>
-			<h3
-				class="mb-1 text-sm font-medium text-gray-700 dark:text-gray-300"
-				title={PARAMS[key].tooltip}
-			>
+			<h3 class="mb-1 text-sm font-medium text-content-muted" title={PARAMS[key].tooltip}>
 				{group.title}
 			</h3>
 			<Widget def={PARAMS[key]} bind:value={values[key]} />

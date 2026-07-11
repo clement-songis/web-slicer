@@ -19,13 +19,13 @@
 	}
 
 	const CELL =
-		'w-20 rounded border border-gray-300 px-1 py-0.5 text-center text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100';
+		'w-20 rounded border border-border-strong px-1 py-0.5 text-center text-sm bg-surface-raised text-content';
 </script>
 
 <div class="overflow-x-auto">
 	<table class="text-sm">
 		<thead>
-			<tr class="text-left text-xs text-gray-500 dark:text-gray-400">
+			<tr class="text-left text-xs text-content-subtle">
 				<th class="py-1 pr-4 font-medium">Type de plaque</th>
 				<th class="px-2 py-1 font-medium">Autres couches (°C)</th>
 				<th class="px-2 py-1 font-medium">Première couche (°C)</th>
@@ -33,8 +33,8 @@
 		</thead>
 		<tbody>
 			{#each PLATE_TYPES as plate (plate.tempKey)}
-				<tr class="border-t border-gray-100 dark:border-gray-800">
-					<td class="py-1 pr-4 text-gray-700 dark:text-gray-300">{plate.label}</td>
+				<tr class="border-t border-border">
+					<td class="py-1 pr-4 text-content-muted">{plate.label}</td>
 					<td class="px-2 py-1">
 						<input
 							type="number"

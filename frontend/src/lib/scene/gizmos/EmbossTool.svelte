@@ -80,7 +80,7 @@
 	</label>
 
 	{#if error}
-		<p class="text-amber-400">{error}</p>
+		<p class="text-warning">{error}</p>
 	{/if}
 
 	<button

@@ -123,14 +123,12 @@
 	}
 </script>
 
-<header
-	class="flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700"
->
-	<h1 class="text-lg font-semibold text-gray-900 dark:text-gray-100">Ma bibliothèque</h1>
+<header class="flex items-center justify-between border-b border-border px-6 py-4">
+	<h1 class="text-lg font-semibold text-content">Ma bibliothèque</h1>
 	<div class="flex items-center gap-4 text-sm">
 		<ThemeToggle />
-		<span class="text-gray-600 dark:text-gray-400">{data.user.email}</span>
-		<button onclick={signOut} class="text-blue-600 hover:underline">Déconnexion</button>
+		<span class="text-content-muted">{data.user.email}</span>
+		<button onclick={signOut} class="text-primary hover:underline">Déconnexion</button>
 	</div>
 </header>
 
@@ -140,12 +138,12 @@
 			type="text"
 			bind:value={newName}
 			placeholder="Nom du nouveau projet"
-			class="flex-1 rounded border border-gray-300 px-3 py-2 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+			class="flex-1 rounded border border-border-strong px-3 py-2 bg-surface-raised text-content"
 		/>
 		<button
 			type="submit"
 			disabled={busy || !newName.trim()}
-			class="rounded bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+			class="rounded bg-primary px-4 py-2 font-medium text-white hover:bg-primary-hover disabled:opacity-50"
 		>
 			Nouveau projet
 		</button>
@@ -153,7 +151,7 @@
 			type="button"
 			disabled={busy}
 			onclick={() => importInput?.click()}
-			class="rounded border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+			class="rounded border border-border-strong px-4 py-2 font-medium text-content-muted hover:bg-overlay disabled:opacity-50"
 			title="Importer un projet .3mf ou un modèle 3D"
 		>
 			Importer…
@@ -168,57 +166,57 @@
 	</form>
 
 	{#if error}
-		<p class="mb-4 text-sm text-red-600" role="alert">{error}</p>
+		<p class="mb-4 text-sm text-danger" role="alert">{error}</p>
 	{/if}
 
 	{#if projects.length === 0}
-		<p class="text-gray-500 dark:text-gray-400">Aucun projet pour le moment.</p>
+		<p class="text-content-subtle">Aucun projet pour le moment.</p>
 	{:else}
 		<ul class="grid gap-3 sm:grid-cols-2">
 			{#each projects as project (project.id)}
-				<li class="rounded-lg border border-gray-200 p-4 dark:border-gray-700">
+				<li class="rounded-lg border border-border p-4">
 					{#if renamingId === project.id}
 						<input
 							type="text"
 							bind:value={renameValue}
 							onblur={() => commitRename(project.id)}
 							onkeydown={(e) => e.key === 'Enter' && commitRename(project.id)}
-							class="mb-2 w-full rounded border border-gray-300 px-2 py-1 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100"
+							class="mb-2 w-full rounded border border-border-strong px-2 py-1 bg-surface-raised text-content"
 						/>
 					{:else}
 						<a
 							href={resolve('/projects/[id]', { id: project.id })}
-							class="block truncate font-medium text-gray-900 hover:text-blue-600 dark:text-gray-100"
+							class="block truncate font-medium text-content hover:text-primary"
 						>
 							{project.name}
 						</a>
 					{/if}
-					<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+					<p class="mt-1 text-xs text-content-subtle">
 						Modifié le {formatDate(project.updated_at)}
 					</p>
 					<div class="mt-3 flex gap-3 text-sm">
 						<a
 							href={resolve('/projects/[id]', { id: project.id })}
-							class="text-blue-600 hover:underline">Ouvrir</a
+							class="text-primary hover:underline">Ouvrir</a
 						>
 						<button
 							onclick={() => startRename(project)}
 							disabled={busy}
-							class="text-gray-600 hover:underline dark:text-gray-300"
+							class="text-content-muted hover:underline"
 						>
 							Renommer
 						</button>
 						<button
 							onclick={() => duplicate(project.id)}
 							disabled={busy}
-							class="text-gray-600 hover:underline dark:text-gray-300"
+							class="text-content-muted hover:underline"
 						>
 							Dupliquer
 						</button>
 						<button
 							onclick={() => remove(project.id)}
 							disabled={busy}
-							class="text-red-600 hover:underline"
+							class="text-danger hover:underline"
 						>
 							Supprimer
 						</button>

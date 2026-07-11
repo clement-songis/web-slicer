@@ -16,12 +16,10 @@
 <div class="flex flex-col gap-4">
 	{#each FILAMENT_MULTIMATERIAL as group (group.title)}
 		<section>
-			<h3
-				class="mb-1 text-xs font-semibold tracking-wide text-gray-500 uppercase dark:text-gray-400"
-			>
+			<h3 class="mb-1 text-xs font-semibold tracking-wide text-content-subtle uppercase">
 				{group.title}
 			</h3>
-			<div class="divide-y divide-gray-100 dark:divide-gray-800">
+			<div class="divide-y divide-border">
 				{#each group.options as key (key)}
 					<OptionLine def={PARAMS[key]} bind:value={values[key]} />
 				{/each}

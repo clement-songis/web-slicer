@@ -41,17 +41,17 @@
 	const modelNode = $derived(vendorNode?.models.find((m) => m.model === model) ?? null);
 
 	const FIELD =
-		'w-full rounded border border-gray-300 px-2 py-1 text-sm dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100';
+		'w-full rounded border border-border-strong px-2 py-1 text-sm bg-surface-raised text-content';
 </script>
 
 <div class="flex gap-3">
 	<div
-		class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded border border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800"
+		class="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded border border-border bg-surface"
 	>
 		{#if model && covers[model]}
 			<img src={covers[model]} alt={model} class="h-full w-full object-contain" />
 		{:else}
-			<span class="text-xs text-gray-400">Aperçu</span>
+			<span class="text-xs text-content-subtle">Aperçu</span>
 		{/if}
 	</div>
 
