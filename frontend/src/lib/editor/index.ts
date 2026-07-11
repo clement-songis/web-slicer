@@ -46,6 +46,16 @@ export {
 	type PresetKind
 } from './presets';
 export {
+	gizmoModeOf,
+	initialTools,
+	isTransformTool,
+	setTool,
+	TOOL_ORDER,
+	TRANSFORM_TOOLS,
+	type EditorTool,
+	type ToolsState
+} from './tools';
+export {
 	findByModel,
 	importExt,
 	isAccepted,

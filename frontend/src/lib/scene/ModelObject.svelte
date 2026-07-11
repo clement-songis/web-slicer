@@ -10,11 +10,39 @@
 	interface Props {
 		mesh: SceneMesh;
 		position?: [number, number, number];
+		/** Rotation d'Euler en degrés (T103). */
+		rotation?: [number, number, number];
+		/** Échelle par axe (T103). */
+		scale?: [number, number, number];
 		selected?: boolean;
 		onpick?: (additive: boolean) => void;
+		/** Remonte l'objet Three.js créé (pour y attacher le gizmo, T103). */
+		onref?: (object: THREE.Object3D | null) => void;
 	}
 
-	let { mesh, position = [0, 0, 0], selected = false, onpick }: Props = $props();
+	let {
+		mesh,
+		position = [0, 0, 0],
+		rotation = [0, 0, 0],
+		scale = [1, 1, 1],
+		selected = false,
+		onpick,
+		onref
+	}: Props = $props();
+
+	const DEG = Math.PI / 180;
+	const radRotation = $derived<[number, number, number]>([
+		rotation[0] * DEG,
+		rotation[1] * DEG,
+		rotation[2] * DEG
+	]);
+
+	// Référence à l'objet Three.js, remontée au parent (Viewport) pour le gizmo.
+	let ref = $state<THREE.Mesh>();
+	$effect(() => {
+		onref?.(ref ?? null);
+		return () => onref?.(null);
+	});
 
 	const geometry = $derived.by(() => {
 		const g = new THREE.BufferGeometry();
@@ -40,7 +68,7 @@
 	}
 </script>
 
-<T.Mesh {geometry} {position} castShadow {onclick}>
+<T.Mesh bind:ref {geometry} {position} rotation={radRotation} {scale} castShadow {onclick}>
 	<T.MeshStandardMaterial
 		color={selected ? '#f59e0b' : '#9aa7b4'}
 		metalness={0.1}

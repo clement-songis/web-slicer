@@ -7,7 +7,7 @@
 		ObjectList,
 		PlateBar,
 		SaveControls,
-		GizmoToolbar,
+		ToolRail,
 		ObjectTree,
 		PlateSet,
 		bedFromValues,
@@ -19,7 +19,8 @@
 		fetchMesh,
 		fetchModelFile,
 		type SaveOutcome,
-		type SceneObject
+		type SceneObject,
+		type Transform
 	} from '$lib/scene';
 	import { SettingsTabs } from '$lib/settings';
 	import { PrinterSelect, PresetSelect } from '$lib/presets';
@@ -41,7 +42,9 @@
 	import {
 		initialWorkspace,
 		pick,
-		setGizmoMode,
+		initialTools,
+		setTool,
+		gizmoModeOf,
 		prepareSession,
 		startSlicing,
 		sliceFailed,
@@ -56,6 +59,7 @@
 		findByModel,
 		isAccepted,
 		isPreviewable,
+		type EditorTool,
 		initialLayout,
 		setTab,
 		EDITOR_DEFAULT_THEME,
@@ -68,7 +72,6 @@
 		type EditorTab,
 		type ImportItem
 	} from '$lib/editor';
-	import type { GizmoMode } from '$lib/scene/gizmos/types';
 	import type { DisplayMode } from '$lib/settings/filter';
 	import type { PageData } from './$types';
 
@@ -80,8 +83,11 @@
 
 	// État de disposition supérieur (onglets Préparer/Aperçu/Appareil/Projet).
 	let layout = $state(initialLayout());
-	// État de sélection/gizmo partagé scène↔liste (orchestrateur pur `lib/editor`).
+	// État de sélection partagé scène↔liste (orchestrateur pur `lib/editor`).
 	let ws = $state(initialWorkspace());
+	// Outil actif du rail (T103) ; les outils de transformation pilotent le gizmo.
+	let tools = $state(initialTools());
+	const gizmoMode = $derived(gizmoModeOf(tools.active));
 
 	// Modèle de scène (mutations en place → proxysées par `$state`, réactives).
 	let tree = $state(new ObjectTree());
@@ -380,8 +386,23 @@
 		ws = pick(ws, id, additive);
 	}
 
-	function changeGizmo(mode: GizmoMode) {
-		ws = setGizmoMode(ws, mode);
+	function selectTool(tool: EditorTool) {
+		tools = setTool(tools, tool);
+	}
+
+	// Applique la transformation d'un objet manipulé par le gizmo (T103) : persiste
+	// position/rotation/échelle dans l'état de scène (survit au re-rendu).
+	function onTransform(id: string, transform: Transform) {
+		sceneObjects = sceneObjects.map((o) =>
+			o.id === id
+				? {
+						...o,
+						position: transform.position,
+						rotation: transform.rotation,
+						scale: transform.scale
+					}
+				: o
+		);
 	}
 
 	function showTab(tab: EditorTab) {
@@ -647,7 +668,13 @@
 			ondrop={onDrop}
 		>
 			{#if layout.tab === 'prepare'}
-				<Scene {bed} objects={sceneObjects} bind:selection={ws.selection} />
+				<Scene
+					{bed}
+					objects={sceneObjects}
+					bind:selection={ws.selection}
+					{gizmoMode}
+					ontransform={onTransform}
+				/>
 
 				{#if sceneObjects.length === 0}
 					<div
@@ -740,10 +767,10 @@
 			{/if}
 		</main>
 
-		<!-- Zone droite : rail d'outils vertical (gizmos). Actif en préparation. -->
+		<!-- Zone droite : rail d'outils vertical (16 gizmos, T103). Actif en préparation. -->
 		{#if layout.tab === 'prepare'}
-			<aside class="flex flex-col items-center gap-1 border-l border-border bg-surface-raised p-2">
-				<GizmoToolbar mode={ws.gizmoMode} onmode={changeGizmo} />
+			<aside class="flex flex-col items-center border-l border-border bg-surface-raised p-2">
+				<ToolRail active={tools.active} onselect={selectTool} />
 			</aside>
 		{/if}
 	</div>

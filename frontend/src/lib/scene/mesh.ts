@@ -11,11 +11,16 @@ export interface SceneMesh {
 	indices: Uint32Array;
 }
 
-/** Un objet placé sur le plateau : maillage + position (mm, repère plateau). */
+/** Un objet placé sur le plateau : maillage + transformation (repère plateau). */
 export interface SceneObject {
 	id: string;
 	mesh: SceneMesh;
+	/** Position (mm). */
 	position?: [number, number, number];
+	/** Rotation d'Euler (degrés), appliquée par le gizmo de transformation (T103). */
+	rotation?: [number, number, number];
+	/** Échelle par axe (1 = taille native). */
+	scale?: [number, number, number];
 }
 
 const MAGIC = 0x574d_5368; // "WSMh" en big-endian pour comparaison directe

@@ -43,6 +43,7 @@ export {
 	TransformGizmo,
 	TransformPanel,
 	GizmoToolbar,
+	ToolRail,
 	PaintToolbar,
 	TrianglePainting,
 	trianglesInRadius,

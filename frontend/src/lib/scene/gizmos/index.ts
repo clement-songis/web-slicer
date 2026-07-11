@@ -2,6 +2,7 @@
 export { default as TransformGizmo } from './TransformGizmo.svelte';
 export { default as TransformPanel } from './TransformPanel.svelte';
 export { default as GizmoToolbar } from './GizmoToolbar.svelte';
+export { default as ToolRail } from './ToolRail.svelte';
 export { GIZMO_MODE_LABELS, type GizmoMode } from './types';
 export { default as MeasureTool } from './MeasureTool.svelte';
 export { default as BrimEarsTool } from './BrimEarsTool.svelte';
