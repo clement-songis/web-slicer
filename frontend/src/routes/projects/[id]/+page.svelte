@@ -98,6 +98,8 @@
 		isPreviewable,
 		isTransformTool,
 		paintChannelOf,
+		resolveShortcut,
+		isToolAction,
 		type EditorTool,
 		initialLayout,
 		setTab,
@@ -719,6 +721,32 @@
 		ws = setSelection(ws, new Set());
 	}
 
+	// — Raccourcis clavier de l'éditeur (T114) —
+	// Cible focalisée éditable ? (champ de saisie → on n'intercepte rien.)
+	function isEditableTarget(target: EventTarget | null): boolean {
+		const el = target as HTMLElement | null;
+		if (!el) return false;
+		const tag = el.tagName;
+		return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
+	}
+	// Route une action de raccourci vers le bon dispatcher (menu / outil / plateau).
+	function dispatchShortcut(action: string) {
+		if (action === 'arrange' || action === 'orient') void onPlateAction(action);
+		else if (isToolAction(action)) selectTool(action as EditorTool);
+		else void onMenuAction(action);
+	}
+	function onEditorKeydown(e: KeyboardEvent) {
+		// Laisse les dialogues modaux gérer leurs propres touches.
+		if (showShortcuts) return;
+		const action = resolveShortcut(
+			{ key: e.key, ctrl: e.ctrlKey, shift: e.shiftKey, alt: e.altKey, meta: e.metaKey },
+			isEditableTarget(e.target)
+		);
+		if (!action) return;
+		e.preventDefault();
+		dispatchShortcut(action);
+	}
+
 	// — Menu contextuel objet (T112) —
 	function openContext(id: string, x: number, y: number) {
 		contextMenu = { open: true, x, y, targetId: id };
@@ -1000,6 +1028,9 @@
 		{ id: 'project', label: 'Project' }
 	];
 </script>
+
+<!-- Raccourcis clavier de l'éditeur (T114) : dispatch global, isolé des champs. -->
+<svelte:window onkeydown={onEditorKeydown} />
 
 <div class="flex h-screen flex-col bg-surface text-content">
 	<!-- Barre supérieure : onglets de vue (parité OrcaSlicer) + actions plateau. -->

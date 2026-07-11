@@ -15,6 +15,7 @@ export {
 	type WorkspaceState
 } from './workspace';
 export { copyObjects, pastedPosition, PASTE_OFFSET } from './clipboard';
+export { resolveShortcut, chordString, isToolAction, type KeyChord } from './shortcuts';
 export {
 	applyJobEvent,
 	prepareSession,
