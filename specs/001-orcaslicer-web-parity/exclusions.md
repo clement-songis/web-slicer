@@ -14,7 +14,7 @@ ce registre. Statuts : `exclu-v1` (backlog v2 tracé dans spec.md) ou
 | Groupes `other:*` (55 clés) | implémenté hors UI | Placeholders G-code / états de slicing : consommés par le moteur de templates, jamais montrés comme réglages (comportement identique à OrcaSlicer) |
 | Groupes `cli:*` (52 clés) | implémenté hors UI | Actions CLI : correspondent aux endpoints serveur (slice, arrange, orient…), pas à des réglages UI (comportement identique à OrcaSlicer) |
 | `printhost_*` (apikey, cafile, port, user, password, authorization_type, ssl_ignore_revoke) | partiel-v1 | Déclaration d'imprimante v1 = URL + clé API Moonraker ; champs restants activés avec les hôtes v2 |
-| `bbl_*`, `print_sequence` liés au cloud BBL (`preset_names` physiques…) | à trancher à l'implémentation | Chaque clé restante sera classée ici lors du codegen (aucun droit à l'oubli : le contrôle échoue tant qu'une clé n'est ni implémentée ni listée) |
+| `bbl_calib_mark_logo`, `bbl_use_printhost`, `print_sequence`, `first_layer_print_sequence`, `other_layers_print_sequence`, `other_layers_print_sequence_nums` | implémenté | Réglages FFF/`common` standards : présents au registre (P1, 858 clés) et dans le layout de réglages (P3). Les noms `bbl_*` sont d'origine Bambu mais restent des bascules de réglage ordinaires (données + UI), sans dépendance cloud |
 
 ## Interface (Annexe B)
 
@@ -29,7 +29,7 @@ ce registre. Statuts : `exclu-v1` (backlog v2 tracé dans spec.md) ou
 | Vue : `Show 3D Navigator` | exclu-v1 | Cube de navigation 3Dconnexion/overlay ; backlog v2 (orbite caméra couverte par les vues Ctrl+0–6) |
 | `Show/Hide 3Dconnexion settings` — raccourcis `Ctrl+M`, `Ctrl+Shift+M` | exclu-définitif | Périphérique local inaccessible depuis un navigateur |
 | Raccourci `Ctrl+Tab` (Switch table page) | adaptation | Réservé par le navigateur (changement d'onglet) ; remappé in-app, documenté dans l'aide raccourcis |
-| Autres raccourcis en conflit navigateur (ex. `Ctrl+W`, `F5` si présents) | adaptation | Remappés, documentés dans l'aide raccourcis in-app ; liste finale complétée à l'implémentation |
+| Raccourcis réservés par le navigateur : `Ctrl+N` (New Project), `F5` (Reload from Disk) | adaptation | Déclenchés par l'item de menu correspondant (menus.ts) qui reste fonctionnel ; l'accélérateur brut peut être capté par le navigateur (nouvelle fenêtre / rafraîchissement). Les autres accélérateurs des 92 raccourcis sont interceptables (`preventDefault`) et actifs. Liste close (§B.6 revue) |
 | Menu Calibration (`Temperature`, `Max flowrate`, `Pressure advance`, `Flow ratio`, `Retraction`, `Cornering`, `VFA`, `Calibration Guide`, `Input Shaping Frequency`, `Input Shaping Damping/zeta factor`) + assistants CalibrationWizard | exclu-v1 | Backlog v2 exhaustif dans spec.md (décision utilisateur) |
 | Écrans « Device »/monitor Bambu (AMS, caméra) | exclu-définitif | Matériel propriétaire ; supervision assurée via Moonraker (US8) |
 

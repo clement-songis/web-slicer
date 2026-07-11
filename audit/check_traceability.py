@@ -58,6 +58,17 @@ def check_exclusions_registry(params: dict) -> None:
     text = EXCLUSIONS.read_text(encoding="utf-8")
     if "non justifié" in text:
         failures.append("exclusions.md contient une entrée « non justifiée »")
+    # Aucune catégorie provisoire dans une cellule de statut (T081) : toute
+    # entrée « à trancher à l'implémentation » utilisée comme statut de tableau
+    # doit être résolue (la mention prose de la règle de tenue est tolérée).
+    provisional = re.findall(
+        r"^\|.*\|\s*à trancher à l'implémentation\s*\|", text, re.MULTILINE
+    )
+    if provisional:
+        failures.append(
+            f"exclusions.md : {len(provisional)} entrée(s) « à trancher à "
+            "l'implémentation » non résolue(s) (T081)"
+        )
     # les clés simples backtickées qui ressemblent à des params doivent exister
     stale = [
         tok for tok in exclusion_vocabulary()
