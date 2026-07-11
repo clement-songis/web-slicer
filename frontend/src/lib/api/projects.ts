@@ -1,6 +1,12 @@
 // Appels de la bibliothèque de projets, typés sur les DTO générés.
-import { api } from './client';
-import type { CreateProjectRequest, ProjectResponse, SliceRequest, SliceResponse } from './types';
+import { api, API_BASE, ApiError } from './client';
+import type {
+	CreateProjectRequest,
+	ErrorBody,
+	ProjectResponse,
+	SliceRequest,
+	SliceResponse
+} from './types';
 
 export const listProjects = () => api.get<ProjectResponse[]>('/projects');
 
@@ -32,6 +38,27 @@ export const saveProject = (
  */
 export const sliceProject = (id: string, body: SliceRequest) =>
 	api.post<SliceResponse>(`/projects/${id}/slice`, body);
+
+/**
+ * Importe un fichier (`.3mf` projet ou modèle 3D) en un nouveau projet (T090,
+ * `POST /api/projects/import`, multipart). Renvoie le projet créé.
+ */
+export async function importProject(file: File): Promise<ProjectResponse> {
+	const form = new FormData();
+	form.append('file', file, file.name);
+	const res = await fetch(`${API_BASE}/projects/import`, {
+		method: 'POST',
+		credentials: 'include',
+		body: form
+	});
+	const text = await res.text();
+	const data: unknown = text ? JSON.parse(text) : undefined;
+	if (!res.ok) {
+		const err = (data ?? {}) as Partial<ErrorBody>;
+		throw new ApiError(res.status, err.code ?? 'error', err.message ?? res.statusText, err.details);
+	}
+	return data as ProjectResponse;
+}
 
 export const deleteProject = (id: string) => api.del<void>(`/projects/${id}`);
 

@@ -56,6 +56,10 @@ where
         .route("/api/admin/presets/reseed", post(admin::reseed_presets))
         .route("/api/projects", get(projects::list).post(projects::create))
         .route(
+            "/api/projects/import",
+            post(projects::import).layer(DefaultBodyLimit::max(models::MAX_BODY_BYTES)),
+        )
+        .route(
             "/api/projects/{id}",
             get(projects::get)
                 .put(projects::save)

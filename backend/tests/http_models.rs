@@ -110,6 +110,18 @@ fn upload_req(project: &str, cookie: &str, filename: &str, content: &[u8]) -> Re
         .unwrap()
 }
 
+/// Requête d'import de projet (`POST /api/projects/import`, T090).
+fn import_req(cookie: &str, filename: &str, content: &[u8]) -> Request<Body> {
+    let (ct, body) = multipart(filename, content);
+    Request::builder()
+        .method("POST")
+        .uri("/api/projects/import")
+        .header(header::CONTENT_TYPE, ct)
+        .header(header::COOKIE, cookie)
+        .body(Body::from(body))
+        .unwrap()
+}
+
 /// STL binaire : en-tête 80 o + u32 (n triangles) + n×50 o.
 fn binary_stl(n: u32) -> Vec<u8> {
     let mut v = vec![0u8; 80];
@@ -135,6 +147,62 @@ async fn uploads_binary_stl_and_counts_triangles() {
     assert_eq!(model["triangle_count"], 12);
     assert_eq!(model["conversion_pending"], false);
     assert_eq!(model["project_id"], project);
+}
+
+#[tokio::test]
+async fn imports_model_as_new_project() {
+    let (_d, app) = app().await;
+    let user = register(&app, "boss@test.local").await;
+
+    let resp = app
+        .clone()
+        .oneshot(import_req(&user, "Benchy.stl", &binary_stl(4)))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let project = json_body(resp).await;
+    // Nom dérivé du nom de fichier (sans extension).
+    assert_eq!(project["name"], "Benchy");
+    let pid = project["id"].as_str().unwrap().to_string();
+
+    // Le projet apparaît dans la bibliothèque du compte.
+    let list = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri("/api/projects")
+                .header(header::COOKIE, &user)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let projects = json_body(list).await;
+    assert!(projects.as_array().unwrap().iter().any(|p| p["id"] == pid));
+}
+
+#[tokio::test]
+async fn import_rejects_unsupported_format() {
+    let (_d, app) = app().await;
+    let user = register(&app, "boss@test.local").await;
+    let resp = app
+        .clone()
+        .oneshot(import_req(&user, "notes.gcode", b"G28\n"))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+#[tokio::test]
+async fn import_requires_authentication() {
+    let (_d, app) = app().await;
+    let resp = app
+        .clone()
+        .oneshot(import_req("", "part.stl", &binary_stl(1)))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[tokio::test]

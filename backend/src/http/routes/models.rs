@@ -19,7 +19,7 @@ use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
 
-use crate::domain::{ModelFormat, ModelId, NewModel, ProjectId};
+use crate::domain::{Model, ModelFormat, ModelId, NewModel, ProjectId, UserId};
 use crate::http::dto::ModelResponse;
 use crate::http::error::{ApiError, ApiResult};
 use crate::http::extract::CurrentUser;
@@ -46,6 +46,18 @@ pub async fn upload(
     // Isolation : le projet doit appartenir au compte (sinon 404, SC-008).
     state.storage.projects().get(user.id, project_id).await?;
 
+    let (filename, format, bytes) = read_model_upload(&state, multipart).await?;
+    let model = write_model_record(&state, user.id, project_id, format, filename, &bytes).await?;
+    Ok((StatusCode::CREATED, Json(model.into())))
+}
+
+/// Lit un fichier modèle du multipart, applique la limite d'upload de l'instance
+/// (FR-053) puis détecte et valide le format. Partagé entre l'upload dans un
+/// projet et l'import de projet (T090).
+pub(crate) async fn read_model_upload(
+    state: &AppState,
+    multipart: Multipart,
+) -> ApiResult<(String, ModelFormat, Vec<u8>)> {
     let (filename, bytes) = read_upload(multipart).await?;
 
     let limit = state
@@ -69,14 +81,25 @@ pub async fn upload(
     })?;
     validate_content(format, &bytes)
         .map_err(|reason| ApiError::validation(reason, details(&filename)))?;
+    Ok((filename, format, bytes))
+}
 
-    let triangle_count = i64::from(binary_stl_triangle_count(format, &bytes).unwrap_or(0));
+/// Écrit le fichier et crée l'enregistrement `Model` (format déjà validé).
+pub(crate) async fn write_model_record(
+    state: &AppState,
+    user_id: UserId,
+    project_id: ProjectId,
+    format: ModelFormat,
+    filename: String,
+    bytes: &[u8],
+) -> ApiResult<Model> {
+    let triangle_count = i64::from(binary_stl_triangle_count(format, bytes).unwrap_or(0));
 
     // Le fichier est nommé par une clé de stockage propre ; `file_path` fait foi.
     let storage_key = ModelId::new();
     let path = state
         .files
-        .write_model(user.id, storage_key, format_ext(format), &bytes)
+        .write_model(user_id, storage_key, format_ext(format), bytes)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "écriture du modèle");
@@ -87,7 +110,7 @@ pub async fn upload(
         .storage
         .models()
         .create(
-            user.id,
+            user_id,
             NewModel {
                 project_id: Some(project_id),
                 filename,
@@ -100,8 +123,7 @@ pub async fn upload(
             },
         )
         .await?;
-
-    Ok((StatusCode::CREATED, Json(model.into())))
+    Ok(model)
 }
 
 fn parse_model_id(raw: &str) -> ApiResult<ModelId> {

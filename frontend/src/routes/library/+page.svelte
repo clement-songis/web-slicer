@@ -3,7 +3,14 @@
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { ApiError } from '$lib/api/client';
-	import { createProject, deleteProject, duplicateProject, renameProject } from '$lib/api/projects';
+	import {
+		createProject,
+		deleteProject,
+		duplicateProject,
+		renameProject,
+		importProject
+	} from '$lib/api/projects';
+	import { isAccepted } from '$lib/editor';
 	import { logout } from '$lib/api/session';
 	import type { ProjectResponse } from '$lib/api/types';
 	import type { PageData } from './$types';
@@ -52,6 +59,26 @@
 			const project = await createProject({ name });
 			projects = sorted([project, ...projects]);
 			newName = '';
+		});
+	}
+
+	// Import (T090) : un `.3mf` projet ou un modèle 3D → nouveau projet, puis on
+	// ouvre l'éditeur dessus.
+	let importInput: HTMLInputElement | null = null;
+	const IMPORT_ACCEPT = '.stl,.obj,.3mf,.oltp,.step,.stp,.amf,.svg,.drc';
+
+	function importFile(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const file = input.files?.[0];
+		input.value = '';
+		if (!file) return;
+		if (!isAccepted(file.name)) {
+			error = `Format non supporté : ${file.name}`;
+			return;
+		}
+		return run(async () => {
+			const project = await importProject(file);
+			await goto(resolve('/projects/[id]', { id: project.id }));
 		});
 	}
 
@@ -120,6 +147,22 @@
 		>
 			Nouveau projet
 		</button>
+		<button
+			type="button"
+			disabled={busy}
+			onclick={() => importInput?.click()}
+			class="rounded border border-gray-300 px-4 py-2 font-medium text-gray-700 hover:bg-gray-100 disabled:opacity-50 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+			title="Importer un projet .3mf ou un modèle 3D"
+		>
+			Importer…
+		</button>
+		<input
+			bind:this={importInput}
+			type="file"
+			accept={IMPORT_ACCEPT}
+			class="hidden"
+			onchange={importFile}
+		/>
 	</form>
 
 	{#if error}

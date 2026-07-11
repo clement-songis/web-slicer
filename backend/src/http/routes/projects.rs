@@ -6,7 +6,7 @@
 //! (`schema_version`) ; la sauvegarde utilise un verrou optimiste (409 en cas
 //! de conflit multi-onglets).
 
-use axum::extract::{Path, State};
+use axum::extract::{Multipart, Path, State};
 use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -72,6 +72,57 @@ pub async fn create(
         )
         .await?;
     Ok((StatusCode::CREATED, Json(project.into())))
+}
+
+/// `POST /api/projects/import` — crée un projet depuis un fichier importé
+/// (T090) : un `.3mf` (projet OrcaSlicer) ou un simple modèle 3D. Le fichier est
+/// enregistré comme modèle du nouveau projet.
+///
+/// **Périmètre v1** : la scène + configuration embarquées d'un `.3mf` *projet*
+/// (graphe d'objets, réglages par objet, plateaux) sont extraites par le wrapper
+/// moteur `read_project_3mf` (FFI, T066+) — partiel-v1 : ici on crée le projet
+/// (scène/presets par défaut) et on rattache le fichier comme modèle.
+pub async fn import(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    multipart: Multipart,
+) -> ApiResult<(StatusCode, Json<ProjectResponse>)> {
+    // Lecture + limite + détection/validation du format avant toute création
+    // (pas de projet orphelin sur fichier invalide).
+    let (filename, format, bytes) = super::models::read_model_upload(&state, multipart).await?;
+    let name = project_name_from(&filename);
+
+    let project = state
+        .storage
+        .projects()
+        .create(
+            user.id,
+            NewProject {
+                name,
+                scene: default_scene(),
+                active_presets: json!({}),
+                thumbnail_path: None,
+            },
+        )
+        .await?;
+    super::models::write_model_record(&state, user.id, project.id, format, filename, &bytes)
+        .await?;
+
+    Ok((StatusCode::CREATED, Json(project.into())))
+}
+
+/// Nom de projet dérivé du nom de fichier (sans extension, repli si vide).
+fn project_name_from(filename: &str) -> String {
+    let stem = std::path::Path::new(filename)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("")
+        .trim();
+    if stem.is_empty() {
+        "Projet importé".to_string()
+    } else {
+        stem.to_string()
+    }
 }
 
 /// `GET /api/projects/{id}` — ouvre un projet (404 si absent ou d'autrui).
