@@ -28,7 +28,7 @@ REPO = AUDIT.parent
 EXCLUSIONS = REPO / "specs" / "001-orcaslicer-web-parity" / "exclusions.md"
 REGISTRY_RS = REPO / "engine" / "src" / "params" / "registry.rs"
 UI_LAYOUT_TS = REPO / "frontend" / "src" / "generated" / "ui-layout.ts"
-TRACE_MAP = REPO / "frontend" / "src" / "generated" / "traceability-map.json"
+TRACE_MAP = REPO / "specs" / "001-orcaslicer-web-parity" / "traceability-map.json"
 # Pages/dialogs de réglages construits à la main (clés hors lignes d'option,
 # analyse G6) : sources de vérité des paramètres portés par l'UI hors ui-layout.
 SPECIAL_TS = [
@@ -171,26 +171,58 @@ def check_settings_special(params: dict) -> None:
 
 
 def check_trace_map(ui: dict) -> None:
+    """P4 (T062) — chaque élément d'interface de l'inventaire audit (gizmos 16/16,
+    boutons de barres d'outils, libellés de menus contextuels, raccourcis des
+    groupes Plater/Objects List/Gizmo) doit être mappé dans traceability-map.json
+    ou justifié dans exclusions.md. Sinon, écart de parité non tracé."""
     if not TRACE_MAP.exists():
         pending.append("P4 — traceability-map.json absent (T061/T062) : contrôle en attente")
         return
     tmap = json.loads(TRACE_MAP.read_text(encoding="utf-8"))
-    mapped = set(tmap.get("gizmos", [])) | set(tmap.get("toolbar", [])) \
-        | set(tmap.get("menus", [])) | set(tmap.get("shortcuts", []))
     vocab = exclusion_vocabulary()
-    missing = []
-    for g in ui["plater_gizmos"]:
-        name = g.get("type", g["class"])
-        if name not in mapped and name not in vocab:
+    gizmos_map = set(tmap.get("gizmos", {}))
+    toolbars_map = set(tmap.get("toolbars", {}))
+    menus_map = set(tmap.get("context_menu", {}))
+    shortcuts_map = tmap.get("shortcuts", {})
+
+    missing: list[str] = []
+
+    # Gizmos (16/16) — source de vérité : plater_gizmos.
+    gizmo_names = [g.get("type", g["class"]) for g in ui["plater_gizmos"]]
+    for name in gizmo_names:
+        if name not in gizmos_map and name not in vocab:
             missing.append(f"gizmo:{name}")
-    for func, items in ui["plater_toolbars"].items():
+
+    # Boutons de barres d'outils 3D (main + assemble + separator).
+    for _func, items in ui["plater_toolbars"].items():
         for item in items:
-            if item["name"] not in mapped and item["name"] not in vocab:
+            if item["name"] not in toolbars_map and item["name"] not in vocab:
                 missing.append(f"toolbar:{item['name']}")
+
+    # Libellés de menus contextuels du plateau (dédupliqués).
+    for m in ui["plater_context_menus"]:
+        label = m["label"]
+        if label not in menus_map and label not in vocab:
+            missing.append(f"menu:{label}")
+
+    # Raccourcis des groupes couverts par la carte (Plater / Objects List / Gizmo).
+    for grp in ui["keyboard_shortcuts"]:
+        gname = grp.get("group")
+        if gname not in shortcuts_map:
+            continue
+        keys_map = set(shortcuts_map[gname])
+        for s in grp.get("shortcuts", []):
+            k = s.get("keys")
+            if k not in keys_map and k not in vocab:
+                missing.append(f"shortcut:{gname}:{k}")
+
     if missing:
         failures.append(f"P4 — {len(missing)} élément(s) UI non mappés : {missing[:10]}…")
     else:
-        passed.append("P4 — gizmos/toolbars mappés : aucun écart")
+        n = len(gizmo_names)
+        passed.append(
+            f"P4 — gizmos {n}/{n}, barres d'outils, menus & raccourcis mappés : aucun écart"
+        )
 
 
 def main() -> int:

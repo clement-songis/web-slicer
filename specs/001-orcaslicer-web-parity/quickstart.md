@@ -78,3 +78,32 @@ cargo test -p backend --test queue_concurrency  # 10 jobs simultanés, 2 comptes
 
 Attendu : 10 succès, résultats attribués aux bons comptes, API réactive
 pendant l'exécution.
+
+## 7. Fluidité de la scène 3D (SC-007, gate P4)
+
+Charge de référence : **20 objets totalisant 2 millions de triangles** sur un
+poste de bureau courant. La scène doit rester fluide (interactions sans à-coups
+perceptibles).
+
+Protocole :
+
+1. Générer/charger 20 modèles (≈100 k triangles chacun, p. ex. 20 copies d'un
+   maillage dense) et les répartir sur le plateau (`arrange`).
+2. Ouvrir la préparation (`frontend/src/lib/scene`) et mesurer le rendu via
+   l'overlay de perfs du navigateur (DevTools → Rendering → FPS) pendant :
+   orbite caméra, sélection (raycast), déplacement au gizmo, bascule vue éclatée.
+
+Cibles mesurées (desktop courant, GPU intégré récent) :
+
+| Interaction | Cible | Notes |
+|---|---|---|
+| Orbite caméra | ≥ 30 FPS | rendu instancié, un `BufferGeometry` par objet |
+| Sélection (raycast) | < 50 ms | `applyPick` + surbrillance matériau |
+| Gizmo move/rotate/scale | ≥ 30 FPS | `TransformControls`, pas de recalcul de géométrie |
+| Vue éclatée | ≥ 30 FPS | `explode` recalcule des positions, pas la géométrie |
+
+Leviers de tenue de charge implémentés côté scène : géométrie indexée compacte
+(maillage binaire `WSMh`, T049), un seul `BufferGeometry` réutilisé par objet
+avec libération au démontage (`ModelObject.svelte`, T050), aucun recalcul de
+maillage pendant les manipulations (transformations = matrices, T052), et
+décimation optionnelle (`simplifyGrid`, T055) pour les maillages très lourds.
