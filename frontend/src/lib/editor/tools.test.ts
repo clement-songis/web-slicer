@@ -4,6 +4,7 @@ import {
 	gizmoModeOf,
 	initialTools,
 	isTransformTool,
+	paintChannelOf,
 	setTool,
 	TOOL_ORDER,
 	TRANSFORM_TOOLS
@@ -36,5 +37,14 @@ describe('tools', () => {
 		expect(gizmoModeOf('scale')).toBe('scale');
 		expect(gizmoModeOf('cut')).toBeNull();
 		expect(gizmoModeOf(null)).toBeNull();
+	});
+
+	test('paintChannelOf mappe les quatre outils de peinture', () => {
+		expect(paintChannelOf('support-paint')).toBe('supports');
+		expect(paintChannelOf('seam-paint')).toBe('seam');
+		expect(paintChannelOf('fuzzy-paint')).toBe('fuzzy');
+		expect(paintChannelOf('mm-paint')).toBe('mmu');
+		expect(paintChannelOf('cut')).toBeNull();
+		expect(paintChannelOf(null)).toBeNull();
 	});
 });

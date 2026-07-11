@@ -4,6 +4,7 @@
 // scale) pilotent en plus le mode du `TransformGizmo` dans la scène, les autres
 // ouvrent leur panneau dédié (câblés par T104/T105).
 import type { GizmoMode } from '../scene/gizmos/types';
+import type { PaintChannel } from '../scene/gizmos/painting/painting';
 
 /** Identifiant d'outil du rail (parité gizmos OrcaSlicer). */
 export type EditorTool =
@@ -76,6 +77,22 @@ export function gizmoModeOf(tool: EditorTool | null): GizmoMode | null {
 			return 'rotate';
 		case 'scale':
 			return 'scale';
+		default:
+			return null;
+	}
+}
+
+/** Canal de peinture piloté par un outil du rail (sinon null). */
+export function paintChannelOf(tool: EditorTool | null): PaintChannel | null {
+	switch (tool) {
+		case 'support-paint':
+			return 'supports';
+		case 'seam-paint':
+			return 'seam';
+		case 'fuzzy-paint':
+			return 'fuzzy';
+		case 'mm-paint':
+			return 'mmu';
 		default:
 			return null;
 	}

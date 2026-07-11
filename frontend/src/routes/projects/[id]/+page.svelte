@@ -16,6 +16,9 @@
 		MeasureTool,
 		EmbossTool,
 		BrimEarsTool,
+		PaintToolbar,
+		TrianglePainting,
+		type PaintChannel,
 		ObjectTree,
 		PlateSet,
 		bedFromValues,
@@ -69,6 +72,7 @@
 		isAccepted,
 		isPreviewable,
 		isTransformTool,
+		paintChannelOf,
 		type EditorTool,
 		initialLayout,
 		setTab,
@@ -98,6 +102,15 @@
 	// Outil actif du rail (T103) ; les outils de transformation pilotent le gizmo.
 	let tools = $state(initialTools());
 	const gizmoMode = $derived(gizmoModeOf(tools.active));
+	// Peinture au triangle (T105) : canal piloté par l'outil de peinture actif ;
+	// outil (pinceau/sphère/remplissage), rayon et état peint réglés par la barre.
+	const paintChannel = $derived(paintChannelOf(tools.active));
+	let paintTool = $state<'brush' | 'sphere' | 'fill'>('brush');
+	let paintRadius = $state(2);
+	let paintState = $state(1);
+	// Document de peinture par objet (indexé par id) : créé paresseusement pour
+	// l'objet sélectionné, sérialisable au format 3MF Orca via `serialize`.
+	let paintings = $state<Record<string, TrianglePainting>>({});
 
 	// Modèle de scène (mutations en place → proxysées par `$state`, réactives).
 	let tree = $state(new ObjectTree());
@@ -464,6 +477,31 @@
 		if (tools.active) tools = setTool(tools, tools.active);
 	}
 
+	// Document de peinture de l'objet sélectionné (créé paresseusement).
+	function paintingFor(id: string): TrianglePainting {
+		let doc = paintings[id];
+		if (!doc) {
+			doc = new TrianglePainting();
+			paintings[id] = doc;
+		}
+		return doc;
+	}
+	// Nombre de triangles peints dans le canal actif de l'objet sélectionné.
+	function paintedCount(id: string | null, channel: PaintChannel | null): number {
+		if (!id || !channel) return 0;
+		const doc = paintings[id];
+		if (!doc) return 0;
+		const serialized = doc.serialize()[channel];
+		return serialized ? Object.keys(serialized).length : 0;
+	}
+	const activePaintedCount = $derived(paintedCount(selId, paintChannel));
+	// Efface le canal actif de l'objet sélectionné (réaffecte l'index → réactif).
+	function clearActivePaint() {
+		if (!selId || !paintChannel) return;
+		paintingFor(selId).clear(paintChannel);
+		paintings = { ...paintings };
+	}
+
 	function showTab(tab: EditorTab) {
 		layout = setTab(layout, tab);
 	}
@@ -781,9 +819,26 @@
 							<EmbossTool onsubmit={() => toolNeedsEngine('Forme SVG')} />
 						{:else if tools.active === 'assembly'}
 							<AssemblyView bind:exploded={assemblyExploded} bind:factor={assemblyFactor} />
-						{:else}
-							<!-- Outils de peinture (support/seam/fuzzy/mm) : câblés par T105. -->
-							<p class="text-sm text-content-subtle">Peinture : outil câblé par T105.</p>
+						{:else if paintChannel}
+							<!-- Barre de peinture (T105) : canal verrouillé sur l'outil du rail. -->
+							<PaintToolbar
+								channel={paintChannel}
+								bind:tool={paintTool}
+								bind:radius={paintRadius}
+								bind:state={paintState}
+							/>
+							<div class="mt-3 flex items-center justify-between text-xs text-content-subtle">
+								<span>{activePaintedCount} triangle(s) peint(s)</span>
+								<button
+									class="rounded border border-border-strong px-2 py-0.5 hover:bg-surface-sunken"
+									onclick={clearActivePaint}
+									disabled={activePaintedCount === 0}>Effacer</button
+								>
+							</div>
+							<p class="mt-1 text-xs text-content-subtle">
+								La pose au pinceau sur le maillage dépend du picking de scène (incrément
+								scène↔peinture).
+							</p>
 						{/if}
 					</div>
 				{/if}

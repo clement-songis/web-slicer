@@ -49,6 +49,7 @@ export {
 	gizmoModeOf,
 	initialTools,
 	isTransformTool,
+	paintChannelOf,
 	setTool,
 	TOOL_ORDER,
 	TRANSFORM_TOOLS,
