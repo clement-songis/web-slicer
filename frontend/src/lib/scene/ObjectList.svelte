@@ -15,6 +15,8 @@
 		onduplicate: (id: string) => void;
 		ondelete: (id: string) => void;
 		ongroup: () => void;
+		/** Clic droit sur un nœud → menu contextuel objet (T112), au curseur. */
+		oncontext?: (id: string, x: number, y: number) => void;
 		/** Nombre d'extrudeurs de l'imprimante active (pour le sélecteur). */
 		extruderCount?: number;
 	}
@@ -29,6 +31,7 @@
 		onduplicate,
 		ondelete,
 		ongroup,
+		oncontext,
 		extruderCount = 1
 	}: Props = $props();
 
@@ -43,6 +46,13 @@
 				? 'bg-primary text-primary-content'
 				: 'hover:bg-surface-sunken'}"
 			style="padding-left: {depth * 1 + 0.25}rem"
+			role="presentation"
+			oncontextmenu={(e) => {
+				if (!oncontext) return;
+				e.preventDefault();
+				onselect(node.id, false);
+				oncontext(node.id, e.clientX, e.clientY);
+			}}
 		>
 			<button
 				type="button"

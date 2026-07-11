@@ -92,6 +92,41 @@ export const PLATER_MENU: ContextMenuItem[] = [
 	'Drop'
 ].map((label) => ({ label }));
 
+/** Entrée du menu contextuel objet (T112) : libellé de parité + identifiant d'action. */
+export interface ObjectMenuItem {
+	label: string;
+	action: string;
+}
+
+/** Entrée du menu contextuel objet, avec séparateurs. */
+export type ObjectMenuEntry = ObjectMenuItem | 'separator';
+
+/**
+ * Actions objet du menu contextuel (sous-ensemble objet de `context_menu`, T112).
+ * Libellés = clés de parité (tracés dans `traceability-map.json#context_menu`).
+ */
+export const OBJECT_CONTEXT_ITEMS: ObjectMenuEntry[] = [
+	{ label: 'HideShow', action: 'object.hideShow' },
+	{ label: 'Rename', action: 'object.rename' },
+	{ label: 'Edit', action: 'object.edit' },
+	'separator',
+	{ label: 'Clone', action: 'object.clone' },
+	{ label: 'Add instance', action: 'object.addInstance' },
+	{ label: 'Remove instance', action: 'object.removeInstance' },
+	'separator',
+	{ label: 'Auto orientation', action: 'object.orient' },
+	{ label: 'Center', action: 'object.center' },
+	{ label: 'Drop', action: 'object.drop' },
+	'separator',
+	{ label: 'Fix model', action: 'object.fix' },
+	{ label: 'Simplify Model', action: 'object.simplify' },
+	{ label: 'To objects', action: 'object.toObjects' },
+	{ label: 'To parts', action: 'object.toParts' },
+	{ label: 'Split', action: 'object.split' },
+	'separator',
+	{ label: 'Delete', action: 'object.delete' }
+];
+
 /** Raccourci clavier : combinaison (verbatim Annexe B) → action. */
 export interface Shortcut {
 	keys: string;

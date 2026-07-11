@@ -68,16 +68,19 @@ export { default as ObjectList } from './ObjectList.svelte';
 export { PlateSet, DEFAULT_PLATE_TYPE, type Plate, type PlatesDocument } from './plates';
 export { default as PlateBar } from './PlateBar.svelte';
 export { default as PlateToolbar } from './PlateToolbar.svelte';
+export { default as ContextMenu } from './ContextMenu.svelte';
 export { footprint, arrangeItems, applyPlacements } from './arrange';
 export {
 	MAIN_TOOLBAR,
 	ASSEMBLE_TOOLBAR,
 	PLATER_MENU,
+	OBJECT_CONTEXT_ITEMS,
 	PLATER_SHORTCUTS,
 	OBJECTS_LIST_SHORTCUTS,
 	GIZMO_SHORTCUTS,
 	type ToolbarButton,
 	type ContextMenuItem,
+	type ObjectMenuEntry,
 	type Shortcut
 } from './menus';
 export {

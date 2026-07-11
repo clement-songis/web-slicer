@@ -11,6 +11,8 @@
 		ObjectList,
 		PlateBar,
 		PlateToolbar,
+		ContextMenu,
+		OBJECT_CONTEXT_ITEMS,
 		arrangeItems,
 		applyPlacements,
 		SaveControls,
@@ -146,6 +148,14 @@
 
 	// Dialogue des raccourcis clavier (menu Aide, T111).
 	let showShortcuts = $state(false);
+
+	// Menu contextuel objet (T112) : cible + position au curseur.
+	let contextMenu = $state<{ open: boolean; x: number; y: number; targetId: string | null }>({
+		open: false,
+		x: 0,
+		y: 0,
+		targetId: null
+	});
 
 	// Modèle de scène (mutations en place → proxysées par `$state`, réactives).
 	let tree = $state(new ObjectTree());
@@ -703,6 +713,81 @@
 		ws = setSelection(ws, new Set());
 	}
 
+	// — Menu contextuel objet (T112) —
+	function openContext(id: string, x: number, y: number) {
+		contextMenu = { open: true, x, y, targetId: id };
+	}
+	function closeContext() {
+		contextMenu = { ...contextMenu, open: false };
+	}
+	// Ouvre le menu contextuel sur la scène pour l'objet sélectionné (clic droit).
+	function onSceneContext(e: MouseEvent) {
+		if (layout.tab !== 'prepare' || !selId) return;
+		e.preventDefault();
+		openContext(selId, e.clientX, e.clientY);
+	}
+	// Déplace un objet de la scène (position absolue, mm).
+	function moveObject(id: string, position: [number, number, number]) {
+		sceneObjects = sceneObjects.map((o) => (o.id === id ? { ...o, position } : o));
+	}
+	// Dispatch des actions du menu contextuel sur l'objet ciblé.
+	async function onObjectAction(action: string) {
+		const id = contextMenu.targetId;
+		if (!id) return;
+		const obj = sceneObjects.find((o) => o.id === id);
+		switch (action) {
+			case 'object.hideShow':
+				tree.setHidden(id, !tree.isHidden(id));
+				break;
+			case 'object.rename':
+				menuTodo('Renommer (édition en ligne à venir)');
+				break;
+			case 'object.edit':
+				ws = setSelection(ws, new Set([id]));
+				tools = { active: 'move' };
+				break;
+			case 'object.clone':
+			case 'object.addInstance':
+				tree.duplicate(id);
+				if (obj) {
+					const copyId = `${id}-copy-${sceneObjects.length}`;
+					sceneObjects = [
+						...sceneObjects,
+						{ ...obj, id: copyId, position: pastedPosition(obj.position) }
+					];
+				}
+				break;
+			case 'object.removeInstance':
+			case 'object.delete':
+				tree.remove(id);
+				sceneObjects = sceneObjects.filter((o) => o.id !== id);
+				ws = setSelection(ws, new Set());
+				break;
+			case 'object.orient':
+				ws = setSelection(ws, new Set([id]));
+				await orientActive();
+				break;
+			case 'object.center':
+				if (obj) moveObject(id, [bed.center.x, bed.center.y, obj.position?.[2] ?? 0]);
+				break;
+			case 'object.drop':
+				if (obj) moveObject(id, [obj.position?.[0] ?? 0, obj.position?.[1] ?? 0, 0]);
+				break;
+			case 'object.simplify':
+				ws = setSelection(ws, new Set([id]));
+				tools = { active: 'simplify' };
+				break;
+			case 'object.fix':
+				toolNeedsEngine('Réparer le maillage');
+				break;
+			case 'object.toObjects':
+			case 'object.toParts':
+			case 'object.split':
+				toolNeedsEngine('Découpe en objets/pièces');
+				break;
+		}
+	}
+
 	// Item de menu sans commande câblée en v1 : informe au lieu d'un no-op muet.
 	function menuTodo(action: string) {
 		saveMessage = `Menu « ${action} » : commande non disponible en v1.`;
@@ -953,6 +1038,16 @@
 	<!-- Dialogue des raccourcis clavier (menu Aide, T111). -->
 	<ShortcutsDialog open={showShortcuts} onClose={() => (showShortcuts = false)} />
 
+	<!-- Menu contextuel objet (T112) : scène + liste d'objets. -->
+	<ContextMenu
+		open={contextMenu.open}
+		x={contextMenu.x}
+		y={contextMenu.y}
+		items={OBJECT_CONTEXT_ITEMS}
+		onaction={onObjectAction}
+		onclose={closeContext}
+	/>
+
 	{#if pendingDraft}
 		<div
 			class="flex items-center justify-between gap-4 bg-warning-soft px-6 py-2 text-sm text-warning-content"
@@ -1019,6 +1114,7 @@
 						onduplicate={(id) => tree.duplicate(id)}
 						ondelete={(id) => tree.remove(id)}
 						ongroup={() => tree.group([...ws.selection])}
+						oncontext={openContext}
 					/>
 				{:else}
 					<div class="flex flex-col gap-4">
@@ -1085,6 +1181,7 @@
 			}}
 			ondragleave={() => (dragOver = false)}
 			ondrop={onDrop}
+			oncontextmenu={onSceneContext}
 		>
 			{#if layout.tab === 'prepare'}
 				<Scene
