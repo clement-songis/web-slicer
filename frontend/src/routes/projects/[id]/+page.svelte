@@ -13,6 +13,9 @@
 		bedFromValues,
 		serializeScene,
 		saveScene,
+		loadPreview as loadModelPreview,
+		uploadModel,
+		fetchMesh,
 		type SaveOutcome,
 		type SceneObject
 	} from '$lib/scene';
@@ -42,7 +45,15 @@
 		applyJobEvent,
 		buildWindowGeometry,
 		rangesFromMeta,
-		sliceRequestFor
+		sliceRequestFor,
+		startImport,
+		markUploaded,
+		markConverted,
+		markFailed,
+		findByModel,
+		isAccepted,
+		isPreviewable,
+		type ImportItem
 	} from '$lib/editor';
 	import type { GizmoMode } from '$lib/scene/gizmos/types';
 	import type { DisplayMode } from '$lib/settings/filter';
@@ -87,6 +98,13 @@
 	const previewStats = $derived(rawStats ? buildPreviewStats(rawStats as GcodeStats) : null);
 	const canSliceNow = $derived(tree.list().length > 0);
 
+	// Import de modèles (T089) : file d'imports suivie + zone de dépôt.
+	let imports = $state<ImportItem[]>([]);
+	let importError = $state<string | null>(null);
+	let dragOver = $state(false);
+	let fileInput: HTMLInputElement | null = null;
+	const ACCEPT = '.stl,.obj,.3mf,.step,.stp';
+
 	onMount(() => {
 		let alive = true;
 		draftStore.pendingRestore(data.project.id, data.project.updated_at).then((d) => {
@@ -111,6 +129,77 @@
 			ws = setPanel(ws, 'preview');
 			void loadPreview(session.gcodeId);
 		}
+		// Fin de conversion moteur (STEP…) : récupère le maillage et l'affiche.
+		if (event.event === 'model.converted') {
+			void resolveConversion(event.model_id);
+		}
+	}
+
+	function patchImport(objectId: string, fn: (i: ImportItem) => ImportItem) {
+		imports = imports.map((i) => (i.objectId === objectId ? fn(i) : i));
+	}
+
+	// Importe une liste de fichiers : aperçu immédiat + upload en tâche de fond.
+	async function importFiles(files: File[]) {
+		importError = null;
+		for (const file of files) {
+			if (!isAccepted(file.name)) {
+				importError = `Format non supporté : ${file.name}`;
+				continue;
+			}
+			await importOne(file);
+		}
+	}
+
+	async function importOne(file: File) {
+		const node = tree.add(file.name);
+		const objectId = node.id;
+		if (plates.activeId) plates.assign(objectId, plates.activeId);
+		imports = [...imports, startImport(objectId, file.name)];
+
+		// Aperçu client immédiat (STL/OBJ/3MF) pendant que l'upload part.
+		if (isPreviewable(file.name)) {
+			try {
+				const mesh = await loadModelPreview(file);
+				sceneObjects = [...sceneObjects, { id: objectId, mesh }];
+			} catch {
+				patchImport(objectId, (i) => markFailed(i, 'aperçu illisible'));
+			}
+		}
+
+		// Upload en tâche de fond (T048) ; le STEP passe en conversion moteur.
+		try {
+			const model = await uploadModel(data.project.id, file);
+			patchImport(objectId, (i) => markUploaded(i, model.id, model.conversion_pending));
+		} catch (e) {
+			patchImport(objectId, (i) =>
+				markFailed(i, e instanceof ApiError ? e.message : 'échec de l’upload')
+			);
+		}
+	}
+
+	async function resolveConversion(modelId: string) {
+		const item = findByModel(imports, modelId);
+		if (!item) return;
+		try {
+			const mesh = await fetchMesh(modelId);
+			sceneObjects = [...sceneObjects, { id: item.objectId, mesh }];
+			patchImport(item.objectId, markConverted);
+		} catch {
+			patchImport(item.objectId, (i) => markFailed(i, 'maillage converti indisponible'));
+		}
+	}
+
+	function onFilePicked(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		void importFiles([...(input.files ?? [])]);
+		input.value = '';
+	}
+
+	function onDrop(e: DragEvent) {
+		e.preventDefault();
+		dragOver = false;
+		void importFiles([...(e.dataTransfer?.files ?? [])]);
 	}
 
 	async function dismissDraft() {
@@ -209,6 +298,20 @@
 				>
 			</div>
 			<button
+				class="rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:text-gray-200 dark:hover:bg-gray-800"
+				onclick={() => fileInput?.click()}
+			>
+				Importer
+			</button>
+			<input
+				bind:this={fileInput}
+				type="file"
+				multiple
+				accept={ACCEPT}
+				class="hidden"
+				onchange={onFilePicked}
+			/>
+			<button
 				class="rounded bg-emerald-600 px-3 py-1 text-sm text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
 				onclick={sliceActive}
 				disabled={!canSliceNow}
@@ -246,14 +349,70 @@
 		</div>
 	{/if}
 
+	{#if importError}
+		<div
+			class="flex items-center justify-between bg-red-50 px-6 py-2 text-sm text-red-700 dark:bg-red-950 dark:text-red-300"
+			role="alert"
+		>
+			<span>{importError}</span>
+			<button onclick={() => (importError = null)} class="font-medium hover:underline"
+				>Fermer</button
+			>
+		</div>
+	{/if}
+
 	<div class="flex min-h-0 flex-1">
 		<!-- Zone centrale : scène 3D (Préparer) ou aperçu G-code (Aperçu, T088). -->
-		<main class="relative min-w-0 flex-1 bg-gray-50 dark:bg-gray-900">
+		<main
+			class="relative min-w-0 flex-1 bg-gray-50 dark:bg-gray-900"
+			ondragover={(e) => {
+				if (ws.panel === 'prepare') {
+					e.preventDefault();
+					dragOver = true;
+				}
+			}}
+			ondragleave={() => (dragOver = false)}
+			ondrop={onDrop}
+		>
 			{#if ws.panel === 'prepare'}
 				<div class="absolute left-3 top-3 z-10">
 					<GizmoToolbar mode={ws.gizmoMode} onmode={changeGizmo} />
 				</div>
 				<Scene {bed} objects={sceneObjects} bind:selection={ws.selection} />
+
+				{#if sceneObjects.length === 0}
+					<div
+						class="pointer-events-none absolute inset-0 flex items-center justify-center text-center text-sm text-gray-500 dark:text-gray-400"
+					>
+						<p>
+							Glissez un modèle ici (STL, OBJ, 3MF, STEP)<br />ou cliquez sur
+							<span class="font-medium">Importer</span>.
+						</p>
+					</div>
+				{/if}
+
+				{#if dragOver}
+					<div
+						class="pointer-events-none absolute inset-0 z-20 flex items-center justify-center border-2 border-dashed border-blue-500 bg-blue-500/10 text-sm font-medium text-blue-700 dark:text-blue-300"
+					>
+						Déposez pour importer
+					</div>
+				{/if}
+
+				{#if imports.some((i) => i.status === 'converting' || i.status === 'failed')}
+					<div class="absolute bottom-3 left-3 z-10 flex flex-col gap-1">
+						{#each imports.filter((i) => i.status === 'converting' || i.status === 'failed') as it (it.objectId)}
+							<div
+								class="rounded px-2 py-1 text-xs {it.status === 'failed'
+									? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300'
+									: 'bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-300'}"
+							>
+								{it.filename} —
+								{it.status === 'failed' ? (it.error ?? 'échec') : 'conversion en cours…'}
+							</div>
+						{/each}
+					</div>
+				{/if}
 			{:else}
 				<div class="flex h-full flex-col">
 					{#if session.phase === 'slicing'}
