@@ -128,7 +128,12 @@
 	// Onglet de la colonne de configuration : liste d'objets/plateaux ou réglages.
 	let configTab = $state<'objects' | 'settings'>('settings');
 	let settingsMode = $state<DisplayMode>('simple');
-	let settingsValues = $state<Record<string, unknown>>({});
+	// Portée des réglages affichés (T100/T101/T102) : process / filament / machine,
+	// chacun avec son propre jeu de valeurs éditées.
+	let settingsScope = $state<'process' | 'filament' | 'machine'>('process');
+	let processValues = $state<Record<string, unknown>>({});
+	let filamentValues = $state<Record<string, unknown>>({});
+	let machineValues = $state<Record<string, unknown>>({});
 	let saveMessage = $state<string | null>(null);
 
 	// Tranchage + aperçu G-code (T088) : machine à états pure `session` pilotée
@@ -263,12 +268,18 @@
 		}
 	}
 
-	// Enregistre les valeurs éditées dans le preset utilisateur courant. Les
-	// valeurs proviennent du panneau de réglages (raffiné par le cadrage par type
-	// en T099–T102 ; ici on pousse l'état de réglages courant).
+	// Valeurs éditées du panneau de réglages correspondant au type d'un preset.
+	function valuesForKind(kind: string): Record<string, unknown> {
+		if (kind === 'filament') return filamentValues;
+		if (kind === 'machine' || kind === 'machine_model') return machineValues;
+		return processValues;
+	}
+
+	// Enregistre les valeurs éditées (du bon groupe de réglages) dans le preset
+	// utilisateur courant.
 	async function savePreset(preset: PresetSummary) {
 		try {
-			await updatePreset(preset.id, { values: settingsValues });
+			await updatePreset(preset.id, { values: valuesForKind(preset.kind) });
 			await loadPresets();
 			saveMessage = 'Preset enregistré.';
 		} catch (e) {
@@ -596,7 +607,28 @@
 								ondelete={(p) => removePreset('process', p)}
 							/>
 						</section>
-						<SettingsTabs bind:mode={settingsMode} bind:values={settingsValues} />
+						<!-- Sélecteur de portée des réglages (T100/T101/T102) : process / filament / machine. -->
+						<div class="flex gap-1 rounded border border-border-strong p-0.5">
+							{#each [{ id: 'process', label: 'Process' }, { id: 'filament', label: 'Filament' }, { id: 'machine', label: 'Printer' }] as scope (scope.id)}
+								<button
+									type="button"
+									onclick={() => (settingsScope = scope.id as 'process' | 'filament' | 'machine')}
+									class="flex-1 rounded px-2 py-1 text-xs whitespace-nowrap {settingsScope ===
+									scope.id
+										? 'bg-primary text-primary-content'
+										: 'text-content-muted hover:bg-overlay'}"
+								>
+									{$t(scope.label)}
+								</button>
+							{/each}
+						</div>
+						{#if settingsScope === 'process'}
+							<SettingsTabs kind="process" bind:mode={settingsMode} bind:values={processValues} />
+						{:else if settingsScope === 'filament'}
+							<SettingsTabs kind="filament" bind:mode={settingsMode} bind:values={filamentValues} />
+						{:else}
+							<SettingsTabs kind="machine" bind:mode={settingsMode} bind:values={machineValues} />
+						{/if}
 					</div>
 				{/if}
 			</div>
