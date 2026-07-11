@@ -2,6 +2,7 @@
 	// Dialogue d'aide des raccourcis clavier (T079, Annexe B §B.6). Modal listant
 	// les 92 raccourcis groupés, ouvert par « ? » ou le menu Aide. Présentational
 	// seulement : les données viennent de `shortcuts.ts`.
+	import { t } from '$lib/i18n';
 	import { SHORTCUT_GROUPS, totalShortcuts } from './shortcuts';
 
 	let { open = false, onClose }: { open?: boolean; onClose: () => void } = $props();
@@ -31,21 +32,22 @@
 		>
 			<div class="mb-4 flex items-center justify-between">
 				<h2 class="text-lg font-semibold text-slate-100">
-					Raccourcis clavier <span class="text-sm text-slate-500">({totalShortcuts()})</span>
+					{$t('Keyboard Shortcuts')}
+					<span class="text-sm text-slate-500">({totalShortcuts()})</span>
 				</h2>
 				<button
 					type="button"
 					class="rounded bg-slate-700 px-2 py-1 text-sm hover:bg-slate-600"
 					onclick={onClose}
 				>
-					Fermer
+					{$t('Close')}
 				</button>
 			</div>
 
 			<div class="grid gap-6 sm:grid-cols-2">
 				{#each SHORTCUT_GROUPS as group (group.group)}
 					<section aria-label={group.group}>
-						<h3 class="mb-2 text-sm font-semibold text-sky-300">{group.group}</h3>
+						<h3 class="mb-2 text-sm font-semibold text-sky-300">{$t(group.group)}</h3>
 						<dl class="flex flex-col gap-1">
 							{#each group.shortcuts as shortcut (shortcut.keys + shortcut.action)}
 								<div class="flex items-start justify-between gap-3 text-xs">
