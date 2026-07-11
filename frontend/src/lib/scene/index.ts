@@ -65,6 +65,24 @@ export { default as ObjectList } from './ObjectList.svelte';
 export { PlateSet, DEFAULT_PLATE_TYPE, type Plate, type PlatesDocument } from './plates';
 export { default as PlateBar } from './PlateBar.svelte';
 export {
+	serializeScene,
+	parseScene,
+	serializeObject,
+	deserializeObject,
+	SCENE_SCHEMA_VERSION,
+	type SceneDocument,
+	type SceneObjectDoc,
+	type SceneObjectState
+} from './document';
+export {
+	saveScene,
+	classifySaveError,
+	onSaveShortcut,
+	captureThumbnail,
+	type SaveOutcome
+} from './save';
+export { default as SaveControls } from './SaveControls.svelte';
+export {
 	CutTool,
 	RepairTool,
 	SimplifyTool,
