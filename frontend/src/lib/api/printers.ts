@@ -3,6 +3,7 @@
 // dans `lib/printers/printers.ts`).
 import { api } from './client';
 import type {
+	PrinterCatalogVendor,
 	PrinterResponse,
 	PrinterStatusResponse,
 	PrinterUploadResponse,
@@ -13,6 +14,10 @@ import type {
 
 /** Imprimantes déclarées du compte. */
 export const listPrinters = () => api.get<PrinterResponse[]>('/printers');
+
+/** Catalogue des modèles sélectionnables (marque → modèle → buses) pour le
+ *  wizard et la page de gestion (Phase 14). */
+export const getPrinterCatalog = () => api.get<PrinterCatalogVendor[]>('/printer-catalog');
 
 /** Déclare une imprimante (clé API chiffrée au repos côté serveur). */
 export const createPrinter = (body: SavePrinterRequest) =>

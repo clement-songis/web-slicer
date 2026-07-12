@@ -34,3 +34,6 @@ export type { TestPrinterResponse } from '../../generated/api/TestPrinterRespons
 export type { UploadToPrinterRequest } from '../../generated/api/UploadToPrinterRequest';
 export type { PrinterUploadResponse } from '../../generated/api/PrinterUploadResponse';
 export type { PrinterStatusResponse } from '../../generated/api/PrinterStatusResponse';
+export type { PrinterCatalogVendor } from '../../generated/api/PrinterCatalogVendor';
+export type { PrinterCatalogModel } from '../../generated/api/PrinterCatalogModel';
+export type { PrinterCatalogVariant } from '../../generated/api/PrinterCatalogVariant';
