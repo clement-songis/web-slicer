@@ -102,6 +102,8 @@
 		markConverted,
 		markFailed,
 		findByModel,
+		importLabel,
+		isPending,
 		isAccepted,
 		isTransformTool,
 		paintChannelOf,
@@ -328,8 +330,10 @@
 				...imports,
 				markUploaded(startImport(objectId, model.filename), model.id, model.conversion_pending)
 			];
-			// Maillage moteur déjà disponible → charge-le tout de suite.
-			if (model.has_mesh) await resolveConversion(model.id);
+			// Sonde l'état de conversion : maillage prêt → chargé ; en cours → reste
+			// en attente (événement `model.converted`) ; échoué avant la session →
+			// badge d'erreur (422). Couvre tous les cas sans dépendre de `has_mesh`.
+			await resolveConversion(model.id);
 		}
 	}
 
@@ -452,6 +456,12 @@
 		}
 	}
 
+	// Récupère le maillage moteur d'un modèle et l'ajoute à la scène. Distingue
+	// les états servis par `/mesh` (T125) : 200 → prêt ; 409 → conversion encore
+	// en cours (on laisse l'objet en attente, `model.converted` le résoudra) ;
+	// 422 (ou autre) → échec → badge d'erreur. Sert au rendu à l'ouverture (sonde
+	// l'état réel des modèles, dont ceux échoués avant la session) comme à la
+	// résolution en direct sur l'événement.
 	async function resolveConversion(modelId: string) {
 		const item = findByModel(imports, modelId);
 		if (!item) return;
@@ -459,8 +469,16 @@
 			const { mesh, center } = centerMesh(await fetchMesh(modelId));
 			sceneObjects = [...sceneObjects, { id: item.objectId, mesh, position: center }];
 			patchImport(item.objectId, markConverted);
-		} catch {
-			patchImport(item.objectId, (i) => markFailed(i, 'maillage converti indisponible'));
+		} catch (e) {
+			// 409 = pas encore prêt : rester en « conversion en cours ».
+			if (e instanceof ApiError && e.status === 409) return;
+			const message =
+				e instanceof ApiError && e.code === 'conversion_failed'
+					? 'échec de la conversion du modèle'
+					: e instanceof ApiError
+						? e.message
+						: 'maillage converti indisponible';
+			patchImport(item.objectId, (i) => markFailed(i, message));
 		}
 	}
 
@@ -1472,16 +1490,25 @@
 					</div>
 				{/if}
 
-				{#if imports.some((i) => i.status === 'converting' || i.status === 'failed')}
+				{#if imports.some((i) => isPending(i) || i.status === 'failed')}
 					<div class="absolute bottom-3 left-3 z-10 flex flex-col gap-1">
-						{#each imports.filter((i) => i.status === 'converting' || i.status === 'failed') as it (it.objectId)}
+						{#each imports.filter((i) => isPending(i) || i.status === 'failed') as it (it.objectId)}
 							<div
-								class="rounded px-2 py-1 text-xs {it.status === 'failed'
+								class="flex items-center gap-1.5 rounded px-2 py-1 text-xs {it.status === 'failed'
 									? 'bg-danger-soft text-danger-content'
 									: 'bg-overlay text-content-muted'}"
+								data-testid="import-status"
+								data-status={it.status}
 							>
-								{it.filename} —
-								{it.status === 'failed' ? (it.error ?? 'échec') : 'conversion en cours…'}
+								{#if it.status === 'failed'}
+									<span aria-hidden="true">⚠</span>
+								{:else}
+									<span
+										class="inline-block size-3 animate-spin rounded-full border-2 border-current border-t-transparent"
+										aria-hidden="true"
+									></span>
+								{/if}
+								<span>{it.filename} — {importLabel(it)}</span>
 							</div>
 						{/each}
 					</div>

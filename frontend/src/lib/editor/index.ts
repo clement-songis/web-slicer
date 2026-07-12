@@ -61,7 +61,9 @@ export {
 export {
 	findByModel,
 	importExt,
+	importLabel,
 	isAccepted,
+	isPending,
 	markConverted,
 	markFailed,
 	markUploaded,

@@ -75,3 +75,22 @@ export function markFailed(item: ImportItem, message: string): ImportItem {
 export function findByModel(items: ImportItem[], modelId: string): ImportItem | undefined {
 	return items.find((i) => i.modelId === modelId);
 }
+
+/** Un import est-il en cours (upload ou conversion moteur, pas encore prêt) ? */
+export function isPending(item: ImportItem): boolean {
+	return item.status === 'uploading' || item.status === 'converting';
+}
+
+/** Libellé court d'un import pour le placeholder / badge d'état (T127). */
+export function importLabel(item: ImportItem): string {
+	switch (item.status) {
+		case 'uploading':
+			return 'import en cours…';
+		case 'converting':
+			return 'conversion en cours…';
+		case 'failed':
+			return item.error ?? 'échec';
+		case 'ready':
+			return 'prêt';
+	}
+}

@@ -4,7 +4,9 @@ import { describe, expect, it } from 'vitest';
 import {
 	findByModel,
 	importExt,
+	importLabel,
 	isAccepted,
+	isPending,
 	markConverted,
 	markFailed,
 	markUploaded,
@@ -61,5 +63,23 @@ describe('imports', () => {
 		const failed = markFailed(startImport('o1', 'part.stl'), 'STL illisible');
 		expect(failed.status).toBe('failed');
 		expect(failed.error).toBe('STL illisible');
+	});
+
+	it('expose l’état en cours et un libellé de placeholder/badge (T127)', () => {
+		const uploading = startImport('o1', 'part.stl');
+		expect(isPending(uploading)).toBe(true);
+		expect(importLabel(uploading)).toBe('import en cours…');
+
+		const converting = markUploaded(uploading, 'm1', true);
+		expect(isPending(converting)).toBe(true);
+		expect(importLabel(converting)).toBe('conversion en cours…');
+
+		const ready = markConverted(converting);
+		expect(isPending(ready)).toBe(false);
+		expect(importLabel(ready)).toBe('prêt');
+
+		const failed = markFailed(converting, 'échec de la conversion du modèle');
+		expect(isPending(failed)).toBe(false);
+		expect(importLabel(failed)).toBe('échec de la conversion du modèle');
 	});
 });
