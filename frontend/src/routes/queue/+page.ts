@@ -1,18 +1,14 @@
 // Garde de session + chargement de la file (T071). Rendu client uniquement
 // (session par cookie navigateur, WebSocket temps réel au montage).
-import { redirect } from '@sveltejs/kit';
 import { listJobs } from '$lib/api/jobs';
-import { listPrinters } from '$lib/api/printers';
-import { refreshSession } from '$lib/api/session';
+import { requireOnboardedUser } from '$lib/guards';
 import type { PageLoad } from './$types';
 
 export const ssr = false;
 
 export const load: PageLoad = async () => {
-	const user = await refreshSession();
-	if (!user) {
-		redirect(302, '/login');
-	}
-	const [jobs, printers] = await Promise.all([listJobs(), listPrinters()]);
+	// Garde session + onboarding (Phase 14) ; la liste d'imprimantes vient de là.
+	const { user, printers } = await requireOnboardedUser();
+	const jobs = await listJobs();
 	return { user, jobs, printers };
 };

@@ -16,7 +16,8 @@
 		error = null;
 		try {
 			await register(email, password, inviteToken.trim() || undefined);
-			await goto(resolve('/library'));
+			// Première connexion → wizard de sélection d'imprimante (Phase 14).
+			await goto(resolve('/setup'));
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : 'Erreur inattendue';
 		} finally {
