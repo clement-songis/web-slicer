@@ -4,8 +4,9 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev",
-		"build": "vite build",
+		"printers:covers": "node scripts/copy-printer-covers.mjs",
+		"dev": "node scripts/copy-printer-covers.mjs && vite dev",
+		"build": "node scripts/copy-printer-covers.mjs && vite build",
 		"preview": "vite preview",
 		"paraglide": "paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide --strategy localStorage preferredLanguage baseLocale --emit-ts-declarations",
 		"prepare": "svelte-kit sync && paraglide-js compile --project ./project.inlang --outdir ./src/lib/paraglide --strategy localStorage preferredLanguage baseLocale --emit-ts-declarations || echo ''",

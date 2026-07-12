@@ -1,5 +1,9 @@
 node_modules
 
+# Vignettes d'imprimante copiées des profils vendeurs au build (Phase 14, T134 ;
+# ~11 Mo, dérivées de vendor/OrcaSlicer — régénérées par scripts/copy-printer-covers.mjs)
+/static/printers/
+
 # Output
 .output
 .vercel
