@@ -94,6 +94,17 @@ impl ApiError {
         Self::new(StatusCode::CONFLICT, "printer_not_connected", message)
     }
 
+    /// Le preset imprimante choisi ne correspond à **aucune imprimante possédée**
+    /// (Phase 14) : on ne tranche/exporte que pour une imprimante déclarée. 422
+    /// avec un code dédié pour que l'UI renvoie vers l'ajout d'imprimante.
+    pub fn printer_not_owned(message: impl Into<String>) -> Self {
+        Self::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "printer_not_owned",
+            message,
+        )
+    }
+
     /// Fonctionnalité pas encore câblée (placeholder de tâche à venir).
     pub fn not_implemented(message: impl Into<String>) -> Self {
         Self::new(StatusCode::NOT_IMPLEMENTED, "not_implemented", message)

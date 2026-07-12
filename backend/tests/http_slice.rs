@@ -8,7 +8,8 @@ use axum::response::Response;
 use axum::Router;
 use backend::adapters::files::FileStore;
 use backend::adapters::storage::sqlite::SqliteStorage;
-use backend::domain::{PresetKind, PresetOrigin, Storage, UserId};
+use backend::domain::repo::NewPrinter;
+use backend::domain::{NewUser, PresetKind, PresetOrigin, Role, Storage, UserId};
 use backend::http::routes::router;
 use backend::http::state::AppState;
 use serde_json::{json, Value};
@@ -117,6 +118,125 @@ async fn make_bad_process(storage: &SqliteStorage, owner: UserId) -> String {
         .await
         .unwrap();
     preset.id.to_string()
+}
+
+/// Preset machine utilisateur (config vide, se résout sans avertissement).
+async fn make_machine_preset(storage: &SqliteStorage, owner: UserId) -> String {
+    let preset = storage
+        .presets()
+        .create_user_preset(
+            owner,
+            backend::domain::Preset {
+                id: backend::domain::PresetId::new(),
+                kind: PresetKind::Machine,
+                name: "Ma machine".into(),
+                origin: PresetOrigin::User,
+                user_id: Some(owner),
+                vendor: None,
+                inherits: None,
+                instantiation: true,
+                setting_id: None,
+                filament_id: None,
+                compatible_printers: None,
+                values: json!({}),
+            },
+        )
+        .await
+        .unwrap();
+    preset.id.to_string()
+}
+
+/// Déclare une imprimante possédée par `owner` pointant vers ce preset machine.
+async fn own_printer(storage: &SqliteStorage, owner: UserId, machine_preset_id: &str) {
+    storage
+        .printers()
+        .create(
+            owner,
+            NewPrinter {
+                name: "Mienne".into(),
+                moonraker_url: None,
+                api_key: None,
+                machine_preset_id: backend::domain::PresetId(
+                    uuid::Uuid::parse_str(machine_preset_id).unwrap(),
+                ),
+            },
+        )
+        .await
+        .unwrap();
+}
+
+/// Réécrit les presets actifs d'un projet (helper de test).
+async fn set_active_presets(storage: &SqliteStorage, owner: UserId, project: &str, active: Value) {
+    storage
+        .projects()
+        .update(
+            owner,
+            backend::domain::ProjectId(uuid::Uuid::parse_str(project).unwrap()),
+            1,
+            scene_one_object(),
+            active,
+            None,
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn slice_allows_a_printer_the_user_owns() {
+    let (_d, storage, app) = app().await;
+    let (project, owner, session) = create_project(
+        &storage,
+        &app,
+        "boss@test.local",
+        scene_one_object(),
+        json!({}),
+    )
+    .await;
+    let machine = make_machine_preset(&storage, owner).await;
+    own_printer(&storage, owner, &machine).await;
+    set_active_presets(&storage, owner, &project, json!({ "printer": machine })).await;
+
+    let resp = app
+        .clone()
+        .oneshot(slice_req(&project, &session, json!({ "plate_index": 0 })))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+}
+
+#[tokio::test]
+async fn slice_rejects_a_printer_the_user_does_not_own() {
+    let (_d, storage, app) = app().await;
+    let (project, owner, session) = create_project(
+        &storage,
+        &app,
+        "boss@test.local",
+        scene_one_object(),
+        json!({}),
+    )
+    .await;
+    let machine = make_machine_preset(&storage, owner).await;
+    // Le preset existe, mais `owner` n'a déclaré aucune imprimante. Même possédé
+    // par un AUTRE compte, il ne compte pas (isolation, SC-008).
+    let other = storage
+        .users()
+        .create(NewUser {
+            email: "bob@test.local".into(),
+            password_hash: "h".into(),
+            role: Role::User,
+        })
+        .await
+        .unwrap();
+    own_printer(&storage, other.id, &machine).await;
+    set_active_presets(&storage, owner, &project, json!({ "printer": machine })).await;
+
+    let resp = app
+        .clone()
+        .oneshot(slice_req(&project, &session, json!({ "plate_index": 0 })))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body_json(resp).await["code"], "printer_not_owned");
 }
 
 fn scene_one_object() -> Value {

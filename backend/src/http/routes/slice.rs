@@ -117,6 +117,24 @@ pub(crate) async fn resolve_active_config(
     user: crate::domain::UserId,
     active: &Value,
 ) -> ApiResult<(engine::api::DynamicPrintConfig, Vec<SliceWarning>)> {
+    // Garde de possession (Phase 14) : le preset imprimante retenu doit
+    // correspondre à une imprimante **déclarée** par l'utilisateur — on ne
+    // tranche/exporte pas pour une imprimante qu'il ne possède pas. L'absence de
+    // clé `printer` reste tolérée (config par défaut) ; seule une valeur non
+    // possédée est refusée.
+    if let Some(s) = active.get("printer").and_then(Value::as_str) {
+        let printer_id = parse_preset_id(s)?;
+        let owned = state.storage.printers().list(user).await?;
+        let owns_it = owned
+            .iter()
+            .any(|p| p.machine_preset_id.to_string() == printer_id.to_string());
+        if !owns_it {
+            return Err(ApiError::printer_not_owned(
+                "Imprimante non possédée : ajoutez-la à vos imprimantes avant de trancher",
+            ));
+        }
+    }
+
     let mut ids: Vec<PresetId> = Vec::new();
     for key in ["printer", "process"] {
         if let Some(s) = active.get(key).and_then(Value::as_str) {
