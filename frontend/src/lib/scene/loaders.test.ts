@@ -115,10 +115,12 @@ describe('parse3mf', () => {
 	// Structure OrcaSlicer/Bambu (extension « production ») : le 3dmodel.model
 	// racine ne contient que des <component>, la géométrie vit dans un fichier
 	// 3D/Objects/*.model séparé. Régression : l'aperçu doit les agréger.
+	// Composant translaté de (5,0,0), item placé à (110,110,0) : un sommet (0,0,0)
+	// du maillage doit atterrir à (115,110,0) → valide la chaîne item ∘ composant.
 	function makeSplit3mf(): ArrayBuffer {
 		const root = `<?xml version="1.0"?>
 <model unit="millimeter"><resources><object id="1" type="model"><components>
-<component p:path="/3D/Objects/part.model" objectid="1"/>
+<component p:path="/3D/Objects/part.model" objectid="1" transform="1 0 0 0 1 0 0 0 1 5 0 0"/>
 </components></object></resources>
 <build><item objectid="1" transform="1 0 0 0 1 0 0 0 1 110 110 0"/></build></model>`;
 		const object = `<?xml version="1.0"?>
@@ -138,10 +140,13 @@ describe('parse3mf', () => {
 		return zipped.buffer.slice(zipped.byteOffset, zipped.byteOffset + zipped.byteLength);
 	}
 
-	test('agrège la géométrie des fichiers .model séparés (structure OrcaSlicer)', () => {
+	test('agrège les .model séparés et applique la transformation de plateau (OrcaSlicer)', () => {
 		const mesh = parse3mf(makeSplit3mf());
 		expect(mesh.positions.length).toBe(9);
-		expect([...mesh.positions.slice(3, 6)]).toEqual([2, 0, 0]);
+		// (0,0,0) → composant +5 en x → item +110/+110 → (115,110,0).
+		expect([...mesh.positions.slice(0, 3)]).toEqual([115, 110, 0]);
+		// (2,0,0) → (117,110,0).
+		expect([...mesh.positions.slice(3, 6)]).toEqual([117, 110, 0]);
 	});
 
 	test('gère les coordonnées en notation scientifique à exposant négatif', () => {

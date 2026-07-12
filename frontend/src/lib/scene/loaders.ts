@@ -172,14 +172,93 @@ function collect3mfMeshes(xml: string, positions: number[]): void {
 	}
 }
 
+// Transformation affine 3mf : 12 nombres (matrice 4×3 ligne-majeur, dernière
+// colonne implicite [0,0,0,1]) ; un point est un vecteur ligne `p·M`.
+type Mat = number[];
+const IDENTITY: Mat = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0];
+
+/** Lit un attribut `transform` 3mf (12 flottants), ou l'identité si absent/invalide. */
+function parseTransform(s: string | undefined): Mat {
+	if (!s) return IDENTITY;
+	const n = s.trim().split(/\s+/).map(Number);
+	return n.length === 12 && n.every((x) => Number.isFinite(x)) ? n : IDENTITY;
+}
+
+/** Composition `a` puis `b` : `p·a·b = p·(a·b)`. */
+function multiply(a: Mat, b: Mat): Mat {
+	return [
+		a[0] * b[0] + a[1] * b[3] + a[2] * b[6],
+		a[0] * b[1] + a[1] * b[4] + a[2] * b[7],
+		a[0] * b[2] + a[1] * b[5] + a[2] * b[8],
+		a[3] * b[0] + a[4] * b[3] + a[5] * b[6],
+		a[3] * b[1] + a[4] * b[4] + a[5] * b[7],
+		a[3] * b[2] + a[4] * b[5] + a[5] * b[8],
+		a[6] * b[0] + a[7] * b[3] + a[8] * b[6],
+		a[6] * b[1] + a[7] * b[4] + a[8] * b[7],
+		a[6] * b[2] + a[7] * b[5] + a[8] * b[8],
+		a[9] * b[0] + a[10] * b[3] + a[11] * b[6] + b[9],
+		a[9] * b[1] + a[10] * b[4] + a[11] * b[7] + b[10],
+		a[9] * b[2] + a[10] * b[5] + a[11] * b[8] + b[11]
+	];
+}
+
+/** Applique une transformation à un point, empile le résultat dans `out`. */
+function pushPoint(m: Mat, x: number, y: number, z: number, out: number[]): void {
+	out.push(
+		x * m[0] + y * m[3] + z * m[6] + m[9],
+		x * m[1] + y * m[4] + z * m[7] + m[10],
+		x * m[2] + y * m[5] + z * m[8] + m[11]
+	);
+}
+
+/** Un objet 3mf : maillage propre (soupe de triangles) et/ou composants référencés. */
+interface Object3mf {
+	soup?: number[];
+	components?: { path?: string; objectid: string; transform: Mat }[];
+}
+
+/** Indexe les `<object id=…>` d'un fichier modèle (maillage inline et composants). */
+function parseObjects(xml: string): Map<string, Object3mf> {
+	const objs = new Map<string, Object3mf>();
+	const objRe = /<object\b([^>]*)>([\s\S]*?)<\/object>/g;
+	let m: RegExpExecArray | null;
+	while ((m = objRe.exec(xml)) !== null) {
+		const id = /\bid="([^"]+)"/.exec(m[1])?.[1];
+		if (!id) continue;
+		const body = m[2];
+		const obj: Object3mf = {};
+		const soup: number[] = [];
+		collect3mfMeshes(body, soup);
+		if (soup.length) obj.soup = soup;
+		const comps: { path?: string; objectid: string; transform: Mat }[] = [];
+		const compRe = /<component\b([^>]*?)\/?>/g;
+		let c: RegExpExecArray | null;
+		while ((c = compRe.exec(body)) !== null) {
+			const cid = /\bobjectid="([^"]+)"/.exec(c[1])?.[1];
+			if (!cid) continue;
+			const path = /\b(?:p:)?path="([^"]+)"/.exec(c[1])?.[1];
+			comps.push({
+				objectid: cid,
+				path,
+				transform: parseTransform(/\btransform="([^"]+)"/.exec(c[1])?.[1])
+			});
+		}
+		if (comps.length) obj.components = comps;
+		objs.set(id, obj);
+	}
+	return objs;
+}
+
 /**
- * Parse un 3MF : dézippe et combine les maillages `<mesh>` de **tous** les
- * fichiers `.model` de l'archive. OrcaSlicer/Bambu (extension « production »)
- * scinde la géométrie : `3D/3dmodel.model` ne porte que des `<component>`
- * référençant des `3D/Objects/*.model` où vivent réellement les sommets — on
- * les agrège donc tous, plutôt que le seul premier fichier. Extraction par
- * regex (pas de DOMParser → testable sous bun). Les transformations
- * d'assemblage sont ignorées pour l'aperçu.
+ * Parse un 3MF en un maillage d'aperçu, **transformations d'assemblage
+ * appliquées** (positionnement sur le plateau, parité OrcaSlicer). Le format
+ * scinde la géométrie : `3D/3dmodel.model` porte le `<build>` (items placés
+ * sur le plateau) et des `<object>` en `<components>` référençant des
+ * `3D/Objects/*.model` où vivent les `<mesh>`. On indexe donc tous les objets
+ * de tous les fichiers `.model`, puis on parcourt chaque `<item>` du build en
+ * composant la chaîne de transformations `item ∘ composant` jusqu'au maillage.
+ * Repli sans build : on agrège les maillages bruts (aperçu quand même utile).
+ * Extraction par regex (pas de DOMParser → testable sous bun).
  */
 export function parse3mf(buffer: ArrayBuffer): SceneMesh {
 	const files = unzipSync(new Uint8Array(buffer));
@@ -188,9 +267,59 @@ export function parse3mf(buffer: ArrayBuffer): SceneMesh {
 	const modelKeys = Object.keys(files).filter((k) => k.toLowerCase().endsWith('.model'));
 	if (modelKeys.length === 0) throw new Error('3MF invalide (modèle 3D absent)');
 
-	const positions: number[] = [];
+	const xmls = new Map<string, string>();
+	const registry = new Map<string, Map<string, Object3mf>>();
 	for (const key of modelKeys) {
-		collect3mfMeshes(strFromU8(files[key]), positions);
+		const xml = strFromU8(files[key]);
+		xmls.set(key, xml);
+		registry.set(key, parseObjects(xml));
+	}
+
+	// Localise le `<build>` (items placés sur le plateau) et son fichier hôte.
+	let buildFile: string | undefined;
+	const buildItems: { objectid: string; transform: Mat }[] = [];
+	for (const [key, xml] of xmls) {
+		const build = /<build\b[^>]*>([\s\S]*?)<\/build>/.exec(xml);
+		if (!build) continue;
+		buildFile = key;
+		const itemRe = /<item\b([^>]*?)\/?>/g;
+		let it: RegExpExecArray | null;
+		while ((it = itemRe.exec(build[1])) !== null) {
+			const oid = /\bobjectid="([^"]+)"/.exec(it[1])?.[1];
+			if (!oid) continue;
+			buildItems.push({
+				objectid: oid,
+				transform: parseTransform(/\btransform="([^"]+)"/.exec(it[1])?.[1])
+			});
+		}
+		break;
+	}
+
+	const positions: number[] = [];
+	// Parcours récursif objet → composants, transformations composées.
+	function emit(filePath: string, id: string, accum: Mat, depth: number): void {
+		if (depth > 50) return; // garde anti-cycle de composants
+		const obj = registry.get(filePath)?.get(id);
+		if (!obj) return;
+		if (obj.soup) {
+			for (let i = 0; i < obj.soup.length; i += 3) {
+				pushPoint(accum, obj.soup[i], obj.soup[i + 1], obj.soup[i + 2], positions);
+			}
+		}
+		if (obj.components) {
+			for (const comp of obj.components) {
+				const childFile = comp.path ? comp.path.replace(/^\//, '') : filePath;
+				emit(childFile, comp.objectid, multiply(comp.transform, accum), depth + 1);
+			}
+		}
+	}
+
+	if (buildFile) {
+		for (const item of buildItems) emit(buildFile, item.objectid, item.transform, 0);
+	}
+	// Repli : aucun build exploitable (3mf minimal) → maillages bruts non transformés.
+	if (positions.length === 0) {
+		for (const xml of xmls.values()) collect3mfMeshes(xml, positions);
 	}
 	if (positions.length === 0) throw new Error('3MF sans géométrie exploitable');
 	return meshFromTriangleSoup(positions);
