@@ -16,7 +16,7 @@ use crate::api::{
 use crate::params::{self, orca_values};
 
 use super::bridge::ffi;
-use super::model::to_raw_objects;
+use super::model::{ffi_guard, to_raw_objects};
 use super::worker;
 
 const REQUEST_FILE: &str = "slice-request.json";
@@ -46,6 +46,12 @@ pub fn slice(
 /// Côté worker : lit la requête, appelle le bridge C++ et renvoie le résultat.
 /// La progression est émise par `slice_raw` (C++) directement sur stdout.
 pub fn run_in_worker(request_path: &Path) -> EngineResult<SliceResult> {
+    // Initialise le runtime FFI (répertoires + `print_config_static_initializer`)
+    // avant tout appel : sans quoi les caches statiques de config peuvent rester
+    // vides selon l'élagage `--gc-sections` du binaire, et la validation rejette
+    // à tort (ex. `layer_gcode` perdu → « G92 E0 requis »). Même garde que
+    // `read_project_3mf` / `load_model`.
+    let _guard = ffi_guard();
     let raw = std::fs::read_to_string(request_path)?;
     let req: SliceRequest = serde_json::from_str(&raw)
         .map_err(|e| EngineError::new(EngineErrorCode::Internal, format!("requête : {e}")))?;
