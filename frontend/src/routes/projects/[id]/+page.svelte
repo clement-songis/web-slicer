@@ -77,6 +77,7 @@
 	import { arrangeScene, orientModel } from '$lib/api/scene';
 	import { fetchPreviewLayers, getPreviewMeta } from '$lib/api/preview';
 	import { listPresets, createPreset, updatePreset, deletePreset } from '$lib/api/presets';
+	import { listPrinters } from '$lib/api/printers';
 	import { subscribeEvents, type EventSubscription } from '$lib/queue/events';
 	import type { PreviewMeta, PresetSummary, ServerEvent } from '$lib/api/types';
 	import { ApiError } from '$lib/api/client';
@@ -342,12 +343,16 @@
 	async function loadPresets() {
 		const printerName = machinePresets.find((p) => p.id === activePresets.printer)?.name;
 		try {
-			const [machines, filaments, processes] = await Promise.all([
+			const [printers, machines, filaments, processes] = await Promise.all([
+				listPrinters(),
 				listPresets('machine'),
 				listPresets('filament', printerName),
 				listPresets('process', printerName)
 			]);
-			machinePresets = machines;
+			// Restriction (Phase 14) : le sélecteur ne montre que les presets machine
+			// des imprimantes **possédées**, plus le catalogue complet.
+			const owned = new Set(printers.map((p) => p.machine_preset_id));
+			machinePresets = machines.filter((m) => owned.has(m.id));
 			filamentPresets = filaments;
 			processPresets = processes;
 		} catch (e) {
@@ -1294,7 +1299,15 @@
 								<span class="text-xs font-semibold tracking-wide text-content-subtle uppercase"
 									>{$t('Printer')}</span
 								>
-								<PrinterSelect presets={machinePresets} bind:selectedId={activePresets.printer} />
+								{#if machinePresets.length === 0}
+									<a
+										href={resolve('/setup')}
+										class="rounded border border-border-strong px-2 py-1 text-center text-sm text-primary hover:underline"
+										>Ajouter une imprimante…</a
+									>
+								{:else}
+									<PrinterSelect presets={machinePresets} bind:selectedId={activePresets.printer} />
+								{/if}
 							</div>
 							<PresetSelect
 								presets={filamentPresets}
