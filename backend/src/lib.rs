@@ -7,6 +7,7 @@
 pub mod adapters;
 pub mod auth;
 pub mod domain;
+pub mod engine;
 pub mod gcode;
 pub mod http;
 pub mod mesh;
