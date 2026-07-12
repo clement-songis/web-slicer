@@ -89,7 +89,9 @@ jamais par omission (le contrôle échoue sinon).
 - **Comptes & isolation** — inscription/politique d'instance, sessions, rôles ;
   toute ressource d'autrui est **404** (jamais 403), campagne d'isolation
   automatisée (SC-008 à 100 %).
-- **Préparation 3D** — import STL/3MF/STEP/OBJ, scène Threlte, 16 gizmos,
+- **Préparation 3D** — import STL/3MF/STEP/OBJ **décodés côté serveur** (process
+  `engine-worker`, maillage d'affichage binaire WSMh ; le frontend n'embarque
+  aucun parseur — voir retournement R7), scène Threlte, 16 gizmos,
   move/rotate/scale/cut/arrange/orient, multi-plateaux, réparation de maillage.
 - **Réglages** — 21 onglets / 100 sections / 525 lignes d'options fidèles
   (modes simple/advanced/expert), presets dérivables avec héritage et surcharges.

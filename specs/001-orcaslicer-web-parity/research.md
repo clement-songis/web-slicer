@@ -150,6 +150,27 @@ imports) tout en couvrant STEP sans embarquer OCCT dans le navigateur.
 **Alternatives considered** : occt-import-js WASM (~15 Mo, divergence de
 tessellation avec Orca) ; conversion de tout côté serveur (latence inutile).
 
+**Retournement (Phase 13, T120–T128)** : la décision initiale « STL/OBJ/3MF
+natifs client » est **abandonnée**. *Tous* les formats (STL, OBJ, 3MF, STEP,
+AMF, …) sont désormais décodés **côté serveur** par le process `engine-worker`
+(commande `load-model <fichier> <format>`), qui tessellise via libslic3r et
+renvoie un maillage d'affichage binaire **WSMh** (`engine::api::TriangleMesh::
+encode_display`). Le frontend ne contient plus aucun parseur de modèle : il
+uploade le fichier source, suit l'état de conversion (`uploading` → `converting`
+→ `ready`/`failed`) et télécharge le WSMh via `GET /api/models/{id}/mesh`
+(200 prêt, 409 en cours, 422 décodage échoué).
+
+*Rationale du retournement* : (1) **parité de tessellation** — un seul chemin
+moteur garantit que l'aperçu correspond exactement à ce que découpe Orca, la
+divergence redoutée pour occt-import-js s'appliquait en réalité aussi aux
+loaders Three.js STL/OBJ/3MF ; (2) **isolation** (constitution) — un fichier
+malveillant ou corrompu fait planter un process worker jetable, pas le
+navigateur ni le backend (couvert par `backend/tests/model_decode.rs`) ;
+(3) **surface unique** — supprime la double implémentation client/serveur des
+règles de lecture 3MF et le poids des parseurs côté navigateur. Le compromis de
+réactivité (aller-retour serveur pour 100 % des imports au lieu de 10 %) est
+accepté : la conversion est asynchrone et l'UI affiche un état de progression.
+
 ## R8 — Storage : traits de repositories + deux backends sqlx
 
 **Decision** : le domaine définit des traits fins (`UserRepo`, `ProjectRepo`,
