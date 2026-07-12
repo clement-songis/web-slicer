@@ -42,6 +42,7 @@
 		saveScene,
 		loadPreview as loadModelPreview,
 		previewFromBuffer,
+		centerMesh,
 		uploadModel,
 		fetchMesh,
 		fetchModelFile,
@@ -332,8 +333,10 @@
 			];
 			if (isPreviewable(model.filename)) {
 				try {
-					const mesh = previewFromBuffer(model.filename, await fetchModelFile(model.id));
-					sceneObjects = [...sceneObjects, { id: objectId, mesh }];
+					const raw = previewFromBuffer(model.filename, await fetchModelFile(model.id));
+					// Recentre : origine locale = centre visuel → gizmo au centre de l'objet.
+					const { mesh, center } = centerMesh(raw);
+					sceneObjects = [...sceneObjects, { id: objectId, mesh, position: center }];
 				} catch {
 					patchImport(objectId, (i) => markFailed(i, 'aperçu indisponible'));
 				}
@@ -449,8 +452,8 @@
 		// Aperçu client immédiat (STL/OBJ/3MF) pendant que l'upload part.
 		if (isPreviewable(file.name)) {
 			try {
-				const mesh = await loadModelPreview(file);
-				sceneObjects = [...sceneObjects, { id: objectId, mesh }];
+				const { mesh, center } = centerMesh(await loadModelPreview(file));
+				sceneObjects = [...sceneObjects, { id: objectId, mesh, position: center }];
 			} catch {
 				patchImport(objectId, (i) => markFailed(i, 'aperçu illisible'));
 			}
@@ -471,8 +474,8 @@
 		const item = findByModel(imports, modelId);
 		if (!item) return;
 		try {
-			const mesh = await fetchMesh(modelId);
-			sceneObjects = [...sceneObjects, { id: item.objectId, mesh }];
+			const { mesh, center } = centerMesh(await fetchMesh(modelId));
+			sceneObjects = [...sceneObjects, { id: item.objectId, mesh, position: center }];
 			patchImport(item.objectId, markConverted);
 		} catch {
 			patchImport(item.objectId, (i) => markFailed(i, 'maillage converti indisponible'));

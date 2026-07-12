@@ -14,7 +14,7 @@ export {
 } from './bed';
 export { frameBed, fitDistance, viewPose, viewUp, type CameraPose, type NamedView } from './camera';
 export { applyPick, isSelected } from './selection';
-export { decodeMesh, type SceneMesh, type SceneObject } from './mesh';
+export { decodeMesh, centerMesh, type SceneMesh, type SceneObject } from './mesh';
 export {
 	previewFormat,
 	parseStl,

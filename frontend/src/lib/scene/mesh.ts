@@ -23,6 +23,48 @@ export interface SceneObject {
 	scale?: [number, number, number];
 }
 
+/**
+ * Recentre un maillage sur le centre de sa boîte englobante et renvoie ce centre.
+ * Sert à faire coïncider l'origine locale de l'objet avec son centre visuel :
+ * le groupe Three.js est alors posé à `center`, et le gizmo de transformation
+ * (attaché à l'origine du groupe) apparaît au centre de l'objet, pas au coin du
+ * plateau — cas des maillages importés dont la géométrie est décalée (ex. 3MF
+ * dont la transformation de plateau est cuite dans les sommets). Pur.
+ */
+export function centerMesh(mesh: SceneMesh): { mesh: SceneMesh; center: [number, number, number] } {
+	const p = mesh.positions;
+	if (p.length === 0) return { mesh, center: [0, 0, 0] };
+	let minX = Infinity,
+		minY = Infinity,
+		minZ = Infinity,
+		maxX = -Infinity,
+		maxY = -Infinity,
+		maxZ = -Infinity;
+	for (let i = 0; i < p.length; i += 3) {
+		const x = p[i],
+			y = p[i + 1],
+			z = p[i + 2];
+		if (x < minX) minX = x;
+		if (x > maxX) maxX = x;
+		if (y < minY) minY = y;
+		if (y > maxY) maxY = y;
+		if (z < minZ) minZ = z;
+		if (z > maxZ) maxZ = z;
+	}
+	const center: [number, number, number] = [
+		(minX + maxX) / 2,
+		(minY + maxY) / 2,
+		(minZ + maxZ) / 2
+	];
+	const out = new Float32Array(p.length);
+	for (let i = 0; i < p.length; i += 3) {
+		out[i] = p[i] - center[0];
+		out[i + 1] = p[i + 1] - center[1];
+		out[i + 2] = p[i + 2] - center[2];
+	}
+	return { mesh: { positions: out, normals: mesh.normals, indices: mesh.indices }, center };
+}
+
 const MAGIC = 0x574d_5368; // "WSMh" en big-endian pour comparaison directe
 
 /** Décode un tampon WSMh. Lève si l'en-tête ou la taille est incohérent. */
