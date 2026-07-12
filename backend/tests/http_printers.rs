@@ -403,6 +403,114 @@ async fn other_accounts_printer_is_404_everywhere() {
 }
 
 /// Écrit un fichier G-code réel et l'enregistre pour le compte donné.
+/// Déclare une imprimante possédée **sans** URL Moonraker (hors réseau) et
+/// renvoie son id. Le champ `moonraker_url` est simplement omis (serde → None).
+async fn declare_offline_printer(h: &Harness, session: &str, preset_id: &str) -> String {
+    let resp = send(
+        &h.app,
+        "POST",
+        "/api/printers",
+        session,
+        json!({ "name": "Hors-ligne", "machine_preset_id": preset_id }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let body = json_body(resp).await;
+    assert!(body["moonraker_url"].is_null(), "aucune URL Moonraker");
+    assert_eq!(body["has_api_key"], false);
+    body["id"].as_str().unwrap().to_string()
+}
+
+#[tokio::test]
+async fn printer_can_be_declared_without_moonraker_url_then_connected() {
+    let h = harness().await;
+    let session = register(&h.app, "boss@test.local").await;
+    let owner = user_id(&h.storage, "boss@test.local").await;
+    let preset = seed_machine_preset(&h.storage, owner).await;
+
+    let id = declare_offline_printer(&h, &session, &preset).await;
+
+    // Relecture : toujours pas d'URL.
+    let body = json_body(get(&h.app, &format!("/api/printers/{id}"), &session).await).await;
+    assert!(body["moonraker_url"].is_null());
+
+    // Connexion ajoutée plus tard via PUT → l'URL apparaît.
+    let resp = send(
+        &h.app,
+        "PUT",
+        &format!("/api/printers/{id}"),
+        &session,
+        json!({
+            "name": "Hors-ligne",
+            "moonraker_url": "http://later.local",
+            "machine_preset_id": preset,
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(json_body(resp).await["moonraker_url"], "http://later.local");
+}
+
+#[tokio::test]
+async fn moonraker_actions_on_unconnected_printer_are_conflict() {
+    let h = harness().await;
+    let session = register(&h.app, "boss@test.local").await;
+    let owner = user_id(&h.storage, "boss@test.local").await;
+    let preset = seed_machine_preset(&h.storage, owner).await;
+    let id = declare_offline_printer(&h, &session, &preset).await;
+
+    // Actions POST sans corps utile → 409 `printer_not_connected`, sans réseau.
+    for action in ["test", "pause", "resume", "cancel"] {
+        let resp = send(
+            &h.app,
+            "POST",
+            &format!("/api/printers/{id}/{action}"),
+            &session,
+            json!({}),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::CONFLICT, "{action}");
+        assert_eq!(
+            json_body(resp).await["code"],
+            "printer_not_connected",
+            "{action}"
+        );
+    }
+
+    // Statut instantané (GET) → même 409.
+    let resp = get(&h.app, &format!("/api/printers/{id}/status"), &session).await;
+    assert_eq!(resp.status(), StatusCode::CONFLICT);
+    assert_eq!(json_body(resp).await["code"], "printer_not_connected");
+
+    // Envoi d'un G-code **possédé** : le garde-fou de connexion se déclenche
+    // après la validation de possession du G-code (donc un vrai G-code du compte).
+    let project = h
+        .storage
+        .projects()
+        .create(
+            owner,
+            NewProject {
+                name: "P".into(),
+                scene: json!({}),
+                active_presets: json!({}),
+                thumbnail_path: None,
+            },
+        )
+        .await
+        .unwrap();
+    let gcode_id = seed_gcode(&h, owner, project.id).await;
+    let resp = send(
+        &h.app,
+        "POST",
+        &format!("/api/printers/{id}/upload"),
+        &session,
+        json!({ "gcode_id": gcode_id, "start_now": false }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CONFLICT);
+    assert_eq!(json_body(resp).await["code"], "printer_not_connected");
+}
+
 async fn seed_gcode(h: &Harness, owner: UserId, project: ProjectId) -> String {
     let job = h
         .storage

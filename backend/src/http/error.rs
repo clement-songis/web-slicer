@@ -86,6 +86,14 @@ impl ApiError {
         )
     }
 
+    /// Imprimante déclarée mais **sans connexion réseau** (`moonraker_url` absent,
+    /// Phase 14) : les actions Moonraker (test, statut, envoi, contrôle) sont
+    /// impossibles. 409 avec un code dédié pour que l'UI propose de connecter
+    /// l'imprimante plutôt que d'afficher une erreur générique.
+    pub fn printer_not_connected(message: impl Into<String>) -> Self {
+        Self::new(StatusCode::CONFLICT, "printer_not_connected", message)
+    }
+
     /// Fonctionnalité pas encore câblée (placeholder de tâche à venir).
     pub fn not_implemented(message: impl Into<String>) -> Self {
         Self::new(StatusCode::NOT_IMPLEMENTED, "not_implemented", message)

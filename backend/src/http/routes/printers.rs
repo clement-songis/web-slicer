@@ -64,9 +64,9 @@ async fn load_client(
 ) -> ApiResult<(Printer, MoonrakerClient)> {
     let printer = state.storage.printers().get(user, id).await?; // 404, SC-008
                                                                  // Imprimante déclarée mais sans connexion réseau : aucun appel Moonraker
-                                                                 // possible → 409 (le code dédié `printer_not_connected` arrive en T130).
+                                                                 // possible → 409 `printer_not_connected` (l'UI propose de la connecter).
     let Some(url) = printer.moonraker_url.clone() else {
-        return Err(ApiError::conflict(
+        return Err(ApiError::printer_not_connected(
             "Imprimante non connectée (aucune URL Moonraker)",
         ));
     };
