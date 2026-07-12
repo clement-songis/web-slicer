@@ -19,13 +19,22 @@ export class ApiError extends Error {
 	}
 }
 
+// Les DTO générés par ts-rs typent les `i64` en `bigint` (ex.
+// `SliceRequest.plate_index`, `version`). `JSON.stringify` lève sur un BigInt :
+// on le projette en nombre JSON, ce que le backend attend (serde i64). Les
+// valeurs concernées (index de plateau, compteur de version) restent bien en
+// deçà de `Number.MAX_SAFE_INTEGER`.
+function bigIntReplacer(_key: string, value: unknown): unknown {
+	return typeof value === 'bigint' ? Number(value) : value;
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
 	const hasBody = body !== undefined;
 	const res = await fetch(`${API_BASE}${path}`, {
 		method,
 		credentials: 'include',
 		headers: hasBody ? { 'content-type': 'application/json' } : undefined,
-		body: hasBody ? JSON.stringify(body) : undefined
+		body: hasBody ? JSON.stringify(body, bigIntReplacer) : undefined
 	});
 
 	// 204 (logout, delete) : pas de corps.

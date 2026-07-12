@@ -32,6 +32,13 @@ describe('client API', () => {
 		expect(init.body).toBe(JSON.stringify({ name: 'Benchy' }));
 	});
 
+	it('sérialise les champs BigInt (i64 ts-rs) en nombre JSON', async () => {
+		const { calls } = stubFetch(new Response(JSON.stringify({ ok: true }), { status: 201 }));
+		// `plate_index` est un `bigint` généré : sans coercion, JSON.stringify lèverait.
+		await api.post('/projects/p1/slice', { plate_index: 2n });
+		expect(calls[0][1].body).toBe('{"plate_index":2}');
+	});
+
 	it('traduit une enveloppe d’erreur en ApiError (statut + code + message)', async () => {
 		stubFetch(
 			new Response(JSON.stringify({ code: 'validation', message: 'nom requis' }), {
