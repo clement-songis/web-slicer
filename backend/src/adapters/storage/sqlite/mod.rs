@@ -6,6 +6,7 @@
 mod repos;
 
 use std::str::FromStr;
+use std::sync::Arc;
 
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
@@ -29,7 +30,7 @@ use repos::{
 pub struct SqliteStorage {
     users: SqliteUserRepo,
     projects: SqliteProjectRepo,
-    models: SqliteModelRepo,
+    models: Arc<SqliteModelRepo>,
     presets: SqlitePresetRepo,
     printers: SqlitePrinterRepo,
     jobs: SqliteJobRepo,
@@ -65,7 +66,7 @@ impl SqliteStorage {
         Self {
             users: SqliteUserRepo::new(pool.clone()),
             projects: SqliteProjectRepo::new(pool.clone()),
-            models: SqliteModelRepo::new(pool.clone()),
+            models: Arc::new(SqliteModelRepo::new(pool.clone())),
             presets: SqlitePresetRepo::new(pool.clone()),
             printers: SqlitePrinterRepo::new(pool.clone()),
             jobs: SqliteJobRepo::new(pool.clone()),
@@ -83,7 +84,10 @@ impl Storage for SqliteStorage {
         &self.projects
     }
     fn models(&self) -> &dyn ModelRepo {
-        &self.models
+        self.models.as_ref()
+    }
+    fn models_shared(&self) -> Arc<dyn ModelRepo> {
+        self.models.clone()
     }
     fn presets(&self) -> &dyn PresetRepo {
         &self.presets

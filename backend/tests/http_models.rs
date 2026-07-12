@@ -145,7 +145,8 @@ async fn uploads_binary_stl_and_counts_triangles() {
     let model = json_body(resp).await;
     assert_eq!(model["format"], "stl");
     assert_eq!(model["triangle_count"], 12);
-    assert_eq!(model["conversion_pending"], false);
+    // T124 : tout format passe par la conversion moteur (source unique).
+    assert_eq!(model["conversion_pending"], true);
     assert_eq!(model["project_id"], project);
 }
 

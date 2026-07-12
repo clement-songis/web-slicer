@@ -48,7 +48,20 @@ pub async fn upload(
 
     let (filename, format, bytes) = read_model_upload(&state, multipart).await?;
     let model = write_model_record(&state, user.id, project_id, format, filename, &bytes).await?;
+    // Décodage moteur asynchrone (R7/T123) : la réponse part immédiatement, le
+    // maillage arrive via l'événement WS `model.converted`.
+    spawn_conversion(&state, model.clone());
     Ok((StatusCode::CREATED, Json(model.into())))
+}
+
+/// Déclenche la conversion moteur du modèle en tâche détachée (bornée par le
+/// sémaphore du convertisseur). L'upload ne bloque pas ; un échec est persisté
+/// (`conversion_error`) sans affecter la réponse.
+fn spawn_conversion(state: &AppState, model: Model) {
+    let converter = state.converter.clone();
+    tokio::spawn(async move {
+        converter.convert(model).await;
+    });
 }
 
 /// Lit un fichier modèle du multipart, applique la limite d'upload de l'instance
@@ -399,14 +412,22 @@ mod tests {
     }
 
     #[test]
-    fn conversion_flag_covers_engine_formats() {
-        assert!(ModelFormat::Step.needs_engine_conversion());
-        assert!(ModelFormat::Amf.needs_engine_conversion());
-        assert!(ModelFormat::Svg.needs_engine_conversion());
-        assert!(ModelFormat::Drc.needs_engine_conversion());
-        assert!(!ModelFormat::Stl.needs_engine_conversion());
-        assert!(!ModelFormat::Obj.needs_engine_conversion());
-        assert!(!ModelFormat::ThreeMf.needs_engine_conversion());
+    fn conversion_flag_covers_all_formats() {
+        // Source de vérité unique (T124) : tout format passe par le moteur.
+        for format in [
+            ModelFormat::Stl,
+            ModelFormat::Obj,
+            ModelFormat::ThreeMf,
+            ModelFormat::Step,
+            ModelFormat::Amf,
+            ModelFormat::Svg,
+            ModelFormat::Drc,
+        ] {
+            assert!(
+                format.needs_engine_conversion(),
+                "{format:?} doit passer par la conversion moteur"
+            );
+        }
     }
 
     #[test]

@@ -8,6 +8,8 @@
 
 mod repos;
 
+use std::sync::Arc;
+
 use serde::{de::DeserializeOwned, Serialize};
 use serde_json::Value;
 use sqlx::postgres::PgPoolOptions;
@@ -27,7 +29,7 @@ use repos::{
 pub struct PostgresStorage {
     users: PgUserRepo,
     projects: PgProjectRepo,
-    models: PgModelRepo,
+    models: Arc<PgModelRepo>,
     presets: PgPresetRepo,
     printers: PgPrinterRepo,
     jobs: PgJobRepo,
@@ -55,7 +57,7 @@ impl PostgresStorage {
         Self {
             users: PgUserRepo::new(pool.clone()),
             projects: PgProjectRepo::new(pool.clone()),
-            models: PgModelRepo::new(pool.clone()),
+            models: Arc::new(PgModelRepo::new(pool.clone())),
             presets: PgPresetRepo::new(pool.clone()),
             printers: PgPrinterRepo::new(pool.clone()),
             jobs: PgJobRepo::new(pool.clone()),
@@ -73,7 +75,10 @@ impl Storage for PostgresStorage {
         &self.projects
     }
     fn models(&self) -> &dyn ModelRepo {
-        &self.models
+        self.models.as_ref()
+    }
+    fn models_shared(&self) -> Arc<dyn ModelRepo> {
+        self.models.clone()
     }
     fn presets(&self) -> &dyn PresetRepo {
         &self.presets

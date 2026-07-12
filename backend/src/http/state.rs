@@ -9,6 +9,17 @@ use crate::auth::SecretBox;
 use crate::domain::Storage;
 use crate::http::printer_relay::PrinterRelays;
 use crate::http::ws::EventHub;
+use crate::models::{ModelConverter, WorkerMeshDecoder};
+
+/// Nombre de conversions de modèles simultanées (charge moteur bornée, T124).
+/// Surchargeable par `MODEL_CONVERSION_CONCURRENCY`.
+fn conversion_concurrency() -> usize {
+    std::env::var("MODEL_CONVERSION_CONCURRENCY")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .filter(|&n| n > 0)
+        .unwrap_or(2)
+}
 
 /// État applicatif injecté dans chaque handler (axum `State`).
 #[derive(Clone)]
@@ -24,17 +35,28 @@ pub struct AppState {
     pub secrets: SecretBox,
     /// Relais de suivi d'impression Moonraker → canal WS (T076).
     pub relays: Arc<PrinterRelays>,
+    /// Service de conversion de modèle (décodage moteur → maillage, T123/T124).
+    pub converter: ModelConverter,
 }
 
 impl AppState {
     pub fn new(storage: Arc<dyn Storage>, files: FileStore) -> Self {
+        let events = Arc::new(EventHub::new());
+        let converter = ModelConverter::new(
+            Arc::new(WorkerMeshDecoder::new()),
+            files.clone(),
+            storage.models_shared(),
+            events.clone(),
+            conversion_concurrency(),
+        );
         Self {
             storage,
             files,
             profiles_dir: default_profiles_dir(),
-            events: Arc::new(EventHub::new()),
+            events,
             secrets: SecretBox::from_env(),
             relays: Arc::new(PrinterRelays::new()),
+            converter,
         }
     }
 

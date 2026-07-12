@@ -100,11 +100,20 @@ pub enum ModelFormat {
 }
 
 impl ModelFormat {
-    /// Formats dont le maillage n'est produit que par le moteur FFI (ni aperçu
-    /// serveur natif, ni parseur JS client) : conversion asynchrone (R7), l'objet
+    /// **Tous** les formats sont désormais décodés par le moteur (source de
+    /// vérité unique, retournement R7/T124) : plus de parseur STL serveur ni
+    /// d'aperçu JS client. Chaque import déclenche une conversion asynchrone et
     /// reste `conversion_pending` jusqu'à l'event `model.converted`.
     pub fn needs_engine_conversion(self) -> bool {
-        matches!(self, Self::Step | Self::Amf | Self::Svg | Self::Drc)
+        match self {
+            Self::Stl
+            | Self::Obj
+            | Self::ThreeMf
+            | Self::Step
+            | Self::Amf
+            | Self::Svg
+            | Self::Drc => true,
+        }
     }
 }
 

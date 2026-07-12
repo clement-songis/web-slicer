@@ -5,6 +5,8 @@
 //! Async via `async_trait` pour rester compatible `dyn` (la suite de contrat
 //! générique dispatche sur `&dyn Storage`).
 
+use std::sync::Arc;
+
 use async_trait::async_trait;
 
 use super::entities::{
@@ -25,6 +27,10 @@ pub trait Storage: Send + Sync {
     fn jobs(&self) -> &dyn JobRepo;
     fn gcodes(&self) -> &dyn GcodeRepo;
     fn instance(&self) -> &dyn InstanceRepo;
+    /// Handle partagé du dépôt de modèles — le service de conversion (T123) le
+    /// capture dans une tâche `tokio` détachée (durée de vie indépendante de la
+    /// requête d'upload).
+    fn models_shared(&self) -> Arc<dyn ModelRepo>;
 }
 
 /// Données d'un nouveau compte (le hash argon2 est calculé par `auth`).
