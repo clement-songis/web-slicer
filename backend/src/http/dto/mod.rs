@@ -678,6 +678,41 @@ pub struct SavePrinterRequest {
     pub machine_preset_id: String,
 }
 
+// --- Catalogue de sélection d'imprimante (wizard/onboarding, Phase 14) --------
+
+/// Une variante de buse d'un modèle (un preset machine instanciable).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct PrinterCatalogVariant {
+    /// Preset machine à retenir comme `machine_preset_id` de l'imprimante.
+    pub machine_preset_id: String,
+    /// Diamètre de buse (ex. « 0.4 ») ; vide si le nom ne le précise pas.
+    pub nozzle: String,
+}
+
+/// Un modèle d'imprimante (regroupe ses variantes de buse), tel qu'affiché dans
+/// la grille de sélection façon OrcaSlicer.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct PrinterCatalogModel {
+    pub vendor: String,
+    pub model: String,
+    /// Chemin relatif de la vignette (`<Marque>/<Modèle>_cover.png`) sous
+    /// `static/printers/` ; le client retombe sur un placeholder si absente.
+    pub cover: String,
+    pub variants: Vec<PrinterCatalogVariant>,
+    /// Variante par défaut (0.4 mm si présente, sinon la plus petite buse).
+    pub default_machine_preset_id: String,
+}
+
+/// Modèles d'une marque (section de la grille).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct PrinterCatalogVendor {
+    pub vendor: String,
+    pub models: Vec<PrinterCatalogModel>,
+}
+
 /// Résultat de `POST /api/printers/{id}/test` : relais de `GET /server/info`.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]

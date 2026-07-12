@@ -99,6 +99,7 @@ where
         .route("/api/presets/{id}/resolved", get(presets::resolved))
         .route("/api/presets/{id}/export", get(presets::export))
         .route("/api/presets/import", post(presets::import))
+        .route("/api/printer-catalog", get(printers::catalog))
         .route("/api/printers", get(printers::list).post(printers::create))
         .route(
             "/api/printers/{id}",

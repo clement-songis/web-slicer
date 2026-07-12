@@ -115,6 +115,64 @@ async fn seed_machine_preset(storage: &SqliteStorage, owner: UserId) -> String {
     preset.id.to_string()
 }
 
+/// Crée un preset machine **instanciable** d'une marque/nom donnés.
+async fn seed_machine(storage: &SqliteStorage, owner: UserId, vendor: &str, name: &str) {
+    storage
+        .presets()
+        .create_user_preset(
+            owner,
+            Preset {
+                id: backend::domain::PresetId::new(),
+                kind: PresetKind::Machine,
+                name: name.into(),
+                origin: PresetOrigin::User,
+                user_id: Some(owner),
+                vendor: Some(vendor.into()),
+                inherits: None,
+                instantiation: true,
+                setting_id: None,
+                filament_id: None,
+                compatible_printers: None,
+                values: json!({}),
+            },
+        )
+        .await
+        .unwrap();
+}
+
+#[tokio::test]
+async fn printer_catalog_groups_models_variants_and_defaults() {
+    let h = harness().await;
+    let session = register(&h.app, "boss@test.local").await;
+    let owner = user_id(&h.storage, "boss@test.local").await;
+    seed_machine(&h.storage, owner, "Prusa", "Prusa MK4 0.4 nozzle").await;
+    seed_machine(&h.storage, owner, "Prusa", "Prusa MK4 0.6 nozzle").await;
+    seed_machine(&h.storage, owner, "Prusa", "Prusa MINI 0.4 nozzle").await;
+    seed_machine(&h.storage, owner, "Anet", "Anet A8 0.4 nozzle").await;
+
+    let body = json_body(get(&h.app, "/api/printer-catalog", &session).await).await;
+    let vendors = body.as_array().unwrap();
+    // Marques triées : Anet avant Prusa.
+    assert_eq!(vendors[0]["vendor"], "Anet");
+    assert_eq!(vendors[1]["vendor"], "Prusa");
+
+    let models = vendors[1]["models"].as_array().unwrap();
+    assert_eq!(models.len(), 2, "MINI et MK4");
+    let mk4 = models.iter().find(|m| m["model"] == "Prusa MK4").unwrap();
+    let variants = mk4["variants"].as_array().unwrap();
+    assert_eq!(variants.len(), 2);
+    // Vignette dérivée du nom de modèle.
+    assert_eq!(mk4["cover"], "Prusa/Prusa MK4_cover.png");
+    // Buses triées croissantes ; défaut = 0.4.
+    assert_eq!(variants[0]["nozzle"], "0.4");
+    assert_eq!(variants[1]["nozzle"], "0.6");
+    let v04 = variants.iter().find(|v| v["nozzle"] == "0.4").unwrap();
+    assert_eq!(
+        mk4["default_machine_preset_id"].as_str().unwrap(),
+        v04["machine_preset_id"].as_str().unwrap()
+    );
+}
+
 async fn send(app: &Router, method: &str, uri: &str, session: &str, body: Value) -> Response {
     app.clone()
         .oneshot(

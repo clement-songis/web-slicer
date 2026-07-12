@@ -15,12 +15,15 @@ use axum::Json;
 use std::path::Path as FsPath;
 use std::sync::Arc;
 
+use std::collections::BTreeMap;
+
 use crate::adapters::moonraker::MoonrakerClient;
 use crate::domain::repo::NewPrinter;
-use crate::domain::{GcodeId, Printer, PrinterId};
+use crate::domain::{GcodeId, PresetKind, Printer, PrinterId};
 use crate::http::dto::{
-    PrinterResponse, PrinterStatusResponse, PrinterUploadResponse, SavePrinterRequest,
-    TestPrinterResponse, UploadToPrinterRequest,
+    PrinterCatalogModel, PrinterCatalogVariant, PrinterCatalogVendor, PrinterResponse,
+    PrinterStatusResponse, PrinterUploadResponse, SavePrinterRequest, TestPrinterResponse,
+    UploadToPrinterRequest,
 };
 use crate::http::error::{ApiError, ApiResult};
 use crate::http::extract::CurrentUser;
@@ -87,6 +90,99 @@ pub async fn list(
     Ok(Json(
         printers.into_iter().map(PrinterResponse::from).collect(),
     ))
+}
+
+/// `GET /api/printer-catalog` — catalogue des modèles d'imprimante
+/// sélectionnables (presets machine instanciables, système + ceux de
+/// l'utilisateur), groupés par marque puis modèle avec leurs variantes de buse.
+/// Source unique du wizard d'onboarding et de la page de gestion (Phase 14).
+pub async fn catalog(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+) -> ApiResult<Json<Vec<PrinterCatalogVendor>>> {
+    let presets = state
+        .storage
+        .presets()
+        .list_by_kind(PresetKind::Machine, user.id)
+        .await?;
+
+    // marque → modèle → variantes ; BTreeMap pour un tri stable (marque, modèle).
+    let mut by_vendor: BTreeMap<String, BTreeMap<String, Vec<PrinterCatalogVariant>>> =
+        BTreeMap::new();
+    for p in presets {
+        // Les presets de base abstraits (`fdm_*_common`) ne sont pas
+        // sélectionnables : on ne garde que les presets instanciables.
+        if !p.instantiation {
+            continue;
+        }
+        let vendor = p.vendor.clone().unwrap_or_else(|| "Autre".to_string());
+        let (model, nozzle) = split_machine_name(&p.name);
+        by_vendor
+            .entry(vendor)
+            .or_default()
+            .entry(model)
+            .or_default()
+            .push(PrinterCatalogVariant {
+                machine_preset_id: p.id.to_string(),
+                nozzle,
+            });
+    }
+
+    let vendors = by_vendor
+        .into_iter()
+        .map(|(vendor, models)| {
+            let models = models
+                .into_iter()
+                .map(|(model, mut variants)| {
+                    // Buses triées par diamètre croissant.
+                    variants.sort_by(|a, b| {
+                        parse_nozzle(&a.nozzle)
+                            .partial_cmp(&parse_nozzle(&b.nozzle))
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    });
+                    // Défaut : 0.4 mm si présente, sinon la plus petite buse.
+                    let default_machine_preset_id = variants
+                        .iter()
+                        .find(|v| v.nozzle == "0.4")
+                        .or_else(|| variants.first())
+                        .map(|v| v.machine_preset_id.clone())
+                        .unwrap_or_default();
+                    let cover = format!("{vendor}/{model}_cover.png");
+                    PrinterCatalogModel {
+                        vendor: vendor.clone(),
+                        model,
+                        cover,
+                        variants,
+                        default_machine_preset_id,
+                    }
+                })
+                .collect();
+            PrinterCatalogVendor { vendor, models }
+        })
+        .collect();
+
+    Ok(Json(vendors))
+}
+
+/// Décompose « `<Modèle> <buse> nozzle` » → (modèle, buse). Si le nom ne suit
+/// pas la convention OrcaSlicer, le modèle est le nom entier et la buse est vide.
+fn split_machine_name(name: &str) -> (String, String) {
+    if let Some(stem) = name.strip_suffix(" nozzle") {
+        if let Some((model, nozzle)) = stem.rsplit_once(' ') {
+            let numeric = !nozzle.is_empty()
+                && nozzle.chars().all(|c| c.is_ascii_digit() || c == '.')
+                && nozzle.contains(|c: char| c.is_ascii_digit());
+            if numeric {
+                return (model.to_string(), nozzle.to_string());
+            }
+        }
+    }
+    (name.to_string(), String::new())
+}
+
+/// Diamètre de buse en nombre pour le tri (les non-numériques en dernier).
+fn parse_nozzle(n: &str) -> f64 {
+    n.parse().unwrap_or(f64::MAX)
 }
 
 /// `POST /api/printers` — déclare une imprimante (clé API chiffrée au repos).
