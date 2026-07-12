@@ -197,7 +197,7 @@ async fn seed_alice(h: &Harness, owner: UserId) -> AliceResources {
             owner,
             NewPrinter {
                 name: "Alice printer".into(),
-                moonraker_url: "http://alice.local".into(),
+                moonraker_url: Some("http://alice.local".into()),
                 api_key: None,
                 machine_preset_id: preset.id,
             },

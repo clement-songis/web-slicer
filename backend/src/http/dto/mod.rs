@@ -647,7 +647,8 @@ fn json_lower<T: Serialize>(v: &T) -> String {
 pub struct PrinterResponse {
     pub id: String,
     pub name: String,
-    pub moonraker_url: String,
+    #[ts(optional)]
+    pub moonraker_url: Option<String>,
     pub has_api_key: bool,
     pub machine_preset_id: String,
 }
@@ -670,7 +671,8 @@ impl From<Printer> for PrinterResponse {
 #[ts(export)]
 pub struct SavePrinterRequest {
     pub name: String,
-    pub moonraker_url: String,
+    #[ts(optional)]
+    pub moonraker_url: Option<String>,
     #[ts(optional)]
     pub api_key: Option<String>,
     pub machine_preset_id: String,

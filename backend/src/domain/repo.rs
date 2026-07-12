@@ -160,7 +160,7 @@ pub trait PresetRepo: Send + Sync {
 #[derive(Debug, Clone)]
 pub struct NewPrinter {
     pub name: String,
-    pub moonraker_url: String,
+    pub moonraker_url: Option<String>,
     pub api_key: Option<String>,
     pub machine_preset_id: PresetId,
 }

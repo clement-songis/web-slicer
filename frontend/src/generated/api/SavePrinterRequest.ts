@@ -4,4 +4,4 @@
  * Corps de `POST`/`PUT /api/printers` : déclaration ou mise à jour. `api_key`
  * est chiffrée au repos avant stockage (T075).
  */
-export type SavePrinterRequest = { name: string, moonraker_url: string, api_key?: string, machine_preset_id: string, };
+export type SavePrinterRequest = { name: string, moonraker_url?: string, api_key?: string, machine_preset_id: string, };

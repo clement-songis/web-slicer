@@ -187,7 +187,9 @@ pub struct Printer {
     pub id: PrinterId,
     pub user_id: UserId,
     pub name: String,
-    pub moonraker_url: String,
+    /// URL Moonraker — `None` si l'imprimante n'est pas connectée en réseau
+    /// (impression carte SD / USB ; connexion ajoutée plus tard).
+    pub moonraker_url: Option<String>,
     /// Chiffrée au repos (clé d'instance).
     pub api_key: Option<String>,
     pub machine_preset_id: PresetId,

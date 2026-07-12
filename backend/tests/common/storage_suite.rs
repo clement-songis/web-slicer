@@ -332,13 +332,41 @@ async fn account_deletion_cascades(s: &dyn Storage) {
             a.id,
             NewPrinter {
                 name: "A1".into(),
-                moonraker_url: "http://printer.local".into(),
+                moonraker_url: Some("http://printer.local".into()),
                 api_key: None,
                 machine_preset_id: preset.id,
             },
         )
         .await
         .unwrap();
+    assert_eq!(
+        printer.moonraker_url.as_deref(),
+        Some("http://printer.local")
+    );
+    // Phase 14 : imprimante possédée **sans** connexion réseau — `moonraker_url`
+    // à `None` doit persister et se relire tel quel (colonne rendue nullable).
+    let offline = s
+        .printers()
+        .create(
+            a.id,
+            NewPrinter {
+                name: "Offline".into(),
+                moonraker_url: None,
+                api_key: None,
+                machine_preset_id: preset.id,
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(offline.moonraker_url, None);
+    assert_eq!(
+        s.printers()
+            .get(a.id, offline.id)
+            .await
+            .unwrap()
+            .moonraker_url,
+        None
+    );
     let job = s
         .jobs()
         .enqueue(
