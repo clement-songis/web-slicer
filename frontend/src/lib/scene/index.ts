@@ -15,18 +15,7 @@ export {
 export { frameBed, fitDistance, viewPose, viewUp, type CameraPose, type NamedView } from './camera';
 export { applyPick, isSelected } from './selection';
 export { decodeMesh, centerMesh, type SceneMesh, type SceneObject } from './mesh';
-export {
-	previewFormat,
-	parseStl,
-	parseObj,
-	parse3mf,
-	loadPreview,
-	previewFromBuffer,
-	uploadModel,
-	fetchMesh,
-	fetchModelFile,
-	type PreviewFormat
-} from './loaders';
+export { uploadModel, fetchMesh } from './loaders';
 export {
 	IDENTITY,
 	MIN_SCALE,

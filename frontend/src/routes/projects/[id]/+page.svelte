@@ -40,12 +40,9 @@
 		bedFromValues,
 		serializeScene,
 		saveScene,
-		loadPreview as loadModelPreview,
-		previewFromBuffer,
 		centerMesh,
 		uploadModel,
 		fetchMesh,
-		fetchModelFile,
 		type SaveOutcome,
 		type SceneObject,
 		type SceneMesh,
@@ -106,7 +103,6 @@
 		markFailed,
 		findByModel,
 		isAccepted,
-		isPreviewable,
 		isTransformTool,
 		paintChannelOf,
 		resolveShortcut,
@@ -313,8 +309,9 @@
 	});
 
 	// Ouvre le projet : charge ses modèles, reconstruit l'arbre d'objets et les
-	// maillages affichables. Les formats non décodés client (STEP/AMF/SVG/DRC)
-	// restent en attente de conversion moteur (badge « conversion en cours »).
+	// maillages **décodés par le moteur** (R7/T126). Un maillage déjà prêt est
+	// chargé immédiatement (`fetchMesh`) ; sinon l'objet reste en attente de
+	// conversion (badge « conversion en cours », résolu par `model.converted`).
 	async function loadProjectModels() {
 		let models;
 		try {
@@ -331,16 +328,8 @@
 				...imports,
 				markUploaded(startImport(objectId, model.filename), model.id, model.conversion_pending)
 			];
-			if (isPreviewable(model.filename)) {
-				try {
-					const raw = previewFromBuffer(model.filename, await fetchModelFile(model.id));
-					// Recentre : origine locale = centre visuel → gizmo au centre de l'objet.
-					const { mesh, center } = centerMesh(raw);
-					sceneObjects = [...sceneObjects, { id: objectId, mesh, position: center }];
-				} catch {
-					patchImport(objectId, (i) => markFailed(i, 'aperçu indisponible'));
-				}
-			}
+			// Maillage moteur déjà disponible → charge-le tout de suite.
+			if (model.has_mesh) await resolveConversion(model.id);
 		}
 	}
 
@@ -449,20 +438,13 @@
 		if (plates.activeId) plates.assign(objectId, plates.activeId);
 		imports = [...imports, startImport(objectId, file.name)];
 
-		// Aperçu client immédiat (STL/OBJ/3MF) pendant que l'upload part.
-		if (isPreviewable(file.name)) {
-			try {
-				const { mesh, center } = centerMesh(await loadModelPreview(file));
-				sceneObjects = [...sceneObjects, { id: objectId, mesh, position: center }];
-			} catch {
-				patchImport(objectId, (i) => markFailed(i, 'aperçu illisible'));
-			}
-		}
-
-		// Upload en tâche de fond (T048) ; le STEP passe en conversion moteur.
+		// Upload → décodage moteur (R7/T126) : plus d'aperçu client. Le maillage
+		// arrive via `model.converted` → `resolveConversion` (fetchMesh) ; s'il est
+		// déjà prêt à l'upload, on le charge immédiatement.
 		try {
 			const model = await uploadModel(data.project.id, file);
 			patchImport(objectId, (i) => markUploaded(i, model.id, model.conversion_pending));
+			if (!model.conversion_pending) await resolveConversion(model.id);
 		} catch (e) {
 			patchImport(objectId, (i) =>
 				markFailed(i, e instanceof ApiError ? e.message : 'échec de l’upload')

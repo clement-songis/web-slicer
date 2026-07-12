@@ -62,7 +62,6 @@ export {
 	findByModel,
 	importExt,
 	isAccepted,
-	isPreviewable,
 	markConverted,
 	markFailed,
 	markUploaded,

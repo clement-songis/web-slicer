@@ -1,11 +1,12 @@
 // Orchestrateur d'import de modèles dans l'éditeur (T089) : suit le cycle de vie
-// de chaque fichier importé (aperçu immédiat → upload → conversion moteur) et le
-// relie à un objet de la scène. Pur (aucun accès réseau/DOM) → testable ; le
-// composant `projects/[id]` effectue les IO (loadPreview/uploadModel/fetchMesh)
-// et applique ces transitions.
+// de chaque fichier importé (upload → conversion moteur → prêt) et le relie à un
+// objet de la scène. Pur (aucun accès réseau/DOM) → testable ; le composant
+// `projects/[id]` effectue les IO (uploadModel/fetchMesh) et applique ces
+// transitions. Plus d'aperçu client (R7/T126) : le moteur décode tous les
+// formats, le maillage arrive via `model.converted`.
 
 /** Étape d'un import. */
-export type ImportStatus = 'previewing' | 'converting' | 'ready' | 'failed';
+export type ImportStatus = 'uploading' | 'converting' | 'ready' | 'failed';
 
 /** Un import en cours, relié à un objet de scène par `objectId`. */
 export interface ImportItem {
@@ -33,10 +34,6 @@ const UPLOADABLE = new Set([
 	'svg',
 	'drc'
 ]);
-// Formats dont on sait produire un aperçu client immédiat (parseurs JS, T051) ;
-// les autres passent par la conversion moteur (event `model.converted`).
-const PREVIEWABLE = new Set(['stl', 'obj', '3mf', 'oltp']);
-
 /** Extension en minuscules d'un nom de fichier (sans le point). */
 export function importExt(filename: string): string {
 	return filename.split('.').pop()?.toLowerCase() ?? '';
@@ -47,14 +44,9 @@ export function isAccepted(filename: string): boolean {
 	return UPLOADABLE.has(importExt(filename));
 }
 
-/** Peut-on afficher un aperçu client immédiat (sinon : conversion moteur) ? */
-export function isPreviewable(filename: string): boolean {
-	return PREVIEWABLE.has(importExt(filename));
-}
-
-/** Démarre un import (aperçu en cours de chargement). */
+/** Démarre un import (upload en cours ; le maillage viendra du moteur). */
 export function startImport(objectId: string, filename: string): ImportItem {
-	return { objectId, filename, status: 'previewing', modelId: null, error: null };
+	return { objectId, filename, status: 'uploading', modelId: null, error: null };
 }
 
 /**

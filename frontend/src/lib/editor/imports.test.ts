@@ -1,11 +1,10 @@
 // Tests de l'orchestrateur d'import (T089) : classification des formats et
-// cycle de vie d'un import (aperçu → upload → conversion / échec).
+// cycle de vie d'un import (upload → conversion moteur → prêt / échec).
 import { describe, expect, it } from 'vitest';
 import {
 	findByModel,
 	importExt,
 	isAccepted,
-	isPreviewable,
 	markConverted,
 	markFailed,
 	markUploaded,
@@ -13,7 +12,7 @@ import {
 } from './imports';
 
 describe('imports', () => {
-	it('classe les formats acceptés et prévisualisables', () => {
+	it('classe les formats acceptés à l’upload', () => {
 		expect(importExt('Part.STL')).toBe('stl');
 		expect(isAccepted('part.stl')).toBe(true);
 		expect(isAccepted('part.obj')).toBe(true);
@@ -29,17 +28,11 @@ describe('imports', () => {
 		expect(isAccepted('part.zip')).toBe(false);
 		expect(isAccepted('part.ply')).toBe(false);
 		expect(isAccepted('part.gcode')).toBe(false);
-		// STEP/AMF/SVG/DRC acceptés mais non prévisualisables (conversion moteur) ;
-		// `.oltp` = alias STL, prévisualisable.
-		expect(isPreviewable('part.stl')).toBe(true);
-		expect(isPreviewable('part.oltp')).toBe(true);
-		expect(isPreviewable('part.step')).toBe(false);
-		expect(isPreviewable('part.amf')).toBe(false);
 	});
 
-	it('démarre un import en aperçu', () => {
+	it('démarre un import en upload', () => {
 		const item = startImport('obj-1', 'part.stl');
-		expect(item.status).toBe('previewing');
+		expect(item.status).toBe('uploading');
 		expect(item.objectId).toBe('obj-1');
 		expect(item.modelId).toBeNull();
 	});
