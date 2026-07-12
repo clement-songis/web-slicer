@@ -65,6 +65,7 @@ fn row_to_model(row: &SqliteRow) -> StorageResult<Model> {
         size_bytes: row.get("size_bytes"),
         triangle_count: row.get("triangle_count"),
         repair_report: opt_json(row, "repair_report")?,
+        conversion_error: row.get("conversion_error"),
     })
 }
 
@@ -442,6 +443,51 @@ impl ModelRepo for SqliteModelRepo {
 
     async fn delete(&self, owner: UserId, id: ModelId) -> StorageResult<()> {
         let n = sqlx::query("DELETE FROM models WHERE id = ? AND user_id = ?")
+            .bind(id_str(id))
+            .bind(id_str(owner))
+            .execute(&self.pool)
+            .await
+            .map_err(map_sqlx)?
+            .rows_affected();
+        if n == 0 {
+            return Err(StorageError::NotFound);
+        }
+        Ok(())
+    }
+
+    async fn set_mesh(
+        &self,
+        owner: UserId,
+        id: ModelId,
+        mesh_path: &str,
+        triangle_count: i64,
+    ) -> StorageResult<()> {
+        let n = sqlx::query(
+            "UPDATE models SET mesh_path = ?, triangle_count = ?, conversion_error = NULL \
+             WHERE id = ? AND user_id = ?",
+        )
+        .bind(mesh_path)
+        .bind(triangle_count)
+        .bind(id_str(id))
+        .bind(id_str(owner))
+        .execute(&self.pool)
+        .await
+        .map_err(map_sqlx)?
+        .rows_affected();
+        if n == 0 {
+            return Err(StorageError::NotFound);
+        }
+        Ok(())
+    }
+
+    async fn mark_conversion_failed(
+        &self,
+        owner: UserId,
+        id: ModelId,
+        error: &str,
+    ) -> StorageResult<()> {
+        let n = sqlx::query("UPDATE models SET conversion_error = ? WHERE id = ? AND user_id = ?")
+            .bind(error)
             .bind(id_str(id))
             .bind(id_str(owner))
             .execute(&self.pool)

@@ -11,6 +11,7 @@ pub mod engine;
 pub mod gcode;
 pub mod http;
 pub mod mesh;
+pub mod models;
 pub mod queue;
 pub mod scene;
 pub mod server;

@@ -118,11 +118,14 @@ pub struct Model {
     pub filename: String,
     pub format: ModelFormat,
     pub file_path: String,
-    /// Maillage converti (STEP → mesh, R7).
+    /// Maillage converti (décodé par le moteur, R7).
     pub mesh_path: Option<String>,
     pub size_bytes: i64,
     pub triangle_count: i64,
     pub repair_report: Option<Value>,
+    /// Message d'échec de conversion moteur (None = pas d'échec). Persistée pour
+    /// distinguer « en cours » (409) de « échouée » (422) au service `/mesh`.
+    pub conversion_error: Option<String>,
 }
 
 // --- Presets -----------------------------------------------------------------

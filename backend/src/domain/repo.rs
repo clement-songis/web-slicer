@@ -98,6 +98,23 @@ pub trait ModelRepo: Send + Sync {
     async fn get(&self, owner: UserId, id: ModelId) -> StorageResult<Model>;
     async fn list(&self, owner: UserId, project: Option<ProjectId>) -> StorageResult<Vec<Model>>;
     async fn delete(&self, owner: UserId, id: ModelId) -> StorageResult<()>;
+    /// Enregistre le maillage converti (fin de conversion moteur réussie, T123) :
+    /// `mesh_path` + `triangle_count`, et efface toute erreur de conversion.
+    async fn set_mesh(
+        &self,
+        owner: UserId,
+        id: ModelId,
+        mesh_path: &str,
+        triangle_count: i64,
+    ) -> StorageResult<()>;
+    /// Marque un échec de conversion moteur (T123) : persiste le message pour que
+    /// `/mesh` renvoie 422 et que l'UI affiche un badge d'erreur.
+    async fn mark_conversion_failed(
+        &self,
+        owner: UserId,
+        id: ModelId,
+        error: &str,
+    ) -> StorageResult<()>;
 }
 
 #[async_trait]

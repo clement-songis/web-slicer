@@ -31,6 +31,8 @@ pub enum Space {
     Models,
     Gcodes,
     Thumbnails,
+    /// Maillages d'affichage « WSMh » produits par la conversion moteur (T123).
+    Meshes,
 }
 
 impl Space {
@@ -39,6 +41,7 @@ impl Space {
             Space::Models => "models",
             Space::Gcodes => "gcodes",
             Space::Thumbnails => "thumbnails",
+            Space::Meshes => "meshes",
         }
     }
 }
@@ -73,6 +76,17 @@ impl FileStore {
     ) -> FilesResult<PathBuf> {
         let name = format!("{}.{}", model, safe_ext(ext)?);
         self.write_atomic(user, Space::Models, &name, bytes).await
+    }
+
+    /// Écrit un maillage d'affichage `<uid>/meshes/<model_id>.wsm` (WSMh, T123).
+    pub async fn write_mesh(
+        &self,
+        user: UserId,
+        model: ModelId,
+        bytes: &[u8],
+    ) -> FilesResult<PathBuf> {
+        let name = format!("{model}.wsm");
+        self.write_atomic(user, Space::Meshes, &name, bytes).await
     }
 
     /// Écrit un G-code `<uid>/gcodes/<gcode_id>.gcode`.

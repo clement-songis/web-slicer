@@ -72,6 +72,7 @@ fn row_to_model(row: &PgRow) -> StorageResult<Model> {
         size_bytes: row.get("size_bytes"),
         triangle_count: row.get("triangle_count"),
         repair_report: row.get("repair_report"),
+        conversion_error: row.get("conversion_error"),
     })
 }
 
@@ -457,6 +458,52 @@ impl ModelRepo for PgModelRepo {
             .await
             .map_err(map_pg)?
             .rows_affected();
+        if n == 0 {
+            return Err(StorageError::NotFound);
+        }
+        Ok(())
+    }
+
+    async fn set_mesh(
+        &self,
+        owner: UserId,
+        id: ModelId,
+        mesh_path: &str,
+        triangle_count: i64,
+    ) -> StorageResult<()> {
+        let n = sqlx::query(
+            "UPDATE models SET mesh_path = $1, triangle_count = $2, conversion_error = NULL \
+             WHERE id = $3 AND user_id = $4",
+        )
+        .bind(mesh_path)
+        .bind(triangle_count)
+        .bind(uid(id))
+        .bind(uid(owner))
+        .execute(&self.pool)
+        .await
+        .map_err(map_pg)?
+        .rows_affected();
+        if n == 0 {
+            return Err(StorageError::NotFound);
+        }
+        Ok(())
+    }
+
+    async fn mark_conversion_failed(
+        &self,
+        owner: UserId,
+        id: ModelId,
+        error: &str,
+    ) -> StorageResult<()> {
+        let n =
+            sqlx::query("UPDATE models SET conversion_error = $1 WHERE id = $2 AND user_id = $3")
+                .bind(error)
+                .bind(uid(id))
+                .bind(uid(owner))
+                .execute(&self.pool)
+                .await
+                .map_err(map_pg)?
+                .rows_affected();
         if n == 0 {
             return Err(StorageError::NotFound);
         }
