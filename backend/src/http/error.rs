@@ -75,6 +75,17 @@ impl ApiError {
         Self::new(StatusCode::CONFLICT, "conflict", message)
     }
 
+    /// Échec de conversion moteur d'un modèle (T125) : le maillage ne pourra pas
+    /// être produit (fichier corrompu, format non décodable) — l'UI le distingue
+    /// de « conversion en cours » (409) par ce 422.
+    pub fn conversion_failed(message: impl Into<String>) -> Self {
+        Self::new(
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "conversion_failed",
+            message,
+        )
+    }
+
     /// Fonctionnalité pas encore câblée (placeholder de tâche à venir).
     pub fn not_implemented(message: impl Into<String>) -> Self {
         Self::new(StatusCode::NOT_IMPLEMENTED, "not_implemented", message)

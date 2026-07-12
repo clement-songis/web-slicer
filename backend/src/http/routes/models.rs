@@ -24,7 +24,6 @@ use crate::http::dto::ModelResponse;
 use crate::http::error::{ApiError, ApiResult};
 use crate::http::extract::CurrentUser;
 use crate::http::state::AppState;
-use crate::mesh::parse_stl;
 
 /// Plafond dur de la requête multipart (garde-fou couche transport, 500 Mo).
 pub const MAX_BODY_BYTES: usize = 500 * 1024 * 1024;
@@ -145,12 +144,14 @@ fn parse_model_id(raw: &str) -> ApiResult<ModelId> {
         .map_err(|_| ApiError::not_found("Modèle"))
 }
 
-/// `GET /api/models/{id}/mesh` — maillage affichable au format binaire compact
-/// (positions/normales/indices, little-endian) pour Threlte.
+/// `GET /api/models/{id}/mesh` — maillage d'affichage au format binaire compact
+/// « WSMh » (positions/normales/indices, little-endian) pour Threlte.
 ///
-/// STL (binaire/ASCII) est décodé en pur Rust. Les autres formats dépendent du
-/// moteur : un STEP renvoie 409 tant que la conversion (T065) n'a pas produit de
-/// mesh ; OBJ/3MF s'appuient sur l'aperçu client (T051) — 501 côté serveur.
+/// **Tous** les formats sont décodés par le moteur (source de vérité unique,
+/// R7/T124) : la route sert le maillage **stocké** (`mesh_path`) une fois la
+/// conversion terminée (200). Tant qu'elle est en cours → **409** ; si elle a
+/// échoué (`conversion_error`) → **422**. Plus de parseur STL serveur ni
+/// d'aperçu client.
 pub async fn mesh(
     CurrentUser(user): CurrentUser,
     State(state): State<AppState>,
@@ -159,32 +160,27 @@ pub async fn mesh(
     let id = parse_model_id(&id)?;
     let model = state.storage.models().get(user.id, id).await?; // 404 si autre compte
 
-    if model.format != ModelFormat::Stl {
-        return Err(if model.format.needs_engine_conversion() {
-            ApiError::conflict("conversion en cours (voir l'événement model.converted)")
+    let Some(mesh_path) = model.mesh_path.as_deref() else {
+        return Err(if model.conversion_error.is_some() {
+            ApiError::conversion_failed("échec de la conversion du modèle par le moteur")
         } else {
-            // OBJ/3MF : aperçu produit côté client (T051).
-            ApiError::not_implemented("maillage serveur indisponible (aperçu côté client)")
+            ApiError::conflict("conversion en cours (voir l'événement model.converted)")
         });
-    }
+    };
 
     let bytes = state
         .files
-        .read(FsPath::new(&model.file_path))
+        .read(FsPath::new(mesh_path))
         .await
         .map_err(|e| {
-            tracing::error!(error = %e, "lecture du modèle");
+            tracing::error!(error = %e, "lecture du maillage");
             ApiError::internal()
         })?;
-    let mesh = parse_stl(&bytes).map_err(|e| {
-        tracing::error!(error = %e, "décodage STL");
-        ApiError::validation("STL illisible", serde_json::json!({}))
-    })?;
 
     Ok((
         StatusCode::OK,
         [(header::CONTENT_TYPE, "application/octet-stream")],
-        mesh.encode(),
+        bytes,
     )
         .into_response())
 }
