@@ -12,7 +12,7 @@ pub mod slice;
 pub use config::{ConfigValue, ConfigWarning, DynamicPrintConfig};
 pub use error::{EngineError, EngineErrorCode, EngineResult};
 pub use gcode::{GcodeLayer, GcodePreview, GcodeSegment, LineKind};
-pub use mesh::{RepairedMeshErrors, TriangleMesh};
+pub use mesh::{DisplayMesh, DisplayMeshError, RepairedMeshErrors, TriangleMesh};
 pub use model::{Model, ModelFormat, ModelInstance, ModelObject, ModelVolume, VolumeRole};
 pub use presets::{ArrangeParams, RawPreset};
 pub use slice::{BuildVolume, CancelToken, ProgressSink, SliceRequest, SliceResult, SliceStats};
