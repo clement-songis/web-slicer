@@ -1,6 +1,6 @@
 // Tests du modèle multi-plateaux (T059).
-import { describe, expect, test } from 'bun:test';
-import { PlateSet, DEFAULT_PLATE_TYPE } from './plates';
+import { describe, expect, test } from 'vitest';
+import { PlateSet, DEFAULT_PLATE_TYPE } from './plates.svelte';
 
 describe('PlateSet', () => {
 	test('démarre avec un plateau actif', () => {

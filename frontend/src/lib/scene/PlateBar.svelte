@@ -4,7 +4,7 @@
 	// Présentationnel — les mutations passent par des callbacks (le parent
 	// applique sur le PlateSet et persiste dans le document scène).
 	import { PLATE_TYPES } from '../settings/special/dialogs';
-	import type { Plate } from './plates';
+	import type { Plate } from './plates.svelte';
 
 	interface Props {
 		plates: readonly Plate[];

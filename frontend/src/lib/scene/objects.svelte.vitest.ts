@@ -1,6 +1,6 @@
 // Tests du modèle d'arbre d'objets (T053).
-import { describe, expect, test } from 'bun:test';
-import { ObjectTree } from './objects';
+import { describe, expect, test } from 'vitest';
+import { ObjectTree } from './objects.svelte';
 
 describe('ObjectTree', () => {
 	test('ajoute des objets à la racine', () => {

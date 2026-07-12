@@ -2,7 +2,9 @@
 // objets, son type de plaque (réglages `PlateTemps`) et son nom. Ajout /
 // suppression / répartition automatique des objets, et index de plateau prêt
 // pour le tranchage par plateau (P5 : `POST …/slice` body `plate_index`).
-// Modèle pur → testable ; persisté dans le document scène.
+// Réactif : `plates` et `activeId` sont en `$state` pour que la couche Svelte
+// se re-rende à chaque mutation. Runes → testé sous vitest, pas sous bun.
+// Persisté dans le document scène.
 import { PLATE_TYPES } from '../settings/special/dialogs';
 
 /** Type de plaque par défaut (première entrée de la table des températures). */
@@ -24,9 +26,9 @@ export interface PlatesDocument {
 
 /** Jeu de plateaux d'un projet. */
 export class PlateSet {
-	private plates: Plate[] = [];
+	private plates = $state<Plate[]>([]);
 	private counter = 0;
-	activeId: string | null = null;
+	activeId = $state<string | null>(null);
 
 	constructor() {
 		this.activeId = this.addPlate().id;

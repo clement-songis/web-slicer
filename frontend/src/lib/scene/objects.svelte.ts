@@ -1,7 +1,9 @@
-// Arbre d'objets de la scène (T053) : modèle pur pour la liste d'objets Orca —
+// Arbre d'objets de la scène (T053) : modèle pour la liste d'objets Orca —
 // objets/pièces/groupes, sélection, duplication, verrouillage/masquage,
 // extrudeur par objet/pièce et surcharges de réglages par objet (FR-015).
-// Classe pure (pas de runes) → testable avec bun ; la couche Svelte l'observe.
+// Réactif : le tableau `nodes` est en `$state` (proxy profond) pour que la
+// couche Svelte se re-rende à chaque mutation. Runes → testé sous vitest
+// (`.svelte.vitest.ts`), pas sous bun.
 
 /** Type de nœud : objet racine, pièce d'un objet, ou groupe d'objets. */
 export type NodeKind = 'object' | 'part' | 'group';
@@ -29,7 +31,7 @@ function cloneNode(n: SceneNode): SceneNode {
 
 /** Arbre d'objets avec opérations de la liste d'objets. Ordre d'insertion préservé. */
 export class ObjectTree {
-	private nodes: SceneNode[] = [];
+	private nodes = $state<SceneNode[]>([]);
 	private counter = 0;
 
 	/** Génère un identifiant déterministe (utile pour les tests). */
@@ -92,6 +94,8 @@ export class ObjectTree {
 		const src = this.get(id);
 		if (!src) return undefined;
 		const subtree = [src, ...this.descendants(id)];
+		// Table locale ancien→nouvel id (non réactive) : usage transitoire.
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const idMap = new Map<string, string>();
 		for (const n of subtree) idMap.set(n.id, this.nextId());
 		let root: SceneNode | undefined;
@@ -133,6 +137,8 @@ export class ObjectTree {
 	/** Supprime un nœud et tout son sous-arbre. */
 	remove(id: string): boolean {
 		if (!this.get(id)) return false;
+		// Ensemble local des ids à supprimer (non réactif) : usage transitoire.
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity
 		const doomed = new Set([id, ...this.descendants(id).map((n) => n.id)]);
 		this.nodes = this.nodes.filter((n) => !doomed.has(n.id));
 		return true;

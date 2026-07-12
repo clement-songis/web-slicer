@@ -12,7 +12,7 @@ import {
 } from './document';
 import { TrianglePainting, ENFORCER } from './gizmos/painting/index';
 import { BrimEars } from './gizmos/brim-ears';
-import { PlateSet } from './plates';
+import { DEFAULT_PLATE_TYPE, type PlatesDocument } from './plates.svelte';
 import { classifySaveError } from './save';
 import { ApiError } from '../api/client';
 
@@ -53,7 +53,12 @@ describe('document scène', () => {
 	});
 
 	test('serializeScene inclut version de schéma, plateaux et objets', () => {
-		const plates = new PlateSet().serialize();
+		// Document plateaux littéral (le modèle réactif `PlateSet` est testé sous
+		// vitest ; ici on reste sous bun avec une donnée pure équivalente).
+		const plates: PlatesDocument = {
+			plates: [{ id: 'plate-1', name: 'Plateau 1', plateType: DEFAULT_PLATE_TYPE, objectIds: [] }],
+			activeId: 'plate-1'
+		};
 		const scene = serializeScene(plates, [sampleObject()]);
 		expect(scene.schemaVersion).toBe(SCENE_SCHEMA_VERSION);
 		expect(scene.objects.length).toBe(1);

@@ -12,7 +12,7 @@ import {
 import { TrianglePainting, type PaintDocument } from './gizmos/painting/painting';
 import { BrimEars, type BrimEarsDocument } from './gizmos/brim-ears';
 import { IDENTITY, type Transform } from './transform';
-import type { PlatesDocument } from './plates';
+import type { PlatesDocument } from './plates.svelte';
 
 /** Version du schéma du document scène (aligné sur le backend). */
 export const SCENE_SCHEMA_VERSION = 1;

@@ -685,14 +685,13 @@
 		}
 	}
 
-	// Ajoute une instance de l'objet sélectionné (clone d'arbre + copie de scène décalée).
-	function duplicateSelected() {
-		if (!selId) return;
-		tree.duplicate(selId);
-		const src = sceneObjects.find((o) => o.id === selId);
+	// Duplique un objet donné (clone d'arbre + copie de scène décalée).
+	function duplicateObject(id: string) {
+		tree.duplicate(id);
+		const src = sceneObjects.find((o) => o.id === id);
 		if (src) {
 			const pos = src.position ?? [0, 0, 0];
-			const copyId = `${selId}-copy-${sceneObjects.length}`;
+			const copyId = `${id}-copy-${sceneObjects.length}`;
 			sceneObjects = [
 				...sceneObjects,
 				{ ...src, id: copyId, position: [pos[0] + 10, pos[1] + 10, pos[2]] }
@@ -700,13 +699,21 @@
 		}
 	}
 
-	// Retire l'objet sélectionné (arbre + scène + sélection vidée).
-	function removeSelected() {
-		if (!selId) return;
-		const id = selId;
+	// Retire un objet donné (arbre + scène ; vide la sélection s'il était sélectionné).
+	function removeObject(id: string) {
 		tree.remove(id);
 		sceneObjects = sceneObjects.filter((o) => o.id !== id);
-		ws = pick(ws, null, false);
+		if (selId === id) ws = pick(ws, null, false);
+	}
+
+	// Ajoute une instance de l'objet sélectionné (clone d'arbre + copie de scène décalée).
+	function duplicateSelected() {
+		if (selId) duplicateObject(selId);
+	}
+
+	// Retire l'objet sélectionné (arbre + scène + sélection vidée).
+	function removeSelected() {
+		if (selId) removeObject(selId);
 	}
 
 	// — Actions du menu Édition (T108) : opèrent sur `sceneObjects`, l'arbre et le
@@ -1271,8 +1278,8 @@
 						ontogglelock={(id) => tree.setLocked(id, !tree.isLocked(id))}
 						ontogglehide={(id) => tree.setHidden(id, !tree.isHidden(id))}
 						onextruder={(id, extruder) => tree.setExtruder(id, extruder)}
-						onduplicate={(id) => tree.duplicate(id)}
-						ondelete={(id) => tree.remove(id)}
+						onduplicate={duplicateObject}
+						ondelete={removeObject}
 						ongroup={() => tree.group([...ws.selection])}
 						oncontext={openContext}
 					/>

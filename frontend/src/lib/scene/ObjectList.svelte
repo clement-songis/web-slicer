@@ -3,7 +3,7 @@
 	// sélection, verrouillage/masquage, extrudeur par nœud, duplication et
 	// suppression. Purement présentationnel : les mutations passent par des
 	// callbacks (le parent applique sur l'ObjectTree et historise).
-	import type { ObjectTree, SceneNode } from './objects';
+	import type { ObjectTree, SceneNode } from './objects.svelte';
 
 	interface Props {
 		tree: ObjectTree;

@@ -63,9 +63,9 @@ export {
 	type EmbossParams,
 	type BrimEarPoint
 } from './gizmos';
-export { ObjectTree, type SceneNode, type NodeKind } from './objects';
+export { ObjectTree, type SceneNode, type NodeKind } from './objects.svelte';
 export { default as ObjectList } from './ObjectList.svelte';
-export { PlateSet, DEFAULT_PLATE_TYPE, type Plate, type PlatesDocument } from './plates';
+export { PlateSet, DEFAULT_PLATE_TYPE, type Plate, type PlatesDocument } from './plates.svelte';
 export { default as PlateBar } from './PlateBar.svelte';
 export { default as PlateToolbar } from './PlateToolbar.svelte';
 export { default as ContextMenu } from './ContextMenu.svelte';
