@@ -1,5 +1,5 @@
 // Tests du chargement paresseux par fenêtre + budget mémoire (T084, SC-007).
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import type { PreviewSegments } from './decode';
 import { LazyPreviewLoader, segmentsBytes } from './loader';
 

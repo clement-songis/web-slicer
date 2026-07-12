@@ -1,7 +1,7 @@
 // Tests de couverture des menus/barres/raccourcis (T061) : `menus.ts` doit
 // couvrir exactement les entrées de l'Annexe B §B.3–B.6 et de la barre d'outils
 // §B.4. On reparse l'annexe (source de parité) pour détecter tout écart.
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
@@ -15,7 +15,7 @@ import {
 
 const ANNEXE = readFileSync(
 	resolve(
-		import.meta.dir,
+		import.meta.dirname,
 		'../../../../specs/001-orcaslicer-web-parity/annexes/annexe-b-interface.md'
 	),
 	'utf8'

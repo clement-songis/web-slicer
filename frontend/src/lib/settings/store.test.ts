@@ -1,6 +1,6 @@
 // Store de réglages (T043) : superposition preset/surcharges, marqueurs,
 // reset par option (US2-AS6), validation à l'écriture, verrou.
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 
 import { SettingsStore } from './store';
 

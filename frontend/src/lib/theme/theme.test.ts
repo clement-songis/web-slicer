@@ -1,7 +1,7 @@
 // Tests du système de thème (T093) — logique pure : résolution de préférence et
 // normalisation de la valeur stockée. La bascule DOM (`setTheme`/`initTheme`) est
 // couverte par les tests d'intégration navigateur.
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import { resolveTheme, parseThemePref, THEME_PREFS } from './theme';
 
 describe('resolveTheme', () => {

@@ -1,7 +1,7 @@
 // Tests du document scène et de la sauvegarde (T060, analyse G5) : aller-retour
 // complet (transforms, peintures, profil, oreilles, plateaux) et classification
 // du conflit de verrou optimiste.
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import {
 	serializeScene,
 	parseScene,

@@ -1,6 +1,6 @@
 // Tests des colorations (T068) : fidélité de la palette de rôles, interpolation
 // du dégradé de valeurs et bornes.
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { RANGE_PALETTE, SEGMENT_ROLE_COLORS, rangeColor, sampleRange } from './colorations';
 
 describe('sampleRange', () => {

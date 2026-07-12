@@ -1,6 +1,6 @@
 // Tests des helpers d'assemblage de l'aperçu (T088) : fusion de la fenêtre de
 // tranches en une géométrie, bornes de coloration, corps de requête de tranchage.
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import type { PreviewMeta } from '../api/types';
 import type { PreviewSegments } from '../preview/decode';
 import { buildWindowGeometry, rangesFromMeta, sliceRequestFor } from './preview';

@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'bun:test';
+import { describe, it, expect } from 'vitest';
 import { sortByUpdated, formatDate, thumbnailUrl } from './library';
 import type { ProjectResponse } from '$lib/api/types';
 

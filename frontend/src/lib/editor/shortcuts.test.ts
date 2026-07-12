@@ -1,5 +1,5 @@
 // Tests de l'orchestrateur de raccourcis clavier de l'éditeur (T114).
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { chordString, resolveShortcut, isToolAction } from './shortcuts';
 
 describe('shortcuts', () => {

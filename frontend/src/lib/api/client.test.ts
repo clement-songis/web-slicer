@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'bun:test';
+import { afterEach, describe, expect, it } from 'vitest';
 import { api, ApiError } from './client';
 
 const realFetch = globalThis.fetch;

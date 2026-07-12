@@ -1,5 +1,5 @@
 // Logique de scène (T050) : géométrie du plateau, cadrage caméra, sélection.
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 
 import { bedFromValues, gridDivisions, isRectangular, parseAreaPoints } from './bed';
 import { fitDistance, frameBed, viewPose, viewUp } from './camera';

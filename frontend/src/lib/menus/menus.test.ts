@@ -1,5 +1,5 @@
 // Tests des menus principaux et de l'aide raccourcis (T079, Annexe B §B.2/B.6).
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { MAIN_MENUS, allMenuLabels, menuLabels } from './menus';
 import { SHORTCUT_GROUPS, totalShortcuts } from './shortcuts';
 

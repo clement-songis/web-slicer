@@ -1,7 +1,7 @@
 // Tests des loaders client (T051) : STL binaire/ASCII, OBJ, 3MF, sur de petits
 // fichiers construits à la volée. On vérifie le nombre de triangles, les
 // positions et la normalisation des normales calculées par face.
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { zipSync, strToU8 } from 'fflate';
 import { previewFormat, parseStl, parseObj, parse3mf } from './loaders';
 

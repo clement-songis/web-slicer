@@ -1,5 +1,5 @@
 // Tests de l'aide à l'arrangement de plateau (T106).
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { footprint, arrangeItems, applyPlacements } from './arrange';
 import type { SceneMesh, SceneObject } from './mesh';
 

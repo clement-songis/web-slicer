@@ -1,6 +1,6 @@
 // Tests des outils de scène purs (T055) : coupe (split par plan, connecteurs)
 // et simplification (regroupement de sommets).
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { meshFromTriangleSoup } from '../loaders';
 import { signedDistance, splitByPlane, connectorGrid, type CutPlane } from './cut';
 import { simplifyGrid, triangleCount } from './simplify';

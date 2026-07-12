@@ -1,7 +1,7 @@
 // Tests du décodage des buffers `WSPv` (T068) : round-trip avec un encodeur
 // miroir du backend (`PreviewModel::encode_range`), et rejet des buffers mal
 // formés.
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { decodePreview, PreviewFormatError, HEADER_BYTES, RECORD_BYTES } from './decode';
 
 interface Seg {

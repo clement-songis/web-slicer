@@ -1,7 +1,7 @@
 // Tests du modèle de vue des statistiques (T070) : formatage des durées,
 // répartition par type de ligne (temps/longueur), consommation de filament,
 // et priorité des totaux figés.
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { decodePreview } from './decode';
 import { encodePreview } from './decode.test';
 import { buildPreviewStats, formatDuration, perTypeStats, type GcodeStats } from './stats';

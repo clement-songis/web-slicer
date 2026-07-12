@@ -1,6 +1,6 @@
 // Tests des constructeurs de classes UI (T094). On vérifie que chaque variante
 // sélectionne bien les jetons attendus (et jamais une échelle de gris brute).
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import {
 	cx,
 	buttonClasses,

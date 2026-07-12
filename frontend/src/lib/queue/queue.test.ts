@@ -1,6 +1,6 @@
 // Tests de la logique pure de file (T071) : réducteur d'événements, partition
 // active/historique, métadonnées d'état, progression, décodage d'événements.
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import type { JobResponse, ServerEvent } from '$lib/api/types';
 import { applyEvent, isActive, partitionJobs, progressPercent, statusMeta } from './queue';
 import { decodeEvent } from './events';

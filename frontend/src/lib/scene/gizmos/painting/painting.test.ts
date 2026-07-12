@@ -1,6 +1,6 @@
 // Tests de sérialisation des peintures (T056, analyse G1) : codec de facette
 // fidèle à Orca, round-trip du document, et sélection au pinceau.
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { meshFromTriangleSoup } from '../../loaders';
 import { encodeFacet, decodeFacet, ENFORCER, BLOCKER } from './facets';
 import { TrianglePainting, trianglesInRadius } from './painting';

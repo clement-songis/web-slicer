@@ -1,7 +1,7 @@
 // Couverture des groupes de réglages par type de preset (T100/T101/T102) : le
 // layout généré expose bien les 21 pages OrcaSlicer réparties process (8) /
 // filament (7) / machine (6), montées par la colonne de configuration.
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { UI_LAYOUT, type PresetKind } from '../../generated/ui-layout';
 
 function pagesOf(kind: PresetKind) {

@@ -1,6 +1,6 @@
 // Tests des maths de transformation (T052) : bornes d'échelle, normalisation
 // d'angle, et pose à plat (la normale choisie doit finir vers le bas -Z).
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import {
 	clampScale,
 	normalizeAngle,

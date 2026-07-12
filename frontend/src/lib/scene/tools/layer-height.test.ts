@@ -1,5 +1,5 @@
 // Tests du profil de hauteur de couche variable et de la vue éclatée (T058, G2).
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import {
 	uniformProfile,
 	heightAt,

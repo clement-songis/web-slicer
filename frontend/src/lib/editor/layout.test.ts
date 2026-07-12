@@ -1,5 +1,5 @@
 // Tests de l'orchestrateur de disposition de l'éditeur (T097).
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import {
 	EDITOR_DEFAULT_THEME,
 	EDITOR_TABS,

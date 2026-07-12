@@ -1,6 +1,6 @@
 // Filtre mode + recherche (T042). Cœur pur : rangs de mode, matching, et
 // réduction de l'arbre pages/sections.
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 
 import { PARAMS } from '../../generated/params';
 import { UI_LAYOUT, type UiPage } from '../../generated/ui-layout';

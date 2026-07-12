@@ -1,6 +1,6 @@
 // Tests de la logique pure du suivi d'imprimantes (T077) : réducteur d'état,
 // métadonnées, disponibilité des contrôles, formatage.
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import type { PrinterStatusResponse, ServerEvent } from '$lib/api/types';
 import {
 	applyPrinterStatus,

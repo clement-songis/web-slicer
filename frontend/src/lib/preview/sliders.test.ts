@@ -1,7 +1,7 @@
 // Tests des curseurs de prévisualisation (T069) : plages d'index du curseur
 // vertical (couches) et horizontal (moves intra-couche), mode une-couche,
 // pas rapide, et résolution des raccourcis du groupe Preview.
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import {
 	makeLayerRange,
 	moveThumb,

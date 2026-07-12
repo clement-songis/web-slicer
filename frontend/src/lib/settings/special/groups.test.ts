@@ -1,5 +1,5 @@
 // Pages spéciales (T044) : parité Annexe B ↔ registre et logique de surcharge.
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 
 import { PARAMS } from '../../../generated/params';
 import {

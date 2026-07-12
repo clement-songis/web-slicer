@@ -1,6 +1,6 @@
 // Tests de l'orchestrateur du workspace éditeur (T087) : bascule de panneau,
 // modes gizmo/réglages, pont de sélection scène↔liste, éligibilité au tranchage.
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import {
 	canSlice,
 	initialWorkspace,

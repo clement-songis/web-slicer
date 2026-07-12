@@ -1,6 +1,6 @@
 // Tests de l'orchestrateur d'import (T089) : classification des formats et
 // cycle de vie d'un import (aperçu → upload → conversion / échec).
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import {
 	findByModel,
 	importExt,

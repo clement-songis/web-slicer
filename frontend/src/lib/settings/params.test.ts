@@ -1,13 +1,13 @@
 // Fraîcheur du registre généré `params.ts` (T040) : reconstruit l'ensemble
 // attendu depuis audit/parameters.json et le compare aux constantes générées.
 // Échoue si l'audit a changé sans régénération (`scripts/codegen.sh`).
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { PARAM_COUNT, PARAMS, type ParamType } from '../../generated/params';
 
-const AUDIT = resolve(import.meta.dir, '../../../../audit/parameters.json');
+const AUDIT = resolve(import.meta.dirname, '../../../../audit/parameters.json');
 const audit = JSON.parse(readFileSync(AUDIT, 'utf-8')) as {
 	count: number;
 	parameters: Record<string, { type: string; mode: string }>;

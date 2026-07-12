@@ -1,6 +1,6 @@
 // Sérialisation des dialogs spéciaux (T045) : round-trips forme de plateau,
 // matrice de purge, tableaux de températures.
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 
 import { PARAMS } from '../../../generated/params';
 import {

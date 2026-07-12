@@ -1,5 +1,5 @@
 // Tests de l'orchestrateur de presets actifs (T098).
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import {
 	emptyActivePresets,
 	parseActivePresets,

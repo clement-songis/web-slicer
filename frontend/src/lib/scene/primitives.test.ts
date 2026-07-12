@@ -1,5 +1,5 @@
 // Tests des primitives paramétriques (T113).
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { cube, cylinder, cone, sphere, disc, torus, primitiveMesh } from './primitives';
 
 // Boîte englobante d'une soupe de triangles (9 floats/triangle).

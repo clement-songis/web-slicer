@@ -1,5 +1,5 @@
 // Validation bornes/enums (T043) contre des paramètres réels du registre.
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 
 import { PARAMS } from '../../generated/params';
 import { validateValue } from './validate';

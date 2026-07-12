@@ -1,6 +1,6 @@
 // Tests du réducteur de session de tranchage (T088) : transitions, progression,
 // bascule vers l'aperçu, isolation et gel des erreurs.
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import type { ServerEvent } from '../api/types';
 import { applyJobEvent, prepareSession, resetSession, sliceFailed, startSlicing } from './session';
 

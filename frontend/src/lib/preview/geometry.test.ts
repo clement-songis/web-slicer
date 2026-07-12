@@ -1,6 +1,6 @@
 // Tests de la construction de géométrie (T068) : positions/couleurs par sommet,
 // filtrage par visibilité de type, colorations et légendes.
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { decodePreview } from './decode';
 import { encodePreview } from './decode.test';
 import {

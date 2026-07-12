@@ -2,7 +2,7 @@
 // valeurs effectives d'un preset résolu. Ne conserve que les vraies différences
 // (une surcharge égale au preset est effacée), expose les marqueurs modifié /
 // verrou, le reset par option (US2-AS6) et valide chaque écriture (bornes/enums
-// via params.ts). Classe pure (pas de runes) → testable avec `bun:test`.
+// via params.ts). Classe pure (pas de runes) → testable avec vitest.
 
 import { PARAMS } from '../../generated/params';
 import { validateValue, type Validation } from './validate';

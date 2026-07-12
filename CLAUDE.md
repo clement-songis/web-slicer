@@ -48,14 +48,14 @@ Slicer 3D web multi-utilisateurs, parité totale avec OrcaSlicer
 
 ```sh
 cargo fmt --check && cargo clippy --workspace -- -D warnings && cargo test --workspace
-cd frontend && bun run lint && bun run check && bun test && bun run test:unit
+cd frontend && bun run lint && bun run check && bun run test
 python3 audit/run_all.py   # contrôle de parité
 ```
 
-`bun test` couvre les modules purs ; `bun run test:unit` (vitest) couvre les
-modules réactifs `*.svelte.ts` à runes — que bun ne sait pas exécuter — via
-leurs tests `*.svelte.vitest.ts` (bun ignore ces fichiers, vitest ne prend
-qu'eux).
+Suite frontend sous **vitest** (`bun run test` = `vitest run`) : runner unique,
+tests en `*.test.ts`. Vitest compile aussi les modules réactifs à runes
+(`*.svelte.ts`, ex. `objects`/`plates`) que `bun test` ne savait pas exécuter.
+Ne pas lancer `bun test` (runner natif) : les tests importent `vitest`.
 
 Commits atomiques par tâche ; chaque tâche backend/engine livre ses tests
 (TDD). Les écarts de parité passent par `specs/001-orcaslicer-web-parity/exclusions.md`,

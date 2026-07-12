@@ -1,7 +1,7 @@
 // Mapping type de registre → widget (T041). Vérifie chaque cas de base, les
 // cas particuliers (couleur, G-code multiligne, enums ouverts), et l'exhaustivité
 // sur les 858 paramètres réels (aucun ne tombe dans un trou de résolution).
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 
 import { PARAMS, type ParamDef } from '../../../generated/params';
 import { resolveWidgetKind, isGcodeParam, type WidgetKind } from './resolve';

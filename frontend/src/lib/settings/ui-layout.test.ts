@@ -1,14 +1,14 @@
 // Fraîcheur du layout généré `ui-layout.ts` (T040) : reconstruit l'arbre
 // pages/sections/options attendu depuis audit/ui_inventory.json et le compare
 // au layout généré. Vérifie aussi que chaque clé d'option existe dans PARAMS.
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 import { PARAMS } from '../../generated/params';
 import { UI_LAYOUT, UI_LAYOUT_COUNTS, type UiOption } from '../../generated/ui-layout';
 
-const AUDIT = resolve(import.meta.dir, '../../../../audit/ui_inventory.json');
+const AUDIT = resolve(import.meta.dirname, '../../../../audit/ui_inventory.json');
 const audit = JSON.parse(readFileSync(AUDIT, 'utf-8')) as {
 	summary: {
 		settings_pages: number;

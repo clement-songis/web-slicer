@@ -1,6 +1,6 @@
 // Logique des sélecteurs de presets (T046) : arbre imprimante, filtre de
 // compatibilité, badge d'héritage.
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it } from 'vitest';
 
 import type { PresetSummary } from '../api/types';
 import {

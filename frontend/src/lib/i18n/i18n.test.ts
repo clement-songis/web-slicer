@@ -1,7 +1,7 @@
 // Tests de l'i18n additif (T080, FR-072) adossé à Paraglide : l'anglais est
 // l'identité (clé = libellé de parité), le français est un supplément, et la
 // couverture française des menus/raccourcis est complète.
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { get } from 'svelte/store';
 import { isTranslatable, locale, setLocale, t, translate, tr } from './index';
 import { allMenuLabels, MAIN_MENUS } from '$lib/menus/menus';

@@ -1,5 +1,5 @@
 // Tests de l'orchestrateur d'outil du rail (T103).
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import {
 	gizmoModeOf,
 	initialTools,

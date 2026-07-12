@@ -1,14 +1,21 @@
 import { defineConfig } from 'vitest/config';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { fileURLToPath } from 'node:url';
 
-// Runner des modules réactifs (`*.svelte.ts` à runes) : bun test ne sait pas
-// exécuter les runes (`$state`), on délègue donc à vitest via le plugin svelte
-// (compilation runes). Le reste de la suite reste sous `bun test` — vitest
-// n'inclut que les fichiers `*.vitest.ts`, que bun ignore de son côté.
+// Runner unique de la suite frontend : vitest. Le plugin svelte compile les
+// modules réactifs à runes (`*.svelte.ts`, ex. `objects`/`plates`) que les
+// tests importent ; l'alias `$lib` reproduit celui de SvelteKit (les tests et
+// modules l'utilisent). Environnement `node` : la suite est de la logique pure
+// (aucun test ne touche le DOM ; les parties DOM sont couvertes en navigateur).
 export default defineConfig({
 	plugins: [svelte({ compilerOptions: { runes: true } })],
+	resolve: {
+		alias: {
+			$lib: fileURLToPath(new URL('./src/lib', import.meta.url))
+		}
+	},
 	test: {
-		include: ['src/**/*.vitest.ts'],
+		include: ['src/**/*.test.ts'],
 		environment: 'node'
 	}
 });

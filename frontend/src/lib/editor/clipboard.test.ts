@@ -1,5 +1,5 @@
 // Tests du presse-papier de scène (T108).
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { copyObjects, pastedPosition, PASTE_OFFSET } from './clipboard';
 import type { SceneMesh, SceneObject } from '../scene/mesh';
 

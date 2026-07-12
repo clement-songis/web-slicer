@@ -1,5 +1,5 @@
 // Tests des gizmos mesure / oreilles de bord / relief (T057, analyse G1).
-import { describe, expect, test } from 'bun:test';
+import { describe, expect, test } from 'vitest';
 import { distance, angleDeg, angleBetweenNormals, measurePoints } from './measure';
 import { BrimEars } from './brim-ears';
 import { defaultEmbossParams, validateEmboss, type EmbossParams } from './emboss';
