@@ -288,6 +288,46 @@ logique métier dans les `.svelte` (constitution).
 
 ---
 
+## Phase 13: Décodage des modèles côté serveur (pipeline engine-worker) — retrait de l'aperçu client
+
+**Décision.** L'aperçu d'import est aujourd'hui produit **côté client** par des
+parseurs regex (`frontend/src/lib/scene/loaders.ts` : `parseStl`/`parseObj`/
+`parse3mf`, décision R7/T051) — une réimplémentation partielle qui rate des cas
+limites (3MF Bambu éclatés en `3D/Objects/*.model`, notation scientifique) et
+diverge de la vérité du slicing. On **inverse R7** : le **moteur** (libslic3r,
+seule source de vérité) décode tous les formats, via le **process `engine-worker`
+isolé** (constitution : isolation moteur ; un fichier corrompu ne doit pas abattre
+le backend), livraison **asynchrone** (événement WS `model.converted` — infra
+front `resolveConversion` déjà présente).
+
+**Gap constaté (pré-requis réel).** La couche **backend ↔ engine-worker n'est pas
+câblée en production** : aucun `JobRunner` concret (trait + stubs de test
+seulement), `server.rs` ne démarre pas la file et ne spawn aucun worker. Cette
+phase construit donc l'**infra de spawn worker** (partagée, qui débloque aussi le
+runner de tranchage) puis le **pipeline de conversion de modèle**, et **supprime**
+les parseurs client. Le moteur expose déjà `load_model(path, format) → Model` (FFI
+`Slic3r::Model::read_from_file`) et le binaire `engine-worker` existe
+(`engine/src/bin/engine_worker.rs`, commandes `slice`/`triangle-count`/`self-test`).
+
+**Test d'indépendance.** Importer un STL / OBJ / 3MF / STEP → l'objet apparaît
+dans la scène avec le **maillage décodé par le moteur** (aucun parsing client) ;
+un fichier corrompu → badge d'erreur propre côté UI, `/mesh` renvoie 422 et le
+**backend reste debout**. TDD à chaque couche (constitution IV).
+
+- [ ] T120 [P] Encoder le maillage moteur en WSMh : garantir que `engine::adapters::ffi::load_model`/`convert_to_mesh` (`engine/src/adapters/ffi/model.rs`) produisent un `engine::api::TriangleMesh` encodable au format binaire `WSMh` (positions/normales/indices) pour STL/OBJ/3MF/STEP/AMF ; test moteur `engine/tests/decode.rs` décodant les fixtures `engine/tests/fixtures/*.{stl,3mf,obj}` (triangles > 0, en-tête WSMh valide, aller-retour `decode`).
+- [ ] T121 [P] Commande `load-model` du worker : dans `engine/src/bin/engine_worker.rs`, ajouter `load-model <path> <format>` qui décode via T120 et écrit les octets **WSMh sur stdout** ; erreur → message sur stderr + code de sortie non nul (jamais de panique non gérée). Test `engine/tests/worker.rs` : décodage d'une fixture (stdout WSMh valide) + fichier corrompu → sortie non nulle sans crash. Dépend de T120.
+- [ ] T122 Infra de spawn du worker : `backend/src/engine/worker.rs` (nouveau) `run_worker(subcommand, args) -> Result<Vec<u8>, WorkerError>` — résout le binaire (`ENGINE_WORKER_BIN` ou chemin de build), applique un **timeout**, capture stdout, mappe **crash / exit≠0 / timeout** en erreur typée. TDD via le binaire `engine-worker self-test --crash|--hang` (`backend/tests/engine_worker.rs`). Infra **partagée** : débloque aussi le futur runner de tranchage réel.
+- [ ] T123 Service de conversion de modèle : `backend/src/models/convert.rs` (nouveau) — à l'upload, tâche `tokio` bornée (sémaphore) qui appelle `run_worker("load-model", …)` (T122), écrit le WSMh via `FileStore`, met à jour `models.mesh_path`, puis émet l'événement WS `model.converted` (bus `http/ws.rs` existant). Repli erreur : marque le modèle en échec de conversion. TDD avec worker stub injecté. Dépend de T121, T122.
+- [ ] T124 Route d'upload → conversion pour **tous** les formats : `POST /api/projects/{id}/models` (`backend/src/http/routes/models.rs`) marque chaque format `conversion_pending=true` et déclenche T123 ; `ModelFormat::needs_engine_conversion` (`backend/src/domain/entities.rs`) couvre désormais **tous** les formats (STL inclus — source unique moteur). Adapter les tests `models.rs` (dont `conversion_flag_covers_engine_formats`). Dépend de T123.
+- [ ] T125 Route `/mesh` servie depuis le moteur : `GET /api/models/{id}/mesh` (`backend/src/http/routes/models.rs`) sert le `mesh_path` stocké (200, WSMh) quand prêt, **409** tant que pending, **422** si la conversion a échoué ; **supprimer** la branche 501 « aperçu côté client » et le décodage `parse_stl` Rust en ligne (remplacés par le mesh moteur stocké). Tests d'intégration `backend/tests/model_mesh.rs`. Dépend de T124.
+- [ ] T126 [US1] Retrait de l'aperçu client : supprimer de `frontend/src/lib/scene/loaders.ts` les parseurs `parseStl`/`parseObj`/`parse3mf`/`previewFromBuffer`/`loadPreview`/`previewFormat` et `isPreviewable` (`frontend/src/lib/editor/imports.ts`) ; `importOne`/`loadProjectModels` (`frontend/src/routes/projects/[id]/+page.svelte`) uploadent puis s'appuient sur `model.converted` → `fetchMesh` (infra `resolveConversion` existante), `centerMesh` appliqué au maillage moteur. Supprimer `loaders.test.ts`, adapter `imports.test.ts` ; conserver `fetchMesh`/`decodeMesh`/`centerMesh`. Dépend de T125.
+- [ ] T127 [US1] UX pendant la conversion : par objet, placeholder « conversion en cours » jusqu'à `model.converted`, **badge d'erreur** sur échec (422) dans `frontend/src/routes/projects/[id]/+page.svelte` (+ état d'import `lib/editor/imports.ts`). Vérif Playwright : import STL/OBJ/3MF/STEP → objet affiché via mesh moteur ; fichier corrompu → badge d'erreur, aucune exception page. Dépend de T126.
+- [ ] T128 Gate d'intégration + doc de décision : test `backend/tests/model_decode.rs` (upload STL/OBJ/3MF/STEP → worker → `/mesh` 200 WSMh valide ; fichier corrompu → 422, backend survit) ; consigner le **retournement de la décision R7** (aperçu client → décodage moteur) dans `specs/001-orcaslicer-web-parity/research.md` et la note « moteur-only » du `README.md`/`plan.md`. Dépend de T125, T127.
+
+**Ordre :** T120 → T121 → T122 → T123 → T124 → T125 → T126 → T127 ; T128 clôt (après T125, T127). T120 ∥ T122 possibles (couches distinctes) avant leur point de jonction (T123).
+
+---
+
 ## Dependencies & Execution Order
 
 ```text
@@ -326,6 +366,7 @@ phase après T097–T118.
 - **Phase 9** : T079 ∥ T080 ∥ T083 ∥ T084 ∥ T085.
 - **Phase 10** : séquentielle (T087 → T088) ; s'appuie sur des composants déjà livrés.
 - **Phase 12** : T097 d'abord (fondation) ; puis en parallèle T098 ∥ T099 ∥ T103 ∥ T106 ∥ T107 ∥ T108 ∥ T109 ∥ T110 ∥ T111 ∥ T112 ∥ T116 ∥ T117 ∥ T118 ; T100 ∥ T101 ∥ T102 après T099 ; T104 ∥ T105 après T103 ; T113 après T112 ; T114 après T107–T113 ; T115 après T116 ; T119 en clôture.
+- **Phase 13** : T120 (encodage moteur) ∥ T122 (infra spawn worker) en parallèle ; T121 après T120 ; puis chaîne séquentielle T123 → T124 → T125 (backend) → T126 → T127 (frontend) ; T128 en clôture.
 
 ## Implementation Strategy
 
