@@ -221,7 +221,15 @@ pub async fn update(
     Json(body): Json<SavePrinterRequest>,
 ) -> ApiResult<Json<PrinterResponse>> {
     let id = parse_printer_id(&id)?;
-    let new_printer = to_new_printer(&state, body)?;
+    let mut new_printer = to_new_printer(&state, body)?;
+    // Mise à jour partielle : si la requête ne fournit pas de clé API, on préserve
+    // celle déjà stockée (chiffrée) au lieu de l'effacer silencieusement. Permet de
+    // repointer le preset machine d'une imprimante (édition des réglages sur la page
+    // de gestion) sans reperdre le secret Moonraker.
+    if new_printer.api_key.is_none() {
+        let existing = state.storage.printers().get(user.id, id).await?; // 404, SC-008
+        new_printer.api_key = existing.api_key;
+    }
     let printer = state
         .storage
         .printers()

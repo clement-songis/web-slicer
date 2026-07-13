@@ -281,6 +281,9 @@ async fn crud_never_exposes_the_api_key_and_stores_it_encrypted() {
     assert_eq!(resp.status(), StatusCode::OK);
     let updated = json_body(resp).await;
     assert_eq!(updated["name"], "Klipper V2");
+    // Mise à jour partielle (clé absente) : le secret stocké est **préservé**,
+    // jamais effacé silencieusement (repointage de preset depuis la gestion).
+    assert_eq!(updated["has_api_key"], true, "la clé est préservée");
 
     // Suppression.
     let resp = send(

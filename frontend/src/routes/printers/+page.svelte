@@ -14,10 +14,14 @@
 		listPrinters,
 		pausePrinter,
 		resumePrinter,
-		testPrinter
+		testPrinter,
+		updatePrinter
 	} from '$lib/api/printers';
+	import { createPreset, getPreset, updatePreset } from '$lib/api/presets';
 	import type { PresetSummary, PrinterCatalogModel, PrinterResponse } from '$lib/api/types';
 	import PrinterCatalog from '$lib/printers/PrinterCatalog.svelte';
+	import { PresetSettingsDialog } from '$lib/settings';
+	import type { DisplayMode } from '$lib/settings/filter';
 	import { subscribeEvents } from '$lib/queue/events';
 	import {
 		applyPrinterStatus,
@@ -51,6 +55,57 @@
 
 	// Ajout par le catalogue (grille façon OrcaSlicer, Phase 14).
 	let showCatalog = $state(false);
+
+	// Édition des réglages d'une imprimante (dialogue réutilisé de l'éditeur,
+	// Phase 14 refonte). On édite toujours un preset **utilisateur** : si
+	// l'imprimante pointe encore sur un preset système, on le dérive puis on
+	// repointe l'imprimante dessus (la clé API est préservée côté serveur).
+	let editing = $state<null | { printerId: string; presetId: string }>(null);
+	let editMode = $state<DisplayMode>('simple');
+	let editValues = $state<Record<string, unknown>>({});
+
+	async function editSettings(printer: PrinterResponse) {
+		error = null;
+		busy = { ...busy, [printer.id]: true };
+		try {
+			const detail = await getPreset(printer.machine_preset_id);
+			let presetId = printer.machine_preset_id;
+			if (detail.origin !== 'user') {
+				// Dérive une copie utilisateur (même nom → même modèle/buse) et repointe.
+				const derived = await createPreset({
+					kind: 'machine',
+					name: detail.name,
+					inherits: presetId,
+					values: {}
+				});
+				await updatePrinter(printer.id, {
+					name: printer.name,
+					moonraker_url: printer.moonraker_url || undefined,
+					machine_preset_id: derived.id
+				});
+				await reload();
+				presetId = derived.id;
+				editValues = {};
+			} else {
+				editValues = (detail.values as Record<string, unknown>) ?? {};
+			}
+			editing = { printerId: printer.id, presetId };
+		} catch (e) {
+			fail(e, 'Édition impossible');
+		} finally {
+			busy = { ...busy, [printer.id]: false };
+		}
+	}
+
+	async function saveEditSettings() {
+		if (!editing) return;
+		try {
+			await updatePreset(editing.presetId, { values: editValues });
+			editing = null;
+		} catch (e) {
+			fail(e, 'Enregistrement impossible');
+		}
+	}
 
 	async function addFromCatalog(models: PrinterCatalogModel[]) {
 		error = null;
@@ -299,6 +354,14 @@
 						<button
 							type="button"
 							class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
+							disabled={busy[printer.id]}
+							onclick={() => editSettings(printer)}
+						>
+							Réglages
+						</button>
+						<button
+							type="button"
+							class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
 							disabled={busy[printer.id] || !printer.moonraker_url}
 							onclick={() => runTest(printer.id)}
 						>
@@ -376,3 +439,14 @@
 		</div>
 	</div>
 {/if}
+
+<!-- Réglages complets d'une imprimante (dialogue réutilisé de l'éditeur). -->
+<PresetSettingsDialog
+	open={editing !== null}
+	title="Paramètres de l'imprimante"
+	kind="machine"
+	bind:mode={editMode}
+	bind:values={editValues}
+	onClose={() => (editing = null)}
+	onsave={saveEditSettings}
+/>
