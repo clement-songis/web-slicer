@@ -246,3 +246,39 @@ P5→US1/US5/US7, P6→US8).
 **Alternatives considered** : découpage par user story pur (mélange les
 chantiers techniques transverses comme le codegen) ; big-bang (rejeté,
 risque d'intégration).
+
+## R12 — Imprimantes possédées + onboarding (Phase 14, décision utilisateur)
+
+**Decision** : le choix d'imprimante ne se fait plus dans tout le catalogue
+(~11 895 presets) mais **uniquement parmi les imprimantes que l'utilisateur
+possède**. « Mes imprimantes » = la table `printers` (source unique), réutilisée
+partout : l'éditeur et le slicing ne voient que les imprimantes déclarées. Le
+catalogue complet (endpoint `GET /api/printer-catalog`, modèles groupés par
+marque + variantes de buse + vignette) n'apparaît que dans le flux « ajouter une
+imprimante » — un **wizard forcé à la première connexion** (`/setup`, garde
+d'onboarding : `listPrinters()` vide → redirection) et la page de gestion
+`/printers`. La **connexion Moonraker devient optionnelle** (`moonraker_url`
+nullable) : une imprimante possédée peut n'être pas connectée en réseau
+(impression carte SD/USB), la connexion étant ajoutée plus tard ; les actions
+réseau renvoient alors **409 `printer_not_connected`**. Le slicing/export refuse
+un preset imprimante non possédé (**422 `printer_not_owned`**). Les dialogues de
+réglages (imprimante/filament/process) reproduisent les fenêtres modales
+OrcaSlicer (portage des onglets `SettingsTabs` inline en `PresetSettingsDialog`).
+
+**Rationale** : demande utilisateur explicite — « je n'ai pas besoin de choisir
+une imprimante que je n'ai pas ». Réduit la surface de choix à ce qui est
+pertinent, fiabilise le slicing (l'imprimante ciblée est réelle) et aligne
+l'onboarding web sur le dialogue « Sélection de l'imprimante » du bureau. La
+connexion optionnelle couvre le cas majoritaire (imprimante non pilotée en
+réseau) sans bloquer l'ajout.
+
+**Écart de parité assumé** (voir `exclusions.md`) : OrcaSlicer laisse choisir
+n'importe quel profil ; la restriction aux imprimantes possédées est une
+décision produit propre à l'application web. L'onboarding web (jusque-là noté
+« diffère / hors périmètre ») est désormais **implémenté**.
+
+**Alternatives considered** : garder le catalogue complet dans l'éditeur avec un
+simple favori (rejeté : ne répond pas à la demande) ; imprimante = strictement
+une connexion Moonraker (rejeté : exclut l'impression hors réseau) ; flag DB
+« onboarding terminé » (rejeté : déduit du nombre d'imprimantes, sans schéma
+supplémentaire).

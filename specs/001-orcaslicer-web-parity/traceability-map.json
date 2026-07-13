@@ -25,8 +25,8 @@
     "arrange": "frontend/src/lib/api/scene.ts",
     "more": "frontend/src/lib/scene/ObjectList.svelte",
     "fewer": "frontend/src/lib/scene/ObjectList.svelte",
-    "splitobjects": "frontend/src/lib/scene/objects.ts",
-    "splitvolumes": "frontend/src/lib/scene/objects.ts",
+    "splitobjects": "frontend/src/routes/projects/[id]/+page.svelte",
+    "splitvolumes": "frontend/src/routes/projects/[id]/+page.svelte",
     "layersediting": "frontend/src/lib/scene/tools/LayerHeight.svelte",
     "assembly_view": "frontend/src/lib/scene/tools/AssemblyView.svelte",
     "start_seperator": "frontend/src/lib/scene/menus.ts"

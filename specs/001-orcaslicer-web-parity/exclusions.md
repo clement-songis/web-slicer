@@ -27,7 +27,7 @@ consignée ici avec justification. `audit/check_traceability.py` échoue sur tou
 | Entrée(s) | Statut | Justification |
 |---|---|---|
 | Menus `Upload Models` / `Download Models` (publish) | exclu-définitif | Service cloud MakerWorld/BBL, hors périmètre auto-hébergé |
-| Menu Aide : `Setup Wizard`, `Troubleshoot Center`, `Check for Updates`, `Show Tip of the Day` | exclu-définitif | Assistant de première configuration, diagnostic et mise à jour propres au bureau ; en web l'app est servie à jour et l'onboarding diffère |
+| Menu Aide : `Setup Wizard`, `Troubleshoot Center`, `Check for Updates`, `Show Tip of the Day` | partiel-v1 | Diagnostic et mise à jour propres au bureau restent exclus (l'app web est servie à jour). En revanche, l'**onboarding de première connexion est implémenté** (Phase 14, R12) : wizard `/setup` de sélection d'imprimante (portage du dialogue « Sélection de l'imprimante ») + page de gestion `/printers`. **Écart de parité assumé** : la sélection d'imprimante (éditeur + slicing) est **restreinte aux imprimantes possédées** par l'utilisateur (décision produit web), là où le bureau laisse choisir tout profil |
 | `Show Configuration Folder`, `New Window`, `Reset Window Layout` | exclu-définitif | Notions de bureau (fenêtres, dossiers locaux) sans objet web |
 | `Open Network Test` | exclu-définitif | Diagnostic réseau/services Bambu propriétaires ; équivalent web : test de connexion Moonraker (US8) |
 | Fichier : `Quit`, `&Quit`, `Open &Slicer…` | exclu-définitif | Quitter/lancer une autre instance = notions d'application de bureau (l'onglet du navigateur en tient lieu) |
