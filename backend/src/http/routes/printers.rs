@@ -166,7 +166,9 @@ pub async fn catalog(
 
 /// Décompose « `<Modèle> <buse> nozzle` » → (modèle, buse). Si le nom ne suit
 /// pas la convention OrcaSlicer, le modèle est le nom entier et la buse est vide.
-fn split_machine_name(name: &str) -> (String, String) {
+/// `pub(crate)` : la garde de possession du tranchage (slice.rs) s'en sert pour
+/// autoriser n'importe quelle buse d'un **modèle** possédé.
+pub(crate) fn split_machine_name(name: &str) -> (String, String) {
     if let Some(stem) = name.strip_suffix(" nozzle") {
         if let Some((model, nozzle)) = stem.rsplit_once(' ') {
             let numeric = !nozzle.is_empty()

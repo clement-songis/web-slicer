@@ -122,6 +122,12 @@ async fn make_bad_process(storage: &SqliteStorage, owner: UserId) -> String {
 
 /// Preset machine utilisateur (config vide, se résout sans avertissement).
 async fn make_machine_preset(storage: &SqliteStorage, owner: UserId) -> String {
+    make_named_machine_preset(storage, owner, "Ma machine").await
+}
+
+/// Idem, avec un nom explicite (pour tester la garde par **modèle** : deux buses
+/// « `<Modèle> <buse> nozzle` » partagent le même modèle).
+async fn make_named_machine_preset(storage: &SqliteStorage, owner: UserId, name: &str) -> String {
     let preset = storage
         .presets()
         .create_user_preset(
@@ -129,7 +135,7 @@ async fn make_machine_preset(storage: &SqliteStorage, owner: UserId) -> String {
             backend::domain::Preset {
                 id: backend::domain::PresetId::new(),
                 kind: PresetKind::Machine,
-                name: "Ma machine".into(),
+                name: name.into(),
                 origin: PresetOrigin::User,
                 user_id: Some(owner),
                 vendor: None,
@@ -195,6 +201,32 @@ async fn slice_allows_a_printer_the_user_owns() {
     let machine = make_machine_preset(&storage, owner).await;
     own_printer(&storage, owner, &machine).await;
     set_active_presets(&storage, owner, &project, json!({ "printer": machine })).await;
+
+    let resp = app
+        .clone()
+        .oneshot(slice_req(&project, &session, json!({ "plate_index": 0 })))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+}
+
+#[tokio::test]
+async fn slice_allows_a_sibling_nozzle_of_an_owned_model() {
+    // Posséder « Bench 0.4 nozzle » autorise à trancher avec « Bench 0.6 nozzle »
+    // (même modèle « Bench ») sans redéclarer l'imprimante (garde par modèle).
+    let (_d, storage, app) = app().await;
+    let (project, owner, session) = create_project(
+        &storage,
+        &app,
+        "boss@test.local",
+        scene_one_object(),
+        json!({}),
+    )
+    .await;
+    let owned = make_named_machine_preset(&storage, owner, "Bench 0.4 nozzle").await;
+    let sibling = make_named_machine_preset(&storage, owner, "Bench 0.6 nozzle").await;
+    own_printer(&storage, owner, &owned).await;
+    set_active_presets(&storage, owner, &project, json!({ "printer": sibling })).await;
 
     let resp = app
         .clone()

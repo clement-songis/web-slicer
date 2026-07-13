@@ -118,16 +118,33 @@ pub(crate) async fn resolve_active_config(
     active: &Value,
 ) -> ApiResult<(engine::api::DynamicPrintConfig, Vec<SliceWarning>)> {
     // Garde de possession (Phase 14) : le preset imprimante retenu doit
-    // correspondre à une imprimante **déclarée** par l'utilisateur — on ne
-    // tranche/exporte pas pour une imprimante qu'il ne possède pas. L'absence de
-    // clé `printer` reste tolérée (config par défaut) ; seule une valeur non
-    // possédée est refusée.
+    // correspondre à un **modèle** d'imprimante **déclaré** par l'utilisateur — on
+    // ne tranche/exporte pas pour une imprimante qu'il ne possède pas. La garde
+    // raisonne au niveau du modèle (et non du preset exact) : posséder une
+    // imprimante autorise **toutes ses buses** (variantes du même modèle), ce qui
+    // permet à l'éditeur de changer de buse sans redéclarer l'imprimante. L'absence
+    // de clé `printer` reste tolérée (config par défaut).
     if let Some(s) = active.get("printer").and_then(Value::as_str) {
         let printer_id = parse_preset_id(s)?;
         let owned = state.storage.printers().list(user).await?;
-        let owns_it = owned
+        let machines = state
+            .storage
+            .presets()
+            .list_by_kind(crate::domain::PresetKind::Machine, user)
+            .await?;
+        // Modèle (au sens OrcaSlicer) d'un preset machine, par son id.
+        let model_of = |id: &str| -> Option<String> {
+            machines
+                .iter()
+                .find(|p| p.id.to_string() == id)
+                .map(|p| super::printers::split_machine_name(&p.name).0)
+        };
+        let owned_models: HashSet<String> = owned
             .iter()
-            .any(|p| p.machine_preset_id.to_string() == printer_id.to_string());
+            .filter_map(|p| model_of(&p.machine_preset_id.to_string()))
+            .collect();
+        let owns_it =
+            model_of(&printer_id.to_string()).is_some_and(|model| owned_models.contains(&model));
         if !owns_it {
             return Err(ApiError::printer_not_owned(
                 "Imprimante non possédée : ajoutez-la à vos imprimantes avant de trancher",
