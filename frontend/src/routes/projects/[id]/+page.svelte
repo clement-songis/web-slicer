@@ -49,7 +49,7 @@
 		type Transform,
 		type NamedView
 	} from '$lib/scene';
-	import { SettingsTabs } from '$lib/settings';
+	import { PresetSettingsDialog } from '$lib/settings';
 	import { PrinterSelect, PresetSelect } from '$lib/presets';
 	import {
 		PreviewScene,
@@ -236,7 +236,8 @@
 	let settingsMode = $state<DisplayMode>('simple');
 	// Portée des réglages affichés (T100/T101/T102) : process / filament / machine,
 	// chacun avec son propre jeu de valeurs éditées.
-	let settingsScope = $state<'process' | 'filament' | 'machine'>('process');
+	// Dialogue de réglages ouvert (Phase 14, T138) ; `null` = fermé.
+	let settingsDialog = $state<null | 'process' | 'filament' | 'machine'>(null);
 	let processValues = $state<Record<string, unknown>>({});
 	let filamentValues = $state<Record<string, unknown>>({});
 	let machineValues = $state<Record<string, unknown>>({});
@@ -406,6 +407,21 @@
 		} catch (e) {
 			importError = e instanceof ApiError ? e.message : 'enregistrement du preset impossible';
 		}
+	}
+
+	// Preset actif d'un type (pour le dialogue de réglages modal, T138).
+	function activePresetOf(kind: 'process' | 'filament' | 'machine'): PresetSummary | undefined {
+		if (kind === 'process') return processPresets.find((p) => p.id === activePresets.process);
+		if (kind === 'filament') return filamentPresets.find((p) => p.id === filamentSel);
+		return machinePresets.find((p) => p.id === activePresets.printer);
+	}
+
+	// Enregistre les réglages édités dans le dialogue courant (preset utilisateur
+	// seulement : un preset système doit d'abord être dérivé via le sélecteur).
+	async function saveSettingsDialog() {
+		if (!settingsDialog) return;
+		const preset = activePresetOf(settingsDialog);
+		if (preset && preset.origin === 'user') await savePreset(preset);
 	}
 
 	function onEvent(event: ServerEvent) {
@@ -1326,28 +1342,59 @@
 								ondelete={(p) => removePreset('process', p)}
 							/>
 						</section>
-						<!-- Sélecteur de portée des réglages (T100/T101/T102) : process / filament / machine. -->
+						<!-- Ouverture des réglages détaillés en **dialogue modal** (T138,
+						     parité OrcaSlicer) : process / filament / imprimante. -->
 						<div class="flex gap-1 rounded border border-border-strong p-0.5">
 							{#each [{ id: 'process', label: 'Process' }, { id: 'filament', label: 'Filament' }, { id: 'machine', label: 'Printer' }] as scope (scope.id)}
 								<button
 									type="button"
-									onclick={() => (settingsScope = scope.id as 'process' | 'filament' | 'machine')}
-									class="flex-1 rounded px-2 py-1 text-xs whitespace-nowrap {settingsScope ===
-									scope.id
-										? 'bg-primary text-primary-content'
-										: 'text-content-muted hover:bg-overlay'}"
+									onclick={() => (settingsDialog = scope.id as 'process' | 'filament' | 'machine')}
+									class="flex-1 rounded px-2 py-1 text-xs whitespace-nowrap text-content-muted hover:bg-overlay"
 								>
 									{$t(scope.label)}
 								</button>
 							{/each}
 						</div>
-						{#if settingsScope === 'process'}
-							<SettingsTabs kind="process" bind:mode={settingsMode} bind:values={processValues} />
-						{:else if settingsScope === 'filament'}
-							<SettingsTabs kind="filament" bind:mode={settingsMode} bind:values={filamentValues} />
-						{:else}
-							<SettingsTabs kind="machine" bind:mode={settingsMode} bind:values={machineValues} />
-						{/if}
+
+						<PresetSettingsDialog
+							open={settingsDialog === 'process'}
+							title="Réglages du process"
+							kind="process"
+							bind:mode={settingsMode}
+							bind:values={processValues}
+							onClose={() => (settingsDialog = null)}
+							onsave={saveSettingsDialog}
+							saveDisabled={activePresetOf('process')?.origin !== 'user'}
+							saveHint={activePresetOf('process')?.origin !== 'user'
+								? 'Preset système : dérivez-le pour l’éditer'
+								: undefined}
+						/>
+						<PresetSettingsDialog
+							open={settingsDialog === 'filament'}
+							title="Réglages du filament"
+							kind="filament"
+							bind:mode={settingsMode}
+							bind:values={filamentValues}
+							onClose={() => (settingsDialog = null)}
+							onsave={saveSettingsDialog}
+							saveDisabled={activePresetOf('filament')?.origin !== 'user'}
+							saveHint={activePresetOf('filament')?.origin !== 'user'
+								? 'Preset système : dérivez-le pour l’éditer'
+								: undefined}
+						/>
+						<PresetSettingsDialog
+							open={settingsDialog === 'machine'}
+							title="Paramètres de l'imprimante"
+							kind="machine"
+							bind:mode={settingsMode}
+							bind:values={machineValues}
+							onClose={() => (settingsDialog = null)}
+							onsave={saveSettingsDialog}
+							saveDisabled={activePresetOf('machine')?.origin !== 'user'}
+							saveHint={activePresetOf('machine')?.origin !== 'user'
+								? 'Preset système : dérivez-le pour l’éditer'
+								: undefined}
+						/>
 					</div>
 				{/if}
 			</div>

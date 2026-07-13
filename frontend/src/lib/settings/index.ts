@@ -2,6 +2,7 @@
 // et cœur de filtrage mode/recherche.
 
 export { default as SettingsTabs } from './SettingsTabs.svelte';
+export { default as PresetSettingsDialog } from './PresetSettingsDialog.svelte';
 export { default as OptionLine } from './OptionLine.svelte';
 export {
 	filterLayout,
