@@ -49,8 +49,10 @@
 		type Transform,
 		type NamedView
 	} from '$lib/scene';
-	import { PresetSettingsDialog } from '$lib/settings';
-	import { PrinterSelect, PresetSelect } from '$lib/presets';
+	import { PresetSettingsDialog, SettingsTabs } from '$lib/settings';
+	import { PresetSelect } from '$lib/presets';
+	import OwnedPrinterPicker from '$lib/printers/OwnedPrinterPicker.svelte';
+	import PrinterCatalog from '$lib/printers/PrinterCatalog.svelte';
 	import {
 		PreviewScene,
 		StatsPanel,
@@ -76,10 +78,23 @@
 	} from '$lib/api/projects';
 	import { arrangeScene, orientModel } from '$lib/api/scene';
 	import { fetchPreviewLayers, getPreviewMeta } from '$lib/api/preview';
-	import { listPresets, createPreset, updatePreset, deletePreset } from '$lib/api/presets';
-	import { listPrinters } from '$lib/api/printers';
+	import {
+		listPresets,
+		createPreset,
+		updatePreset,
+		deletePreset,
+		getPreset
+	} from '$lib/api/presets';
+	import { listPrinters, getPrinterCatalog, createPrinter } from '$lib/api/printers';
 	import { subscribeEvents, type EventSubscription } from '$lib/queue/events';
-	import type { PreviewMeta, PresetSummary, ServerEvent } from '$lib/api/types';
+	import type {
+		PreviewMeta,
+		PresetSummary,
+		ServerEvent,
+		PrinterResponse,
+		PrinterCatalogVendor,
+		PrinterCatalogModel
+	} from '$lib/api/types';
 	import { ApiError } from '$lib/api/client';
 	import { t } from '$lib/i18n';
 	import {
@@ -207,6 +222,14 @@
 	let machinePresets = $state<PresetSummary[]>([]);
 	let filamentPresets = $state<PresetSummary[]>([]);
 	let processPresets = $state<PresetSummary[]>([]);
+	// Imprimantes possédées + catalogue complet (Phase 14, refonte) : le sélecteur
+	// d'imprimante de l'éditeur se réduit aux imprimantes déclarées ; le catalogue
+	// sert au menu déroulant de buse et à l'ajout d'une nouvelle imprimante.
+	let ownedPrinters = $state<PrinterResponse[]>([]);
+	let printerCatalog = $state<PrinterCatalogVendor[]>([]);
+	// Grille d'ajout d'imprimante (façon OrcaSlicer) ouverte depuis le sélecteur.
+	let showCatalog = $state(false);
+	let addingPrinter = $state(false);
 	// Filament principal (mono-extrudeur v1) : liable par le sélecteur, resynchronisé
 	// vers le tableau `filaments` de l'orchestrateur.
 	let filamentSel = $state<string | null>(null);
@@ -344,14 +367,17 @@
 	async function loadPresets() {
 		const printerName = machinePresets.find((p) => p.id === activePresets.printer)?.name;
 		try {
-			const [printers, machines, filaments, processes] = await Promise.all([
+			const [printers, catalog, machines, filaments, processes] = await Promise.all([
 				listPrinters(),
+				getPrinterCatalog(),
 				listPresets('machine'),
 				listPresets('filament', printerName),
 				listPresets('process', printerName)
 			]);
 			// Restriction (Phase 14) : le sélecteur ne montre que les presets machine
-			// des imprimantes **possédées**, plus le catalogue complet.
+			// des imprimantes **possédées** ; le catalogue alimente le menu de buse.
+			ownedPrinters = printers;
+			printerCatalog = catalog;
 			const owned = new Set(printers.map((p) => p.machine_preset_id));
 			machinePresets = machines.filter((m) => owned.has(m.id));
 			filamentPresets = filaments;
@@ -422,6 +448,52 @@
 		if (!settingsDialog) return;
 		const preset = activePresetOf(settingsDialog);
 		if (preset && preset.origin === 'user') await savePreset(preset);
+	}
+
+	// Charge les **surcharges brutes** du preset actif d'un type dans le jeu de
+	// valeurs édité (sinon le panneau/dialogue s'ouvrirait vide). On charge les
+	// surcharges (et non la config résolue) : ré-enregistrer ne réécrit alors que
+	// ce que le preset surcharge réellement, sans aplatir sa chaîne d'héritage.
+	async function loadEditedValues(kind: 'process' | 'filament' | 'machine') {
+		const preset = activePresetOf(kind);
+		const values = preset ? ((await getPreset(preset.id)).values as Record<string, unknown>) : {};
+		if (kind === 'process') processValues = values;
+		else if (kind === 'filament') filamentValues = values;
+		else machineValues = values;
+	}
+
+	// Ouvre le dialogue de réglages d'un type et amorce ses valeurs.
+	function openSettingsDialog(kind: 'filament' | 'machine') {
+		settingsDialog = kind;
+		void loadEditedValues(kind);
+	}
+
+	// Les réglages du **process** sont montrés en ligne (onglet « traitement »
+	// restauré) : recharge ses valeurs à chaque changement de preset process.
+	$effect(() => {
+		void activePresets.process;
+		void loadEditedValues('process');
+	});
+
+	// Ajoute les imprimantes sélectionnées dans la grille (une par modèle, buse par
+	// défaut, sans connexion réseau — configurable ensuite sur la page Imprimantes).
+	async function addPrintersFromCatalog(models: PrinterCatalogModel[]) {
+		addingPrinter = true;
+		try {
+			let firstPreset: string | null = null;
+			for (const m of models) {
+				await createPrinter({ name: m.model, machine_preset_id: m.default_machine_preset_id });
+				firstPreset ??= m.default_machine_preset_id;
+			}
+			await loadPresets();
+			// Sélectionne d'emblée la première imprimante ajoutée.
+			if (firstPreset && !activePresets.printer) activePresets.printer = firstPreset;
+			showCatalog = false;
+		} catch (e) {
+			importError = e instanceof ApiError ? e.message : 'ajout d’imprimante impossible';
+		} finally {
+			addingPrinter = false;
+		}
 	}
 
 	function onEvent(event: ServerEvent) {
@@ -1219,6 +1291,34 @@
 	<!-- Dialogue des raccourcis clavier (menu Aide, T111). -->
 	<ShortcutsDialog open={showShortcuts} onClose={() => (showShortcuts = false)} />
 
+	<!-- Grille de sélection d'imprimante (façon OrcaSlicer) : ajout d'une imprimante
+	     possédée depuis l'éditeur (Phase 14, refonte). « Toujours cet écran ». -->
+	{#if showCatalog}
+		<div
+			class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+			role="presentation"
+			onclick={() => (showCatalog = false)}
+		>
+			<div
+				class="flex h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-border bg-surface-raised shadow-xl"
+				role="dialog"
+				aria-modal="true"
+				aria-label="Ajouter une imprimante"
+				onclick={(e) => e.stopPropagation()}
+				onkeydown={(e) => e.stopPropagation()}
+				tabindex="-1"
+			>
+				<PrinterCatalog
+					vendors={printerCatalog}
+					onconfirm={addPrintersFromCatalog}
+					oncancel={() => (showCatalog = false)}
+					confirmLabel="Ajouter"
+					busy={addingPrinter}
+				/>
+			</div>
+		</div>
+	{/if}
+
 	<!-- Menu contextuel objet (T112) : scène + liste d'objets. -->
 	<ContextMenu
 		open={contextMenu.open}
@@ -1309,30 +1409,53 @@
 					/>
 				{:else}
 					<div class="flex flex-col gap-4">
-						<!-- Sélecteurs Imprimante / Filament / Process (T098). -->
+						<!-- Sélecteurs Imprimante / Filament / Process (Phase 14, refonte). -->
 						<section class="flex flex-col gap-3 border-b border-border pb-3">
+							<!-- Imprimante : imprimantes possédées + buse ; ＋ ajoute, ✎ édite les réglages. -->
 							<div class="flex flex-col gap-1">
 								<span class="text-xs font-semibold tracking-wide text-content-subtle uppercase"
 									>{$t('Printer')}</span
 								>
-								{#if machinePresets.length === 0}
-									<a
-										href={resolve('/setup')}
-										class="rounded border border-border-strong px-2 py-1 text-center text-sm text-primary hover:underline"
-										>Ajouter une imprimante…</a
+								{#if ownedPrinters.length === 0}
+									<button
+										type="button"
+										class="rounded border border-border-strong px-2 py-1 text-center text-sm text-primary hover:bg-overlay"
+										onclick={() => (showCatalog = true)}>Ajouter une imprimante…</button
 									>
 								{:else}
-									<PrinterSelect presets={machinePresets} bind:selectedId={activePresets.printer} />
+									<OwnedPrinterPicker
+										printers={ownedPrinters}
+										catalog={printerCatalog}
+										bind:selectedMachinePresetId={activePresets.printer}
+										onadd={() => (showCatalog = true)}
+										onedit={() => openSettingsDialog('machine')}
+									/>
 								{/if}
 							</div>
-							<PresetSelect
-								presets={filamentPresets}
-								bind:selectedId={filamentSel}
-								label={$t('Filament')}
-								onderive={(p) => derivePreset('filament', p)}
-								onsave={savePreset}
-								ondelete={(p) => removePreset('filament', p)}
-							/>
+							<!-- Filament : sélecteur + crayon d'édition des réglages (dialogue). -->
+							<div class="flex items-start gap-1">
+								<div class="min-w-0 flex-1">
+									<PresetSelect
+										presets={filamentPresets}
+										bind:selectedId={filamentSel}
+										label={$t('Filament')}
+										onderive={(p) => derivePreset('filament', p)}
+										onsave={savePreset}
+										ondelete={(p) => removePreset('filament', p)}
+									/>
+								</div>
+								<button
+									type="button"
+									class="mt-0.5 flex shrink-0 items-center justify-center rounded border border-border-strong px-2 py-1 text-content-muted hover:bg-overlay disabled:opacity-40"
+									title="Réglages du filament"
+									aria-label="Réglages du filament"
+									disabled={!filamentSel}
+									onclick={() => openSettingsDialog('filament')}
+								>
+									✎
+								</button>
+							</div>
+							<!-- Process : sélecteur ; ses réglages sont montrés en ligne ci-dessous. -->
 							<PresetSelect
 								presets={processPresets}
 								bind:selectedId={activePresets.process}
@@ -1342,33 +1465,30 @@
 								ondelete={(p) => removePreset('process', p)}
 							/>
 						</section>
-						<!-- Ouverture des réglages détaillés en **dialogue modal** (T138,
-						     parité OrcaSlicer) : process / filament / imprimante. -->
-						<div class="flex gap-1 rounded border border-border-strong p-0.5">
-							{#each [{ id: 'process', label: 'Process' }, { id: 'filament', label: 'Filament' }, { id: 'machine', label: 'Printer' }] as scope (scope.id)}
-								<button
-									type="button"
-									onclick={() => (settingsDialog = scope.id as 'process' | 'filament' | 'machine')}
-									class="flex-1 rounded px-2 py-1 text-xs whitespace-nowrap text-content-muted hover:bg-overlay"
-								>
-									{$t(scope.label)}
-								</button>
-							{/each}
-						</div>
 
-						<PresetSettingsDialog
-							open={settingsDialog === 'process'}
-							title="Réglages du process"
-							kind="process"
-							bind:mode={settingsMode}
-							bind:values={processValues}
-							onClose={() => (settingsDialog = null)}
-							onsave={saveSettingsDialog}
-							saveDisabled={activePresetOf('process')?.origin !== 'user'}
-							saveHint={activePresetOf('process')?.origin !== 'user'
-								? 'Preset système : dérivez-le pour l’éditer'
-								: undefined}
-						/>
+						<!-- Réglages du process en ligne (onglet « traitement » restauré). -->
+						<div class="flex items-center justify-between">
+							<span class="text-xs font-semibold tracking-wide text-content-subtle uppercase"
+								>{$t('Process')}</span
+							>
+							<button
+								type="button"
+								class="rounded border border-border-strong px-2 py-0.5 text-xs text-content-muted hover:bg-overlay disabled:opacity-40"
+								disabled={activePresetOf('process')?.origin !== 'user'}
+								title={activePresetOf('process')?.origin !== 'user'
+									? 'Preset système : dérivez-le pour l’éditer'
+									: 'Enregistrer les réglages du process'}
+								onclick={() => {
+									const p = activePresetOf('process');
+									if (p) void savePreset(p);
+								}}
+							>
+								{$t('Save')}
+							</button>
+						</div>
+						<SettingsTabs kind="process" bind:mode={settingsMode} bind:values={processValues} />
+
+						<!-- Dialogues de réglages (ouverts par les crayons ci-dessus). -->
 						<PresetSettingsDialog
 							open={settingsDialog === 'filament'}
 							title="Réglages du filament"
