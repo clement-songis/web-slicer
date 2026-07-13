@@ -16,7 +16,8 @@
 		resumePrinter,
 		testPrinter
 	} from '$lib/api/printers';
-	import type { PresetSummary, PrinterResponse } from '$lib/api/types';
+	import type { PresetSummary, PrinterCatalogModel, PrinterResponse } from '$lib/api/types';
+	import PrinterCatalog from '$lib/printers/PrinterCatalog.svelte';
 	import { subscribeEvents } from '$lib/queue/events';
 	import {
 		applyPrinterStatus,
@@ -48,6 +49,24 @@
 	let machinePreset = $state('');
 	let creating = $state(false);
 
+	// Ajout par le catalogue (grille façon OrcaSlicer, Phase 14).
+	let showCatalog = $state(false);
+
+	async function addFromCatalog(models: PrinterCatalogModel[]) {
+		error = null;
+		try {
+			// Une imprimante par modèle : nom = modèle, buse par défaut (0.4 mm),
+			// sans connexion réseau (ajoutable ensuite).
+			for (const m of models) {
+				await createPrinter({ name: m.model, machine_preset_id: m.default_machine_preset_id });
+			}
+			await reload();
+			showCatalog = false;
+		} catch (e) {
+			fail(e, 'Ajout impossible');
+		}
+	}
+
 	onMount(() => {
 		printers = data.printers;
 		if (machines.length > 0) machinePreset = machines[0].id;
@@ -71,7 +90,7 @@
 		try {
 			const printer = await createPrinter({
 				name,
-				moonraker_url: url,
+				moonraker_url: url || undefined,
 				api_key: apiKey || undefined,
 				machine_preset_id: machinePreset
 			});
@@ -159,12 +178,21 @@
 		<p class="rounded bg-danger-soft px-3 py-2 text-danger-content" role="alert">{error}</p>
 	{/if}
 
-	<!-- Déclaration -->
+	<!-- Ajout par le catalogue (grille façon OrcaSlicer) -->
+	<button
+		type="button"
+		class="self-start rounded bg-primary px-3 py-2 text-sm font-medium text-primary-content hover:bg-primary-hover"
+		onclick={() => (showCatalog = true)}
+	>
+		＋ Ajouter des imprimantes
+	</button>
+
+	<!-- Déclaration manuelle (connexion Moonraker facultative) -->
 	<section
 		class="flex flex-col gap-3 rounded border border-border p-4"
 		aria-label="Déclarer une imprimante"
 	>
-		<h2 class="text-sm font-semibold text-content-muted">Déclarer une imprimante</h2>
+		<h2 class="text-sm font-semibold text-content-muted">Déclarer manuellement</h2>
 		<form class="flex flex-col gap-3" onsubmit={declare}>
 			<label class="flex flex-col gap-1 text-sm">
 				<span class="text-content-muted">Nom</span>
@@ -176,11 +204,10 @@
 				/>
 			</label>
 			<label class="flex flex-col gap-1 text-sm">
-				<span class="text-content-muted">URL Moonraker</span>
+				<span class="text-content-muted">URL Moonraker (facultatif)</span>
 				<input
 					class="rounded border border-border-strong bg-surface-raised text-content px-2 py-1"
 					bind:value={url}
-					required
 					placeholder="http://klipper.local:7125"
 				/>
 			</label>
@@ -237,7 +264,9 @@
 					<div class="flex items-start justify-between gap-3">
 						<div class="flex min-w-0 flex-col">
 							<span class="truncate font-medium text-content">{printer.name}</span>
-							<span class="truncate text-xs text-content-subtle">{printer.moonraker_url}</span>
+							<span class="truncate text-xs text-content-subtle">
+								{printer.moonraker_url ?? 'Non connectée'}
+							</span>
 						</div>
 						{#if st}
 							<span class="rounded px-2 py-0.5 text-xs {stateMeta(st.state).badge}">
@@ -270,7 +299,7 @@
 						<button
 							type="button"
 							class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
-							disabled={busy[printer.id]}
+							disabled={busy[printer.id] || !printer.moonraker_url}
 							onclick={() => runTest(printer.id)}
 						>
 							Tester
@@ -278,7 +307,7 @@
 						<button
 							type="button"
 							class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
-							disabled={busy[printer.id]}
+							disabled={busy[printer.id] || !printer.moonraker_url}
 							onclick={() => refreshStatus(printer.id)}
 						>
 							État
@@ -321,3 +350,29 @@
 		{/if}
 	</section>
 </main>
+
+{#if showCatalog}
+	<!-- Grille de sélection façon OrcaSlicer pour ajouter des imprimantes possédées. -->
+	<div
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+		role="presentation"
+		onclick={() => (showCatalog = false)}
+	>
+		<div
+			class="flex h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-border bg-surface-raised shadow-xl"
+			role="dialog"
+			aria-modal="true"
+			aria-label="Ajouter des imprimantes"
+			onclick={(e) => e.stopPropagation()}
+			onkeydown={(e) => e.stopPropagation()}
+			tabindex="-1"
+		>
+			<PrinterCatalog
+				vendors={data.catalog}
+				onconfirm={addFromCatalog}
+				oncancel={() => (showCatalog = false)}
+				confirmLabel="Ajouter"
+			/>
+		</div>
+	</div>
+{/if}

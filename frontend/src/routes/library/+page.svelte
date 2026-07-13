@@ -25,6 +25,8 @@
 	import IconOpen from '~icons/lucide/download';
 	import IconClock from '~icons/lucide/clock';
 	import IconExternal from '~icons/lucide/external-link';
+	import IconPrinter from '~icons/lucide/printer';
+	import IconQueue from '~icons/lucide/list-checks';
 	import IconTrash from '~icons/lucide/trash-2';
 
 	let { data }: { data: PageData } = $props();
@@ -148,6 +150,18 @@
 			>
 				<IconClock class="h-4 w-4" /> Récent
 			</span>
+			<a
+				href={resolve('/printers')}
+				class="flex items-center gap-2 rounded px-3 py-2 text-content-muted hover:bg-overlay"
+			>
+				<IconPrinter class="h-4 w-4" /> Imprimantes
+			</a>
+			<a
+				href={resolve('/queue')}
+				class="flex items-center gap-2 rounded px-3 py-2 text-content-muted hover:bg-overlay"
+			>
+				<IconQueue class="h-4 w-4" /> File
+			</a>
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 			<a
 				href="https://github.com/SoftFever/OrcaSlicer"
