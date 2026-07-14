@@ -78,13 +78,7 @@
 	} from '$lib/api/projects';
 	import { arrangeScene, orientModel } from '$lib/api/scene';
 	import { fetchPreviewLayers, getPreviewMeta } from '$lib/api/preview';
-	import {
-		listPresets,
-		createPreset,
-		updatePreset,
-		deletePreset,
-		getPreset
-	} from '$lib/api/presets';
+	import { listPresets, createPreset, updatePreset, getPreset } from '$lib/api/presets';
 	import { listPrinters, getPrinterCatalog, createPrinter } from '$lib/api/printers';
 	import { subscribeEvents, type EventSubscription } from '$lib/queue/events';
 	import type {
@@ -133,7 +127,6 @@
 		parseActivePresets,
 		serializeActivePresets,
 		primaryFilament,
-		setProcess,
 		setFilament,
 		type EditorTab,
 		type ImportItem
@@ -387,52 +380,11 @@
 		}
 	}
 
-	// Dérive un preset utilisateur (copie modifiable) puis le sélectionne.
-	async function derivePreset(kind: 'filament' | 'process', base: PresetSummary) {
-		try {
-			const created = await createPreset({
-				kind: base.kind,
-				name: `${base.name} (copie)`,
-				inherits: base.id,
-				values: {}
-			});
-			await loadPresets();
-			if (kind === 'filament') filamentSel = created.id;
-			else activePresets = setProcess(activePresets, created.id);
-		} catch (e) {
-			importError = e instanceof ApiError ? e.message : 'dérivation du preset impossible';
-		}
-	}
-
-	async function removePreset(kind: 'filament' | 'process', preset: PresetSummary) {
-		try {
-			await deletePreset(preset.id);
-			if (kind === 'filament' && filamentSel === preset.id) filamentSel = null;
-			if (kind === 'process' && activePresets.process === preset.id)
-				activePresets = setProcess(activePresets, null);
-			await loadPresets();
-		} catch (e) {
-			importError = e instanceof ApiError ? e.message : 'suppression du preset impossible';
-		}
-	}
-
 	// Valeurs éditées du panneau de réglages correspondant au type d'un preset.
-	function valuesForKind(kind: string): Record<string, unknown> {
+	function valuesForKind(kind: 'process' | 'filament' | 'machine'): Record<string, unknown> {
 		if (kind === 'filament') return filamentValues;
-		if (kind === 'machine' || kind === 'machine_model') return machineValues;
+		if (kind === 'machine') return machineValues;
 		return processValues;
-	}
-
-	// Enregistre les valeurs éditées (du bon groupe de réglages) dans le preset
-	// utilisateur courant.
-	async function savePreset(preset: PresetSummary) {
-		try {
-			await updatePreset(preset.id, { values: valuesForKind(preset.kind) });
-			await loadPresets();
-			saveMessage = 'Preset enregistré.';
-		} catch (e) {
-			importError = e instanceof ApiError ? e.message : 'enregistrement du preset impossible';
-		}
 	}
 
 	// Preset actif d'un type (pour le dialogue de réglages modal, T138).
@@ -442,12 +394,36 @@
 		return machinePresets.find((p) => p.id === activePresets.printer);
 	}
 
-	// Enregistre les réglages édités dans le dialogue courant (preset utilisateur
-	// seulement : un preset système doit d'abord être dérivé via le sélecteur).
+	// Enregistre les réglages édités dans le dialogue courant. Parité OrcaSlicer :
+	// éditer un preset **système** puis enregistrer **dérive automatiquement** une
+	// copie utilisateur (héritée) et la sélectionne — pas de bouton « Dériver »
+	// distinct ; un preset utilisateur est mis à jour en place.
 	async function saveSettingsDialog() {
 		if (!settingsDialog) return;
-		const preset = activePresetOf(settingsDialog);
-		if (preset && preset.origin === 'user') await savePreset(preset);
+		const kind = settingsDialog; // 'filament' | 'machine'
+		const preset = activePresetOf(kind);
+		if (!preset) return;
+		const values = valuesForKind(kind);
+		try {
+			if (preset.origin === 'user') {
+				await updatePreset(preset.id, { values });
+				await loadPresets();
+			} else {
+				const created = await createPreset({
+					kind: preset.kind,
+					name: `${preset.name} (copie)`,
+					inherits: preset.id,
+					values
+				});
+				await loadPresets();
+				if (kind === 'filament') filamentSel = created.id;
+				else activePresets.printer = created.id;
+			}
+			saveMessage = 'Réglages enregistrés.';
+			settingsDialog = null;
+		} catch (e) {
+			importError = e instanceof ApiError ? e.message : 'enregistrement impossible';
+		}
 	}
 
 	// Charge les **surcharges brutes** du preset actif d'un type dans le jeu de
@@ -1409,44 +1385,48 @@
 					/>
 				{:else}
 					<div class="flex flex-col gap-4">
-						<!-- Sélecteurs Imprimante / Filament / Process (Phase 14, refonte). -->
-						<section class="flex flex-col gap-3 border-b border-border pb-3">
-							<!-- Imprimante : imprimantes possédées + buse ; ＋ ajoute, ✎ édite les réglages. -->
-							<div class="flex flex-col gap-1">
-								<span class="text-xs font-semibold tracking-wide text-content-subtle uppercase"
-									>{$t('Printer')}</span
+						<!-- Imprimante : imprimantes possédées + buse ; ＋ ajoute, ✎ édite. -->
+						<section class="flex flex-col gap-1.5">
+							<span class="text-xs font-semibold tracking-wide text-content-subtle uppercase"
+								>{$t('Printer')}</span
+							>
+							{#if ownedPrinters.length === 0}
+								<button
+									type="button"
+									class="rounded border border-border-strong px-2 py-1 text-center text-sm text-primary hover:bg-overlay"
+									onclick={() => (showCatalog = true)}>Ajouter une imprimante…</button
 								>
-								{#if ownedPrinters.length === 0}
-									<button
-										type="button"
-										class="rounded border border-border-strong px-2 py-1 text-center text-sm text-primary hover:bg-overlay"
-										onclick={() => (showCatalog = true)}>Ajouter une imprimante…</button
-									>
-								{:else}
-									<OwnedPrinterPicker
-										printers={ownedPrinters}
-										catalog={printerCatalog}
-										bind:selectedMachinePresetId={activePresets.printer}
-										onadd={() => (showCatalog = true)}
-										onedit={() => openSettingsDialog('machine')}
-									/>
-								{/if}
-							</div>
-							<!-- Filament : sélecteur + crayon d'édition des réglages (dialogue). -->
-							<div class="flex items-start gap-1">
+							{:else}
+								<OwnedPrinterPicker
+									printers={ownedPrinters}
+									catalog={printerCatalog}
+									bind:selectedMachinePresetId={activePresets.printer}
+									onadd={() => (showCatalog = true)}
+									onedit={() => openSettingsDialog('machine')}
+								/>
+							{/if}
+						</section>
+						<!-- Filament : uniquement ceux compatibles avec l’imprimante ; dropdown + ✎. -->
+						<section class="flex flex-col gap-1.5">
+							<span class="text-xs font-semibold tracking-wide text-content-subtle uppercase"
+								>{$t('Filament')}</span
+							>
+							<div class="flex items-center gap-1">
+								<span
+									class="flex h-7 w-6 shrink-0 items-center justify-center rounded bg-primary/10 text-xs font-medium text-primary"
+									>1</span
+								>
 								<div class="min-w-0 flex-1">
 									<PresetSelect
+										compact
 										presets={filamentPresets}
 										bind:selectedId={filamentSel}
 										label={$t('Filament')}
-										onderive={(p) => derivePreset('filament', p)}
-										onsave={savePreset}
-										ondelete={(p) => removePreset('filament', p)}
 									/>
 								</div>
 								<button
 									type="button"
-									class="mt-0.5 flex shrink-0 items-center justify-center rounded border border-border-strong px-2 py-1 text-content-muted hover:bg-overlay disabled:opacity-40"
+									class="flex shrink-0 items-center justify-center rounded border border-border-strong px-2 py-1 text-content-muted hover:bg-overlay disabled:opacity-40"
 									title="Réglages du filament"
 									aria-label="Réglages du filament"
 									disabled={!filamentSel}
@@ -1455,40 +1435,31 @@
 									✎
 								</button>
 							</div>
-							<!-- Process : sélecteur ; ses réglages sont montrés en ligne ci-dessous. -->
+						</section>
+						<!-- Traitement : dropdown + réglages en ligne (onglets), sans bouton d’enregistrement. -->
+						<section class="flex flex-col gap-1.5">
+							<div class="flex items-center justify-between gap-2">
+								<span class="text-xs font-semibold tracking-wide text-content-subtle uppercase"
+									>{$t('Process')}</span
+								>
+								<div class="flex gap-0.5 rounded border border-border-strong p-0.5 text-xs">
+									<span class="rounded bg-primary px-2 py-0.5 text-primary-content">Global</span>
+									<span
+										class="rounded px-2 py-0.5 text-content-subtle"
+										title="Réglages par objet (à venir)">Objets</span
+									>
+								</div>
+							</div>
 							<PresetSelect
+								compact
 								presets={processPresets}
 								bind:selectedId={activePresets.process}
 								label={$t('Process')}
-								onderive={(p) => derivePreset('process', p)}
-								onsave={savePreset}
-								ondelete={(p) => removePreset('process', p)}
 							/>
+							<SettingsTabs kind="process" bind:mode={settingsMode} bind:values={processValues} />
 						</section>
-
-						<!-- Réglages du process en ligne (onglet « traitement » restauré). -->
-						<div class="flex items-center justify-between">
-							<span class="text-xs font-semibold tracking-wide text-content-subtle uppercase"
-								>{$t('Process')}</span
-							>
-							<button
-								type="button"
-								class="rounded border border-border-strong px-2 py-0.5 text-xs text-content-muted hover:bg-overlay disabled:opacity-40"
-								disabled={activePresetOf('process')?.origin !== 'user'}
-								title={activePresetOf('process')?.origin !== 'user'
-									? 'Preset système : dérivez-le pour l’éditer'
-									: 'Enregistrer les réglages du process'}
-								onclick={() => {
-									const p = activePresetOf('process');
-									if (p) void savePreset(p);
-								}}
-							>
-								{$t('Save')}
-							</button>
-						</div>
-						<SettingsTabs kind="process" bind:mode={settingsMode} bind:values={processValues} />
-
-						<!-- Dialogues de réglages (ouverts par les crayons ci-dessus). -->
+						<!-- Dialogues de réglages (ouverts par les crayons) : éditer un preset système
+						     puis Enregistrer dérive automatiquement une copie utilisateur. -->
 						<PresetSettingsDialog
 							open={settingsDialog === 'filament'}
 							title="Réglages du filament"
@@ -1497,10 +1468,6 @@
 							bind:values={filamentValues}
 							onClose={() => (settingsDialog = null)}
 							onsave={saveSettingsDialog}
-							saveDisabled={activePresetOf('filament')?.origin !== 'user'}
-							saveHint={activePresetOf('filament')?.origin !== 'user'
-								? 'Preset système : dérivez-le pour l’éditer'
-								: undefined}
 						/>
 						<PresetSettingsDialog
 							open={settingsDialog === 'machine'}
@@ -1510,10 +1477,6 @@
 							bind:values={machineValues}
 							onClose={() => (settingsDialog = null)}
 							onsave={saveSettingsDialog}
-							saveDisabled={activePresetOf('machine')?.origin !== 'user'}
-							saveHint={activePresetOf('machine')?.origin !== 'user'
-								? 'Preset système : dérivez-le pour l’éditer'
-								: undefined}
 						/>
 					</div>
 				{/if}

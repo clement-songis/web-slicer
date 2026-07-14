@@ -12,6 +12,9 @@
 		selectedId?: string | null;
 		/** Étiquette du sélecteur (« Filament », « Process »…). */
 		label?: string;
+		/** Mode compact (parité OrcaSlicer) : uniquement le menu déroulant, sans
+		 *  étiquette ni rangée d'actions — les actions passent par un crayon/dialogue. */
+		compact?: boolean;
 		/** Dériver le preset courant (crée une copie utilisateur). */
 		onderive?: (preset: PresetSummary) => void;
 		/** Sauvegarder les modifications du preset courant. */
@@ -24,6 +27,7 @@
 		presets,
 		selectedId = $bindable(null),
 		label = 'Preset',
+		compact = false,
 		onderive,
 		onsave,
 		ondelete
@@ -40,59 +44,69 @@
 		'rounded border border-border-strong px-2 py-1 text-xs hover:bg-overlay disabled:opacity-40';
 </script>
 
-<div class="flex flex-col gap-1">
-	<div class="flex items-center gap-2">
-		<span class="w-16 shrink-0 text-sm text-content-muted">{label}</span>
-		<select bind:value={selectedId} aria-label={label} class={FIELD}>
-			<option value={null} disabled>Choisir…</option>
-			{#if groups.system.length}
-				<optgroup label="Système">
-					{#each groups.system as p (p.id)}
-						<option value={p.id}>{p.name}</option>
-					{/each}
-				</optgroup>
-			{/if}
-			{#if groups.user.length}
-				<optgroup label="Mes presets">
-					{#each groups.user as p (p.id)}
-						<option value={p.id}>{p.name}{isDerived(p) ? ' ✎' : ''}</option>
-					{/each}
-				</optgroup>
-			{/if}
-		</select>
-	</div>
+{#snippet options()}
+	<option value={null} disabled>Choisir…</option>
+	{#if groups.system.length}
+		<optgroup label="Système">
+			{#each groups.system as p (p.id)}
+				<option value={p.id}>{p.name}</option>
+			{/each}
+		</optgroup>
+	{/if}
+	{#if groups.user.length}
+		<optgroup label="Mes presets">
+			{#each groups.user as p (p.id)}
+				<option value={p.id}>{p.name}{isDerived(p) ? ' ✎' : ''}</option>
+			{/each}
+		</optgroup>
+	{/if}
+{/snippet}
 
-	<div class="flex items-center gap-2 pl-18">
-		{#if badge}
-			<span class="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
-				{badge}
-			</span>
-		{/if}
-		<div class="ml-auto flex gap-1">
-			<button
-				type="button"
-				class={BTN}
-				disabled={!selected}
-				onclick={() => selected && onderive?.(selected)}
-			>
-				Dériver
-			</button>
-			<button
-				type="button"
-				class={BTN}
-				disabled={!isUser}
-				onclick={() => selected && onsave?.(selected)}
-			>
-				Enregistrer
-			</button>
-			<button
-				type="button"
-				class={BTN}
-				disabled={!isUser}
-				onclick={() => selected && ondelete?.(selected)}
-			>
-				Supprimer
-			</button>
+{#if compact}
+	<select bind:value={selectedId} aria-label={label} class={FIELD}>
+		{@render options()}
+	</select>
+{:else}
+	<div class="flex flex-col gap-1">
+		<div class="flex items-center gap-2">
+			<span class="w-16 shrink-0 text-sm text-content-muted">{label}</span>
+			<select bind:value={selectedId} aria-label={label} class={FIELD}>
+				{@render options()}
+			</select>
+		</div>
+
+		<div class="flex items-center gap-2 pl-18">
+			{#if badge}
+				<span class="rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">
+					{badge}
+				</span>
+			{/if}
+			<div class="ml-auto flex gap-1">
+				<button
+					type="button"
+					class={BTN}
+					disabled={!selected}
+					onclick={() => selected && onderive?.(selected)}
+				>
+					Dériver
+				</button>
+				<button
+					type="button"
+					class={BTN}
+					disabled={!isUser}
+					onclick={() => selected && onsave?.(selected)}
+				>
+					Enregistrer
+				</button>
+				<button
+					type="button"
+					class={BTN}
+					disabled={!isUser}
+					onclick={() => selected && ondelete?.(selected)}
+				>
+					Supprimer
+				</button>
+			</div>
 		</div>
 	</div>
-</div>
+{/if}
