@@ -16,17 +16,12 @@
 		importProject
 	} from '$lib/api/projects';
 	import { isAccepted } from '$lib/editor';
-	import { ThemeToggle } from '$lib/theme';
-	import { logout } from '$lib/api/session';
+	import AppSidebar from '$lib/nav/AppSidebar.svelte';
 	import { sortByUpdated, formatDate, thumbnailUrl } from '$lib/library/library';
 	import type { ProjectResponse } from '$lib/api/types';
 	import type { PageData } from './$types';
 	import IconNew from '~icons/lucide/file-plus';
 	import IconOpen from '~icons/lucide/download';
-	import IconClock from '~icons/lucide/clock';
-	import IconExternal from '~icons/lucide/external-link';
-	import IconPrinter from '~icons/lucide/printer';
-	import IconQueue from '~icons/lucide/list-checks';
 	import IconTrash from '~icons/lucide/trash-2';
 
 	let { data }: { data: PageData } = $props();
@@ -117,67 +112,10 @@
 			renamingId = null;
 		});
 	}
-
-	async function signOut() {
-		await run(async () => {
-			await logout();
-			await goto(resolve('/login'));
-		});
-	}
 </script>
 
 <div class="flex h-screen bg-surface text-content">
-	<!-- Barre latérale : compte + navigation (parité orca-home.png) -->
-	<aside class="flex w-64 shrink-0 flex-col border-r border-border bg-surface-raised">
-		<div class="flex flex-col items-center gap-2 border-b border-border px-4 py-6">
-			<span class="text-sm font-semibold text-content">Mon compte</span>
-			<div
-				class="flex h-16 w-16 items-center justify-center rounded-xl bg-overlay text-2xl font-semibold text-content-muted"
-				aria-hidden="true"
-			>
-				{data.user.email.charAt(0).toUpperCase()}
-			</div>
-			<span class="max-w-full truncate text-xs text-content-muted" title={data.user.email}>
-				{data.user.email}
-			</span>
-			<button onclick={signOut} disabled={busy} class="text-xs text-primary hover:underline">
-				Déconnexion
-			</button>
-		</div>
-		<nav class="flex flex-col gap-1 p-2 text-sm">
-			<span
-				class="flex items-center gap-2 rounded bg-primary/10 px-3 py-2 font-medium text-primary"
-			>
-				<IconClock class="h-4 w-4" /> Récent
-			</span>
-			<a
-				href={resolve('/printers')}
-				class="flex items-center gap-2 rounded px-3 py-2 text-content-muted hover:bg-overlay"
-			>
-				<IconPrinter class="h-4 w-4" /> Imprimantes
-			</a>
-			<a
-				href={resolve('/queue')}
-				class="flex items-center gap-2 rounded px-3 py-2 text-content-muted hover:bg-overlay"
-			>
-				<IconQueue class="h-4 w-4" /> File
-			</a>
-			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-			<a
-				href="https://github.com/SoftFever/OrcaSlicer"
-				target="_blank"
-				rel="noreferrer"
-				class="flex items-center justify-between rounded px-3 py-2 text-content-muted hover:bg-overlay"
-			>
-				<span>OrcaSlicer</span>
-				<IconExternal class="h-3.5 w-3.5" />
-			</a>
-		</nav>
-		<div class="mt-auto flex items-center justify-between border-t border-border px-3 py-3">
-			<span class="text-xs text-content-subtle">Web-Slicer</span>
-			<ThemeToggle />
-		</div>
-	</aside>
+	<AppSidebar email={data.user.email} active="recent" />
 
 	<!-- Zone principale -->
 	<main class="flex-1 overflow-auto p-8">

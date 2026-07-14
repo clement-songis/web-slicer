@@ -35,6 +35,7 @@
 		type StatusMap
 	} from '$lib/printers/printers';
 	import type { PageData } from './$types';
+	import AppSidebar from '$lib/nav/AppSidebar.svelte';
 
 	let { data }: { data: PageData } = $props();
 
@@ -226,193 +227,201 @@
 
 <svelte:head><title>Imprimantes</title></svelte:head>
 
-<main class="mx-auto flex max-w-3xl flex-col gap-6 p-6 text-content">
-	<h1 class="text-xl font-semibold text-content">Imprimantes</h1>
+<div class="flex h-screen bg-surface text-content">
+	<AppSidebar email={data.user.email} active="printers" />
+	<div class="flex-1 overflow-auto">
+		<main class="mx-auto flex max-w-3xl flex-col gap-6 p-6 text-content">
+			<h1 class="text-xl font-semibold text-content">Imprimantes</h1>
 
-	{#if error}
-		<p class="rounded bg-danger-soft px-3 py-2 text-danger-content" role="alert">{error}</p>
-	{/if}
-
-	<!-- Ajout par le catalogue (grille façon OrcaSlicer) -->
-	<button
-		type="button"
-		class="self-start rounded bg-primary px-3 py-2 text-sm font-medium text-primary-content hover:bg-primary-hover"
-		onclick={() => (showCatalog = true)}
-	>
-		＋ Ajouter des imprimantes
-	</button>
-
-	<!-- Déclaration manuelle (connexion Moonraker facultative) -->
-	<section
-		class="flex flex-col gap-3 rounded border border-border p-4"
-		aria-label="Déclarer une imprimante"
-	>
-		<h2 class="text-sm font-semibold text-content-muted">Déclarer manuellement</h2>
-		<form class="flex flex-col gap-3" onsubmit={declare}>
-			<label class="flex flex-col gap-1 text-sm">
-				<span class="text-content-muted">Nom</span>
-				<input
-					class="rounded border border-border-strong bg-surface-raised text-content px-2 py-1"
-					bind:value={name}
-					required
-					placeholder="Imprimante du salon"
-				/>
-			</label>
-			<label class="flex flex-col gap-1 text-sm">
-				<span class="text-content-muted">URL Moonraker (facultatif)</span>
-				<input
-					class="rounded border border-border-strong bg-surface-raised text-content px-2 py-1"
-					bind:value={url}
-					placeholder="http://klipper.local:7125"
-				/>
-			</label>
-			<label class="flex flex-col gap-1 text-sm">
-				<span class="text-content-muted">Clé API (facultatif)</span>
-				<input
-					class="rounded border border-border-strong bg-surface-raised text-content px-2 py-1"
-					bind:value={apiKey}
-					type="password"
-					autocomplete="off"
-					placeholder="X-Api-Key"
-				/>
-			</label>
-			<label class="flex flex-col gap-1 text-sm">
-				<span class="text-content-muted">Preset machine</span>
-				<select
-					class="rounded border border-border-strong bg-surface-raised text-content px-2 py-1"
-					bind:value={machinePreset}
-					required
-				>
-					{#each machines as preset (preset.id)}
-						<option value={preset.id}>{preset.name}</option>
-					{/each}
-				</select>
-			</label>
-			<button
-				type="submit"
-				class="self-start rounded bg-primary px-3 py-1 text-sm text-primary-content hover:bg-primary-hover disabled:opacity-50"
-				disabled={creating || machines.length === 0}
-			>
-				Déclarer
-			</button>
-			{#if machines.length === 0}
-				<p class="text-xs text-warning">Aucun preset machine disponible.</p>
+			{#if error}
+				<p class="rounded bg-danger-soft px-3 py-2 text-danger-content" role="alert">{error}</p>
 			{/if}
-		</form>
-	</section>
 
-	<!-- Liste -->
-	<section class="flex flex-col gap-3" aria-label="Imprimantes déclarées">
-		<div class="flex items-center justify-between">
-			<h2 class="text-sm font-semibold text-content-muted">Déclarées ({printers.length})</h2>
-			<button type="button" class="text-xs text-content-muted hover:underline" onclick={reload}>
-				Rafraîchir
+			<!-- Ajout par le catalogue (grille façon OrcaSlicer) -->
+			<button
+				type="button"
+				class="self-start rounded bg-primary px-3 py-2 text-sm font-medium text-primary-content hover:bg-primary-hover"
+				onclick={() => (showCatalog = true)}
+			>
+				＋ Ajouter des imprimantes
 			</button>
-		</div>
 
-		{#if printers.length === 0}
-			<p class="text-sm text-content-subtle">Aucune imprimante déclarée.</p>
-		{:else}
-			{#each printers as printer (printer.id)}
-				{@const st = statuses[printer.id]}
-				<article class="flex flex-col gap-3 rounded border border-border p-4">
-					<div class="flex items-start justify-between gap-3">
-						<div class="flex min-w-0 flex-col">
-							<span class="truncate font-medium text-content">{printer.name}</span>
-							<span class="truncate text-xs text-content-subtle">
-								{printer.moonraker_url ?? 'Non connectée'}
-							</span>
-						</div>
-						{#if st}
-							<span class="rounded px-2 py-0.5 text-xs {stateMeta(st.state).badge}">
-								{stateMeta(st.state).label}
-							</span>
-						{/if}
-					</div>
-
-					{#if st}
-						<div class="flex flex-col gap-1">
-							<div class="flex justify-between text-xs text-content-muted">
-								<span class="truncate">{st.filename ?? '—'}</span>
-								<span class="tabular-nums">{progressPercent(st.progress)}%</span>
-							</div>
-							<div class="h-1.5 overflow-hidden rounded bg-overlay">
-								<div class="h-full bg-primary" style:width="{progressPercent(st.progress)}%"></div>
-							</div>
-							<div class="mt-1 flex gap-4 text-xs text-content-muted">
-								<span>Buse {formatTemp(st.extruderTemp, st.extruderTarget)}</span>
-								<span>Plateau {formatTemp(st.bedTemp, st.bedTarget)}</span>
-							</div>
-						</div>
+			<!-- Déclaration manuelle (connexion Moonraker facultative) -->
+			<section
+				class="flex flex-col gap-3 rounded border border-border p-4"
+				aria-label="Déclarer une imprimante"
+			>
+				<h2 class="text-sm font-semibold text-content-muted">Déclarer manuellement</h2>
+				<form class="flex flex-col gap-3" onsubmit={declare}>
+					<label class="flex flex-col gap-1 text-sm">
+						<span class="text-content-muted">Nom</span>
+						<input
+							class="rounded border border-border-strong bg-surface-raised text-content px-2 py-1"
+							bind:value={name}
+							required
+							placeholder="Imprimante du salon"
+						/>
+					</label>
+					<label class="flex flex-col gap-1 text-sm">
+						<span class="text-content-muted">URL Moonraker (facultatif)</span>
+						<input
+							class="rounded border border-border-strong bg-surface-raised text-content px-2 py-1"
+							bind:value={url}
+							placeholder="http://klipper.local:7125"
+						/>
+					</label>
+					<label class="flex flex-col gap-1 text-sm">
+						<span class="text-content-muted">Clé API (facultatif)</span>
+						<input
+							class="rounded border border-border-strong bg-surface-raised text-content px-2 py-1"
+							bind:value={apiKey}
+							type="password"
+							autocomplete="off"
+							placeholder="X-Api-Key"
+						/>
+					</label>
+					<label class="flex flex-col gap-1 text-sm">
+						<span class="text-content-muted">Preset machine</span>
+						<select
+							class="rounded border border-border-strong bg-surface-raised text-content px-2 py-1"
+							bind:value={machinePreset}
+							required
+						>
+							{#each machines as preset (preset.id)}
+								<option value={preset.id}>{preset.name}</option>
+							{/each}
+						</select>
+					</label>
+					<button
+						type="submit"
+						class="self-start rounded bg-primary px-3 py-1 text-sm text-primary-content hover:bg-primary-hover disabled:opacity-50"
+						disabled={creating || machines.length === 0}
+					>
+						Déclarer
+					</button>
+					{#if machines.length === 0}
+						<p class="text-xs text-warning">Aucun preset machine disponible.</p>
 					{/if}
+				</form>
+			</section>
 
-					{#if testResult[printer.id]}
-						<p class="text-xs text-content-muted" role="status">{testResult[printer.id]}</p>
-					{/if}
+			<!-- Liste -->
+			<section class="flex flex-col gap-3" aria-label="Imprimantes déclarées">
+				<div class="flex items-center justify-between">
+					<h2 class="text-sm font-semibold text-content-muted">Déclarées ({printers.length})</h2>
+					<button type="button" class="text-xs text-content-muted hover:underline" onclick={reload}>
+						Rafraîchir
+					</button>
+				</div>
 
-					<div class="flex flex-wrap gap-2">
-						<button
-							type="button"
-							class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
-							disabled={busy[printer.id]}
-							onclick={() => editSettings(printer)}
-						>
-							Réglages
-						</button>
-						<button
-							type="button"
-							class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
-							disabled={busy[printer.id] || !printer.moonraker_url}
-							onclick={() => runTest(printer.id)}
-						>
-							Tester
-						</button>
-						<button
-							type="button"
-							class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
-							disabled={busy[printer.id] || !printer.moonraker_url}
-							onclick={() => refreshStatus(printer.id)}
-						>
-							État
-						</button>
-						<button
-							type="button"
-							class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
-							disabled={busy[printer.id] || !st || !canPause(st.state)}
-							onclick={() => control(printer.id, pausePrinter)}
-						>
-							Pause
-						</button>
-						<button
-							type="button"
-							class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
-							disabled={busy[printer.id] || !st || !canResume(st.state)}
-							onclick={() => control(printer.id, resumePrinter)}
-						>
-							Reprendre
-						</button>
-						<button
-							type="button"
-							class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
-							disabled={busy[printer.id] || !st || !canCancel(st.state)}
-							onclick={() => control(printer.id, cancelPrinter)}
-						>
-							Annuler
-						</button>
-						<button
-							type="button"
-							class="ml-auto rounded bg-danger px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50"
-							disabled={busy[printer.id]}
-							onclick={() => remove(printer.id)}
-						>
-							Supprimer
-						</button>
-					</div>
-				</article>
-			{/each}
-		{/if}
-	</section>
-</main>
+				{#if printers.length === 0}
+					<p class="text-sm text-content-subtle">Aucune imprimante déclarée.</p>
+				{:else}
+					{#each printers as printer (printer.id)}
+						{@const st = statuses[printer.id]}
+						<article class="flex flex-col gap-3 rounded border border-border p-4">
+							<div class="flex items-start justify-between gap-3">
+								<div class="flex min-w-0 flex-col">
+									<span class="truncate font-medium text-content">{printer.name}</span>
+									<span class="truncate text-xs text-content-subtle">
+										{printer.moonraker_url ?? 'Non connectée'}
+									</span>
+								</div>
+								{#if st}
+									<span class="rounded px-2 py-0.5 text-xs {stateMeta(st.state).badge}">
+										{stateMeta(st.state).label}
+									</span>
+								{/if}
+							</div>
+
+							{#if st}
+								<div class="flex flex-col gap-1">
+									<div class="flex justify-between text-xs text-content-muted">
+										<span class="truncate">{st.filename ?? '—'}</span>
+										<span class="tabular-nums">{progressPercent(st.progress)}%</span>
+									</div>
+									<div class="h-1.5 overflow-hidden rounded bg-overlay">
+										<div
+											class="h-full bg-primary"
+											style:width="{progressPercent(st.progress)}%"
+										></div>
+									</div>
+									<div class="mt-1 flex gap-4 text-xs text-content-muted">
+										<span>Buse {formatTemp(st.extruderTemp, st.extruderTarget)}</span>
+										<span>Plateau {formatTemp(st.bedTemp, st.bedTarget)}</span>
+									</div>
+								</div>
+							{/if}
+
+							{#if testResult[printer.id]}
+								<p class="text-xs text-content-muted" role="status">{testResult[printer.id]}</p>
+							{/if}
+
+							<div class="flex flex-wrap gap-2">
+								<button
+									type="button"
+									class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
+									disabled={busy[printer.id]}
+									onclick={() => editSettings(printer)}
+								>
+									Réglages
+								</button>
+								<button
+									type="button"
+									class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
+									disabled={busy[printer.id] || !printer.moonraker_url}
+									onclick={() => runTest(printer.id)}
+								>
+									Tester
+								</button>
+								<button
+									type="button"
+									class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
+									disabled={busy[printer.id] || !printer.moonraker_url}
+									onclick={() => refreshStatus(printer.id)}
+								>
+									État
+								</button>
+								<button
+									type="button"
+									class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
+									disabled={busy[printer.id] || !st || !canPause(st.state)}
+									onclick={() => control(printer.id, pausePrinter)}
+								>
+									Pause
+								</button>
+								<button
+									type="button"
+									class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
+									disabled={busy[printer.id] || !st || !canResume(st.state)}
+									onclick={() => control(printer.id, resumePrinter)}
+								>
+									Reprendre
+								</button>
+								<button
+									type="button"
+									class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
+									disabled={busy[printer.id] || !st || !canCancel(st.state)}
+									onclick={() => control(printer.id, cancelPrinter)}
+								>
+									Annuler
+								</button>
+								<button
+									type="button"
+									class="ml-auto rounded bg-danger px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50"
+									disabled={busy[printer.id]}
+									onclick={() => remove(printer.id)}
+								>
+									Supprimer
+								</button>
+							</div>
+						</article>
+					{/each}
+				{/if}
+			</section>
+		</main>
+	</div>
+</div>
 
 {#if showCatalog}
 	<!-- Grille de sélection façon OrcaSlicer pour ajouter des imprimantes possédées. -->
