@@ -79,7 +79,12 @@ impl Cancel {
 
 /// Issue de l'exécution d'un job par le runner.
 pub enum RunOutcome {
-    Succeeded(GcodeId),
+    /// Tranchage réussi : G-code produit + statistiques (relayées telles quelles
+    /// dans l'événement `job.finished`, format `GcodeStats` du client).
+    Succeeded {
+        gcode_id: GcodeId,
+        stats: serde_json::Value,
+    },
     Failed(serde_json::Value),
     Cancelled,
 }
@@ -270,7 +275,7 @@ impl Queue {
         self.cancels.lock().unwrap().remove(&id);
 
         match outcome {
-            RunOutcome::Succeeded(gcode_id) => {
+            RunOutcome::Succeeded { gcode_id, stats } => {
                 let _ = self
                     .storage
                     .jobs()
@@ -281,7 +286,7 @@ impl Queue {
                     JobEvent::Finished {
                         id,
                         gcode_id: Some(gcode_id),
-                        stats: serde_json::Value::Null,
+                        stats,
                     },
                 );
             }

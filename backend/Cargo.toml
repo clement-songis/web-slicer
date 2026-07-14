@@ -44,6 +44,8 @@ tokio-tungstenite = { version = "0.29", default-features = false, features = [
     "handshake",
 ] }
 futures-util = "0.3"
+# Répertoire de travail isolé du runner de tranchage (T064).
+tempfile = "3"
 
 [features]
 # Active l'adaptateur de stockage Postgres (T026). Le pilote sqlx `postgres`

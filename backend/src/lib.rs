@@ -15,3 +15,4 @@ pub mod models;
 pub mod queue;
 pub mod scene;
 pub mod server;
+pub mod slicing;

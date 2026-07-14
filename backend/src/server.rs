@@ -15,6 +15,8 @@ use crate::adapters::storage::sqlite::SqliteStorage;
 use crate::domain::{presets, Storage};
 use crate::http::routes::router;
 use crate::http::state::{default_profiles_dir, AppState};
+use crate::queue::{Queue, QueueConfig};
+use crate::slicing::SliceRunner;
 
 /// Construit l'application axum prête à servir.
 pub async fn build_app(database_url: &str, data_dir: PathBuf) -> anyhow::Result<Router> {
@@ -32,7 +34,27 @@ pub async fn build_app(database_url: &str, data_dir: PathBuf) -> anyhow::Result<
 
     let files = FileStore::new(data_dir);
     let state = AppState::new(Arc::new(storage), files).with_profiles_dir(profiles_dir);
+
+    // File de tranchage (T063/T064) : démarre le pool de workers qui exécutent les
+    // jobs `queued` via le runner FFI (`engine-worker slice`). La progression et la
+    // fin sont relayées au propriétaire par le bus d'événements (WebSocket, T065).
+    // Sans ce démarrage, les jobs restaient `queued` (progression 0 %).
+    start_slicing_queue(state.clone()).await;
+
     Ok(router(state, session_layer))
+}
+
+/// Construit et lance la file de tranchage. La poignée est intentionnellement
+/// gardée vivante pour toute la durée du process (les workers sont des tâches
+/// tokio) via `mem::forget` : le serveur ne s'arrête qu'avec le process.
+async fn start_slicing_queue(state: AppState) {
+    let runner = Arc::new(SliceRunner::new(state.clone()));
+    let queue = Arc::new(
+        Queue::new(state.storage.clone(), runner, QueueConfig::default())
+            .with_event_sink(state.events.clone()),
+    );
+    let handle = queue.start().await;
+    std::mem::forget(handle);
 }
 
 /// Seed système au premier démarrage : n'importe les profils que si la base

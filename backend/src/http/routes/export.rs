@@ -35,30 +35,7 @@ pub async fn export_3mf(
     let project = state.storage.projects().get(user.id, project_id).await?; // 404, SC-008
 
     // Géométrie : maillages STL décodés côté serveur.
-    let models = state
-        .storage
-        .models()
-        .list(user.id, Some(project_id))
-        .await?;
-    let mut model = engine::api::Model::default();
-    for m in models.iter().filter(|m| m.format == ModelFormat::Stl) {
-        let bytes = state
-            .files
-            .read(FsPath::new(&m.file_path))
-            .await
-            .map_err(|e| {
-                tracing::error!(error = %e, "lecture du modèle (export 3MF)");
-                ApiError::internal()
-            })?;
-        let mesh = parse_stl(&bytes).map_err(|e| {
-            tracing::error!(error = %e, "décodage STL (export 3MF)");
-            ApiError::validation(
-                "STL illisible",
-                serde_json::json!({ "model": m.id.to_string() }),
-            )
-        })?;
-        model.add_object(m.filename.clone(), to_triangle_mesh(&mesh));
-    }
+    let model = build_stl_model(&state, user.id, project_id).await?;
 
     // Configuration figée : presets actifs résolus.
     let (config, _warnings) =
@@ -82,6 +59,38 @@ pub async fn export_3mf(
         bytes,
     )
         .into_response())
+}
+
+/// Assemble le `Model` moteur d'un projet à partir de ses maillages **STL**
+/// décodés côté serveur. Source unique de l'export 3MF et du runner de tranchage
+/// (les formats dont la géométrie dépend du moteur — OBJ/3MF/STEP — restent à
+/// câbler via le writer libslic3r). Un projet d'autrui répond 404 (SC-008).
+pub(crate) async fn build_stl_model(
+    state: &AppState,
+    user: crate::domain::UserId,
+    project_id: ProjectId,
+) -> ApiResult<engine::api::Model> {
+    let models = state.storage.models().list(user, Some(project_id)).await?;
+    let mut model = engine::api::Model::default();
+    for m in models.iter().filter(|m| m.format == ModelFormat::Stl) {
+        let bytes = state
+            .files
+            .read(FsPath::new(&m.file_path))
+            .await
+            .map_err(|e| {
+                tracing::error!(error = %e, "lecture du modèle (assemblage moteur)");
+                ApiError::internal()
+            })?;
+        let mesh = parse_stl(&bytes).map_err(|e| {
+            tracing::error!(error = %e, "décodage STL (assemblage moteur)");
+            ApiError::validation(
+                "STL illisible",
+                serde_json::json!({ "model": m.id.to_string() }),
+            )
+        })?;
+        model.add_object(m.filename.clone(), to_triangle_mesh(&mesh));
+    }
+    Ok(model)
 }
 
 /// Maillage backend (aplati) → `TriangleMesh` moteur (sommets/triangles indexés).

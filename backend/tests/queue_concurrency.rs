@@ -85,7 +85,10 @@ impl JobRunner for SlicingStub {
             )
             .await
             .expect("création du G-code du job");
-        RunOutcome::Succeeded(gcode.id)
+        RunOutcome::Succeeded {
+            gcode_id: gcode.id,
+            stats: json!({ "plate": job.plate_index }),
+        }
     }
 }
 
