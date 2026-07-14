@@ -8,6 +8,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	server: {
+		// Autorise l'accès via un tunnel Cloudflare (URL éphémère *.trycloudflare.com) :
+		// Vite bloque sinon les hôtes inconnus dans l'en-tête Host.
+		allowedHosts: ['.trycloudflare.com'],
 		// En dev, les appels `/api/*` sont relayés au backend axum (cookie de
 		// session same-origin). Surcharger la cible via BACKEND_URL au besoin.
 		proxy: {
