@@ -149,14 +149,17 @@ async fn printer_catalog_groups_models_variants_and_defaults() {
     seed_machine(&h.storage, owner, "Prusa", "Prusa MK4 0.6 nozzle").await;
     seed_machine(&h.storage, owner, "Prusa", "Prusa MINI 0.4 nozzle").await;
     seed_machine(&h.storage, owner, "Anet", "Anet A8 0.4 nozzle").await;
+    seed_machine(&h.storage, owner, "Custom", "MyKlipper 0.4 nozzle").await;
 
     let body = json_body(get(&h.app, "/api/printer-catalog", &session).await).await;
     let vendors = body.as_array().unwrap();
-    // Marques triées : Anet avant Prusa.
-    assert_eq!(vendors[0]["vendor"], "Anet");
-    assert_eq!(vendors[1]["vendor"], "Prusa");
+    // « Custom » (imprimantes génériques) en tête ; les autres marques restent
+    // triées alphabétiquement (Anet avant Prusa).
+    assert_eq!(vendors[0]["vendor"], "Custom");
+    assert_eq!(vendors[1]["vendor"], "Anet");
+    assert_eq!(vendors[2]["vendor"], "Prusa");
 
-    let models = vendors[1]["models"].as_array().unwrap();
+    let models = vendors[2]["models"].as_array().unwrap();
     assert_eq!(models.len(), 2, "MINI et MK4");
     let mk4 = models.iter().find(|m| m["model"] == "Prusa MK4").unwrap();
     let variants = mk4["variants"].as_array().unwrap();

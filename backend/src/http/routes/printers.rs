@@ -128,7 +128,7 @@ pub async fn catalog(
             });
     }
 
-    let vendors = by_vendor
+    let mut vendors: Vec<PrinterCatalogVendor> = by_vendor
         .into_iter()
         .map(|(vendor, models)| {
             let models = models
@@ -160,6 +160,11 @@ pub async fn catalog(
             PrinterCatalogVendor { vendor, models }
         })
         .collect();
+
+    // « Custom » (imprimantes génériques : Marlin, Klipper, RRF, Repetier…) en tête
+    // du catalogue : accès direct quand l'imprimante réelle n'est pas reconnue. Tri
+    // stable → les autres marques conservent leur ordre alphabétique.
+    vendors.sort_by_key(|v| v.vendor != "Custom");
 
     Ok(Json(vendors))
 }
