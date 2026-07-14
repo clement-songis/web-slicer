@@ -81,6 +81,17 @@ pub fn parse_stats(gcode: &str) -> GcodeStats {
             stats.total_toolchanges = v.trim().parse().ok();
         } else if let Some(v) = comment.strip_prefix("total layers count = ") {
             stats.layer_count = v.trim().parse().ok();
+        } else if let Some(v) = comment.strip_prefix("total layer number: ") {
+            // OrcaSlicer 2.4.x : « total layer number: N » (variante à deux-points).
+            stats.layer_count = v.trim().parse().ok();
+        } else if let Some((_, rest)) = comment.split_once("total estimated time:") {
+            // OrcaSlicer 2.4.x insère « … ; total estimated time: 8m 43s » sur la
+            // ligne « model printing time ». On extrait la durée (jusqu'au `;`).
+            let text = rest.trim().split(';').next().unwrap_or("").trim();
+            if stats.estimated_time_seconds.is_none() && !text.is_empty() {
+                stats.estimated_time_text = Some(text.to_string());
+                stats.estimated_time_seconds = parse_dhms(text);
+            }
         } else if let Some(v) = comment.strip_prefix("filament used [mm] = ") {
             stats.filament_used_mm = parse_number_list(v);
         } else if let Some(v) = comment.strip_prefix("filament used [cm3] = ") {
@@ -577,6 +588,27 @@ G1 X10 Y10 E1.2
         assert_eq!(s.total_filament_cost, Some(0.11));
         assert_eq!(s.total_toolchanges, Some(2));
         assert_eq!(s.layer_count, Some(42));
+    }
+
+    // En-tête réel produit par OrcaSlicer 2.4.1 (variantes à deux-points pour la
+    // durée totale et le nombre de couches, absentes du footer historique).
+    const ORCA_2_4: &str = "\
+; model printing time: 8m 42s; total estimated time: 8m 43s
+; estimated first layer printing time (normal mode) = 1s
+; total layer number: 50
+; filament used [mm] = 793.51
+; filament used [cm3] = 1.91
+; filament used [g] = 2.37
+G1 X0 Y0
+";
+
+    #[test]
+    fn parses_orcaslicer_2_4_colon_variants() {
+        let s = parse_stats(ORCA_2_4);
+        assert_eq!(s.layer_count, Some(50));
+        assert_eq!(s.estimated_time_text.as_deref(), Some("8m 43s"));
+        assert_eq!(s.estimated_time_seconds, Some(523));
+        assert_eq!(s.filament_used_g, vec![2.37]);
     }
 
     #[test]
