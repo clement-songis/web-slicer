@@ -39,12 +39,16 @@
 		PlateSet,
 		bedFromValues,
 		serializeScene,
+		parseScene,
 		saveScene,
 		centerMesh,
 		uploadModel,
 		fetchMesh,
+		sceneMeshToStlFile,
+		BrimEars,
 		type SaveOutcome,
 		type SceneObject,
+		type SceneObjectState,
 		type SceneMesh,
 		type Transform,
 		type NamedView
@@ -203,6 +207,10 @@
 	// Maillages rendus dans la scène 3D : peuplés à l'ouverture depuis les modèles
 	// du projet (T092) puis par les imports (T089).
 	let sceneObjects = $state<SceneObject[]>([]);
+	// Transformations sauvegardées, indexées par id d'objet (reconstruites à
+	// l'ouverture depuis `project.scene`, appliquées quand le maillage arrive).
+	// Transitoire (pas d'état réactif) : simple table de correspondance de montage.
+	const savedTransformByObject: Record<string, Transform> = {};
 
 	// Plateau par défaut tant que le preset machine n'est pas résolu (le layout
 	// et les dimensions réelles viennent des valeurs `printable_area` du preset).
@@ -340,9 +348,31 @@
 			importError = e instanceof ApiError ? e.message : 'chargement des modèles impossible';
 			return;
 		}
+		// Scène persistée : plateaux, transformations et affectation de plateau par
+		// objet. La clé stable entre sessions est le `modelId` (les ids d'objet sont
+		// régénérés par l'arbre) ; on reconstruit donc plateau + transformation par
+		// modèle. Les ids d'objet du document servent à retrouver le plateau d'origine.
+		const saved = parseScene(data.project.scene);
+		const plateByOldId: Record<string, string> = {};
+		for (const p of saved.plates.plates ?? []) {
+			for (const oid of p.objectIds) plateByOldId[oid] = p.id;
+		}
+		const docByModel: Record<string, (typeof saved.objects)[number]> = {};
+		for (const d of saved.objects) docByModel[d.modelId] = d;
+		// Restaure la structure de plateaux (noms, types, plateau actif) mais vide
+		// les affectations : elles référencent d'anciens ids, réattribués ci-dessous.
+		if ((saved.plates.plates ?? []).length > 0) {
+			plates = PlateSet.deserialize({
+				activeId: saved.plates.activeId ?? null,
+				plates: saved.plates.plates.map((p) => ({ ...p, objectIds: [] }))
+			});
+		}
 		for (const model of models) {
 			const objectId = tree.add(model.filename).id;
-			if (plates.activeId) plates.assign(objectId, plates.activeId);
+			const doc = docByModel[model.id];
+			const plateId = (doc && plateByOldId[doc.id]) || plates.activeId;
+			if (plateId) plates.assign(objectId, plateId);
+			if (doc) savedTransformByObject[objectId] = doc.transform;
 			// Suivi de l'import (permet la résolution via `model.converted`).
 			imports = [
 				...imports,
@@ -478,15 +508,23 @@
 		}
 	}
 
+	// G-code dont l'aperçu est déjà chargé : évite de recharger à chaque événement.
+	let previewLoadedFor: string | null = null;
+
 	function onEvent(event: ServerEvent) {
 		const wasPreview = layout.tab === 'preview';
 		session = applyJobEvent(session, event);
 		if (event.event === 'job.finished' && session.jobIds.includes(event.id)) {
 			rawStats = event.stats;
 		}
-		// Bascule automatique vers l'aperçu au premier G-code produit.
-		if (!wasPreview && session.phase === 'preview' && session.gcodeId) {
-			layout = setTab(layout, 'preview');
+		// Au premier G-code de la session : charge l'aperçu et bascule sur l'onglet
+		// (sauf si l'utilisateur l'a déjà quitté). Le chargement doit se faire même
+		// quand `sliceActive` a déjà ouvert l'onglet aperçu (d'où le suivi par
+		// `previewLoadedFor` plutôt que la seule garde `!wasPreview`, qui empêchait
+		// la préviz de se charger).
+		if (session.phase === 'preview' && session.gcodeId && session.gcodeId !== previewLoadedFor) {
+			previewLoadedFor = session.gcodeId;
+			if (!wasPreview) layout = setTab(layout, 'preview');
 			void loadPreview(session.gcodeId);
 		}
 		// Fin de conversion moteur (STEP…) : récupère le maillage et l'affiche.
@@ -542,7 +580,18 @@
 		if (!item) return;
 		try {
 			const { mesh, center } = centerMesh(await fetchMesh(modelId));
-			sceneObjects = [...sceneObjects, { id: item.objectId, mesh, position: center }];
+			// Transformation sauvegardée prioritaire sur le recentrage par défaut.
+			const t = savedTransformByObject[item.objectId];
+			sceneObjects = [
+				...sceneObjects,
+				{
+					id: item.objectId,
+					mesh,
+					position: t?.position ?? center,
+					rotation: t?.rotation,
+					scale: t?.scale
+				}
+			];
 			patchImport(item.objectId, markConverted);
 		} catch (e) {
 			// 409 = pas encore prêt : rester en « conversion en cours ».
@@ -919,14 +968,30 @@
 		addMenu = { ...addMenu, open: false };
 	}
 	// Ajoute une primitive paramétrique au plateau actif, centrée, et la sélectionne.
-	function addPrimitive(kind: PrimitiveKind) {
-		const id = tree.add(kind.charAt(0).toUpperCase() + kind.slice(1)).id;
+	// La primitive est téléversée comme modèle STL serveur : elle rejoint le
+	// pipeline des imports (restaurée à l'ouverture via `loadProjectModels`, incluse
+	// dans le tranchage `build_stl_model`). Le maillage local est affiché aussitôt
+	// pour la réactivité ; l'upload en tâche de fond ne fait qu'enregistrer le
+	// `modelId` (persistance).
+	async function addPrimitive(kind: PrimitiveKind) {
+		const name = kind.charAt(0).toUpperCase() + kind.slice(1);
+		const id = tree.add(name).id;
 		if (plates.activeId) plates.assign(id, plates.activeId);
-		sceneObjects = [
-			...sceneObjects,
-			{ id, mesh: primitiveMesh(kind), position: [bed.center.x, bed.center.y, 0] }
-		];
+		const mesh = primitiveMesh(kind);
+		sceneObjects = [...sceneObjects, { id, mesh, position: [bed.center.x, bed.center.y, 0] }];
 		ws = setSelection(ws, new Set([id]));
+		imports = [...imports, startImport(id, `${name}.stl`)];
+		try {
+			const model = await uploadModel(data.project.id, sceneMeshToStlFile(mesh, name));
+			// Le maillage local est déjà affiché : l'objet est prêt dès l'upload,
+			// sans attendre la conversion serveur (le tranchage lit le STL, pas la
+			// préviz). On force donc l'état « prêt » (pas de badge « conversion »).
+			patchImport(id, (i) => markUploaded(i, model.id, false));
+		} catch (e) {
+			patchImport(id, (i) =>
+				markFailed(i, e instanceof ApiError ? e.message : 'échec de l’upload')
+			);
+		}
 	}
 	// Dispatch du menu d'ajout (T113) : Load (import) ou primitive.
 	function onAddAction(action: string) {
@@ -935,7 +1000,7 @@
 			return;
 		}
 		const kind = action.replace('add.', '') as PrimitiveKind;
-		addPrimitive(kind);
+		void addPrimitive(kind);
 	}
 	// Déplace un objet de la scène (position absolue, mm).
 	function moveObject(id: string, position: [number, number, number]) {
@@ -1120,7 +1185,18 @@
 	}
 
 	// Lance le tranchage du plateau actif et affiche la progression dans l'aperçu.
+	// Le backend tranche à partir de la scène **persistée** (objets par plateau,
+	// modèles rattachés) : on enregistre donc d'abord pour que les objets ajoutés
+	// dans la session soient bien pris en compte (sinon « plateau vide »).
 	async function sliceActive() {
+		const saved = await save();
+		if (saved.status === 'conflict') {
+			session = sliceFailed(
+				'Conflit : le projet a été modifié ailleurs. Rechargez avant de trancher.'
+			);
+			layout = setTab(layout, 'preview');
+			return;
+		}
 		const req = sliceRequestFor('plate', plates.plateIndex(plates.activeId ?? ''));
 		try {
 			const res = await sliceProject(data.project.id, req);
@@ -1178,13 +1254,42 @@
 	}
 
 	async function save(): Promise<SaveOutcome> {
-		const scene = serializeScene(plates.serialize(), []);
+		// Objets sérialisables : ceux adossés à un modèle serveur (les primitives
+		// aussi, téléversées en STL). La clé de restauration est le `modelId` ;
+		// on persiste la transformation (placement/rotation/échelle) et le profil de
+		// hauteur de couche. Les objets sans `modelId` (upload en cours) sont ignorés
+		// et seront inclus au prochain enregistrement.
+		const objects: SceneObjectState[] = sceneObjects
+			.map((o) => {
+				const modelId = imports.find((i) => i.objectId === o.id)?.modelId;
+				if (!modelId) return null;
+				return {
+					id: o.id,
+					modelId,
+					transform: {
+						position: o.position ?? [0, 0, 0],
+						rotation: o.rotation ?? [0, 0, 0],
+						scale: o.scale ?? [1, 1, 1]
+					},
+					extruder: 0,
+					settings: {},
+					painting: new TrianglePainting(),
+					layerProfile: layerProfiles[o.id] ?? [],
+					brimEars: new BrimEars()
+				} satisfies SceneObjectState;
+			})
+			.filter((o): o is SceneObjectState => o !== null);
+		const scene = serializeScene(plates.serialize(), objects);
 		const outcome = await saveScene(
 			data.project.id,
 			Number(data.project.version),
 			scene,
 			serializeActivePresets(activePresets)
 		);
+		// Verrou optimiste : on adopte la version renvoyée pour que les
+		// enregistrements suivants (dont le save implicite avant tranchage) ne
+		// déclenchent pas un faux conflit 409.
+		if (outcome.status === 'saved') data.project.version = BigInt(outcome.version);
 		saveMessage =
 			outcome.status === 'saved'
 				? 'Projet sauvegardé.'

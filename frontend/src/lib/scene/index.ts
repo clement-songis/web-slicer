@@ -115,6 +115,7 @@ export {
 	type AssemblyPart
 } from './tools';
 export { meshFromTriangleSoup } from './loaders';
+export { sceneMeshToStlBytes, sceneMeshToStlFile } from './stl';
 export {
 	cube,
 	cylinder,
