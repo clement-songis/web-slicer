@@ -355,24 +355,30 @@
 		}
 	}
 
-	// Charge les catalogues de presets (T098). Filament/process sont filtrés par
-	// compatibilité avec l'imprimante sélectionnée (FR-021, côté serveur).
+	// Charge les catalogues de presets (T098). Filament **et** process (traitement)
+	// sont réduits aux presets **compatibles avec l'imprimante sélectionnée**
+	// (FR-021, filtre côté serveur). On résout le nom de l'imprimante active sur le
+	// catalogue machine **complet** (une buse sœur du modèle possédé n'est pas dans
+	// la liste réduite aux imprimantes possédées) et **avant** de charger
+	// filament/process — sinon la première charge partirait sans filtre.
 	async function loadPresets() {
-		const printerName = machinePresets.find((p) => p.id === activePresets.printer)?.name;
 		try {
-			const [printers, catalog, machines, filaments, processes] = await Promise.all([
+			const [printers, catalog, machines] = await Promise.all([
 				listPrinters(),
 				getPrinterCatalog(),
-				listPresets('machine'),
-				listPresets('filament', printerName),
-				listPresets('process', printerName)
+				listPresets('machine')
 			]);
-			// Restriction (Phase 14) : le sélecteur ne montre que les presets machine
-			// des imprimantes **possédées** ; le catalogue alimente le menu de buse.
 			ownedPrinters = printers;
 			printerCatalog = catalog;
+			// Restriction (Phase 14) : le sélecteur ne montre que les presets machine
+			// des imprimantes **possédées** ; le catalogue alimente le menu de buse.
 			const owned = new Set(printers.map((p) => p.machine_preset_id));
 			machinePresets = machines.filter((m) => owned.has(m.id));
+			const printerName = machines.find((m) => m.id === activePresets.printer)?.name;
+			const [filaments, processes] = await Promise.all([
+				listPresets('filament', printerName ?? undefined),
+				listPresets('process', printerName ?? undefined)
+			]);
 			filamentPresets = filaments;
 			processPresets = processes;
 		} catch (e) {
