@@ -65,7 +65,9 @@ export function centerMesh(mesh: SceneMesh): { mesh: SceneMesh; center: [number,
 	return { mesh: { positions: out, normals: mesh.normals, indices: mesh.indices }, center };
 }
 
-const MAGIC = 0x574d_5368; // "WSMh" en big-endian pour comparaison directe
+// "WSMh" (octets 0x57 0x53 0x4d 0x68) lu en big-endian = 0x57534d68 — doit
+// correspondre au magic écrit par le backend (`backend/src/mesh.rs`, b"WSMh").
+const MAGIC = 0x5753_4d68;
 
 /** Décode un tampon WSMh. Lève si l'en-tête ou la taille est incohérent. */
 export function decodeMesh(buffer: ArrayBuffer): SceneMesh {

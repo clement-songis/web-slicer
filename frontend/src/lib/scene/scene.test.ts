@@ -11,7 +11,7 @@ function encodeWsmh(positions: number[], normals: number[], indices: number[]): 
 	const vc = positions.length / 3;
 	const buf = new ArrayBuffer(16 + positions.length * 4 + normals.length * 4 + indices.length * 4);
 	const view = new DataView(buf);
-	view.setUint32(0, 0x574d_5368, false); // "WSMh"
+	view.setUint32(0, 0x5753_4d68, false); // "WSMh" (b"WSMh" du backend, big-endian)
 	view.setUint32(4, 1, true);
 	view.setUint32(8, vc, true);
 	view.setUint32(12, indices.length, true);
