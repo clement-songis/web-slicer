@@ -13,10 +13,14 @@ export default defineConfig({
 		allowedHosts: ['.trycloudflare.com'],
 		// En dev, les appels `/api/*` sont relayés au backend axum (cookie de
 		// session same-origin). Surcharger la cible via BACKEND_URL au besoin.
+		// `ws: true` relaie aussi l'upgrade WebSocket `/api/ws` (flux d'événements
+		// de la file : progression et fin de tranchage) — sans quoi l'UI reste
+		// bloquée sur « tranchage en cours ».
 		proxy: {
 			'/api': {
 				target: process.env.BACKEND_URL ?? 'http://127.0.0.1:8080',
-				changeOrigin: true
+				changeOrigin: true,
+				ws: true
 			}
 		}
 	},
