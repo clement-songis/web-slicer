@@ -22,6 +22,10 @@
 		showGrid?: boolean;
 		/** Remonte la transformation de l'objet manipulé (T103). */
 		ontransform?: (id: string, transform: Transform) => void;
+		/** Peinture au triangle active (T056). */
+		paintActive?: boolean;
+		/** Remonte un coup de pinceau : id d'objet + triangle + point local. */
+		onpaint?: (id: string, faceIndex: number, local: [number, number, number]) => void;
 	}
 
 	let {
@@ -31,12 +35,24 @@
 		gizmoMode = null,
 		view = 'default',
 		showGrid = true,
-		ontransform
+		ontransform,
+		paintActive = false,
+		onpaint
 	}: Props = $props();
 </script>
 
 <div class="h-full w-full">
 	<Canvas>
-		<Viewport {bed} {objects} bind:selection {gizmoMode} {view} {showGrid} {ontransform} />
+		<Viewport
+			{bed}
+			{objects}
+			bind:selection
+			{gizmoMode}
+			{view}
+			{showGrid}
+			{ontransform}
+			{paintActive}
+			{onpaint}
+		/>
 	</Canvas>
 </div>

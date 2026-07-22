@@ -34,6 +34,7 @@
 		type LayerBand,
 		PaintToolbar,
 		TrianglePainting,
+		trianglesInRadius,
 		type PaintChannel,
 		ObjectTree,
 		PlateSet,
@@ -372,7 +373,11 @@
 			const doc = docByModel[model.id];
 			const plateId = (doc && plateByOldId[doc.id]) || plates.activeId;
 			if (plateId) plates.assign(objectId, plateId);
-			if (doc) savedTransformByObject[objectId] = doc.transform;
+			if (doc) {
+				savedTransformByObject[objectId] = doc.transform;
+				// Restaure la peinture au triangle (supports/couture/MMU/fuzzy).
+				if (doc.painting) paintings[objectId] = TrianglePainting.deserialize(doc.painting);
+			}
 			// Suivi de l'import (permet la résolution via `model.converted`).
 			imports = [
 				...imports,
@@ -717,6 +722,25 @@
 	function clearActivePaint() {
 		if (!selId || !paintChannel) return;
 		paintingFor(selId).clear(paintChannel);
+		paintings = { ...paintings };
+	}
+
+	// Coup de pinceau remonté par le viewport (T056) : peint le canal actif sur
+	// l'objet touché. `brush`/`sphere` = pinceau à rayon (triangles dont le
+	// barycentre est proche de l'impact) ; `fill` = tout l'objet. `paintState`
+	// porte l'état (enforcer/blocker ; ≤ 0 efface, géré par `TrianglePainting`).
+	function onPaintStroke(id: string, faceIndex: number, local: [number, number, number]) {
+		if (!paintChannel) return;
+		const obj = sceneObjects.find((o) => o.id === id);
+		if (!obj) return;
+		let triangles: number[];
+		if (paintTool === 'fill') {
+			triangles = Array.from({ length: obj.mesh.indices.length / 3 }, (_, t) => t);
+		} else {
+			triangles = trianglesInRadius(obj.mesh, local, paintRadius);
+			if (!triangles.includes(faceIndex)) triangles.push(faceIndex);
+		}
+		paintingFor(id).paint(paintChannel, triangles, paintState);
 		paintings = { ...paintings };
 	}
 
@@ -1273,7 +1297,7 @@
 					},
 					extruder: 0,
 					settings: {},
-					painting: new TrianglePainting(),
+					painting: paintings[o.id] ?? new TrianglePainting(),
 					layerProfile: layerProfiles[o.id] ?? [],
 					brimEars: new BrimEars()
 				} satisfies SceneObjectState;
@@ -1616,6 +1640,8 @@
 					view={cameraView}
 					{showGrid}
 					ontransform={onTransform}
+					paintActive={!!paintChannel}
+					onpaint={onPaintStroke}
 				/>
 
 				<!-- Barre d'outils de plateau (T106) : horizontale, en haut au centre. -->

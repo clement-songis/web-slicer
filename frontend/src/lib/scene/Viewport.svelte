@@ -27,6 +27,10 @@
 		showGrid?: boolean;
 		/** Remonte la transformation de l'objet manipulé (T103). */
 		ontransform?: (id: string, transform: Transform) => void;
+		/** Peinture au triangle active (désactive la rotation caméra, T056). */
+		paintActive?: boolean;
+		/** Remonte un coup de pinceau sur un objet : id + triangle + point local. */
+		onpaint?: (id: string, faceIndex: number, local: [number, number, number]) => void;
 	}
 
 	let {
@@ -36,7 +40,9 @@
 		gizmoMode = null,
 		view = 'default',
 		showGrid = true,
-		ontransform
+		ontransform,
+		paintActive = false,
+		onpaint
 	}: Props = $props();
 
 	// Active le raycasting Threlte (événements de pointeur sur les meshes).
@@ -65,7 +71,12 @@
 </script>
 
 <T.PerspectiveCamera makeDefault position={pose.position} {up} fov={50} near={1} far={20000}>
-	<OrbitControls enableDamping enabled={!dragging} target={pose.target} />
+	<OrbitControls
+		enableDamping
+		enabled={!dragging}
+		enableRotate={!paintActive}
+		target={pose.target}
+	/>
 </T.PerspectiveCamera>
 
 <T.AmbientLight intensity={0.6} />
@@ -86,6 +97,8 @@
 		selected={selection.has(obj.id)}
 		onpick={(additive) => pick(obj.id, additive)}
 		onref={(o) => setRef(obj.id, o)}
+		{paintActive}
+		onpaint={(faceIndex, local) => onpaint?.(obj.id, faceIndex, local)}
 	/>
 {/each}
 

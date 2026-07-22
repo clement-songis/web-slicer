@@ -18,6 +18,10 @@
 		onpick?: (additive: boolean) => void;
 		/** Remonte l'objet Three.js créé (pour y attacher le gizmo, T103). */
 		onref?: (object: THREE.Object3D | null) => void;
+		/** Peinture au triangle active (un canal est sélectionné, T056). */
+		paintActive?: boolean;
+		/** Remonte un coup de pinceau : triangle touché + point local (mm). */
+		onpaint?: (faceIndex: number, local: [number, number, number]) => void;
 	}
 
 	let {
@@ -27,8 +31,37 @@
 		scale = [1, 1, 1],
 		selected = false,
 		onpick,
-		onref
+		onref,
+		paintActive = false,
+		onpaint
 	}: Props = $props();
+
+	// Coup de pinceau : le raycast Threlte donne le triangle (`faceIndex`) et le
+	// point d'impact (monde) ; on repasse en repère local (celui de `mesh`) pour
+	// le pinceau à rayon. Le glisser peint tant que le pointeur est enfoncé.
+	let brushing = $state(false);
+	function emitPaint(event: IntersectionEvent<PointerEvent>) {
+		if (event.faceIndex == null || !ref) return;
+		const local = ref.worldToLocal(event.point.clone());
+		onpaint?.(event.faceIndex, [local.x, local.y, local.z]);
+	}
+	function onpointerdown(event: IntersectionEvent<PointerEvent>) {
+		if (!paintActive) return;
+		event.stopPropagation();
+		brushing = true;
+		emitPaint(event);
+	}
+	function onpointermove(event: IntersectionEvent<PointerEvent>) {
+		if (!paintActive || !brushing) return;
+		event.stopPropagation();
+		emitPaint(event);
+	}
+	// Relâchement n'importe où (même hors du maillage) : fin du glisser.
+	$effect(() => {
+		const stop = () => (brushing = false);
+		window.addEventListener('pointerup', stop);
+		return () => window.removeEventListener('pointerup', stop);
+	});
 
 	const DEG = Math.PI / 180;
 	const radRotation = $derived<[number, number, number]>([
@@ -68,7 +101,17 @@
 	}
 </script>
 
-<T.Mesh bind:ref {geometry} {position} rotation={radRotation} {scale} castShadow {onclick}>
+<T.Mesh
+	bind:ref
+	{geometry}
+	{position}
+	rotation={radRotation}
+	{scale}
+	castShadow
+	{onclick}
+	{onpointerdown}
+	{onpointermove}
+>
 	<T.MeshStandardMaterial
 		color={selected ? '#f59e0b' : '#9aa7b4'}
 		metalness={0.1}
