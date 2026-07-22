@@ -48,6 +48,47 @@ pub enum VolumeRole {
     SupportEnforcer,
 }
 
+/// Peinture au triangle d'un volume (annotations 3MF Orca). Par canal, la liste
+/// `(index de triangle, chaîne encodée)` façon `FacetsAnnotation` — miroir de
+/// `ModelVolume::{supported,seam,mmu_segmentation,fuzzy_skin}_facets` (Model.hpp).
+/// L'encodage par facette est celui de `TriangleSelector::serialize`
+/// (`FacetsAnnotation::get_triangle_as_string`) : enforcer = "4", blocker = "8".
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct PaintedFacets {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub supports: Vec<(u32, String)>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub seam: Vec<(u32, String)>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub mmu: Vec<(u32, String)>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub fuzzy: Vec<(u32, String)>,
+}
+
+impl PaintedFacets {
+    pub fn is_empty(&self) -> bool {
+        self.supports.is_empty()
+            && self.seam.is_empty()
+            && self.mmu.is_empty()
+            && self.fuzzy.is_empty()
+    }
+
+    /// Trie chaque canal par index de triangle croissant et déduplique — contrat
+    /// de `FacetsAnnotation::set_triangle_from_string` (ids strictement croissants).
+    pub fn normalized(mut self) -> Self {
+        for channel in [
+            &mut self.supports,
+            &mut self.seam,
+            &mut self.mmu,
+            &mut self.fuzzy,
+        ] {
+            channel.sort_by_key(|(triangle, _)| *triangle);
+            channel.dedup_by_key(|(triangle, _)| *triangle);
+        }
+        self
+    }
+}
+
 /// Pièce d'un objet : maillage + transformation locale + rôle.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelVolume {
@@ -58,6 +99,9 @@ pub struct ModelVolume {
     pub role: VolumeRole,
     /// Extrudeur/filament attribué (None = héritage objet, FR-015).
     pub extruder: Option<u16>,
+    /// Peinture au triangle (supports/couture/MMU/fuzzy, T056+) — vide par défaut.
+    #[serde(default, skip_serializing_if = "PaintedFacets::is_empty")]
+    pub painted: PaintedFacets,
 }
 
 /// Occurrence d'un objet sur le plateau.
@@ -96,6 +140,7 @@ impl Model {
                 matrix: DMat4::IDENTITY,
                 role: VolumeRole::ModelPart,
                 extruder: None,
+                painted: PaintedFacets::default(),
             }],
             instances: vec![ModelInstance {
                 matrix: DMat4::IDENTITY,
@@ -145,6 +190,42 @@ mod tests {
         // `.zip` conteneur = hors jeu v1 (exclusions.md).
         assert_eq!(ModelFormat::from_path(Path::new("archive.zip")), None);
         assert_eq!(ModelFormat::from_path(Path::new("sans_extension")), None);
+    }
+
+    #[test]
+    fn painted_facets_normalise_trie_et_dedoublonne() {
+        let painted = PaintedFacets {
+            supports: vec![(5, "4".into()), (1, "4".into()), (5, "8".into())],
+            ..Default::default()
+        }
+        .normalized();
+        // Trié par index croissant, dernier doublon (5) éliminé après tri.
+        assert_eq!(painted.supports, vec![(1, "4".into()), (5, "4".into())]);
+        assert!(painted.seam.is_empty());
+    }
+
+    #[test]
+    fn painted_facets_serde_omet_les_canaux_vides() {
+        // Un volume sans peinture ne doit pas alourdir la requête (skip serialize).
+        let json = serde_json::to_string(&ModelVolume {
+            name: String::new(),
+            mesh: TriangleMesh::default(),
+            matrix: DMat4::IDENTITY,
+            role: VolumeRole::ModelPart,
+            extruder: None,
+            painted: PaintedFacets::default(),
+        })
+        .unwrap();
+        assert!(!json.contains("painted"), "champ vide sérialisé : {json}");
+
+        // Et un canal peint fait l'aller-retour.
+        let painted = PaintedFacets {
+            supports: vec![(0, "4".into())],
+            ..Default::default()
+        };
+        let back: PaintedFacets =
+            serde_json::from_str(&serde_json::to_string(&painted).unwrap()).unwrap();
+        assert_eq!(back, painted);
     }
 
     #[test]

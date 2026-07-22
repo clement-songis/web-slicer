@@ -213,6 +213,7 @@ mod tests {
                     matrix: DMat4::IDENTITY,
                     role: VolumeRole::ModelPart,
                     extruder: None,
+                    painted: Default::default(),
                 }],
                 instances: vec![],
             }],

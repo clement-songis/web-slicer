@@ -13,6 +13,14 @@ pub(crate) mod ffi {
         indices: Vec<u32>,
     }
 
+    /// Peinture d'une facette : index de triangle + chaîne encodée façon
+    /// `FacetsAnnotation` (cf. `set_triangle_from_string`).
+    #[derive(Debug)]
+    struct RawPaintedFacet {
+        triangle: u32,
+        encoding: String,
+    }
+
     /// Volume d'un objet (pièce/modificateur/…) avec sa transformation.
     #[derive(Debug)]
     struct RawVolume {
@@ -24,6 +32,11 @@ pub(crate) mod ffi {
         /// Extrudeur attribué (0 = héritage).
         extruder: u32,
         mesh: RawMesh,
+        /// Peinture au triangle par canal (ids triés croissants côté Rust).
+        supported_facets: Vec<RawPaintedFacet>,
+        seam_facets: Vec<RawPaintedFacet>,
+        mmu_facets: Vec<RawPaintedFacet>,
+        fuzzy_facets: Vec<RawPaintedFacet>,
     }
 
     /// Instance d'un objet sur le plateau.

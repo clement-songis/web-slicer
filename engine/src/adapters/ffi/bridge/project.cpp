@@ -64,6 +64,21 @@ Slic3r::Transform3d from_col_major(const std::array<double, 16> &m)
     return t;
 }
 
+// Applique une peinture au triangle sur une annotation de facettes (supports,
+// couture, MMU, fuzzy). Les ids arrivent triés croissants côté Rust
+// (`PaintedFacets::normalized`), contrat de `set_triangle_from_string`.
+void apply_painted_facets(Slic3r::FacetsAnnotation &annotation,
+                          const rust::Vec<RawPaintedFacet> &facets)
+{
+    if (facets.empty())
+        return;
+    annotation.reserve(static_cast<int>(facets.size()));
+    for (const RawPaintedFacet &facet : facets)
+        annotation.set_triangle_from_string(
+            static_cast<int>(facet.triangle),
+            std::string(facet.encoding.data(), facet.encoding.size()));
+}
+
 } // namespace
 
 void raw_into_model(const rust::Vec<RawObject> &objects, Slic3r::Model &model)
@@ -78,6 +93,12 @@ void raw_into_model(const rust::Vec<RawObject> &objects, Slic3r::Model &model)
             volume->set_type(static_cast<Slic3r::ModelVolumeType>(raw_volume.role));
             volume->set_transformation(
                 Slic3r::Geometry::Transformation(from_col_major(raw_volume.matrix)));
+            // Peinture au triangle (T056+) : injectée dans libslic3r via l'API
+            // `FacetsAnnotation` — même chemin que le lecteur 3MF d'OrcaSlicer.
+            apply_painted_facets(volume->supported_facets, raw_volume.supported_facets);
+            apply_painted_facets(volume->seam_facets, raw_volume.seam_facets);
+            apply_painted_facets(volume->mmu_segmentation_facets, raw_volume.mmu_facets);
+            apply_painted_facets(volume->fuzzy_skin_facets, raw_volume.fuzzy_facets);
         }
         for (const RawInstance &raw_instance : raw_object.instances) {
             Slic3r::ModelInstance *instance = object->add_instance();

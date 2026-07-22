@@ -99,6 +99,9 @@ fn to_volume(raw: ffi::RawVolume) -> ModelVolume {
             _ => VolumeRole::ModelPart,
         },
         extruder: (raw.extruder > 0).then_some(raw.extruder as u16),
+        // Chemin de lecture (import/affichage) : la peinture n'est pas relue en v1
+        // (seul le chemin d'écriture, pour le tranchage, la transporte).
+        painted: crate::api::PaintedFacets::default(),
     }
 }
 
@@ -129,6 +132,18 @@ pub fn print_config_option_count() -> usize {
     ffi::print_config_option_count()
 }
 
+/// Peinture d'un canal `api` → facettes brutes du bridge (ids déjà triés côté
+/// `PaintedFacets::normalized`, contrat `set_triangle_from_string`).
+fn to_raw_facets(facets: &[(u32, String)]) -> Vec<ffi::RawPaintedFacet> {
+    facets
+        .iter()
+        .map(|(triangle, encoding)| ffi::RawPaintedFacet {
+            triangle: *triangle,
+            encoding: encoding.clone(),
+        })
+        .collect()
+}
+
 /// Conversion inverse : scène `api` → structs brutes du bridge (écriture 3MF).
 pub(super) fn to_raw_objects(model: &Model) -> Vec<ffi::RawObject> {
     model
@@ -154,6 +169,10 @@ pub(super) fn to_raw_objects(model: &Model) -> Vec<ffi::RawObject> {
                         vertices: v.mesh.vertices.iter().flatten().copied().collect(),
                         indices: v.mesh.indices.iter().flatten().copied().collect(),
                     },
+                    supported_facets: to_raw_facets(&v.painted.supports),
+                    seam_facets: to_raw_facets(&v.painted.seam),
+                    mmu_facets: to_raw_facets(&v.painted.mmu),
+                    fuzzy_facets: to_raw_facets(&v.painted.fuzzy),
                 })
                 .collect(),
             instances: o
