@@ -340,6 +340,63 @@ async fn slices_a_plate_and_freezes_resolved_settings_with_warnings() {
 }
 
 #[tokio::test]
+async fn project_overrides_reach_the_frozen_config_and_flag_unknown_keys() {
+    // T146 : une surcharge de réglage au niveau projet (panneau, sans dériver un
+    // preset) doit atteindre la config tranchée. On active `enable_support` par
+    // surcharge et on vérifie qu'elle est gelée dans `resolved_settings` ; une clé
+    // inconnue est ignorée mais signalée (jamais d'échec de slice).
+    let (_d, storage, app) = app().await;
+    let (project, owner, session) = create_project(
+        &storage,
+        &app,
+        "boss@test.local",
+        scene_one_object(),
+        json!({}),
+    )
+    .await;
+    let process = make_bad_process(&storage, owner).await;
+    storage
+        .projects()
+        .update(
+            owner,
+            backend::domain::ProjectId(uuid::Uuid::parse_str(&project).unwrap()),
+            1,
+            scene_one_object(),
+            json!({
+                "process": process,
+                "overrides": { "enable_support": "1", "totally_unknown_key": "9" }
+            }),
+            None,
+        )
+        .await
+        .unwrap();
+
+    let resp = app
+        .clone()
+        .oneshot(slice_req(&project, &session, json!({ "plate_index": 0 })))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let warnings = body_json(resp).await["warnings"]
+        .as_array()
+        .unwrap()
+        .clone();
+
+    // La surcharge est gelée dans la config résolue du job.
+    let jobs_db = storage.jobs().list(owner).await.unwrap();
+    assert_eq!(
+        jobs_db[0].resolved_settings.get("enable_support"),
+        Some(&json!(true)),
+        "la surcharge enable_support doit atteindre la config gelée"
+    );
+    // La clé inconnue est ignorée mais signalée.
+    assert!(
+        warnings.iter().any(|w| w["key"] == "totally_unknown_key"),
+        "avertissement de surcharge inconnue attendu, obtenu {warnings:?}"
+    );
+}
+
+#[tokio::test]
 async fn slices_all_plates_creates_one_job_each() {
     let (_d, storage, app) = app().await;
     let scene = json!({

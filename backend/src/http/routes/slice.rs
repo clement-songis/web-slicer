@@ -182,7 +182,41 @@ pub(crate) async fn resolve_active_config(
         merged.0.extend(cfg.0);
     }
 
-    let warnings = merged
+    // Surcharges de réglages au niveau projet (T146) : appliquées **par-dessus**
+    // la chaîne de presets résolue, elles permettent de trancher avec des réglages
+    // ajustés dans le panneau **sans dériver un preset** (parité « modifications »
+    // OrcaSlicer). Chaque valeur est une chaîne au format Orca, typée par le
+    // registre — même parsing que les presets (`parse_orca_value`). Clé inconnue
+    // ou valeur illisible → ignorée avec un avertissement (jamais d'échec de slice).
+    let mut override_warnings = Vec::new();
+    if let Some(overrides) = active.get("overrides").and_then(Value::as_object) {
+        for (key, raw) in overrides {
+            let warn = |message: String| SliceWarning {
+                key: key.clone(),
+                message,
+            };
+            match raw.as_str() {
+                None => override_warnings.push(warn("surcharge non textuelle ignorée".into())),
+                Some(s) => match engine::params::get(key) {
+                    None => {
+                        override_warnings.push(warn("paramètre inconnu (surcharge ignorée)".into()))
+                    }
+                    Some(def) => match engine::params::orca_values::parse_orca_value(def, s) {
+                        Some(value) => {
+                            merged.0.insert(key.clone(), value);
+                        }
+                        None => override_warnings.push(warn(format!(
+                            "surcharge « {s} » invalide pour ce paramètre"
+                        ))),
+                    },
+                },
+            }
+        }
+    }
+
+    // Validation après surcharges (elles sont validées comme le reste), puis on
+    // ajoute les avertissements de surcharge ignorée.
+    let mut warnings: Vec<SliceWarning> = merged
         .validate()
         .into_iter()
         .map(|w| SliceWarning {
@@ -190,6 +224,7 @@ pub(crate) async fn resolve_active_config(
             message: w.message,
         })
         .collect();
+    warnings.extend(override_warnings);
 
     Ok((merged, warnings))
 }
