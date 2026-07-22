@@ -16,11 +16,15 @@ export interface ActivePresets {
 	process: string | null;
 	/** Presets filament par extrudeur (v1 mono-extrudeur : un seul). */
 	filaments: string[];
+	/** Surcharges de réglages au niveau projet (clé → valeur au format Orca),
+	 *  appliquées **par-dessus** la chaîne de presets au tranchage (T146). Permet
+	 *  d'ajuster un réglage dans le panneau sans dériver un preset. */
+	overrides: Record<string, string>;
 }
 
 /** Sélection vide (nouveau projet sans presets résolus). */
 export function emptyActivePresets(): ActivePresets {
-	return { printer: null, process: null, filaments: [] };
+	return { printer: null, process: null, filaments: [], overrides: {} };
 }
 
 /** Lit le blob `active_presets` (JSON libre) en une sélection typée, robuste. */
@@ -30,7 +34,13 @@ export function parseActivePresets(raw: unknown): ActivePresets {
 	const filaments = Array.isArray(obj.filaments)
 		? obj.filaments.filter((v): v is string => typeof v === 'string' && v.length > 0)
 		: [];
-	return { printer: str(obj.printer), process: str(obj.process), filaments };
+	const overrides: Record<string, string> = {};
+	if (obj.overrides && typeof obj.overrides === 'object') {
+		for (const [k, v] of Object.entries(obj.overrides as Record<string, unknown>)) {
+			if (typeof v === 'string') overrides[k] = v;
+		}
+	}
+	return { printer: str(obj.printer), process: str(obj.process), filaments, overrides };
 }
 
 /** Sérialise vers le blob `active_presets` attendu par le backend (clés omises si vides). */
@@ -39,7 +49,13 @@ export function serializeActivePresets(a: ActivePresets): Record<string, unknown
 	if (a.printer) out.printer = a.printer;
 	if (a.process) out.process = a.process;
 	if (a.filaments.length) out.filaments = a.filaments;
+	if (Object.keys(a.overrides).length) out.overrides = a.overrides;
 	return out;
+}
+
+/** Remplace la table de surcharges (immuable). */
+export function setOverrides(a: ActivePresets, overrides: Record<string, string>): ActivePresets {
+	return { ...a, overrides };
 }
 
 /** Change le preset machine (immuable). */

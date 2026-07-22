@@ -54,7 +54,7 @@
 		type Transform,
 		type NamedView
 	} from '$lib/scene';
-	import { PresetSettingsDialog, SettingsTabs } from '$lib/settings';
+	import { PresetSettingsDialog, SettingsTabs, PARAMS, defaultFor } from '$lib/settings';
 	import { PresetSelect } from '$lib/presets';
 	import OwnedPrinterPicker from '$lib/printers/OwnedPrinterPicker.svelte';
 	import PrinterCatalog from '$lib/printers/PrinterCatalog.svelte';
@@ -131,6 +131,7 @@
 		emptyActivePresets,
 		parseActivePresets,
 		serializeActivePresets,
+		setOverrides,
 		primaryFilament,
 		setFilament,
 		type EditorTab,
@@ -266,6 +267,12 @@
 	let processValues = $state<Record<string, unknown>>({});
 	let filamentValues = $state<Record<string, unknown>>({});
 	let machineValues = $state<Record<string, unknown>>({});
+	// Instantanés des valeurs à leur chargement (surcharges brutes du preset) :
+	// au save, on ne persiste comme surcharge projet (T146) que ce qui a été
+	// **édité** dans le panneau — le delta par rapport à ces bases.
+	let processBaseline: Record<string, unknown> = {};
+	let filamentBaseline: Record<string, unknown> = {};
+	let machineBaseline: Record<string, unknown> = {};
 	let saveMessage = $state<string | null>(null);
 
 	// Tranchage + aperçu G-code (T088) : machine à états pure `session` pilotée
@@ -474,9 +481,61 @@
 	async function loadEditedValues(kind: 'process' | 'filament' | 'machine') {
 		const preset = activePresetOf(kind);
 		const values = preset ? ((await getPreset(preset.id)).values as Record<string, unknown>) : {};
-		if (kind === 'process') processValues = values;
-		else if (kind === 'filament') filamentValues = values;
-		else machineValues = values;
+		if (kind === 'process') {
+			processValues = values;
+			processBaseline = { ...values };
+		} else if (kind === 'filament') {
+			filamentValues = values;
+			filamentBaseline = { ...values };
+		} else {
+			machineValues = values;
+			machineBaseline = { ...values };
+		}
+	}
+
+	// Valeur d'un widget → chaîne au format Orca (typée par le widget : bool →
+	// « 1 »/« 0 », nombre → décimal, chaîne telle quelle, vecteur → « a,b »).
+	// `null` = non sérialisable (ignoré). Le backend re-type via le registre.
+	function orcaString(value: unknown): string | null {
+		if (typeof value === 'boolean') return value ? '1' : '0';
+		if (typeof value === 'number') return Number.isFinite(value) ? String(value) : null;
+		if (typeof value === 'string') return value;
+		if (Array.isArray(value))
+			return value
+				.map((v) => (typeof v === 'number' || typeof v === 'string' ? String(v) : ''))
+				.join(',');
+		return null;
+	}
+
+	// Surcharges de réglages projet = delta édité des trois jeux de valeurs par
+	// rapport à leur base de chargement, **comparé sur la forme sérialisée** (les
+	// bases sont des chaînes Orca, les valeurs éditées sont typées : comparer les
+	// chaînes évite un faux positif de type). Fusionné avec les surcharges déjà
+	// persistées pour ne pas les perdre quand le panneau n'est pas rouvert.
+	function collectOverrides(): Record<string, string> {
+		const merged: Record<string, string> = { ...activePresets.overrides };
+		const sets: [Record<string, unknown>, Record<string, unknown>][] = [
+			[processValues, processBaseline],
+			[filamentValues, filamentBaseline],
+			[machineValues, machineBaseline]
+		];
+		for (const [values, baseline] of sets) {
+			for (const [key, value] of Object.entries(values)) {
+				const s = orcaString(value);
+				if (s === null) continue;
+				if (key in baseline) {
+					// Clé surchargée par le preset : ne retenir que si elle a changé.
+					if (s === orcaString(baseline[key])) continue;
+				} else {
+					// Clé absente du preset : un widget a pu matérialiser sa valeur par
+					// défaut au montage — ne la retenir que si elle diffère du défaut.
+					const def = PARAMS[key];
+					if (def && s === orcaString(defaultFor(def))) continue;
+				}
+				merged[key] = s;
+			}
+		}
+		return merged;
 	}
 
 	// Ouvre le dialogue de réglages d'un type et amorce ses valeurs.
@@ -1304,6 +1363,9 @@
 			})
 			.filter((o): o is SceneObjectState => o !== null);
 		const scene = serializeScene(plates.serialize(), objects);
+		// Persiste les surcharges de réglages éditées dans le panneau (T146) : le
+		// tranchage les applique par-dessus les presets.
+		activePresets = setOverrides(activePresets, collectOverrides());
 		const outcome = await saveScene(
 			data.project.id,
 			Number(data.project.version),

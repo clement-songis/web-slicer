@@ -12,33 +12,58 @@ import {
 
 describe('parseActivePresets', () => {
 	test('blob vide → sélection vide', () => {
-		expect(parseActivePresets({})).toEqual({ printer: null, process: null, filaments: [] });
+		expect(parseActivePresets({})).toEqual({
+			printer: null,
+			process: null,
+			filaments: [],
+			overrides: {}
+		});
 		expect(parseActivePresets(null)).toEqual(emptyActivePresets());
 		expect(parseActivePresets('nope')).toEqual(emptyActivePresets());
 	});
 
 	test('lit printer/process/filaments (schéma backend)', () => {
 		const a = parseActivePresets({ printer: 'p1', process: 'q1', filaments: ['f1', 'f2'] });
-		expect(a).toEqual({ printer: 'p1', process: 'q1', filaments: ['f1', 'f2'] });
+		expect(a).toEqual({ printer: 'p1', process: 'q1', filaments: ['f1', 'f2'], overrides: {} });
 	});
 
 	test('ignore les valeurs non-chaînes et vides', () => {
 		const a = parseActivePresets({ printer: '', process: 3, filaments: ['f1', 7, ''] });
-		expect(a).toEqual({ printer: null, process: null, filaments: ['f1'] });
+		expect(a).toEqual({ printer: null, process: null, filaments: ['f1'], overrides: {} });
+	});
+
+	test('lit les surcharges (overrides) et ignore les valeurs non-chaînes', () => {
+		const a = parseActivePresets({
+			overrides: { enable_support: '1', layer_height: '0.3', bad: 5 }
+		});
+		expect(a.overrides).toEqual({ enable_support: '1', layer_height: '0.3' });
 	});
 });
 
 describe('serializeActivePresets', () => {
 	test('omet les clés vides', () => {
 		expect(serializeActivePresets(emptyActivePresets())).toEqual({});
-		expect(serializeActivePresets({ printer: 'p1', process: null, filaments: ['f1'] })).toEqual({
+		expect(
+			serializeActivePresets({ printer: 'p1', process: null, filaments: ['f1'], overrides: {} })
+		).toEqual({
 			printer: 'p1',
 			filaments: ['f1']
 		});
 	});
 
+	test('sérialise les surcharges non vides', () => {
+		expect(
+			serializeActivePresets({ ...emptyActivePresets(), overrides: { enable_support: '1' } })
+		).toEqual({ overrides: { enable_support: '1' } });
+	});
+
 	test('aller-retour stable', () => {
-		const a = { printer: 'p1', process: 'q1', filaments: ['f1'] };
+		const a = {
+			printer: 'p1',
+			process: 'q1',
+			filaments: ['f1'],
+			overrides: { enable_support: '1' }
+		};
 		expect(parseActivePresets(serializeActivePresets(a))).toEqual(a);
 	});
 });

@@ -25,6 +25,7 @@ export {
 	defaultFor,
 	type SpecialGroup
 } from './special/groups';
+export { PARAMS } from '../../generated/params';
 export { default as BedShape } from './special/BedShape.svelte';
 export { default as FlushVolumes } from './special/FlushVolumes.svelte';
 export { default as PlateTemps } from './special/PlateTemps.svelte';

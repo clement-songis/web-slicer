@@ -42,6 +42,7 @@ export {
 	primaryFilament,
 	serializeActivePresets,
 	setFilament,
+	setOverrides,
 	setPrinter,
 	setProcess,
 	type ActivePresets,
