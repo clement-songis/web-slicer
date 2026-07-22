@@ -363,6 +363,79 @@ Confirmer/Annuler) et « Paramètres de l'imprimante » / presets filament en
 
 ---
 
+## Phase 15 — Rescope fidélité comportementale (2026-07)
+
+**Pourquoi ce rescope.** Les `[X]` des Phases 1–14 valident la **présence / le
+câblage** — réel et précieux, surtout pour le modèle de données (858 params,
+11 895 presets) et le moteur FFI (tranchage réel, corpus de parité vert). Mais le
+gate de parité (`check_traceability.py`) mesure la **couverture**, pas le
+**comportement** : un handler qui appelle `menuTodo()`/`toolNeedsEngine()`, ou un
+`case` manquant tombant en no-op, satisfaisaient le vert. Résultat mesuré dans
+`fidelity-audit.md` : ~100 % présent, **~35 %** se comporte, **0 %** de fidélité
+visuelle auditée. Cette phase reclasse la dette **comportementale** en tâches
+réelles. Nouvelle **définition de « done »** : un critère d'acceptation
+**observable** (le moteur/l'app produit l'effet, prouvé par un test qui conduit
+l'app ou compare à Orca), pas « le composant existe ». Source : les 9 stubs de
+`audit/stubs.json` + les défauts transverses de `fidelity-audit.md`. Le gate
+`check_stub_registry` (T139+) empêche désormais d'en cacher de nouveaux.
+
+**Gabarit prouvé (exemplaire).** T140 (peinture de supports) applique la méthode
+de bout en bout : lecture de la source Orca (`3mf.cpp`, `Model.hpp`,
+`PrintObject.hpp`) → sémantique reproduite → 4 couches câblées → **effet prouvé**
+par un test déterministe + une vérif live. Chaque tâche ci-dessous suit ce
+gabarit.
+
+### 15A — Peinture au triangle (canaux)
+
+- [X] T140 Peinture de **supports** bout-en-bout — `engine/src/api/model.rs` (`PaintedFacets`), `engine/src/adapters/ffi/{bridge.rs,model.rs,bridge/project.cpp}` (`set_triangle_from_string`), `backend/src/http/routes/export.rs` + `backend/src/slicing.rs` (scène→volume), `frontend/src/lib/scene/{ModelObject,Viewport,Scene}.svelte` + `projects/[id]/+page.svelte` (raycast→pinceau, persistance). **DoD (atteinte)** : enforcer peint → **support réel dans le G-code** — `engine/tests/paint_supports.rs` (0 support sans peinture en mode manuel, > 0 avec) + vérif live (pinceau 7 tri., remplissage 768, persistance DB en encodage Orca « 4 »).
+- [ ] T141 [P] Peinture de **couture** (seam) → moteur — chaîne `PaintedFacets.seam` (déjà transportée) + recoloration du canal. **DoD** : test déterministe (façon T140) montrant que la couture se déplace vers la zone peinte (position du saut de couche/`seam` dans le G-code) ; hors zone, inchangé.
+- [ ] T142 [P] Peinture **fuzzy skin** → moteur (`fuzzy_skin_facets`). **DoD** : test déterministe — la région peinte présente la perturbation fuzzy (paroi bruitée) dans le G-code, pas ailleurs.
+- [ ] T143 Peinture **MMU/couleur** → moteur (`mmu_segmentation_facets`) — nécessite une config **multi-extrudeur** (hors mono-extrudeur v1). **DoD** : en config multi-filament, la région peinte est extrudée avec le filament assigné (changement d'outil `T#` dans le G-code). *Statut : engine-pending (multi-extrudeur).*
+- [ ] T144 **Oreilles de bord** (brim ears) → moteur — `BrimEars` → `SliceRequest` → points de brim libslic3r. **DoD** : test — brim généré **uniquement** aux points posés.
+- [ ] T145 **Rendu visuel** de la peinture (recoloration des triangles par canal, parité Orca) — `frontend/src/lib/scene/ModelObject.svelte`. **DoD** : capture — enforcer en rouge / blocker en bleu comme dans Orca ; le compteur ne suffit pas.
+
+### 15B — Les réglages atteignent le tranchage (débloquant)
+
+- [ ] T146 **Surcharges de réglages** projet/objet dans le config tranché — `backend/src/http/routes/slice.rs` (`resolve_active_config` + persistance des overrides), `frontend/.../+page.svelte` (`saveSettingsDialog` → overrides scène). Constat : le tranchage résout la **chaîne de presets** et ignore les éditions du panneau. **DoD** : activer `enable_support` (ou changer `layer_height`) dans le panneau puis trancher produit un G-code qui **reflète** la surcharge (test déterministe : override `enable_support` → support apparaît). *Débloque l'observabilité UI de la peinture (T140) et de nombreux réglages.*
+
+### 15C — Hauteur de couche variable → moteur
+
+- [ ] T147 **Profil de hauteur variable** transmis au moteur (`ModelObject::layer_height_profile`) — `engine/src/api/model.rs` + FFI, `backend/.../export.rs`, `frontend` `layerProfiles` → scène. **DoD** : test déterministe (façon T140) — un profil varié change le nombre/positions de couches dans le G-code vs profil uniforme.
+
+### 15D — Gizmos moteur-dépendants (stubs `engine-pending`)
+
+- [ ] T148 [P] **Découpe** (gizmo Cut) → plan de coupe FFI — stub `toolNeedsEngine('Découpe')`. **DoD** : couper un cube en deux → 2 objets, chacun tranchable.
+- [ ] T149 [P] **Booléen de maillage** (MeshBoolean) → FFI — stub `'Booléen de maillage'`. **DoD** : union/différence produit la géométrie attendue (comptage triangles + tranchage).
+- [ ] T150 [P] **Simplification** (Simplify) → décimation FFI — stub `'Simplification'`. **DoD** : `triangle_count` réduit sous seuil, modèle toujours tranchable.
+- [ ] T151 [P] **Emboss (texte)** + **Forme SVG** → création de volume FFI — stubs `'Emboss / texte'`, `'Forme SVG'`. **DoD** : le texte/SVG embossé apparaît comme géométrie réelle dans le G-code.
+
+### 15E — Menu contextuel : câblage réel + fin des no-ops muets
+
+- [ ] T152 `onObjectAction` : **ajouter un `default`** (fin des no-ops silencieux) + câbler les items réels manquants — **Fix model** (`repair_mesh_raw` existe déjà côté moteur, stub `'Réparer le maillage'`), **Split / To objects / To parts** (stub `'Découpe en objets/pièces'`, cf. T148), Set as individual object, Fill bed with copies/instances, Set number of instances, Scale to build volume, Height range modifier, Reload from disk, Replace 3D file — `frontend/.../+page.svelte`. **DoD** : chaque item du menu contextuel produit un effet observable **ou** est déclaré stub (gate) — plus aucun clic sans réaction.
+
+### 15F — Menu principal : items non câblés (le stub `<dynamic:action>`)
+
+- [ ] T153 **Annuler/Rétablir** (Undo/Redo) — pile d'historique de scène, `frontend/src/lib/scene/`. **DoD** : une mutation puis Undo restaure l'état antérieur (test unitaire de la pile + live) ; Redo réapplique.
+- [ ] T154 [P] **Exports réels** : Export G-code (le fichier existe déjà côté serveur), Export objets STL/STLs/DRC, Export toolpaths OBJ, Export preset bundle. **DoD** : chaque export télécharge un fichier ré-importable/valide.
+- [ ] T155 [P] **Imports** : Import Zip archive, Import Configs. **DoD** : importer un bundle applique presets/objets.
+- [ ] T156 [P] **Préférences** + bascules d'affichage (perspective/ortho, Show Overhang/Labels/Outline, Show G-code window). **DoD** : chaque bascule change le rendu observablement ; une préférence persiste.
+
+### 15G — Fidélité visuelle (la 4ᵉ colonne jamais mesurée)
+
+- [ ] T157 **Acceptation visuelle par écran** : captures Playwright des écrans clés (Prepare / Preview / panneau réglages / menus) comparées aux screenshots Orca de `references/`. **DoD** : diff visuel sous seuil en CI pour les écrans de référence ; tout écart = échec de gate.
+
+### 15H — Durcissement du gate (suite de T139)
+
+- [ ] T158 Étendre le gate au-delà des stubs explicites : détecter les dispatchs **sans `default`** (no-op muet) et exiger, pour chaque cible tracée gizmo/menu/contextuel, soit une déclaration stub (`stubs.json`), soit un **test comportemental référencé** — `audit/check_traceability.py`. **DoD** : `check_traceability` échoue si un handler tracé n'a **ni** comportement prouvé **ni** entrée stub.
+
+**Ordre.** T146 (réglages→tranchage) est prioritaire : il débloque l'observabilité
+de 15A/15C. 15A (T141–T145) et 15C (T147) réutilisent l'infra `PaintedFacets`/FFI
+de T140. 15D (T148–T151) partagent l'extension du bridge FFI (une op → un wrapper).
+T152 dépend de T148 (Split) et de `repair_mesh_raw` (déjà là). 15F (T153–T156) sont
+frontend-indépendants et parallélisables. T157/T158 (gate/visuel) en continu.
+
+---
+
 ## Dependencies & Execution Order
 
 ```text
