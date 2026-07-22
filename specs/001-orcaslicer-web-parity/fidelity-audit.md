@@ -115,6 +115,21 @@ Stubs explicites : Rename (`menuTodo`), Fix model, To objects / To parts / Split
 
 `check_wired` (garde « construit-mais-non-câblé ») prouve seulement qu'un
 composant est **importé par une route**. Un handler qui appelle `menuTodo()` ou
-`toolNeedsEngine()`, ou un `case` manquant qui tombe en no-op, satisfont le gate.
-Il n'existe **aucun** contrôle « pas de stub dans un handler censé être câblé »,
-ni aucun test qui **conduit l'app** et observe l'effet. D'où : vert ≠ fonctionne.
+`toolNeedsEngine()`, ou un `case` manquant qui tombe en no-op, satisfaisaient le
+gate. Il n'existait **aucun** contrôle « pas de stub dans un handler censé être
+câblé », ni aucun test qui **conduit l'app** et observe l'effet. D'où : vert ≠
+fonctionne.
+
+## Durcissement (fait) — le registre de stubs
+
+`check_traceability.py::check_stub_registry` scanne désormais le frontend pour
+les stubs câblés (`menuTodo(…)` / `toolNeedsEngine(…)`) et **échoue** si l'un
+n'est pas déclaré dans `audit/stubs.json` (nouveau stub caché) ou si une entrée
+déclarée a disparu du code (stub résolu → nettoyer). Les 9 stubs actuels y sont
+inventoriés avec raison + statut. Le vert du gate signifie maintenant « tout ce
+qui n'est pas fait est **connu et déclaré** ».
+
+Reste à câbler pour que le vert dise « tout **marche** » (hors périmètre de ce
+durcissement) : un critère d'acceptation **comportemental** par feature qui
+conduit l'app et compare à Orca (cf. la tranche pilote « peinture de supports »,
+prouvée bout-en-bout par `engine/tests/paint_supports.rs` + vérif live).

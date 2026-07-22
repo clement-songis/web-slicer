@@ -342,6 +342,68 @@ def check_wired() -> None:
         )
 
 
+def _scan_stub_calls() -> set[tuple[str, str]]:
+    """Relève tous les stubs UI câblés dans le frontend : appels à `menuTodo(…)`
+    et `toolNeedsEngine(…)` (handlers atteignables mais sans comportement réel).
+    Renvoie l'ensemble des couples (marqueur, label) ; un argument dynamique
+    (identifiant, ex. `menuTodo(action)`) est normalisé en `<dynamic:IDENT>`.
+    Les *définitions* des fonctions sont ignorées (pas d'appel effectif)."""
+    # Le motif exige `ident)` (parenthèse immédiate) : une *définition* typée
+    # (`function menuTodo(action: string)`) a `ident: type)`, donc n'est pas
+    # captée. On écarte en plus, par sécurité, tout appel précédé de `function `.
+    call_re = re.compile(
+        r"\b(menuTodo|toolNeedsEngine)\(\s*(?:'([^']*)'|\"([^\"]*)\"|([A-Za-z_]\w*))\s*\)"
+    )
+    found: set[tuple[str, str]] = set()
+    roots = [FRONTEND_SRC / "routes", FRONTEND_SRC / "lib"]
+    for root in roots:
+        if not root.exists():
+            continue
+        for path in list(root.rglob("*.svelte")) + list(root.rglob("*.ts")):
+            text = path.read_text(encoding="utf-8")
+            for m in call_re.finditer(text):
+                if text[max(0, m.start() - 9) : m.start()].endswith("function "):
+                    continue  # définition, pas un appel
+                marker, sq, dq, ident = m.group(1), m.group(2), m.group(3), m.group(4)
+                found.add((marker, f"<dynamic:{ident}>" if ident else (sq or dq)))
+    return found
+
+
+def check_stub_registry() -> None:
+    """Durcissement du gate de fidélité : chaque stub UI câblé (`menuTodo` /
+    `toolNeedsEngine`) doit être déclaré dans `audit/stubs.json`. Échoue sur tout
+    stub non déclaré (nouveau stub caché derrière un gate vert) comme sur toute
+    entrée déclarée absente du code (stub résolu → nettoyer le registre). Rend le
+    vert honnête : « présent + câblé » ne suffit plus, l'absence de comportement
+    doit être explicitement connue (cf. fidelity-audit.md)."""
+    registry = AUDIT / "stubs.json"
+    if not registry.exists():
+        failures.append("fidélité — audit/stubs.json introuvable (registre des stubs câblés)")
+        return
+    declared = {
+        (s["marker"], s["label"])
+        for s in json.loads(registry.read_text(encoding="utf-8"))["stubs"]
+    }
+    found = _scan_stub_calls()
+    undeclared = sorted(found - declared)
+    stale = sorted(declared - found)
+    if undeclared:
+        failures.append(
+            f"fidélité — {len(undeclared)} stub(s) UI câblé(s) non déclaré(s) dans "
+            f"stubs.json (comportement manquant caché derrière le gate) : {undeclared}"
+        )
+    if stale:
+        failures.append(
+            f"fidélité — {len(stale)} entrée(s) de stubs.json absente(s) du code "
+            f"(stub résolu ? nettoyer le registre) : {stale}"
+        )
+    if not undeclared and not stale:
+        passed.append(
+            f"fidélité — {len(found)} stub(s) UI câblé(s) tous déclarés dans stubs.json "
+            "(aucun comportement manquant non déclaré)"
+        )
+
+
 def check_import_formats() -> None:
     """Chaque format importable par OrcaSlicer est soit accepté par
     `backend::detect_format`, soit justifié dans exclusions.md (T091). Aucun
@@ -386,6 +448,7 @@ def main() -> int:
     check_settings_special(params)
     check_trace_map(ui)
     check_wired()
+    check_stub_registry()
     check_import_formats()
 
     for p in passed:

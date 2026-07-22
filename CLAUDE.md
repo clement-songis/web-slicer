@@ -15,6 +15,10 @@ Slicer 3D web multi-utilisateurs, parité totale avec OrcaSlicer
 
 - `audit/parameters.json` (858 paramètres), `audit/ui_inventory.json`,
   `audit/presets_inventory.json` (11 895 presets), `audit/engine_api.json`.
+- **Fidélité (≠ couverture)** : `audit/stubs.json` inventorie les stubs UI câblés
+  (`menuTodo`/`toolNeedsEngine`). Le gate échoue sur tout stub non déclaré ou
+  déclaré-mais-absent. À maintenir : nouveau stub → déclarer ; stub implémenté →
+  retirer l'entrée. Voir `specs/001-orcaslicer-web-parity/fidelity-audit.md`.
 - Régénération : `python3 audit/run_all.py` puis
   `python3 audit/generate_parity_annexes.py`. Gate : `audit/check_traceability.py`.
 - Registre params, layout UI et types API sont **générés** (engine/build.rs,
