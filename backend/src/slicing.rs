@@ -56,8 +56,8 @@ impl SliceRunner {
             .get(job.user_id, job.project_id)
             .await?;
 
-        // Modèle moteur (STL décodés) — partagé avec l'export 3MF.
-        let model = build_stl_model(&self.state, job.user_id, job.project_id)
+        // Modèle moteur (STL décodés + peinture au triangle) — partagé avec l'export 3MF.
+        let model = build_stl_model(&self.state, job.user_id, job.project_id, &project.scene)
             .await
             .map_err(|e| anyhow::anyhow!("assemblage du modèle : {e:?}"))?;
         if model.is_empty() {

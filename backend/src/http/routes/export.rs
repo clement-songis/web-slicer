@@ -11,6 +11,7 @@
 use axum::extract::{Path, State};
 use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
+use std::collections::HashMap;
 use std::path::Path as FsPath;
 
 use crate::domain::{ModelFormat, ProjectId};
@@ -34,8 +35,9 @@ pub async fn export_3mf(
     let project_id = parse_project_id(&project_raw)?;
     let project = state.storage.projects().get(user.id, project_id).await?; // 404, SC-008
 
-    // Géométrie : maillages STL décodés côté serveur.
-    let model = build_stl_model(&state, user.id, project_id).await?;
+    // Géométrie : maillages STL décodés côté serveur (+ peinture au triangle
+    // rattachée depuis la scène : supports/couture/MMU/fuzzy).
+    let model = build_stl_model(&state, user.id, project_id, &project.scene).await?;
 
     // Configuration figée : presets actifs résolus.
     let (config, _warnings) =
@@ -69,8 +71,12 @@ pub(crate) async fn build_stl_model(
     state: &AppState,
     user: crate::domain::UserId,
     project_id: ProjectId,
+    scene: &serde_json::Value,
 ) -> ApiResult<engine::api::Model> {
     let models = state.storage.models().list(user, Some(project_id)).await?;
+    // Peinture au triangle par modèle, extraite du document scène (les indices de
+    // triangle référencent le maillage STL — même ordre de facettes des deux côtés).
+    let painting = painting_by_model(scene);
     let mut model = engine::api::Model::default();
     for m in models.iter().filter(|m| m.format == ModelFormat::Stl) {
         let bytes = state
@@ -88,9 +94,60 @@ pub(crate) async fn build_stl_model(
                 serde_json::json!({ "model": m.id.to_string() }),
             )
         })?;
-        model.add_object(m.filename.clone(), to_triangle_mesh(&mesh));
+        let object = model.add_object(m.filename.clone(), to_triangle_mesh(&mesh));
+        if let Some(painted) = painting.get(&m.id.to_string()) {
+            // add_object crée un unique volume `ModelPart` : on y pose la peinture.
+            if let Some(volume) = object.volumes.first_mut() {
+                volume.painted = painted.clone();
+            }
+        }
     }
     Ok(model)
+}
+
+/// Extrait la peinture au triangle du document scène, indexée par `modelId`.
+/// Forme attendue : `scene.objects[] = { modelId, painting: { supports: {"12":"4"},
+/// seam: {...}, fuzzy: {...}, mmu: {...} } }` (format 3MF Orca par facette). Les
+/// canaux sont normalisés (tri par index croissant) pour `set_triangle_from_string`.
+fn painting_by_model(scene: &serde_json::Value) -> HashMap<String, engine::api::PaintedFacets> {
+    let mut out = HashMap::new();
+    let Some(objects) = scene.get("objects").and_then(|v| v.as_array()) else {
+        return out;
+    };
+    for object in objects {
+        let Some(model_id) = object.get("modelId").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        let Some(painting) = object.get("painting") else {
+            continue;
+        };
+        let painted = engine::api::PaintedFacets {
+            supports: channel_facets(painting, "supports"),
+            seam: channel_facets(painting, "seam"),
+            mmu: channel_facets(painting, "mmu"),
+            fuzzy: channel_facets(painting, "fuzzy"),
+        }
+        .normalized();
+        if !painted.is_empty() {
+            out.insert(model_id.to_string(), painted);
+        }
+    }
+    out
+}
+
+/// Facettes d'un canal : `{ "triangleIndex": "hexOrca" }` → `(u32, String)`.
+fn channel_facets(painting: &serde_json::Value, channel: &str) -> Vec<(u32, String)> {
+    painting
+        .get(channel)
+        .and_then(|v| v.as_object())
+        .map(|map| {
+            map.iter()
+                .filter_map(|(idx, hex)| {
+                    Some((idx.parse::<u32>().ok()?, hex.as_str()?.to_string()))
+                })
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Maillage backend (aplati) → `TriangleMesh` moteur (sommets/triangles indexés).
