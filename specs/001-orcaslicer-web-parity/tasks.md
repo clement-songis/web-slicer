@@ -400,7 +400,7 @@ gabarit.
 
 ### 15C — Hauteur de couche variable → moteur
 
-- [ ] T147 **Profil de hauteur variable** transmis au moteur (`ModelObject::layer_height_profile`) — `engine/src/api/model.rs` + FFI, `backend/.../export.rs`, `frontend` `layerProfiles` → scène. **DoD** : test déterministe (façon T140) — un profil varié change le nombre/positions de couches dans le G-code vs profil uniforme.
+- [X] T147 **Profil de hauteur variable** transmis au moteur (`ModelObject::layer_height_profile`) — `engine/src/api/model.rs` (champ `layer_height_profile`), `engine/src/adapters/ffi/{bridge.rs,model.rs,bridge/project.cpp}` (`object->layer_height_profile.set(...)`), `backend/src/http/routes/export.rs` (`layer_profiles_by_model` → objet). Le frontend persistait déjà `layerProfile` (vecteur plat `[z,h,…]`) dans le document scène — seule la transmission scène→moteur manquait. **DoD (atteinte)** : `engine/tests/variable_layer_height.rs` — à config identique, le même modèle tranché **avec** un profil forçant 0.1 mm produit strictement plus de couches que **sans**. Contrat de validation `libslic3r` respecté (longueur paire, `profil[1]` = 1ʳᵉ couche, dernière cote = sommet objet lu via `max_z_height`) — sinon `PrintObject::update_layer_height_profile` rejette et régénère un profil uniforme.
 
 ### 15D — Gizmos moteur-dépendants (stubs `engine-pending`)
 
