@@ -51,6 +51,8 @@ pub(crate) mod ffi {
         name: String,
         volumes: Vec<RawVolume>,
         instances: Vec<RawInstance>,
+        /// Profil de hauteur variable, vecteur plat `[z0, h0, z1, h1, …]` (mm).
+        layer_height_profile: Vec<f64>,
     }
 
     /// Projet 3MF : scène + config embarquée (clé → valeur sérialisée Orca,

@@ -83,6 +83,8 @@ pub(super) fn to_object(raw: ffi::RawObject) -> ModelObject {
                 plate_index: 0,
             })
             .collect(),
+        // Chemin de lecture : profil non relu en v1 (seul l'écriture le transporte).
+        layer_height_profile: Vec::new(),
     }
 }
 
@@ -182,6 +184,7 @@ pub(super) fn to_raw_objects(model: &Model) -> Vec<ffi::RawObject> {
                     matrix: i.matrix.to_cols_array(),
                 })
                 .collect(),
+            layer_height_profile: o.layer_height_profile.clone(),
         })
         .collect()
 }

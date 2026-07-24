@@ -77,6 +77,8 @@ pub(crate) async fn build_stl_model(
     // Peinture au triangle par modèle, extraite du document scène (les indices de
     // triangle référencent le maillage STL — même ordre de facettes des deux côtés).
     let painting = painting_by_model(scene);
+    // Profil de hauteur de couche variable par modèle (T147) : vecteur plat.
+    let layer_profiles = layer_profiles_by_model(scene);
     let mut model = engine::api::Model::default();
     for m in models.iter().filter(|m| m.format == ModelFormat::Stl) {
         let bytes = state
@@ -101,8 +103,35 @@ pub(crate) async fn build_stl_model(
                 volume.painted = painted.clone();
             }
         }
+        if let Some(profile) = layer_profiles.get(&m.id.to_string()) {
+            object.layer_height_profile = profile.clone();
+        }
     }
     Ok(model)
+}
+
+/// Extrait le profil de hauteur variable par `modelId` du document scène.
+/// Forme : `scene.objects[] = { modelId, layerProfile: [z0, h0, z1, h1, …] }`
+/// (vecteur plat, miroir de `ModelObject::layer_height_profile`).
+fn layer_profiles_by_model(scene: &serde_json::Value) -> HashMap<String, Vec<f64>> {
+    let mut out = HashMap::new();
+    let Some(objects) = scene.get("objects").and_then(|v| v.as_array()) else {
+        return out;
+    };
+    for object in objects {
+        let Some(model_id) = object.get("modelId").and_then(|v| v.as_str()) else {
+            continue;
+        };
+        let profile: Vec<f64> = object
+            .get("layerProfile")
+            .and_then(|v| v.as_array())
+            .map(|a| a.iter().filter_map(|v| v.as_f64()).collect())
+            .unwrap_or_default();
+        if !profile.is_empty() {
+            out.insert(model_id.to_string(), profile);
+        }
+    }
+    out
 }
 
 /// Extrait la peinture au triangle du document scène, indexée par `modelId`.

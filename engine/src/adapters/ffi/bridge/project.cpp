@@ -100,6 +100,12 @@ void raw_into_model(const rust::Vec<RawObject> &objects, Slic3r::Model &model)
             apply_painted_facets(volume->mmu_segmentation_facets, raw_volume.mmu_facets);
             apply_painted_facets(volume->fuzzy_skin_facets, raw_volume.fuzzy_facets);
         }
+        // Profil de hauteur de couche variable (T058/T147) : vecteur plat
+        // `[z0,h0,z1,h1,…]` posé sur l'objet — même chemin que le lecteur 3MF.
+        if (!raw_object.layer_height_profile.empty())
+            object->layer_height_profile.set(std::vector<double>(
+                raw_object.layer_height_profile.begin(),
+                raw_object.layer_height_profile.end()));
         for (const RawInstance &raw_instance : raw_object.instances) {
             Slic3r::ModelInstance *instance = object->add_instance();
             instance->set_transformation(

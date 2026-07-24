@@ -216,6 +216,7 @@ mod tests {
                     painted: Default::default(),
                 }],
                 instances: vec![],
+                layer_height_profile: vec![],
             }],
         }
     }

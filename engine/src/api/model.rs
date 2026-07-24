@@ -118,6 +118,11 @@ pub struct ModelObject {
     pub name: String,
     pub volumes: Vec<ModelVolume>,
     pub instances: Vec<ModelInstance>,
+    /// Profil de hauteur de couche variable (vecteur plat `[z0, h0, z1, h1, …]`,
+    /// mm, trié par z) — miroir de `ModelObject::layer_height_profile`. Vide =
+    /// hauteur uniforme du config (T058/T147).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub layer_height_profile: Vec<f64>,
 }
 
 /// Scène complète (miroir `Model`).
@@ -146,6 +151,7 @@ impl Model {
                 matrix: DMat4::IDENTITY,
                 plate_index: 0,
             }],
+            layer_height_profile: Vec::new(),
         });
         self.objects.last_mut().expect("objet tout juste ajouté")
     }
