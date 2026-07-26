@@ -27,6 +27,8 @@
 		type CutPlane,
 		BooleanTool,
 		SimplifyTool,
+		simplifyGrid,
+		triangleCount,
 		AssemblyView,
 		MeasureTool,
 		EmbossTool,
@@ -1104,6 +1106,27 @@
 		ws = setSelection(ws, new Set(ids));
 		closeTool();
 	}
+
+	// Simplification de l'objet sélectionné (T150/T055) : décimation par
+	// regroupement de sommets sur une grille (`simplifyGrid`, pur/testé), remplace
+	// l'objet par sa version allégée (téléversée en STL → tranchable). Une cellule
+	// trop grande vide le maillage : on refuse plutôt que de perdre l'objet.
+	function onSimplify(cell: number) {
+		const obj = activeObject;
+		if (!obj) return;
+		const simplified = simplifyGrid(obj.mesh, cell);
+		if (triangleCount(simplified) === 0) {
+			saveMessage =
+				'Simplification trop agressive (maillage vide) — réduisez la taille de cellule.';
+			return;
+		}
+		const position = obj.position ?? [0, 0, 0];
+		tree.remove(obj.id);
+		sceneObjects = sceneObjects.filter((o) => o.id !== obj.id);
+		const id = addSceneMesh('Simplifié', simplified, position);
+		ws = setSelection(ws, new Set([id]));
+		closeTool();
+	}
 	// Dispatch du menu d'ajout (T113) : Load (import) ou primitive.
 	function onAddAction(action: string) {
 		if (action === 'add.load') {
@@ -1803,10 +1826,7 @@
 						{:else if tools.active === 'boolean'}
 							<BooleanTool onapply={() => toolNeedsEngine('Booléen de maillage')} />
 						{:else if tools.active === 'simplify'}
-							<SimplifyTool
-								onsimplify={() => toolNeedsEngine('Simplification')}
-								oncancel={closeTool}
-							/>
+							<SimplifyTool onsimplify={onSimplify} oncancel={closeTool} />
 						{:else if tools.active === 'brim-ears'}
 							<BrimEarsTool points={[]} onremove={() => {}} onclear={closeTool} />
 						{:else if tools.active === 'measure'}

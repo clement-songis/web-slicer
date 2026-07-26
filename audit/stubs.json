@@ -3,7 +3,6 @@
   "stubs": [
     { "marker": "toolNeedsEngine", "label": "Découpe en objets/pièces", "reason": "Context menu Split / To objects / To parts : segmentation FFI.", "status": "engine-pending" },
     { "marker": "toolNeedsEngine", "label": "Booléen de maillage", "reason": "Gizmo MeshBoolean : opération booléenne FFI.", "status": "engine-pending" },
-    { "marker": "toolNeedsEngine", "label": "Simplification", "reason": "Gizmo Simplify : décimation de maillage FFI.", "status": "engine-pending" },
     { "marker": "toolNeedsEngine", "label": "Emboss / texte", "reason": "Gizmo Emboss : création de volume texte FFI.", "status": "engine-pending" },
     { "marker": "toolNeedsEngine", "label": "Forme SVG", "reason": "Gizmo GLGizmoSVG : import/extrusion SVG FFI.", "status": "engine-pending" },
     { "marker": "toolNeedsEngine", "label": "Réparer le maillage", "reason": "Context menu Fix model : `repair_mesh_raw` (admesh) existe côté moteur mais n'est pas câblé à l'UI.", "status": "backlog" },
