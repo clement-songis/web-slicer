@@ -1250,6 +1250,15 @@
 			case 'export.generic3mf':
 				downloadUrl(`/api/projects/${data.project.id}/export/3mf`);
 				break;
+			// Export du G-code tranché (T154) : le dernier plateau tranché de la
+			// session (`gcodeId`), servi en pièce jointe par le backend.
+			case 'export.gcode':
+				if (session.gcodeId) {
+					downloadUrl(`/api/gcodes/${session.gcodeId}/download`);
+				} else {
+					saveMessage = 'Aucun G-code : tranchez d’abord le plateau (onglet Prévisualisation).';
+				}
+				break;
 			case 'project.reload':
 				await loadProjectModels();
 				saveMessage = 'Modèles rechargés depuis le disque.';

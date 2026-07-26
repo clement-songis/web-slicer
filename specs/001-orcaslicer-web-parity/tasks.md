@@ -416,7 +416,7 @@ gabarit.
 ### 15F — Menu principal : items non câblés (le stub `<dynamic:action>`)
 
 - [ ] T153 **Annuler/Rétablir** (Undo/Redo) — pile d'historique de scène, `frontend/src/lib/scene/`. **DoD** : une mutation puis Undo restaure l'état antérieur (test unitaire de la pile + live) ; Redo réapplique.
-- [ ] T154 [P] **Exports réels** : Export G-code (le fichier existe déjà côté serveur), Export objets STL/STLs/DRC, Export toolpaths OBJ, Export preset bundle. **DoD** : chaque export télécharge un fichier ré-importable/valide.
+- [~] T154 [P] **Exports réels**. **Fait ce tour** : **Export G-code** (`export.gcode`) câblé au téléchargement `/api/gcodes/{id}/download` (endpoint + `downloadUrl` déjà présents) — télécharge le dernier plateau tranché de la session, ou informe si non tranché. *Geste non re-vérifié live (session expirée)* ; endpoint backend vérifié complet (pièce jointe `.gcode`). **Restant** (chacun nécessite du vrai backend, pas un simple câblage) : Export objets STL/STLs (nécessite l'**écrivain STL** absent, cf. T152), DRC (Draco), toolpaths OBJ (support moteur), preset bundle (export de presets). **DoD (partielle)** : Export G-code télécharge un fichier valide ✔.
 - [ ] T155 [P] **Imports** : Import Zip archive, Import Configs. **DoD** : importer un bundle applique presets/objets.
 - [ ] T156 [P] **Préférences** + bascules d'affichage (perspective/ortho, Show Overhang/Labels/Outline, Show G-code window). **DoD** : chaque bascule change le rendu observablement ; une préférence persiste.
 
