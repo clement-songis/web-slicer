@@ -404,7 +404,7 @@ gabarit.
 
 ### 15D — Gizmos moteur-dépendants (stubs `engine-pending`)
 
-- [ ] T148 [P] **Découpe** (gizmo Cut) → plan de coupe FFI — stub `toolNeedsEngine('Découpe')`. **DoD** : couper un cube en deux → 2 objets, chacun tranchable.
+- [X] T148 [P] **Découpe** (gizmo Cut) — **pas de FFI nécessaire** : l'algorithme de coupe `splitByPlane` (Sutherland–Hodgman, `scene/tools/cut.ts`) existait déjà, testé, mais l'`oncut` de `CutTool` était câblé au stub `toolNeedsEngine('Découpe')`. Câblé pour de vrai : `onCut` appelle `splitIntoParts` (nouveau, testé) → remplace l'objet par ses morceaux, téléversés en STL via `addSceneMesh` (chemin des primitives, déjà prouvé) → **tranchables** (`build_stl_model` lit le STL). Stub retiré de `audit/stubs.json`. **DoD (atteinte)** : `tools.test.ts` — un plan traversant donne **2 morceaux non vides**, un plan hors maillage n'en coupe pas (1). *Geste gizmo non re-vérifié live ce tour (session expirée)* ; la logique est testée et réutilise le pipeline d'upload prouvé. *Connecteurs (tenons) : raffinement à venir.*
 - [ ] T149 [P] **Booléen de maillage** (MeshBoolean) → FFI — stub `'Booléen de maillage'`. **DoD** : union/différence produit la géométrie attendue (comptage triangles + tranchage).
 - [ ] T150 [P] **Simplification** (Simplify) → décimation FFI — stub `'Simplification'`. **DoD** : `triangle_count` réduit sous seuil, modèle toujours tranchable.
 - [ ] T151 [P] **Emboss (texte)** + **Forme SVG** → création de volume FFI — stubs `'Emboss / texte'`, `'Forme SVG'`. **DoD** : le texte/SVG embossé apparaît comme géométrie réelle dans le G-code.

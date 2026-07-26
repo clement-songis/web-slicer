@@ -100,6 +100,7 @@ export {
 	AssemblyView,
 	signedDistance,
 	splitByPlane,
+	splitIntoParts,
 	connectorGrid,
 	simplifyGrid,
 	triangleCount,

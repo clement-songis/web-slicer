@@ -23,6 +23,8 @@
 		ToolRail,
 		TransformPanel,
 		CutTool,
+		splitIntoParts,
+		type CutPlane,
 		BooleanTool,
 		SimplifyTool,
 		AssemblyView,
@@ -1056,25 +1058,51 @@
 	// dans le tranchage `build_stl_model`). Le maillage local est affiché aussitôt
 	// pour la réactivité ; l'upload en tâche de fond ne fait qu'enregistrer le
 	// `modelId` (persistance).
-	async function addPrimitive(kind: PrimitiveKind) {
-		const name = kind.charAt(0).toUpperCase() + kind.slice(1);
+	// Ajoute un maillage local à la scène et le téléverse en STL serveur (modèle
+	// rattaché, restauré à l'ouverture, inclus dans le tranchage). Le maillage est
+	// affiché aussitôt (réactivité) ; l'upload en tâche de fond enregistre le
+	// `modelId`. Renvoie l'id d'objet (synchrone). Base commune des primitives et
+	// de la découpe.
+	function addSceneMesh(name: string, mesh: SceneMesh, position: [number, number, number]): string {
 		const id = tree.add(name).id;
 		if (plates.activeId) plates.assign(id, plates.activeId);
-		const mesh = primitiveMesh(kind);
-		sceneObjects = [...sceneObjects, { id, mesh, position: [bed.center.x, bed.center.y, 0] }];
-		ws = setSelection(ws, new Set([id]));
+		sceneObjects = [...sceneObjects, { id, mesh, position }];
 		imports = [...imports, startImport(id, `${name}.stl`)];
-		try {
-			const model = await uploadModel(data.project.id, sceneMeshToStlFile(mesh, name));
-			// Le maillage local est déjà affiché : l'objet est prêt dès l'upload,
-			// sans attendre la conversion serveur (le tranchage lit le STL, pas la
-			// préviz). On force donc l'état « prêt » (pas de badge « conversion »).
-			patchImport(id, (i) => markUploaded(i, model.id, false));
-		} catch (e) {
-			patchImport(id, (i) =>
-				markFailed(i, e instanceof ApiError ? e.message : 'échec de l’upload')
+		void uploadModel(data.project.id, sceneMeshToStlFile(mesh, name))
+			.then((model) => patchImport(id, (i) => markUploaded(i, model.id, false)))
+			.catch((e) =>
+				patchImport(id, (i) =>
+					markFailed(i, e instanceof ApiError ? e.message : 'échec de l’upload')
+				)
 			);
+		return id;
+	}
+
+	function addPrimitive(kind: PrimitiveKind) {
+		const name = kind.charAt(0).toUpperCase() + kind.slice(1);
+		const id = addSceneMesh(name, primitiveMesh(kind), [bed.center.x, bed.center.y, 0]);
+		ws = setSelection(ws, new Set([id]));
+	}
+
+	// Découpe de l'objet sélectionné par un plan (T148/T055) : sépare son maillage
+	// (`splitByPlane`, coupe pure testée) en deux moitiés, remplace l'objet par les
+	// deux morceaux (téléversés comme STL → tranchables). Le plan est dans le repère
+	// local du maillage (comme `activeBounds`). Les connecteurs (tenons) restent un
+	// raffinement à venir.
+	function onCut(plane: CutPlane) {
+		const obj = activeObject;
+		if (!obj) return;
+		const parts = splitIntoParts(obj.mesh, plane);
+		if (parts.length < 2) {
+			saveMessage = 'La coupe ne traverse pas l’objet.';
+			return;
 		}
+		const position = obj.position ?? [0, 0, 0];
+		tree.remove(obj.id);
+		sceneObjects = sceneObjects.filter((o) => o.id !== obj.id);
+		const ids = parts.map((mesh, i) => addSceneMesh(`Découpe ${i + 1}`, mesh, position));
+		ws = setSelection(ws, new Set(ids));
+		closeTool();
 	}
 	// Dispatch du menu d'ajout (T113) : Load (import) ou primitive.
 	function onAddAction(action: string) {
@@ -1769,7 +1797,7 @@
 							<CutTool
 								min={activeBounds.min}
 								max={activeBounds.max}
-								oncut={() => toolNeedsEngine('Découpe')}
+								oncut={(plane) => onCut(plane)}
 								oncancel={closeTool}
 							/>
 						{:else if tools.active === 'boolean'}

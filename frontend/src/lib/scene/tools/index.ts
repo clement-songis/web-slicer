@@ -3,7 +3,7 @@ export { default as CutTool } from './CutTool.svelte';
 export { default as RepairTool } from './RepairTool.svelte';
 export { default as SimplifyTool } from './SimplifyTool.svelte';
 export { default as BooleanTool } from './BooleanTool.svelte';
-export { signedDistance, splitByPlane, connectorGrid, type CutPlane } from './cut';
+export { signedDistance, splitByPlane, splitIntoParts, connectorGrid, type CutPlane } from './cut';
 export { simplifyGrid, triangleCount } from './simplify';
 export { default as LayerHeight } from './LayerHeight.svelte';
 export { default as AssemblyView } from './AssemblyView.svelte';

@@ -2,7 +2,7 @@
 // et simplification (regroupement de sommets).
 import { describe, expect, test } from 'vitest';
 import { meshFromTriangleSoup } from '../loaders';
-import { signedDistance, splitByPlane, connectorGrid, type CutPlane } from './cut';
+import { signedDistance, splitByPlane, splitIntoParts, connectorGrid, type CutPlane } from './cut';
 import { simplifyGrid, triangleCount } from './simplify';
 
 // Un quad dans le plan XY (z=0), de (-10,-10) à (10,10), en deux triangles.
@@ -42,6 +42,19 @@ describe('splitByPlane', () => {
 		const { above, below } = splitByPlane(quadXY(), plane);
 		expect(triangleCount(above)).toBe(0);
 		expect(triangleCount(below)).toBeGreaterThan(0);
+	});
+});
+
+describe('splitIntoParts', () => {
+	test('un plan traversant donne 2 morceaux non vides (T148)', () => {
+		const parts = splitIntoParts(quadXY(), { point: [0, 0, 0], normal: [1, 0, 0] });
+		expect(parts.length).toBe(2);
+		for (const p of parts) expect(triangleCount(p)).toBeGreaterThan(0);
+	});
+
+	test('un plan hors du maillage ne coupe pas (1 morceau)', () => {
+		const parts = splitIntoParts(quadXY(), { point: [100, 0, 0], normal: [1, 0, 0] });
+		expect(parts.length).toBe(1);
 	});
 });
 

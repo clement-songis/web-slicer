@@ -80,6 +80,16 @@ export function splitByPlane(
 }
 
 /**
+ * Découpe un maillage en ses **parties non vides** (0, 1 ou 2 morceaux) : base
+ * de l'outil de coupe (T148). Un plan traversant renvoie deux morceaux ; un plan
+ * hors du maillage n'en renvoie qu'un (l'objet n'est pas réellement coupé).
+ */
+export function splitIntoParts(mesh: SceneMesh, plane: CutPlane): SceneMesh[] {
+	const { above, below } = splitByPlane(mesh, plane);
+	return [above, below].filter((m) => m.indices.length > 0);
+}
+
+/**
  * Grille de positions de connecteurs sur un plan de coupe horizontal, dans
  * l'emprise `[min, max]` (mm), au pas `spacing`. Les tenons sont centrés dans
  * chaque cellule ; la version géométrique (dovetails 3D) est posée par le tool.
