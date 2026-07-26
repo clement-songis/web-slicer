@@ -1195,6 +1195,10 @@
 			case 'object.split':
 				toolNeedsEngine('Découpe en objets/pièces');
 				break;
+			// Fin des no-ops muets (T152) : tout item du menu contextuel non encore
+			// câblé informe l'utilisateur au lieu d'ignorer silencieusement le clic.
+			default:
+				menuTodo(action);
 		}
 	}
 
