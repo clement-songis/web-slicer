@@ -102,6 +102,54 @@ impl TriangleMesh {
         }
         out
     }
+
+    /// Encode le maillage au format **STL binaire** standard (en-tête 80 o à zéro,
+    /// `u32` nombre de triangles, puis par triangle 12 `f32` — normale xyz et les 3
+    /// sommets xyz — suivis d'un `u16` d'attribut). Réutilisé par l'export STL
+    /// (T154) et la réparation (T152). Les triangles référençant un sommet hors
+    /// bornes sont ignorés ; la normale de face est calculée par produit vectoriel
+    /// (`[0,0,0]` si dégénérée).
+    pub fn to_binary_stl(&self) -> Vec<u8> {
+        let n = self.vertices.len() as u32;
+        let facets: Vec<&[u32; 3]> = self
+            .indices
+            .iter()
+            .filter(|t| t[0] < n && t[1] < n && t[2] < n)
+            .collect();
+        let mut out = Vec::with_capacity(84 + facets.len() * 50);
+        out.extend_from_slice(&[0u8; 80]);
+        out.extend_from_slice(&(facets.len() as u32).to_le_bytes());
+        for t in facets {
+            let (a, b, c) = (
+                self.vertices[t[0] as usize],
+                self.vertices[t[1] as usize],
+                self.vertices[t[2] as usize],
+            );
+            let u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+            let w = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+            let mut normal = [
+                u[1] * w[2] - u[2] * w[1],
+                u[2] * w[0] - u[0] * w[2],
+                u[0] * w[1] - u[1] * w[0],
+            ];
+            let len = (normal[0].powi(2) + normal[1].powi(2) + normal[2].powi(2)).sqrt();
+            if len > f32::EPSILON {
+                for x in &mut normal {
+                    *x /= len;
+                }
+            }
+            for &x in &normal {
+                out.extend_from_slice(&x.to_le_bytes());
+            }
+            for v in [a, b, c] {
+                for &x in &v {
+                    out.extend_from_slice(&x.to_le_bytes());
+                }
+            }
+            out.extend_from_slice(&0u16.to_le_bytes());
+        }
+        out
+    }
 }
 
 /// Magic + version du format d'affichage « WSMh » (little-endian) : miroir de
@@ -220,6 +268,28 @@ mod tests {
         assert!(!e.repaired_anything());
         e.edges_fixed = 2;
         assert!(e.repaired_anything());
+    }
+
+    #[test]
+    fn to_binary_stl_header_size_and_count() {
+        let m = tetra();
+        let stl = m.to_binary_stl();
+        // Taille STL binaire = 84 + 50 × triangles.
+        assert_eq!(stl.len(), 84 + 4 * 50);
+        // Compte de triangles dans l'en-tête (octets 80..84, little-endian).
+        assert_eq!(u32::from_le_bytes(stl[80..84].try_into().unwrap()), 4);
+        // Premier sommet du premier triangle (offset 84 + 12 pour la normale).
+        let x0 = f32::from_le_bytes(stl[96..100].try_into().unwrap());
+        assert_eq!(x0, m.vertices[m.indices[0][0] as usize][0]);
+        // Un triangle hors bornes est ignoré (robustesse).
+        let broken = TriangleMesh {
+            vertices: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            indices: vec![[0, 1, 2], [0, 1, 9]],
+        };
+        assert_eq!(
+            u32::from_le_bytes(broken.to_binary_stl()[80..84].try_into().unwrap()),
+            1
+        );
     }
 
     #[test]

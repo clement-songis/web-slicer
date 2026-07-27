@@ -63,6 +63,60 @@ pub async fn export_3mf(
         .into_response())
 }
 
+/// `GET /api/projects/{id}/export/stl` — tous les objets du projet **fusionnés**
+/// en un seul STL binaire (pièce jointe, T154). Réutilise l'assemblage moteur
+/// (`build_stl_model`) puis l'écrivain STL du moteur (`TriangleMesh::to_binary_stl`).
+/// Un projet d'autrui répond 404 (SC-008).
+pub async fn export_stl(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(project_raw): Path<String>,
+) -> ApiResult<Response> {
+    let project_id = parse_project_id(&project_raw)?;
+    let project = state.storage.projects().get(user.id, project_id).await?; // 404, SC-008
+    let model = build_stl_model(&state, user.id, project_id, &project.scene).await?;
+    let merged = merge_model_meshes(&model);
+    if merged.is_empty() {
+        return Err(ApiError::validation(
+            "aucun objet STL à exporter",
+            serde_json::json!({}),
+        ));
+    }
+    let filename = format!("{}.stl", sanitize(&project.name));
+    Ok((
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "model/stl".to_string()),
+            (
+                header::CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{filename}\""),
+            ),
+        ],
+        merged.to_binary_stl(),
+    )
+        .into_response())
+}
+
+/// Fusionne tous les volumes d'un `Model` en un seul maillage indexé (les indices
+/// de chaque volume sont décalés du nombre de sommets déjà accumulés).
+fn merge_model_meshes(model: &engine::api::Model) -> engine::api::TriangleMesh {
+    let mut merged = engine::api::TriangleMesh::default();
+    for object in &model.objects {
+        for volume in &object.volumes {
+            let offset = merged.vertices.len() as u32;
+            merged.vertices.extend_from_slice(&volume.mesh.vertices);
+            merged.indices.extend(
+                volume
+                    .mesh
+                    .indices
+                    .iter()
+                    .map(|t| [t[0] + offset, t[1] + offset, t[2] + offset]),
+            );
+        }
+    }
+    merged
+}
+
 /// Assemble le `Model` moteur d'un projet à partir de ses maillages **STL**
 /// décodés côté serveur. Source unique de l'export 3MF et du runner de tranchage
 /// (les formats dont la géométrie dépend du moteur — OBJ/3MF/STEP — restent à

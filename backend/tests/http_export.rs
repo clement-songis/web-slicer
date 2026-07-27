@@ -203,6 +203,38 @@ async fn exports_a_valid_3mf_project() {
 }
 
 #[tokio::test]
+async fn exports_a_valid_binary_stl_project() {
+    let h = harness().await;
+    let session = register(&h.app, "boss@test.local").await;
+    let owner = user_id(&h.storage, "boss@test.local").await;
+    let project = seed_project(&h, owner).await;
+
+    let resp = get(
+        &h.app,
+        &format!("/api/projects/{project}/export/stl"),
+        &session,
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // Pièce jointe .stl nommée d'après le projet.
+    let disposition = resp
+        .headers()
+        .get(header::CONTENT_DISPOSITION)
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    assert!(disposition.contains("My_Part.stl"), "{disposition}");
+
+    // STL binaire valide : 84 o d'en-tête + 50 o/triangle ; le modèle seed = 1 tri.
+    let bytes = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+    assert_eq!(bytes.len(), 84 + 50);
+    let count = u32::from_le_bytes(bytes[80..84].try_into().unwrap());
+    assert_eq!(count, 1, "un triangle exporté");
+}
+
+#[tokio::test]
 async fn other_accounts_project_export_is_404() {
     let h = harness().await;
     register(&h.app, "alice@test.local").await;

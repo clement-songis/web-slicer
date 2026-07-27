@@ -1259,6 +1259,10 @@
 					saveMessage = 'Aucun G-code : tranchez d’abord le plateau (onglet Prévisualisation).';
 				}
 				break;
+			// Export STL (T154) : tous les objets du projet fusionnés en un STL.
+			case 'export.stlOne':
+				downloadUrl(`/api/projects/${data.project.id}/export/stl`);
+				break;
 			case 'project.reload':
 				await loadProjectModels();
 				saveMessage = 'Modèles rechargés depuis le disque.';

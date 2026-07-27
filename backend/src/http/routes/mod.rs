@@ -81,6 +81,7 @@ where
         .route("/api/projects/{id}/orient", post(scene::orient))
         .route("/api/projects/{id}/slice", post(slice::slice))
         .route("/api/projects/{id}/export/3mf", get(export::export_3mf))
+        .route("/api/projects/{id}/export/stl", get(export::export_stl))
         .route("/api/jobs", get(jobs::list))
         .route("/api/jobs/{id}", get(jobs::get))
         .route("/api/jobs/{id}/cancel", post(jobs::cancel))
