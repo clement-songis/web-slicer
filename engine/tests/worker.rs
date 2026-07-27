@@ -92,6 +92,48 @@ fn worker_crash_becomes_error() {
     assert_eq!(err.code, EngineErrorCode::EngineCrashed, "{err}");
 }
 
+/// Sous-commande `repair` (T152) : lit un STL, le répare (admesh), et écrit un STL
+/// binaire réparé — bout-en-bout du pipeline `convert_to_mesh` → `repair_mesh` →
+/// `to_binary_stl`. C'est la brique consommée par l'endpoint backend `/repair`.
+#[test]
+fn repair_subcommand_reads_and_writes_a_valid_stl() {
+    let dir = tempfile::tempdir().unwrap();
+    let inp = dir.path().join("in.stl");
+    let outp = dir.path().join("out.stl");
+    // STL binaire valide (tétraèdre) via l'écrivain moteur.
+    let mesh = engine::api::TriangleMesh {
+        vertices: vec![
+            [0.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            [0.0, 10.0, 0.0],
+            [0.0, 0.0, 10.0],
+        ],
+        indices: vec![[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]],
+    };
+    std::fs::write(&inp, mesh.to_binary_stl()).unwrap();
+
+    let out = Command::new(worker_binary())
+        .arg("repair")
+        .arg(&inp)
+        .arg(&outp)
+        .output()
+        .expect("le worker repair s'exécute");
+    assert!(
+        out.status.success(),
+        "repair échoue : {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    assert!(
+        String::from_utf8_lossy(&out.stdout).contains("R "),
+        "rapport de réparation émis"
+    );
+    // Le STL réparé est un STL binaire valide (84 o + 50/triangle, ≥ 1 triangle).
+    let bytes = std::fs::read(&outp).expect("STL réparé lisible");
+    assert!(bytes.len() >= 84 + 50, "taille STL binaire minimale");
+    let count = u32::from_le_bytes(bytes[80..84].try_into().unwrap());
+    assert!(count >= 1, "au moins un triangle réparé");
+}
+
 /// Chemin du binaire `engine-worker` bâti par cargo pour ce test d'intégration.
 fn worker_binary() -> &'static str {
     env!("CARGO_BIN_EXE_engine-worker")

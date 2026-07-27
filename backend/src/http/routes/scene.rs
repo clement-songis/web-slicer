@@ -10,9 +10,13 @@
 //! contrat http-api.md.
 
 use std::path::Path as FsPath;
+use std::time::Duration;
 
 use axum::extract::{Path, State};
 use axum::Json;
+
+/// Délai maximal d'une réparation moteur (au-delà, le worker est tué).
+const REPAIR_TIMEOUT: Duration = Duration::from_secs(120);
 
 use crate::domain::{Model, ModelFormat, ModelId, ProjectId};
 use crate::http::dto::{
@@ -101,8 +105,10 @@ pub async fn orient(
     }))
 }
 
-/// `POST /api/models/{id}/repair` — analyse le maillage et renvoie un rapport
-/// (triangles, facettes dégénérées, arêtes de bord, étanchéité) (FR-012).
+/// `POST /api/models/{id}/repair` — **répare** le maillage STL (admesh via le
+/// worker moteur isolé), remplace le fichier modèle par le STL réparé, régénère
+/// le maillage d'affichage, puis renvoie l'analyse du maillage **réparé**
+/// (triangles, facettes dégénérées, arêtes de bord, étanchéité) (FR-012, T152).
 pub async fn repair(
     CurrentUser(user): CurrentUser,
     State(state): State<AppState>,
@@ -110,8 +116,57 @@ pub async fn repair(
 ) -> ApiResult<Json<RepairResponse>> {
     let model_id = parse_model_id(&id)?;
     let model = state.storage.models().get(user.id, model_id).await?; // 404 si autre compte
-    let mesh = load_stl_mesh(&state, &model).await?;
+    if model.format != ModelFormat::Stl {
+        return Err(ApiError::not_implemented(
+            "réparation disponible uniquement pour les modèles STL",
+        ));
+    }
 
+    // Répare via le worker isolé (crash C++ contenu) : le STL réparé est écrit
+    // dans un fichier temporaire, puis remonté.
+    let out = tempfile::Builder::new()
+        .suffix(".stl")
+        .tempfile()
+        .map_err(|e| {
+            tracing::error!(error = %e, "fichier temporaire de réparation");
+            ApiError::internal()
+        })?;
+    let out_path = out
+        .path()
+        .to_str()
+        .ok_or_else(ApiError::internal)?
+        .to_owned();
+    let file_path = model.file_path.clone();
+    crate::engine::run_worker(&["repair", &file_path, &out_path], REPAIR_TIMEOUT)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "réparation moteur");
+            ApiError::internal()
+        })?;
+
+    // Remplace le fichier modèle par le STL réparé (même chemin déterministe).
+    let repaired = tokio::fs::read(out.path()).await.map_err(|e| {
+        tracing::error!(error = %e, "lecture du STL réparé");
+        ApiError::internal()
+    })?;
+    state
+        .files
+        .write_model(user.id, model.id, "stl", &repaired)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "écriture du modèle réparé");
+            ApiError::internal()
+        })?;
+
+    // Régénère le maillage d'affichage (WSMh) + met à jour le compte de triangles
+    // (via `set_mesh`) et notifie le client (événement `model.converted`).
+    state.converter.convert(model).await;
+
+    // Rapport renvoyé : analyse du maillage **réparé**.
+    let mesh = parse_stl(&repaired).map_err(|e| {
+        tracing::error!(error = %e, "décodage du STL réparé");
+        ApiError::internal()
+    })?;
     let report = analyze_mesh(&mesh);
     Ok(Json(RepairResponse {
         triangles: report.triangles as u32,

@@ -85,7 +85,7 @@
 		duplicateProject,
 		renameProject
 	} from '$lib/api/projects';
-	import { arrangeScene, orientModel } from '$lib/api/scene';
+	import { arrangeScene, orientModel, repairModel } from '$lib/api/scene';
 	import { fetchPreviewLayers, getPreviewMeta } from '$lib/api/preview';
 	import { listPresets, createPreset, updatePreset, getPreset } from '$lib/api/presets';
 	import { listPrinters, getPrinterCatalog, createPrinter } from '$lib/api/printers';
@@ -650,16 +650,23 @@
 			const { mesh, center } = centerMesh(await fetchMesh(modelId));
 			// Transformation sauvegardée prioritaire sur le recentrage par défaut.
 			const t = savedTransformByObject[item.objectId];
-			sceneObjects = [
-				...sceneObjects,
-				{
-					id: item.objectId,
-					mesh,
-					position: t?.position ?? center,
-					rotation: t?.rotation,
-					scale: t?.scale
-				}
-			];
+			// Idempotent : si l'objet existe déjà (ex. maillage régénéré après une
+			// réparation), on remplace son maillage **en place** au lieu de le
+			// dupliquer ; sinon on l'ajoute.
+			if (sceneObjects.some((o) => o.id === item.objectId)) {
+				sceneObjects = sceneObjects.map((o) => (o.id === item.objectId ? { ...o, mesh } : o));
+			} else {
+				sceneObjects = [
+					...sceneObjects,
+					{
+						id: item.objectId,
+						mesh,
+						position: t?.position ?? center,
+						rotation: t?.rotation,
+						scale: t?.scale
+					}
+				];
+			}
 			patchImport(item.objectId, markConverted);
 		} catch (e) {
 			// 409 = pas encore prêt : rester en « conversion en cours ».
@@ -1187,9 +1194,27 @@
 				ws = setSelection(ws, new Set([id]));
 				tools = { active: 'simplify' };
 				break;
-			case 'object.fix':
-				toolNeedsEngine('Réparer le maillage');
+			case 'object.fix': {
+				// Réparation réelle (T152) : le maillage STL est réparé côté moteur
+				// (admesh), le fichier et l'affichage régénérés (via l'événement
+				// `model.converted` + un refresh explicite idempotent).
+				const modelId = imports.find((i) => i.objectId === id)?.modelId;
+				if (!modelId) {
+					saveMessage = 'Modèle indisponible pour la réparation.';
+					break;
+				}
+				saveMessage = 'Réparation du maillage…';
+				try {
+					const report = await repairModel(modelId);
+					await resolveConversion(modelId);
+					saveMessage = report.watertight
+						? 'Maillage réparé (étanche).'
+						: `Maillage réparé (${report.degenerate} dégénéré(s), ${report.open_edges} arête(s) ouverte(s)).`;
+				} catch (e) {
+					saveMessage = e instanceof ApiError ? e.message : 'réparation impossible';
+				}
 				break;
+			}
 			case 'object.toObjects':
 			case 'object.toParts':
 			case 'object.split':

@@ -71,14 +71,48 @@ fn main() {
                 }
             }
         }
+        Some("repair") => {
+            let (Some(inp), Some(outp)) = (args.get(2), args.get(3)) else {
+                eprintln!("usage: repair <in.stl> <out.stl>");
+                std::process::exit(2);
+            };
+            // Répare le maillage (admesh) et écrit le STL binaire réparé ; émet le
+            // rapport de réparation en `R <json>` (protocole tolérant au bruit de log).
+            match repair_stl(Path::new(inp), Path::new(outp)) {
+                Ok(report) => {
+                    let json = serde_json::to_string(&report).expect("rapport sérialisable");
+                    println!("R {json}");
+                    let _ = std::io::stdout().flush();
+                }
+                Err(e) => {
+                    emit_error(&code_slug(e.code), &e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
         Some("self-test") => self_test(&args[2..]),
         _ => {
             eprintln!(
-                "usage: engine-worker <triangle-count|config-count|load-model|slice|self-test> [args]"
+                "usage: engine-worker <triangle-count|config-count|load-model|slice|repair|self-test> [args]"
             );
             std::process::exit(2);
         }
     }
+}
+
+/// Répare le STL `inp` (admesh via `repair_mesh`) et écrit le résultat en STL
+/// binaire dans `outp` (T152). Renvoie le rapport de réparation (arêtes/facettes
+/// corrigées). Le décodage passe par `convert_to_mesh` (lecture STL libslic3r).
+fn repair_stl(
+    inp: &Path,
+    outp: &Path,
+) -> engine::api::EngineResult<engine::api::RepairedMeshErrors> {
+    use engine::api::{EngineError, EngineErrorCode};
+    let mesh = engine::adapters::ffi::convert_to_mesh(inp)?;
+    let (repaired, report) = engine::adapters::ffi::repair_mesh(&mesh)?;
+    std::fs::write(outp, repaired.to_binary_stl())
+        .map_err(|e| EngineError::new(EngineErrorCode::Io, format!("écriture STL réparé : {e}")))?;
+    Ok(report)
 }
 
 /// Décode `path` (format `format`) via le moteur et renvoie le maillage

@@ -5,7 +5,6 @@
     { "marker": "toolNeedsEngine", "label": "Booléen de maillage", "reason": "Gizmo MeshBoolean : opération booléenne FFI.", "status": "engine-pending" },
     { "marker": "toolNeedsEngine", "label": "Emboss / texte", "reason": "Gizmo Emboss : création de volume texte FFI.", "status": "engine-pending" },
     { "marker": "toolNeedsEngine", "label": "Forme SVG", "reason": "Gizmo GLGizmoSVG : import/extrusion SVG FFI.", "status": "engine-pending" },
-    { "marker": "toolNeedsEngine", "label": "Réparer le maillage", "reason": "Context menu Fix model : `repair_mesh_raw` (admesh) existe côté moteur mais n'est pas câblé à l'UI.", "status": "backlog" },
     { "marker": "menuTodo", "label": "Renommer (édition en ligne à venir)", "reason": "Context menu Rename : édition en ligne du nom d'objet non implémentée.", "status": "backlog" },
     { "marker": "menuTodo", "label": "<dynamic:action>", "reason": "Défaut du menu principal (onMenuAction) : capte tous les items non câblés — Undo/Redo, exports (G-code / STL / DRC / preset bundle / toolpaths OBJ), Import Zip / Configs, Préférences, Preset Bundle, Open G-code, Reload from Disk, perspective/ortho, Show Overhang/Labels/Outline.", "status": "backlog" }
   ]

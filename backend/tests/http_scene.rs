@@ -237,13 +237,30 @@ async fn arrange_requires_a_session() {
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
 }
 
+// Réparation réelle (T152) : le handler pilote le worker moteur (admesh). Test
+// d'**intégration** gaté sur `ENGINE_WORKER_BIN` (comme les tests Postgres sur
+// `TEST_DATABASE_URL`) — sauté dans le run rapide sans worker ; le cœur est
+// prouvé de façon déterministe par `engine/tests/worker.rs` (sous-commande
+// `repair`). Le chemin d'erreur (worker absent → 500) n'est pas testé ici.
 #[tokio::test]
-async fn repair_reports_open_triangle() {
+async fn repair_repairs_an_stl_model() {
+    if std::env::var("ENGINE_WORKER_BIN").is_err() {
+        return; // worker moteur requis (intégration)
+    }
     let (_d, app) = app().await;
     let user = register(&app, "boss@test.local").await;
     let project = create_project(&app, &user).await;
-    let stl = binary_stl_tri([[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [0.0, 10.0, 0.0]]);
-    let model = upload_model(&app, &project, &user, "tri.stl", &stl).await;
+    // STL d'un solide fermé (tétraèdre) : libslic3r ne charge pas un triangle isolé.
+    let mesh = engine::api::TriangleMesh {
+        vertices: vec![
+            [0.0, 0.0, 0.0],
+            [10.0, 0.0, 0.0],
+            [0.0, 10.0, 0.0],
+            [0.0, 0.0, 10.0],
+        ],
+        indices: vec![[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]],
+    };
+    let model = upload_model(&app, &project, &user, "tetra.stl", &mesh.to_binary_stl()).await;
 
     let resp = app
         .clone()
@@ -255,10 +272,9 @@ async fn repair_reports_open_triangle() {
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
+    // Le maillage a été réparé par le moteur et ré-analysé (au moins un triangle).
     let body = json_body(resp).await;
-    assert_eq!(body["triangles"], 1);
-    assert_eq!(body["open_edges"], 3);
-    assert_eq!(body["watertight"], false);
+    assert!(body["triangles"].as_u64().unwrap() >= 1);
 }
 
 /// SC-008 : réparer le modèle d'autrui répond 404.
