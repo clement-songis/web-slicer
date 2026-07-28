@@ -9,6 +9,7 @@
 	import type { BedShape } from './bed';
 	import { viewPose, viewUp, type NamedView } from './camera';
 	import type { SceneObject } from './mesh';
+	import type { PaintDocument } from './gizmos/painting/painting';
 	import ModelObject from './ModelObject.svelte';
 	import TransformGizmo from './gizmos/TransformGizmo.svelte';
 	import type { GizmoMode } from './gizmos/types';
@@ -29,6 +30,8 @@
 		ontransform?: (id: string, transform: Transform) => void;
 		/** Peinture au triangle active (désactive la rotation caméra, T056). */
 		paintActive?: boolean;
+		/** Documents de peinture par id d'objet : colore les facettes peintes (T145). */
+		paintings?: Record<string, PaintDocument>;
 		/** Remonte un coup de pinceau sur un objet : id + triangle + point local. */
 		onpaint?: (id: string, faceIndex: number, local: [number, number, number]) => void;
 	}
@@ -42,6 +45,7 @@
 		showGrid = true,
 		ontransform,
 		paintActive = false,
+		paintings = {},
 		onpaint
 	}: Props = $props();
 
@@ -98,6 +102,7 @@
 		onpick={(additive) => pick(obj.id, additive)}
 		onref={(o) => setRef(obj.id, o)}
 		{paintActive}
+		painting={paintings[obj.id]}
 		onpaint={(faceIndex, local) => onpaint?.(obj.id, faceIndex, local)}
 	/>
 {/each}

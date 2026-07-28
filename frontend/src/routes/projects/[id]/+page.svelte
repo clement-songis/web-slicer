@@ -167,6 +167,12 @@
 	// l'objet sélectionné, sérialisable au format 3MF Orca via `serialize`.
 	let paintings = $state<Record<string, TrianglePainting>>({});
 
+	// Documents de peinture sérialisés (id → 3MF) pour la coloration au triangle
+	// dans la vue 3D (T145). Recalculé quand une peinture change.
+	const paintDocs = $derived(
+		Object.fromEntries(Object.entries(paintings).map(([id, p]) => [id, p.serialize()]))
+	);
+
 	// Barre d'outils de plateau (T106) : édition de hauteur de couche variable et
 	// profil par objet. La vue d'assemblage réutilise l'outil « assembly » du rail.
 	let showLayerHeight = $state(false);
@@ -1796,6 +1802,7 @@
 					{showGrid}
 					ontransform={onTransform}
 					paintActive={!!paintChannel}
+					paintings={paintDocs}
 					onpaint={onPaintStroke}
 				/>
 

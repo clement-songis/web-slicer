@@ -4,6 +4,7 @@ import { describe, expect, test } from 'vitest';
 import { meshFromTriangleSoup } from '../../loaders';
 import { encodeFacet, decodeFacet, ENFORCER, BLOCKER } from './facets';
 import { TrianglePainting, trianglesInRadius } from './painting';
+import { paintFaceColorData } from './colors';
 
 describe('encodeFacet / decodeFacet', () => {
 	test('valeurs canoniques Orca : enforcer=4, blocker=8', () => {
@@ -60,5 +61,40 @@ describe('trianglesInRadius', () => {
 		]);
 		const hits = trianglesInRadius(mesh, [0, 0, 0], 5);
 		expect(hits).toEqual([0]);
+	});
+});
+
+// Compare des couleurs f32 (précision simple) composante par composante.
+function expectColor(actual: Float32Array, expected: [number, number, number]) {
+	expected.forEach((c, i) => expect(actual[i]).toBeCloseTo(c, 5));
+}
+
+describe('paintFaceColorData (T145 — visualisation)', () => {
+	// 2 triangles partageant l'arête 1-2 ; triangle 0 marqué enforcer supports.
+	const mesh = {
+		positions: new Float32Array([0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 0]),
+		normals: new Float32Array(12),
+		indices: new Uint32Array([0, 1, 2, 1, 2, 3])
+	};
+
+	test('développe en non-indexé et teinte la facette peinte', () => {
+		const data = paintFaceColorData(mesh, { supports: { '0': encodeFacet(ENFORCER) } });
+		expect(data).not.toBeNull();
+		// 2 triangles × 3 sommets × 3 composantes.
+		expect(data!.positions.length).toBe(18);
+		expect(data!.colors.length).toBe(18);
+		// Triangle 0 = enforcer rouge ; triangle 1 = couleur de base neutre.
+		expectColor(data!.colors.slice(0, 3), [0.95, 0.25, 0.25]);
+		expectColor(data!.colors.slice(9, 12), [0.6, 0.65, 0.7]);
+	});
+
+	test('blocker (supports=8) est bleu', () => {
+		const data = paintFaceColorData(mesh, { supports: { '1': encodeFacet(BLOCKER) } });
+		expectColor(data!.colors.slice(9, 12), [0.2, 0.45, 0.95]);
+	});
+
+	test('renvoie null sans aucune facette peinte', () => {
+		expect(paintFaceColorData(mesh, {})).toBeNull();
+		expect(paintFaceColorData(mesh, { supports: {} })).toBeNull();
 	});
 });

@@ -8,6 +8,7 @@
 	import type { GizmoMode } from './gizmos/types';
 	import type { NamedView } from './camera';
 	import type { Transform } from './transform';
+	import type { PaintDocument } from './gizmos/painting/painting';
 	import Viewport from './Viewport.svelte';
 
 	interface Props {
@@ -24,6 +25,8 @@
 		ontransform?: (id: string, transform: Transform) => void;
 		/** Peinture au triangle active (T056). */
 		paintActive?: boolean;
+		/** Documents de peinture par id d'objet : colore les facettes peintes (T145). */
+		paintings?: Record<string, PaintDocument>;
 		/** Remonte un coup de pinceau : id d'objet + triangle + point local. */
 		onpaint?: (id: string, faceIndex: number, local: [number, number, number]) => void;
 	}
@@ -37,6 +40,7 @@
 		showGrid = true,
 		ontransform,
 		paintActive = false,
+		paintings = {},
 		onpaint
 	}: Props = $props();
 </script>
@@ -52,6 +56,7 @@
 			{showGrid}
 			{ontransform}
 			{paintActive}
+			{paintings}
 			{onpaint}
 		/>
 	</Canvas>

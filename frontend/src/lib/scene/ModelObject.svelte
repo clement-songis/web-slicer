@@ -6,6 +6,8 @@
 	import type { IntersectionEvent } from '@threlte/extras';
 	import * as THREE from 'three';
 	import type { SceneMesh } from './mesh';
+	import { paintFaceColorData } from './gizmos/painting/colors';
+	import type { PaintDocument } from './gizmos/painting/painting';
 
 	interface Props {
 		mesh: SceneMesh;
@@ -20,6 +22,8 @@
 		onref?: (object: THREE.Object3D | null) => void;
 		/** Peinture au triangle active (un canal est sélectionné, T056). */
 		paintActive?: boolean;
+		/** Document de peinture de l'objet : colore les facettes peintes (T145). */
+		painting?: PaintDocument;
 		/** Remonte un coup de pinceau : triangle touché + point local (mm). */
 		onpaint?: (faceIndex: number, local: [number, number, number]) => void;
 	}
@@ -33,8 +37,13 @@
 		onpick,
 		onref,
 		paintActive = false,
+		painting,
 		onpaint
 	}: Props = $props();
+
+	// Données de couleur au triangle (non indexées) si l'objet porte de la
+	// peinture ; `null` sinon → on garde la géométrie indexée normale.
+	const painted = $derived(painting ? paintFaceColorData(mesh, painting) : null);
 
 	// Coup de pinceau : le raycast Threlte donne le triangle (`faceIndex`) et le
 	// point d'impact (monde) ; on repasse en repère local (celui de `mesh`) pour
@@ -79,6 +88,15 @@
 
 	const geometry = $derived.by(() => {
 		const g = new THREE.BufferGeometry();
+		if (painted) {
+			// Géométrie développée (une facette = 3 sommets propres) portant la
+			// couleur de peinture par sommet. L'ordre des facettes est préservé,
+			// donc `faceIndex` reste l'index de triangle attendu par le pinceau.
+			g.setAttribute('position', new THREE.BufferAttribute(painted.positions, 3));
+			g.setAttribute('color', new THREE.BufferAttribute(painted.colors, 3));
+			g.computeVertexNormals();
+			return g;
+		}
 		g.setAttribute('position', new THREE.BufferAttribute(mesh.positions, 3));
 		if (mesh.normals.length) {
 			g.setAttribute('normal', new THREE.BufferAttribute(mesh.normals, 3));
@@ -113,7 +131,8 @@
 	{onpointermove}
 >
 	<T.MeshStandardMaterial
-		color={selected ? '#f59e0b' : '#9aa7b4'}
+		color={painted ? '#ffffff' : selected ? '#f59e0b' : '#9aa7b4'}
+		vertexColors={!!painted}
 		metalness={0.1}
 		roughness={0.7}
 	/>

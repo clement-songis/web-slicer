@@ -47,13 +47,13 @@ C'est tout l'écart entre ce que le gate certifiait et ce que tu constates.
 | MeshBoolean | ✅ | ✅ | ❌ | ❔ | `toolNeedsEngine('Booléen')` |
 | Emboss | ✅ | ✅ | ❌ | ❔ | « nécessite le moteur (à venir) » |
 | GLGizmoSVG | ✅ | ✅ | ❌ | ❔ | `toolNeedsEngine('Forme SVG')` |
-| Simplify | ✅ | ✅ | ❌ | ❔ | `toolNeedsEngine('Simplification')` |
-| FdmSupports (peinture) | ✅ | ✅ | ❌ | ❔ | peint à l'écran **mais** ni persisté ni envoyé au moteur → aucun effet sur le print |
-| Seam (peinture) | ✅ | ✅ | ❌ | ❔ | idem |
-| FuzzySkin (peinture) | ✅ | ✅ | ❌ | ❔ | idem |
-| MmSegmentation (peinture) | ✅ | ✅ | ❌ | ❔ | idem |
+| Simplify | ✅ | ✅ | ✅ | ❔ | **corrigé T150** : grille de décimation client réellement appliquée |
+| FdmSupports (peinture) | ✅ | ✅ | ✅ | ✅ | **corrigé T140 (moteur) + T145 (rendu)** : facettes envoyées à libslic3r (`enable_support`) et colorées rouge/bleu à l'écran |
+| Seam (peinture) | ✅ | ✅ | ✅ | ✅ | **corrigé T142 + T145** : `is_seam_painted()` atteint, peinture visible |
+| FuzzySkin (peinture) | ✅ | ✅ | ✅ | ✅ | **corrigé T141 + T145** : région forcée `FuzzySkinType::All`, peinture visible |
+| MmSegmentation (peinture) | ✅ | ✅ | ❌ | ✅ | **rendu corrigé T145** ; effet moteur en attente de multi-extrudeur (T143) |
 
-**Réellement fidèles : 5/16.** Les 4 gizmos de peinture sont le piège le plus trompeur : ils *paraissent* marcher (on peint) mais rien n'atteint le tranchage.
+**Réellement fidèles : 9/16** (était 5/16). L'arc peinture — le piège le plus trompeur du départ (on peignait sans que rien n'atteigne le tranchage ni ne s'affiche) — est désormais **branché de bout en bout** (T140–142) **et visible** (T145) ; seul MmSegmentation attend le multi-extrudeur côté moteur.
 
 ---
 
