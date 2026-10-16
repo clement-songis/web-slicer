@@ -403,7 +403,7 @@
   "id": "param.bottom_surface_pattern",
   "key": "bottom_surface_pattern",
   "type": "coEnum",
-  "value": null,
+  "value": "rectilinear",
   "ui": true,
   "label": "Bottom surface pattern",
   "mode": "simple",
@@ -898,7 +898,9 @@
   "id": "param.default_nozzle_volume_type",
   "key": "default_nozzle_volume_type",
   "type": "coEnums",
-  "value": null,
+  "value": [
+   "Direct Drive"
+  ],
   "ui": false,
   "label": "Default Nozzle Volume Type.",
   "mode": "develop"
@@ -3776,7 +3778,7 @@
   "id": "param.internal_solid_infill_pattern",
   "key": "internal_solid_infill_pattern",
   "type": "coEnum",
-  "value": null,
+  "value": "rectilinear",
   "ui": true,
   "label": "Internal solid infill pattern",
   "mode": "simple",
@@ -4731,7 +4733,9 @@
   "id": "param.nozzle_volume_type",
   "key": "nozzle_volume_type",
   "type": "coEnums",
-  "value": null,
+  "value": [
+   "Direct Drive"
+  ],
   "ui": false,
   "label": "Nozzle Volume Type",
   "mode": "simple"

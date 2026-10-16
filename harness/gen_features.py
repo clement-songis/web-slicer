@@ -127,7 +127,9 @@ def choose_value(key: str, d: dict):
         n = _pick_number(d, False)
         v = (_fmt(n, True) + "%") if raw.endswith("%") else _fmt(n, False)
     elif base_t == "coEnum":
-        vals = d.get("enum_values") or []
+        vals = d.get("enum_values") or next(
+            (o["enum_values"] for o in PARAMS.values()
+             if o.get("default_type") == d.get("default_type") and o.get("enum_values")), [])
         raw = str(d.get("default_raw", "")).lower()
         cands = [x for x in vals if x.lower() not in raw and slug(x) not in slug(raw)]
         if not cands:
