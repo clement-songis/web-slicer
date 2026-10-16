@@ -65,7 +65,7 @@ test('réglages : tous les onglets et options Orca présents (mode expert) @F:co
 		await page.getByTestId(`open-settings-${scope}`).click();
 		const dialog = page.getByTestId('settings-dialog');
 		await expect(dialog).toBeVisible();
-		await dialog.getByTestId('settings-mode-expert').click();
+		await dialog.getByTestId('settings-mode-develop').click();
 		const tabs = ui.settings_tabs.filter((t) => scopeOf(t) === scope && !/^TabPrint(Model|Plate)/.test(t.defined_in ?? ''));
 		for (const tab of tabs) {
 			// « page_name » = page extrudeur dynamique d'Orca (Extruder 1 en mono-extrudeur).

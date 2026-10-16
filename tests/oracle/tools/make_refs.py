@@ -169,6 +169,9 @@ def main() -> None:
         for c in json.loads((ORACLE / "params" / "cases.json").read_text()):
             if c["value"] is None or (keys and c["key"] not in keys):
                 continue
+            req = ORACLE / "params" / "requires" / f"{c['key']}.json"
+            if req.exists():
+                c["requires"] = json.loads(req.read_text()).get("requires", {})
             trio = tuple(json.loads(json.dumps(x)) for x in refs.trio())
             target = place(c["key"], c.get("scope"), trio)
             value = distinct_value(c["key"], c["value"], target.get(c["key"]))

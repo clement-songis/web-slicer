@@ -66,6 +66,7 @@ def main() -> None:
             return
         if mode == "tests":
             allowed = {f"tests/oracle/scenarios/{i}.spec.ts" for i in ids}
+            allowed |= {f"tests/oracle/params/requires/{i[6:]}.json" for i in ids if i.startswith("param.")}
             if r not in allowed:
                 deny(f"en mode auteur de tests, seuls ces fichiers sont modifiables : {sorted(allowed)}")
             return

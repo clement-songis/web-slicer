@@ -7,6 +7,7 @@
   "ui": true,
   "label": "Enable accel_to_decel",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Acceleration",
   "scope": "print",
@@ -20,6 +21,7 @@
   "ui": true,
   "label": "accel_to_decel",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Acceleration",
   "scope": "print",
@@ -35,6 +37,7 @@
   "ui": true,
   "label": "Activate air filtration",
   "mode": "simple",
+  "nullable": false,
   "tab": "Cooling",
   "section": "Exhaust fan",
   "scope": "filament",
@@ -49,7 +52,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.activate_air_filtration_on_completion",
@@ -60,7 +64,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.activate_chamber_temp_control",
@@ -72,6 +77,7 @@
   "ui": true,
   "label": "Activate temperature control",
   "mode": "simple",
+  "nullable": false,
   "tab": "Filament",
   "section": "Print chamber temperature",
   "scope": "filament",
@@ -85,6 +91,7 @@
   "ui": true,
   "label": "Mesh margin",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Adaptive bed mesh",
   "scope": "printer",
@@ -100,6 +107,7 @@
   "ui": true,
   "label": "Enable adaptive pressure advance (beta)",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Filament",
   "section": "Flow ratio and Pressure Advance",
   "scope": "filament",
@@ -115,6 +123,7 @@
   "ui": true,
   "label": "Pressure advance for bridges",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Filament",
   "section": "Flow ratio and Pressure Advance",
   "scope": "filament",
@@ -129,7 +138,8 @@
   ],
   "ui": false,
   "label": "Adaptive pressure advance measurements (beta)",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.adaptive_pressure_advance_overhangs",
@@ -141,6 +151,7 @@
   "ui": true,
   "label": "Enable adaptive pressure advance for overhangs (beta)",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Filament",
   "section": "Flow ratio and Pressure Advance",
   "scope": "filament",
@@ -156,6 +167,7 @@
   "ui": true,
   "label": "Fan speed",
   "mode": "simple",
+  "nullable": false,
   "tab": "Cooling",
   "section": "Auxiliary part cooling fan",
   "scope": "filament",
@@ -170,7 +182,8 @@
   ],
   "ui": false,
   "label": "Full fan speed at layer",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.align_infill_direction_to_model",
@@ -180,6 +193,7 @@
   "ui": true,
   "label": "Align infill direction to model",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Advanced",
   "scope": "print",
@@ -193,6 +207,7 @@
   "ui": true,
   "label": "Alternate extra wall",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Walls",
   "scope": "print",
@@ -206,6 +221,7 @@
   "ui": true,
   "label": "Auxiliary part cooling fan",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Accessory",
   "scope": "printer",
@@ -218,7 +234,8 @@
   "value": "0",
   "ui": false,
   "label": "Show auto-calibration marks",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.bbl_use_printhost",
@@ -228,6 +245,7 @@
   "ui": true,
   "label": "Use 3rd-party print host",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Advanced",
   "scope": "printer",
@@ -240,7 +258,8 @@
   "value": null,
   "ui": false,
   "label": "Bed custom model",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.bed_custom_texture",
@@ -249,7 +268,8 @@
   "value": null,
   "ui": false,
   "label": "Bed custom texture",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.bed_exclude_area",
@@ -258,7 +278,8 @@
   "value": null,
   "ui": false,
   "label": "Bed exclude area",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.bed_mesh_max",
@@ -268,6 +289,7 @@
   "ui": true,
   "label": "Bed mesh max",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Adaptive bed mesh",
   "scope": "printer",
@@ -281,6 +303,7 @@
   "ui": true,
   "label": "Bed mesh min",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Adaptive bed mesh",
   "scope": "printer",
@@ -294,6 +317,7 @@
   "ui": true,
   "label": "Probe point distance",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Adaptive bed mesh",
   "scope": "printer",
@@ -307,6 +331,7 @@
   "ui": true,
   "label": "Bed temperature type",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Single extruder multi-material setup",
   "scope": "printer",
@@ -319,7 +344,8 @@
   "value": "; HARNESS_MARK before_layer_change_gcode",
   "ui": false,
   "label": "Before layer change G-code",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.best_object_pos",
@@ -329,6 +355,7 @@
   "ui": true,
   "label": "Best object position",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Printable space",
   "scope": "printer",
@@ -342,6 +369,7 @@
   "ui": true,
   "label": "Bottom shell layers",
   "mode": "simple",
+  "nullable": false,
   "tab": "Strength",
   "section": "Top/bottom shells",
   "scope": "print",
@@ -355,6 +383,7 @@
   "ui": true,
   "label": "Bottom shell thickness",
   "mode": "simple",
+  "nullable": false,
   "tab": "Strength",
   "section": "Top/bottom shells",
   "scope": "print",
@@ -368,6 +397,7 @@
   "ui": true,
   "label": "Bottom surface flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -381,6 +411,7 @@
   "ui": true,
   "label": "Bottom surface density",
   "mode": "simple",
+  "nullable": false,
   "tab": "Strength",
   "section": "Top/bottom shells",
   "scope": "print",
@@ -394,6 +425,7 @@
   "ui": true,
   "label": "Bottom surface",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Filament for Features",
   "scope": "print",
@@ -407,6 +439,7 @@
   "ui": true,
   "label": "Bottom surface pattern",
   "mode": "simple",
+  "nullable": false,
   "tab": "Strength",
   "section": "Top/bottom shells",
   "scope": "print",
@@ -420,6 +453,7 @@
   "ui": true,
   "label": "Bridge",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Acceleration",
   "scope": "print",
@@ -433,6 +467,7 @@
   "ui": true,
   "label": "External bridge infill direction",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Advanced",
   "scope": "print",
@@ -446,6 +481,7 @@
   "ui": true,
   "label": "External bridge density",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Bridging",
   "scope": "print",
@@ -459,6 +495,7 @@
   "ui": true,
   "label": "Bridge flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Bridging",
   "scope": "print",
@@ -472,6 +509,7 @@
   "ui": true,
   "label": "Bridge",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Line width",
   "scope": "print",
@@ -485,6 +523,7 @@
   "ui": true,
   "label": "Don't support bridges",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -497,7 +536,8 @@
   "value": "31.25",
   "ui": false,
   "label": "External",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.brim_ears",
@@ -506,7 +546,8 @@
   "value": "1",
   "ui": false,
   "label": "Brim ears",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.brim_ears_detection_length",
@@ -516,6 +557,7 @@
   "ui": true,
   "label": "Brim ear detection radius",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Brim",
   "scope": "print",
@@ -529,6 +571,7 @@
   "ui": true,
   "label": "Brim ear max angle",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Brim",
   "scope": "print",
@@ -542,6 +585,7 @@
   "ui": true,
   "label": "Brim flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Brim",
   "scope": "print",
@@ -555,6 +599,7 @@
   "ui": true,
   "label": "Brim-object gap",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Brim",
   "scope": "print",
@@ -568,6 +613,7 @@
   "ui": true,
   "label": "Brim type",
   "mode": "simple",
+  "nullable": false,
   "tab": "Others",
   "section": "Brim",
   "scope": "print",
@@ -581,6 +627,7 @@
   "ui": true,
   "label": "Brim follows compensated outline",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Brim",
   "scope": "print",
@@ -594,6 +641,7 @@
   "ui": true,
   "label": "Brim width",
   "mode": "simple",
+  "nullable": false,
   "tab": "Others",
   "section": "Brim",
   "scope": "print",
@@ -606,7 +654,8 @@
   "value": "1",
   "ui": false,
   "label": null,
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.chamber_minimal_temperature",
@@ -617,7 +666,8 @@
   ],
   "ui": false,
   "label": "Minimal",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.chamber_temperature",
@@ -628,7 +678,8 @@
   ],
   "ui": false,
   "label": "Chamber temperature",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.change_extrusion_role_gcode",
@@ -637,7 +688,8 @@
   "value": "; HARNESS_MARK change_extrusion_role_gcode",
   "ui": false,
   "label": "Change extrusion role G-code",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.change_filament_gcode",
@@ -646,7 +698,8 @@
   "value": "; HARNESS_MARK change_filament_gcode",
   "ui": false,
   "label": "Change filament G-code",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.close_additional_fan_first_x_layers",
@@ -657,7 +710,8 @@
   ],
   "ui": false,
   "label": "For the first",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.close_fan_the_first_x_layers",
@@ -669,6 +723,7 @@
   "ui": true,
   "label": "No cooling for the first",
   "mode": "simple",
+  "nullable": false,
   "tab": "Cooling",
   "section": "Cooling for specific layer",
   "scope": "filament",
@@ -682,6 +737,7 @@
   "ui": true,
   "label": "Combine brims",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Brim",
   "scope": "print",
@@ -694,7 +750,8 @@
   "value": null,
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.compatible_printers",
@@ -703,7 +760,8 @@
   "value": null,
   "ui": false,
   "label": "Select printers",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.compatible_printers_condition",
@@ -712,7 +770,8 @@
   "value": null,
   "ui": false,
   "label": "Condition",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.compatible_prints",
@@ -721,7 +780,8 @@
   "value": null,
   "ui": false,
   "label": "Select profiles",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.compatible_prints_condition",
@@ -730,7 +790,8 @@
   "value": null,
   "ui": false,
   "label": "Condition",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.compatible_process_expression_group",
@@ -739,7 +800,8 @@
   "value": null,
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.complete_print_exhaust_fan_speed",
@@ -750,7 +812,8 @@
   ],
   "ui": false,
   "label": "Fan speed",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.cool_plate_temp",
@@ -761,7 +824,8 @@
   ],
   "ui": false,
   "label": "Other layers",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.cool_plate_temp_initial_layer",
@@ -772,7 +836,8 @@
   ],
   "ui": false,
   "label": "First layer",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.cooling_tube_length",
@@ -782,6 +847,7 @@
   "ui": true,
   "label": "Cooling tube length",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Single extruder multi-material parameters",
   "scope": "printer",
@@ -795,6 +861,7 @@
   "ui": true,
   "label": "Cooling tube position",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Single extruder multi-material parameters",
   "scope": "printer",
@@ -808,6 +875,7 @@
   "ui": true,
   "label": "Bridge counterbore holes",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Bridging",
   "scope": "print",
@@ -818,9 +886,14 @@
   "key": "curr_bed_type",
   "type": "coEnum",
   "value": null,
-  "ui": false,
+  "ui": true,
   "label": "Bed type",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false,
+  "tab": "Plate Settings",
+  "section": "",
+  "scope": "plate",
+  "tab_line": 3300
  },
  {
   "id": "param.default_acceleration",
@@ -830,6 +903,7 @@
   "ui": true,
   "label": "Normal printing",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Acceleration",
   "scope": "print",
@@ -842,7 +916,8 @@
   "value": "harness_test",
   "ui": false,
   "label": "Default bed type",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.default_filament_colour",
@@ -854,6 +929,7 @@
   "ui": true,
   "label": "Default color",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Filament",
   "section": "Basic information",
   "scope": "filament",
@@ -866,7 +942,8 @@
   "value": null,
   "ui": false,
   "label": "Default filament profile",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.default_jerk",
@@ -876,6 +953,7 @@
   "ui": true,
   "label": "Default",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Jerk(XY)",
   "scope": "print",
@@ -889,6 +967,7 @@
   "ui": true,
   "label": "Junction Deviation",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Junction Deviation",
   "scope": "print",
@@ -903,7 +982,8 @@
   ],
   "ui": false,
   "label": "Default Nozzle Volume Type.",
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.default_print_profile",
@@ -912,7 +992,8 @@
   "value": null,
   "ui": false,
   "label": "Default process profile",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.deretraction_speed",
@@ -924,6 +1005,7 @@
   "ui": true,
   "label": "De-retraction Speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Retraction",
   "scope": "printer",
@@ -937,6 +1019,7 @@
   "ui": true,
   "label": "Detect narrow internal solid infills",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Advanced",
   "scope": "print",
@@ -950,6 +1033,7 @@
   "ui": true,
   "label": "Detect overhang walls",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Overhangs",
   "scope": "print",
@@ -963,6 +1047,7 @@
   "ui": true,
   "label": "Detect thin walls",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Walls",
   "scope": "print",
@@ -977,7 +1062,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.disable_m73",
@@ -987,6 +1073,7 @@
   "ui": true,
   "label": "Disable set remaining print time",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Advanced",
   "scope": "printer",
@@ -1000,6 +1087,7 @@
   "ui": true,
   "label": "Filter out small internal bridges",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Bridging",
   "scope": "print",
@@ -1015,6 +1103,7 @@
   "ui": true,
   "label": "Don't slow down outer walls",
   "mode": "simple",
+  "nullable": false,
   "tab": "Cooling",
   "section": "Part cooling fan",
   "scope": "filament",
@@ -1028,6 +1117,7 @@
   "ui": true,
   "label": "Draft shield",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Skirt",
   "scope": "print",
@@ -1042,7 +1132,8 @@
   ],
   "ui": false,
   "label": "Fan speed",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.elefant_foot_compensation",
@@ -1052,6 +1143,7 @@
   "ui": true,
   "label": "Elephant foot compensation",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Precision",
   "scope": "print",
@@ -1065,6 +1157,7 @@
   "ui": true,
   "label": "Elephant foot compensation layers",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Precision",
   "scope": "print",
@@ -1078,6 +1171,7 @@
   "ui": true,
   "label": "Elephant foot layers density",
   "mode": "expert",
+  "nullable": false,
   "tab": "Quality",
   "section": "Precision",
   "scope": "print",
@@ -1091,6 +1185,7 @@
   "ui": true,
   "label": "Emit limits to G-code",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Motion ability",
   "section": "Advanced",
   "scope": "printer",
@@ -1104,6 +1199,7 @@
   "ui": true,
   "label": "Arc fitting",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Precision",
   "scope": "print",
@@ -1117,6 +1213,7 @@
   "ui": true,
   "label": "Extra bridge layers (beta)",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Bridging",
   "scope": "print",
@@ -1129,7 +1226,8 @@
   "value": "1",
   "ui": false,
   "label": "Enable filament dynamic map",
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.enable_filament_ramming",
@@ -1139,6 +1237,7 @@
   "ui": true,
   "label": "Enable filament ramming",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Wipe tower",
   "scope": "printer",
@@ -1151,7 +1250,8 @@
   "value": "1",
   "ui": false,
   "label": null,
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.enable_overhang_bridge_fan",
@@ -1163,6 +1263,7 @@
   "ui": true,
   "label": "Force cooling for overhangs and bridges",
   "mode": "simple",
+  "nullable": false,
   "tab": "Cooling",
   "section": "Part cooling fan",
   "scope": "filament",
@@ -1176,6 +1277,7 @@
   "ui": true,
   "label": "Slow down for overhang",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Overhang speed",
   "scope": "print",
@@ -1189,6 +1291,7 @@
   "ui": true,
   "label": "Power Loss Recovery",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Advanced",
   "scope": "printer",
@@ -1204,6 +1307,7 @@
   "ui": true,
   "label": "Enable pressure advance",
   "mode": "simple",
+  "nullable": false,
   "tab": "Filament",
   "section": "Flow ratio and Pressure Advance",
   "scope": "filament",
@@ -1217,6 +1321,7 @@
   "ui": true,
   "label": "Enable",
   "mode": "simple",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -1230,6 +1335,7 @@
   "ui": true,
   "label": "Enable support",
   "mode": "simple",
+  "nullable": false,
   "tab": "Support",
   "section": "Support",
   "scope": "print",
@@ -1243,6 +1349,7 @@
   "ui": true,
   "label": "Cool down from interface boost during prime tower",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -1256,6 +1363,7 @@
   "ui": true,
   "label": "Enable tower interface features",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -1269,6 +1377,7 @@
   "ui": true,
   "label": "Enable clumping detection",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Special mode",
   "scope": "print",
@@ -1281,7 +1390,8 @@
   "value": "1",
   "ui": false,
   "label": null,
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.eng_plate_temp",
@@ -1292,7 +1402,8 @@
   ],
   "ui": false,
   "label": "Other layers",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.eng_plate_temp_initial_layer",
@@ -1303,7 +1414,8 @@
   ],
   "ui": false,
   "label": "First layer",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.ensure_vertical_shell_thickness",
@@ -1313,6 +1425,7 @@
   "ui": true,
   "label": "Ensure vertical shell thickness",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Advanced",
   "scope": "print",
@@ -1326,6 +1439,7 @@
   "ui": true,
   "label": "Exclude objects",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "G-code output",
   "scope": "print",
@@ -1339,6 +1453,7 @@
   "ui": true,
   "label": "Extra loading distance",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Single extruder multi-material parameters",
   "scope": "printer",
@@ -1352,6 +1467,7 @@
   "ui": true,
   "label": "Extra perimeters on overhangs",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Overhangs",
   "scope": "print",
@@ -1365,6 +1481,7 @@
   "ui": true,
   "label": "Insert solid layers",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Advanced",
   "scope": "print",
@@ -1377,7 +1494,8 @@
   "value": "1",
   "ui": false,
   "label": "Extruder",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.extruder_ams_count",
@@ -1388,7 +1506,8 @@
   ],
   "ui": false,
   "label": "Extruder AMS count",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.extruder_clearance_height_to_lid",
@@ -1398,6 +1517,7 @@
   "ui": true,
   "label": "Height to lid",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Extruder Clearance",
   "scope": "printer",
@@ -1411,6 +1531,7 @@
   "ui": true,
   "label": "Height to rod",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Extruder Clearance",
   "scope": "printer",
@@ -1424,6 +1545,7 @@
   "ui": true,
   "label": "Radius",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Extruder Clearance",
   "scope": "printer",
@@ -1436,7 +1558,8 @@
   "value": null,
   "ui": false,
   "label": "Extruder Color",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.extruder_offset",
@@ -1446,6 +1569,7 @@
   "ui": true,
   "label": "Extruder offset",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Position",
   "scope": "printer",
@@ -1458,7 +1582,8 @@
   "value": null,
   "ui": false,
   "label": "Extruder printable area",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.extruder_printable_height",
@@ -1470,6 +1595,7 @@
   "ui": true,
   "label": "Extruder printable height",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Basic information",
   "scope": "printer",
@@ -1484,7 +1610,8 @@
   ],
   "ui": false,
   "label": "Type",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.extruder_variant_list",
@@ -1495,7 +1622,8 @@
   ],
   "ui": false,
   "label": "Extruder variant list",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.extrusion_rate_smoothing_external_perimeter_only",
@@ -1505,6 +1633,7 @@
   "ui": true,
   "label": "Apply only on external features",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Advanced",
   "scope": "print",
@@ -1519,7 +1648,8 @@
   ],
   "ui": false,
   "label": "Layer time",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.fan_kickstart",
@@ -1529,6 +1659,7 @@
   "ui": true,
   "label": "Fan kick-start time",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Cooling Fan",
   "scope": "printer",
@@ -1543,7 +1674,8 @@
   ],
   "ui": false,
   "label": "Fan speed",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.fan_min_speed",
@@ -1554,7 +1686,8 @@
   ],
   "ui": false,
   "label": "Fan speed",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.fan_speedup_overhangs",
@@ -1563,7 +1696,8 @@
   "value": "0",
   "ui": false,
   "label": "Only overhangs",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.fan_speedup_time",
@@ -1572,7 +1706,8 @@
   "value": "1",
   "ui": false,
   "label": null,
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.filament_adaptive_volumetric_speed",
@@ -1584,6 +1719,7 @@
   "ui": true,
   "label": "Adaptive volumetric speed",
   "mode": "develop",
+  "nullable": false,
   "tab": "Filament",
   "section": "Volumetric speed limitation",
   "scope": "filament",
@@ -1599,6 +1735,7 @@
   "ui": true,
   "label": "Adhesiveness Category",
   "mode": "develop",
+  "nullable": false,
   "tab": "Filament",
   "section": "Basic information",
   "scope": "filament",
@@ -1613,7 +1750,8 @@
   ],
   "ui": false,
   "label": "Change extrusion role G-code (filament)",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.filament_change_length",
@@ -1625,6 +1763,7 @@
   "ui": true,
   "label": "Filament ramming length",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Filament",
   "section": "Basic information",
   "scope": "filament",
@@ -1637,7 +1776,8 @@
   "value": null,
   "ui": false,
   "label": "Color",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.filament_colour_type",
@@ -1648,7 +1788,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.filament_cooling_before_tower",
@@ -1659,7 +1800,8 @@
   ],
   "ui": false,
   "label": "Wipe tower cooling",
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.filament_cooling_final_speed",
@@ -1671,6 +1813,7 @@
   "ui": true,
   "label": "Speed of the last cooling move",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Tool change parameters with single extruder MM printers",
   "scope": "filament",
@@ -1686,6 +1829,7 @@
   "ui": true,
   "label": "Speed of the first cooling move",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Tool change parameters with single extruder MM printers",
   "scope": "filament",
@@ -1701,6 +1845,7 @@
   "ui": true,
   "label": "Number of cooling moves",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Tool change parameters with single extruder MM printers",
   "scope": "filament",
@@ -1716,6 +1861,7 @@
   "ui": true,
   "label": "Price",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Filament",
   "section": "Basic information",
   "scope": "filament",
@@ -1731,6 +1877,7 @@
   "ui": true,
   "label": "Density",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Filament",
   "section": "Basic information",
   "scope": "filament",
@@ -1746,6 +1893,7 @@
   "ui": true,
   "label": "De-retraction Speed",
   "mode": "advanced",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -1761,6 +1909,7 @@
   "ui": true,
   "label": "Diameter",
   "mode": "simple",
+  "nullable": false,
   "tab": "Filament",
   "section": "Basic information",
   "scope": "filament",
@@ -1775,7 +1924,8 @@
   ],
   "ui": false,
   "label": "End G-code",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.filament_extruder_variant",
@@ -1786,7 +1936,8 @@
   ],
   "ui": false,
   "label": "Filament's extruder variant",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.filament_flow_ratio",
@@ -1798,6 +1949,7 @@
   "ui": true,
   "label": "Flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Filament",
   "section": "Flow ratio and Pressure Advance",
   "scope": "filament",
@@ -1812,7 +1964,8 @@
   ],
   "ui": false,
   "label": "Flush temperature",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.filament_flush_volumetric_speed",
@@ -1823,7 +1976,8 @@
   ],
   "ui": false,
   "label": "Flush volumetric speed",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.filament_ids",
@@ -1832,7 +1986,8 @@
   "value": null,
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.filament_ironing_flow",
@@ -1844,6 +1999,7 @@
   "ui": true,
   "label": "Ironing flow",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Setting Overrides",
   "section": "Ironing",
   "scope": "filament",
@@ -1859,6 +2015,7 @@
   "ui": true,
   "label": "Ironing inset",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Setting Overrides",
   "section": "Ironing",
   "scope": "filament",
@@ -1874,6 +2031,7 @@
   "ui": true,
   "label": "Ironing line spacing",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Setting Overrides",
   "section": "Ironing",
   "scope": "filament",
@@ -1889,6 +2047,7 @@
   "ui": true,
   "label": "Ironing speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Setting Overrides",
   "section": "Ironing",
   "scope": "filament",
@@ -1904,6 +2063,7 @@
   "ui": true,
   "label": "Support material",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Filament",
   "section": "Basic information",
   "scope": "filament",
@@ -1919,6 +2079,7 @@
   "ui": true,
   "label": "Loading speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Tool change parameters with single extruder MM printers",
   "scope": "filament",
@@ -1934,6 +2095,7 @@
   "ui": true,
   "label": "Loading speed at the start",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Tool change parameters with single extruder MM printers",
   "scope": "filament",
@@ -1949,6 +2111,7 @@
   "ui": true,
   "label": "Long retraction when cut (beta)",
   "mode": "develop",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -1963,7 +2126,8 @@
   ],
   "ui": false,
   "label": "Filament map to extruder",
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.filament_map_mode",
@@ -1972,7 +2136,8 @@
   "value": "Auto For Flush",
   "ui": false,
   "label": "filament mapping mode",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.filament_max_volumetric_speed",
@@ -1984,6 +2149,7 @@
   "ui": true,
   "label": "Max volumetric speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Filament",
   "section": "Volumetric speed limitation",
   "scope": "filament",
@@ -1999,6 +2165,7 @@
   "ui": true,
   "label": "Minimal purge on wipe tower",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Wipe tower parameters",
   "scope": "filament",
@@ -2013,7 +2180,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.filament_multitool_ramming",
@@ -2025,6 +2193,7 @@
   "ui": true,
   "label": "Enable ramming for multi-tool setups",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Tool change parameters with multi extruder MM printers",
   "scope": "filament",
@@ -2040,6 +2209,7 @@
   "ui": true,
   "label": "Multi-tool ramming flow",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Tool change parameters with multi extruder MM printers",
   "scope": "filament",
@@ -2055,6 +2225,7 @@
   "ui": true,
   "label": "Multi-tool ramming volume",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Tool change parameters with multi extruder MM printers",
   "scope": "filament",
@@ -2067,7 +2238,8 @@
   "value": null,
   "ui": false,
   "label": "Filament notes",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.filament_printable",
@@ -2078,7 +2250,8 @@
   ],
   "ui": false,
   "label": "Filament printable",
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.filament_ramming_parameters",
@@ -2089,7 +2262,8 @@
   ],
   "ui": false,
   "label": "Ramming parameters",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.filament_retract_before_wipe",
@@ -2101,6 +2275,7 @@
   "ui": true,
   "label": "Retract amount before wipe",
   "mode": "advanced",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -2116,6 +2291,7 @@
   "ui": true,
   "label": "Only lift Z above",
   "mode": "advanced",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -2131,6 +2307,7 @@
   "ui": true,
   "label": "Only lift Z below",
   "mode": "advanced",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -2146,6 +2323,7 @@
   "ui": true,
   "label": "On surfaces",
   "mode": "advanced",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -2161,6 +2339,7 @@
   "ui": true,
   "label": "Extra length on restart",
   "mode": "advanced",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -2176,6 +2355,7 @@
   "ui": true,
   "label": "Retract when change layer",
   "mode": "advanced",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -2191,6 +2371,7 @@
   "ui": true,
   "label": "Retraction distance when cut",
   "mode": "develop",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -2206,6 +2387,7 @@
   "ui": true,
   "label": "Length",
   "mode": "simple",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -2221,6 +2403,7 @@
   "ui": true,
   "label": "Travel distance threshold",
   "mode": "advanced",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -2236,6 +2419,7 @@
   "ui": true,
   "label": "Retraction Speed",
   "mode": "advanced",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -2250,7 +2434,8 @@
   ],
   "ui": false,
   "label": "Filament self index",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.filament_settings_id",
@@ -2259,7 +2444,8 @@
   "value": null,
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.filament_shrink",
@@ -2271,6 +2457,7 @@
   "ui": true,
   "label": "Shrinkage (XY)",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Filament",
   "section": "Basic information",
   "scope": "filament",
@@ -2286,6 +2473,7 @@
   "ui": true,
   "label": "Shrinkage (Z)",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Filament",
   "section": "Basic information",
   "scope": "filament",
@@ -2301,6 +2489,7 @@
   "ui": true,
   "label": "Soluble material",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Filament",
   "section": "Basic information",
   "scope": "filament",
@@ -2316,6 +2505,7 @@
   "ui": true,
   "label": "Stamping distance measured from the center of the cooling tube",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Tool change parameters with single extruder MM printers",
   "scope": "filament",
@@ -2331,6 +2521,7 @@
   "ui": true,
   "label": "Stamping loading speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Tool change parameters with single extruder MM printers",
   "scope": "filament",
@@ -2345,7 +2536,8 @@
   ],
   "ui": false,
   "label": "Start G-code",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.filament_toolchange_delay",
@@ -2357,6 +2549,7 @@
   "ui": true,
   "label": "Delay after unloading",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Tool change parameters with single extruder MM printers",
   "scope": "filament",
@@ -2372,6 +2565,7 @@
   "ui": true,
   "label": "Interface layer pre-extrusion distance",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Wipe tower parameters",
   "scope": "filament",
@@ -2387,6 +2581,7 @@
   "ui": true,
   "label": "Interface layer pre-extrusion length",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Wipe tower parameters",
   "scope": "filament",
@@ -2402,6 +2597,7 @@
   "ui": true,
   "label": "Interface layer print temperature",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Wipe tower parameters",
   "scope": "filament",
@@ -2417,6 +2613,7 @@
   "ui": true,
   "label": "Interface layer purge length",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Wipe tower parameters",
   "scope": "filament",
@@ -2432,6 +2629,7 @@
   "ui": true,
   "label": "Tower ironing area",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Wipe tower parameters",
   "scope": "filament",
@@ -2447,6 +2645,7 @@
   "ui": true,
   "label": "Type",
   "mode": "simple",
+  "nullable": false,
   "tab": "Filament",
   "section": "Basic information",
   "scope": "filament",
@@ -2462,6 +2661,7 @@
   "ui": true,
   "label": "Unloading speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Tool change parameters with single extruder MM printers",
   "scope": "filament",
@@ -2477,6 +2677,7 @@
   "ui": true,
   "label": "Unloading speed at the start",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Tool change parameters with single extruder MM printers",
   "scope": "filament",
@@ -2490,6 +2691,7 @@
   "ui": true,
   "label": "Vendor",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Filament",
   "section": "Basic information",
   "scope": "filament",
@@ -2505,6 +2707,7 @@
   "ui": true,
   "label": "Wipe while retracting",
   "mode": "advanced",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -2520,6 +2723,7 @@
   "ui": true,
   "label": "Wipe Distance",
   "mode": "advanced",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -2535,6 +2739,7 @@
   "ui": true,
   "label": "Z-hop height",
   "mode": "simple",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -2550,6 +2755,7 @@
   "ui": true,
   "label": "Z-hop type",
   "mode": "advanced",
+  "nullable": true,
   "tab": "Setting Overrides",
   "section": "Retraction",
   "scope": "filament",
@@ -2562,7 +2768,8 @@
   "value": "; HARNESS_MARK file_start_gcode",
   "ui": false,
   "label": "File header G-code",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.filename_format",
@@ -2571,7 +2778,8 @@
   "value": "harness_test",
   "ui": false,
   "label": "Filename format",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.fill_multiline",
@@ -2581,6 +2789,7 @@
   "ui": true,
   "label": "Fill Multiline",
   "mode": "simple",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -2594,6 +2803,7 @@
   "ui": true,
   "label": "Filter out tiny gaps",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -2607,6 +2817,7 @@
   "ui": true,
   "label": "First layer flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -2621,16 +2832,22 @@
   ],
   "ui": false,
   "label": "First layer print sequence",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.first_layer_sequence_choice",
   "key": "first_layer_sequence_choice",
   "type": "coEnum",
   "value": "Customize",
-  "ui": false,
+  "ui": true,
   "label": "First layer filament sequence",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false,
+  "tab": "Plate Settings",
+  "section": "",
+  "scope": "plate",
+  "tab_line": 3300
  },
  {
   "id": "param.first_x_layer_fan_speed",
@@ -2641,7 +2858,8 @@
   ],
   "ui": false,
   "label": "Fan speed",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.flashforge_serial_number",
@@ -2650,7 +2868,8 @@
   "value": "harness_test",
   "ui": false,
   "label": "Serial Number",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.flush_into_infill",
@@ -2660,6 +2879,7 @@
   "ui": true,
   "label": "Flush into objects' infill",
   "mode": "simple",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Flush options",
   "scope": "print",
@@ -2673,6 +2893,7 @@
   "ui": true,
   "label": "Flush into this object",
   "mode": "simple",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Flush options",
   "scope": "print",
@@ -2686,6 +2907,7 @@
   "ui": true,
   "label": "Flush into objects' support",
   "mode": "simple",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Flush options",
   "scope": "print",
@@ -2700,7 +2922,8 @@
   ],
   "ui": false,
   "label": "Flush multiplier",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.flush_volumes_matrix",
@@ -2711,7 +2934,8 @@
   ],
   "ui": false,
   "label": "Purging volumes",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.flush_volumes_vector",
@@ -2722,7 +2946,8 @@
   ],
   "ui": false,
   "label": "Purging volumes - load/unload volumes",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.full_fan_speed_layer",
@@ -2734,6 +2959,7 @@
   "ui": true,
   "label": "Full fan speed at layer",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Cooling",
   "section": "Cooling for specific layer",
   "scope": "filament",
@@ -2747,6 +2973,7 @@
   "ui": true,
   "label": "Fuzzy Skin",
   "mode": "simple",
+  "nullable": false,
   "tab": "Others",
   "section": "Fuzzy Skin",
   "scope": "print",
@@ -2760,6 +2987,7 @@
   "ui": true,
   "label": "Apply fuzzy skin to first layer",
   "mode": "simple",
+  "nullable": false,
   "tab": "Others",
   "section": "Fuzzy Skin",
   "scope": "print",
@@ -2773,6 +3001,7 @@
   "ui": true,
   "label": "Layers between ripple offset",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Fuzzy Skin",
   "scope": "print",
@@ -2786,6 +3015,7 @@
   "ui": true,
   "label": "Fuzzy skin generator mode",
   "mode": "simple",
+  "nullable": false,
   "tab": "Others",
   "section": "Fuzzy Skin",
   "scope": "print",
@@ -2799,6 +3029,7 @@
   "ui": true,
   "label": "Fuzzy skin noise type",
   "mode": "simple",
+  "nullable": false,
   "tab": "Others",
   "section": "Fuzzy Skin",
   "scope": "print",
@@ -2812,6 +3043,7 @@
   "ui": true,
   "label": "Fuzzy Skin Noise Octaves",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Fuzzy Skin",
   "scope": "print",
@@ -2825,6 +3057,7 @@
   "ui": true,
   "label": "Fuzzy skin noise persistence",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Fuzzy Skin",
   "scope": "print",
@@ -2838,6 +3071,7 @@
   "ui": true,
   "label": "Fuzzy skin point distance",
   "mode": "simple",
+  "nullable": false,
   "tab": "Others",
   "section": "Fuzzy Skin",
   "scope": "print",
@@ -2851,6 +3085,7 @@
   "ui": true,
   "label": "Ripple offset",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Fuzzy Skin",
   "scope": "print",
@@ -2864,6 +3099,7 @@
   "ui": true,
   "label": "Number of ripples per layer",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Fuzzy Skin",
   "scope": "print",
@@ -2877,6 +3113,7 @@
   "ui": true,
   "label": "Fuzzy skin feature size",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Fuzzy Skin",
   "scope": "print",
@@ -2890,6 +3127,7 @@
   "ui": true,
   "label": "Fuzzy skin thickness",
   "mode": "simple",
+  "nullable": false,
   "tab": "Others",
   "section": "Fuzzy Skin",
   "scope": "print",
@@ -2903,6 +3141,7 @@
   "ui": true,
   "label": "Gap fill flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -2916,6 +3155,7 @@
   "ui": true,
   "label": "Apply gap fill",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -2929,6 +3169,7 @@
   "ui": true,
   "label": "Gap infill",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Other layers speed",
   "scope": "print",
@@ -2942,6 +3183,7 @@
   "ui": true,
   "label": "Add line number",
   "mode": "develop",
+  "nullable": false,
   "tab": "Others",
   "section": "G-code output",
   "scope": "print",
@@ -2955,6 +3197,7 @@
   "ui": true,
   "label": "Verbose G-code",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "G-code output",
   "scope": "print",
@@ -2968,6 +3211,7 @@
   "ui": true,
   "label": "G-code flavor",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Advanced",
   "scope": "printer",
@@ -2981,6 +3225,7 @@
   "ui": true,
   "label": "Label objects",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "G-code output",
   "scope": "print",
@@ -2995,7 +3240,8 @@
   ],
   "ui": false,
   "label": "Grab length",
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.gyroid_optimized",
@@ -3005,6 +3251,7 @@
   "ui": true,
   "label": "Z-buckling bias optimization (experimental)",
   "mode": "simple",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -3017,7 +3264,8 @@
   "value": "1",
   "ui": false,
   "label": "Has filament switcher",
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.has_scarf_joint_seam",
@@ -3026,7 +3274,8 @@
   "value": "1",
   "ui": false,
   "label": null,
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.head_wrap_detect_zone",
@@ -3035,7 +3284,8 @@
   "value": null,
   "ui": false,
   "label": "Head wrap detect zone",
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.high_current_on_filament_swap",
@@ -3045,6 +3295,7 @@
   "ui": true,
   "label": "High extruder current on filament swap",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Single extruder multi-material parameters",
   "scope": "printer",
@@ -3058,6 +3309,7 @@
   "ui": true,
   "label": "Convert holes to polyholes",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Precision",
   "scope": "print",
@@ -3071,6 +3323,7 @@
   "ui": true,
   "label": "Polyhole detection margin",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Precision",
   "scope": "print",
@@ -3084,6 +3337,7 @@
   "ui": true,
   "label": "Polyhole twist",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Precision",
   "scope": "print",
@@ -3096,7 +3350,8 @@
   "value": null,
   "ui": false,
   "label": "Host Type",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.hot_plate_temp",
@@ -3107,7 +3362,8 @@
   ],
   "ui": false,
   "label": "Other layers",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.hot_plate_temp_initial_layer",
@@ -3118,7 +3374,8 @@
   ],
   "ui": false,
   "label": "First layer",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.idle_temperature",
@@ -3130,6 +3387,7 @@
   "ui": true,
   "label": "Idle temperature",
   "mode": "simple",
+  "nullable": false,
   "tab": "Filament",
   "section": "Basic information",
   "scope": "filament",
@@ -3143,6 +3401,7 @@
   "ui": true,
   "label": "Independent support layer height",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -3156,6 +3415,7 @@
   "ui": true,
   "label": "Sparse infill anchor length",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -3169,6 +3429,7 @@
   "ui": true,
   "label": "Maximum length of the infill anchor",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -3182,6 +3443,7 @@
   "ui": true,
   "label": "Infill combination",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Advanced",
   "scope": "print",
@@ -3195,6 +3457,7 @@
   "ui": true,
   "label": "Infill combination - Max layer height",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Advanced",
   "scope": "print",
@@ -3208,6 +3471,7 @@
   "ui": true,
   "label": "Sparse infill direction",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -3221,6 +3485,7 @@
   "ui": true,
   "label": "Infill",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Jerk(XY)",
   "scope": "print",
@@ -3234,6 +3499,7 @@
   "ui": true,
   "label": "Infill lock depth",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -3247,6 +3513,7 @@
   "ui": true,
   "label": "Infill overhang angle",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -3260,6 +3527,7 @@
   "ui": true,
   "label": "Infill shift step",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -3273,6 +3541,7 @@
   "ui": true,
   "label": "Infill/Wall overlap",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -3285,7 +3554,8 @@
   "value": null,
   "ui": false,
   "label": "Inherits profile",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.inherits_group",
@@ -3296,7 +3566,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.initial_layer_acceleration",
@@ -3306,6 +3577,7 @@
   "ui": true,
   "label": "First layer",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Acceleration",
   "scope": "print",
@@ -3319,6 +3591,7 @@
   "ui": true,
   "label": "First layer infill",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "First layer speed",
   "scope": "print",
@@ -3332,6 +3605,7 @@
   "ui": true,
   "label": "First layer",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Jerk(XY)",
   "scope": "print",
@@ -3345,6 +3619,7 @@
   "ui": true,
   "label": "First layer",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Line width",
   "scope": "print",
@@ -3358,6 +3633,7 @@
   "ui": true,
   "label": "First layer minimum wall width",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Wall generator",
   "scope": "print",
@@ -3371,6 +3647,7 @@
   "ui": true,
   "label": "First layer height",
   "mode": "simple",
+  "nullable": false,
   "tab": "Quality",
   "section": "Layer height",
   "scope": "print",
@@ -3384,6 +3661,7 @@
   "ui": true,
   "label": "First layer",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "First layer speed",
   "scope": "print",
@@ -3397,6 +3675,7 @@
   "ui": true,
   "label": "First layer travel",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Acceleration",
   "scope": "print",
@@ -3410,6 +3689,7 @@
   "ui": true,
   "label": "First layer travel",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Jerk(XY)",
   "scope": "print",
@@ -3423,6 +3703,7 @@
   "ui": true,
   "label": "First layer travel speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "First layer speed",
   "scope": "print",
@@ -3436,6 +3717,7 @@
   "ui": true,
   "label": "Inner wall",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Acceleration",
   "scope": "print",
@@ -3449,6 +3731,7 @@
   "ui": true,
   "label": "Inner walls",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Filament for Features",
   "scope": "print",
@@ -3462,6 +3745,7 @@
   "ui": true,
   "label": "Inner wall flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -3475,6 +3759,7 @@
   "ui": true,
   "label": "Inner wall",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Jerk(XY)",
   "scope": "print",
@@ -3488,6 +3773,7 @@
   "ui": true,
   "label": "Inner wall",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Line width",
   "scope": "print",
@@ -3501,6 +3787,7 @@
   "ui": true,
   "label": "Inner wall",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Other layers speed",
   "scope": "print",
@@ -3513,7 +3800,8 @@
   "value": "0.125",
   "ui": false,
   "label": "X",
-  "mode": "expert"
+  "mode": "expert",
+  "nullable": false
  },
  {
   "id": "param.input_shaping_damp_y",
@@ -3522,7 +3810,8 @@
   "value": "0.125",
   "ui": false,
   "label": "Y",
-  "mode": "expert"
+  "mode": "expert",
+  "nullable": false
  },
  {
   "id": "param.input_shaping_emit",
@@ -3532,6 +3821,7 @@
   "ui": true,
   "label": "Emit input shaping",
   "mode": "expert",
+  "nullable": false,
   "tab": "Motion ability",
   "section": "Resonance Compensation",
   "scope": "printer",
@@ -3544,7 +3834,8 @@
   "value": "1",
   "ui": false,
   "label": "X",
-  "mode": "expert"
+  "mode": "expert",
+  "nullable": false
  },
  {
   "id": "param.input_shaping_freq_y",
@@ -3553,7 +3844,8 @@
   "value": "1",
   "ui": false,
   "label": "Y",
-  "mode": "expert"
+  "mode": "expert",
+  "nullable": false
  },
  {
   "id": "param.input_shaping_type",
@@ -3563,6 +3855,7 @@
   "ui": true,
   "label": "Input shaper type",
   "mode": "expert",
+  "nullable": false,
   "tab": "Motion ability",
   "section": "Resonance Compensation",
   "scope": "printer",
@@ -3576,6 +3869,7 @@
   "ui": true,
   "label": "Interface shells",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
@@ -3589,6 +3883,7 @@
   "ui": true,
   "label": "Use beam interlocking",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
@@ -3602,6 +3897,7 @@
   "ui": true,
   "label": "Interlocking beam layers",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
@@ -3615,6 +3911,7 @@
   "ui": true,
   "label": "Interlocking beam width",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
@@ -3628,6 +3925,7 @@
   "ui": true,
   "label": "Interlocking boundary avoidance",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
@@ -3641,6 +3939,7 @@
   "ui": true,
   "label": "Interlocking depth",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
@@ -3654,6 +3953,7 @@
   "ui": true,
   "label": "Interlocking direction",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
@@ -3667,6 +3967,7 @@
   "ui": true,
   "label": "Internal bridge infill direction",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Advanced",
   "scope": "print",
@@ -3680,6 +3981,7 @@
   "ui": true,
   "label": "Internal bridge density",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Bridging",
   "scope": "print",
@@ -3695,6 +3997,7 @@
   "ui": true,
   "label": "Internal bridges fan speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Cooling",
   "section": "Part cooling fan",
   "scope": "filament",
@@ -3708,6 +4011,7 @@
   "ui": true,
   "label": "Internal bridge flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Bridging",
   "scope": "print",
@@ -3720,7 +4024,8 @@
   "value": "1",
   "ui": false,
   "label": "Internal",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.internal_solid_filament_id",
@@ -3730,6 +4035,7 @@
   "ui": true,
   "label": "Internal solid infill",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Filament for Features",
   "scope": "print",
@@ -3743,6 +4049,7 @@
   "ui": true,
   "label": "Internal solid infill",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Acceleration",
   "scope": "print",
@@ -3756,6 +4063,7 @@
   "ui": true,
   "label": "Internal solid infill flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -3769,6 +4077,7 @@
   "ui": true,
   "label": "Internal solid infill",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Line width",
   "scope": "print",
@@ -3782,6 +4091,7 @@
   "ui": true,
   "label": "Internal solid infill pattern",
   "mode": "simple",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -3795,6 +4105,7 @@
   "ui": true,
   "label": "Internal solid infill",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Other layers speed",
   "scope": "print",
@@ -3808,6 +4119,7 @@
   "ui": true,
   "label": "Ironing angle offset",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Ironing",
   "scope": "print",
@@ -3821,6 +4133,7 @@
   "ui": true,
   "label": "Fixed ironing angle",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Ironing",
   "scope": "print",
@@ -3833,7 +4146,8 @@
   "value": "1",
   "ui": false,
   "label": "Ironing expansion",
-  "mode": "expert"
+  "mode": "expert",
+  "nullable": false
  },
  {
   "id": "param.ironing_fan_speed",
@@ -3845,6 +4159,7 @@
   "ui": true,
   "label": "Ironing fan speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Cooling",
   "section": "Part cooling fan",
   "scope": "filament",
@@ -3858,6 +4173,7 @@
   "ui": true,
   "label": "Ironing flow",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Ironing",
   "scope": "print",
@@ -3871,6 +4187,7 @@
   "ui": true,
   "label": "Ironing inset",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Ironing",
   "scope": "print",
@@ -3884,6 +4201,7 @@
   "ui": true,
   "label": "Ironing Pattern",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Ironing",
   "scope": "print",
@@ -3897,6 +4215,7 @@
   "ui": true,
   "label": "Ironing line spacing",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Ironing",
   "scope": "print",
@@ -3910,6 +4229,7 @@
   "ui": true,
   "label": "Ironing speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Other layers speed",
   "scope": "print",
@@ -3923,6 +4243,7 @@
   "ui": true,
   "label": "Ironing Type",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Ironing",
   "scope": "print",
@@ -3936,6 +4257,7 @@
   "ui": true,
   "label": "Print infill first",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -3949,6 +4271,7 @@
   "ui": true,
   "label": "Lateral lattice angle 1",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -3962,6 +4285,7 @@
   "ui": true,
   "label": "Lateral lattice angle 2",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -3974,7 +4298,8 @@
   "value": "; HARNESS_MARK layer_change_gcode",
   "ui": false,
   "label": "Layer change G-code",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.layer_height",
@@ -3984,6 +4309,7 @@
   "ui": true,
   "label": "Layer height",
   "mode": "simple",
+  "nullable": false,
   "tab": "Quality",
   "section": "Layer height",
   "scope": "print",
@@ -3997,6 +4323,7 @@
   "ui": true,
   "label": "Lightning overhang angle",
   "mode": "expert",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -4010,6 +4337,7 @@
   "ui": true,
   "label": "Prune angle",
   "mode": "expert",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -4023,6 +4351,7 @@
   "ui": true,
   "label": "Straightening angle",
   "mode": "expert",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -4036,6 +4365,7 @@
   "ui": true,
   "label": "Default",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Line width",
   "scope": "print",
@@ -4051,6 +4381,7 @@
   "ui": true,
   "label": "Long retraction when cut (beta)",
   "mode": "develop",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Retraction when switching material",
   "scope": "printer",
@@ -4066,6 +4397,7 @@
   "ui": true,
   "label": "Long retraction when extruder change",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Multi Filament",
   "scope": "filament",
@@ -4078,7 +4410,8 @@
   "value": "; HARNESS_MARK machine_end_gcode",
   "ui": false,
   "label": "End G-code",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.machine_load_filament_time",
@@ -4088,6 +4421,7 @@
   "ui": true,
   "label": "Filament load time",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "printer",
@@ -4102,7 +4436,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.machine_max_acceleration_extruding",
@@ -4113,7 +4448,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.machine_max_acceleration_retracting",
@@ -4124,7 +4460,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.machine_max_acceleration_travel",
@@ -4135,7 +4472,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.machine_max_acceleration_x",
@@ -4146,7 +4484,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.machine_max_acceleration_y",
@@ -4157,7 +4496,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.machine_max_acceleration_z",
@@ -4168,7 +4508,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.machine_max_jerk_e",
@@ -4179,7 +4520,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.machine_max_jerk_x",
@@ -4190,7 +4532,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.machine_max_jerk_y",
@@ -4201,7 +4544,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.machine_max_jerk_z",
@@ -4212,7 +4556,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.machine_max_junction_deviation",
@@ -4223,7 +4568,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.machine_max_speed_e",
@@ -4234,7 +4580,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.machine_max_speed_x",
@@ -4245,7 +4592,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.machine_max_speed_y",
@@ -4256,7 +4604,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.machine_max_speed_z",
@@ -4267,7 +4616,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.machine_min_extruding_rate",
@@ -4278,7 +4628,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.machine_min_travel_rate",
@@ -4289,7 +4640,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.machine_pause_gcode",
@@ -4298,7 +4650,8 @@
   "value": "; HARNESS_MARK machine_pause_gcode",
   "ui": false,
   "label": "Pause G-code",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.machine_start_gcode",
@@ -4307,7 +4660,8 @@
   "value": "; HARNESS_MARK machine_start_gcode",
   "ui": false,
   "label": "Start G-code",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.machine_tool_change_time",
@@ -4317,6 +4671,7 @@
   "ui": true,
   "label": "Tool change time",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "printer",
@@ -4330,6 +4685,7 @@
   "ui": true,
   "label": "Filament unload time",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "printer",
@@ -4343,6 +4699,7 @@
   "ui": true,
   "label": "Make overhangs printable",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Overhangs",
   "scope": "print",
@@ -4356,6 +4713,7 @@
   "ui": true,
   "label": "Make overhangs printable - Maximum angle",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Overhangs",
   "scope": "print",
@@ -4369,6 +4727,7 @@
   "ui": true,
   "label": "Make overhangs printable - Hole area",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Overhangs",
   "scope": "print",
@@ -4382,6 +4741,7 @@
   "ui": true,
   "label": "Manual Filament Change",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Single extruder multi-material setup",
   "scope": "printer",
@@ -4394,7 +4754,8 @@
   "value": "1",
   "ui": false,
   "label": "Master extruder id",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.max_bridge_length",
@@ -4404,6 +4765,7 @@
   "ui": true,
   "label": "Max bridge length",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -4419,6 +4781,7 @@
   "ui": true,
   "label": "Max",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Layer height limits",
   "scope": "printer",
@@ -4431,7 +4794,8 @@
   "value": "150",
   "ui": false,
   "label": "Max",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.max_travel_detour_distance",
@@ -4441,6 +4805,7 @@
   "ui": true,
   "label": "Avoid crossing walls - Max detour length",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -4454,6 +4819,7 @@
   "ui": true,
   "label": "Extrusion rate smoothing",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Advanced",
   "scope": "print",
@@ -4467,6 +4833,7 @@
   "ui": true,
   "label": "Smoothing segment length",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Advanced",
   "scope": "print",
@@ -4480,6 +4847,7 @@
   "ui": true,
   "label": "Minimum wall width",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Wall generator",
   "scope": "print",
@@ -4493,6 +4861,7 @@
   "ui": true,
   "label": "Minimum feature size",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Wall generator",
   "scope": "print",
@@ -4508,6 +4877,7 @@
   "ui": true,
   "label": "Min",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Layer height limits",
   "scope": "printer",
@@ -4521,6 +4891,7 @@
   "ui": true,
   "label": "Minimum wall length",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Wall generator",
   "scope": "print",
@@ -4533,7 +4904,8 @@
   "value": "87.5",
   "ui": false,
   "label": "Min",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.min_skirt_length",
@@ -4543,6 +4915,7 @@
   "ui": true,
   "label": "Skirt minimum extrusion length",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Skirt",
   "scope": "print",
@@ -4556,6 +4929,7 @@
   "ui": true,
   "label": "One wall threshold",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -4569,6 +4943,7 @@
   "ui": true,
   "label": "Minimum sparse infill threshold",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Advanced",
   "scope": "print",
@@ -4582,6 +4957,7 @@
   "ui": true,
   "label": "Interlocking depth of a segmented region",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
@@ -4595,6 +4971,7 @@
   "ui": true,
   "label": "Maximum width of a segmented region",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
@@ -4607,7 +4984,8 @@
   "value": "harness_test",
   "ui": false,
   "label": "Configuration notes",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.nozzle_diameter",
@@ -4617,6 +4995,7 @@
   "ui": true,
   "label": "Nozzle diameter",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Basic information",
   "scope": "printer",
@@ -4631,7 +5010,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.nozzle_height",
@@ -4640,7 +5020,8 @@
   "value": "3.125",
   "ui": false,
   "label": "Nozzle height",
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.nozzle_hrc",
@@ -4650,6 +5031,7 @@
   "ui": true,
   "label": "Nozzle HRC",
   "mode": "develop",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Accessory",
   "scope": "printer",
@@ -4664,7 +5046,8 @@
   ],
   "ui": false,
   "label": "Other layers",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.nozzle_temperature_initial_layer",
@@ -4675,7 +5058,8 @@
   ],
   "ui": false,
   "label": "First layer",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.nozzle_temperature_range_high",
@@ -4686,7 +5070,8 @@
   ],
   "ui": false,
   "label": "Max",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.nozzle_temperature_range_low",
@@ -4697,7 +5082,8 @@
   ],
   "ui": false,
   "label": "Min",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.nozzle_type",
@@ -4709,6 +5095,7 @@
   "ui": true,
   "label": "Nozzle type",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Accessory",
   "scope": "printer",
@@ -4724,6 +5111,7 @@
   "ui": true,
   "label": "Nozzle volume",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Basic information",
   "scope": "printer",
@@ -4738,7 +5126,8 @@
   ],
   "ui": false,
   "label": "Nozzle Volume Type",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.only_one_wall_first_layer",
@@ -4748,6 +5137,7 @@
   "ui": true,
   "label": "Only one wall on first layer",
   "mode": "simple",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -4761,6 +5151,7 @@
   "ui": true,
   "label": "Only one wall on top surfaces",
   "mode": "simple",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -4774,6 +5165,7 @@
   "ui": true,
   "label": "Enable",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Ooze prevention",
   "scope": "print",
@@ -4788,7 +5180,8 @@
   ],
   "ui": false,
   "label": "Other layers print sequence",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.other_layers_print_sequence_nums",
@@ -4797,16 +5190,22 @@
   "value": "1",
   "ui": false,
   "label": "The number of other layers print sequence",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.other_layers_sequence_choice",
   "key": "other_layers_sequence_choice",
   "type": "coEnum",
   "value": "Customize",
-  "ui": false,
+  "ui": true,
   "label": "Other layers filament sequence",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false,
+  "tab": "Plate Settings",
+  "section": "",
+  "scope": "plate",
+  "tab_line": 3300
  },
  {
   "id": "param.outer_wall_acceleration",
@@ -4816,6 +5215,7 @@
   "ui": true,
   "label": "Outer wall",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Acceleration",
   "scope": "print",
@@ -4829,6 +5229,7 @@
   "ui": true,
   "label": "Outer walls",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Filament for Features",
   "scope": "print",
@@ -4842,6 +5243,7 @@
   "ui": true,
   "label": "Outer wall flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -4855,6 +5257,7 @@
   "ui": true,
   "label": "Outer wall",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Jerk(XY)",
   "scope": "print",
@@ -4868,6 +5271,7 @@
   "ui": true,
   "label": "Outer wall",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Line width",
   "scope": "print",
@@ -4881,6 +5285,7 @@
   "ui": true,
   "label": "Outer wall",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Other layers speed",
   "scope": "print",
@@ -4893,7 +5298,8 @@
   "value": "1",
   "ui": false,
   "label": "10%",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.overhang_2_4_speed",
@@ -4902,7 +5308,8 @@
   "value": "1",
   "ui": false,
   "label": "25%",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.overhang_3_4_speed",
@@ -4911,7 +5318,8 @@
   "value": "1",
   "ui": false,
   "label": "50%",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.overhang_4_4_speed",
@@ -4920,7 +5328,8 @@
   "value": "1",
   "ui": false,
   "label": "75%",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.overhang_fan_speed",
@@ -4932,6 +5341,7 @@
   "ui": true,
   "label": "Overhangs and external bridges fan speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Cooling",
   "section": "Part cooling fan",
   "scope": "filament",
@@ -4945,6 +5355,7 @@
   "ui": true,
   "label": "Overhang cooling activation threshold",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Cooling",
   "section": "Part cooling fan",
   "scope": "filament",
@@ -4958,6 +5369,7 @@
   "ui": true,
   "label": "Overhang flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -4971,6 +5383,7 @@
   "ui": true,
   "label": "Reverse on even",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Overhangs",
   "scope": "print",
@@ -4984,6 +5397,7 @@
   "ui": true,
   "label": "Reverse only internal perimeters",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Overhangs",
   "scope": "print",
@@ -4997,6 +5411,7 @@
   "ui": true,
   "label": "Reverse threshold",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Overhangs",
   "scope": "print",
@@ -5011,7 +5426,8 @@
   ],
   "ui": false,
   "label": "Parallel printheads bed exclude areas",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.parallel_printheads_count",
@@ -5021,6 +5437,7 @@
   "ui": true,
   "label": "Parallel printheads count",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Printable space",
   "scope": "printer",
@@ -5034,6 +5451,7 @@
   "ui": true,
   "label": "Filament parking position",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Single extruder multi-material parameters",
   "scope": "printer",
@@ -5047,6 +5465,7 @@
   "ui": true,
   "label": "Minimum non-zero part cooling fan speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Cooling Fan",
   "scope": "printer",
@@ -5062,6 +5481,7 @@
   "ui": true,
   "label": "Pellet flow coefficient",
   "mode": "simple",
+  "nullable": false,
   "tab": "Filament",
   "section": "Flow ratio and Pressure Advance",
   "scope": "filament",
@@ -5075,6 +5495,7 @@
   "ui": true,
   "label": "Pellet Modded Printer",
   "mode": "simple",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Advanced",
   "scope": "printer",
@@ -5089,7 +5510,8 @@
   ],
   "ui": false,
   "label": "Map the logical extruder to physical extruder",
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.post_process",
@@ -5098,7 +5520,8 @@
   "value": null,
   "ui": false,
   "label": "Post-processing Scripts",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.precise_outer_wall",
@@ -5108,6 +5531,7 @@
   "ui": true,
   "label": "Precise wall",
   "mode": "simple",
+  "nullable": false,
   "tab": "Quality",
   "section": "Precision",
   "scope": "print",
@@ -5121,6 +5545,7 @@
   "ui": true,
   "label": "Precise Z height",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Precision",
   "scope": "print",
@@ -5134,6 +5559,7 @@
   "ui": true,
   "label": "Preferred orientation",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Printable space",
   "scope": "printer",
@@ -5147,6 +5573,7 @@
   "ui": true,
   "label": "Preheat steps",
   "mode": "develop",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Ooze prevention",
   "scope": "print",
@@ -5160,6 +5587,7 @@
   "ui": true,
   "label": "Preheat time",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Ooze prevention",
   "scope": "print",
@@ -5172,7 +5600,8 @@
   "value": null,
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.preset_names",
@@ -5183,7 +5612,8 @@
   ],
   "ui": false,
   "label": "Printer preset names",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.pressure_advance",
@@ -5195,6 +5625,7 @@
   "ui": true,
   "label": "Pressure advance",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Filament",
   "section": "Flow ratio and Pressure Advance",
   "scope": "filament",
@@ -5208,6 +5639,7 @@
   "ui": true,
   "label": "Brim width",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -5221,6 +5653,7 @@
   "ui": true,
   "label": "Internal ribs",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -5233,7 +5666,8 @@
   "value": "1",
   "ui": false,
   "label": null,
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.prime_tower_infill_gap",
@@ -5243,6 +5677,7 @@
   "ui": true,
   "label": "Infill gap",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -5256,6 +5691,7 @@
   "ui": true,
   "label": "Skip points",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -5269,6 +5705,7 @@
   "ui": true,
   "label": "Width",
   "mode": "simple",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -5282,6 +5719,7 @@
   "ui": true,
   "label": "Prime volume",
   "mode": "simple",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -5296,7 +5734,8 @@
   ],
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.print_extruder_id",
@@ -5307,7 +5746,8 @@
   ],
   "ui": false,
   "label": "Print extruder id",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.print_extruder_variant",
@@ -5318,7 +5758,8 @@
   ],
   "ui": false,
   "label": "Print's extruder variant",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.print_flow_ratio",
@@ -5328,6 +5769,7 @@
   "ui": true,
   "label": "Flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -5340,7 +5782,8 @@
   "value": null,
   "ui": false,
   "label": "Hostname, IP or URL",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.print_host_webui",
@@ -5349,7 +5792,8 @@
   "value": null,
   "ui": false,
   "label": "Device UI",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.print_order",
@@ -5359,6 +5803,7 @@
   "ui": true,
   "label": "Intra-layer order",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Special mode",
   "scope": "print",
@@ -5372,6 +5817,7 @@
   "ui": true,
   "label": "Print sequence",
   "mode": "simple",
+  "nullable": false,
   "tab": "Others",
   "section": "Special mode",
   "scope": "print",
@@ -5384,7 +5830,8 @@
   "value": null,
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.printable_area",
@@ -5393,7 +5840,8 @@
   "value": null,
   "ui": false,
   "label": "Printable area",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.printable_height",
@@ -5403,6 +5851,7 @@
   "ui": true,
   "label": "Printable height",
   "mode": "simple",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Printable space",
   "scope": "printer",
@@ -5415,7 +5864,8 @@
   "value": "harness_test",
   "ui": false,
   "label": "Printer Agent",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.printer_extruder_id",
@@ -5426,7 +5876,8 @@
   ],
   "ui": false,
   "label": "Printer extruder id",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.printer_extruder_variant",
@@ -5437,7 +5888,8 @@
   ],
   "ui": false,
   "label": "Printer's extruder variant",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.printer_model",
@@ -5446,7 +5898,8 @@
   "value": null,
   "ui": false,
   "label": "Printer type",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.printer_notes",
@@ -5455,7 +5908,8 @@
   "value": null,
   "ui": false,
   "label": "Printer notes",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.printer_settings_id",
@@ -5464,7 +5918,8 @@
   "value": null,
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.printer_structure",
@@ -5474,6 +5929,7 @@
   "ui": true,
   "label": "Printer structure",
   "mode": "develop",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Advanced",
   "scope": "printer",
@@ -5486,7 +5942,8 @@
   "value": null,
   "ui": false,
   "label": "Printer technology",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.printer_variant",
@@ -5495,7 +5952,8 @@
   "value": null,
   "ui": false,
   "label": "Printer variant",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.printhost_apikey",
@@ -5504,7 +5962,8 @@
   "value": null,
   "ui": false,
   "label": "API Key / Password",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.printhost_authorization_type",
@@ -5513,7 +5972,8 @@
   "value": null,
   "ui": false,
   "label": "Authorization Type",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.printhost_cafile",
@@ -5522,7 +5982,8 @@
   "value": null,
   "ui": false,
   "label": "HTTPS CA File",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.printhost_password",
@@ -5531,7 +5992,8 @@
   "value": null,
   "ui": false,
   "label": "Password",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.printhost_port",
@@ -5540,7 +6002,8 @@
   "value": null,
   "ui": false,
   "label": "Printer",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.printhost_ssl_ignore_revoke",
@@ -5549,7 +6012,8 @@
   "value": null,
   "ui": false,
   "label": "Ignore HTTPS certificate revocation checks",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.printhost_user",
@@ -5558,7 +6022,8 @@
   "value": null,
   "ui": false,
   "label": "User",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.printing_by_object_gcode",
@@ -5567,7 +6032,8 @@
   "value": "; HARNESS_MARK printing_by_object_gcode",
   "ui": false,
   "label": "Between Object G-code",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.process_change_extrusion_role_gcode",
@@ -5576,7 +6042,8 @@
   "value": "; HARNESS_MARK process_change_extrusion_role_gcode",
   "ui": false,
   "label": "Change extrusion role G-code (process)",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.purge_in_prime_tower",
@@ -5586,6 +6053,7 @@
   "ui": true,
   "label": "Purge in prime tower",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Wipe tower",
   "scope": "printer",
@@ -5599,6 +6067,7 @@
   "ui": true,
   "label": "Raft contact Z distance",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Raft",
   "scope": "print",
@@ -5611,7 +6080,8 @@
   "value": "1.875",
   "ui": false,
   "label": "Raft expansion",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.raft_first_layer_density",
@@ -5621,6 +6091,7 @@
   "ui": true,
   "label": "First layer density",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Support",
   "scope": "print",
@@ -5634,6 +6105,7 @@
   "ui": true,
   "label": "First layer expansion",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Support",
   "scope": "print",
@@ -5647,6 +6119,7 @@
   "ui": true,
   "label": "Raft layers",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Raft",
   "scope": "print",
@@ -5660,6 +6133,7 @@
   "ui": true,
   "label": "Avoid crossing walls",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -5675,6 +6149,7 @@
   "ui": true,
   "label": "Keep fan always on",
   "mode": "simple",
+  "nullable": false,
   "tab": "Cooling",
   "section": "Part cooling fan",
   "scope": "filament",
@@ -5688,6 +6163,7 @@
   "ui": true,
   "label": "Reduce infill retraction",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "G-code output",
   "scope": "print",
@@ -5701,6 +6177,7 @@
   "ui": true,
   "label": "Relative bridge angle",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Advanced",
   "scope": "print",
@@ -5716,6 +6193,7 @@
   "ui": true,
   "label": "Required nozzle HRC",
   "mode": "develop",
+  "nullable": false,
   "tab": "Filament",
   "section": "Basic information",
   "scope": "filament",
@@ -5729,6 +6207,7 @@
   "ui": true,
   "label": "Resolution",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Precision",
   "scope": "print",
@@ -5742,6 +6221,7 @@
   "ui": true,
   "label": "Resonance avoidance",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Motion ability",
   "section": "Resonance Compensation",
   "scope": "printer",
@@ -5757,6 +6237,7 @@
   "ui": true,
   "label": "Retract amount before wipe",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Retraction",
   "scope": "printer",
@@ -5772,6 +6253,7 @@
   "ui": true,
   "label": "Length",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Retraction when switching material",
   "scope": "printer",
@@ -5787,6 +6269,7 @@
   "ui": true,
   "label": "Only lift Z above",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Z-Hop",
   "scope": "printer",
@@ -5802,6 +6285,7 @@
   "ui": true,
   "label": "Only lift Z below",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Z-Hop",
   "scope": "printer",
@@ -5817,6 +6301,7 @@
   "ui": true,
   "label": "On surfaces",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Z-Hop",
   "scope": "printer",
@@ -5832,6 +6317,7 @@
   "ui": true,
   "label": "Extra length on restart",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Retraction",
   "scope": "printer",
@@ -5847,6 +6333,7 @@
   "ui": true,
   "label": "Extra length on restart",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Retraction when switching material",
   "scope": "printer",
@@ -5862,6 +6349,7 @@
   "ui": true,
   "label": "Retract when change layer",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Retraction",
   "scope": "printer",
@@ -5877,6 +6365,7 @@
   "ui": true,
   "label": "Retraction distance when cut",
   "mode": "develop",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Retraction when switching material",
   "scope": "printer",
@@ -5892,6 +6381,7 @@
   "ui": true,
   "label": "Retraction distance when extruder change",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Multi Filament",
   "scope": "filament",
@@ -5907,6 +6397,7 @@
   "ui": true,
   "label": "Length",
   "mode": "simple",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Retraction",
   "scope": "printer",
@@ -5922,6 +6413,7 @@
   "ui": true,
   "label": "Travel distance threshold",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Retraction",
   "scope": "printer",
@@ -5937,6 +6429,7 @@
   "ui": true,
   "label": "Retraction Speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Retraction",
   "scope": "printer",
@@ -5950,6 +6443,7 @@
   "ui": true,
   "label": "Role base wipe speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -5963,6 +6457,7 @@
   "ui": true,
   "label": "Scan first layer",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Advanced",
   "scope": "printer",
@@ -5976,6 +6471,7 @@
   "ui": true,
   "label": "Conditional angle threshold",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -5989,6 +6485,7 @@
   "ui": true,
   "label": "Scarf joint flow ratio",
   "mode": "expert",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -6002,6 +6499,7 @@
   "ui": true,
   "label": "Scarf joint speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -6015,6 +6513,7 @@
   "ui": true,
   "label": "Conditional overhang threshold",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -6028,6 +6527,7 @@
   "ui": true,
   "label": "Seam gap",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -6041,6 +6541,7 @@
   "ui": true,
   "label": "Seam position",
   "mode": "simple",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -6054,6 +6555,7 @@
   "ui": true,
   "label": "Conditional scarf joint",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -6067,6 +6569,7 @@
   "ui": true,
   "label": "Scarf around entire wall",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -6080,6 +6583,7 @@
   "ui": true,
   "label": "Scarf joint for inner walls",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -6093,6 +6597,7 @@
   "ui": true,
   "label": "Scarf length",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -6106,6 +6611,7 @@
   "ui": true,
   "label": "Scarf start height",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -6119,6 +6625,7 @@
   "ui": true,
   "label": "Scarf steps",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -6132,6 +6639,7 @@
   "ui": true,
   "label": "Scarf joint seam (beta)",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -6145,6 +6653,7 @@
   "ui": true,
   "label": "Set other flow ratios",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -6157,7 +6666,8 @@
   "value": "1",
   "ui": false,
   "label": "Supports silent mode",
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.single_extruder_multi_material",
@@ -6167,6 +6677,7 @@
   "ui": true,
   "label": "Single Extruder Multi Material",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Single extruder multi-material setup",
   "scope": "printer",
@@ -6180,6 +6691,7 @@
   "ui": true,
   "label": "Prime all printing extruders",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -6193,6 +6705,7 @@
   "ui": true,
   "label": "Single loop after first layer",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Skirt",
   "scope": "print",
@@ -6206,6 +6719,7 @@
   "ui": true,
   "label": "Skeleton infill density",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -6219,6 +6733,7 @@
   "ui": true,
   "label": "Skeleton line width",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -6232,6 +6747,7 @@
   "ui": true,
   "label": "Skin infill density",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -6245,6 +6761,7 @@
   "ui": true,
   "label": "Skin infill depth",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -6258,6 +6775,7 @@
   "ui": true,
   "label": "Skin line width",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -6271,6 +6789,7 @@
   "ui": true,
   "label": "Skirt distance",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Skirt",
   "scope": "print",
@@ -6284,6 +6803,7 @@
   "ui": true,
   "label": "Skirt height",
   "mode": "simple",
+  "nullable": false,
   "tab": "Others",
   "section": "Skirt",
   "scope": "print",
@@ -6297,6 +6817,7 @@
   "ui": true,
   "label": "Skirt loops",
   "mode": "simple",
+  "nullable": false,
   "tab": "Others",
   "section": "Skirt",
   "scope": "print",
@@ -6310,6 +6831,7 @@
   "ui": true,
   "label": "Skirt speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Skirt",
   "scope": "print",
@@ -6323,6 +6845,7 @@
   "ui": true,
   "label": "Skirt start point",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Skirt",
   "scope": "print",
@@ -6336,6 +6859,7 @@
   "ui": true,
   "label": "Skirt type",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Skirt",
   "scope": "print",
@@ -6349,6 +6873,7 @@
   "ui": true,
   "label": "Slice gap closing radius",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Precision",
   "scope": "print",
@@ -6362,6 +6887,7 @@
   "ui": true,
   "label": "Slicing Mode",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Special mode",
   "scope": "print",
@@ -6377,6 +6903,7 @@
   "ui": true,
   "label": "Slow printing down for better layer cooling",
   "mode": "simple",
+  "nullable": false,
   "tab": "Cooling",
   "section": "Part cooling fan",
   "scope": "filament",
@@ -6391,7 +6918,8 @@
   ],
   "ui": false,
   "label": "Layer time",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.slow_down_layers",
@@ -6401,6 +6929,7 @@
   "ui": true,
   "label": "Number of slow layers",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "First layer speed",
   "scope": "print",
@@ -6416,6 +6945,7 @@
   "ui": true,
   "label": "Min print speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Cooling",
   "section": "Part cooling fan",
   "scope": "filament",
@@ -6429,6 +6959,7 @@
   "ui": true,
   "label": "Slow down for curled perimeters",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Overhang speed",
   "scope": "print",
@@ -6442,6 +6973,7 @@
   "ui": true,
   "label": "Small area flow compensation (beta)",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -6456,7 +6988,8 @@
   ],
   "ui": false,
   "label": "Flow Compensation Model",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.small_perimeter_speed",
@@ -6466,6 +6999,7 @@
   "ui": true,
   "label": "Small perimeters",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Other layers speed",
   "scope": "print",
@@ -6479,6 +7013,7 @@
   "ui": true,
   "label": "Small perimeters threshold",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Other layers speed",
   "scope": "print",
@@ -6492,6 +7027,7 @@
   "ui": true,
   "label": "Solid infill direction",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -6505,6 +7041,7 @@
   "ui": true,
   "label": "Solid infill rotation template",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -6518,6 +7055,7 @@
   "ui": true,
   "label": "Sparse infill",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Acceleration",
   "scope": "print",
@@ -6531,6 +7069,7 @@
   "ui": true,
   "label": "Sparse infill density",
   "mode": "simple",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -6544,6 +7083,7 @@
   "ui": true,
   "label": "Infill",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Filament for Features",
   "scope": "print",
@@ -6557,6 +7097,7 @@
   "ui": true,
   "label": "Sparse infill flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -6570,6 +7111,7 @@
   "ui": true,
   "label": "Sparse infill",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Line width",
   "scope": "print",
@@ -6583,6 +7125,7 @@
   "ui": true,
   "label": "Sparse infill pattern",
   "mode": "simple",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -6596,6 +7139,7 @@
   "ui": true,
   "label": "Sparse infill rotation template",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -6609,6 +7153,7 @@
   "ui": true,
   "label": "Sparse infill",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Other layers speed",
   "scope": "print",
@@ -6622,6 +7167,7 @@
   "ui": true,
   "label": "Spiral finishing flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Special mode",
   "scope": "print",
@@ -6635,6 +7181,7 @@
   "ui": true,
   "label": "Spiral vase",
   "mode": "simple",
+  "nullable": false,
   "tab": "Others",
   "section": "Special mode",
   "scope": "print",
@@ -6648,6 +7195,7 @@
   "ui": true,
   "label": "Max XY Smoothing",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Special mode",
   "scope": "print",
@@ -6661,6 +7209,7 @@
   "ui": true,
   "label": "Smooth Spiral",
   "mode": "simple",
+  "nullable": false,
   "tab": "Others",
   "section": "Special mode",
   "scope": "print",
@@ -6674,6 +7223,7 @@
   "ui": true,
   "label": "Spiral starting flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Others",
   "section": "Special mode",
   "scope": "print",
@@ -6687,6 +7237,7 @@
   "ui": true,
   "label": "Staggered inner seams",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -6700,6 +7251,7 @@
   "ui": true,
   "label": "Temperature variation",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Ooze prevention",
   "scope": "print",
@@ -6712,7 +7264,8 @@
   "value": null,
   "ui": false,
   "label": "Start end points",
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.supertack_plate_temp",
@@ -6723,7 +7276,8 @@
   ],
   "ui": false,
   "label": "Other layers",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.supertack_plate_temp_initial_layer",
@@ -6734,7 +7288,8 @@
   ],
   "ui": false,
   "label": "First layer",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.support_air_filtration",
@@ -6744,6 +7299,7 @@
   "ui": true,
   "label": "Support air filtration",
   "mode": "develop",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Accessory",
   "scope": "printer",
@@ -6757,6 +7313,7 @@
   "ui": true,
   "label": "Pattern angle",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -6770,6 +7327,7 @@
   "ui": true,
   "label": "Base pattern",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -6783,6 +7341,7 @@
   "ui": true,
   "label": "Base pattern spacing",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -6796,6 +7355,7 @@
   "ui": true,
   "label": "Bottom interface spacing",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -6809,6 +7369,7 @@
   "ui": true,
   "label": "Bottom Z distance",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -6822,6 +7383,7 @@
   "ui": true,
   "label": "Support control chamber temperature",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Accessory",
   "scope": "printer",
@@ -6835,6 +7397,7 @@
   "ui": true,
   "label": "Support critical regions only",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Support",
   "scope": "print",
@@ -6848,6 +7411,7 @@
   "ui": true,
   "label": "Normal Support expansion",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -6861,6 +7425,7 @@
   "ui": true,
   "label": "Support/raft base",
   "mode": "simple",
+  "nullable": false,
   "tab": "Support",
   "section": "Support filament",
   "scope": "print",
@@ -6874,6 +7439,7 @@
   "ui": true,
   "label": "Support flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -6887,6 +7453,7 @@
   "ui": true,
   "label": "Bottom interface layers",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -6900,6 +7467,7 @@
   "ui": true,
   "label": "Support/raft interface",
   "mode": "simple",
+  "nullable": false,
   "tab": "Support",
   "section": "Support filament",
   "scope": "print",
@@ -6913,6 +7481,7 @@
   "ui": true,
   "label": "Support interface flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -6925,7 +7494,8 @@
   "value": "1",
   "ui": false,
   "label": "Interface use loop pattern",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.support_interface_not_for_body",
@@ -6935,6 +7505,7 @@
   "ui": true,
   "label": "Avoid interface filament for base",
   "mode": "simple",
+  "nullable": false,
   "tab": "Support",
   "section": "Support filament",
   "scope": "print",
@@ -6948,6 +7519,7 @@
   "ui": true,
   "label": "Interface pattern",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -6961,6 +7533,7 @@
   "ui": true,
   "label": "Top interface spacing",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -6974,6 +7547,7 @@
   "ui": true,
   "label": "Support interface",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Other layers speed",
   "scope": "print",
@@ -6987,6 +7561,7 @@
   "ui": true,
   "label": "Top interface layers",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -7000,6 +7575,7 @@
   "ui": true,
   "label": "Ironing Support Interface",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Support ironing",
   "scope": "print",
@@ -7013,6 +7589,7 @@
   "ui": true,
   "label": "Support Ironing flow",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Support ironing",
   "scope": "print",
@@ -7026,6 +7603,7 @@
   "ui": true,
   "label": "Support Ironing Pattern",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Support ironing",
   "scope": "print",
@@ -7039,6 +7617,7 @@
   "ui": true,
   "label": "Support Ironing line spacing",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Support ironing",
   "scope": "print",
@@ -7052,6 +7631,7 @@
   "ui": true,
   "label": "Support",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Line width",
   "scope": "print",
@@ -7067,6 +7647,7 @@
   "ui": true,
   "label": "Support interface fan speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Cooling",
   "section": "Part cooling fan",
   "scope": "filament",
@@ -7080,6 +7661,7 @@
   "ui": true,
   "label": "Support multi bed types",
   "mode": "simple",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Printable space",
   "scope": "printer",
@@ -7093,6 +7675,7 @@
   "ui": true,
   "label": "Support/object first layer gap",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -7105,7 +7688,8 @@
   "value": "1",
   "ui": false,
   "label": null,
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.support_object_xy_distance",
@@ -7115,6 +7699,7 @@
   "ui": true,
   "label": "Support/object XY distance",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -7128,6 +7713,7 @@
   "ui": true,
   "label": "On build plate only",
   "mode": "simple",
+  "nullable": false,
   "tab": "Support",
   "section": "Support",
   "scope": "print",
@@ -7140,7 +7726,8 @@
   "value": "1",
   "ui": false,
   "label": "Support parallel printheads",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.support_remove_small_overhang",
@@ -7150,6 +7737,7 @@
   "ui": true,
   "label": "Ignore small overhangs",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Support",
   "scope": "print",
@@ -7163,6 +7751,7 @@
   "ui": true,
   "label": "Support",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Other layers speed",
   "scope": "print",
@@ -7176,6 +7765,7 @@
   "ui": true,
   "label": "Style",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Support",
   "scope": "print",
@@ -7189,6 +7779,7 @@
   "ui": true,
   "label": "Threshold angle",
   "mode": "simple",
+  "nullable": false,
   "tab": "Support",
   "section": "Support",
   "scope": "print",
@@ -7202,6 +7793,7 @@
   "ui": true,
   "label": "Threshold overlap",
   "mode": "simple",
+  "nullable": false,
   "tab": "Support",
   "section": "Support",
   "scope": "print",
@@ -7215,6 +7807,7 @@
   "ui": true,
   "label": "Top Z distance",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -7228,6 +7821,7 @@
   "ui": true,
   "label": "Type",
   "mode": "simple",
+  "nullable": false,
   "tab": "Support",
   "section": "Support",
   "scope": "print",
@@ -7241,6 +7835,7 @@
   "ui": true,
   "label": "Symmetric infill Y axis",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Infill",
   "scope": "print",
@@ -7256,6 +7851,7 @@
   "ui": true,
   "label": "Softening temperature",
   "mode": "simple",
+  "nullable": false,
   "tab": "Filament",
   "section": "Basic information",
   "scope": "filament",
@@ -7268,7 +7864,8 @@
   "value": "; HARNESS_MARK template_custom_gcode",
   "ui": false,
   "label": "Custom G-code",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.textured_cool_plate_temp",
@@ -7279,7 +7876,8 @@
   ],
   "ui": false,
   "label": "Other layers",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.textured_cool_plate_temp_initial_layer",
@@ -7290,7 +7888,8 @@
   ],
   "ui": false,
   "label": "First layer",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.textured_plate_temp",
@@ -7301,7 +7900,8 @@
   ],
   "ui": false,
   "label": "Other layers",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.textured_plate_temp_initial_layer",
@@ -7312,7 +7912,8 @@
   ],
   "ui": false,
   "label": "First layer",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.thick_bridges",
@@ -7322,6 +7923,7 @@
   "ui": true,
   "label": "Thick external bridges",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Bridging",
   "scope": "print",
@@ -7335,6 +7937,7 @@
   "ui": true,
   "label": "Thick internal bridges",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Bridging",
   "scope": "print",
@@ -7347,7 +7950,8 @@
   "value": null,
   "ui": false,
   "label": "G-code thumbnails",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.thumbnails_format",
@@ -7356,7 +7960,8 @@
   "value": null,
   "ui": false,
   "label": "Format of G-code thumbnails",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.time_cost",
@@ -7366,6 +7971,7 @@
   "ui": true,
   "label": "Time cost",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Advanced",
   "scope": "printer",
@@ -7378,7 +7984,8 @@
   "value": "; HARNESS_MARK time_lapse_gcode",
   "ui": false,
   "label": "Timelapse G-code",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.timelapse_type",
@@ -7388,6 +7995,7 @@
   "ui": true,
   "label": "Timelapse",
   "mode": "simple",
+  "nullable": false,
   "tab": "Others",
   "section": "Special mode",
   "scope": "print",
@@ -7401,6 +8009,7 @@
   "ui": true,
   "label": "Tool change on wipe tower",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Wipe tower",
   "scope": "printer",
@@ -7414,6 +8023,7 @@
   "ui": true,
   "label": "Top/Bottom solid infill/wall overlap",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Strength",
   "section": "Top/bottom shells",
   "scope": "print",
@@ -7427,6 +8037,7 @@
   "ui": true,
   "label": "Top shell layers",
   "mode": "simple",
+  "nullable": false,
   "tab": "Strength",
   "section": "Top/bottom shells",
   "scope": "print",
@@ -7440,6 +8051,7 @@
   "ui": true,
   "label": "Top shell thickness",
   "mode": "simple",
+  "nullable": false,
   "tab": "Strength",
   "section": "Top/bottom shells",
   "scope": "print",
@@ -7453,6 +8065,7 @@
   "ui": true,
   "label": "Top surface flow ratio",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -7466,6 +8079,7 @@
   "ui": true,
   "label": "Top surface",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Acceleration",
   "scope": "print",
@@ -7479,6 +8093,7 @@
   "ui": true,
   "label": "Top surface density",
   "mode": "simple",
+  "nullable": false,
   "tab": "Strength",
   "section": "Top/bottom shells",
   "scope": "print",
@@ -7492,6 +8107,7 @@
   "ui": true,
   "label": "Top surface",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Filament for Features",
   "scope": "print",
@@ -7505,6 +8121,7 @@
   "ui": true,
   "label": "Top surface",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Jerk(XY)",
   "scope": "print",
@@ -7518,6 +8135,7 @@
   "ui": true,
   "label": "Top surface",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Line width",
   "scope": "print",
@@ -7531,6 +8149,7 @@
   "ui": true,
   "label": "Top surface pattern",
   "mode": "simple",
+  "nullable": false,
   "tab": "Strength",
   "section": "Top/bottom shells",
   "scope": "print",
@@ -7544,6 +8163,7 @@
   "ui": true,
   "label": "Top surface",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Other layers speed",
   "scope": "print",
@@ -7557,6 +8177,7 @@
   "ui": true,
   "label": "Travel",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Acceleration",
   "scope": "print",
@@ -7570,6 +8191,7 @@
   "ui": true,
   "label": "Travel",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Jerk(XY)",
   "scope": "print",
@@ -7585,6 +8207,7 @@
   "ui": true,
   "label": "Traveling angle",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Z-Hop",
   "scope": "printer",
@@ -7598,6 +8221,7 @@
   "ui": true,
   "label": "Travel",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Speed",
   "section": "Travel speed",
   "scope": "print",
@@ -7610,7 +8234,8 @@
   "value": "1",
   "ui": false,
   "label": null,
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.tree_support_angle_slow",
@@ -7620,6 +8245,7 @@
   "ui": true,
   "label": "Preferred Branch Angle",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Tree supports",
   "scope": "print",
@@ -7633,6 +8259,7 @@
   "ui": true,
   "label": "Auto brim width",
   "mode": "simple",
+  "nullable": false,
   "tab": "Support",
   "section": "Tree supports",
   "scope": "print",
@@ -7646,6 +8273,7 @@
   "ui": true,
   "label": "Tree support branch angle",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Tree supports",
   "scope": "print",
@@ -7659,6 +8287,7 @@
   "ui": true,
   "label": "Tree support branch angle",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Tree supports",
   "scope": "print",
@@ -7672,6 +8301,7 @@
   "ui": true,
   "label": "Tree support branch diameter",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Tree supports",
   "scope": "print",
@@ -7685,6 +8315,7 @@
   "ui": true,
   "label": "Branch Diameter Angle",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Tree supports",
   "scope": "print",
@@ -7698,6 +8329,7 @@
   "ui": true,
   "label": "Tree support branch diameter",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Tree supports",
   "scope": "print",
@@ -7711,6 +8343,7 @@
   "ui": true,
   "label": "Tree support branch distance",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Tree supports",
   "scope": "print",
@@ -7724,6 +8357,7 @@
   "ui": true,
   "label": "Tree support branch distance",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Tree supports",
   "scope": "print",
@@ -7737,6 +8371,7 @@
   "ui": true,
   "label": "Tree support brim width",
   "mode": "simple",
+  "nullable": false,
   "tab": "Support",
   "section": "Tree supports",
   "scope": "print",
@@ -7750,6 +8385,7 @@
   "ui": true,
   "label": "Tip Diameter",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Tree supports",
   "scope": "print",
@@ -7763,6 +8399,7 @@
   "ui": true,
   "label": "Branch Density",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Tree supports",
   "scope": "print",
@@ -7776,6 +8413,7 @@
   "ui": true,
   "label": "Support wall loops",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Support",
   "section": "Advanced",
   "scope": "print",
@@ -7788,7 +8426,8 @@
   "value": "1",
   "ui": false,
   "label": "Tree support with infill",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.upward_compatible_machine",
@@ -7797,7 +8436,8 @@
   "value": null,
   "ui": false,
   "label": "upward compatible machine",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.use_3mf",
@@ -7807,6 +8447,7 @@
   "ui": true,
   "label": "Use 3MF instead of G-code",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Advanced",
   "scope": "printer",
@@ -7820,6 +8461,7 @@
   "ui": true,
   "label": "Use firmware retraction",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Advanced",
   "scope": "printer",
@@ -7833,6 +8475,7 @@
   "ui": true,
   "label": "Use relative E distances",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Advanced",
   "scope": "printer",
@@ -7847,7 +8490,8 @@
   ],
   "ui": false,
   "label": "Max volumetric speed multinomial coefficients",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.wall_direction",
@@ -7857,6 +8501,7 @@
   "ui": true,
   "label": "Wall loop direction",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -7870,6 +8515,7 @@
   "ui": true,
   "label": "Wall distribution count",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Wall generator",
   "scope": "print",
@@ -7883,6 +8529,7 @@
   "ui": true,
   "label": "Wall generator",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Wall generator",
   "scope": "print",
@@ -7896,6 +8543,7 @@
   "ui": true,
   "label": "Wall loops",
   "mode": "simple",
+  "nullable": false,
   "tab": "Strength",
   "section": "Walls",
   "scope": "print",
@@ -7909,6 +8557,7 @@
   "ui": true,
   "label": "Maximum wall deviation",
   "mode": "expert",
+  "nullable": false,
   "tab": "Quality",
   "section": "Wall generator",
   "scope": "print",
@@ -7922,6 +8571,7 @@
   "ui": true,
   "label": "Maximum wall resolution",
   "mode": "expert",
+  "nullable": false,
   "tab": "Quality",
   "section": "Wall generator",
   "scope": "print",
@@ -7935,6 +8585,7 @@
   "ui": true,
   "label": "Walls printing order",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Walls and surfaces",
   "scope": "print",
@@ -7948,6 +8599,7 @@
   "ui": true,
   "label": "Wall transitioning threshold angle",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Wall generator",
   "scope": "print",
@@ -7961,6 +8613,7 @@
   "ui": true,
   "label": "Wall transitioning filter margin",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Wall generator",
   "scope": "print",
@@ -7974,6 +8627,7 @@
   "ui": true,
   "label": "Wall transition length",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Wall generator",
   "scope": "print",
@@ -7989,6 +8643,7 @@
   "ui": true,
   "label": "Wipe while retracting",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Retraction",
   "scope": "printer",
@@ -8002,6 +8657,7 @@
   "ui": true,
   "label": "Wipe before external loop",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -8017,6 +8673,7 @@
   "ui": true,
   "label": "Wipe Distance",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Retraction",
   "scope": "printer",
@@ -8030,6 +8687,7 @@
   "ui": true,
   "label": "Wipe on loops",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -8043,6 +8701,7 @@
   "ui": true,
   "label": "Wipe speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Seam",
   "scope": "print",
@@ -8056,6 +8715,7 @@
   "ui": true,
   "label": "Maximal bridging distance",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -8069,6 +8729,7 @@
   "ui": true,
   "label": "Stabilization cone apex angle",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -8082,6 +8743,7 @@
   "ui": true,
   "label": "Extra flow for purging",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -8095,6 +8757,7 @@
   "ui": true,
   "label": "Extra rib length",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -8108,6 +8771,7 @@
   "ui": true,
   "label": "Wipe tower purge lines spacing",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -8121,6 +8785,7 @@
   "ui": true,
   "label": "Wipe tower",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Filament for Features",
   "scope": "print",
@@ -8134,6 +8799,7 @@
   "ui": true,
   "label": "Fillet wall",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -8147,6 +8813,7 @@
   "ui": true,
   "label": "Maximum wipe tower print speed",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -8160,6 +8827,7 @@
   "ui": true,
   "label": "No sparse layers (beta)",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -8173,6 +8841,7 @@
   "ui": true,
   "label": "Rib width",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -8186,6 +8855,7 @@
   "ui": true,
   "label": "Wipe tower rotation angle",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -8199,6 +8869,7 @@
   "ui": true,
   "label": "Wipe tower type",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Wipe tower",
   "scope": "printer",
@@ -8212,6 +8883,7 @@
   "ui": true,
   "label": "Wall type",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
@@ -8224,7 +8896,8 @@
   "value": null,
   "ui": false,
   "label": null,
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.wipe_tower_y",
@@ -8233,7 +8906,8 @@
   "value": null,
   "ui": false,
   "label": null,
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.wiping_volumes_extruders",
@@ -8244,7 +8918,8 @@
   ],
   "ui": false,
   "label": "Purging volumes - load/unload volumes",
-  "mode": "simple"
+  "mode": "simple",
+  "nullable": false
  },
  {
   "id": "param.wrapping_detection_gcode",
@@ -8253,7 +8928,8 @@
   "value": "; HARNESS_MARK wrapping_detection_gcode",
   "ui": false,
   "label": "Clumping detection G-code",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.wrapping_detection_layers",
@@ -8262,7 +8938,8 @@
   "value": "21",
   "ui": false,
   "label": "Clumping detection layers",
-  "mode": "develop"
+  "mode": "develop",
+  "nullable": false
  },
  {
   "id": "param.wrapping_exclude_area",
@@ -8271,7 +8948,8 @@
   "value": null,
   "ui": false,
   "label": "Probing exclude area of clumping",
-  "mode": "advanced"
+  "mode": "advanced",
+  "nullable": false
  },
  {
   "id": "param.xy_contour_compensation",
@@ -8281,6 +8959,7 @@
   "ui": true,
   "label": "X-Y contour compensation",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Precision",
   "scope": "print",
@@ -8294,6 +8973,7 @@
   "ui": true,
   "label": "X-Y hole compensation",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Quality",
   "section": "Precision",
   "scope": "print",
@@ -8309,6 +8989,7 @@
   "ui": true,
   "label": "Z-hop height",
   "mode": "simple",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Z-Hop",
   "scope": "printer",
@@ -8324,6 +9005,7 @@
   "ui": true,
   "label": "Z-hop type",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Extruder 1",
   "section": "Z-Hop",
   "scope": "printer",
@@ -8337,6 +9019,7 @@
   "ui": true,
   "label": "Z offset",
   "mode": "advanced",
+  "nullable": false,
   "tab": "Basic information",
   "section": "Printable space",
   "scope": "printer",
@@ -8350,6 +9033,7 @@
   "ui": true,
   "label": "Don't alternate fill direction",
   "mode": "expert",
+  "nullable": false,
   "tab": "Quality",
   "section": "Z contouring",
   "scope": "print",
@@ -8363,6 +9047,7 @@
   "ui": true,
   "label": "Z contouring enabled",
   "mode": "expert",
+  "nullable": false,
   "tab": "Quality",
   "section": "Z contouring",
   "scope": "print",
@@ -8376,6 +9061,7 @@
   "ui": true,
   "label": "Minimum Z height",
   "mode": "expert",
+  "nullable": false,
   "tab": "Quality",
   "section": "Z contouring",
   "scope": "print",
@@ -8389,6 +9075,7 @@
   "ui": true,
   "label": "Minimize wall height angle",
   "mode": "expert",
+  "nullable": false,
   "tab": "Quality",
   "section": "Z contouring",
   "scope": "print",

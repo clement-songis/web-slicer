@@ -93,29 +93,84 @@ export async function downloadGcode(page: Page): Promise<string> {
 	return readFileSync(p, 'utf8');
 }
 
+export type Scope = 'print' | 'filament' | 'printer' | 'plate' | 'object';
 export type ParamCase = {
 	id: string;
 	key: string;
 	type: string;
 	value: string | string[] | null;
 	ui: boolean;
+	mode: string;
+	nullable?: boolean;
 	tab?: string;
 	section?: string;
-	scope?: 'print' | 'filament' | 'printer';
+	scope?: Scope;
 	requires?: Record<string, string | string[]>;
 };
 
-/** Ouvre le bon dialogue de réglages et l'onglet Orca contenant `key` (mode expert). */
-export async function openParam(page: Page, scope: string, tab: string, key: string) {
+/** Niveaux de visibilité Orca (ConfigOptionMode) : une option de niveau N est visible à partir du mode N. */
+export const MODES = ['simple', 'advanced', 'expert', 'develop'] as const;
+export function lowerMode(mode: string): string | null {
+	const i = MODES.indexOf(mode as (typeof MODES)[number]);
+	return i > 0 ? MODES[i - 1] : null;
+}
+
+/** Ouvre l'endroit où Orca édite ce réglage : dialogue de preset, réglages du plateau ou de l'objet. */
+export async function openSettings(page: Page, scope: Scope) {
 	const dialog = page.getByTestId('settings-dialog');
-	if (!(await dialog.isVisible())) await page.getByTestId(`open-settings-${scope}`).click();
+	if (await dialog.isVisible()) return dialog;
+	if (scope === 'plate') await page.getByTestId('plate-settings-button').first().click();
+	else if (scope === 'object') {
+		await page.getByTestId('object-row').first().click();
+		await page.getByTestId('object-settings-button').click();
+	} else await page.getByTestId(`open-settings-${scope}`).click();
 	await expect(dialog).toBeVisible();
-	await dialog.getByTestId('settings-mode-expert').click();
-	await dialog.getByTestId(`settings-tab-${slug(tab)}`).click();
-	const row = dialog.locator(`[data-param="${key}"]`);
-	await expect(row, `ligne de réglage [data-param="${key}"] introuvable dans l'onglet « ${tab} »`).toBeVisible();
+	return dialog;
+}
+
+export async function setMode(page: Page, mode: string) {
+	await page.getByTestId('settings-dialog').getByTestId(`settings-mode-${mode}`).click();
+}
+
+/** Ligne `[data-param=key]` dans l'onglet Orca, au mode demandé (expert par défaut). */
+export async function paramRow(page: Page, scope: Scope, tab: string | undefined, key: string, mode = 'develop') {
+	const dialog = await openSettings(page, scope);
+	await setMode(page, mode);
+	if (tab) {
+		const tabBtn = dialog.getByTestId(`settings-tab-${slug(tab)}`);
+		if (scope !== 'plate' && scope !== 'object') await tabBtn.click();
+		else if (await tabBtn.count()) await tabBtn.click();
+	}
+	return dialog.locator(`[data-param="${key}"]`);
+}
+
+export async function controlOf(row: ReturnType<Page['locator']>) {
 	const indexed = row.locator('[data-index="0"]');
-	return (await indexed.count()) ? indexed.first() : row.locator('input, select, textarea').first();
+	return (await indexed.count()) ? indexed.first() : row.locator('input:not([data-override-toggle]), select, textarea').first();
+}
+
+/** Ouvre la ligne et renvoie son contrôle principal (active la surcharge si l'option est « nullable »). */
+export async function openParam(page: Page, scope: string, tab: string | undefined, key: string, mode = 'develop') {
+	const row = await paramRow(page, scope as Scope, tab, key, mode);
+	await expect(row, `ligne de réglage [data-param="${key}"] introuvable (${scope} › ${tab ?? '—'}, mode ${mode})`).toBeVisible();
+	const toggle = row.locator('[data-override-toggle]');
+	if ((await toggle.count()) && !(await toggle.isChecked())) await toggle.check();
+	return controlOf(row);
+}
+
+/** Valeur affichée par un contrôle, au format Orca (« 1 »/« 0 » pour une case). */
+export async function readControl(control: ReturnType<Page['locator']>): Promise<string> {
+	if ((await control.getAttribute('type')) === 'checkbox') return (await control.isChecked()) ? '1' : '0';
+	return control.inputValue();
+}
+
+/** Égalité tolérante au formatage numérique (« 0.20 » == « 0.2 », « 50 % » == « 50% »). */
+export function looseEqual(a: string, b: string): boolean {
+	const norm = (s: string) => s.replace(/\s+/g, '').toLowerCase();
+	if (norm(a) === norm(b)) return true;
+	const na = Number(norm(a).replace(/%$/, ''));
+	const nb = Number(norm(b).replace(/%$/, ''));
+	return Number.isFinite(na) && Number.isFinite(nb) && Math.abs(na - nb) < 1e-9 && a.trim().endsWith('%') === b.trim().endsWith('%');
 }
 
 /** Saisit une valeur au format Orca dans le contrôle ; renvoie false si le champ est désactivé. */

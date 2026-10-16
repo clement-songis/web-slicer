@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from lib import ORACLE, VENDOR, load_features, locked, save_features  # noqa: E402
 
 BATCH = {"param": int(os.environ.get("HARNESS_BATCH_PARAMS", "6")), "golden": 6, "shortcut": 4}
-TESTS_BATCH = {"shortcut": 4, "menu": 2, "ctx": 2}
+TESTS_BATCH = {"shortcut": 4, "menu": 2, "ctx": 2, "param": 6}
 REVIEW_EVERY = int(os.environ.get("HARNESS_REVIEW_EVERY", "8"))
 MODELS = {
     "impl": os.environ.get("HARNESS_MODEL_IMPL", "sonnet"),
@@ -85,6 +85,10 @@ def render(mode: str, ids: list[str], feats: dict) -> str:
             lines.append(f"- Note de la session précédente : {f['last_note'][:600]}")
         if f.get("last_error"):
             lines += ["- Dernier échec :", "```", f["last_error"][:1500], "```"]
+        if mode == "tests" and fid.startswith("param."):
+            lines.append(f"- À écrire : `tests/oracle/params/requires/{fid[6:]}.json` = "
+                         '`{"requires": {"<clé>": "<valeur Orca>"}}` : les réglages à activer pour que le champ '
+                         "soit éditable chez Orca (voir `src/slic3r/GUI/ConfigManipulation.cpp`, toggle_field/toggle_line).")
         if mode == "review" and f.get("history"):
             lines.append("- Historique : " + json.dumps(f["history"][-4:], ensure_ascii=False)[:1500])
         lines.append("")

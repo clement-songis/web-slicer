@@ -83,6 +83,28 @@ def after(mode: str, ids: list[str], out_file: str, verify_rc: int, session: int
           f"{tokens / 1000:.0f}k tokens, {res.get('num_turns')} tours")
 
 
+def requires_done(ids: list[str]) -> None:
+    """Après une session « tests » sur des paramètres : régénère cas + références Orca des clés concernées."""
+    keys = [i[6:] for i in ids if i.startswith("param.") and (ORACLE / "params" / "requires" / f"{i[6:]}.json").exists()]
+    if not keys:
+        return
+    for k in keys:
+        for ext in (".gcode", ".error", ".value.json"):
+            (ORACLE / "refs" / "param" / f"{k}{ext}").unlink(missing_ok=True)
+    with locked():
+        data = load_features()
+        for k in keys:
+            f = data["features"][f"param.{k}"]
+            f["status"], f["attempts"] = "needs_ref", 0
+            f.pop("reason", None)
+        save_features(data)
+    subprocess.run([sys.executable, str(REPO / "harness" / "gen_features.py")], cwd=REPO, capture_output=True)
+    r = subprocess.run([sys.executable, str(ORACLE / "tools" / "make_refs.py"), "--only", "params", "--keys", ",".join(keys)],
+                       cwd=REPO, capture_output=True, text=True)
+    print(f"  références Orca régénérées pour {len(keys)} clé(s)" if r.returncode == 0 else
+          f"  make_refs.py a échoué (clés restent en needs_ref) : {(r.stdout + r.stderr)[-300:]}")
+
+
 if __name__ == "__main__":
     cmd = sys.argv[1]
     if cmd == "preflight":
@@ -91,6 +113,8 @@ if __name__ == "__main__":
         print(f"gelé : {freeze()} fichiers")
     elif cmd == "spent":
         spent(sys.argv[2])
+    elif cmd == "requires":
+        requires_done(sys.argv[2].split())
     elif cmd == "after":
         mode, ids, out_file, rc, session, model = sys.argv[2:8]
         after(mode, ids.split(), out_file, int(rc), int(session), model)

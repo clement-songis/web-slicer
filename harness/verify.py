@@ -140,8 +140,9 @@ def main() -> int:
     # 1. Altération des tests gelés.
     tamper = tamper_report()
     if args.mode == "tests":
-        allowed = {f"ajouté: tests/oracle/scenarios/{i}.spec.ts" for i in args.ids}
-        allowed |= {f"modifié: tests/oracle/scenarios/{i}.spec.ts" for i in args.ids}
+        files = {f"tests/oracle/scenarios/{i}.spec.ts" for i in args.ids}
+        files |= {f"tests/oracle/params/requires/{i[6:]}.json" for i in args.ids if i.startswith("param.")}
+        allowed = {f"{verb}: {f}" for f in files for verb in ("ajouté", "modifié")}
         tamper = [t for t in tamper if t not in allowed]
     if tamper:
         print("ALTÉRATION des chemins gelés :\n  " + "\n  ".join(tamper[:20]))
@@ -220,6 +221,11 @@ def main() -> int:
             elif o == "passed":
                 f["status"], f["attempts"] = "passing", 0
                 record(f, args.mode, "passed", "", commit)
+            elif o == "skipped" and f.get("kind") == "param" and "désactivé" in e:
+                # Champ grisé par une dépendance Orca : une session « tests » écrira requires/<clé>.json.
+                f["status"] = "needs_test"
+                f["reason"] = "dépendance à activer : " + e[:300]
+                record(f, args.mode, "needs_requires", e, commit)
             elif o == "skipped":
                 f["status"] = "needs_review"
                 f["reason"] = e[:400]

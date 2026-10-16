@@ -49,12 +49,18 @@ while ((session < MAX_SESSIONS)); do
 $context" --model "$model" --max-turns "$MAX_TURNS" --output-format json "${FLAGS[@]}" >"$out" 2>"$out.err"
 
 	if [[ $mode == tests ]]; then
-		python3 $H/verify.py --mode tests $ids
-		vrc=$?
+		if [[ $ids == param.* ]]; then
+			vrc=0   # dépendances de paramètres : jugées après régénération des références Orca
+		else
+			python3 $H/verify.py --mode tests $ids
+			vrc=$?
+		fi
 		for id in $ids; do
-			f=tests/oracle/scenarios/$id.spec.ts
-			[[ -f $f ]] && git add "$f"
+			for f in tests/oracle/scenarios/$id.spec.ts tests/oracle/params/requires/${id#param.}.json; do
+				[[ -f $f ]] && git add "$f"
+			done
 		done
+		python3 $H/loopctl.py requires "$ids"
 		git commit -qm "test(oracle): scenarios for $ids" -m "Co-Authored-By: Claude <noreply@anthropic.com>" 2>/dev/null
 		git checkout -q -- . && git clean -fdq -- frontend backend engine
 		python3 $H/loopctl.py freeze >/dev/null

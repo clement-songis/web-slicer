@@ -60,11 +60,17 @@ MANUAL_KEYS = re.compile(
 
 def ui_index() -> dict[str, dict]:
     out: dict[str, dict] = {}
-    for tab in UI["settings_tabs"]:
+    # Ordre : dialogues de presets d'abord, puis réglages propres au plateau / à l'objet
+    # (une clé n'est rattachée au plateau que si elle n'existe nulle part ailleurs, comme dans Orca).
+    tabs = sorted(UI["settings_tabs"], key=lambda t: t.get("defined_in", "").startswith(("TabPrintModel", "TabPrintPlate")))
+    for tab in tabs:
         where = tab.get("defined_in", "")
-        if where.startswith(("TabPrintModel", "TabPrintPlate")):
-            continue  # réglages par objet / plateau : couverts par les scénarios ctx/gizmo
-        scope = next((s for p, s in TAB_SCOPE if where.startswith(p)), "print")
+        if where.startswith("TabPrintModel"):
+            scope = "object"
+        elif where.startswith("TabPrintPlate"):
+            scope = "plate"
+        else:
+            scope = next((s for p, s in TAB_SCOPE if where.startswith(p)), "print")
         title = "Extruder 1" if tab["title"] == "page_name" else tab["title"]
         for sec in tab["sections"]:
             for key in sec["options"]:
@@ -147,7 +153,7 @@ def choose_value(key: str, d: dict):
 
 def param_features(feats: dict, cases: list) -> None:
     idx = ui_index()
-    tier = {"simple": 20, "advanced": 30, "develop": 40}
+    tier = {"simple": 20, "advanced": 30, "expert": 35, "develop": 40}
     for key, d in sorted(PARAMS.items()):
         grp = d["group"]
         fid = f"param.{key}"
@@ -158,7 +164,8 @@ def param_features(feats: dict, cases: list) -> None:
         ui = idx.get(key)
         value = choose_value(key, d)
         case = {"id": fid, "key": key, "type": d["type"], "value": value, "ui": ui is not None,
-                "label": d.get("label"), "mode": d.get("mode", "advanced")}
+                "label": d.get("label"), "mode": d.get("mode", "advanced"),
+                "nullable": d["type"].endswith("Nullable")}
         if ui:
             case.update(ui)
         cases.append(case)
@@ -212,6 +219,14 @@ def ui_features(feats: dict) -> None:
                       "default_status": "needs_test"}
 
     base_deps = ["core.import"]
+    add("ui", "object-settings", "Réglages par objet (liste d'objets › Ajouter des réglages) : surcharge d'un paramètre "
+        "d'impression pour un seul objet, appliquée au G-code de cet objet uniquement", 45, ["core.settings-ui"],
+        ["src/slic3r/GUI/GUI_ObjectSettings.cpp", "src/slic3r/GUI/GUI_ObjectList.cpp"], "ui")
+    add("ui", "height-range-modifier", "Modificateur par plage de hauteur : réglages différents sur une plage de Z", 45,
+        ["core.settings-ui"], ["src/slic3r/GUI/GUI_ObjectLayers.cpp"], "ui")
+    add("ui", "preset-save-as", "Preset modifié (astérisque) puis « Enregistrer sous » un preset utilisateur, "
+        "système resté intact, preset réutilisable dans un autre projet", 45, ["core.settings-ui"],
+        ["src/slic3r/GUI/Tab.cpp", "src/slic3r/GUI/SavePresetDialog.cpp"], "ui")
     for g in UI["plater_gizmos"]:
         name = g.get("type") or g["class"].replace("GLGizmo", "")
         add("gizmo", name, f"Gizmo {name} ({g['class']})", 50, base_deps,
@@ -260,6 +275,11 @@ def main() -> None:
     param_features(fresh, param_cases)
     ui_features(fresh)
 
+    req_dir = ORACLE / "params" / "requires"
+    for c in param_cases:
+        f = req_dir / f"{c['key']}.json"
+        if f.exists():
+            c["requires"] = json.loads(f.read_text()).get("requires", {})
     overrides = json.loads((HARNESS / "param_overrides.json").read_text())
     for c in param_cases:
         if c["key"] in overrides:
