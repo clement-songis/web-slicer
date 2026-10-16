@@ -72,7 +72,7 @@ def run_playwright(ids: list[str] | None) -> dict[str, dict]:
         report = json.loads(out.read_text())
     except Exception:
         msg = ANSI.sub("", (r.stdout + r.stderr))[-2000:]
-        return {i: {"outcome": "failed", "error": "Playwright n'a pas produit de rapport :\n" + msg} for i in ids or []}
+        return {i: {"outcome": "error", "error": "Playwright n'a pas produit de rapport :\n" + msg} for i in ids or []}
     finally:
         out.unlink(missing_ok=True)
 
@@ -107,8 +107,8 @@ def run_playwright(ids: list[str] | None) -> dict[str, dict]:
         walk(s, [s.get("title", "")])
     for e in report.get("errors", []):
         for i in ids or []:
-            res.setdefault(i, {"outcome": "failed", "error": "", "count": 0})
-            res[i]["outcome"] = "failed"
+            res.setdefault(i, {"outcome": "error", "error": "", "count": 0})
+            res[i]["outcome"] = "error"  # erreur de chargement (syntaxe, import) : pas un « rouge » valable
             res[i]["error"] += ANSI.sub("", e.get("message", ""))[:800] + "\n"
     for i in ids or []:
         res.setdefault(i, {"outcome": "no_test", "error": "aucun test portant ce tag n'a été trouvé", "count": 0})
@@ -192,7 +192,7 @@ def main() -> int:
         sample = random.sample(pool, min(REGRESSION_SAMPLE, len(pool)))
         if sample:
             rr = run_playwright(sample)
-            regressions = [k for k in sample if rr[k]["outcome"] == "failed"]
+            regressions = [k for k in sample if rr[k]["outcome"] in ("failed", "error")]
             if regressions:
                 print("RÉGRESSION : " + ", ".join(regressions))
                 reg_msg = "\n".join(f"{k}: {rr[k]['error'][:400]}" for k in regressions)
@@ -245,7 +245,7 @@ def run_all() -> int:
         for k in ids:
             f = data["features"][k]
             o = res[k]["outcome"]
-            if f["status"] == "passing" and o == "failed":
+            if f["status"] == "passing" and o in ("failed", "error"):
                 f["status"] = "red"
                 record(f, "nightly", "regressed", res[k]["error"], head_commit())
                 flipped.append(k)
