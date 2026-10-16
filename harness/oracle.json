@@ -1,0 +1,9 @@
+{
+ "_doc": "Configuration de référence pour les oracles Orca. Noms de presets système OrcaSlicer (resources/profiles).",
+ "printer": "Voron 2.4 350 0.4 nozzle",
+ "filament": "Generic PLA @System",
+ "process": "0.20mm Standard @Voron",
+ "golden_processes": ["0.20mm Standard @Voron", "0.12mm Fine @Voron", "0.28mm Extra Draft @Voron"],
+ "golden_models": ["cube20", "cylinder", "overhang", "bridge", "thinwall", "twoparts"],
+ "param_model": "cube20"
+}

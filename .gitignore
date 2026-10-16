@@ -25,3 +25,7 @@ Thumbs.db
 # Secrets / env
 .env
 .env.*
+
+# Harness autonome (état autoritaire hors dépôt : $HARNESS_STATE)
+harness/logs/
+harness/features.json

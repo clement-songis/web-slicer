@@ -1,0 +1,3 @@
+{
+ "_doc": "Valeurs de test choisies à la main (fichier gelé, édition humaine). Forme : \"clé\": \"valeur\" ou {\"value\": ..., \"requires\": {\"autre_clé\": \"1\"}}. Relancer gen_features.py puis make_refs.py --keys clé."
+}

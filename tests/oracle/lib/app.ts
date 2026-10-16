@@ -1,0 +1,137 @@
+// Pilotage de l'application via le contrat harness/CONTRACT.md (gelé).
+import { expect, type APIRequestContext, type Page } from '@playwright/test';
+import { existsSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+export const ORACLE = join(dirname(fileURLToPath(import.meta.url)), '..');
+export const REPO = join(ORACLE, '..', '..');
+export const REFS = join(ORACLE, 'refs');
+export const FIXTURES = join(ORACLE, 'fixtures');
+
+export const oracleCfg = JSON.parse(readFileSync(join(REPO, 'harness', 'oracle.json'), 'utf8')) as {
+	printer: string;
+	filament: string;
+	process: string;
+	param_model: string;
+};
+
+export type FlatConfig = Record<string, string | string[]>;
+
+export function readRef(rel: string): string | null {
+	const p = join(REFS, rel);
+	return existsSync(p) ? readFileSync(p, 'utf8') : null;
+}
+
+export function readJsonRef<T>(rel: string): T | null {
+	const s = readRef(rel);
+	return s === null ? null : (JSON.parse(s) as T);
+}
+
+export function fixture(model: string): string {
+	return join(FIXTURES, `${model}.stl`);
+}
+
+export function slug(s: string): string {
+	return s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+}
+
+/** §1 — tranche via l'API de harness (même moteur que l'UI). */
+export async function harnessSlice(request: APIRequestContext, model: string, config: FlatConfig): Promise<string> {
+	const res = await request.post('/api/_harness/slice', {
+		multipart: {
+			model: { name: `${model}.stl`, mimeType: 'model/stl', buffer: readFileSync(fixture(model)) },
+			config: JSON.stringify(config)
+		},
+		timeout: 170_000
+	});
+	expect(res.status(), `POST /api/_harness/slice → ${res.status()} : ${(await res.text()).slice(0, 600)}`).toBe(200);
+	return res.text();
+}
+
+let counter = 0;
+export function uniqueEmail(): string {
+	return `t${Date.now().toString(36)}${process.pid}${counter++}@harness.local`;
+}
+
+/** §1 — crée un utilisateur + un projet prêt (presets de oracle.json), session ouverte dans `page`. */
+export async function bootstrap(page: Page): Promise<string> {
+	const res = await page.request.post('/api/_harness/bootstrap', {
+		data: {
+			email: uniqueEmail(),
+			password: 'harness-password-123',
+			printer: oracleCfg.printer,
+			filament: oracleCfg.filament,
+			process: oracleCfg.process
+		}
+	});
+	expect(res.status(), `bootstrap → ${res.status()} : ${(await res.text()).slice(0, 400)}`).toBe(200);
+	const { project_id } = (await res.json()) as { project_id: string };
+	await page.goto(`/projects/${project_id}`);
+	await expect(page.getByTestId('scene-canvas')).toBeVisible();
+	return project_id;
+}
+
+export async function importModel(page: Page, model: string): Promise<void> {
+	const before = await page.getByTestId('object-row').count();
+	await page.getByTestId('import-input').setInputFiles(fixture(model));
+	await expect(page.getByTestId('object-row')).toHaveCount(before + 1, { timeout: 60_000 });
+}
+
+export async function sliceInUi(page: Page): Promise<number> {
+	await page.getByTestId('slice-button').click();
+	const preview = page.getByTestId('preview-view');
+	await expect(preview).toBeVisible({ timeout: 170_000 });
+	await expect(preview).toHaveAttribute('data-layer-count', /^[1-9]\d*$/, { timeout: 170_000 });
+	return Number(await preview.getAttribute('data-layer-count'));
+}
+
+export async function downloadGcode(page: Page): Promise<string> {
+	const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-gcode-button').click()]);
+	expect(dl.suggestedFilename()).toMatch(/\.gcode$/);
+	const p = await dl.path();
+	return readFileSync(p, 'utf8');
+}
+
+export type ParamCase = {
+	id: string;
+	key: string;
+	type: string;
+	value: string | string[] | null;
+	ui: boolean;
+	tab?: string;
+	section?: string;
+	scope?: 'print' | 'filament' | 'printer';
+	requires?: Record<string, string | string[]>;
+};
+
+/** Ouvre le bon dialogue de réglages et l'onglet Orca contenant `key` (mode expert). */
+export async function openParam(page: Page, scope: string, tab: string, key: string) {
+	const dialog = page.getByTestId('settings-dialog');
+	if (!(await dialog.isVisible())) await page.getByTestId(`open-settings-${scope}`).click();
+	await expect(dialog).toBeVisible();
+	await dialog.getByTestId('settings-mode-expert').click();
+	await dialog.getByTestId(`settings-tab-${slug(tab)}`).click();
+	const row = dialog.locator(`[data-param="${key}"]`);
+	await expect(row, `ligne de réglage [data-param="${key}"] introuvable dans l'onglet « ${tab} »`).toBeVisible();
+	const indexed = row.locator('[data-index="0"]');
+	return (await indexed.count()) ? indexed.first() : row.locator('input, select, textarea').first();
+}
+
+/** Saisit une valeur au format Orca dans le contrôle ; renvoie false si le champ est désactivé. */
+export async function setControl(control: ReturnType<Page['locator']>, value: string): Promise<boolean> {
+	if (await control.isDisabled()) return false;
+	const tag = await control.evaluate((el) => el.tagName.toLowerCase());
+	const type = await control.getAttribute('type');
+	if (type === 'checkbox') await control.setChecked(value === '1' || value === 'true');
+	else if (tag === 'select') await control.selectOption(value);
+	else {
+		await control.fill(value);
+		await control.press('Tab');
+	}
+	return true;
+}
+
+export function scalar(v: string | string[]): string {
+	return Array.isArray(v) ? v[0] : v;
+}

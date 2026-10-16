@@ -38,11 +38,21 @@ Slicer 3D web multi-utilisateurs, parité totale avec OrcaSlicer
   variables, types, modules, tests, champs — Rust, TypeScript, C++ — sont en
   anglais (`resolve_preset_chain`, `slices_a_real_project`, `worker_binary`).
   Les commentaires et docstrings restent en français (style du dépôt).
-- **Moteur v1 = FFI uniquement** : l'implémentation du trait `SlicerEngine`
-  passe par `adapters/ffi` (bridge cxx vers `libslic3r-headless`). Pas
-  d'adaptateur CLI en v1 ; une implémentation CLI de *validation croisée*
-  (vérifier que le slicing donne le même résultat qu'orca desktop) est un
-  objectif backlog, non planifié.
+- **Moteur** : l'implémentation du trait `SlicerEngine` est libre (FFI
+  libslic3r ou CLI `orca-slicer`), tant que le G-code est identique à celui
+  d'Orca : c'est ce que mesurent les tests oracle.
+
+## Harness autonome (source de vérité de l'avancement)
+
+- Ce qui est « fait » = ce que `harness/verify.py` valide, rien d'autre. Les
+  tests oracle (`tests/oracle/`) comparent l'app au vrai OrcaSlicer.
+- `tests/oracle/`, `harness/`, `audit/*.json`, `.claude/settings.json` sont
+  **gelés** (hook + contrôle d'empreintes) : ne jamais les modifier.
+- Contrat UI/API testé : `harness/CONTRACT.md` (`data-testid`, `data-param`,
+  `/api/_harness/*`).
+- Vérifier un lot : `python3 harness/verify.py --check <ids>`.
+- Logique métier : réutiliser libslic3r côté serveur plutôt que la réécrire
+  en TypeScript.
 
 ## Commandes
 

@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Read", "Edit", "Write", "Glob", "Grep",
+      "Bash(cargo:*)", "Bash(bun:*)", "Bash(bunx:*)", "Bash(npx:*)", "Bash(node:*)",
+      "Bash(python3 harness/verify.py:*)", "Bash(harness/stack.sh:*)",
+      "Bash(git status:*)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)",
+      "Bash(git add:*)", "Bash(git commit:*)",
+      "Bash(ls:*)", "Bash(cat:*)", "Bash(head:*)", "Bash(tail:*)", "Bash(wc:*)", "Bash(rg:*)",
+      "Bash(grep:*)", "Bash(find:*)", "Bash(mkdir:*)", "Bash(curl:*)", "Bash(sed -n:*)", "Bash(jq:*)",
+      "Bash(cd:*)", "Bash(pwd)", "Bash(sort:*)", "Bash(uniq:*)", "Bash(diff:*)"
+    ],
+    "deny": ["Bash(git push:*)", "Bash(sudo:*)"]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Read|Grep|Glob|Bash",
+        "hooks": [{ "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/harness/guard.py\"", "timeout": 10 }]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [{ "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/harness/stop_gate.py\"", "timeout": 1800 }]
+      }
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+ "_doc": "Exclusions décidées par un HUMAIN uniquement (fichier gelé, l'agent ne peut pas le modifier). Seules les fonctions sans objet en web auto-hébergé sont exclues.",
+ "ids": {},
+ "patterns": [
+  {"re": "^menu\\.(upload-models|download-models|sync-presets|open-network-test|show-configuration-folder|new-window|reset-window-layout|quit|open-slicer|check-for-updates|troubleshoot-center)", "reason": "Notion de bureau ou service cloud Bambu, sans objet en web auto-hébergé"},
+  {"re": "3dconnexion", "reason": "Périphérique local inaccessible depuis un navigateur"},
+  {"re": "^shortcut\\.ctrl-m$|^shortcut\\.ctrl-shift-m$", "reason": "Réglages 3Dconnexion"}
+ ]
+}

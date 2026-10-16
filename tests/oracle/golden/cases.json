@@ -1,0 +1,92 @@
+[
+ {
+  "id": "golden.cube20.0-20mm-standard-voron",
+  "model": "cube20",
+  "process": "0.20mm Standard @Voron"
+ },
+ {
+  "id": "golden.cube20.0-12mm-fine-voron",
+  "model": "cube20",
+  "process": "0.12mm Fine @Voron"
+ },
+ {
+  "id": "golden.cube20.0-28mm-extra-draft-voron",
+  "model": "cube20",
+  "process": "0.28mm Extra Draft @Voron"
+ },
+ {
+  "id": "golden.cylinder.0-20mm-standard-voron",
+  "model": "cylinder",
+  "process": "0.20mm Standard @Voron"
+ },
+ {
+  "id": "golden.cylinder.0-12mm-fine-voron",
+  "model": "cylinder",
+  "process": "0.12mm Fine @Voron"
+ },
+ {
+  "id": "golden.cylinder.0-28mm-extra-draft-voron",
+  "model": "cylinder",
+  "process": "0.28mm Extra Draft @Voron"
+ },
+ {
+  "id": "golden.overhang.0-20mm-standard-voron",
+  "model": "overhang",
+  "process": "0.20mm Standard @Voron"
+ },
+ {
+  "id": "golden.overhang.0-12mm-fine-voron",
+  "model": "overhang",
+  "process": "0.12mm Fine @Voron"
+ },
+ {
+  "id": "golden.overhang.0-28mm-extra-draft-voron",
+  "model": "overhang",
+  "process": "0.28mm Extra Draft @Voron"
+ },
+ {
+  "id": "golden.bridge.0-20mm-standard-voron",
+  "model": "bridge",
+  "process": "0.20mm Standard @Voron"
+ },
+ {
+  "id": "golden.bridge.0-12mm-fine-voron",
+  "model": "bridge",
+  "process": "0.12mm Fine @Voron"
+ },
+ {
+  "id": "golden.bridge.0-28mm-extra-draft-voron",
+  "model": "bridge",
+  "process": "0.28mm Extra Draft @Voron"
+ },
+ {
+  "id": "golden.thinwall.0-20mm-standard-voron",
+  "model": "thinwall",
+  "process": "0.20mm Standard @Voron"
+ },
+ {
+  "id": "golden.thinwall.0-12mm-fine-voron",
+  "model": "thinwall",
+  "process": "0.12mm Fine @Voron"
+ },
+ {
+  "id": "golden.thinwall.0-28mm-extra-draft-voron",
+  "model": "thinwall",
+  "process": "0.28mm Extra Draft @Voron"
+ },
+ {
+  "id": "golden.twoparts.0-20mm-standard-voron",
+  "model": "twoparts",
+  "process": "0.20mm Standard @Voron"
+ },
+ {
+  "id": "golden.twoparts.0-12mm-fine-voron",
+  "model": "twoparts",
+  "process": "0.12mm Fine @Voron"
+ },
+ {
+  "id": "golden.twoparts.0-28mm-extra-draft-voron",
+  "model": "twoparts",
+  "process": "0.28mm Extra Draft @Voron"
+ }
+]

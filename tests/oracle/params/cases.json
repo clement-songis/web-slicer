@@ -1,0 +1,8393 @@
+[
+ {
+  "id": "param.accel_to_decel_enable",
+  "key": "accel_to_decel_enable",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Enable accel_to_decel",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Acceleration",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.accel_to_decel_factor",
+  "key": "accel_to_decel_factor",
+  "type": "coPercent",
+  "value": "51%",
+  "ui": true,
+  "label": "accel_to_decel",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Acceleration",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.activate_air_filtration",
+  "key": "activate_air_filtration",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Activate air filtration",
+  "mode": "simple",
+  "tab": "Cooling",
+  "section": "Exhaust fan",
+  "scope": "filament",
+  "tab_line": 4070
+ },
+ {
+  "id": "param.activate_air_filtration_during_print",
+  "key": "activate_air_filtration_during_print",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.activate_air_filtration_on_completion",
+  "key": "activate_air_filtration_on_completion",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.activate_chamber_temp_control",
+  "key": "activate_chamber_temp_control",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Activate temperature control",
+  "mode": "simple",
+  "tab": "Filament",
+  "section": "Print chamber temperature",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.adaptive_bed_mesh_margin",
+  "key": "adaptive_bed_mesh_margin",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Mesh margin",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Adaptive bed mesh",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.adaptive_pressure_advance",
+  "key": "adaptive_pressure_advance",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Enable adaptive pressure advance (beta)",
+  "mode": "advanced",
+  "tab": "Filament",
+  "section": "Flow ratio and Pressure Advance",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.adaptive_pressure_advance_bridges",
+  "key": "adaptive_pressure_advance_bridges",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Pressure advance for bridges",
+  "mode": "advanced",
+  "tab": "Filament",
+  "section": "Flow ratio and Pressure Advance",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.adaptive_pressure_advance_model",
+  "key": "adaptive_pressure_advance_model",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": "Adaptive pressure advance measurements (beta)",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.adaptive_pressure_advance_overhangs",
+  "key": "adaptive_pressure_advance_overhangs",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Enable adaptive pressure advance for overhangs (beta)",
+  "mode": "advanced",
+  "tab": "Filament",
+  "section": "Flow ratio and Pressure Advance",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.additional_cooling_fan_speed",
+  "key": "additional_cooling_fan_speed",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Fan speed",
+  "mode": "simple",
+  "tab": "Cooling",
+  "section": "Auxiliary part cooling fan",
+  "scope": "filament",
+  "tab_line": 4070
+ },
+ {
+  "id": "param.additional_fan_full_speed_layer",
+  "key": "additional_fan_full_speed_layer",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Full fan speed at layer",
+  "mode": "simple"
+ },
+ {
+  "id": "param.align_infill_direction_to_model",
+  "key": "align_infill_direction_to_model",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Align infill direction to model",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.alternate_extra_wall",
+  "key": "alternate_extra_wall",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Alternate extra wall",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Walls",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.auxiliary_fan",
+  "key": "auxiliary_fan",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Auxiliary part cooling fan",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Accessory",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.bbl_calib_mark_logo",
+  "key": "bbl_calib_mark_logo",
+  "type": "coBool",
+  "value": "0",
+  "ui": false,
+  "label": "Show auto-calibration marks",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.bbl_use_printhost",
+  "key": "bbl_use_printhost",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Use 3rd-party print host",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Advanced",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.bed_custom_model",
+  "key": "bed_custom_model",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "Bed custom model",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.bed_custom_texture",
+  "key": "bed_custom_texture",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "Bed custom texture",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.bed_exclude_area",
+  "key": "bed_exclude_area",
+  "type": "coPoints",
+  "value": null,
+  "ui": false,
+  "label": "Bed exclude area",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.bed_mesh_max",
+  "key": "bed_mesh_max",
+  "type": "coPoint",
+  "value": null,
+  "ui": true,
+  "label": "Bed mesh max",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Adaptive bed mesh",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.bed_mesh_min",
+  "key": "bed_mesh_min",
+  "type": "coPoint",
+  "value": null,
+  "ui": true,
+  "label": "Bed mesh min",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Adaptive bed mesh",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.bed_mesh_probe_distance",
+  "key": "bed_mesh_probe_distance",
+  "type": "coPoint",
+  "value": null,
+  "ui": true,
+  "label": "Probe point distance",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Adaptive bed mesh",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.bed_temperature_formula",
+  "key": "bed_temperature_formula",
+  "type": "coEnum",
+  "value": "by_first_filament",
+  "ui": true,
+  "label": "Bed temperature type",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Single extruder multi-material setup",
+  "scope": "printer",
+  "tab_line": 4964
+ },
+ {
+  "id": "param.before_layer_change_gcode",
+  "key": "before_layer_change_gcode",
+  "type": "coString",
+  "value": "; HARNESS_MARK before_layer_change_gcode",
+  "ui": false,
+  "label": "Before layer change G-code",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.best_object_pos",
+  "key": "best_object_pos",
+  "type": "coPoint",
+  "value": null,
+  "ui": true,
+  "label": "Best object position",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Printable space",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.bottom_shell_layers",
+  "key": "bottom_shell_layers",
+  "type": "coInt",
+  "value": "4",
+  "ui": true,
+  "label": "Bottom shell layers",
+  "mode": "simple",
+  "tab": "Strength",
+  "section": "Top/bottom shells",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.bottom_shell_thickness",
+  "key": "bottom_shell_thickness",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Bottom shell thickness",
+  "mode": "simple",
+  "tab": "Strength",
+  "section": "Top/bottom shells",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.bottom_solid_infill_flow_ratio",
+  "key": "bottom_solid_infill_flow_ratio",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Bottom surface flow ratio",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.bottom_surface_density",
+  "key": "bottom_surface_density",
+  "type": "coPercent",
+  "value": "99%",
+  "ui": true,
+  "label": "Bottom surface density",
+  "mode": "simple",
+  "tab": "Strength",
+  "section": "Top/bottom shells",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.bottom_surface_filament_id",
+  "key": "bottom_surface_filament_id",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Bottom surface",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Filament for Features",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.bottom_surface_pattern",
+  "key": "bottom_surface_pattern",
+  "type": "coEnum",
+  "value": null,
+  "ui": true,
+  "label": "Bottom surface pattern",
+  "mode": "simple",
+  "tab": "Strength",
+  "section": "Top/bottom shells",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.bridge_acceleration",
+  "key": "bridge_acceleration",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Bridge",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Acceleration",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.bridge_angle",
+  "key": "bridge_angle",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "External bridge infill direction",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.bridge_density",
+  "key": "bridge_density",
+  "type": "coPercent",
+  "value": "101%",
+  "ui": true,
+  "label": "External bridge density",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Bridging",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.bridge_flow",
+  "key": "bridge_flow",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Bridge flow ratio",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Bridging",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.bridge_line_width",
+  "key": "bridge_line_width",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Bridge",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Line width",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.bridge_no_support",
+  "key": "bridge_no_support",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Don't support bridges",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.bridge_speed",
+  "key": "bridge_speed",
+  "type": "coFloat",
+  "value": "31.25",
+  "ui": false,
+  "label": "External",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.brim_ears",
+  "key": "brim_ears",
+  "type": "coBool",
+  "value": "1",
+  "ui": false,
+  "label": "Brim ears",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.brim_ears_detection_length",
+  "key": "brim_ears_detection_length",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Brim ear detection radius",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Brim",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.brim_ears_max_angle",
+  "key": "brim_ears_max_angle",
+  "type": "coFloat",
+  "value": "156.25",
+  "ui": true,
+  "label": "Brim ear max angle",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Brim",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.brim_flow_ratio",
+  "key": "brim_flow_ratio",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Brim flow ratio",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Brim",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.brim_object_gap",
+  "key": "brim_object_gap",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Brim-object gap",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Brim",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.brim_type",
+  "key": "brim_type",
+  "type": "coEnum",
+  "value": null,
+  "ui": true,
+  "label": "Brim type",
+  "mode": "simple",
+  "tab": "Others",
+  "section": "Brim",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.brim_use_efc_outline",
+  "key": "brim_use_efc_outline",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Brim follows compensated outline",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Brim",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.brim_width",
+  "key": "brim_width",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Brim width",
+  "mode": "simple",
+  "tab": "Others",
+  "section": "Brim",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.calib_flowrate_topinfill_special_order",
+  "key": "calib_flowrate_topinfill_special_order",
+  "type": "coBool",
+  "value": "1",
+  "ui": false,
+  "label": null,
+  "mode": "develop"
+ },
+ {
+  "id": "param.chamber_minimal_temperature",
+  "key": "chamber_minimal_temperature",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Minimal",
+  "mode": "simple"
+ },
+ {
+  "id": "param.chamber_temperature",
+  "key": "chamber_temperature",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Chamber temperature",
+  "mode": "simple"
+ },
+ {
+  "id": "param.change_extrusion_role_gcode",
+  "key": "change_extrusion_role_gcode",
+  "type": "coString",
+  "value": "; HARNESS_MARK change_extrusion_role_gcode",
+  "ui": false,
+  "label": "Change extrusion role G-code",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.change_filament_gcode",
+  "key": "change_filament_gcode",
+  "type": "coString",
+  "value": "; HARNESS_MARK change_filament_gcode",
+  "ui": false,
+  "label": "Change filament G-code",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.close_additional_fan_first_x_layers",
+  "key": "close_additional_fan_first_x_layers",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "For the first",
+  "mode": "simple"
+ },
+ {
+  "id": "param.close_fan_the_first_x_layers",
+  "key": "close_fan_the_first_x_layers",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "No cooling for the first",
+  "mode": "simple",
+  "tab": "Cooling",
+  "section": "Cooling for specific layer",
+  "scope": "filament",
+  "tab_line": 4070
+ },
+ {
+  "id": "param.combine_brims",
+  "key": "combine_brims",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Combine brims",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Brim",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.compatible_machine_expression_group",
+  "key": "compatible_machine_expression_group",
+  "type": "coStrings",
+  "value": null,
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.compatible_printers",
+  "key": "compatible_printers",
+  "type": "coStrings",
+  "value": null,
+  "ui": false,
+  "label": "Select printers",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.compatible_printers_condition",
+  "key": "compatible_printers_condition",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "Condition",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.compatible_prints",
+  "key": "compatible_prints",
+  "type": "coStrings",
+  "value": null,
+  "ui": false,
+  "label": "Select profiles",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.compatible_prints_condition",
+  "key": "compatible_prints_condition",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "Condition",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.compatible_process_expression_group",
+  "key": "compatible_process_expression_group",
+  "type": "coStrings",
+  "value": null,
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.complete_print_exhaust_fan_speed",
+  "key": "complete_print_exhaust_fan_speed",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Fan speed",
+  "mode": "simple"
+ },
+ {
+  "id": "param.cool_plate_temp",
+  "key": "cool_plate_temp",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Other layers",
+  "mode": "simple"
+ },
+ {
+  "id": "param.cool_plate_temp_initial_layer",
+  "key": "cool_plate_temp_initial_layer",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "First layer",
+  "mode": "simple"
+ },
+ {
+  "id": "param.cooling_tube_length",
+  "key": "cooling_tube_length",
+  "type": "coFloat",
+  "value": "6.25",
+  "ui": true,
+  "label": "Cooling tube length",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Single extruder multi-material parameters",
+  "scope": "printer",
+  "tab_line": 4964
+ },
+ {
+  "id": "param.cooling_tube_retraction",
+  "key": "cooling_tube_retraction",
+  "type": "coFloat",
+  "value": "114.375",
+  "ui": true,
+  "label": "Cooling tube position",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Single extruder multi-material parameters",
+  "scope": "printer",
+  "tab_line": 4964
+ },
+ {
+  "id": "param.counterbore_hole_bridging",
+  "key": "counterbore_hole_bridging",
+  "type": "coEnum",
+  "value": null,
+  "ui": true,
+  "label": "Bridge counterbore holes",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Bridging",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.curr_bed_type",
+  "key": "curr_bed_type",
+  "type": "coEnum",
+  "value": null,
+  "ui": false,
+  "label": "Bed type",
+  "mode": "simple"
+ },
+ {
+  "id": "param.default_acceleration",
+  "key": "default_acceleration",
+  "type": "coFloat",
+  "value": "625",
+  "ui": true,
+  "label": "Normal printing",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Acceleration",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.default_bed_type",
+  "key": "default_bed_type",
+  "type": "coString",
+  "value": "harness_test",
+  "ui": false,
+  "label": "Default bed type",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.default_filament_colour",
+  "key": "default_filament_colour",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": true,
+  "label": "Default color",
+  "mode": "advanced",
+  "tab": "Filament",
+  "section": "Basic information",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.default_filament_profile",
+  "key": "default_filament_profile",
+  "type": "coStrings",
+  "value": null,
+  "ui": false,
+  "label": "Default filament profile",
+  "mode": "simple"
+ },
+ {
+  "id": "param.default_jerk",
+  "key": "default_jerk",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Default",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Jerk(XY)",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.default_junction_deviation",
+  "key": "default_junction_deviation",
+  "type": "coFloat",
+  "value": "0.5",
+  "ui": true,
+  "label": "Junction Deviation",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Junction Deviation",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.default_nozzle_volume_type",
+  "key": "default_nozzle_volume_type",
+  "type": "coEnums",
+  "value": null,
+  "ui": false,
+  "label": "Default Nozzle Volume Type.",
+  "mode": "develop"
+ },
+ {
+  "id": "param.default_print_profile",
+  "key": "default_print_profile",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "Default process profile",
+  "mode": "simple"
+ },
+ {
+  "id": "param.deretraction_speed",
+  "key": "deretraction_speed",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "De-retraction Speed",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Retraction",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.detect_narrow_internal_solid_infill",
+  "key": "detect_narrow_internal_solid_infill",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Detect narrow internal solid infills",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.detect_overhang_wall",
+  "key": "detect_overhang_wall",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Detect overhang walls",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Overhangs",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.detect_thin_wall",
+  "key": "detect_thin_wall",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Detect thin walls",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Walls",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.different_settings_to_system",
+  "key": "different_settings_to_system",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.disable_m73",
+  "key": "disable_m73",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Disable set remaining print time",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Advanced",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.dont_filter_internal_bridges",
+  "key": "dont_filter_internal_bridges",
+  "type": "coEnum",
+  "value": "limited",
+  "ui": true,
+  "label": "Filter out small internal bridges",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Bridging",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.dont_slow_down_outer_wall",
+  "key": "dont_slow_down_outer_wall",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Don't slow down outer walls",
+  "mode": "simple",
+  "tab": "Cooling",
+  "section": "Part cooling fan",
+  "scope": "filament",
+  "tab_line": 4070
+ },
+ {
+  "id": "param.draft_shield",
+  "key": "draft_shield",
+  "type": "coEnum",
+  "value": "enabled",
+  "ui": true,
+  "label": "Draft shield",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Skirt",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.during_print_exhaust_fan_speed",
+  "key": "during_print_exhaust_fan_speed",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Fan speed",
+  "mode": "simple"
+ },
+ {
+  "id": "param.elefant_foot_compensation",
+  "key": "elefant_foot_compensation",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Elephant foot compensation",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Precision",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.elefant_foot_compensation_layers",
+  "key": "elefant_foot_compensation_layers",
+  "type": "coInt",
+  "value": "2",
+  "ui": true,
+  "label": "Elephant foot compensation layers",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Precision",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.elefant_foot_layers_density",
+  "key": "elefant_foot_layers_density",
+  "type": "coPercent",
+  "value": "99%",
+  "ui": true,
+  "label": "Elephant foot layers density",
+  "mode": "expert",
+  "tab": "Quality",
+  "section": "Precision",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.emit_machine_limits_to_gcode",
+  "key": "emit_machine_limits_to_gcode",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Emit limits to G-code",
+  "mode": "advanced",
+  "tab": "Motion ability",
+  "section": "Advanced",
+  "scope": "printer",
+  "tab_line": 4831
+ },
+ {
+  "id": "param.enable_arc_fitting",
+  "key": "enable_arc_fitting",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Arc fitting",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Precision",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.enable_extra_bridge_layer",
+  "key": "enable_extra_bridge_layer",
+  "type": "coEnum",
+  "value": "external_bridge_only",
+  "ui": true,
+  "label": "Extra bridge layers (beta)",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Bridging",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.enable_filament_dynamic_map",
+  "key": "enable_filament_dynamic_map",
+  "type": "coBool",
+  "value": "1",
+  "ui": false,
+  "label": "Enable filament dynamic map",
+  "mode": "develop"
+ },
+ {
+  "id": "param.enable_filament_ramming",
+  "key": "enable_filament_ramming",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Enable filament ramming",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Wipe tower",
+  "scope": "printer",
+  "tab_line": 4964
+ },
+ {
+  "id": "param.enable_long_retraction_when_cut",
+  "key": "enable_long_retraction_when_cut",
+  "type": "coInt",
+  "value": "1",
+  "ui": false,
+  "label": null,
+  "mode": "develop"
+ },
+ {
+  "id": "param.enable_overhang_bridge_fan",
+  "key": "enable_overhang_bridge_fan",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Force cooling for overhangs and bridges",
+  "mode": "simple",
+  "tab": "Cooling",
+  "section": "Part cooling fan",
+  "scope": "filament",
+  "tab_line": 4070
+ },
+ {
+  "id": "param.enable_overhang_speed",
+  "key": "enable_overhang_speed",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Slow down for overhang",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Overhang speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.enable_power_loss_recovery",
+  "key": "enable_power_loss_recovery",
+  "type": "coEnum",
+  "value": "printer_configuration",
+  "ui": true,
+  "label": "Power Loss Recovery",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Advanced",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.enable_pressure_advance",
+  "key": "enable_pressure_advance",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Enable pressure advance",
+  "mode": "simple",
+  "tab": "Filament",
+  "section": "Flow ratio and Pressure Advance",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.enable_prime_tower",
+  "key": "enable_prime_tower",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Enable",
+  "mode": "simple",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.enable_support",
+  "key": "enable_support",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Enable support",
+  "mode": "simple",
+  "tab": "Support",
+  "section": "Support",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.enable_tower_interface_cooldown_during_tower",
+  "key": "enable_tower_interface_cooldown_during_tower",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Cool down from interface boost during prime tower",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.enable_tower_interface_features",
+  "key": "enable_tower_interface_features",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Enable tower interface features",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.enable_wrapping_detection",
+  "key": "enable_wrapping_detection",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Enable clumping detection",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Special mode",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.enforce_support_layers",
+  "key": "enforce_support_layers",
+  "type": "coInt",
+  "value": "1",
+  "ui": false,
+  "label": null,
+  "mode": "develop"
+ },
+ {
+  "id": "param.eng_plate_temp",
+  "key": "eng_plate_temp",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Other layers",
+  "mode": "simple"
+ },
+ {
+  "id": "param.eng_plate_temp_initial_layer",
+  "key": "eng_plate_temp_initial_layer",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "First layer",
+  "mode": "simple"
+ },
+ {
+  "id": "param.ensure_vertical_shell_thickness",
+  "key": "ensure_vertical_shell_thickness",
+  "type": "coEnum",
+  "value": "none",
+  "ui": true,
+  "label": "Ensure vertical shell thickness",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.exclude_object",
+  "key": "exclude_object",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Exclude objects",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "G-code output",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.extra_loading_move",
+  "key": "extra_loading_move",
+  "type": "coFloat",
+  "value": "-2.5",
+  "ui": true,
+  "label": "Extra loading distance",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Single extruder multi-material parameters",
+  "scope": "printer",
+  "tab_line": 4964
+ },
+ {
+  "id": "param.extra_perimeters_on_overhangs",
+  "key": "extra_perimeters_on_overhangs",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Extra perimeters on overhangs",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Overhangs",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.extra_solid_infills",
+  "key": "extra_solid_infills",
+  "type": "coString",
+  "value": "harness_test",
+  "ui": true,
+  "label": "Insert solid layers",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.extruder",
+  "key": "extruder",
+  "type": "coInt",
+  "value": "1",
+  "ui": false,
+  "label": "Extruder",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.extruder_ams_count",
+  "key": "extruder_ams_count",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": "Extruder AMS count",
+  "mode": "simple"
+ },
+ {
+  "id": "param.extruder_clearance_height_to_lid",
+  "key": "extruder_clearance_height_to_lid",
+  "type": "coFloat",
+  "value": "150",
+  "ui": true,
+  "label": "Height to lid",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Extruder Clearance",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.extruder_clearance_height_to_rod",
+  "key": "extruder_clearance_height_to_rod",
+  "type": "coFloat",
+  "value": "50",
+  "ui": true,
+  "label": "Height to rod",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Extruder Clearance",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.extruder_clearance_radius",
+  "key": "extruder_clearance_radius",
+  "type": "coFloat",
+  "value": "50",
+  "ui": true,
+  "label": "Radius",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Extruder Clearance",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.extruder_colour",
+  "key": "extruder_colour",
+  "type": "coStrings",
+  "value": null,
+  "ui": false,
+  "label": "Extruder Color",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.extruder_offset",
+  "key": "extruder_offset",
+  "type": "coPoints",
+  "value": null,
+  "ui": true,
+  "label": "Extruder offset",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Position",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.extruder_printable_area",
+  "key": "extruder_printable_area",
+  "type": "coPointsGroups",
+  "value": null,
+  "ui": false,
+  "label": "Extruder printable area",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.extruder_printable_height",
+  "key": "extruder_printable_height",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Extruder printable height",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Basic information",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.extruder_type",
+  "key": "extruder_type",
+  "type": "coEnums",
+  "value": [
+   "Direct Drive"
+  ],
+  "ui": false,
+  "label": "Type",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.extruder_variant_list",
+  "key": "extruder_variant_list",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": "Extruder variant list",
+  "mode": "simple"
+ },
+ {
+  "id": "param.extrusion_rate_smoothing_external_perimeter_only",
+  "key": "extrusion_rate_smoothing_external_perimeter_only",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Apply only on external features",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.fan_cooling_layer_time",
+  "key": "fan_cooling_layer_time",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Layer time",
+  "mode": "simple"
+ },
+ {
+  "id": "param.fan_kickstart",
+  "key": "fan_kickstart",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Fan kick-start time",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Cooling Fan",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.fan_max_speed",
+  "key": "fan_max_speed",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Fan speed",
+  "mode": "simple"
+ },
+ {
+  "id": "param.fan_min_speed",
+  "key": "fan_min_speed",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Fan speed",
+  "mode": "simple"
+ },
+ {
+  "id": "param.fan_speedup_overhangs",
+  "key": "fan_speedup_overhangs",
+  "type": "coBool",
+  "value": "0",
+  "ui": false,
+  "label": "Only overhangs",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.fan_speedup_time",
+  "key": "fan_speedup_time",
+  "type": "coFloat",
+  "value": "1",
+  "ui": false,
+  "label": null,
+  "mode": "advanced"
+ },
+ {
+  "id": "param.filament_adaptive_volumetric_speed",
+  "key": "filament_adaptive_volumetric_speed",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Adaptive volumetric speed",
+  "mode": "develop",
+  "tab": "Filament",
+  "section": "Volumetric speed limitation",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.filament_adhesiveness_category",
+  "key": "filament_adhesiveness_category",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Adhesiveness Category",
+  "mode": "develop",
+  "tab": "Filament",
+  "section": "Basic information",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.filament_change_extrusion_role_gcode",
+  "key": "filament_change_extrusion_role_gcode",
+  "type": "coStrings",
+  "value": [
+   "; HARNESS_MARK filament_change_extrusion_role_gcode"
+  ],
+  "ui": false,
+  "label": "Change extrusion role G-code (filament)",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.filament_change_length",
+  "key": "filament_change_length",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Filament ramming length",
+  "mode": "advanced",
+  "tab": "Filament",
+  "section": "Basic information",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.filament_colour",
+  "key": "filament_colour",
+  "type": "coStrings",
+  "value": null,
+  "ui": false,
+  "label": "Color",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.filament_colour_type",
+  "key": "filament_colour_type",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.filament_cooling_before_tower",
+  "key": "filament_cooling_before_tower",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Wipe tower cooling",
+  "mode": "develop"
+ },
+ {
+  "id": "param.filament_cooling_final_speed",
+  "key": "filament_cooling_final_speed",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Speed of the last cooling move",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Tool change parameters with single extruder MM printers",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_cooling_initial_speed",
+  "key": "filament_cooling_initial_speed",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Speed of the first cooling move",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Tool change parameters with single extruder MM printers",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_cooling_moves",
+  "key": "filament_cooling_moves",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Number of cooling moves",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Tool change parameters with single extruder MM printers",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_cost",
+  "key": "filament_cost",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Price",
+  "mode": "advanced",
+  "tab": "Filament",
+  "section": "Basic information",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.filament_density",
+  "key": "filament_density",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Density",
+  "mode": "advanced",
+  "tab": "Filament",
+  "section": "Basic information",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.filament_deretraction_speed",
+  "key": "filament_deretraction_speed",
+  "type": "coFloatsNullable",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "De-retraction Speed",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_diameter",
+  "key": "filament_diameter",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Diameter",
+  "mode": "simple",
+  "tab": "Filament",
+  "section": "Basic information",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.filament_end_gcode",
+  "key": "filament_end_gcode",
+  "type": "coStrings",
+  "value": [
+   "; HARNESS_MARK filament_end_gcode"
+  ],
+  "ui": false,
+  "label": "End G-code",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.filament_extruder_variant",
+  "key": "filament_extruder_variant",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": "Filament's extruder variant",
+  "mode": "simple"
+ },
+ {
+  "id": "param.filament_flow_ratio",
+  "key": "filament_flow_ratio",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Flow ratio",
+  "mode": "advanced",
+  "tab": "Filament",
+  "section": "Flow ratio and Pressure Advance",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.filament_flush_temp",
+  "key": "filament_flush_temp",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Flush temperature",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.filament_flush_volumetric_speed",
+  "key": "filament_flush_volumetric_speed",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Flush volumetric speed",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.filament_ids",
+  "key": "filament_ids",
+  "type": "coStrings",
+  "value": null,
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.filament_ironing_flow",
+  "key": "filament_ironing_flow",
+  "type": "coPercents",
+  "value": [
+   "1%"
+  ],
+  "ui": true,
+  "label": "Ironing flow",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Ironing",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_ironing_inset",
+  "key": "filament_ironing_inset",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Ironing inset",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Ironing",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_ironing_spacing",
+  "key": "filament_ironing_spacing",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Ironing line spacing",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Ironing",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_ironing_speed",
+  "key": "filament_ironing_speed",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Ironing speed",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Ironing",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_is_support",
+  "key": "filament_is_support",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Support material",
+  "mode": "advanced",
+  "tab": "Filament",
+  "section": "Basic information",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.filament_loading_speed",
+  "key": "filament_loading_speed",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Loading speed",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Tool change parameters with single extruder MM printers",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_loading_speed_start",
+  "key": "filament_loading_speed_start",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Loading speed at the start",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Tool change parameters with single extruder MM printers",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_long_retractions_when_cut",
+  "key": "filament_long_retractions_when_cut",
+  "type": "coBoolsNullable",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Long retraction when cut (beta)",
+  "mode": "develop",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_map",
+  "key": "filament_map",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Filament map to extruder",
+  "mode": "develop"
+ },
+ {
+  "id": "param.filament_map_mode",
+  "key": "filament_map_mode",
+  "type": "coEnum",
+  "value": "Auto For Flush",
+  "ui": false,
+  "label": "filament mapping mode",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.filament_max_volumetric_speed",
+  "key": "filament_max_volumetric_speed",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Max volumetric speed",
+  "mode": "advanced",
+  "tab": "Filament",
+  "section": "Volumetric speed limitation",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.filament_minimal_purge_on_wipe_tower",
+  "key": "filament_minimal_purge_on_wipe_tower",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Minimal purge on wipe tower",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Wipe tower parameters",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_multi_colour",
+  "key": "filament_multi_colour",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.filament_multitool_ramming",
+  "key": "filament_multitool_ramming",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Enable ramming for multi-tool setups",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Tool change parameters with multi extruder MM printers",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_multitool_ramming_flow",
+  "key": "filament_multitool_ramming_flow",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Multi-tool ramming flow",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Tool change parameters with multi extruder MM printers",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_multitool_ramming_volume",
+  "key": "filament_multitool_ramming_volume",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Multi-tool ramming volume",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Tool change parameters with multi extruder MM printers",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_notes",
+  "key": "filament_notes",
+  "type": "coStrings",
+  "value": null,
+  "ui": false,
+  "label": "Filament notes",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.filament_printable",
+  "key": "filament_printable",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Filament printable",
+  "mode": "develop"
+ },
+ {
+  "id": "param.filament_ramming_parameters",
+  "key": "filament_ramming_parameters",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": "Ramming parameters",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.filament_retract_before_wipe",
+  "key": "filament_retract_before_wipe",
+  "type": "coPercentsNullable",
+  "value": [
+   "1%"
+  ],
+  "ui": true,
+  "label": "Retract amount before wipe",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_retract_lift_above",
+  "key": "filament_retract_lift_above",
+  "type": "coFloatsNullable",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Only lift Z above",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_retract_lift_below",
+  "key": "filament_retract_lift_below",
+  "type": "coFloatsNullable",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Only lift Z below",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_retract_lift_enforce",
+  "key": "filament_retract_lift_enforce",
+  "type": "coEnumsNullable",
+  "value": [
+   "All Surfaces"
+  ],
+  "ui": true,
+  "label": "On surfaces",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_retract_restart_extra",
+  "key": "filament_retract_restart_extra",
+  "type": "coFloatsNullable",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Extra length on restart",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_retract_when_changing_layer",
+  "key": "filament_retract_when_changing_layer",
+  "type": "coBoolsNullable",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Retract when change layer",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_retraction_distances_when_cut",
+  "key": "filament_retraction_distances_when_cut",
+  "type": "coFloatsNullable",
+  "value": [
+   "11"
+  ],
+  "ui": true,
+  "label": "Retraction distance when cut",
+  "mode": "develop",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_retraction_length",
+  "key": "filament_retraction_length",
+  "type": "coFloatsNullable",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Length",
+  "mode": "simple",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_retraction_minimum_travel",
+  "key": "filament_retraction_minimum_travel",
+  "type": "coFloatsNullable",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Travel distance threshold",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_retraction_speed",
+  "key": "filament_retraction_speed",
+  "type": "coFloatsNullable",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Retraction Speed",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_self_index",
+  "key": "filament_self_index",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Filament self index",
+  "mode": "simple"
+ },
+ {
+  "id": "param.filament_settings_id",
+  "key": "filament_settings_id",
+  "type": "coStrings",
+  "value": null,
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.filament_shrink",
+  "key": "filament_shrink",
+  "type": "coPercents",
+  "value": [
+   "51%"
+  ],
+  "ui": true,
+  "label": "Shrinkage (XY)",
+  "mode": "advanced",
+  "tab": "Filament",
+  "section": "Basic information",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.filament_shrinkage_compensation_z",
+  "key": "filament_shrinkage_compensation_z",
+  "type": "coPercents",
+  "value": [
+   "51%"
+  ],
+  "ui": true,
+  "label": "Shrinkage (Z)",
+  "mode": "advanced",
+  "tab": "Filament",
+  "section": "Basic information",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.filament_soluble",
+  "key": "filament_soluble",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Soluble material",
+  "mode": "advanced",
+  "tab": "Filament",
+  "section": "Basic information",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.filament_stamping_distance",
+  "key": "filament_stamping_distance",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Stamping distance measured from the center of the cooling tube",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Tool change parameters with single extruder MM printers",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_stamping_loading_speed",
+  "key": "filament_stamping_loading_speed",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Stamping loading speed",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Tool change parameters with single extruder MM printers",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_start_gcode",
+  "key": "filament_start_gcode",
+  "type": "coStrings",
+  "value": [
+   "; HARNESS_MARK filament_start_gcode"
+  ],
+  "ui": false,
+  "label": "Start G-code",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.filament_toolchange_delay",
+  "key": "filament_toolchange_delay",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Delay after unloading",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Tool change parameters with single extruder MM printers",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_tower_interface_pre_extrusion_dist",
+  "key": "filament_tower_interface_pre_extrusion_dist",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Interface layer pre-extrusion distance",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Wipe tower parameters",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_tower_interface_pre_extrusion_length",
+  "key": "filament_tower_interface_pre_extrusion_length",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Interface layer pre-extrusion length",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Wipe tower parameters",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_tower_interface_print_temp",
+  "key": "filament_tower_interface_print_temp",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Interface layer print temperature",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Wipe tower parameters",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_tower_interface_purge_volume",
+  "key": "filament_tower_interface_purge_volume",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Interface layer purge length",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Wipe tower parameters",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_tower_ironing_area",
+  "key": "filament_tower_ironing_area",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Tower ironing area",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Wipe tower parameters",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_type",
+  "key": "filament_type",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": true,
+  "label": "Type",
+  "mode": "simple",
+  "tab": "Filament",
+  "section": "Basic information",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.filament_unloading_speed",
+  "key": "filament_unloading_speed",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Unloading speed",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Tool change parameters with single extruder MM printers",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_unloading_speed_start",
+  "key": "filament_unloading_speed_start",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Unloading speed at the start",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Tool change parameters with single extruder MM printers",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.filament_vendor",
+  "key": "filament_vendor",
+  "type": "coStrings",
+  "value": null,
+  "ui": true,
+  "label": "Vendor",
+  "mode": "advanced",
+  "tab": "Filament",
+  "section": "Basic information",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.filament_wipe",
+  "key": "filament_wipe",
+  "type": "coBoolsNullable",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Wipe while retracting",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_wipe_distance",
+  "key": "filament_wipe_distance",
+  "type": "coFloatsNullable",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Wipe Distance",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_z_hop",
+  "key": "filament_z_hop",
+  "type": "coFloatsNullable",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Z-hop height",
+  "mode": "simple",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.filament_z_hop_types",
+  "key": "filament_z_hop_types",
+  "type": "coEnumsNullable",
+  "value": [
+   "Auto Lift"
+  ],
+  "ui": true,
+  "label": "Z-hop type",
+  "mode": "advanced",
+  "tab": "Setting Overrides",
+  "section": "Retraction",
+  "scope": "filament",
+  "tab_line": 3623
+ },
+ {
+  "id": "param.file_start_gcode",
+  "key": "file_start_gcode",
+  "type": "coString",
+  "value": "; HARNESS_MARK file_start_gcode",
+  "ui": false,
+  "label": "File header G-code",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.filename_format",
+  "key": "filename_format",
+  "type": "coString",
+  "value": "harness_test",
+  "ui": false,
+  "label": "Filename format",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.fill_multiline",
+  "key": "fill_multiline",
+  "type": "coInt",
+  "value": "2",
+  "ui": true,
+  "label": "Fill Multiline",
+  "mode": "simple",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.filter_out_gap_fill",
+  "key": "filter_out_gap_fill",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Filter out tiny gaps",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.first_layer_flow_ratio",
+  "key": "first_layer_flow_ratio",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "First layer flow ratio",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.first_layer_print_sequence",
+  "key": "first_layer_print_sequence",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "First layer print sequence",
+  "mode": "simple"
+ },
+ {
+  "id": "param.first_layer_sequence_choice",
+  "key": "first_layer_sequence_choice",
+  "type": "coEnum",
+  "value": "Customize",
+  "ui": false,
+  "label": "First layer filament sequence",
+  "mode": "simple"
+ },
+ {
+  "id": "param.first_x_layer_fan_speed",
+  "key": "first_x_layer_fan_speed",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Fan speed",
+  "mode": "simple"
+ },
+ {
+  "id": "param.flashforge_serial_number",
+  "key": "flashforge_serial_number",
+  "type": "coString",
+  "value": "harness_test",
+  "ui": false,
+  "label": "Serial Number",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.flush_into_infill",
+  "key": "flush_into_infill",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Flush into objects' infill",
+  "mode": "simple",
+  "tab": "Multimaterial",
+  "section": "Flush options",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.flush_into_objects",
+  "key": "flush_into_objects",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Flush into this object",
+  "mode": "simple",
+  "tab": "Multimaterial",
+  "section": "Flush options",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.flush_into_support",
+  "key": "flush_into_support",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Flush into objects' support",
+  "mode": "simple",
+  "tab": "Multimaterial",
+  "section": "Flush options",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.flush_multiplier",
+  "key": "flush_multiplier",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Flush multiplier",
+  "mode": "simple"
+ },
+ {
+  "id": "param.flush_volumes_matrix",
+  "key": "flush_volumes_matrix",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Purging volumes",
+  "mode": "simple"
+ },
+ {
+  "id": "param.flush_volumes_vector",
+  "key": "flush_volumes_vector",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Purging volumes - load/unload volumes",
+  "mode": "simple"
+ },
+ {
+  "id": "param.full_fan_speed_layer",
+  "key": "full_fan_speed_layer",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Full fan speed at layer",
+  "mode": "advanced",
+  "tab": "Cooling",
+  "section": "Cooling for specific layer",
+  "scope": "filament",
+  "tab_line": 4070
+ },
+ {
+  "id": "param.fuzzy_skin",
+  "key": "fuzzy_skin",
+  "type": "coEnum",
+  "value": "none",
+  "ui": true,
+  "label": "Fuzzy Skin",
+  "mode": "simple",
+  "tab": "Others",
+  "section": "Fuzzy Skin",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.fuzzy_skin_first_layer",
+  "key": "fuzzy_skin_first_layer",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Apply fuzzy skin to first layer",
+  "mode": "simple",
+  "tab": "Others",
+  "section": "Fuzzy Skin",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.fuzzy_skin_layers_between_ripple_offset",
+  "key": "fuzzy_skin_layers_between_ripple_offset",
+  "type": "coInt",
+  "value": "2",
+  "ui": true,
+  "label": "Layers between ripple offset",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Fuzzy Skin",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.fuzzy_skin_mode",
+  "key": "fuzzy_skin_mode",
+  "type": "coEnum",
+  "value": "extrusion",
+  "ui": true,
+  "label": "Fuzzy skin generator mode",
+  "mode": "simple",
+  "tab": "Others",
+  "section": "Fuzzy Skin",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.fuzzy_skin_noise_type",
+  "key": "fuzzy_skin_noise_type",
+  "type": "coEnum",
+  "value": "perlin",
+  "ui": true,
+  "label": "Fuzzy skin noise type",
+  "mode": "simple",
+  "tab": "Others",
+  "section": "Fuzzy Skin",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.fuzzy_skin_octaves",
+  "key": "fuzzy_skin_octaves",
+  "type": "coInt",
+  "value": "5",
+  "ui": true,
+  "label": "Fuzzy Skin Noise Octaves",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Fuzzy Skin",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.fuzzy_skin_persistence",
+  "key": "fuzzy_skin_persistence",
+  "type": "coFloat",
+  "value": "0.625",
+  "ui": true,
+  "label": "Fuzzy skin noise persistence",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Fuzzy Skin",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.fuzzy_skin_point_distance",
+  "key": "fuzzy_skin_point_distance",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Fuzzy skin point distance",
+  "mode": "simple",
+  "tab": "Others",
+  "section": "Fuzzy Skin",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.fuzzy_skin_ripple_offset",
+  "key": "fuzzy_skin_ripple_offset",
+  "type": "coPercent",
+  "value": "51%",
+  "ui": true,
+  "label": "Ripple offset",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Fuzzy Skin",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.fuzzy_skin_ripples_per_layer",
+  "key": "fuzzy_skin_ripples_per_layer",
+  "type": "coInt",
+  "value": "16",
+  "ui": true,
+  "label": "Number of ripples per layer",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Fuzzy Skin",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.fuzzy_skin_scale",
+  "key": "fuzzy_skin_scale",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Fuzzy skin feature size",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Fuzzy Skin",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.fuzzy_skin_thickness",
+  "key": "fuzzy_skin_thickness",
+  "type": "coFloat",
+  "value": "0.25",
+  "ui": true,
+  "label": "Fuzzy skin thickness",
+  "mode": "simple",
+  "tab": "Others",
+  "section": "Fuzzy Skin",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.gap_fill_flow_ratio",
+  "key": "gap_fill_flow_ratio",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Gap fill flow ratio",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.gap_fill_target",
+  "key": "gap_fill_target",
+  "type": "coEnum",
+  "value": "everywhere",
+  "ui": true,
+  "label": "Apply gap fill",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.gap_infill_speed",
+  "key": "gap_infill_speed",
+  "type": "coFloat",
+  "value": "37.5",
+  "ui": true,
+  "label": "Gap infill",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Other layers speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.gcode_add_line_number",
+  "key": "gcode_add_line_number",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Add line number",
+  "mode": "develop",
+  "tab": "Others",
+  "section": "G-code output",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.gcode_comments",
+  "key": "gcode_comments",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Verbose G-code",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "G-code output",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.gcode_flavor",
+  "key": "gcode_flavor",
+  "type": "coEnum",
+  "value": "klipper",
+  "ui": true,
+  "label": "G-code flavor",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Advanced",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.gcode_label_objects",
+  "key": "gcode_label_objects",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Label objects",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "G-code output",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.grab_length",
+  "key": "grab_length",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Grab length",
+  "mode": "develop"
+ },
+ {
+  "id": "param.gyroid_optimized",
+  "key": "gyroid_optimized",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Z-buckling bias optimization (experimental)",
+  "mode": "simple",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.has_filament_switcher",
+  "key": "has_filament_switcher",
+  "type": "coBool",
+  "value": "1",
+  "ui": false,
+  "label": "Has filament switcher",
+  "mode": "develop"
+ },
+ {
+  "id": "param.has_scarf_joint_seam",
+  "key": "has_scarf_joint_seam",
+  "type": "coBool",
+  "value": "1",
+  "ui": false,
+  "label": null,
+  "mode": "advanced"
+ },
+ {
+  "id": "param.head_wrap_detect_zone",
+  "key": "head_wrap_detect_zone",
+  "type": "coPoints",
+  "value": null,
+  "ui": false,
+  "label": "Head wrap detect zone",
+  "mode": "develop"
+ },
+ {
+  "id": "param.high_current_on_filament_swap",
+  "key": "high_current_on_filament_swap",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "High extruder current on filament swap",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Single extruder multi-material parameters",
+  "scope": "printer",
+  "tab_line": 4964
+ },
+ {
+  "id": "param.hole_to_polyhole",
+  "key": "hole_to_polyhole",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Convert holes to polyholes",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Precision",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.hole_to_polyhole_threshold",
+  "key": "hole_to_polyhole_threshold",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Polyhole detection margin",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Precision",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.hole_to_polyhole_twisted",
+  "key": "hole_to_polyhole_twisted",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Polyhole twist",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Precision",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.host_type",
+  "key": "host_type",
+  "type": "coEnum",
+  "value": null,
+  "ui": false,
+  "label": "Host Type",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.hot_plate_temp",
+  "key": "hot_plate_temp",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Other layers",
+  "mode": "simple"
+ },
+ {
+  "id": "param.hot_plate_temp_initial_layer",
+  "key": "hot_plate_temp_initial_layer",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "First layer",
+  "mode": "simple"
+ },
+ {
+  "id": "param.idle_temperature",
+  "key": "idle_temperature",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Idle temperature",
+  "mode": "simple",
+  "tab": "Filament",
+  "section": "Basic information",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.independent_support_layer_height",
+  "key": "independent_support_layer_height",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Independent support layer height",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.infill_anchor",
+  "key": "infill_anchor",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Sparse infill anchor length",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.infill_anchor_max",
+  "key": "infill_anchor_max",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Maximum length of the infill anchor",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.infill_combination",
+  "key": "infill_combination",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Infill combination",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.infill_combination_max_layer_height",
+  "key": "infill_combination_max_layer_height",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Infill combination - Max layer height",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.infill_direction",
+  "key": "infill_direction",
+  "type": "coFloat",
+  "value": "56.25",
+  "ui": true,
+  "label": "Sparse infill direction",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.infill_jerk",
+  "key": "infill_jerk",
+  "type": "coFloat",
+  "value": "11.25",
+  "ui": true,
+  "label": "Infill",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Jerk(XY)",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.infill_lock_depth",
+  "key": "infill_lock_depth",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Infill lock depth",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.infill_overhang_angle",
+  "key": "infill_overhang_angle",
+  "type": "coFloat",
+  "value": "75",
+  "ui": true,
+  "label": "Infill overhang angle",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.infill_shift_step",
+  "key": "infill_shift_step",
+  "type": "coFloat",
+  "value": "0.5",
+  "ui": true,
+  "label": "Infill shift step",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.infill_wall_overlap",
+  "key": "infill_wall_overlap",
+  "type": "coPercent",
+  "value": "16%",
+  "ui": true,
+  "label": "Infill/Wall overlap",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.inherits",
+  "key": "inherits",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "Inherits profile",
+  "mode": "simple"
+ },
+ {
+  "id": "param.inherits_group",
+  "key": "inherits_group",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.initial_layer_acceleration",
+  "key": "initial_layer_acceleration",
+  "type": "coFloat",
+  "value": "375",
+  "ui": true,
+  "label": "First layer",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Acceleration",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.initial_layer_infill_speed",
+  "key": "initial_layer_infill_speed",
+  "type": "coFloat",
+  "value": "75",
+  "ui": true,
+  "label": "First layer infill",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "First layer speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.initial_layer_jerk",
+  "key": "initial_layer_jerk",
+  "type": "coFloat",
+  "value": "11.25",
+  "ui": true,
+  "label": "First layer",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Jerk(XY)",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.initial_layer_line_width",
+  "key": "initial_layer_line_width",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "First layer",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Line width",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.initial_layer_min_bead_width",
+  "key": "initial_layer_min_bead_width",
+  "type": "coPercent",
+  "value": "86%",
+  "ui": true,
+  "label": "First layer minimum wall width",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Wall generator",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.initial_layer_print_height",
+  "key": "initial_layer_print_height",
+  "type": "coFloat",
+  "value": "0.25",
+  "ui": true,
+  "label": "First layer height",
+  "mode": "simple",
+  "tab": "Quality",
+  "section": "Layer height",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.initial_layer_speed",
+  "key": "initial_layer_speed",
+  "type": "coFloat",
+  "value": "37.5",
+  "ui": true,
+  "label": "First layer",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "First layer speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.initial_layer_travel_acceleration",
+  "key": "initial_layer_travel_acceleration",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "First layer travel",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Acceleration",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.initial_layer_travel_jerk",
+  "key": "initial_layer_travel_jerk",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "First layer travel",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Jerk(XY)",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.initial_layer_travel_speed",
+  "key": "initial_layer_travel_speed",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "First layer travel speed",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "First layer speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.inner_wall_acceleration",
+  "key": "inner_wall_acceleration",
+  "type": "coFloat",
+  "value": "12500",
+  "ui": true,
+  "label": "Inner wall",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Acceleration",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.inner_wall_filament_id",
+  "key": "inner_wall_filament_id",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Inner walls",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Filament for Features",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.inner_wall_flow_ratio",
+  "key": "inner_wall_flow_ratio",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Inner wall flow ratio",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.inner_wall_jerk",
+  "key": "inner_wall_jerk",
+  "type": "coFloat",
+  "value": "11.25",
+  "ui": true,
+  "label": "Inner wall",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Jerk(XY)",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.inner_wall_line_width",
+  "key": "inner_wall_line_width",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Inner wall",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Line width",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.inner_wall_speed",
+  "key": "inner_wall_speed",
+  "type": "coFloat",
+  "value": "75",
+  "ui": true,
+  "label": "Inner wall",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Other layers speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.input_shaping_damp_x",
+  "key": "input_shaping_damp_x",
+  "type": "coFloat",
+  "value": "0.125",
+  "ui": false,
+  "label": "X",
+  "mode": "expert"
+ },
+ {
+  "id": "param.input_shaping_damp_y",
+  "key": "input_shaping_damp_y",
+  "type": "coFloat",
+  "value": "0.125",
+  "ui": false,
+  "label": "Y",
+  "mode": "expert"
+ },
+ {
+  "id": "param.input_shaping_emit",
+  "key": "input_shaping_emit",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Emit input shaping",
+  "mode": "expert",
+  "tab": "Motion ability",
+  "section": "Resonance Compensation",
+  "scope": "printer",
+  "tab_line": 4831
+ },
+ {
+  "id": "param.input_shaping_freq_x",
+  "key": "input_shaping_freq_x",
+  "type": "coFloat",
+  "value": "1",
+  "ui": false,
+  "label": "X",
+  "mode": "expert"
+ },
+ {
+  "id": "param.input_shaping_freq_y",
+  "key": "input_shaping_freq_y",
+  "type": "coFloat",
+  "value": "1",
+  "ui": false,
+  "label": "Y",
+  "mode": "expert"
+ },
+ {
+  "id": "param.input_shaping_type",
+  "key": "input_shaping_type",
+  "type": "coEnum",
+  "value": null,
+  "ui": true,
+  "label": "Input shaper type",
+  "mode": "expert",
+  "tab": "Motion ability",
+  "section": "Resonance Compensation",
+  "scope": "printer",
+  "tab_line": 4831
+ },
+ {
+  "id": "param.interface_shells",
+  "key": "interface_shells",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Interface shells",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.interlocking_beam",
+  "key": "interlocking_beam",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Use beam interlocking",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.interlocking_beam_layer_count",
+  "key": "interlocking_beam_layer_count",
+  "type": "coInt",
+  "value": "3",
+  "ui": true,
+  "label": "Interlocking beam layers",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.interlocking_beam_width",
+  "key": "interlocking_beam_width",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Interlocking beam width",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.interlocking_boundary_avoidance",
+  "key": "interlocking_boundary_avoidance",
+  "type": "coInt",
+  "value": "3",
+  "ui": true,
+  "label": "Interlocking boundary avoidance",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.interlocking_depth",
+  "key": "interlocking_depth",
+  "type": "coInt",
+  "value": "3",
+  "ui": true,
+  "label": "Interlocking depth",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.interlocking_orientation",
+  "key": "interlocking_orientation",
+  "type": "coFloat",
+  "value": "28.125",
+  "ui": true,
+  "label": "Interlocking direction",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.internal_bridge_angle",
+  "key": "internal_bridge_angle",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Internal bridge infill direction",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.internal_bridge_density",
+  "key": "internal_bridge_density",
+  "type": "coPercent",
+  "value": "101%",
+  "ui": true,
+  "label": "Internal bridge density",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Bridging",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.internal_bridge_fan_speed",
+  "key": "internal_bridge_fan_speed",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Internal bridges fan speed",
+  "mode": "advanced",
+  "tab": "Cooling",
+  "section": "Part cooling fan",
+  "scope": "filament",
+  "tab_line": 4070
+ },
+ {
+  "id": "param.internal_bridge_flow",
+  "key": "internal_bridge_flow",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Internal bridge flow ratio",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Bridging",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.internal_bridge_speed",
+  "key": "internal_bridge_speed",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": false,
+  "label": "Internal",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.internal_solid_filament_id",
+  "key": "internal_solid_filament_id",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Internal solid infill",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Filament for Features",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.internal_solid_infill_acceleration",
+  "key": "internal_solid_infill_acceleration",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Internal solid infill",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Acceleration",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.internal_solid_infill_flow_ratio",
+  "key": "internal_solid_infill_flow_ratio",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Internal solid infill flow ratio",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.internal_solid_infill_line_width",
+  "key": "internal_solid_infill_line_width",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Internal solid infill",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Line width",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.internal_solid_infill_pattern",
+  "key": "internal_solid_infill_pattern",
+  "type": "coEnum",
+  "value": null,
+  "ui": true,
+  "label": "Internal solid infill pattern",
+  "mode": "simple",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.internal_solid_infill_speed",
+  "key": "internal_solid_infill_speed",
+  "type": "coFloat",
+  "value": "125",
+  "ui": true,
+  "label": "Internal solid infill",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Other layers speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.ironing_angle",
+  "key": "ironing_angle",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Ironing angle offset",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Ironing",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.ironing_angle_fixed",
+  "key": "ironing_angle_fixed",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Fixed ironing angle",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Ironing",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.ironing_expansion",
+  "key": "ironing_expansion",
+  "type": "coFloat",
+  "value": "1",
+  "ui": false,
+  "label": "Ironing expansion",
+  "mode": "expert"
+ },
+ {
+  "id": "param.ironing_fan_speed",
+  "key": "ironing_fan_speed",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Ironing fan speed",
+  "mode": "advanced",
+  "tab": "Cooling",
+  "section": "Part cooling fan",
+  "scope": "filament",
+  "tab_line": 4070
+ },
+ {
+  "id": "param.ironing_flow",
+  "key": "ironing_flow",
+  "type": "coPercent",
+  "value": "11%",
+  "ui": true,
+  "label": "Ironing flow",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Ironing",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.ironing_inset",
+  "key": "ironing_inset",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Ironing inset",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Ironing",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.ironing_pattern",
+  "key": "ironing_pattern",
+  "type": "coEnum",
+  "value": "concentric",
+  "ui": true,
+  "label": "Ironing Pattern",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Ironing",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.ironing_spacing",
+  "key": "ironing_spacing",
+  "type": "coFloat",
+  "value": "0.125",
+  "ui": true,
+  "label": "Ironing line spacing",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Ironing",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.ironing_speed",
+  "key": "ironing_speed",
+  "type": "coFloat",
+  "value": "25",
+  "ui": true,
+  "label": "Ironing speed",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Other layers speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.ironing_type",
+  "key": "ironing_type",
+  "type": "coEnum",
+  "value": "no ironing",
+  "ui": true,
+  "label": "Ironing Type",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Ironing",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.is_infill_first",
+  "key": "is_infill_first",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Print infill first",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.lateral_lattice_angle_1",
+  "key": "lateral_lattice_angle_1",
+  "type": "coFloat",
+  "value": "-56.25",
+  "ui": true,
+  "label": "Lateral lattice angle 1",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.lateral_lattice_angle_2",
+  "key": "lateral_lattice_angle_2",
+  "type": "coFloat",
+  "value": "56.25",
+  "ui": true,
+  "label": "Lateral lattice angle 2",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.layer_change_gcode",
+  "key": "layer_change_gcode",
+  "type": "coString",
+  "value": "; HARNESS_MARK layer_change_gcode",
+  "ui": false,
+  "label": "Layer change G-code",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.layer_height",
+  "key": "layer_height",
+  "type": "coFloat",
+  "value": "0.25",
+  "ui": true,
+  "label": "Layer height",
+  "mode": "simple",
+  "tab": "Quality",
+  "section": "Layer height",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.lightning_overhang_angle",
+  "key": "lightning_overhang_angle",
+  "type": "coFloat",
+  "value": "56.25",
+  "ui": true,
+  "label": "Lightning overhang angle",
+  "mode": "expert",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.lightning_prune_angle",
+  "key": "lightning_prune_angle",
+  "type": "coFloat",
+  "value": "56.25",
+  "ui": true,
+  "label": "Prune angle",
+  "mode": "expert",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.lightning_straightening_angle",
+  "key": "lightning_straightening_angle",
+  "type": "coFloat",
+  "value": "56.25",
+  "ui": true,
+  "label": "Straightening angle",
+  "mode": "expert",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.line_width",
+  "key": "line_width",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Default",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Line width",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.long_retractions_when_cut",
+  "key": "long_retractions_when_cut",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Long retraction when cut (beta)",
+  "mode": "develop",
+  "tab": "Extruder 1",
+  "section": "Retraction when switching material",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.long_retractions_when_ec",
+  "key": "long_retractions_when_ec",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Long retraction when extruder change",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Multi Filament",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.machine_end_gcode",
+  "key": "machine_end_gcode",
+  "type": "coString",
+  "value": "; HARNESS_MARK machine_end_gcode",
+  "ui": false,
+  "label": "End G-code",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.machine_load_filament_time",
+  "key": "machine_load_filament_time",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Filament load time",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Advanced",
+  "scope": "printer",
+  "tab_line": 4964
+ },
+ {
+  "id": "param.machine_max_acceleration_e",
+  "key": "machine_max_acceleration_e",
+  "type": "coFloats",
+  "value": [
+   "6250"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.machine_max_acceleration_extruding",
+  "key": "machine_max_acceleration_extruding",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.machine_max_acceleration_retracting",
+  "key": "machine_max_acceleration_retracting",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.machine_max_acceleration_travel",
+  "key": "machine_max_acceleration_travel",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "advanced"
+ },
+ {
+  "id": "param.machine_max_acceleration_x",
+  "key": "machine_max_acceleration_x",
+  "type": "coFloats",
+  "value": [
+   "1250"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.machine_max_acceleration_y",
+  "key": "machine_max_acceleration_y",
+  "type": "coFloats",
+  "value": [
+   "1250"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.machine_max_acceleration_z",
+  "key": "machine_max_acceleration_z",
+  "type": "coFloats",
+  "value": [
+   "625"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.machine_max_jerk_e",
+  "key": "machine_max_jerk_e",
+  "type": "coFloats",
+  "value": [
+   "3.125"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.machine_max_jerk_x",
+  "key": "machine_max_jerk_x",
+  "type": "coFloats",
+  "value": [
+   "12.5"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.machine_max_jerk_y",
+  "key": "machine_max_jerk_y",
+  "type": "coFloats",
+  "value": [
+   "12.5"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.machine_max_jerk_z",
+  "key": "machine_max_jerk_z",
+  "type": "coFloats",
+  "value": [
+   "0.25"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.machine_max_junction_deviation",
+  "key": "machine_max_junction_deviation",
+  "type": "coFloats",
+  "value": [
+   "0.5"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "advanced"
+ },
+ {
+  "id": "param.machine_max_speed_e",
+  "key": "machine_max_speed_e",
+  "type": "coFloats",
+  "value": [
+   "150"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.machine_max_speed_x",
+  "key": "machine_max_speed_x",
+  "type": "coFloats",
+  "value": [
+   "625"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.machine_max_speed_y",
+  "key": "machine_max_speed_y",
+  "type": "coFloats",
+  "value": [
+   "625"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.machine_max_speed_z",
+  "key": "machine_max_speed_z",
+  "type": "coFloats",
+  "value": [
+   "15"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.machine_min_extruding_rate",
+  "key": "machine_min_extruding_rate",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "develop"
+ },
+ {
+  "id": "param.machine_min_travel_rate",
+  "key": "machine_min_travel_rate",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "develop"
+ },
+ {
+  "id": "param.machine_pause_gcode",
+  "key": "machine_pause_gcode",
+  "type": "coString",
+  "value": "; HARNESS_MARK machine_pause_gcode",
+  "ui": false,
+  "label": "Pause G-code",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.machine_start_gcode",
+  "key": "machine_start_gcode",
+  "type": "coString",
+  "value": "; HARNESS_MARK machine_start_gcode",
+  "ui": false,
+  "label": "Start G-code",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.machine_tool_change_time",
+  "key": "machine_tool_change_time",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Tool change time",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Advanced",
+  "scope": "printer",
+  "tab_line": 4964
+ },
+ {
+  "id": "param.machine_unload_filament_time",
+  "key": "machine_unload_filament_time",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Filament unload time",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Advanced",
+  "scope": "printer",
+  "tab_line": 4964
+ },
+ {
+  "id": "param.make_overhang_printable",
+  "key": "make_overhang_printable",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Make overhangs printable",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Overhangs",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.make_overhang_printable_angle",
+  "key": "make_overhang_printable_angle",
+  "type": "coFloat",
+  "value": "68.75",
+  "ui": true,
+  "label": "Make overhangs printable - Maximum angle",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Overhangs",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.make_overhang_printable_hole_size",
+  "key": "make_overhang_printable_hole_size",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Make overhangs printable - Hole area",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Overhangs",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.manual_filament_change",
+  "key": "manual_filament_change",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Manual Filament Change",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Single extruder multi-material setup",
+  "scope": "printer",
+  "tab_line": 4964
+ },
+ {
+  "id": "param.master_extruder_id",
+  "key": "master_extruder_id",
+  "type": "coInt",
+  "value": "1",
+  "ui": false,
+  "label": "Master extruder id",
+  "mode": "simple"
+ },
+ {
+  "id": "param.max_bridge_length",
+  "key": "max_bridge_length",
+  "type": "coFloat",
+  "value": "12.5",
+  "ui": true,
+  "label": "Max bridge length",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.max_layer_height",
+  "key": "max_layer_height",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Max",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Layer height limits",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.max_resonance_avoidance_speed",
+  "key": "max_resonance_avoidance_speed",
+  "type": "coFloat",
+  "value": "150",
+  "ui": false,
+  "label": "Max",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.max_travel_detour_distance",
+  "key": "max_travel_detour_distance",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Avoid crossing walls - Max detour length",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.max_volumetric_extrusion_rate_slope",
+  "key": "max_volumetric_extrusion_rate_slope",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Extrusion rate smoothing",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.max_volumetric_extrusion_rate_slope_segment_length",
+  "key": "max_volumetric_extrusion_rate_slope_segment_length",
+  "type": "coFloat",
+  "value": "3.75",
+  "ui": true,
+  "label": "Smoothing segment length",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.min_bead_width",
+  "key": "min_bead_width",
+  "type": "coPercent",
+  "value": "86%",
+  "ui": true,
+  "label": "Minimum wall width",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Wall generator",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.min_feature_size",
+  "key": "min_feature_size",
+  "type": "coPercent",
+  "value": "26%",
+  "ui": true,
+  "label": "Minimum feature size",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Wall generator",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.min_layer_height",
+  "key": "min_layer_height",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Min",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Layer height limits",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.min_length_factor",
+  "key": "min_length_factor",
+  "type": "coFloat",
+  "value": "0.625",
+  "ui": true,
+  "label": "Minimum wall length",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Wall generator",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.min_resonance_avoidance_speed",
+  "key": "min_resonance_avoidance_speed",
+  "type": "coFloat",
+  "value": "87.5",
+  "ui": false,
+  "label": "Min",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.min_skirt_length",
+  "key": "min_skirt_length",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Skirt minimum extrusion length",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Skirt",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.min_width_top_surface",
+  "key": "min_width_top_surface",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "One wall threshold",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.minimum_sparse_infill_area",
+  "key": "minimum_sparse_infill_area",
+  "type": "coFloat",
+  "value": "18.75",
+  "ui": true,
+  "label": "Minimum sparse infill threshold",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.mmu_segmented_region_interlocking_depth",
+  "key": "mmu_segmented_region_interlocking_depth",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Interlocking depth of a segmented region",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.mmu_segmented_region_max_width",
+  "key": "mmu_segmented_region_max_width",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Maximum width of a segmented region",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.notes",
+  "key": "notes",
+  "type": "coString",
+  "value": "harness_test",
+  "ui": false,
+  "label": "Configuration notes",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.nozzle_diameter",
+  "key": "nozzle_diameter",
+  "type": "coFloats",
+  "value": null,
+  "ui": true,
+  "label": "Nozzle diameter",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Basic information",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.nozzle_flush_dataset",
+  "key": "nozzle_flush_dataset",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.nozzle_height",
+  "key": "nozzle_height",
+  "type": "coFloat",
+  "value": "3.125",
+  "ui": false,
+  "label": "Nozzle height",
+  "mode": "develop"
+ },
+ {
+  "id": "param.nozzle_hrc",
+  "key": "nozzle_hrc",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Nozzle HRC",
+  "mode": "develop",
+  "tab": "Basic information",
+  "section": "Accessory",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.nozzle_temperature",
+  "key": "nozzle_temperature",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Other layers",
+  "mode": "simple"
+ },
+ {
+  "id": "param.nozzle_temperature_initial_layer",
+  "key": "nozzle_temperature_initial_layer",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "First layer",
+  "mode": "simple"
+ },
+ {
+  "id": "param.nozzle_temperature_range_high",
+  "key": "nozzle_temperature_range_high",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Max",
+  "mode": "simple"
+ },
+ {
+  "id": "param.nozzle_temperature_range_low",
+  "key": "nozzle_temperature_range_low",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Min",
+  "mode": "simple"
+ },
+ {
+  "id": "param.nozzle_type",
+  "key": "nozzle_type",
+  "type": "coEnums",
+  "value": [
+   "hardened_steel"
+  ],
+  "ui": true,
+  "label": "Nozzle type",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Accessory",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.nozzle_volume",
+  "key": "nozzle_volume",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Nozzle volume",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Basic information",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.nozzle_volume_type",
+  "key": "nozzle_volume_type",
+  "type": "coEnums",
+  "value": null,
+  "ui": false,
+  "label": "Nozzle Volume Type",
+  "mode": "simple"
+ },
+ {
+  "id": "param.only_one_wall_first_layer",
+  "key": "only_one_wall_first_layer",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Only one wall on first layer",
+  "mode": "simple",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.only_one_wall_top",
+  "key": "only_one_wall_top",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Only one wall on top surfaces",
+  "mode": "simple",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.ooze_prevention",
+  "key": "ooze_prevention",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Enable",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Ooze prevention",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.other_layers_print_sequence",
+  "key": "other_layers_print_sequence",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Other layers print sequence",
+  "mode": "simple"
+ },
+ {
+  "id": "param.other_layers_print_sequence_nums",
+  "key": "other_layers_print_sequence_nums",
+  "type": "coInt",
+  "value": "1",
+  "ui": false,
+  "label": "The number of other layers print sequence",
+  "mode": "simple"
+ },
+ {
+  "id": "param.other_layers_sequence_choice",
+  "key": "other_layers_sequence_choice",
+  "type": "coEnum",
+  "value": "Customize",
+  "ui": false,
+  "label": "Other layers filament sequence",
+  "mode": "simple"
+ },
+ {
+  "id": "param.outer_wall_acceleration",
+  "key": "outer_wall_acceleration",
+  "type": "coFloat",
+  "value": "625",
+  "ui": true,
+  "label": "Outer wall",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Acceleration",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.outer_wall_filament_id",
+  "key": "outer_wall_filament_id",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Outer walls",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Filament for Features",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.outer_wall_flow_ratio",
+  "key": "outer_wall_flow_ratio",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Outer wall flow ratio",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.outer_wall_jerk",
+  "key": "outer_wall_jerk",
+  "type": "coFloat",
+  "value": "11.25",
+  "ui": true,
+  "label": "Outer wall",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Jerk(XY)",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.outer_wall_line_width",
+  "key": "outer_wall_line_width",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Outer wall",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Line width",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.outer_wall_speed",
+  "key": "outer_wall_speed",
+  "type": "coFloat",
+  "value": "75",
+  "ui": true,
+  "label": "Outer wall",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Other layers speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.overhang_1_4_speed",
+  "key": "overhang_1_4_speed",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": false,
+  "label": "10%",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.overhang_2_4_speed",
+  "key": "overhang_2_4_speed",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": false,
+  "label": "25%",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.overhang_3_4_speed",
+  "key": "overhang_3_4_speed",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": false,
+  "label": "50%",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.overhang_4_4_speed",
+  "key": "overhang_4_4_speed",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": false,
+  "label": "75%",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.overhang_fan_speed",
+  "key": "overhang_fan_speed",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Overhangs and external bridges fan speed",
+  "mode": "advanced",
+  "tab": "Cooling",
+  "section": "Part cooling fan",
+  "scope": "filament",
+  "tab_line": 4070
+ },
+ {
+  "id": "param.overhang_fan_threshold",
+  "key": "overhang_fan_threshold",
+  "type": "coEnums",
+  "value": null,
+  "ui": true,
+  "label": "Overhang cooling activation threshold",
+  "mode": "advanced",
+  "tab": "Cooling",
+  "section": "Part cooling fan",
+  "scope": "filament",
+  "tab_line": 4070
+ },
+ {
+  "id": "param.overhang_flow_ratio",
+  "key": "overhang_flow_ratio",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Overhang flow ratio",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.overhang_reverse",
+  "key": "overhang_reverse",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Reverse on even",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Overhangs",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.overhang_reverse_internal_only",
+  "key": "overhang_reverse_internal_only",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Reverse only internal perimeters",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Overhangs",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.overhang_reverse_threshold",
+  "key": "overhang_reverse_threshold",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Reverse threshold",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Overhangs",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.parallel_printheads_bed_exclude_areas",
+  "key": "parallel_printheads_bed_exclude_areas",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": "Parallel printheads bed exclude areas",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.parallel_printheads_count",
+  "key": "parallel_printheads_count",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Parallel printheads count",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Printable space",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.parking_pos_retraction",
+  "key": "parking_pos_retraction",
+  "type": "coFloat",
+  "value": "115",
+  "ui": true,
+  "label": "Filament parking position",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Single extruder multi-material parameters",
+  "scope": "printer",
+  "tab_line": 4964
+ },
+ {
+  "id": "param.part_cooling_fan_min_pwm",
+  "key": "part_cooling_fan_min_pwm",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Minimum non-zero part cooling fan speed",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Cooling Fan",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.pellet_flow_coefficient",
+  "key": "pellet_flow_coefficient",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Pellet flow coefficient",
+  "mode": "simple",
+  "tab": "Filament",
+  "section": "Flow ratio and Pressure Advance",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.pellet_modded_printer",
+  "key": "pellet_modded_printer",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Pellet Modded Printer",
+  "mode": "simple",
+  "tab": "Basic information",
+  "section": "Advanced",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.physical_extruder_map",
+  "key": "physical_extruder_map",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Map the logical extruder to physical extruder",
+  "mode": "develop"
+ },
+ {
+  "id": "param.post_process",
+  "key": "post_process",
+  "type": "coStrings",
+  "value": null,
+  "ui": false,
+  "label": "Post-processing Scripts",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.precise_outer_wall",
+  "key": "precise_outer_wall",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Precise wall",
+  "mode": "simple",
+  "tab": "Quality",
+  "section": "Precision",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.precise_z_height",
+  "key": "precise_z_height",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Precise Z height",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Precision",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.preferred_orientation",
+  "key": "preferred_orientation",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Preferred orientation",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Printable space",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.preheat_steps",
+  "key": "preheat_steps",
+  "type": "coInt",
+  "value": "2",
+  "ui": true,
+  "label": "Preheat steps",
+  "mode": "develop",
+  "tab": "Multimaterial",
+  "section": "Ooze prevention",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.preheat_time",
+  "key": "preheat_time",
+  "type": "coFloat",
+  "value": "37.5",
+  "ui": true,
+  "label": "Preheat time",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Ooze prevention",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.preset_name",
+  "key": "preset_name",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.preset_names",
+  "key": "preset_names",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": "Printer preset names",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.pressure_advance",
+  "key": "pressure_advance",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Pressure advance",
+  "mode": "advanced",
+  "tab": "Filament",
+  "section": "Flow ratio and Pressure Advance",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.prime_tower_brim_width",
+  "key": "prime_tower_brim_width",
+  "type": "coFloat",
+  "value": "3.75",
+  "ui": true,
+  "label": "Brim width",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.prime_tower_enable_framework",
+  "key": "prime_tower_enable_framework",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Internal ribs",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.prime_tower_flat_ironing",
+  "key": "prime_tower_flat_ironing",
+  "type": "coBool",
+  "value": "1",
+  "ui": false,
+  "label": null,
+  "mode": "advanced"
+ },
+ {
+  "id": "param.prime_tower_infill_gap",
+  "key": "prime_tower_infill_gap",
+  "type": "coPercent",
+  "value": "151%",
+  "ui": true,
+  "label": "Infill gap",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.prime_tower_skip_points",
+  "key": "prime_tower_skip_points",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Skip points",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.prime_tower_width",
+  "key": "prime_tower_width",
+  "type": "coFloat",
+  "value": "75",
+  "ui": true,
+  "label": "Width",
+  "mode": "simple",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.prime_volume",
+  "key": "prime_volume",
+  "type": "coFloat",
+  "value": "56.25",
+  "ui": true,
+  "label": "Prime volume",
+  "mode": "simple",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.print_compatible_printers",
+  "key": "print_compatible_printers",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.print_extruder_id",
+  "key": "print_extruder_id",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Print extruder id",
+  "mode": "simple"
+ },
+ {
+  "id": "param.print_extruder_variant",
+  "key": "print_extruder_variant",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": "Print's extruder variant",
+  "mode": "simple"
+ },
+ {
+  "id": "param.print_flow_ratio",
+  "key": "print_flow_ratio",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Flow ratio",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.print_host",
+  "key": "print_host",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "Hostname, IP or URL",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.print_host_webui",
+  "key": "print_host_webui",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "Device UI",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.print_order",
+  "key": "print_order",
+  "type": "coEnum",
+  "value": "as_obj_list",
+  "ui": true,
+  "label": "Intra-layer order",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Special mode",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.print_sequence",
+  "key": "print_sequence",
+  "type": "coEnum",
+  "value": "by layer",
+  "ui": true,
+  "label": "Print sequence",
+  "mode": "simple",
+  "tab": "Others",
+  "section": "Special mode",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.print_settings_id",
+  "key": "print_settings_id",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.printable_area",
+  "key": "printable_area",
+  "type": "coPoints",
+  "value": null,
+  "ui": false,
+  "label": "Printable area",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.printable_height",
+  "key": "printable_height",
+  "type": "coFloat",
+  "value": "125",
+  "ui": true,
+  "label": "Printable height",
+  "mode": "simple",
+  "tab": "Basic information",
+  "section": "Printable space",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.printer_agent",
+  "key": "printer_agent",
+  "type": "coString",
+  "value": "harness_test",
+  "ui": false,
+  "label": "Printer Agent",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.printer_extruder_id",
+  "key": "printer_extruder_id",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Printer extruder id",
+  "mode": "simple"
+ },
+ {
+  "id": "param.printer_extruder_variant",
+  "key": "printer_extruder_variant",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": "Printer's extruder variant",
+  "mode": "simple"
+ },
+ {
+  "id": "param.printer_model",
+  "key": "printer_model",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "Printer type",
+  "mode": "simple"
+ },
+ {
+  "id": "param.printer_notes",
+  "key": "printer_notes",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "Printer notes",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.printer_settings_id",
+  "key": "printer_settings_id",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.printer_structure",
+  "key": "printer_structure",
+  "type": "coEnum",
+  "value": "corexy",
+  "ui": true,
+  "label": "Printer structure",
+  "mode": "develop",
+  "tab": "Basic information",
+  "section": "Advanced",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.printer_technology",
+  "key": "printer_technology",
+  "type": "coEnum",
+  "value": null,
+  "ui": false,
+  "label": "Printer technology",
+  "mode": "simple"
+ },
+ {
+  "id": "param.printer_variant",
+  "key": "printer_variant",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "Printer variant",
+  "mode": "simple"
+ },
+ {
+  "id": "param.printhost_apikey",
+  "key": "printhost_apikey",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "API Key / Password",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.printhost_authorization_type",
+  "key": "printhost_authorization_type",
+  "type": "coEnum",
+  "value": null,
+  "ui": false,
+  "label": "Authorization Type",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.printhost_cafile",
+  "key": "printhost_cafile",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "HTTPS CA File",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.printhost_password",
+  "key": "printhost_password",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "Password",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.printhost_port",
+  "key": "printhost_port",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "Printer",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.printhost_ssl_ignore_revoke",
+  "key": "printhost_ssl_ignore_revoke",
+  "type": "coBool",
+  "value": null,
+  "ui": false,
+  "label": "Ignore HTTPS certificate revocation checks",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.printhost_user",
+  "key": "printhost_user",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "User",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.printing_by_object_gcode",
+  "key": "printing_by_object_gcode",
+  "type": "coString",
+  "value": "; HARNESS_MARK printing_by_object_gcode",
+  "ui": false,
+  "label": "Between Object G-code",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.process_change_extrusion_role_gcode",
+  "key": "process_change_extrusion_role_gcode",
+  "type": "coString",
+  "value": "; HARNESS_MARK process_change_extrusion_role_gcode",
+  "ui": false,
+  "label": "Change extrusion role G-code (process)",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.purge_in_prime_tower",
+  "key": "purge_in_prime_tower",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Purge in prime tower",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Wipe tower",
+  "scope": "printer",
+  "tab_line": 4964
+ },
+ {
+  "id": "param.raft_contact_distance",
+  "key": "raft_contact_distance",
+  "type": "coFloat",
+  "value": "0.125",
+  "ui": true,
+  "label": "Raft contact Z distance",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Raft",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.raft_expansion",
+  "key": "raft_expansion",
+  "type": "coFloat",
+  "value": "1.875",
+  "ui": false,
+  "label": "Raft expansion",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.raft_first_layer_density",
+  "key": "raft_first_layer_density",
+  "type": "coPercent",
+  "value": "91%",
+  "ui": true,
+  "label": "First layer density",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Support",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.raft_first_layer_expansion",
+  "key": "raft_first_layer_expansion",
+  "type": "coFloat",
+  "value": "2.5",
+  "ui": true,
+  "label": "First layer expansion",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Support",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.raft_layers",
+  "key": "raft_layers",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Raft layers",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Raft",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.reduce_crossing_wall",
+  "key": "reduce_crossing_wall",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Avoid crossing walls",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.reduce_fan_stop_start_freq",
+  "key": "reduce_fan_stop_start_freq",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Keep fan always on",
+  "mode": "simple",
+  "tab": "Cooling",
+  "section": "Part cooling fan",
+  "scope": "filament",
+  "tab_line": 4070
+ },
+ {
+  "id": "param.reduce_infill_retraction",
+  "key": "reduce_infill_retraction",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Reduce infill retraction",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "G-code output",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.relative_bridge_angle",
+  "key": "relative_bridge_angle",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Relative bridge angle",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.required_nozzle_HRC",
+  "key": "required_nozzle_HRC",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Required nozzle HRC",
+  "mode": "develop",
+  "tab": "Filament",
+  "section": "Basic information",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.resolution",
+  "key": "resolution",
+  "type": "coFloat",
+  "value": "0.0125",
+  "ui": true,
+  "label": "Resolution",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Precision",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.resonance_avoidance",
+  "key": "resonance_avoidance",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Resonance avoidance",
+  "mode": "advanced",
+  "tab": "Motion ability",
+  "section": "Resonance Compensation",
+  "scope": "printer",
+  "tab_line": 4831
+ },
+ {
+  "id": "param.retract_before_wipe",
+  "key": "retract_before_wipe",
+  "type": "coPercents",
+  "value": [
+   "1%"
+  ],
+  "ui": true,
+  "label": "Retract amount before wipe",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Retraction",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.retract_length_toolchange",
+  "key": "retract_length_toolchange",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Length",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Retraction when switching material",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.retract_lift_above",
+  "key": "retract_lift_above",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Only lift Z above",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Z-Hop",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.retract_lift_below",
+  "key": "retract_lift_below",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Only lift Z below",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Z-Hop",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.retract_lift_enforce",
+  "key": "retract_lift_enforce",
+  "type": "coEnums",
+  "value": [
+   "All Surfaces"
+  ],
+  "ui": true,
+  "label": "On surfaces",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Z-Hop",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.retract_restart_extra",
+  "key": "retract_restart_extra",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Extra length on restart",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Retraction",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.retract_restart_extra_toolchange",
+  "key": "retract_restart_extra_toolchange",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Extra length on restart",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Retraction when switching material",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.retract_when_changing_layer",
+  "key": "retract_when_changing_layer",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Retract when change layer",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Retraction",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.retraction_distances_when_cut",
+  "key": "retraction_distances_when_cut",
+  "type": "coFloats",
+  "value": [
+   "11"
+  ],
+  "ui": true,
+  "label": "Retraction distance when cut",
+  "mode": "develop",
+  "tab": "Extruder 1",
+  "section": "Retraction when switching material",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.retraction_distances_when_ec",
+  "key": "retraction_distances_when_ec",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Retraction distance when extruder change",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Multi Filament",
+  "scope": "filament",
+  "tab_line": 4165
+ },
+ {
+  "id": "param.retraction_length",
+  "key": "retraction_length",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Length",
+  "mode": "simple",
+  "tab": "Extruder 1",
+  "section": "Retraction",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.retraction_minimum_travel",
+  "key": "retraction_minimum_travel",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Travel distance threshold",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Retraction",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.retraction_speed",
+  "key": "retraction_speed",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Retraction Speed",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Retraction",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.role_based_wipe_speed",
+  "key": "role_based_wipe_speed",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Role base wipe speed",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.scan_first_layer",
+  "key": "scan_first_layer",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Scan first layer",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Advanced",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.scarf_angle_threshold",
+  "key": "scarf_angle_threshold",
+  "type": "coInt",
+  "value": "156",
+  "ui": true,
+  "label": "Conditional angle threshold",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.scarf_joint_flow_ratio",
+  "key": "scarf_joint_flow_ratio",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Scarf joint flow ratio",
+  "mode": "expert",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.scarf_joint_speed",
+  "key": "scarf_joint_speed",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Scarf joint speed",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.scarf_overhang_threshold",
+  "key": "scarf_overhang_threshold",
+  "type": "coPercent",
+  "value": "41%",
+  "ui": true,
+  "label": "Conditional overhang threshold",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.seam_gap",
+  "key": "seam_gap",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Seam gap",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.seam_position",
+  "key": "seam_position",
+  "type": "coEnum",
+  "value": "nearest",
+  "ui": true,
+  "label": "Seam position",
+  "mode": "simple",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.seam_slope_conditional",
+  "key": "seam_slope_conditional",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Conditional scarf joint",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.seam_slope_entire_loop",
+  "key": "seam_slope_entire_loop",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Scarf around entire wall",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.seam_slope_inner_walls",
+  "key": "seam_slope_inner_walls",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Scarf joint for inner walls",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.seam_slope_min_length",
+  "key": "seam_slope_min_length",
+  "type": "coFloat",
+  "value": "25",
+  "ui": true,
+  "label": "Scarf length",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.seam_slope_start_height",
+  "key": "seam_slope_start_height",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Scarf start height",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.seam_slope_steps",
+  "key": "seam_slope_steps",
+  "type": "coInt",
+  "value": "11",
+  "ui": true,
+  "label": "Scarf steps",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.seam_slope_type",
+  "key": "seam_slope_type",
+  "type": "coEnum",
+  "value": "external",
+  "ui": true,
+  "label": "Scarf joint seam (beta)",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.set_other_flow_ratios",
+  "key": "set_other_flow_ratios",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Set other flow ratios",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.silent_mode",
+  "key": "silent_mode",
+  "type": "coBool",
+  "value": "1",
+  "ui": false,
+  "label": "Supports silent mode",
+  "mode": "develop"
+ },
+ {
+  "id": "param.single_extruder_multi_material",
+  "key": "single_extruder_multi_material",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Single Extruder Multi Material",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Single extruder multi-material setup",
+  "scope": "printer",
+  "tab_line": 4964
+ },
+ {
+  "id": "param.single_extruder_multi_material_priming",
+  "key": "single_extruder_multi_material_priming",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Prime all printing extruders",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.single_loop_draft_shield",
+  "key": "single_loop_draft_shield",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Single loop after first layer",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Skirt",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.skeleton_infill_density",
+  "key": "skeleton_infill_density",
+  "type": "coPercent",
+  "value": "26%",
+  "ui": true,
+  "label": "Skeleton infill density",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.skeleton_infill_line_width",
+  "key": "skeleton_infill_line_width",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Skeleton line width",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.skin_infill_density",
+  "key": "skin_infill_density",
+  "type": "coPercent",
+  "value": "26%",
+  "ui": true,
+  "label": "Skin infill density",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.skin_infill_depth",
+  "key": "skin_infill_depth",
+  "type": "coFloat",
+  "value": "2.5",
+  "ui": true,
+  "label": "Skin infill depth",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.skin_infill_line_width",
+  "key": "skin_infill_line_width",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Skin line width",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.skirt_distance",
+  "key": "skirt_distance",
+  "type": "coFloat",
+  "value": "2.5",
+  "ui": true,
+  "label": "Skirt distance",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Skirt",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.skirt_height",
+  "key": "skirt_height",
+  "type": "coInt",
+  "value": "2",
+  "ui": true,
+  "label": "Skirt height",
+  "mode": "simple",
+  "tab": "Others",
+  "section": "Skirt",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.skirt_loops",
+  "key": "skirt_loops",
+  "type": "coInt",
+  "value": "2",
+  "ui": true,
+  "label": "Skirt loops",
+  "mode": "simple",
+  "tab": "Others",
+  "section": "Skirt",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.skirt_speed",
+  "key": "skirt_speed",
+  "type": "coFloat",
+  "value": "62.5",
+  "ui": true,
+  "label": "Skirt speed",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Skirt",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.skirt_start_angle",
+  "key": "skirt_start_angle",
+  "type": "coFloat",
+  "value": "-168.75",
+  "ui": true,
+  "label": "Skirt start point",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Skirt",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.skirt_type",
+  "key": "skirt_type",
+  "type": "coEnum",
+  "value": "perobject",
+  "ui": true,
+  "label": "Skirt type",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Skirt",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.slice_closing_radius",
+  "key": "slice_closing_radius",
+  "type": "coFloat",
+  "value": "0.0612",
+  "ui": true,
+  "label": "Slice gap closing radius",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Precision",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.slicing_mode",
+  "key": "slicing_mode",
+  "type": "coEnum",
+  "value": "even_odd",
+  "ui": true,
+  "label": "Slicing Mode",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Special mode",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.slow_down_for_layer_cooling",
+  "key": "slow_down_for_layer_cooling",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Slow printing down for better layer cooling",
+  "mode": "simple",
+  "tab": "Cooling",
+  "section": "Part cooling fan",
+  "scope": "filament",
+  "tab_line": 4070
+ },
+ {
+  "id": "param.slow_down_layer_time",
+  "key": "slow_down_layer_time",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Layer time",
+  "mode": "simple"
+ },
+ {
+  "id": "param.slow_down_layers",
+  "key": "slow_down_layers",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Number of slow layers",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "First layer speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.slow_down_min_speed",
+  "key": "slow_down_min_speed",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Min print speed",
+  "mode": "advanced",
+  "tab": "Cooling",
+  "section": "Part cooling fan",
+  "scope": "filament",
+  "tab_line": 4070
+ },
+ {
+  "id": "param.slowdown_for_curled_perimeters",
+  "key": "slowdown_for_curled_perimeters",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Slow down for curled perimeters",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Overhang speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.small_area_infill_flow_compensation",
+  "key": "small_area_infill_flow_compensation",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Small area flow compensation (beta)",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.small_area_infill_flow_compensation_model",
+  "key": "small_area_infill_flow_compensation_model",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": "Flow Compensation Model",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.small_perimeter_speed",
+  "key": "small_perimeter_speed",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Small perimeters",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Other layers speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.small_perimeter_threshold",
+  "key": "small_perimeter_threshold",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Small perimeters threshold",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Other layers speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.solid_infill_direction",
+  "key": "solid_infill_direction",
+  "type": "coFloat",
+  "value": "56.25",
+  "ui": true,
+  "label": "Solid infill direction",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.solid_infill_rotate_template",
+  "key": "solid_infill_rotate_template",
+  "type": "coString",
+  "value": "; HARNESS_MARK solid_infill_rotate_template",
+  "ui": true,
+  "label": "Solid infill rotation template",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.sparse_infill_acceleration",
+  "key": "sparse_infill_acceleration",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Sparse infill",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Acceleration",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.sparse_infill_density",
+  "key": "sparse_infill_density",
+  "type": "coPercent",
+  "value": "21%",
+  "ui": true,
+  "label": "Sparse infill density",
+  "mode": "simple",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.sparse_infill_filament_id",
+  "key": "sparse_infill_filament_id",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Infill",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Filament for Features",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.sparse_infill_flow_ratio",
+  "key": "sparse_infill_flow_ratio",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Sparse infill flow ratio",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.sparse_infill_line_width",
+  "key": "sparse_infill_line_width",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Sparse infill",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Line width",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.sparse_infill_pattern",
+  "key": "sparse_infill_pattern",
+  "type": "coEnum",
+  "value": "rectilinear",
+  "ui": true,
+  "label": "Sparse infill pattern",
+  "mode": "simple",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.sparse_infill_rotate_template",
+  "key": "sparse_infill_rotate_template",
+  "type": "coString",
+  "value": "; HARNESS_MARK sparse_infill_rotate_template",
+  "ui": true,
+  "label": "Sparse infill rotation template",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.sparse_infill_speed",
+  "key": "sparse_infill_speed",
+  "type": "coFloat",
+  "value": "125",
+  "ui": true,
+  "label": "Sparse infill",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Other layers speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.spiral_finishing_flow_ratio",
+  "key": "spiral_finishing_flow_ratio",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Spiral finishing flow ratio",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Special mode",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.spiral_mode",
+  "key": "spiral_mode",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Spiral vase",
+  "mode": "simple",
+  "tab": "Others",
+  "section": "Special mode",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.spiral_mode_max_xy_smoothing",
+  "key": "spiral_mode_max_xy_smoothing",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Max XY Smoothing",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Special mode",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.spiral_mode_smooth",
+  "key": "spiral_mode_smooth",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Smooth Spiral",
+  "mode": "simple",
+  "tab": "Others",
+  "section": "Special mode",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.spiral_starting_flow_ratio",
+  "key": "spiral_starting_flow_ratio",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Spiral starting flow ratio",
+  "mode": "advanced",
+  "tab": "Others",
+  "section": "Special mode",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.staggered_inner_seams",
+  "key": "staggered_inner_seams",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Staggered inner seams",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.standby_temperature_delta",
+  "key": "standby_temperature_delta",
+  "type": "coInt",
+  "value": "-4",
+  "ui": true,
+  "label": "Temperature variation",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Ooze prevention",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.start_end_points",
+  "key": "start_end_points",
+  "type": "coPoints",
+  "value": null,
+  "ui": false,
+  "label": "Start end points",
+  "mode": "develop"
+ },
+ {
+  "id": "param.supertack_plate_temp",
+  "key": "supertack_plate_temp",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Other layers",
+  "mode": "simple"
+ },
+ {
+  "id": "param.supertack_plate_temp_initial_layer",
+  "key": "supertack_plate_temp_initial_layer",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "First layer",
+  "mode": "simple"
+ },
+ {
+  "id": "param.support_air_filtration",
+  "key": "support_air_filtration",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Support air filtration",
+  "mode": "develop",
+  "tab": "Basic information",
+  "section": "Accessory",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.support_angle",
+  "key": "support_angle",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Pattern angle",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_base_pattern",
+  "key": "support_base_pattern",
+  "type": "coEnum",
+  "value": "rectilinear",
+  "ui": true,
+  "label": "Base pattern",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_base_pattern_spacing",
+  "key": "support_base_pattern_spacing",
+  "type": "coFloat",
+  "value": "3.125",
+  "ui": true,
+  "label": "Base pattern spacing",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_bottom_interface_spacing",
+  "key": "support_bottom_interface_spacing",
+  "type": "coFloat",
+  "value": "0.625",
+  "ui": true,
+  "label": "Bottom interface spacing",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_bottom_z_distance",
+  "key": "support_bottom_z_distance",
+  "type": "coFloat",
+  "value": "0.25",
+  "ui": true,
+  "label": "Bottom Z distance",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_chamber_temp_control",
+  "key": "support_chamber_temp_control",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Support control chamber temperature",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Accessory",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.support_critical_regions_only",
+  "key": "support_critical_regions_only",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Support critical regions only",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Support",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_expansion",
+  "key": "support_expansion",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Normal Support expansion",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_filament",
+  "key": "support_filament",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Support/raft base",
+  "mode": "simple",
+  "tab": "Support",
+  "section": "Support filament",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_flow_ratio",
+  "key": "support_flow_ratio",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Support flow ratio",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.support_interface_bottom_layers",
+  "key": "support_interface_bottom_layers",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Bottom interface layers",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_interface_filament",
+  "key": "support_interface_filament",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Support/raft interface",
+  "mode": "simple",
+  "tab": "Support",
+  "section": "Support filament",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_interface_flow_ratio",
+  "key": "support_interface_flow_ratio",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Support interface flow ratio",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.support_interface_loop_pattern",
+  "key": "support_interface_loop_pattern",
+  "type": "coBool",
+  "value": "1",
+  "ui": false,
+  "label": "Interface use loop pattern",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.support_interface_not_for_body",
+  "key": "support_interface_not_for_body",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Avoid interface filament for base",
+  "mode": "simple",
+  "tab": "Support",
+  "section": "Support filament",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_interface_pattern",
+  "key": "support_interface_pattern",
+  "type": "coEnum",
+  "value": "rectilinear",
+  "ui": true,
+  "label": "Interface pattern",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_interface_spacing",
+  "key": "support_interface_spacing",
+  "type": "coFloat",
+  "value": "0.625",
+  "ui": true,
+  "label": "Top interface spacing",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_interface_speed",
+  "key": "support_interface_speed",
+  "type": "coFloat",
+  "value": "100",
+  "ui": true,
+  "label": "Support interface",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Other layers speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.support_interface_top_layers",
+  "key": "support_interface_top_layers",
+  "type": "coInt",
+  "value": "4",
+  "ui": true,
+  "label": "Top interface layers",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_ironing",
+  "key": "support_ironing",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Ironing Support Interface",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Support ironing",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_ironing_flow",
+  "key": "support_ironing_flow",
+  "type": "coPercent",
+  "value": "11%",
+  "ui": true,
+  "label": "Support Ironing flow",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Support ironing",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_ironing_pattern",
+  "key": "support_ironing_pattern",
+  "type": "coEnum",
+  "value": "concentric",
+  "ui": true,
+  "label": "Support Ironing Pattern",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Support ironing",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_ironing_spacing",
+  "key": "support_ironing_spacing",
+  "type": "coFloat",
+  "value": "0.125",
+  "ui": true,
+  "label": "Support Ironing line spacing",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Support ironing",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_line_width",
+  "key": "support_line_width",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Support",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Line width",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.support_material_interface_fan_speed",
+  "key": "support_material_interface_fan_speed",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Support interface fan speed",
+  "mode": "advanced",
+  "tab": "Cooling",
+  "section": "Part cooling fan",
+  "scope": "filament",
+  "tab_line": 4070
+ },
+ {
+  "id": "param.support_multi_bed_types",
+  "key": "support_multi_bed_types",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Support multi bed types",
+  "mode": "simple",
+  "tab": "Basic information",
+  "section": "Printable space",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.support_object_first_layer_gap",
+  "key": "support_object_first_layer_gap",
+  "type": "coFloat",
+  "value": "0.25",
+  "ui": true,
+  "label": "Support/object first layer gap",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_object_skip_flush",
+  "key": "support_object_skip_flush",
+  "type": "coBool",
+  "value": "1",
+  "ui": false,
+  "label": null,
+  "mode": "simple"
+ },
+ {
+  "id": "param.support_object_xy_distance",
+  "key": "support_object_xy_distance",
+  "type": "coFloat",
+  "value": "0.4375",
+  "ui": true,
+  "label": "Support/object XY distance",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_on_build_plate_only",
+  "key": "support_on_build_plate_only",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "On build plate only",
+  "mode": "simple",
+  "tab": "Support",
+  "section": "Support",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_parallel_printheads",
+  "key": "support_parallel_printheads",
+  "type": "coBool",
+  "value": "1",
+  "ui": false,
+  "label": "Support parallel printheads",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.support_remove_small_overhang",
+  "key": "support_remove_small_overhang",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Ignore small overhangs",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Support",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_speed",
+  "key": "support_speed",
+  "type": "coFloat",
+  "value": "100",
+  "ui": true,
+  "label": "Support",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Other layers speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.support_style",
+  "key": "support_style",
+  "type": "coEnum",
+  "value": "grid",
+  "ui": true,
+  "label": "Style",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Support",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_threshold_angle",
+  "key": "support_threshold_angle",
+  "type": "coInt",
+  "value": "31",
+  "ui": true,
+  "label": "Threshold angle",
+  "mode": "simple",
+  "tab": "Support",
+  "section": "Support",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_threshold_overlap",
+  "key": "support_threshold_overlap",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Threshold overlap",
+  "mode": "simple",
+  "tab": "Support",
+  "section": "Support",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_top_z_distance",
+  "key": "support_top_z_distance",
+  "type": "coFloat",
+  "value": "0.25",
+  "ui": true,
+  "label": "Top Z distance",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.support_type",
+  "key": "support_type",
+  "type": "coEnum",
+  "value": "normal(auto)",
+  "ui": true,
+  "label": "Type",
+  "mode": "simple",
+  "tab": "Support",
+  "section": "Support",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.symmetric_infill_y_axis",
+  "key": "symmetric_infill_y_axis",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Symmetric infill Y axis",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Infill",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.temperature_vitrification",
+  "key": "temperature_vitrification",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Softening temperature",
+  "mode": "simple",
+  "tab": "Filament",
+  "section": "Basic information",
+  "scope": "filament",
+  "tab_line": 3897
+ },
+ {
+  "id": "param.template_custom_gcode",
+  "key": "template_custom_gcode",
+  "type": "coString",
+  "value": "; HARNESS_MARK template_custom_gcode",
+  "ui": false,
+  "label": "Custom G-code",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.textured_cool_plate_temp",
+  "key": "textured_cool_plate_temp",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Other layers",
+  "mode": "simple"
+ },
+ {
+  "id": "param.textured_cool_plate_temp_initial_layer",
+  "key": "textured_cool_plate_temp_initial_layer",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "First layer",
+  "mode": "simple"
+ },
+ {
+  "id": "param.textured_plate_temp",
+  "key": "textured_plate_temp",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Other layers",
+  "mode": "simple"
+ },
+ {
+  "id": "param.textured_plate_temp_initial_layer",
+  "key": "textured_plate_temp_initial_layer",
+  "type": "coInts",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "First layer",
+  "mode": "simple"
+ },
+ {
+  "id": "param.thick_bridges",
+  "key": "thick_bridges",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Thick external bridges",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Bridging",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.thick_internal_bridges",
+  "key": "thick_internal_bridges",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Thick internal bridges",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Bridging",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.thumbnails",
+  "key": "thumbnails",
+  "type": "coString",
+  "value": null,
+  "ui": false,
+  "label": "G-code thumbnails",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.thumbnails_format",
+  "key": "thumbnails_format",
+  "type": "coEnum",
+  "value": null,
+  "ui": false,
+  "label": "Format of G-code thumbnails",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.time_cost",
+  "key": "time_cost",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Time cost",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Advanced",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.time_lapse_gcode",
+  "key": "time_lapse_gcode",
+  "type": "coString",
+  "value": "; HARNESS_MARK time_lapse_gcode",
+  "ui": false,
+  "label": "Timelapse G-code",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.timelapse_type",
+  "key": "timelapse_type",
+  "type": "coEnum",
+  "value": null,
+  "ui": true,
+  "label": "Timelapse",
+  "mode": "simple",
+  "tab": "Others",
+  "section": "Special mode",
+  "scope": "print",
+  "tab_line": 2701
+ },
+ {
+  "id": "param.tool_change_on_wipe_tower",
+  "key": "tool_change_on_wipe_tower",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Tool change on wipe tower",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Wipe tower",
+  "scope": "printer",
+  "tab_line": 4964
+ },
+ {
+  "id": "param.top_bottom_infill_wall_overlap",
+  "key": "top_bottom_infill_wall_overlap",
+  "type": "coPercent",
+  "value": "26%",
+  "ui": true,
+  "label": "Top/Bottom solid infill/wall overlap",
+  "mode": "advanced",
+  "tab": "Strength",
+  "section": "Top/bottom shells",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.top_shell_layers",
+  "key": "top_shell_layers",
+  "type": "coInt",
+  "value": "5",
+  "ui": true,
+  "label": "Top shell layers",
+  "mode": "simple",
+  "tab": "Strength",
+  "section": "Top/bottom shells",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.top_shell_thickness",
+  "key": "top_shell_thickness",
+  "type": "coFloat",
+  "value": "0.75",
+  "ui": true,
+  "label": "Top shell thickness",
+  "mode": "simple",
+  "tab": "Strength",
+  "section": "Top/bottom shells",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.top_solid_infill_flow_ratio",
+  "key": "top_solid_infill_flow_ratio",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Top surface flow ratio",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.top_surface_acceleration",
+  "key": "top_surface_acceleration",
+  "type": "coFloat",
+  "value": "625",
+  "ui": true,
+  "label": "Top surface",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Acceleration",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.top_surface_density",
+  "key": "top_surface_density",
+  "type": "coPercent",
+  "value": "99%",
+  "ui": true,
+  "label": "Top surface density",
+  "mode": "simple",
+  "tab": "Strength",
+  "section": "Top/bottom shells",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.top_surface_filament_id",
+  "key": "top_surface_filament_id",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Top surface",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Filament for Features",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.top_surface_jerk",
+  "key": "top_surface_jerk",
+  "type": "coFloat",
+  "value": "11.25",
+  "ui": true,
+  "label": "Top surface",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Jerk(XY)",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.top_surface_line_width",
+  "key": "top_surface_line_width",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Top surface",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Line width",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.top_surface_pattern",
+  "key": "top_surface_pattern",
+  "type": "coEnum",
+  "value": "rectilinear",
+  "ui": true,
+  "label": "Top surface pattern",
+  "mode": "simple",
+  "tab": "Strength",
+  "section": "Top/bottom shells",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.top_surface_speed",
+  "key": "top_surface_speed",
+  "type": "coFloat",
+  "value": "125",
+  "ui": true,
+  "label": "Top surface",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Other layers speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.travel_acceleration",
+  "key": "travel_acceleration",
+  "type": "coFloat",
+  "value": "12500",
+  "ui": true,
+  "label": "Travel",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Acceleration",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.travel_jerk",
+  "key": "travel_jerk",
+  "type": "coFloat",
+  "value": "15",
+  "ui": true,
+  "label": "Travel",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Jerk(XY)",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.travel_slope",
+  "key": "travel_slope",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Traveling angle",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Z-Hop",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.travel_speed",
+  "key": "travel_speed",
+  "type": "coFloat",
+  "value": "150",
+  "ui": true,
+  "label": "Travel",
+  "mode": "advanced",
+  "tab": "Speed",
+  "section": "Travel speed",
+  "scope": "print",
+  "tab_line": 2510
+ },
+ {
+  "id": "param.travel_speed_z",
+  "key": "travel_speed_z",
+  "type": "coFloat",
+  "value": "1",
+  "ui": false,
+  "label": null,
+  "mode": "develop"
+ },
+ {
+  "id": "param.tree_support_angle_slow",
+  "key": "tree_support_angle_slow",
+  "type": "coFloat",
+  "value": "31.25",
+  "ui": true,
+  "label": "Preferred Branch Angle",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Tree supports",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.tree_support_auto_brim",
+  "key": "tree_support_auto_brim",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Auto brim width",
+  "mode": "simple",
+  "tab": "Support",
+  "section": "Tree supports",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.tree_support_branch_angle",
+  "key": "tree_support_branch_angle",
+  "type": "coFloat",
+  "value": "50",
+  "ui": true,
+  "label": "Tree support branch angle",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Tree supports",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.tree_support_branch_angle_organic",
+  "key": "tree_support_branch_angle_organic",
+  "type": "coFloat",
+  "value": "50",
+  "ui": true,
+  "label": "Tree support branch angle",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Tree supports",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.tree_support_branch_diameter",
+  "key": "tree_support_branch_diameter",
+  "type": "coFloat",
+  "value": "6.25",
+  "ui": true,
+  "label": "Tree support branch diameter",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Tree supports",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.tree_support_branch_diameter_angle",
+  "key": "tree_support_branch_diameter_angle",
+  "type": "coFloat",
+  "value": "6.25",
+  "ui": true,
+  "label": "Branch Diameter Angle",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Tree supports",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.tree_support_branch_diameter_organic",
+  "key": "tree_support_branch_diameter_organic",
+  "type": "coFloat",
+  "value": "2.5",
+  "ui": true,
+  "label": "Tree support branch diameter",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Tree supports",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.tree_support_branch_distance",
+  "key": "tree_support_branch_distance",
+  "type": "coFloat",
+  "value": "6.25",
+  "ui": true,
+  "label": "Tree support branch distance",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Tree supports",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.tree_support_branch_distance_organic",
+  "key": "tree_support_branch_distance_organic",
+  "type": "coFloat",
+  "value": "1.25",
+  "ui": true,
+  "label": "Tree support branch distance",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Tree supports",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.tree_support_brim_width",
+  "key": "tree_support_brim_width",
+  "type": "coFloat",
+  "value": "3.75",
+  "ui": true,
+  "label": "Tree support brim width",
+  "mode": "simple",
+  "tab": "Support",
+  "section": "Tree supports",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.tree_support_tip_diameter",
+  "key": "tree_support_tip_diameter",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Tip Diameter",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Tree supports",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.tree_support_top_rate",
+  "key": "tree_support_top_rate",
+  "type": "coPercent",
+  "value": "31%",
+  "ui": true,
+  "label": "Branch Density",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Tree supports",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.tree_support_wall_count",
+  "key": "tree_support_wall_count",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Support wall loops",
+  "mode": "advanced",
+  "tab": "Support",
+  "section": "Advanced",
+  "scope": "print",
+  "tab_line": 2580
+ },
+ {
+  "id": "param.tree_support_with_infill",
+  "key": "tree_support_with_infill",
+  "type": "coBool",
+  "value": "1",
+  "ui": false,
+  "label": "Tree support with infill",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.upward_compatible_machine",
+  "key": "upward_compatible_machine",
+  "type": "coStrings",
+  "value": null,
+  "ui": false,
+  "label": "upward compatible machine",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.use_3mf",
+  "key": "use_3mf",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Use 3MF instead of G-code",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Advanced",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.use_firmware_retraction",
+  "key": "use_firmware_retraction",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Use firmware retraction",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Advanced",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.use_relative_e_distances",
+  "key": "use_relative_e_distances",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Use relative E distances",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Advanced",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.volumetric_speed_coefficients",
+  "key": "volumetric_speed_coefficients",
+  "type": "coStrings",
+  "value": [
+   "harness_test"
+  ],
+  "ui": false,
+  "label": "Max volumetric speed multinomial coefficients",
+  "mode": "simple"
+ },
+ {
+  "id": "param.wall_direction",
+  "key": "wall_direction",
+  "type": "coEnum",
+  "value": "ccw",
+  "ui": true,
+  "label": "Wall loop direction",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.wall_distribution_count",
+  "key": "wall_distribution_count",
+  "type": "coInt",
+  "value": "2",
+  "ui": true,
+  "label": "Wall distribution count",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Wall generator",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.wall_generator",
+  "key": "wall_generator",
+  "type": "coEnum",
+  "value": "classic",
+  "ui": true,
+  "label": "Wall generator",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Wall generator",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.wall_loops",
+  "key": "wall_loops",
+  "type": "coInt",
+  "value": "3",
+  "ui": true,
+  "label": "Wall loops",
+  "mode": "simple",
+  "tab": "Strength",
+  "section": "Walls",
+  "scope": "print",
+  "tab_line": 2450
+ },
+ {
+  "id": "param.wall_maximum_deviation",
+  "key": "wall_maximum_deviation",
+  "type": "coFloat",
+  "value": "0.0055",
+  "ui": true,
+  "label": "Maximum wall deviation",
+  "mode": "expert",
+  "tab": "Quality",
+  "section": "Wall generator",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.wall_maximum_resolution",
+  "key": "wall_maximum_resolution",
+  "type": "coFloat",
+  "value": "0.0055",
+  "ui": true,
+  "label": "Maximum wall resolution",
+  "mode": "expert",
+  "tab": "Quality",
+  "section": "Wall generator",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.wall_sequence",
+  "key": "wall_sequence",
+  "type": "coEnum",
+  "value": "inner wall/outer wall",
+  "ui": true,
+  "label": "Walls printing order",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Walls and surfaces",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.wall_transition_angle",
+  "key": "wall_transition_angle",
+  "type": "coFloat",
+  "value": "12.5",
+  "ui": true,
+  "label": "Wall transitioning threshold angle",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Wall generator",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.wall_transition_filter_deviation",
+  "key": "wall_transition_filter_deviation",
+  "type": "coPercent",
+  "value": "26%",
+  "ui": true,
+  "label": "Wall transitioning filter margin",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Wall generator",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.wall_transition_length",
+  "key": "wall_transition_length",
+  "type": "coPercent",
+  "value": "101%",
+  "ui": true,
+  "label": "Wall transition length",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Wall generator",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.wipe",
+  "key": "wipe",
+  "type": "coBools",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Wipe while retracting",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Retraction",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.wipe_before_external_loop",
+  "key": "wipe_before_external_loop",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Wipe before external loop",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.wipe_distance",
+  "key": "wipe_distance",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Wipe Distance",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Retraction",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.wipe_on_loops",
+  "key": "wipe_on_loops",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Wipe on loops",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.wipe_speed",
+  "key": "wipe_speed",
+  "type": "coFloatOrPercent",
+  "value": "1",
+  "ui": true,
+  "label": "Wipe speed",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Seam",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.wipe_tower_bridging",
+  "key": "wipe_tower_bridging",
+  "type": "coFloat",
+  "value": "12.5",
+  "ui": true,
+  "label": "Maximal bridging distance",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.wipe_tower_cone_angle",
+  "key": "wipe_tower_cone_angle",
+  "type": "coFloat",
+  "value": "37.5",
+  "ui": true,
+  "label": "Stabilization cone apex angle",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.wipe_tower_extra_flow",
+  "key": "wipe_tower_extra_flow",
+  "type": "coPercent",
+  "value": "101%",
+  "ui": true,
+  "label": "Extra flow for purging",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.wipe_tower_extra_rib_length",
+  "key": "wipe_tower_extra_rib_length",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Extra rib length",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.wipe_tower_extra_spacing",
+  "key": "wipe_tower_extra_spacing",
+  "type": "coPercent",
+  "value": "101%",
+  "ui": true,
+  "label": "Wipe tower purge lines spacing",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.wipe_tower_filament",
+  "key": "wipe_tower_filament",
+  "type": "coInt",
+  "value": "1",
+  "ui": true,
+  "label": "Wipe tower",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Filament for Features",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.wipe_tower_fillet_wall",
+  "key": "wipe_tower_fillet_wall",
+  "type": "coBool",
+  "value": "0",
+  "ui": true,
+  "label": "Fillet wall",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.wipe_tower_max_purge_speed",
+  "key": "wipe_tower_max_purge_speed",
+  "type": "coFloat",
+  "value": "112.5",
+  "ui": true,
+  "label": "Maximum wipe tower print speed",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.wipe_tower_no_sparse_layers",
+  "key": "wipe_tower_no_sparse_layers",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "No sparse layers (beta)",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.wipe_tower_rib_width",
+  "key": "wipe_tower_rib_width",
+  "type": "coFloat",
+  "value": "10",
+  "ui": true,
+  "label": "Rib width",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.wipe_tower_rotation_angle",
+  "key": "wipe_tower_rotation_angle",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Wipe tower rotation angle",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.wipe_tower_type",
+  "key": "wipe_tower_type",
+  "type": "coEnum",
+  "value": null,
+  "ui": true,
+  "label": "Wipe tower type",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Wipe tower",
+  "scope": "printer",
+  "tab_line": 4964
+ },
+ {
+  "id": "param.wipe_tower_wall_type",
+  "key": "wipe_tower_wall_type",
+  "type": "coEnum",
+  "value": null,
+  "ui": true,
+  "label": "Wall type",
+  "mode": "advanced",
+  "tab": "Multimaterial",
+  "section": "Prime tower",
+  "scope": "print",
+  "tab_line": 2647
+ },
+ {
+  "id": "param.wipe_tower_x",
+  "key": "wipe_tower_x",
+  "type": "coFloats",
+  "value": null,
+  "ui": false,
+  "label": null,
+  "mode": "develop"
+ },
+ {
+  "id": "param.wipe_tower_y",
+  "key": "wipe_tower_y",
+  "type": "coFloats",
+  "value": null,
+  "ui": false,
+  "label": null,
+  "mode": "develop"
+ },
+ {
+  "id": "param.wiping_volumes_extruders",
+  "key": "wiping_volumes_extruders",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": false,
+  "label": "Purging volumes - load/unload volumes",
+  "mode": "simple"
+ },
+ {
+  "id": "param.wrapping_detection_gcode",
+  "key": "wrapping_detection_gcode",
+  "type": "coString",
+  "value": "; HARNESS_MARK wrapping_detection_gcode",
+  "ui": false,
+  "label": "Clumping detection G-code",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.wrapping_detection_layers",
+  "key": "wrapping_detection_layers",
+  "type": "coInt",
+  "value": "21",
+  "ui": false,
+  "label": "Clumping detection layers",
+  "mode": "develop"
+ },
+ {
+  "id": "param.wrapping_exclude_area",
+  "key": "wrapping_exclude_area",
+  "type": "coPoints",
+  "value": null,
+  "ui": false,
+  "label": "Probing exclude area of clumping",
+  "mode": "advanced"
+ },
+ {
+  "id": "param.xy_contour_compensation",
+  "key": "xy_contour_compensation",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "X-Y contour compensation",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Precision",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.xy_hole_compensation",
+  "key": "xy_hole_compensation",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "X-Y hole compensation",
+  "mode": "advanced",
+  "tab": "Quality",
+  "section": "Precision",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.z_hop",
+  "key": "z_hop",
+  "type": "coFloats",
+  "value": [
+   "1"
+  ],
+  "ui": true,
+  "label": "Z-hop height",
+  "mode": "simple",
+  "tab": "Extruder 1",
+  "section": "Z-Hop",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.z_hop_types",
+  "key": "z_hop_types",
+  "type": "coEnums",
+  "value": [
+   "Auto Lift"
+  ],
+  "ui": true,
+  "label": "Z-hop type",
+  "mode": "advanced",
+  "tab": "Extruder 1",
+  "section": "Z-Hop",
+  "scope": "printer",
+  "tab_line": 5079
+ },
+ {
+  "id": "param.z_offset",
+  "key": "z_offset",
+  "type": "coFloat",
+  "value": "1",
+  "ui": true,
+  "label": "Z offset",
+  "mode": "advanced",
+  "tab": "Basic information",
+  "section": "Printable space",
+  "scope": "printer",
+  "tab_line": 4475
+ },
+ {
+  "id": "param.zaa_dont_alternate_fill_direction",
+  "key": "zaa_dont_alternate_fill_direction",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Don't alternate fill direction",
+  "mode": "expert",
+  "tab": "Quality",
+  "section": "Z contouring",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.zaa_enabled",
+  "key": "zaa_enabled",
+  "type": "coBool",
+  "value": "1",
+  "ui": true,
+  "label": "Z contouring enabled",
+  "mode": "expert",
+  "tab": "Quality",
+  "section": "Z contouring",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.zaa_min_z",
+  "key": "zaa_min_z",
+  "type": "coFloat",
+  "value": "0.0625",
+  "ui": true,
+  "label": "Minimum Z height",
+  "mode": "expert",
+  "tab": "Quality",
+  "section": "Z contouring",
+  "scope": "print",
+  "tab_line": 2317
+ },
+ {
+  "id": "param.zaa_minimize_perimeter_height",
+  "key": "zaa_minimize_perimeter_height",
+  "type": "coFloat",
+  "value": "43.75",
+  "ui": true,
+  "label": "Minimize wall height angle",
+  "mode": "expert",
+  "tab": "Quality",
+  "section": "Z contouring",
+  "scope": "print",
+  "tab_line": 2317
+ }
+]
