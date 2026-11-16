@@ -33,3 +33,6 @@ harness/features.json
 # Caches moteur générés à côté des modèles
 *.raw-*.json
 *.wspg
+
+# Espace de travail local des agents (rapports, logs, temporaires) — hors dépôt
+.work/
