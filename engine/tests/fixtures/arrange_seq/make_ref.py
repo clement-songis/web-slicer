@@ -5,7 +5,8 @@ presets make_refs (Voron 2.4 350), print_sequence = by object / by layer,
 5 tirages : la référence est la variante majoritaire (tests/oracle/refs/README.md)."""
 import collections, hashlib, json, shutil, subprocess, sys, tempfile, zipfile
 from pathlib import Path
-sys.path.insert(0, "/var/lib/openclaw/workspace/web-slicer/tests/oracle/tools")
+REPO = Path(__file__).resolve().parents[4]
+sys.path.insert(0, str(REPO / "tests/oracle/tools"))
 import make_refs
 
 HERE = Path(__file__).resolve().parent
@@ -16,7 +17,7 @@ for seq in ("by object", "by layer"):
     draws = collections.Counter(); keep = {}
     for _ in range(5):
         proc = dict(process); proc["print_sequence"] = seq
-        with tempfile.TemporaryDirectory(dir="/var/lib/openclaw/tmp") as tmp:
+        with tempfile.TemporaryDirectory() as tmp:
             t = Path(tmp)
             for n, d in (("machine", printer), ("process", proc), ("filament", filament)):
                 (t / f"{n}.json").write_text(json.dumps(d, ensure_ascii=False))
