@@ -1,7 +1,42 @@
 // Tests du recentrage de maillage (fix gizmo : origine locale = centre visuel).
 import { describe, expect, test } from 'vitest';
 import { centerMesh, positionForImport, restingZ, type SceneMesh } from './mesh';
-import { primitiveMesh } from './primitives';
+
+// Cube de 20 mm centré sur l'origine (12 triangles), pour les tests.
+function cube20(): SceneMesh {
+	const h = 10;
+	const positions = new Float32Array([
+		-h,
+		-h,
+		-h,
+		h,
+		-h,
+		-h,
+		h,
+		h,
+		-h,
+		-h,
+		h,
+		-h,
+		-h,
+		-h,
+		h,
+		h,
+		-h,
+		h,
+		h,
+		h,
+		h,
+		-h,
+		h,
+		h
+	]);
+	const indices = new Uint32Array([
+		0, 2, 1, 0, 3, 2, 4, 5, 6, 4, 6, 7, 0, 1, 5, 0, 5, 4, 1, 2, 6, 1, 6, 5, 2, 3, 7, 2, 7, 6, 3, 0,
+		4, 3, 4, 7
+	]);
+	return { positions, normals: new Float32Array(positions.length), indices };
+}
 
 function mesh(positions: number[]): SceneMesh {
 	return {
@@ -76,7 +111,7 @@ describe('restingZ', () => {
 	});
 
 	test('primitive recentrée : base exactement sur le plateau', () => {
-		const { mesh: cube } = centerMesh(primitiveMesh('cube'));
+		const { mesh: cube } = centerMesh(cube20());
 		const z = restingZ(cube);
 		expect(z).toBeCloseTo(10, 6); // cube de 20 mm
 		let minZ = Infinity;

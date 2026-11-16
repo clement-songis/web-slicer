@@ -79,6 +79,23 @@ struct SimplifyRequest {
     output_path: PathBuf,
 }
 
+/// `fill-bed` : « Remplir le plateau avec des instances » d'Orca.
+#[derive(Debug, Deserialize)]
+struct FillBedRequest {
+    model: engine::api::Model,
+    bed: engine::api::BuildVolume,
+    config: engine::api::DynamicPrintConfig,
+    object_index: usize,
+    #[serde(default)]
+    clearance: f64,
+}
+
+#[derive(Debug, Serialize)]
+struct FillBedResponse {
+    /// Matrices (colonne-major) des instances de l'objet après remplissage.
+    instances: Vec<[f64; 16]>,
+}
+
 /// `export-project-3mf` : projet 3MF avec ses plateaux (« Save project »
 /// d'Orca, `store_bbs_3mf`).
 #[derive(Debug, Deserialize)]
@@ -175,6 +192,27 @@ fn main() {
         // la transformation des volumes : maillage recentré en float par Orca
         // (ModelVolume::center_geometry_after_creation) + matrice du volume.
         // Sert au harness pour reproduire exactement les sommets du CLI Orca.
+        Some("read-project-3mf") => {
+            let (Some(path), Some(out)) = (
+                args.get(2).map(PathBuf::from),
+                args.get(3).map(PathBuf::from),
+            ) else {
+                eprintln!("usage: read-project-3mf <fichier.3mf> <sortie.json>");
+                std::process::exit(2);
+            };
+            let result = engine::adapters::ffi::read_project_3mf_import(&path).and_then(|view| {
+                std::fs::write(&out, view.to_string()).map_err(|e| {
+                    engine::api::EngineError::new(engine::api::EngineErrorCode::Io, e.to_string())
+                })
+            });
+            match result {
+                Ok(()) => emit_json_result(&serde_json::json!({ "path": out })),
+                Err(e) => {
+                    emit_error(&code_slug(e.code), &e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
         Some("load-model-raw") => {
             let (Some(path), Some(format), Some(out)) = (
                 args.get(2).map(PathBuf::from),
@@ -322,6 +360,30 @@ fn main() {
             }
         }
         // Export Draco (menu Export › … DRC d'Orca, `store_drc`).
+        Some("fill-bed") => {
+            let Some(path) = args.get(2).map(PathBuf::from) else {
+                eprintln!("usage: fill-bed <request.json>");
+                std::process::exit(2);
+            };
+            let result = read_json_bounded::<FillBedRequest>(&path).and_then(|r| {
+                engine::adapters::ffi::fill_bed(
+                    &r.model,
+                    &r.bed,
+                    &r.config,
+                    r.object_index,
+                    r.clearance,
+                )
+            });
+            match result {
+                Ok(m) => emit_json_result(&FillBedResponse {
+                    instances: m.iter().map(|m| m.to_cols_array()).collect(),
+                }),
+                Err(e) => {
+                    emit_error(&code_slug(e.code), &e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
         Some("export-project-3mf") => {
             let Some(path) = args.get(2).map(PathBuf::from) else {
                 eprintln!("usage: export-project-3mf <request.json>");

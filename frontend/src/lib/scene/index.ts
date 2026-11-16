@@ -149,13 +149,4 @@ export {
 } from './tools';
 export { meshFromTriangleSoup } from './loaders';
 export { sceneMeshToStlBytes, sceneMeshToStlFile } from './stl';
-export {
-	cube,
-	cylinder,
-	cone,
-	sphere,
-	disc,
-	torus,
-	primitiveMesh,
-	type PrimitiveKind
-} from './primitives';
+export type { PrimitiveKind } from './primitives';

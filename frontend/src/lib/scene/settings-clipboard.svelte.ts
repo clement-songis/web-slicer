@@ -27,12 +27,12 @@ export function pasteSettings(
 	copied: Record<string, unknown>,
 	isPart: boolean
 ): { settings: Record<string, unknown>; pasted: number; skipped: string[] } {
-	const allowed = new Set(allowedKeys(isPart));
+	const allowed = allowedKeys(isPart);
 	const next = { ...target };
 	const skipped: string[] = [];
 	let pasted = 0;
 	for (const [key, value] of Object.entries(copied)) {
-		if (!allowed.has(key)) {
+		if (!allowed.includes(key)) {
 			skipped.push(key);
 			continue;
 		}

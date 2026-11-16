@@ -4,6 +4,7 @@
 	// sections → options) mais **cadré par type de preset** (`kind`) : une instance
 	// n'affiche que les pages de son type (process / filament / machine), au lieu
 	// du vidage à plat des 21 pages. Ajoute le sélecteur de mode et une recherche.
+	import { SvelteMap } from 'svelte/reactivity';
 	import { PARAMS } from '../../generated/params';
 	import {
 		UI_LAYOUT,
@@ -102,7 +103,7 @@
 				sections: page.sections.map((section) => ({ ...section, kind: page.kind }))
 			}));
 		}
-		const merged = new Map<string, LinkedPage>();
+		const merged = new SvelteMap<string, LinkedPage>();
 		const ordered = [
 			...PRESET_LAYOUT.filter((page) => page.kind === kind),
 			...PRESET_LAYOUT.filter((page) => page.kind !== kind)

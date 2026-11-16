@@ -17,12 +17,22 @@
 	} from '$lib/api/projects';
 	import { isAccepted } from '$lib/editor';
 	import AppSidebar from '$lib/nav/AppSidebar.svelte';
-	import { sortByUpdated, formatDate, thumbnailUrl } from '$lib/library/library';
+	import {
+		sortByUpdated,
+		formatDate,
+		thumbnailUrl,
+		filterProjects,
+		relativeTime,
+		sortProjects,
+		type ProjectSort
+	} from '$lib/library/library';
 	import type { ProjectResponse } from '$lib/api/types';
 	import type { PageData } from './$types';
 	import IconNew from '~icons/lucide/file-plus';
 	import IconOpen from '~icons/lucide/download';
 	import IconTrash from '~icons/lucide/trash-2';
+	import IconSearch from '~icons/lucide/search';
+	import IconFolder from '~icons/lucide/folder-open';
 
 	let { data }: { data: PageData } = $props();
 
@@ -40,6 +50,22 @@
 	// Mode suppression (pastille « Supprimer » de la parité) : révèle les
 	// boutons de suppression sur chaque vignette.
 	let removeMode = $state(false);
+
+	// Recherche et tri (mémorisé dans le navigateur) ; la grille affiche la vue
+	// filtrée, les opérations CRUD agissent toujours sur `projects`.
+	const SORT_KEY = 'web-slicer.library-sort';
+	let query = $state('');
+	let sort = $state<ProjectSort>('updated');
+	onMount(() => {
+		const saved = localStorage.getItem(SORT_KEY);
+		if (saved === 'name' || saved === 'created' || saved === 'updated') sort = saved;
+	});
+	const shown = $derived(filterProjects(sortProjects(projects, sort), query));
+	let now = $state(Date.now());
+	onMount(() => {
+		const timer = setInterval(() => (now = Date.now()), 60_000);
+		return () => clearInterval(timer);
+	});
 
 	async function run(action: () => Promise<void>) {
 		busy = true;
@@ -128,7 +154,7 @@
 				onclick={createAndOpen}
 				data-testid="new-project"
 				disabled={busy}
-				class="flex w-72 items-center gap-4 rounded-lg border border-border bg-surface-raised p-5 text-left hover:border-primary disabled:opacity-50"
+				class="flex w-80 items-center gap-4 rounded-lg border border-border bg-surface-raised p-5 text-left transition-colors hover:border-primary focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none disabled:opacity-50"
 			>
 				<span
 					class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-primary text-primary"
@@ -143,7 +169,7 @@
 			<button
 				onclick={() => importInput?.click()}
 				disabled={busy}
-				class="flex w-72 items-center gap-4 rounded-lg border border-border bg-surface-raised p-5 text-left hover:border-primary disabled:opacity-50"
+				class="flex w-80 items-center gap-4 rounded-lg border border-border bg-surface-raised p-5 text-left transition-colors hover:border-primary focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none disabled:opacity-50"
 			>
 				<span
 					class="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg border border-primary text-primary"
@@ -168,10 +194,13 @@
 			<p class="mt-4 text-sm text-danger" role="alert">{error}</p>
 		{/if}
 
-		<!-- Récemment ouvert -->
-		<div class="mt-8 flex items-center gap-3">
+		<!-- Récemment ouvert : recherche, tri, mode suppression. -->
+		<div class="mt-8 flex flex-wrap items-center gap-3">
 			<h2 class="ws-section-title">Récemment ouvert</h2>
 			{#if projects.length}
+				<span class="ws-badge tabular-nums" data-testid="library-count"
+					>{query.trim() ? `${shown.length} / ${projects.length}` : projects.length}</span
+				>
 				<button
 					onclick={() => (removeMode = !removeMode)}
 					class="ws-btn ws-btn-sm {removeMode ? 'ws-btn-danger' : 'ws-btn-ghost'}"
@@ -179,16 +208,62 @@
 				>
 					<IconTrash class="h-3.5 w-3.5" /> Supprimer
 				</button>
+				<div class="ml-auto flex items-center gap-2">
+					<label class="relative">
+						<span class="ws-sr-only">Rechercher un projet</span>
+						<IconSearch
+							class="pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-content-subtle"
+							aria-hidden="true"
+						/>
+						<input
+							type="search"
+							class="ws-field ws-field-sm w-56 pl-7"
+							placeholder="Rechercher un projet…"
+							bind:value={query}
+							data-testid="library-search"
+						/>
+					</label>
+					<label class="flex items-center gap-1.5 text-xs text-content-muted">
+						Trier
+						<select
+							class="ws-field ws-field-sm"
+							bind:value={sort}
+							onchange={() => localStorage.setItem(SORT_KEY, sort)}
+							data-testid="library-sort"
+						>
+							<option value="updated">Modifiés récemment</option>
+							<option value="created">Créés récemment</option>
+							<option value="name">Nom (A → Z)</option>
+						</select>
+					</label>
+				</div>
 			{/if}
 		</div>
 
 		{#if projects.length === 0}
-			<p class="ws-empty mt-4 rounded-lg border border-dashed border-border">
-				Aucun projet pour le moment.
-			</p>
+			<div
+				class="ws-empty mt-4 rounded-lg border border-dashed border-border"
+				data-testid="library-empty"
+			>
+				<IconFolder class="h-8 w-8 text-content-subtle" aria-hidden="true" />
+				<p class="font-medium text-content">Aucun projet pour le moment</p>
+				<p>
+					Créez un projet ou ouvrez un fichier .3mf / .stl : il apparaîtra ici avec sa vignette.
+				</p>
+			</div>
+		{:else if shown.length === 0}
+			<div
+				class="ws-empty mt-4 rounded-lg border border-dashed border-border"
+				data-testid="library-no-match"
+			>
+				<p>Aucun projet ne correspond à « {query.trim()} ».</p>
+				<button type="button" class="ws-btn ws-btn-sm ws-btn-secondary" onclick={() => (query = '')}
+					>Effacer la recherche</button
+				>
+			</div>
 		{:else}
 			<ul class="mt-4 grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-5">
-				{#each projects as project (project.id)}
+				{#each shown as project (project.id)}
 					{@const thumb = thumbnailUrl(project)}
 					<li class="group relative flex flex-col gap-2">
 						<a
@@ -236,7 +311,11 @@
 								{project.name}
 							</button>
 						{/if}
-						<p class="text-xs text-content-subtle">Modifié le {formatDate(project.updated_at)}</p>
+						<p class="text-xs text-content-subtle">
+							Modifié <time datetime={project.updated_at} title={formatDate(project.updated_at)}
+								>{relativeTime(project.updated_at, now)}</time
+							>
+						</p>
 						<div class="flex gap-3 text-xs text-content-muted">
 							<!-- Actions toujours lisibles (contraste du texte secondaire, pas d'opacité
 							     réduite) ; l'accent au survol signale qu'elles sont cliquables. -->

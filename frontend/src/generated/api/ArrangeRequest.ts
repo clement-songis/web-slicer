@@ -27,4 +27,11 @@ is_seq_print?: boolean,
 /**
  * Dégagements extrudeur (surcharge des clés machine du preset actif).
  */
-extruder_clearance_radius?: number, extruder_clearance_height_to_rod?: number, extruder_clearance_height_to_lid?: number, nozzle_height?: number, };
+extruder_clearance_radius?: number, extruder_clearance_height_to_rod?: number, extruder_clearance_height_to_lid?: number, nozzle_height?: number,
+/**
+ * « Remplir le plateau avec des instances » (FillBedJob d'Orca) : objet de
+ * `items` à dupliquer ; les autres items sont fixes. La réponse contient
+ * les instances existantes repositionnées (même id) puis les copies
+ * ajoutées (id `<objet>#fill<n>`, matrice complète).
+ */
+fill_object_id?: string, };

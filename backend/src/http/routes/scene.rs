@@ -147,6 +147,60 @@ pub async fn arrange(
         instance_ids.push(item.id.clone());
     }
 
+    if let Some(fill_id) = req.fill_object_id.as_deref() {
+        if !instance_ids.iter().any(|id| id == fill_id) {
+            return Err(ApiError::validation(
+                "objet à dupliquer absent des items",
+                serde_json::json!({ "fill_object_id": fill_id }),
+            ));
+        }
+        // Plateau courant seulement (FillBedJob : plaque de l'objet sélectionné).
+        let plate = plate_by_object.get(fill_id).copied().unwrap_or(0);
+        let mut plate_model = EngineModel::default();
+        for object in engine_model.objects {
+            if object.instances.first().map(|i| i.plate_index) == Some(plate) {
+                plate_model.objects.push(object);
+            }
+        }
+        let object_index = plate_model
+            .objects
+            .iter()
+            .position(|o| o.name == fill_id)
+            .expect("objet cible conservé");
+        let filled = crate::engine::scene::fill_bed(&crate::engine::scene::FillBedWorkerRequest {
+            model: plate_model,
+            bed,
+            config: active_config,
+            object_index,
+            clearance: if req.spacing.is_finite() && req.spacing > 0.0 {
+                req.spacing
+            } else {
+                0.0
+            },
+        })
+        .await
+        .map_err(scene_worker_api_error)?;
+        let plate_index = plate_by_object.get(fill_id).copied().unwrap_or(0);
+        let placements = filled
+            .instances
+            .into_iter()
+            .enumerate()
+            .map(|(k, matrix)| Placement {
+                id: if k == 0 {
+                    fill_id.to_string()
+                } else {
+                    format!("{fill_id}#fill{k}")
+                },
+                x: matrix[12],
+                y: matrix[13],
+                plate_index: Some(plate_index),
+                matrix: Some(matrix.to_vec()),
+                print_order: None,
+            })
+            .collect();
+        return Ok(Json(ArrangeResponse { placements }));
+    }
+
     let result = crate::engine::scene::arrange(&ArrangeWorkerRequest {
         model: engine_model,
         bed,

@@ -6,7 +6,7 @@
 	const sceneModule = import('$lib/scene/Scene.svelte');
 	let previewModule: Promise<typeof import('$lib/preview/PreviewScene.svelte')> | null = null;
 	const loadPreviewScene = () => (previewModule ??= import('$lib/preview/PreviewScene.svelte'));
-	import { SvelteSet } from 'svelte/reactivity';
+	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
 	import MenuBar from '$lib/menus/MenuBar.svelte';
@@ -29,7 +29,6 @@
 	import {
 		isByObject,
 		mergeInRank,
-		moveToTarget,
 		orderFromPlacements,
 		permuteInSlots,
 		sequentialArrangeFields
@@ -277,7 +276,6 @@
 	import { listPrinters, getPrinterCatalog, createPrinter, uploadSliced } from '$lib/api/printers';
 	import { friendlySliceError } from '$lib/editor/session';
 	import { dialogFocus } from '$lib/ui/dialog-focus';
-	import type { ArrangeRequest, Placement } from '$lib/api/types';
 	import { subscribeEvents, type EventSubscription } from '$lib/queue/events';
 	import type {
 		PreviewMeta,
@@ -507,7 +505,7 @@
 	// (boîtes XY, rotation ignorée ; > 0,5 mm d'intersection sur les deux axes).
 	const overlapCount = $derived.by(() => {
 		const fp = activeSceneObjects.map((o) => objectFootprint(o, [bed.center.x, bed.center.y]));
-		const hit = new Set<number>();
+		const hit = new SvelteSet<number>();
 		for (let i = 0; i < fp.length; i++)
 			for (let j = i + 1; j < fp.length; j++) {
 				const a = fp[i];
@@ -1400,7 +1398,7 @@
 				return await createPreset({ kind, name: chosenName, inherits: parentName, values });
 			} catch (e) {
 				if (e instanceof ApiError && e.status === 409)
-					throw new Error(`un preset « ${chosenName} » existe déjà`);
+					throw new Error(`un preset « ${chosenName} » existe déjà`, { cause: e });
 				throw e;
 			}
 		}
@@ -2296,7 +2294,7 @@
 
 	// Canal moteur (worker persistant, WebSocket) : peinture TriangleSelector.
 	let enginePaint: EnginePaintClient | null = null;
-	const paintQueues = new Map<string, Promise<void>>();
+	const paintQueues = new SvelteMap<string, Promise<void>>();
 	function enginePaintClient(): EnginePaintClient {
 		return (enginePaint ??= new EnginePaintClient(paintWsUrl(data.project.id)));
 	}
@@ -2645,21 +2643,9 @@
 			const res = await arrangeScene(data.project.id, {
 				bed_width: bed.width,
 				bed_depth: bed.depth,
-				// Objet par objet : écart d'au moins le rayon de dégagement de la tête
-				// (Orca arrange : min_obj_distance ≥ extruder_clearance_radius), sinon
-				// le tranchage refuse la disposition (« too close to others »).
-				spacing: sequentialPrint
-					? Math.max(
-							6,
-							Number(
-								// Clé machine (onglet Imprimante d'Orca) : le traitement
-								// n'en porte qu'un défaut.
-								machineValues.extruder_clearance_radius ??
-									processValues.extruder_clearance_radius ??
-									0
-							) + 0.001
-						)
-					: 6,
+				// En objet par objet, le moteur porte lui-même l'écart au rayon de
+				// dégagement de la tête (Orca update_selected_items_inflation).
+				spacing: 6,
 				items: arrangeItems(candidates),
 				bed_shape: bed.polygon.map((point) => [point.x, point.y]),
 				// Zone d'exclusion du preset ; « 0x0 » (Orca : aucune zone) n'est pas un polygone.
@@ -2668,24 +2654,24 @@
 					parseAreaPoints(machineValues.bed_exclude_area)
 				),
 				max_height: bed.height,
-				// Arrangement séquentiel d'Orca (is_seq_print, dégagements tête) :
-				// contrat proposé au moteur (phase13/BACKEND.md). Un backend qui ne
-				// le connaît pas ignore ces champs : repli sur `spacing` ci-dessus.
-				...(sequentialPrint ? sequentialArrangeFields(machineValues, processValues) : {})
-			} as ArrangeRequest);
+				// Arrangement séquentiel d'Orca (ArrangeJob init_arrange_params) :
+				// séquence effective du plateau et dégagements de la tête (valeurs
+				// machine, brouillon compris). Explicite aussi en couche par couche,
+				// pour qu'un plateau « par couche » prime sur le preset.
+				...(sequentialPrint
+					? sequentialArrangeFields(machineValues, processValues)
+					: { is_seq_print: false })
+			});
 			// Ne jamais réinjecter un placement pour un objet verrouillé ou d'un
 			// autre plateau, même si une réponse moteur contient des ids en trop.
 			const arranged = applyPlacements(candidates, res.placements);
 			const byId = new Map(arranged.map((object) => [object.id, object]));
 			sceneObjects = sceneObjects.map((object) => byId.get(object.id) ?? object);
 			// Objet par objet : Orca fixe l'ordre d'impression à l'issue de
-			// l'arrangement (arrange_order) ; appliqué s'il est renvoyé.
+			// l'arrangement (arrange_order → print_order 1..N) ; la liste d'objets,
+			// donc les étiquettes « Séquence #N » et le G-code, le suivent.
 			const order = sequentialPrint
-				? orderFromPlacements(
-						(res.placements as (Placement & { print_order?: number })[]).filter((p) =>
-							byId.has(p.id)
-						)
-					)
+				? orderFromPlacements(res.placements.filter((p) => byId.has(p.id)))
 				: null;
 			if (order) {
 				tree.setOrder(order);
@@ -3128,7 +3114,13 @@
 	});
 	function reorderObject(id: string, targetId: string) {
 		if (!tree.moveTo(id, targetId)) return;
-		sceneObjects = moveToTarget(sceneObjects, id, targetId, (o) => o.id);
+		// La scène suit l'ordre de l'arbre (et non un déplacement relatif : les
+		// maillages chargés dans le désordre peuvent avoir permuté sceneObjects).
+		sceneObjects = permuteInSlots(
+			sceneObjects,
+			tree.list().map((n) => n.id),
+			(o) => o.id
+		);
 		const name = tree.get(id)?.name ?? 'objet';
 		const rank =
 			tree
@@ -4002,41 +3994,50 @@
 	// Remplit le plateau d'instances du même modèle, sur une grille sans collision.
 	// Les copies web partagent le modèle serveur (comme les instances Orca) tout en
 	// conservant une transformation et des réglages propres.
-	function fillBedWithInstances(id: string) {
+	// « Remplir le plateau avec des instances » d'Orca (FillBedJob) : copies
+	// placées par l'arrangement libslic3r (POST …/arrange, fill_object_id)
+	// autour des autres objets du plateau, qui restent fixes.
+	async function fillBedWithInstances(id: string) {
 		const object = sceneObjects.find((o) => o.id === id);
 		if (!object) return;
-		const size = worldSize(object.mesh, object.rotation, object.scale);
-		const stepX = Math.max(1, size[0] + 6);
-		const stepY = Math.max(1, size[1] + 6);
-		const columns = Math.max(1, Math.floor((bed.width - 12) / stepX));
-		const rows = Math.max(1, Math.floor((bed.depth - 12) / stepY));
-		const count = Math.min(100, columns * rows);
-		if (count <= 1) {
+		const others = movableObjectsOnPlate(sceneObjects, activePlate, (oid) => tree.isLocked(oid));
+		const items = arrangeItems([object, ...others.filter((o) => o.id !== id)]);
+		let placements: Awaited<ReturnType<typeof arrangeScene>>['placements'];
+		try {
+			const res = await arrangeScene(data.project.id, {
+				bed_width: bed.width,
+				bed_depth: bed.depth,
+				spacing: 0,
+				items,
+				bed_shape: bed.polygon.map((point) => [point.x, point.y]),
+				excluded: ((pts) =>
+					pts.length >= 3 ? [pts.map((p) => [p.x, p.y] as [number, number])] : [])(
+					parseAreaPoints(machineValues.bed_exclude_area)
+				),
+				max_height: bed.height,
+				fill_object_id: id
+			});
+			placements = res.placements;
+		} catch (e) {
+			saveMessage = `Remplir le plateau : ${e instanceof ApiError ? e.message : 'échec du moteur'}`;
+			return;
+		}
+		const added = placements.filter((p) => p.id !== id);
+		if (added.length === 0) {
 			saveMessage = 'Remplir le plateau : aucune instance supplémentaire ne tient sur le plateau.';
 			return;
 		}
 		const snap = snapshotObject(id);
 		if (!snap) return;
-		const ids = [id];
 		const z = object.position?.[2] ?? restingZ(object.mesh, object.rotation, object.scale);
-		for (let i = 1; i < count; i++)
-			ids.push(instantiateSnapshot(snap, [bed.center.x, bed.center.y, z]));
-		sceneObjects = sceneObjects.map((o) => {
-			const i = ids.indexOf(o.id);
-			if (i < 0) return o;
-			const column = i % columns;
-			const row = Math.floor(i / columns);
-			return {
-				...o,
-				position: [
-					bed.center.x + (column - (columns - 1) / 2) * stepX,
-					bed.center.y + (row - (rows - 1) / 2) * stepY,
-					z
-				] as [number, number, number]
-			};
-		});
+		const own = placements.find((p) => p.id === id);
+		if (own)
+			sceneObjects = sceneObjects.map((o) =>
+				o.id === id ? { ...o, position: [own.x, own.y, z] as [number, number, number] } : o
+			);
+		for (const p of added) instantiateSnapshot(snap, [p.x, p.y, z]);
 		ws = setSelection(ws, new Set([id]));
-		saveMessage = `Remplissage du plateau : ${count} instances.`;
+		saveMessage = `Remplissage du plateau : ${added.length + 1} instances.`;
 	}
 
 	// Détache une instance : nouveau modèle serveur, transformations conservées.
@@ -4670,7 +4671,7 @@
 				),
 				[activePresetOf('process'), 'process']
 			];
-			const used = new Set<string>();
+			const used = new SvelteSet<string>();
 			for (const [preset, kind] of active) {
 				if (!preset) continue;
 				const base = safeFileName(preset.name, 'json');
@@ -5133,7 +5134,11 @@
 		// on persiste la transformation (placement/rotation/échelle) et le profil de
 		// hauteur de couche. Les objets sans `modelId` (upload en cours) sont ignorés
 		// et seront inclus au prochain enregistrement.
-		const objects: SceneObjectState[] = sceneObjects
+		// Ordre de la liste d'objets = ordre du modèle = ordre d'impression
+		// séquentielle (Orca) : la scène sauvegardée (donc le tranchage) le suit,
+		// quel que soit l'ordre d'arrivée des maillages.
+		const treeOrder = tree.list().map((n) => n.id);
+		const objects: SceneObjectState[] = permuteInSlots(sceneObjects, treeOrder, (o) => o.id)
 			.map((o) => {
 				const modelId = imports.find((i) => i.objectId === o.id)?.modelId;
 				if (!modelId) return null;

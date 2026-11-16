@@ -90,6 +90,11 @@ pub(crate) mod ffi {
         config_json: String,
         /// `Model::plates_custom_gcodes` en JSON (`Vec<PlateCustomGcodes>`).
         custom_gcodes_json: String,
+        /// Plateaux du projet (`PlateData` lus par `load_bbs_3mf`) : index,
+        /// nom, réglages du plateau, paires (objet, instance) du modèle chargé.
+        plates: Vec<RawProjectPlate>,
+        /// Config au format project_settings.config d'Orca (vecteurs en tableaux).
+        project_config_json: String,
     }
 
     /// Résultat de tranchage : chemin du G-code + statistiques minimales.
@@ -307,6 +312,16 @@ pub(crate) mod ffi {
             force_seq_print: bool,
             allow_rotations: bool,
         ) -> Result<RawArrangeResult>;
+
+        /// « Remplir le plateau avec des instances » d'Orca (FillBedJob) :
+        /// renvoie la scène avec les copies ajoutées à l'objet `object_index`.
+        fn fill_bed_raw(
+            objects: &Vec<RawObject>,
+            bed_xy: &Vec<f64>,
+            config_json: &str,
+            object_index: u32,
+            clearance_mm: f64,
+        ) -> Result<Vec<RawObject>>;
 
         /// Orientation automatique d'un objet.
         fn orient_raw(object: &RawObject) -> Result<RawObject>;

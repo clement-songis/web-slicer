@@ -138,6 +138,39 @@ pub async fn arrange(
     arrange_at(&super::worker::worker_binary(), request, DEFAULT_TIMEOUT).await
 }
 
+/// Requête `engine-worker fill-bed` (FillBedJob d'Orca).
+#[derive(Debug, Clone, Serialize)]
+pub struct FillBedWorkerRequest {
+    pub model: Model,
+    pub bed: BuildVolume,
+    pub config: engine::api::DynamicPrintConfig,
+    pub object_index: usize,
+    pub clearance: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct FillBedWorkerResponse {
+    pub instances: Vec<[f64; 16]>,
+}
+
+/// « Remplir le plateau » : matrices des instances de l'objet après remplissage.
+pub async fn fill_bed(
+    request: &FillBedWorkerRequest,
+) -> Result<FillBedWorkerResponse, SceneWorkerError> {
+    let dir = crate::workdir::tempdir()?;
+    let request_path = dir.path().join("fill-bed.json");
+    write_json_bounded(&request_path, request)?;
+    let stdout = run_worker_at(
+        &super::worker::worker_binary(),
+        &["fill-bed", &request_path.to_string_lossy()],
+        DEFAULT_TIMEOUT,
+    )
+    .await
+    .map_err(map_worker_error)?;
+    serde_json::from_str(result_json(&stdout)?)
+        .map_err(|e| SceneWorkerError::Protocol(e.to_string()))
+}
+
 /// Variante à binaire explicite pour les tests de protocole.
 pub async fn arrange_at(
     binary: &Path,

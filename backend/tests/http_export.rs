@@ -246,7 +246,9 @@ async fn export_preserves_the_printable_flag_and_reimports_it() {
         .unwrap();
     assert!(xml.contains("printable=\"0\""), "{xml}");
     drop(zip);
-    let imported = backend::models::threemf::read_project(&bytes).unwrap();
+    let imported = backend::models::threemf::read_project(&bytes)
+        .await
+        .unwrap();
     assert_eq!(imported.objects.len(), 1);
     assert!(!imported.objects[0].printable);
 }
@@ -426,7 +428,10 @@ async fn object_and_plate_settings_survive_export_then_import() {
     let objects = imported["scene"]["objects"].as_array().unwrap();
     assert_eq!(objects.len(), 1);
     assert_eq!(objects[0]["settings"]["wall_loops"], "5");
-    assert_eq!(objects[0]["extruder"], 2);
+    // Le fichier porte extruder = 2 (vérifié plus haut) ; à la lecture, Orca
+    // (load_bbs_3mf, bbs_3mf.cpp ~2228) ramène à 1 tout extrudeur au-delà du
+    // nombre de filaments du projet (ici un seul) : même résultat qu'Orca.
+    assert_eq!(objects[0]["extruder"], 1);
     assert_eq!(
         objects[0]["layerProfile"],
         json!([0.0, 0.2, 0.5, 0.12, 1.0, 0.28])

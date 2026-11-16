@@ -240,17 +240,40 @@ fn project_3mf_export_round_trips_volumes_and_paint_through_orca_reader() {
             s
         };
         let settings = text("Metadata/model_settings.config");
-        for subtype in ["normal_part", "negative_part", "modifier_part", "support_blocker"] {
-            assert!(settings.contains(&format!("subtype=\"{subtype}\"")), "{subtype} : {settings}");
+        for subtype in [
+            "normal_part",
+            "negative_part",
+            "modifier_part",
+            "support_blocker",
+        ] {
+            assert!(
+                settings.contains(&format!("subtype=\"{subtype}\"")),
+                "{subtype} : {settings}"
+            );
         }
-        assert!(settings.contains(r#"key="sparse_infill_density" value="0%""#), "{settings}");
+        assert!(
+            settings.contains(r#"key="sparse_infill_density" value="0%""#),
+            "{settings}"
+        );
         let main = text("3D/3dmodel.model");
-        assert!(main.contains("<components>") && main.contains("<component "), "{main}");
-        let names: Vec<String> = zip.file_names().filter(|n| n.starts_with("3D/Objects/")).map(String::from).collect();
+        assert!(
+            main.contains("<components>") && main.contains("<component "),
+            "{main}"
+        );
+        let names: Vec<String> = zip
+            .file_names()
+            .filter(|n| n.starts_with("3D/Objects/"))
+            .map(String::from)
+            .collect();
         let part = names.first().expect("partie 3D/Objects");
         let mut part_text = String::new();
-        zip.by_name(part).unwrap().read_to_string(&mut part_text).unwrap();
-        assert!(part_text.contains(r#"paint_supports="4""#) && part_text.contains(r#"paint_seam="8""#));
+        zip.by_name(part)
+            .unwrap()
+            .read_to_string(&mut part_text)
+            .unwrap();
+        assert!(
+            part_text.contains(r#"paint_supports="4""#) && part_text.contains(r#"paint_seam="8""#)
+        );
     }
     let (back, _) = engine::adapters::ffi::read_project_3mf(&out).expect("relu par Orca");
     assert_eq!(back.objects.len(), 1);

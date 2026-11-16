@@ -265,6 +265,57 @@ async fn arrange_places_objects_without_collision() {
     assert!(overlap_x <= 1e-3 || overlap_y <= 1e-3, "{body}");
 }
 
+/// « Remplir le plateau » (FillBedJob d'Orca) : copies de l'objet ciblé
+/// placées par libslic3r autour de l'objet fixe, sans chevauchement.
+#[tokio::test]
+async fn fill_bed_adds_instances_around_fixed_objects() {
+    if !worker_available() {
+        eprintln!("engine-worker absent — test de remplissage réel ignoré");
+        return;
+    }
+    let (_d, app, _state) = app().await;
+    let user = register(&app, "fill@test.local").await;
+    let project = create_project(&app, &user).await;
+    let resp = app
+        .clone()
+        .oneshot(post(
+            &format!("/api/projects/{project}/arrange"),
+            &user,
+            serde_json::json!({
+                "bed_width": 100.0, "bed_depth": 100.0, "spacing": 0.0,
+                "items": [
+                    { "id": "a", "width": 20.0, "depth": 20.0 },
+                    { "id": "fixe", "width": 30.0, "depth": 30.0 }
+                ],
+                "fill_object_id": "a"
+            }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = json_body(resp).await;
+    let placements = body["placements"].as_array().unwrap();
+    assert!(placements.len() > 4, "{body}");
+    assert_eq!(placements[0]["id"], "a");
+    assert!(
+        placements[1..]
+            .iter()
+            .all(|p| p["id"].as_str().unwrap().starts_with("a#fill")),
+        "{body}"
+    );
+    for i in 0..placements.len() {
+        for j in i + 1..placements.len() {
+            let (p, q) = (&placements[i], &placements[j]);
+            let dx = (p["x"].as_f64().unwrap() - q["x"].as_f64().unwrap()).abs();
+            let dy = (p["y"].as_f64().unwrap() - q["y"].as_f64().unwrap()).abs();
+            assert!(
+                dx >= 20.0 - 1e-3 || dy >= 20.0 - 1e-3,
+                "copies {i}/{j} superposées : {body}"
+            );
+        }
+    }
+}
+
 /// Arrangement séquentiel (objet par objet) : config du projet + dégagement
 /// extrudeur → arrangement libslic3r du CLI Orca, `print_order` renvoyé, objets
 /// espacés d'au moins `extruder_clearance_radius`.

@@ -24,6 +24,75 @@ pub fn read_project_3mf(path: &Path) -> EngineResult<(Model, DynamicPrintConfig)
     Ok((model, config))
 }
 
+/// Vue d'import d'un projet 3MF lue par libslic3r (`Model::read_from_file`,
+/// `load_bbs_3mf` : Orca, PrusaSlicer, 3MF générique), réglages au format
+/// texte Orca (`opt_serialize`) tels qu'écrits dans le fichier :
+/// `{ objects: [{ name, settings, layer_profile, layer_ranges, instances:
+/// [{matrix, printable}], volumes: [{ name, role, matrix, extruder, settings,
+/// vertices, indices, paint: [[canal, triangle, hex]] }] }], config, plates:
+/// [{ index, name, settings, obj_inst }] }` (rôles : part, negative, modifier,
+/// blocker, enforcer ; canaux : supports, seam, mmu, fuzzy).
+pub fn read_project_3mf_import(path: &Path) -> EngineResult<serde_json::Value> {
+    use serde_json::{json, Value};
+    let _guard = ffi_guard();
+    let raw = ffi::read_project_3mf_raw(&path.to_string_lossy())
+        .map_err(|e| EngineError::new(EngineErrorCode::InvalidModel, e.to_string()))?;
+    let text_map = |s: &str| -> Value {
+        if s.trim().is_empty() {
+            json!({})
+        } else {
+            serde_json::from_str(s).unwrap_or_else(|_| json!({}))
+        }
+    };
+    const ROLES: [&str; 5] = ["part", "negative", "modifier", "blocker", "enforcer"];
+    const CHANNELS: [&str; 4] = ["supports", "seam", "mmu", "fuzzy"];
+    let objects: Vec<Value> = raw
+        .objects
+        .iter()
+        .map(|o| {
+            let volumes: Vec<Value> = o
+                .volumes
+                .iter()
+                .map(|v| {
+                    let paint: Vec<Value> = v
+                        .paint_channel
+                        .iter()
+                        .zip(&v.paint_triangle)
+                        .zip(&v.paint_state)
+                        .map(|((c, t), s)| json!([CHANNELS.get(*c as usize).copied().unwrap_or("supports"), t, s]))
+                        .collect();
+                    json!({
+                        "name": v.name,
+                        "role": ROLES.get(v.role as usize).copied().unwrap_or("part"),
+                        "matrix": v.matrix.to_vec(),
+                        "extruder": v.extruder,
+                        "settings": text_map(&v.config_json),
+                        "vertices": v.mesh.vertices,
+                        "indices": v.mesh.indices,
+                        "paint": paint,
+                    })
+                })
+                .collect();
+            json!({
+                "name": o.name,
+                "settings": text_map(&o.config_json),
+                "layer_profile": o.layer_height_profile,
+                "layer_ranges": if o.layer_ranges_json.trim().is_empty() { json!([]) } else { serde_json::from_str::<Value>(&o.layer_ranges_json).unwrap_or(json!([])) },
+                "instances": o.instances.iter().map(|i| json!({ "matrix": i.matrix.to_vec(), "printable": i.printable })).collect::<Vec<_>>(),
+                "volumes": volumes,
+            })
+        })
+        .collect();
+    let plates: Vec<Value> = raw
+        .plates
+        .iter()
+        .map(|p| json!({ "index": p.plate_index, "name": p.name, "settings": text_map(&p.config_json), "obj_inst": p.obj_inst }))
+        .collect();
+    Ok(
+        json!({ "objects": objects, "config": text_map(&raw.project_config_json), "plates": plates }),
+    )
+}
+
 pub fn write_project_3mf(
     model: &Model,
     config: &DynamicPrintConfig,

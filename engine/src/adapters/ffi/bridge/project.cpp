@@ -179,8 +179,49 @@ RawProject read_project_3mf_raw(rust::Str path)
     Slic3r::Model model = Slic3r::Model::read_from_file(
         file, &config, &ctx, strategy, &plate_data, &project_presets, &is_bbl_3mf,
         &file_version);
-    for (Slic3r::PlateData *plate : plate_data)
+    // Plateaux (PartPlateList::load_from_3mf_structure lit les mêmes PlateData) :
+    // objects_and_instances = (indice d'objet, indice d'instance) du modèle chargé.
+    // obj_inst_map : identifiant d'objet 3MF → (instance, identify_id) ; le
+    // chargeur pose identify_id dans ModelInstance::loaded_id, d'où la paire
+    // (indice d'objet, indice d'instance) du modèle chargé.
+    // Sans identify_id (projets non Bambu/Orca récents), repli : les objets du
+    // modèle suivent l'ordre croissant des identifiants d'objet 3MF.
+    std::vector<int> object_ids_3mf;
+    for (const Slic3r::PlateData *plate : plate_data)
+        for (const auto &entry : plate->obj_inst_map)
+            object_ids_3mf.push_back(entry.first);
+    std::sort(object_ids_3mf.begin(), object_ids_3mf.end());
+    object_ids_3mf.erase(std::unique(object_ids_3mf.begin(), object_ids_3mf.end()), object_ids_3mf.end());
+    rust::Vec<RawProjectPlate> plates;
+    for (Slic3r::PlateData *plate : plate_data) {
+        RawProjectPlate raw;
+        raw.plate_index = static_cast<uint32_t>(std::max(0, plate->plate_index));
+        raw.name = plate->plate_name;
+        raw.config_json = config_to_json(plate->config);
+        for (const auto &entry : plate->obj_inst_map) {
+            const int instance_id = entry.second.first;
+            const int identify_id = entry.second.second;
+            bool found = false;
+            for (size_t o = 0; o < model.objects.size() && identify_id > 0; ++o)
+                for (size_t i = 0; i < model.objects[o]->instances.size(); ++i)
+                    if (model.objects[o]->instances[i]->loaded_id == identify_id) {
+                        raw.obj_inst.push_back(static_cast<uint32_t>(o));
+                        raw.obj_inst.push_back(static_cast<uint32_t>(i));
+                        found = true;
+                    }
+            if (!found) {
+                const auto rank = std::lower_bound(object_ids_3mf.begin(), object_ids_3mf.end(), entry.first) -
+                                  object_ids_3mf.begin();
+                if (static_cast<size_t>(rank) < model.objects.size() && instance_id >= 0 &&
+                    static_cast<size_t>(instance_id) < model.objects[rank]->instances.size()) {
+                    raw.obj_inst.push_back(static_cast<uint32_t>(rank));
+                    raw.obj_inst.push_back(static_cast<uint32_t>(instance_id));
+                }
+            }
+        }
+        plates.push_back(std::move(raw));
         delete plate;
+    }
     for (Slic3r::Preset *preset : project_presets)
         delete preset;
 
@@ -196,6 +237,20 @@ RawProject read_project_3mf_raw(rust::Str path)
     project.objects = model_to_raw(model);
     project.config_json = config_to_json(config);
     project.custom_gcodes_json = custom_gcodes_to_json(model);
+    project.plates = std::move(plates);
+    // project_settings.config d'Orca (DynamicPrintConfig::save_to_json) :
+    // vecteurs en tableaux de chaînes, scalaires en chaîne.
+    {
+        nlohmann::json j = nlohmann::json::object();
+        for (const std::string &key : config.keys()) {
+            const Slic3r::ConfigOption *opt = config.option(key);
+            if (opt != nullptr && opt->is_vector())
+                j[key] = static_cast<const Slic3r::ConfigOptionVectorBase *>(opt)->vserialize();
+            else
+                j[key] = config.opt_serialize(key);
+        }
+        project.project_config_json = j.dump();
+    }
     return project;
 }
 

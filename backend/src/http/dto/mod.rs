@@ -624,6 +624,13 @@ pub struct ArrangeRequest {
     #[serde(default)]
     #[ts(optional)]
     pub nozzle_height: Option<f64>,
+    /// « Remplir le plateau avec des instances » (FillBedJob d'Orca) : objet de
+    /// `items` à dupliquer ; les autres items sont fixes. La réponse contient
+    /// les instances existantes repositionnées (même id) puis les copies
+    /// ajoutées (id `<objet>#fill<n>`, matrice complète).
+    #[serde(default)]
+    #[ts(optional)]
+    pub fill_object_id: Option<String>,
 }
 
 /// Position calculée du centre d'un objet (mm, repère plateau).

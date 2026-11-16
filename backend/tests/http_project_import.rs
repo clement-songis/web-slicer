@@ -134,23 +134,32 @@ fn two_plate_project() -> Vec<u8> {
     let metadata = r#"<?xml version="1.0"?><config>
       <object id="1"><metadata key="name" value="Gauche"/><metadata key="extruder" value="1"/>
         <metadata key="wall_loops" value="7"/></object>
-      <object id="2"><metadata key="name" value="Droite"/><metadata key="extruder" value="2"/>
-        <metadata key="layer_height_profile" value="0 0.2 5 0.12"/></object>
+      <object id="2"><metadata key="name" value="Droite"/><metadata key="extruder" value="2"/></object>
       <plate><metadata key="plater_id" value="1"/><metadata key="plater_name" value="Premier"/>
-        <metadata key="curr_bed_type" value="Cool Plate"/><model_instance>
+        <metadata key="bed_type" value="Cool Plate"/><model_instance>
         <metadata key="object_id" value="1"/><metadata key="instance_id" value="0"/></model_instance></plate>
       <plate><metadata key="plater_id" value="2"/><metadata key="plater_name" value="Second"/>
-        <metadata key="curr_bed_type" value="Engineering Plate"/><model_instance>
+        <metadata key="bed_type" value="Engineering Plate"/><model_instance>
         <metadata key="object_id" value="2"/><metadata key="instance_id" value="0"/></model_instance></plate>
     </config>"#;
     let config = r#"{"layer_height":"0.16","wall_loops":"5","filament_type":["PLA"],"unknown_vendor_key":"ignored"}"#;
 
     let mut zip = ZipWriter::new(Cursor::new(Vec::new()));
     let options = SimpleFileOptions::default();
+    // Paquet 3MF complet, tel qu'Orca l'exige (_rels/.rels) ; plateaux au
+    // format bbs_3mf (bed_type) et profil de couches dans
+    // layer_heights_profile.txt (index 1-based de l'objet).
+    let content_types = r#"<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml"/></Types>"#;
+    let rels = r#"<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Target="/3D/3dmodel.model" Id="rel-1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel"/></Relationships>"#;
+    // Orca exige au moins trois paires (z, h) par profil.
+    let profile = "object_id=2|0;0.2;0.5;0.12;1;0.12\n";
     for (name, content) in [
+        ("[Content_Types].xml", content_types.as_bytes()),
+        ("_rels/.rels", rels.as_bytes()),
         ("3D/3dmodel.model", model.as_bytes()),
         ("Metadata/model_settings.config", metadata.as_bytes()),
         ("Metadata/project_settings.config", config.as_bytes()),
+        ("Metadata/layer_heights_profile.txt", profile.as_bytes()),
     ] {
         zip.start_file(name, options).unwrap();
         zip.write_all(content).unwrap();
@@ -186,7 +195,7 @@ async fn imports_geometry_objects_plates_config_and_converts_each_object() {
         project["scene"]["objects"][0]["settings"]["wall_loops"],
         "7"
     );
-    assert_eq!(project["scene"]["objects"][1]["layerProfile"][2], 5.0);
+    assert_eq!(project["scene"]["objects"][1]["layerProfile"][2], 0.5);
     assert_eq!(project["scene"]["objects"][1]["extruder"], 2);
 
     let process = project["active_presets"]["process"].as_str().unwrap();
@@ -252,7 +261,9 @@ async fn imports_geometry_objects_plates_config_and_converts_each_object() {
         let source_bytes = to_bytes(source.into_body(), usize::MAX).await.unwrap();
         // Chaque enregistrement possède un 3MF autonome : une duplication ou
         // conversion ultérieure ne peut pas réintroduire les autres objets.
-        let standalone = backend::models::threemf::read_project(&source_bytes).unwrap();
+        let standalone = backend::models::threemf::read_project(&source_bytes)
+            .await
+            .unwrap();
         assert_eq!(standalone.objects.len(), 1);
         assert_eq!(standalone.objects[0].mesh.indices.len(), 1);
     }

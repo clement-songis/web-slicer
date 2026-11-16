@@ -189,6 +189,42 @@ fn validate_arrange_input(bed: &BuildVolume, params: &ArrangeParams) -> EngineRe
     Ok(())
 }
 
+/// « Remplir le plateau avec des instances » (FillBedJob d'Orca) sur un seul
+/// plateau : toutes les instances du modèle sont dans le repère de ce plateau.
+/// Renvoie les matrices des instances de l'objet `object_index` après
+/// remplissage (instances existantes repositionnées puis copies ajoutées).
+pub fn fill_bed(
+    model: &Model,
+    bed: &BuildVolume,
+    print_config: &crate::api::DynamicPrintConfig,
+    object_index: usize,
+    clearance: f64,
+) -> EngineResult<Vec<glam::DMat4>> {
+    let params = ArrangeParams {
+        clearance: clearance.max(0.0),
+        ..ArrangeParams::default()
+    };
+    validate_arrange_input(bed, &params)?;
+    if object_index >= model.objects.len() {
+        return Err(EngineError::new(
+            EngineErrorCode::InvalidModel,
+            "objet à dupliquer introuvable",
+        ));
+    }
+    let bed_xy = encode_bed_and_exclusions(bed);
+    let json = super::model::config_to_orca_json(print_config);
+    let _guard = ffi_guard();
+    let raw = to_raw_objects(model);
+    let filled = ffi::fill_bed_raw(&raw, &bed_xy, &json, object_index as u32, params.clearance)
+        .map_err(|e| EngineError::new(EngineErrorCode::OutOfBuildVolume, e.to_string()))?;
+    let target = filled
+        .into_iter()
+        .nth(object_index)
+        .map(to_object)
+        .ok_or_else(|| EngineError::new(EngineErrorCode::Internal, "objet perdu au remplissage"))?;
+    Ok(target.instances.into_iter().map(|i| i.matrix).collect())
+}
+
 fn encode_bed_and_exclusions(bed: &BuildVolume) -> Vec<f64> {
     let mut out: Vec<f64> = bed.bed_shape.iter().flatten().copied().collect();
     for excluded in &bed.excluded {

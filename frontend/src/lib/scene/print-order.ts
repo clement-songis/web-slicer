@@ -69,9 +69,9 @@ export function isByObject(plateValue: unknown, processValue: unknown): boolean 
 	return v === 'by object';
 }
 
-/** Champs du mode séquentiel pour `POST /arrange` (contrat proposé au moteur,
- *  phase13/BACKEND.md ; ignorés par un backend qui ne les connaît pas) :
- *  ArrangeParams d'Orca en objet par objet (init_arrange_params). */
+/** Champs du mode séquentiel de `POST /arrange` (ArrangeRequest) : ArrangeParams
+ *  d'Orca en objet par objet (init_arrange_params). `nozzle_height` est accepté
+ *  mais sans effet côté moteur, comme le CLI Orca. */
 export interface SequentialArrangeFields {
 	is_seq_print: true;
 	extruder_clearance_radius: number;
@@ -102,8 +102,8 @@ export function sequentialArrangeFields(
 }
 
 /** Ordre d'impression renvoyé par un arrangement séquentiel (`print_order`
- *  par placement, Orca `arrange_order`) ; null si absent ou incomplet (repli :
- *  l'ordre de la liste ne change pas). */
+ *  par placement, Orca `arrange_order`) ; null si absent ou incomplet (l'ordre
+ *  de la liste ne change pas). */
 export function orderFromPlacements(
 	placements: readonly { id: string; print_order?: number | null }[]
 ): string[] | null {

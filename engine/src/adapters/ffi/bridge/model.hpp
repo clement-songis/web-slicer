@@ -49,6 +49,9 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
                          rust::Str work_dir, const RawCalibParams &calib,
                          rust::Str custom_gcodes_json);
 
+rust::Vec<RawObject> fill_bed_raw(const rust::Vec<RawObject> &objects, const rust::Vec<double> &bed_xy,
+                                  rust::Str config_json, uint32_t object_index, double clearance_mm);
+
 struct RawArrangeResult;
 RawArrangeResult arrange_orca_raw(const rust::Vec<RawObject> &objects, const rust::Vec<double> &bed_xy,
                                   rust::Str config_json, bool force_seq_print, bool allow_rotations);

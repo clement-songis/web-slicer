@@ -37,6 +37,10 @@
 	} from '$lib/printers/printers';
 	import type { PageData } from './$types';
 	import AppSidebar from '$lib/nav/AppSidebar.svelte';
+	import IconPlus from '~icons/lucide/plus';
+	import IconChevron from '~icons/lucide/chevron-right';
+	import IconRefresh from '~icons/lucide/refresh-cw';
+	import IconPrinter from '~icons/lucide/printer';
 
 	let { data }: { data: PageData } = $props();
 
@@ -244,7 +248,8 @@
 <div class="flex h-screen bg-surface text-content">
 	<AppSidebar email={data.user.email} active="printers" />
 	<div class="flex-1 overflow-auto">
-		<main class="mx-auto flex max-w-3xl flex-col gap-6 p-6 text-content">
+		<!-- Même gouttière que la bibliothèque (p-8, alignement à gauche). -->
+		<main class="flex max-w-3xl flex-col gap-6 p-8 text-content">
 			<h1 class="ws-page-title">Imprimantes</h1>
 
 			{#if error}
@@ -257,22 +262,25 @@
 				class="ws-btn ws-btn-lg ws-btn-primary self-start"
 				onclick={() => (showCatalog = true)}
 			>
-				＋ Ajouter des imprimantes
+				<IconPlus class="h-4 w-4" aria-hidden="true" /> Ajouter des imprimantes
 			</button>
 
 			<!-- Déclaration manuelle (connexion Moonraker facultative) -->
 			<section
-				class="flex flex-col gap-3 rounded border border-border p-4"
+				class="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4"
 				aria-label="Déclarer une imprimante"
 			>
 				<button
 					type="button"
-					class="self-start text-sm font-semibold text-content-muted hover:text-content"
+					class="flex items-center gap-1.5 self-start text-sm font-semibold text-content-muted hover:text-content"
 					data-testid="printer-add"
 					aria-expanded={showManual}
 					onclick={() => (showManual = !showManual)}
 				>
-					{showManual ? '▾' : '▸'} Déclarer manuellement (Moonraker)
+					<IconChevron
+						class="h-4 w-4 transition-transform {showManual ? 'rotate-90' : ''}"
+						aria-hidden="true"
+					/> Déclarer manuellement (Moonraker)
 				</button>
 				{#if showManual}
 					<form class="flex flex-col gap-3" onsubmit={declare}>
@@ -331,8 +339,8 @@
 			<section class="flex flex-col gap-3" aria-label="Imprimantes déclarées">
 				<div class="flex items-center justify-between">
 					<h2 class="ws-section-title">Déclarées ({printers.length})</h2>
-					<button type="button" class="text-xs text-content-muted hover:underline" onclick={reload}>
-						Rafraîchir
+					<button type="button" class="ws-btn ws-btn-sm ws-btn-ghost" onclick={reload}>
+						<IconRefresh class="h-3.5 w-3.5" aria-hidden="true" /> Rafraîchir
 					</button>
 				</div>
 
@@ -349,14 +357,24 @@
 						Enregistrement de l'imprimante…
 					</p>
 				{:else if printers.length === 0}
-					<p class="ws-empty rounded-lg border border-dashed border-border">
-						Aucune imprimante déclarée.
-					</p>
+					<div
+						class="ws-empty rounded-lg border border-dashed border-border"
+						data-testid="printers-empty"
+					>
+						<IconPrinter class="h-8 w-8 text-content-subtle" aria-hidden="true" />
+						<p class="font-medium text-content">Aucune imprimante déclarée</p>
+						<p>Choisissez vos modèles dans le catalogue, ou déclarez une imprimante Moonraker.</p>
+						<button
+							type="button"
+							class="ws-btn ws-btn-sm ws-btn-primary"
+							onclick={() => (showCatalog = true)}>Ouvrir le catalogue</button
+						>
+					</div>
 				{:else}
 					{#each printers as printer (printer.id)}
 						{@const st = statuses[printer.id]}
 						<article
-							class="flex flex-col gap-3 rounded border border-border p-4"
+							class="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4"
 							data-testid="printer-row"
 							data-printer-id={printer.id}
 						>
@@ -364,11 +382,16 @@
 								<div class="flex min-w-0 flex-col">
 									<span class="truncate font-medium text-content">{printer.name}</span>
 									<span class="truncate text-xs text-content-subtle">
+										{machines.find((m) => m.id === printer.machine_preset_id)?.name ?? ''}
+									</span>
+									<span class="truncate text-xs text-content-subtle">
 										{printer.moonraker_url ?? 'Non connectée'}
 									</span>
 								</div>
 								{#if st}
-									<span class="rounded px-2 py-0.5 text-xs {stateMeta(st.state).badge}">
+									<span
+										class="shrink-0 rounded-full px-2 py-0.5 text-xs {stateMeta(st.state).badge}"
+									>
 										{stateMeta(st.state).label}
 									</span>
 								{/if}
@@ -406,49 +429,59 @@
 								>
 									Réglages
 								</button>
+								{#if printer.moonraker_url}
+									<button
+										type="button"
+										class="ws-btn ws-btn-sm ws-btn-secondary"
+										disabled={busy[printer.id]}
+										onclick={() => runTest(printer.id)}
+									>
+										Tester
+									</button>
+									<button
+										type="button"
+										class="ws-btn ws-btn-sm ws-btn-secondary"
+										disabled={busy[printer.id]}
+										onclick={() => refreshStatus(printer.id)}
+									>
+										État
+									</button>
+								{:else}
+									<span class="self-center text-xs text-content-subtle"
+										>Sans URL Moonraker : réglages et tranchage seulement.</span
+									>
+								{/if}
+								<!-- Commandes d'impression : seulement quand l'état est connu
+								     (au lieu de trois boutons grisés en permanence). -->
+								{#if st}
+									<button
+										type="button"
+										class="ws-btn ws-btn-sm ws-btn-secondary"
+										disabled={busy[printer.id] || !st || !canPause(st.state)}
+										onclick={() => control(printer.id, pausePrinter)}
+									>
+										Pause
+									</button>
+									<button
+										type="button"
+										class="ws-btn ws-btn-sm ws-btn-secondary"
+										disabled={busy[printer.id] || !st || !canResume(st.state)}
+										onclick={() => control(printer.id, resumePrinter)}
+									>
+										Reprendre
+									</button>
+									<button
+										type="button"
+										class="ws-btn ws-btn-sm ws-btn-secondary"
+										disabled={busy[printer.id] || !st || !canCancel(st.state)}
+										onclick={() => control(printer.id, cancelPrinter)}
+									>
+										Annuler
+									</button>
+								{/if}
 								<button
 									type="button"
-									class="ws-btn ws-btn-sm ws-btn-secondary"
-									disabled={busy[printer.id] || !printer.moonraker_url}
-									onclick={() => runTest(printer.id)}
-								>
-									Tester
-								</button>
-								<button
-									type="button"
-									class="ws-btn ws-btn-sm ws-btn-secondary"
-									disabled={busy[printer.id] || !printer.moonraker_url}
-									onclick={() => refreshStatus(printer.id)}
-								>
-									État
-								</button>
-								<button
-									type="button"
-									class="ws-btn ws-btn-sm ws-btn-secondary"
-									disabled={busy[printer.id] || !st || !canPause(st.state)}
-									onclick={() => control(printer.id, pausePrinter)}
-								>
-									Pause
-								</button>
-								<button
-									type="button"
-									class="ws-btn ws-btn-sm ws-btn-secondary"
-									disabled={busy[printer.id] || !st || !canResume(st.state)}
-									onclick={() => control(printer.id, resumePrinter)}
-								>
-									Reprendre
-								</button>
-								<button
-									type="button"
-									class="ws-btn ws-btn-sm ws-btn-secondary"
-									disabled={busy[printer.id] || !st || !canCancel(st.state)}
-									onclick={() => control(printer.id, cancelPrinter)}
-								>
-									Annuler
-								</button>
-								<button
-									type="button"
-									class="ws-btn ws-btn-sm ws-btn-danger ml-auto"
+									class="ws-btn ws-btn-sm ws-btn-ghost ml-auto text-danger hover:bg-danger-soft hover:text-danger-content"
 									disabled={busy[printer.id]}
 									onclick={() => remove(printer.id)}
 								>

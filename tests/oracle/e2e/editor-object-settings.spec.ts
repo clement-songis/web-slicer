@@ -330,7 +330,10 @@ test('export 3MF : emporte peinture et volumes (types, réglages) @F:editor.expo
 	expect(models).toMatch(/<triangle [^>]*paint_supports="4"/);
 	expect(models).toMatch(/<triangle [^>]*paint_seam="4"/);
 	// Volumes : un sous-objet par volume, <part subtype=…> et réglages du modificateur.
-	expect(models).toMatch(/<components>[\s\S]*<component objectid=/);
+	// <component> d'Orca/libslic3r : p:path="/3D/Objects/…" objectid="…" p:UUID — ordre
+	// des attributs libre (store_bbs_3mf écrit p:path avant objectid).
+	expect(models).toMatch(/<components>[\s\S]*<component\b[^>]*\bobjectid="\d+"/);
+	expect((models.match(/<component\b/g) ?? []).length, 'un composant par volume').toBe(4);
 	for (const subtype of ['normal_part', 'negative_part', 'modifier_part', 'support_blocker'])
 		expect(settings).toContain(`subtype="${subtype}"`);
 	expect(settings).toMatch(/key="sparse_infill_density" value="0%"/);
@@ -368,8 +371,17 @@ test('3MF : export → import → export restitue volumes et peinture @F:editor.
 	const strip = (files: Map<string, string>) => {
 		const keep = (t?: string) => (t ?? '').replace(/key="name" value="[^"]*"/g, '');
 		return {
-			model: keep([...files].filter(([n]) => n.endsWith('.model')).map(([, t]) => t).join('')).replace(/transform="[^"]*"/g, ''),
-			parts: keep(files.get('Metadata/model_settings.config')).match(/<part[\s\S]*?<\/part>/g)
+			// Le chemin de la partie (3D/Objects/<nom d'objet>_<n>.model) suit le nom de
+			// l'objet, qui n'est pas comparé (cf. `keep`) : un projet importé à objet
+			// unique prend le nom du fichier (convention d'import).
+			model: keep([...files].filter(([n]) => n.endsWith('.model')).map(([, t]) => t).join(''))
+				.replace(/transform="[^"]*"/g, '')
+				.replace(/p:path="\/3D\/Objects\/[^"]*"/g, 'p:path=""'),
+			// À l'import, libslic3r matérialise l'extrudeur par défaut (1) sur chaque
+			// volume ; absent et 1 sont la même configuration Orca.
+			parts: keep(files.get('Metadata/model_settings.config'))
+				.replace(/\n?\s*<metadata key="extruder" value="1"\/>/g, '')
+				.match(/<part[\s\S]*?<\/part>/g)
 		};
 	};
 	expect(strip(unzipText(second))).toEqual(strip(unzipText(first)));

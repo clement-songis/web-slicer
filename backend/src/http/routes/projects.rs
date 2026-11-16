@@ -130,15 +130,9 @@ pub async fn import(
         return Ok((StatusCode::CREATED, Json(project.into())));
     }
 
-    let imported = {
-        tokio::task::spawn_blocking(move || crate::models::threemf::read_project(&bytes))
-            .await
-            .map_err(|e| {
-                tracing::error!(error = %e, "tâche de lecture 3MF interrompue");
-                ApiError::internal()
-            })?
-            .map_err(|e| ApiError::validation(e.to_string(), details(&filename)))?
-    };
+    let imported = crate::models::threemf::read_project(&bytes)
+        .await
+        .map_err(|e| ApiError::validation(e.to_string(), details(&filename)))?;
 
     let project = state
         .storage
@@ -209,15 +203,9 @@ pub async fn import_into(
             details(&filename),
         ));
     }
-    let mut imported = {
-        tokio::task::spawn_blocking(move || crate::models::threemf::read_project(&bytes))
-            .await
-            .map_err(|e| {
-                tracing::error!(error = %e, "tâche de lecture 3MF interrompue");
-                ApiError::internal()
-            })?
-            .map_err(|e| ApiError::validation(e.to_string(), details(&filename)))?
-    };
+    let mut imported = crate::models::threemf::read_project(&bytes)
+        .await
+        .map_err(|e| ApiError::validation(e.to_string(), details(&filename)))?;
     imported.config.clear();
     let name = project_name_from(&filename);
     let (scene, _, models) =

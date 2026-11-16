@@ -9,6 +9,7 @@
 #include "libslic3r/Model.hpp"
 #include "libslic3r/PrintConfig.hpp"
 #include "libslic3r/Arrange.hpp"
+#include "libslic3r/ClipperUtils.hpp"
 #include "libslic3r/ModelArrange.hpp"
 #include "libslic3r/Orient.hpp"
 
@@ -258,6 +259,155 @@ RawArrangeResult arrange_orca_raw(const rust::Vec<RawObject> &objects, const rus
             out.arrange_order.push_back(minst->arrange_order);
     out.is_seq_print = params.is_seq_print;
     return out;
+}
+
+// « Remplir le plateau avec des instances » d'Orca (GUI/Jobs/FillBedJob.cpp,
+// prepare/process/finalize) : instances imprimables de l'objet cible
+// (priority + 1) + copies du gabarit (priority 0, autant que
+// (aire plateau − aire fixe) / aire de l'item gonflé de min_obj_distance/2) ;
+// autres instances posées sur le plateau = fixes ; zones exclues = objets
+// virtuels ; update_arrange_params / get_shrink_bedpts / inflations ;
+// arrêt dès qu'une copie déborde du plateau (on_packed). Les instances
+// placées sur le plateau sont appliquées (originales déplacées, copies
+// ajoutées à l'objet cible). Paramètres GUI repris d'init_arrange_params :
+// dégagements extrudeur, printable_height, is_seq_print selon
+// print_sequence, min_obj_distance = clearance_mm (0 = auto).
+// Écart : au-delà de 100 items Orca pose les copies sur une grille de cases
+// vides (Plater::get_empty_cells, code GUI) ; ici le nombre d'items est
+// plafonné à 100.
+rust::Vec<RawObject> fill_bed_raw(const rust::Vec<RawObject> &objects, const rust::Vec<double> &bed_xy,
+                                  rust::Str config_json, uint32_t object_index, double clearance_mm)
+{
+    using namespace Slic3r;
+    using namespace Slic3r::arrangement;
+    size_t cursor = 0;
+    Points bed = take_polygon(bed_xy, cursor);
+    if (bed.size() < 3)
+        throw std::runtime_error("contour de plateau invalide");
+
+    DynamicPrintConfig config;
+    if (!config_json.empty())
+        config_from_json(config, std::string(config_json));
+    for (const std::string &key : FullPrintConfig::defaults().keys()) {
+        if (config.has(key))
+            continue;
+        const ConfigOptionDef *def = print_config_def.get(key);
+        if (def != nullptr && def->default_value)
+            config.set_key_value(key, def->default_value->clone());
+    }
+    {
+        Pointfs area;
+        for (const Point &p : bed)
+            area.emplace_back(unscaled(p.x()), unscaled(p.y()));
+        config.set_key_value("printable_area", new ConfigOptionPoints(area));
+    }
+
+    Model model;
+    raw_into_model(objects, model);
+    if (object_index >= model.objects.size() || model.objects[object_index]->instances.empty())
+        throw std::runtime_error("objet à dupliquer introuvable");
+
+    ArrangeParams params;
+    params.clearance_height_to_rod = config.opt_float("extruder_clearance_height_to_rod");
+    params.clearance_height_to_lid = config.opt_float("extruder_clearance_height_to_lid");
+    params.clearance_radius = config.opt_float("extruder_clearance_radius");
+    params.printable_height = config.opt_float("printable_height");
+    params.nozzle_height = config.opt_float("nozzle_height");
+    params.min_obj_distance = clearance_mm > 0 ? scaled(clearance_mm) : 0;
+    params.is_seq_print = config.has("print_sequence") &&
+                          config.option<ConfigOptionEnum<PrintSequence>>("print_sequence")->value ==
+                              PrintSequence::ByObject;
+    if (params.is_seq_print) {
+        params.bed_shrink_x = BED_SHRINK_SEQ_PRINT;
+        params.bed_shrink_y = BED_SHRINK_SEQ_PRINT;
+    }
+    params.progressind = [](unsigned, std::string) {};
+
+    const BoundingBox plate_bb = get_extents(Polygon(bed));
+    ArrangePolygons selected, unselected;
+    std::vector<size_t> selected_instance; // indice d'instance de l'objet cible
+    for (size_t oidx = 0; oidx < model.objects.size(); ++oidx) {
+        ModelObject *mo = model.objects[oidx];
+        for (size_t inst_idx = 0; inst_idx < mo->instances.size(); ++inst_idx) {
+            ArrangePolygon ap = get_instance_arrange_poly(mo->instances[inst_idx], config);
+            const BoundingBox ap_bb = ap.transformed_poly().contour.bounding_box();
+            ap.name = mo->name;
+            if (oidx == object_index && mo->instances[inst_idx]->printable) {
+                ++ap.priority;
+                ap.itemid = static_cast<int>(selected.size());
+                selected.emplace_back(ap);
+                selected_instance.push_back(inst_idx);
+            } else if (plate_bb.contains(ap_bb)) {
+                ap.bed_idx = 0;
+                ap.itemid = static_cast<int>(unselected.size());
+                unselected.emplace_back(ap);
+            }
+        }
+    }
+    if (selected.empty())
+        throw std::runtime_error("aucune instance imprimable à dupliquer");
+
+    // Zones exclues (après le contour dans bed_xy) : objets virtuels.
+    while (cursor < bed_xy.size()) {
+        Points points = take_polygon(bed_xy, cursor);
+        if (points.size() < 3)
+            throw std::runtime_error("zone d'exclusion invalide");
+        ArrangePolygon excluded;
+        excluded.poly = ExPolygon(std::move(points));
+        excluded.bed_idx = 0;
+        excluded.is_virt_object = true;
+        excluded.height = 1;
+        excluded.name = "ExcludedRegion" + std::to_string(unselected.size());
+        ArrangePolygon region = excluded;
+        region.inflation = scaled(1.0);
+        params.excluded_regions.emplace_back(std::move(region));
+        unselected.emplace_back(std::move(excluded));
+    }
+
+    const double sc = scaled<double>(1.) * scaled(1.);
+    auto polys = offset_ex(selected.front().poly, params.min_obj_distance / 2);
+    const ExPolygon poly = polys.empty() ? selected.front().poly : polys.front();
+    const double poly_area = poly.area() / sc;
+    double unsel_area = 0;
+    for (const ArrangePolygon &ap : unselected)
+        unsel_area += (ap.bed_idx == 0) * ap.poly.area();
+    unsel_area /= sc;
+    const double fixed_area = unsel_area + selected.size() * poly_area;
+    const double bed_area = Polygon(bed).area() / sc;
+    int needed_items = poly_area > 0 ? static_cast<int>((bed_area - fixed_area) / poly_area) : 0;
+    needed_items = std::clamp(needed_items, 0, std::max(0, 100 - static_cast<int>(selected.size())));
+
+    ModelObject *target = model.objects[object_index];
+    const ArrangePolygon template_ap = get_instance_arrange_poly(target->instances[selected_instance.front()], config);
+    for (int i = 0; i < needed_items; ++i) {
+        ArrangePolygon ap = template_ap;
+        ap.poly = selected.front().poly;
+        ap.bed_idx = 36; // PartPlateList::MAX_PLATES_COUNT
+        ap.itemid = -1;
+        selected.emplace_back(ap);
+    }
+
+    update_arrange_params(params, &config, selected);
+    const Points beds = get_shrink_bedpts(&config, params);
+    update_selected_items_inflation(selected, &config, params);
+    update_unselected_items_inflation(unselected, &config, params);
+    bool do_stop = false;
+    params.stopcondition = [&do_stop]() { return do_stop; };
+    params.on_packed = [&do_stop](const ArrangePolygon &ap) { do_stop = ap.bed_idx > 0 && ap.priority == 0; };
+    params.do_final_align = true; // !is_bbl (imprimantes non Bambu)
+
+    arrange(selected, unselected, beds, params);
+
+    const ModelInstance *tmpl = target->instances[selected_instance.front()];
+    for (size_t k = 0; k < selected.size(); ++k) {
+        const ArrangePolygon &ap = selected[k];
+        if (ap.bed_idx != 0)
+            continue;
+        ModelInstance *inst = k < selected_instance.size() ? target->instances[selected_instance[k]]
+                                                           : target->add_instance(*tmpl);
+        inst->apply_arrange_result(ap.translation.cast<double>(), ap.rotation);
+    }
+    return model_to_raw(model);
 }
 
 RawObject orient_raw(const RawObject &object)
