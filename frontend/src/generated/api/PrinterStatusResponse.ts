@@ -3,4 +3,20 @@
 /**
  * État d'impression instantané (`GET /api/printers/{id}/status`).
  */
-export type PrinterStatusResponse = { state: string, filename?: string, progress: number, print_duration: number, extruder_temp: number, extruder_target: number, bed_temp: number, bed_target: number, };
+export type PrinterStatusResponse = { state: string, filename?: string, progress: number, print_duration: number, extruder_temp: number, extruder_target: number, bed_temp: number, bed_target: number, 
+/**
+ * Couche en cours / total (`print_stats.info`), si l'imprimante les publie.
+ */
+current_layer?: bigint, total_layer?: bigint, 
+/**
+ * Ventilateur de pièce (`fan.speed`, 0 → 1).
+ */
+fan_speed?: number, 
+/**
+ * Axes référencés (`toolhead.homed_axes`).
+ */
+homed_axes?: string, 
+/**
+ * URL absolue de la webcam (relais `/server/webcams/list`).
+ */
+webcam_url?: string, };

@@ -6,6 +6,8 @@
 //! - `; CHANGE_LAYER` / `; Z_HEIGHT: z` / `; LAYER_HEIGHT: h` : bornes de couche ;
 //! - `; FEATURE: <rôle>` : type de ligne (miroir de `role_to_string`) ;
 //! - `; LINE_WIDTH: w` : largeur d'extrusion courante ;
+//! - variantes non Bambu (`GCodeProcessor::reserved_tag`, imprimantes Marlin/
+//!   Klipper…) : `;LAYER_CHANGE`, `;Z:z`, `;HEIGHT:h`, `;TYPE:<rôle>`, `;WIDTH:w` ;
 //! - `G0`/`G1` : déplacements ; extrusion si ΔE > 0 (E relatif, `M83`).
 
 use std::io::{BufRead, BufReader};
@@ -132,9 +134,15 @@ impl Parser {
 
     fn handle_comment(&mut self, body: &str) {
         let body = body.trim();
-        if body == "CHANGE_LAYER" {
+        // Étiquettes Bambu (` CHANGE_LAYER`, ` Z_HEIGHT:`…) et leurs équivalents
+        // non Bambu (`LAYER_CHANGE`, `Z:`…) : Orca choisit le jeu selon
+        // `is_BBL_printer()`, le parseur accepte les deux.
+        if body == "CHANGE_LAYER" || body == "LAYER_CHANGE" {
             self.start_layer();
-        } else if let Some(rest) = body.strip_prefix("Z_HEIGHT:") {
+        } else if let Some(rest) = body
+            .strip_prefix("Z_HEIGHT:")
+            .or_else(|| body.strip_prefix("Z:"))
+        {
             if let Ok(z) = rest.trim().parse::<f32>() {
                 self.z = z;
                 self.ensure_layer();
@@ -142,17 +150,26 @@ impl Parser {
                     layer.z = z;
                 }
             }
-        } else if let Some(rest) = body.strip_prefix("LAYER_HEIGHT:") {
+        } else if let Some(rest) = body
+            .strip_prefix("LAYER_HEIGHT:")
+            .or_else(|| body.strip_prefix("HEIGHT:"))
+        {
             if let Ok(h) = rest.trim().parse::<f32>() {
                 self.ensure_layer();
                 if let Some(layer) = self.layers.last_mut() {
                     layer.height = h;
                 }
             }
-        } else if let Some(rest) = body.strip_prefix("FEATURE:") {
+        } else if let Some(rest) = body
+            .strip_prefix("FEATURE:")
+            .or_else(|| body.strip_prefix("TYPE:"))
+        {
             self.flush_segment();
             self.kind = feature_to_kind(rest);
-        } else if let Some(rest) = body.strip_prefix("LINE_WIDTH:") {
+        } else if let Some(rest) = body
+            .strip_prefix("LINE_WIDTH:")
+            .or_else(|| body.strip_prefix("WIDTH:"))
+        {
             if let Ok(w) = rest.trim().parse::<f32>() {
                 self.width = w;
             }

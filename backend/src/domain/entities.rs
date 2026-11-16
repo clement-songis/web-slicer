@@ -221,6 +221,9 @@ pub struct SlicingJob {
     pub phase: String,
     /// Presets résolus figés au lancement (reproductibilité).
     pub resolved_settings: Value,
+    /// Scène figée au lancement. `None` uniquement pour les jobs créés avant
+    /// l'introduction du snapshot (migration additive).
+    pub scene: Option<Value>,
     pub error: Option<Value>,
     pub gcode_id: Option<GcodeId>,
     pub created_at: OffsetDateTime,

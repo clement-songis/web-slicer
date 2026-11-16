@@ -4,7 +4,9 @@
 
 use backend::adapters::storage::sqlite::SqliteStorage;
 use backend::domain::presets::reseed_system_presets;
-use backend::domain::{NewUser, Preset, PresetId, PresetKind, PresetOrigin, Role, Storage};
+use backend::domain::{
+    NewPrinter, NewProject, NewUser, Preset, PresetId, PresetKind, PresetOrigin, Role, Storage,
+};
 use engine::presets::{ImportedPreset, PresetKind as EngineKind};
 
 fn imported(name: &str, kind: EngineKind) -> ImportedPreset {
@@ -143,5 +145,117 @@ async fn reseed_preserves_user_presets() {
         storage.presets().system_count().await.unwrap(),
         1,
         "un seul preset système après re-seed"
+    );
+}
+
+#[tokio::test]
+async fn reseed_same_imported_batch_preserves_ids_and_owned_references() {
+    let (_d, storage) = storage().await;
+    let batch = vec![
+        imported("Test Machine", EngineKind::Machine),
+        imported("Generic PLA", EngineKind::Filament),
+        imported("0.20 Standard", EngineKind::Process),
+    ];
+    reseed_system_presets(&storage, &batch).await.unwrap();
+
+    let user = storage
+        .users()
+        .create(NewUser {
+            email: "references@test.local".into(),
+            password_hash: "x".into(),
+            role: Role::User,
+        })
+        .await
+        .unwrap();
+    let machine = storage
+        .presets()
+        .list_by_kind(PresetKind::Machine, user.id)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|p| p.name == "Test Machine")
+        .unwrap();
+    let filament = storage
+        .presets()
+        .list_by_kind(PresetKind::Filament, user.id)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|p| p.name == "Generic PLA")
+        .unwrap();
+    let process = storage
+        .presets()
+        .list_by_kind(PresetKind::Process, user.id)
+        .await
+        .unwrap()
+        .into_iter()
+        .find(|p| p.name == "0.20 Standard")
+        .unwrap();
+    let printer = storage
+        .printers()
+        .create(
+            user.id,
+            NewPrinter {
+                name: "Test printer".into(),
+                moonraker_url: None,
+                api_key: None,
+                machine_preset_id: machine.id,
+            },
+        )
+        .await
+        .unwrap();
+    let active_presets = serde_json::json!({
+        "printer": machine.id.to_string(),
+        "filaments": [filament.id.to_string()],
+        "process": process.id.to_string(),
+    });
+    let project = storage
+        .projects()
+        .create(
+            user.id,
+            NewProject {
+                name: "Persistent references".into(),
+                scene: serde_json::json!({}),
+                active_presets: active_presets.clone(),
+                thumbnail_path: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    // Le mapping de domaine produit de nouveaux UUID provisoires à chaque
+    // import. Le stockage doit réconcilier le lot sans jamais supprimer puis
+    // réinsérer les lignes conservées (ce qui déclencherait les cascades).
+    reseed_system_presets(&storage, &batch).await.unwrap();
+
+    assert_eq!(
+        storage.presets().get(machine.id).await.unwrap().id,
+        machine.id
+    );
+    assert_eq!(
+        storage.presets().get(filament.id).await.unwrap().id,
+        filament.id
+    );
+    assert_eq!(
+        storage.presets().get(process.id).await.unwrap().id,
+        process.id
+    );
+    assert_eq!(
+        storage
+            .printers()
+            .get(user.id, printer.id)
+            .await
+            .unwrap()
+            .machine_preset_id,
+        machine.id
+    );
+    assert_eq!(
+        storage
+            .projects()
+            .get(user.id, project.id)
+            .await
+            .unwrap()
+            .active_presets,
+        active_presets
     );
 }

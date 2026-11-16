@@ -13,7 +13,28 @@ export {
 	rangeColor
 } from './colorations';
 export type { Coloration, Rgb, Legend, LegendScale, LegendList, LegendEntry } from './colorations';
-export { buildPreviewGeometry, buildLegend, computeFlowRange, flowValue } from './geometry';
+export {
+	buildPreviewGeometry,
+	buildLegend,
+	buildOverlay,
+	computeFlowRange,
+	flowValue,
+	PREVIEW_OPTIONS,
+	type PreviewOption,
+	type PreviewOverlay
+} from './geometry';
+export { parsePreviewTrack, trackMatches, type PreviewTrack } from './track';
+export {
+	parseOrcaColor,
+	parseFilamentColours,
+	colourFromResolvedValues,
+	filamentColorsFromResolved,
+	loadFilamentColors,
+	defaultFilamentColor,
+	rgbToHex,
+	FILAMENT_COLOUR_KEYS
+} from './filament-colors';
+export type { ResolvedFetcher } from './filament-colors';
 export type { PreviewGeometry, GeometryOptions, PreviewRanges, PreviewType } from './geometry';
 export { default as PreviewLines } from './PreviewLines.svelte';
 export { default as PreviewScene } from './PreviewScene.svelte';

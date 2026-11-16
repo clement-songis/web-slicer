@@ -12,6 +12,7 @@
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::Json;
+use serde_json::Value;
 use std::path::Path as FsPath;
 use std::sync::Arc;
 
@@ -29,7 +30,7 @@ use crate::http::error::{ApiError, ApiResult};
 use crate::http::extract::CurrentUser;
 use crate::http::state::AppState;
 
-fn parse_printer_id(raw: &str) -> ApiResult<PrinterId> {
+pub(crate) fn parse_printer_id(raw: &str) -> ApiResult<PrinterId> {
     uuid::Uuid::parse_str(raw)
         .map(PrinterId)
         .map_err(|_| ApiError::not_found("Imprimante"))
@@ -60,7 +61,7 @@ fn to_new_printer(state: &AppState, body: SavePrinterRequest) -> ApiResult<NewPr
 
 /// Charge une imprimante du compte et construit son client Moonraker (clé API
 /// déchiffrée à la volée, jamais persistée en clair).
-async fn load_client(
+pub(crate) async fn load_client(
     state: &AppState,
     user: crate::domain::UserId,
     id: PrinterId,
@@ -106,6 +107,28 @@ pub async fn catalog(
         .list_by_kind(PresetKind::Machine, user.id)
         .await?;
 
+    // Vignette comme Orca (WebGuideDialog.cpp:1369, Plater.cpp:4094) :
+    // `<marque>/<printer_model>_cover.png`, `printer_model` étant résolu sur la
+    // chaîne `inherits` des presets machine (le nom du preset contient la buse).
+    let values_by_name: std::collections::HashMap<String, (Option<String>, Value)> = presets
+        .iter()
+        .map(|p| (p.name.clone(), (p.inherits.clone(), p.values.clone())))
+        .collect();
+    let printer_model_of = |name: &str| -> Option<String> {
+        let mut current = name.to_string();
+        for _ in 0..16 {
+            let (inherits, values) = values_by_name.get(&current)?;
+            if let Some(m) = values.get("printer_model").and_then(Value::as_str) {
+                if !m.is_empty() {
+                    return Some(m.to_string());
+                }
+            }
+            current = inherits.clone()?;
+        }
+        None
+    };
+    let mut cover_of_model: BTreeMap<(String, String), String> = BTreeMap::new();
+
     // marque → modèle → variantes ; BTreeMap pour un tri stable (marque, modèle).
     let mut by_vendor: BTreeMap<String, BTreeMap<String, Vec<PrinterCatalogVariant>>> =
         BTreeMap::new();
@@ -117,6 +140,16 @@ pub async fn catalog(
         }
         let vendor = p.vendor.clone().unwrap_or_else(|| "Autre".to_string());
         let (model, nozzle) = split_machine_name(&p.name);
+        cover_of_model
+            .entry((vendor.clone(), model.clone()))
+            .or_insert_with(|| {
+                printer_model_of(&p.name)
+                    .into_iter()
+                    .chain(std::iter::once(model.clone()))
+                    .map(|m| format!("{vendor}/{m}_cover.png"))
+                    .find(|c| state.profiles_dir.join(c).is_file())
+                    .unwrap_or_default()
+            });
         by_vendor
             .entry(vendor)
             .or_default()
@@ -147,7 +180,12 @@ pub async fn catalog(
                         .or_else(|| variants.first())
                         .map(|v| v.machine_preset_id.clone())
                         .unwrap_or_default();
-                    let cover = format!("{vendor}/{model}_cover.png");
+                    // Vide si Orca n'a pas de vignette (imprimantes « Custom ») :
+                    // le client affiche le pictogramme sans requête 404.
+                    let cover = cover_of_model
+                        .get(&(vendor.clone(), model.clone()))
+                        .cloned()
+                        .unwrap_or_default();
                     PrinterCatalogModel {
                         vendor: vendor.clone(),
                         model,
@@ -199,11 +237,15 @@ pub async fn create(
     Json(body): Json<SavePrinterRequest>,
 ) -> ApiResult<(StatusCode, Json<PrinterResponse>)> {
     let new_printer = to_new_printer(&state, body)?;
-    let printer = state
-        .storage
-        .printers()
-        .create(user.id, new_printer)
-        .await?;
+    // Écriture détachée de la requête : si le client se déconnecte (navigation
+    // juste après « Enregistrer »), axum abandonne le handler ; la tâche, elle,
+    // va au bout et l'imprimante déclarée n'est pas perdue.
+    let storage = state.storage.clone();
+    let user_id = user.id;
+    let printer =
+        tokio::spawn(async move { storage.printers().create(user_id, new_printer).await })
+            .await
+            .map_err(|_| ApiError::internal())??;
     Ok((StatusCode::CREATED, Json(PrinterResponse::from(printer))))
 }
 
@@ -292,15 +334,61 @@ pub async fn upload(
             tracing::error!(error = %e, "lecture du G-code (envoi imprimante)");
             ApiError::internal()
         })?;
-    let filename = FsPath::new(&gcode.file_path)
-        .file_name()
-        .and_then(|n| n.to_str())
-        .map(str::to_owned)
-        .unwrap_or_else(|| format!("{gcode_id}.gcode"));
+    // Nom d'Orca (`Plater::send_gcode_legacy` : même nom que l'export,
+    // `filename_format` évalué par libslic3r au tranchage), base = nom du
+    // projet ; job ou projet supprimé depuis : base « Untitled » comme Orca.
+    let project_name = match state.storage.jobs().get(user.id, gcode.job_id).await {
+        Ok(job) => state
+            .storage
+            .projects()
+            .get(user.id, job.project_id)
+            .await
+            .map(|p| p.name)
+            .unwrap_or_default(),
+        Err(_) => String::new(),
+    };
+    let filename = crate::gcode_filename::for_gcode(&gcode.stats, &bytes, &project_name);
 
     let (_printer, client) = load_client(&state, user.id, id).await?;
     let result = client.upload(&filename, bytes, body.start_now).await?;
     Ok(Json(PrinterUploadResponse::from(result)))
+}
+
+/// Slug ASCII sûr pour un nom de fichier Moonraker : minuscules, accents
+/// latins repliés, tout autre caractère → `-` (séparateurs fusionnés), 60
+/// caractères max. Vide → `web-slicer`.
+pub(crate) fn safe_slug(raw: &str) -> String {
+    let mut out = String::new();
+    for c in raw.chars().flat_map(char::to_lowercase) {
+        let mapped = match c {
+            'a'..='z' | '0'..='9' => Some(c),
+            'à' | 'á' | 'â' | 'ã' | 'ä' | 'å' => Some('a'),
+            'ç' => Some('c'),
+            'è' | 'é' | 'ê' | 'ë' => Some('e'),
+            'ì' | 'í' | 'î' | 'ï' => Some('i'),
+            'ñ' => Some('n'),
+            'ò' | 'ó' | 'ô' | 'õ' | 'ö' | 'ø' => Some('o'),
+            'ù' | 'ú' | 'û' | 'ü' => Some('u'),
+            'ý' | 'ÿ' => Some('y'),
+            'æ' => Some('a'),
+            'œ' => Some('o'),
+            _ => None,
+        };
+        match mapped {
+            Some(ch) => out.push(ch),
+            None if !out.is_empty() && !out.ends_with('-') => out.push('-'),
+            None => {}
+        }
+        if out.len() >= 60 {
+            break;
+        }
+    }
+    let slug = out.trim_matches('-').to_string();
+    if slug.is_empty() {
+        "web-slicer".into()
+    } else {
+        slug
+    }
 }
 
 /// `GET /api/printers/{id}/status` — état instantané (interrogation Moonraker).
@@ -314,11 +402,84 @@ pub async fn status(
     let id = parse_printer_id(&id)?;
     let (_printer, client) = load_client(&state, user.id, id).await?;
     let status = client.query_status().await?;
+    // Webcam déclarée côté Moonraker (facultatif : absence ou erreur → None).
+    let webcam_url = client.webcam_url().await.ok().flatten();
     // Suivi en direct : abonnement WebSocket relayé au canal du propriétaire.
     state
         .relays
         .ensure(Arc::clone(&state.events), user.id, id, client);
-    Ok(Json(PrinterStatusResponse::from(status)))
+    let mut response = PrinterStatusResponse::from(status);
+    response.webcam_url = webcam_url;
+    Ok(Json(response))
+}
+
+/// `GET /api/printers/{id}/files` — fichiers G-code de l'imprimante
+/// (relais `/server/files/list?root=gcodes`), plus récents d'abord.
+pub async fn files(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> ApiResult<Json<Vec<crate::http::dto::PrinterFileResponse>>> {
+    let id = parse_printer_id(&id)?;
+    let (_printer, client) = load_client(&state, user.id, id).await?;
+    let mut files = client.list_files().await?;
+    files.sort_by(|a, b| b.modified.total_cmp(&a.modified));
+    Ok(Json(
+        files
+            .into_iter()
+            .map(|f| crate::http::dto::PrinterFileResponse {
+                path: f.path,
+                size: f.size,
+                modified: f.modified,
+            })
+            .collect(),
+    ))
+}
+
+/// `POST /api/printers/{id}/print` — lance un fichier présent sur
+/// l'imprimante (relais `/printer/print/start`).
+pub async fn print(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<crate::http::dto::StartPrintRequest>,
+) -> ApiResult<StatusCode> {
+    let filename = body.filename.trim().to_string();
+    if filename.is_empty()
+        || filename.len() > 255
+        || filename.contains("..")
+        || filename.chars().any(char::is_control)
+    {
+        return Err(ApiError::validation(
+            "nom de fichier invalide",
+            serde_json::json!({ "filename": body.filename }),
+        ));
+    }
+    control(&state, user.id, &id, |c| async move {
+        c.start_print(&filename).await
+    })
+    .await
+}
+
+/// `POST /api/printers/{id}/gcode` — exécute un script G-code (relais
+/// `/printer/gcode/script`) : consignes, déplacements, ventilateur. Script
+/// vide = sonde de capacité (204 sans appel). Borné (longueur, lignes,
+/// caractères imprimables) : voir `validate_gcode_script`.
+pub async fn gcode(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<crate::http::dto::GcodeScriptRequest>,
+) -> ApiResult<StatusCode> {
+    crate::adapters::moonraker::validate_gcode_script(&body.script)
+        .map_err(|e| ApiError::validation(e, serde_json::json!({})))?;
+    let printer_id = parse_printer_id(&id)?;
+    let (_printer, client) = load_client(&state, user.id, printer_id).await?;
+    let script = body.script.trim().to_string();
+    if !script.is_empty() {
+        client.gcode_script(&script).await?;
+    }
+    Ok(StatusCode::NO_CONTENT)
 }
 
 /// `POST /api/printers/{id}/pause`.

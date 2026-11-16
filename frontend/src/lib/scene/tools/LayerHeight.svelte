@@ -12,6 +12,7 @@
 		uniformProfile,
 		type LayerBand
 	} from './layer-height';
+	import { LayerBrushDriver, actionFor } from './layer-brush';
 
 	interface Props {
 		profile: LayerBand[];
@@ -19,9 +20,64 @@
 		/** Hauteur de couche par défaut (réinitialisation). */
 		baseHeight?: number;
 		onchange: (profile: LayerBand[]) => void;
+		/** Profil adaptatif calculé par le moteur (libslic3r, `quality` ∈ [0, 1]). */
+		onadaptive?: (quality: number) => Promise<void>;
+		/** Lissage gaussien calculé par le moteur (`smooth_height_profile`). */
+		onsmooth?: (radius: number, keepMin: boolean) => Promise<void>;
+		/** Pinceau moteur (`adjust_layer_height_profile`) à la cote `z`. */
+		onbrush?: (
+			z: number,
+			action: 'increase' | 'decrease' | 'reduce' | 'smooth',
+			delta: number,
+			bandWidth: number
+		) => Promise<void>;
 	}
 
-	let { profile, zMax, baseHeight = 0.2, onchange }: Props = $props();
+	let {
+		profile,
+		zMax,
+		baseHeight = 0.2,
+		onchange,
+		onadaptive,
+		onsmooth,
+		onbrush
+	}: Props = $props();
+	// Pinceau (barre de profil, comme la barre d'épaisseur d'Orca) : bande 2 mm
+	// (défaut GUI, 1,5–10) ; 0,005 par évènement (appui, glisser, minuteur 300 ms).
+	// Clic gauche = affiner, droit = épaissir, Maj = réduire / lisser.
+	let brushBand = $state(2);
+	const brush = new LayerBrushDriver((z, action, delta) =>
+		onbrush ? onbrush(z, action, delta, brushBand) : Promise.resolve()
+	);
+	$effect(() => () => brush.stop());
+	function zAt(event: PointerEvent): number {
+		const rect = (event.currentTarget as Element).getBoundingClientRect();
+		const t = 1 - (event.clientY - rect.top) / (rect.height || 1);
+		return Math.min(zMax, Math.max(0, t * zMax));
+	}
+	function onBarDown(event: PointerEvent) {
+		if (!onbrush) return;
+		event.preventDefault();
+		brush.start(zAt(event), actionFor(event.button === 2, event.shiftKey));
+		window.addEventListener('pointerup', () => brush.stop(), { once: true });
+	}
+	function onBarMove(event: PointerEvent) {
+		if (brush.active) brush.move(zAt(event));
+	}
+
+	// Défauts de la GUI d'Orca : qualité 0,5, rayon 5, « keep min » décoché.
+	let quality = $state(0.5);
+	let radius = $state(5);
+	let keepMin = $state(false);
+	let busy = $state(false);
+	async function run(task: () => Promise<void>) {
+		busy = true;
+		try {
+			await task();
+		} finally {
+			busy = false;
+		}
+	}
 
 	let z0 = $state(0);
 	let z1 = $state(0);
@@ -43,8 +99,27 @@
 </script>
 
 <div class="flex gap-3 text-sm">
-	<svg viewBox="0 0 100 100" class="h-40 w-16 rounded border border-border bg-surface-raised">
-		<polyline points={samples} fill="none" stroke="#38bdf8" stroke-width="1.5" />
+	<svg
+		viewBox="0 0 100 100"
+		class="h-40 w-16 rounded border border-border bg-surface-raised"
+		class:cursor-crosshair={!!onbrush}
+		role="slider"
+		aria-label="Pinceau de hauteur de couche (gauche affine, droit épaissit, Maj réduit/lisse)"
+		aria-valuemin={0}
+		aria-valuemax={zMax}
+		aria-valuenow={0}
+		tabindex="-1"
+		onpointerdown={onBarDown}
+		onpointermove={onBarMove}
+		oncontextmenu={(e) => onbrush && e.preventDefault()}
+	>
+		<polyline
+			points={samples}
+			fill="none"
+			stroke="currentColor"
+			class="text-accent"
+			stroke-width="1.5"
+		/>
 	</svg>
 
 	<div class="flex flex-1 flex-col gap-2">
@@ -57,7 +132,7 @@
 					max={zMax}
 					step={0.1}
 					bind:value={z0}
-					class="rounded border border-border-strong bg-surface-raised px-1"
+					class="ws-field ws-field-sm"
 				/>
 			</label>
 			<label class="flex flex-col">
@@ -68,7 +143,7 @@
 					max={zMax}
 					step={0.1}
 					bind:value={z1}
-					class="rounded border border-border-strong bg-surface-raised px-1"
+					class="ws-field ws-field-sm"
 				/>
 			</label>
 			<label class="flex flex-col">
@@ -79,25 +154,81 @@
 					max={DEFAULT_MAX_HEIGHT}
 					step={0.01}
 					bind:value={bandHeight}
-					class="rounded border border-border-strong bg-surface-raised px-1"
+					class="ws-field ws-field-sm"
 				/>
 			</label>
 		</div>
 
+		{#if onbrush}
+			<label class="flex flex-col">
+				<span class="text-content-muted">Bande du pinceau (mm) — sur la courbe</span>
+				<input
+					type="number"
+					min={1.5}
+					max={10}
+					step={0.5}
+					bind:value={brushBand}
+					class="ws-field ws-field-sm"
+				/>
+			</label>
+		{/if}
+
+		{#if onadaptive || onsmooth}
+			<div class="grid grid-cols-3 gap-1">
+				<label class="flex flex-col">
+					<span class="text-content-muted">Qualité</span>
+					<input
+						type="number"
+						min={0}
+						max={1}
+						step={0.05}
+						bind:value={quality}
+						class="ws-field ws-field-sm"
+					/>
+				</label>
+				<label class="flex flex-col">
+					<span class="text-content-muted">Rayon</span>
+					<input
+						type="number"
+						min={1}
+						max={10}
+						step={1}
+						bind:value={radius}
+						class="ws-field ws-field-sm"
+					/>
+				</label>
+				<label class="flex items-end gap-1">
+					<input type="checkbox" bind:checked={keepMin} />
+					<span class="text-content-muted">Garder min</span>
+				</label>
+			</div>
+		{/if}
+
 		<div class="flex flex-wrap gap-2">
 			<button
 				type="button"
-				class="rounded bg-primary px-3 py-1 text-white hover:bg-primary-hover"
+				class="ws-btn ws-btn-primary"
 				onclick={() => onchange(setBand(profile, z0, z1, bandHeight))}>Appliquer la bande</button
 			>
+			{#if onadaptive}
+				<button
+					type="button"
+					disabled={busy}
+					class="ws-btn ws-btn-secondary"
+					onclick={() => run(() => onadaptive(quality))}>Adaptatif</button
+				>
+			{/if}
 			<button
 				type="button"
-				class="rounded border border-border-strong px-3 py-1 hover:bg-overlay"
-				onclick={() => onchange(smooth(profile, 0.5))}>Lisser</button
+				disabled={busy}
+				class="ws-btn ws-btn-secondary"
+				onclick={() =>
+					onsmooth ? run(() => onsmooth(radius, keepMin)) : onchange(smooth(profile, 0.5))}
+				>Lisser</button
 			>
 			<button
 				type="button"
-				class="rounded border border-border-strong px-3 py-1 hover:bg-overlay"
+				class="ws-btn ws-btn-secondary"
 				onclick={() => onchange(uniformProfile(zMax, baseHeight))}>Réinitialiser</button
 			>
 		</div>

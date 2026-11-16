@@ -126,7 +126,7 @@ fn import_req(cookie: &str, filename: &str, content: &[u8]) -> Request<Body> {
 fn binary_stl(n: u32) -> Vec<u8> {
     let mut v = vec![0u8; 80];
     v.extend_from_slice(&n.to_le_bytes());
-    v.extend(std::iter::repeat(0u8).take(n as usize * 50));
+    v.extend(std::iter::repeat_n(0u8, n as usize * 50));
     v
 }
 

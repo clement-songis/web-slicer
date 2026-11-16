@@ -3,7 +3,7 @@
 	// sur les jetons `*-soft`/`*-content`. `onclose` (optionnel) affiche un bouton
 	// de fermeture. `role` s'ajuste : alerte pour danger, statut sinon.
 	import type { Snippet } from 'svelte';
-	import { bannerClasses, type BannerTone } from './styles';
+	import { bannerClasses, cx, FOCUS_RING, type BannerTone } from './styles';
 
 	type Props = {
 		tone?: BannerTone;
@@ -18,7 +18,11 @@
 <div class={bannerClasses(tone)} role={tone === 'danger' ? 'alert' : 'status'}>
 	<span>{@render children()}</span>
 	{#if onclose}
-		<button type="button" onclick={onclose} class="shrink-0 font-medium hover:underline">
+		<button
+			type="button"
+			onclick={onclose}
+			class={cx('shrink-0 rounded font-medium underline-offset-2 hover:underline', FOCUS_RING)}
+		>
 			{closeLabel}
 		</button>
 	{/if}

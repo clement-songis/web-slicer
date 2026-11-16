@@ -3,14 +3,21 @@
 	// raccourci Ctrl/Cmd+S, et bannière d'avertissement en cas de conflit
 	// multi-onglets (verrou optimiste, 409). Le parent fournit `save`, qui
 	// construit le document scène et appelle `saveScene`.
-	import { onSaveShortcut, type SaveOutcome } from './save';
+	//
+	// Ce composant est l'UNIQUE propriétaire de Ctrl/Cmd+S (le dispatcher
+	// d'éditeur `editor/shortcuts.ts` ne le mappe pas). Ctrl+Shift+S n'est pas
+	// capté ici : il reste au dispatcher (`project.saveAs`).
+	import type { SaveOutcome } from './save';
+	import { isSaveChord } from '../editor/shortcuts';
 
 	interface Props {
 		/** Effectue la sauvegarde et renvoie son issue (le parent bâtit la scène). */
 		save: () => Promise<SaveOutcome>;
+		/** Modifications non enregistrées depuis la dernière sauvegarde. */
+		unsaved?: boolean;
 	}
 
-	let { save }: Props = $props();
+	let { save, unsaved = false }: Props = $props();
 
 	type SaveState = 'idle' | 'saving' | 'saved' | 'conflict' | 'error';
 	let saveState = $state<SaveState>('idle');
@@ -24,22 +31,57 @@
 		message = outcome.status === 'error' ? outcome.message : '';
 	}
 
-	$effect(() => onSaveShortcut(run));
+	function onKeydown(e: KeyboardEvent) {
+		if (
+			!isSaveChord({
+				key: e.key,
+				ctrl: e.ctrlKey,
+				shift: e.shiftKey,
+				alt: e.altKey,
+				meta: e.metaKey
+			})
+		)
+			return;
+		// Toujours bloquer « Enregistrer la page » du navigateur, y compris en
+		// auto-répétition (touche maintenue) qui, elle, ne relance pas de save.
+		e.preventDefault();
+		if (e.repeat) return;
+		void run();
+	}
 </script>
+
+<svelte:window onkeydown={onKeydown} />
 
 <div class="flex flex-col gap-2 text-sm">
 	<button
 		type="button"
-		class="self-start rounded bg-primary px-3 py-1 text-white hover:bg-primary-hover disabled:opacity-50"
+		data-testid="save-project"
+		class="ws-btn ws-btn-secondary relative self-start"
 		disabled={saveState === 'saving'}
 		onclick={run}
+		data-unsaved={unsaved ? 'true' : 'false'}
+		data-tip={unsaved ? 'Modifications non enregistrées (Ctrl+S)' : 'Projet enregistré'}
+		data-tip-side="bottom"
+		aria-describedby={unsaved ? 'save-unsaved-hint' : undefined}
 	>
+		{#if unsaved}
+			<!-- Marqueur discret « non enregistré » (pastille, comme l'astérisque du
+			     titre d'Orca) ; texte pour les lecteurs d'écran via aria-describedby. -->
+			<span
+				class="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full border-2 border-surface-raised bg-warning"
+				data-testid="unsaved-indicator"
+				aria-hidden="true"
+			></span>
+		{/if}
 		{saveState === 'saving' ? 'Sauvegarde…' : 'Sauvegarder'}
 	</button>
+	{#if unsaved}
+		<span id="save-unsaved-hint" class="sr-only">Modifications non enregistrées</span>
+	{/if}
 
-	{#if saveState === 'saved'}
-		<p class="text-success">Projet sauvegardé.</p>
-	{:else if saveState === 'conflict'}
+	<!-- Succès : annoncé par la barre de message de l'éditeur (évite le doublon
+	     et le décalage de la barre d'en-tête). -->
+	{#if saveState === 'conflict'}
 		<p class="text-warning" role="alert">
 			Conflit : le projet a été modifié dans un autre onglet. Rechargez avant de sauvegarder pour ne
 			pas écraser ces changements.

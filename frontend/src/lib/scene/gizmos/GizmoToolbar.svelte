@@ -12,13 +12,11 @@
 	const modes: GizmoMode[] = ['translate', 'rotate', 'scale'];
 </script>
 
-<div class="inline-flex overflow-hidden rounded border border-border-strong" role="group">
+<div class="ws-seg" role="group">
 	{#each modes as m (m)}
 		<button
 			type="button"
-			class="px-3 py-1 text-sm {mode === m
-				? 'bg-primary text-primary-content'
-				: 'bg-surface-sunken text-content-muted hover:bg-overlay'}"
+			class="ws-seg-item {mode === m ? 'ws-seg-on' : ''}"
 			aria-pressed={mode === m}
 			onclick={() => onmode(m)}
 		>

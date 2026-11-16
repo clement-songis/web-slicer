@@ -94,6 +94,44 @@ function clamp01(v: number): number {
 }
 
 function errorMessage(error: unknown, status: string): string {
-	if (typeof error === 'string' && error.trim() !== '') return error;
+	const raw =
+		typeof error === 'string'
+			? error
+			: error &&
+				  typeof error === 'object' &&
+				  typeof (error as { message?: unknown }).message === 'string'
+				? (error as { message: string }).message
+				: '';
+	if (raw.trim() !== '') return friendlySliceError(raw);
 	return status === 'cancelled' ? 'tranchage annulé' : 'échec du tranchage';
+}
+
+/**
+ * Message de tranchage lisible : retire l'enveloppe technique du worker
+ * (« worker sorti en code 1 — stderr : … — stdout : E engine_crashed
+ * configuration invalide : ») et traduit les refus de validation d'Orca
+ * (`Print::validate`) les plus courants, notamment ceux de l'impression
+ * objet par objet.
+ */
+export function friendlySliceError(raw: string): string {
+	let msg = raw.trim();
+	const invalid = /configuration invalide\s*:\s*([\s\S]*)$/i.exec(msg);
+	if (invalid) msg = invalid[1].trim();
+	else {
+		const out = /stdout\s*:\s*(?:E\s+\S+\s+)?([\s\S]*)$/i.exec(msg);
+		if (out && out[1].trim()) msg = out[1].trim();
+	}
+	// Orca concatène un message par objet (séparés par un saut de ligne, que la
+	// sortie du worker peut réduire à une espace).
+	const close = [
+		...msg.matchAll(/(\S(?:.*?\S)?) is too close to others, and collisions may be caused\.?/gi)
+	].map((m) => `« ${m[1].trim()} »`);
+	if (close.length)
+		return `${close.join(', ')} ${close.length > 1 ? 'sont trop près' : 'est trop près'} des autres objets : en impression objet par objet, la tête heurterait les objets déjà imprimés. Écartez-les (« Disposer » les espace automatiquement) ou repassez en impression couche par couche.`;
+	const tall = [
+		...msg.matchAll(/(\S(?:.*?\S)?) is too tall, and collisions will be caused\.?/gi)
+	].map((m) => `« ${m[1].trim()} »`);
+	if (tall.length)
+		return `${tall.join(', ')} : trop haut pour l'impression objet par objet (dégagement de la tête dépassé) ; imprimez-le en dernier ou repassez en impression couche par couche.`;
+	return msg;
 }

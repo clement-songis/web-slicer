@@ -4,7 +4,7 @@
 	// l'outil actif ; les panneaux/comportements sont câblés par T103 (transform),
 	// T104 (outils maillage) et T105 (peinture). Présentational : l'état vit dans
 	// `lib/editor/tools.ts`.
-	import { TOOL_ORDER, type EditorTool } from '$lib/editor';
+	import { TOOL_ORDER, shortcutKeyFor, withShortcut, type EditorTool } from '$lib/editor';
 	import { t } from '$lib/i18n';
 	import IconMove from '~icons/lucide/move';
 	import IconRotate from '~icons/lucide/rotate-3d';
@@ -32,46 +32,85 @@
 
 	let { active, onselect }: Props = $props();
 
-	// Métadonnées d'affichage : libellé de parité (clé i18n) + icône. `sep` insère
-	// un séparateur avant l'outil (transformation | outils maillage | peinture).
-	type Meta = { label: string; icon: typeof IconMove; sep?: boolean };
+	// Métadonnées d'affichage : libellé de parité (clé i18n), icône et famille
+	// (transformer | maillage | peinture | ajouter une forme | outils).
+	type Family = 'transform' | 'mesh' | 'paint' | 'add' | 'tools';
+	type Meta = { label: string; icon: typeof IconMove; family: Family };
 	const META: Record<EditorTool, Meta> = {
-		move: { label: 'Move', icon: IconMove },
-		rotate: { label: 'Rotate', icon: IconRotate },
-		scale: { label: 'Scale', icon: IconScale },
-		flatten: { label: 'Flatten', icon: IconFlatten, sep: true },
-		cut: { label: 'Cut', icon: IconCut },
-		boolean: { label: 'Mesh Boolean', icon: IconBoolean },
-		'support-paint': { label: 'Supports Painting', icon: IconSupport, sep: true },
-		'seam-paint': { label: 'Seam painting', icon: IconSeam },
-		'fuzzy-paint': { label: 'Fuzzy Skin painting', icon: IconFuzzy },
-		'mm-paint': { label: 'Color Painting', icon: IconColor },
-		emboss: { label: 'Text shape', icon: IconText, sep: true },
-		svg: { label: 'SVG shape', icon: IconSvg },
-		measure: { label: 'Measure', icon: IconMeasure },
-		assembly: { label: 'Assembly View', icon: IconAssembly },
-		simplify: { label: 'Simplify model', icon: IconSimplify },
-		'brim-ears': { label: 'Auto-Brim', icon: IconBrim }
+		move: { label: 'Move', icon: IconMove, family: 'transform' },
+		rotate: { label: 'Rotate', icon: IconRotate, family: 'transform' },
+		scale: { label: 'Scale', icon: IconScale, family: 'transform' },
+		flatten: { label: 'Flatten', icon: IconFlatten, family: 'mesh' },
+		cut: { label: 'Cut', icon: IconCut, family: 'mesh' },
+		boolean: { label: 'Mesh Boolean', icon: IconBoolean, family: 'mesh' },
+		'support-paint': { label: 'Supports Painting', icon: IconSupport, family: 'paint' },
+		'seam-paint': { label: 'Seam painting', icon: IconSeam, family: 'paint' },
+		'fuzzy-paint': { label: 'Fuzzy Skin painting', icon: IconFuzzy, family: 'paint' },
+		'mm-paint': { label: 'Color Painting', icon: IconColor, family: 'paint' },
+		emboss: { label: 'Text shape', icon: IconText, family: 'add' },
+		svg: { label: 'SVG shape', icon: IconSvg, family: 'add' },
+		measure: { label: 'Measure', icon: IconMeasure, family: 'tools' },
+		assembly: { label: 'Assembly View', icon: IconAssembly, family: 'tools' },
+		simplify: { label: 'Simplify model', icon: IconSimplify, family: 'tools' },
+		'brim-ears': { label: 'Auto-Brim', icon: IconBrim, family: 'tools' }
 	};
+
+	// Familles du rail (comme les groupes de la barre de gizmos d'Orca) : chaque
+	// famille est un groupe nommé, séparé visuellement des voisins.
+	const FAMILY_LABELS: Record<Family, string> = {
+		transform: 'Transformer',
+		mesh: 'Maillage',
+		paint: 'Peinture',
+		add: 'Ajouter une forme',
+		tools: 'Outils'
+	};
+	const groups = $derived.by(() => {
+		const out: { family: Family; tools: EditorTool[] }[] = [];
+		for (const tool of TOOL_ORDER) {
+			const family = META[tool].family;
+			const last = out.at(-1);
+			if (last && last.family === family) last.tools.push(tool);
+			else out.push({ family, tools: [tool] });
+		}
+		return out;
+	});
 </script>
 
-<div class="flex flex-col items-center gap-0.5" role="toolbar" aria-label="Outils">
-	{#each TOOL_ORDER as tool (tool)}
-		{@const meta = META[tool]}
-		{@const Icon = meta.icon}
-		{#if meta.sep}
-			<div class="my-1 h-px w-6 bg-border"></div>
+<div
+	class="flex flex-col items-center gap-1"
+	role="toolbar"
+	aria-label="Outils"
+	aria-orientation="vertical"
+>
+	{#each groups as group, gi (group.family)}
+		{#if gi > 0}
+			<div class="h-px w-6 bg-border" aria-hidden="true"></div>
 		{/if}
-		<button
-			type="button"
-			class="flex h-9 w-9 items-center justify-center rounded {active === tool
-				? 'bg-primary text-primary-content'
-				: 'text-content-muted hover:bg-overlay hover:text-content'}"
-			aria-pressed={active === tool}
-			title={$t(meta.label)}
-			onclick={() => onselect(tool)}
+		<div
+			class="flex flex-col items-center gap-0.5"
+			role="group"
+			aria-label={FAMILY_LABELS[group.family]}
 		>
-			<Icon class="h-5 w-5" />
-		</button>
+			{#each group.tools as tool (tool)}
+				{@const meta = META[tool]}
+				{@const Icon = meta.icon}
+				{@const key = shortcutKeyFor(tool)}
+				<!-- Info-bulle stylée « Nom (Touche) » comme Orca (TooltipLayer) ;
+				     nom accessible = nom seul. -->
+				<button
+					type="button"
+					class="ws-tool {active === tool ? 'ws-tool-on' : ''}"
+					aria-pressed={active === tool}
+					aria-label={$t(meta.label)}
+					aria-keyshortcuts={key ?? undefined}
+					data-testid={`tool-${tool}`}
+					data-tip={withShortcut($t(meta.label), key)}
+					data-tip-side="left"
+					onclick={() => onselect(tool)}
+				>
+					<Icon class="h-5 w-5" aria-hidden="true" />
+				</button>
+			{/each}
+		</div>
 	{/each}
 </div>

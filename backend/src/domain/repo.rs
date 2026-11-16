@@ -121,6 +121,20 @@ pub trait ModelRepo: Send + Sync {
         id: ModelId,
         error: &str,
     ) -> StorageResult<()>;
+    /// Persiste atomiquement le maillage réparé, son nombre de triangles et le
+    /// rapport. Le fallback conserve la compatibilité des dépôts de test
+    /// externes ; les adaptateurs SQLite/Postgres surchargent cette méthode.
+    async fn set_repair_result(
+        &self,
+        owner: UserId,
+        id: ModelId,
+        mesh_path: &str,
+        triangle_count: i64,
+        repair_report: serde_json::Value,
+    ) -> StorageResult<()> {
+        let _ = repair_report;
+        self.set_mesh(owner, id, mesh_path, triangle_count).await
+    }
 }
 
 #[async_trait]
@@ -143,6 +157,15 @@ pub trait PresetRepo: Send + Sync {
     /// filtre d'instanciation ni de compatibilité — pour reconstruire une
     /// chaîne d'héritage (parents abstraits inclus).
     async fn list_by_kind(&self, kind: PresetKind, user: UserId) -> StorageResult<Vec<Preset>>;
+    /// Presets visibles (système + ceux de l'utilisateur) d'un type portant ce
+    /// nom exact — un maillon de chaîne d'héritage, sans charger tout le type
+    /// (~7000 filaments système).
+    async fn list_by_name(
+        &self,
+        kind: PresetKind,
+        name: &str,
+        user: UserId,
+    ) -> StorageResult<Vec<Preset>>;
     /// `Conflict` si (kind, name) existe déjà pour cet utilisateur.
     async fn create_user_preset(&self, owner: UserId, preset: Preset) -> StorageResult<Preset>;
     /// Met à jour le nom et les valeurs d'un preset **utilisateur** (rename /
@@ -196,6 +219,19 @@ pub enum JobOutcome {
 #[async_trait]
 pub trait JobRepo: Send + Sync {
     async fn enqueue(&self, owner: UserId, job: NewJob) -> StorageResult<SlicingJob>;
+    /// Crée un job dont la scène est figée en même temps que sa configuration.
+    /// Le fallback préserve la compatibilité des adaptateurs externes ; les
+    /// adaptateurs SQLite/Postgres surchargent cette méthode pour persister la
+    /// scène. Les jobs historiques créés via `enqueue` restent acceptés.
+    async fn enqueue_with_scene(
+        &self,
+        owner: UserId,
+        job: NewJob,
+        scene: serde_json::Value,
+    ) -> StorageResult<SlicingJob> {
+        let _ = scene;
+        self.enqueue(owner, job).await
+    }
     async fn get(&self, owner: UserId, id: JobId) -> StorageResult<SlicingJob>;
     async fn list(&self, owner: UserId) -> StorageResult<Vec<SlicingJob>>;
     /// Réclamation transactionnelle du prochain job `queued` → `running`

@@ -4,7 +4,11 @@
 	// Présentationnel — les mutations passent par des callbacks (le parent
 	// applique sur le PlateSet et persiste dans le document scène).
 	import { PLATE_TYPES } from '../settings/special/dialogs';
+	import { locale, t } from '$lib/i18n';
+	import { loadSettingsTranslations } from '$lib/settings/i18n';
 	import type { Plate } from './plates.svelte';
+	import PlateSettings from './PlateSettings.svelte';
+	import IconX from '~icons/lucide/x';
 
 	interface Props {
 		plates: readonly Plate[];
@@ -13,9 +17,31 @@
 		onadd: () => void;
 		onremove: (id: string) => void;
 		ontype: (id: string, plateType: string) => void;
+		/** Renommage en ligne (double-clic sur l'onglet). */
+		onrename?: (id: string, name: string) => void;
+		/** Réglage par plateau (`undefined` = suivre le profil). */
+		onsetting?: (id: string, key: string, value: unknown) => void;
+		/** Clic droit sur un onglet : menu contextuel du plateau (`create_plate_menu`). */
+		oncontext?: (id: string, x: number, y: number) => void;
 	}
 
-	let { plates, activeId, onselect, onadd, onremove, ontype }: Props = $props();
+	let {
+		plates,
+		activeId,
+		onselect,
+		onadd,
+		onremove,
+		ontype,
+		onrename,
+		onsetting,
+		oncontext
+	}: Props = $props();
+
+	// Types de plaque traduits (dictionnaire des réglages chargé à la demande).
+	$effect(() => {
+		loadSettingsTranslations($locale).catch(() => {});
+	});
+	let editingId = $state<string | null>(null);
 
 	const active = $derived(plates.find((p) => p.id === activeId) ?? null);
 </script>
@@ -27,24 +53,65 @@
 				class="flex items-center rounded border {plate.id === activeId
 					? 'border-accent bg-overlay'
 					: 'border-border-strong bg-surface-sunken'}"
+				data-testid="plate-tab"
+				data-plate-id={plate.id}
+				data-active={plate.id === activeId ? 'true' : 'false'}
+				role="presentation"
+				oncontextmenu={(e) => {
+					if (!oncontext) return;
+					e.preventDefault();
+					oncontext(plate.id, e.clientX, e.clientY);
+				}}
 			>
-				<button type="button" class="px-2 py-0.5" onclick={() => onselect(plate.id)}>
-					{plate.name}
-					<span class="text-content-subtle">({plate.objectIds.length})</span>
-				</button>
+				{#if editingId === plate.id && onrename}
+					<input
+						class="ws-field ws-field-sm w-32 border-accent"
+						data-testid="plate-rename-input"
+						aria-label={`Nouveau nom de ${plate.name}`}
+						value={plate.name}
+						{@attach (el: HTMLInputElement) => {
+							el.focus();
+							el.select();
+						}}
+						onkeydown={(e) => {
+							e.stopPropagation();
+							if (e.key === 'Enter') {
+								onrename(plate.id, e.currentTarget.value);
+								editingId = null;
+							} else if (e.key === 'Escape') editingId = null;
+						}}
+						onblur={(e) => {
+							if (editingId === plate.id) onrename(plate.id, e.currentTarget.value);
+							editingId = null;
+						}}
+					/>
+				{:else}
+					<button
+						type="button"
+						class="rounded px-2 py-0.5 hover:text-content"
+						aria-pressed={plate.id === activeId}
+						title="Double-clic pour renommer"
+						onclick={() => onselect(plate.id)}
+						ondblclick={() => onrename && (editingId = plate.id)}
+					>
+						{plate.name}
+						<span class="text-content-subtle">({plate.objectIds.length})</span>
+					</button>
+				{/if}
 				{#if plates.length > 1}
 					<button
 						type="button"
-						class="px-1 text-xs text-content-muted hover:text-white"
+						class="ws-icon-btn ws-icon-btn-xs hover:text-danger"
 						aria-label={`Supprimer ${plate.name}`}
-						onclick={() => onremove(plate.id)}>✕</button
+						onclick={() => onremove(plate.id)}
+						><IconX class="h-3.5 w-3.5" aria-hidden="true" /></button
 					>
 				{/if}
 			</div>
 		{/each}
 		<button
 			type="button"
-			class="rounded border border-border-strong px-2 py-0.5 hover:bg-overlay"
+			class="ws-btn ws-btn-sm ws-btn-secondary"
 			aria-label="Ajouter un plateau"
 			onclick={() => onadd()}>+</button
 		>
@@ -54,14 +121,17 @@
 		<label class="flex items-center gap-2">
 			<span class="text-content-muted">Type de plaque</span>
 			<select
-				class="rounded border border-border-strong bg-surface-raised px-1 py-0.5"
+				class="ws-field ws-field-sm"
 				value={active.plateType}
 				onchange={(e) => ontype(active.id, e.currentTarget.value)}
 			>
 				{#each PLATE_TYPES as pt (pt.label)}
-					<option value={pt.label}>{pt.label}</option>
+					<option value={pt.label}>{$t(pt.label)}</option>
 				{/each}
 			</select>
 		</label>
+		{#if onsetting}
+			<PlateSettings plate={active} onsetting={(key, value) => onsetting(active.id, key, value)} />
+		{/if}
 	{/if}
 </div>

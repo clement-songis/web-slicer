@@ -25,7 +25,7 @@ for (const c of cases) {
 			const base = readJsonRef<FlatConfig>('base_config.json');
 			test.skip(!ref || !base, 'référence Orca absente : lancer tests/oracle/tools/make_refs.py');
 			const cfg: FlatConfig = { ...base!, ...(c.requires ?? {}), [c.key]: c.value! };
-			expectSameGcode(await harnessSlice(request, oracleCfg.param_model, cfg), ref!, `G-code avec ${c.key}=${JSON.stringify(c.value)}`);
+			expectSameGcode(await harnessSlice(request, (c.model ?? oracleCfg.param_model), cfg), ref!, `G-code avec ${c.key}=${JSON.stringify(c.value)}`);
 		});
 
 		if (c.ui) {
@@ -39,7 +39,7 @@ for (const c of cases) {
 				const fromPreset = scope === 'print' || scope === 'filament' || scope === 'printer';
 
 				await bootstrap(page);
-				await importModel(page, oracleCfg.param_model);
+				await importModel(page, (c.model ?? oracleCfg.param_model));
 
 				// 1. Visibilité selon le mode Orca : visible à son niveau, masqué au niveau inférieur.
 				const below = lowerMode(c.mode);

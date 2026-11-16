@@ -18,6 +18,7 @@ pub fn read_project_3mf(path: &Path) -> EngineResult<(Model, DynamicPrintConfig)
         .map_err(|e| EngineError::new(EngineErrorCode::InvalidModel, e.to_string()))?;
     let model = Model {
         objects: raw.objects.into_iter().map(to_object).collect(),
+        custom_gcodes: serde_json::from_str(&raw.custom_gcodes_json).unwrap_or_default(),
     };
     let config = config_from_orca_json(&raw.config_json)?;
     Ok((model, config))
@@ -31,8 +32,129 @@ pub fn write_project_3mf(
     let _guard = ffi_guard();
     let raw_objects = to_raw_objects(model);
     let json = config_to_orca_json(config);
-    ffi::write_project_3mf_raw(&raw_objects, &json, &out.to_string_lossy())
+    let custom = serde_json::to_string(&model.custom_gcodes).expect("sérialisable");
+    ffi::write_project_3mf_raw(&raw_objects, &json, &out.to_string_lossy(), &custom)
         .map_err(|e| EngineError::new(EngineErrorCode::Io, e.to_string()))
+}
+
+/// Projet 3MF avec ses plateaux écrit par libslic3r (`store_bbs_3mf`,
+/// SplitModel | ShareMesh comme « Save project » d'Orca). Les instances sont
+/// rattachées aux plateaux par `ModelInstance::plate_index`.
+pub fn write_project_3mf_with_plates(
+    model: &Model,
+    config: &DynamicPrintConfig,
+    plates: &[crate::threemf::ProjectPlate],
+    out: &Path,
+) -> EngineResult<()> {
+    let plate_count = model
+        .objects
+        .iter()
+        .flat_map(|o| o.instances.iter().map(|i| i.plate_index as usize + 1))
+        .chain(std::iter::once(plates.len()))
+        .max()
+        .unwrap_or(0)
+        .max(1);
+    let raw_plates: Vec<ffi::RawProjectPlate> = (0..plate_count)
+        .map(|plate| {
+            let mut obj_inst = Vec::new();
+            for (o, object) in model.objects.iter().enumerate() {
+                for (i, instance) in object.instances.iter().enumerate() {
+                    if instance.plate_index as usize == plate {
+                        obj_inst.extend([o as u32, i as u32]);
+                    }
+                }
+            }
+            let (name, config_json) = plates.get(plate).map_or_else(
+                || (String::new(), String::new()),
+                |p| (p.name.clone(), config_to_orca_json(&p.settings)),
+            );
+            ffi::RawProjectPlate {
+                plate_index: plate as u32,
+                name,
+                config_json,
+                obj_inst,
+            }
+        })
+        .collect();
+    let _guard = ffi_guard();
+    let raw_objects = to_raw_objects(model);
+    let json = config_to_orca_json(config);
+    let custom = serde_json::to_string(&model.custom_gcodes).expect("sérialisable");
+    ffi::write_project_plates_raw(
+        &raw_objects,
+        &json,
+        &custom,
+        &raw_plates,
+        &out.to_string_lossy(),
+    )
+    .map_err(|e| EngineError::new(EngineErrorCode::Io, e.to_string()))
+}
+
+/// G-code tranché d'un plateau pour un .gcode.3mf.
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+pub struct PlateGcode {
+    pub plate_index: u32,
+    pub gcode_path: std::path::PathBuf,
+}
+
+/// « Export plate sliced file » (`export_plate = Some(n)`) ou « Export all
+/// plate sliced file » (`None`) d'Orca : .gcode.3mf écrit par `store_bbs_3mf`
+/// (WithGcode | SkipModel). Tous les plateaux de la scène sont décrits
+/// (objets posés), seuls ceux de `gcodes` embarquent leur G-code.
+pub fn write_gcode_3mf(
+    model: &Model,
+    config: &DynamicPrintConfig,
+    gcodes: &[PlateGcode],
+    export_plate: Option<u32>,
+    out: &Path,
+) -> EngineResult<()> {
+    if gcodes.is_empty() {
+        return Err(EngineError::new(
+            EngineErrorCode::InvalidModel,
+            "aucun plateau tranché à exporter",
+        ));
+    }
+    let plate_count = model
+        .objects
+        .iter()
+        .flat_map(|o| o.instances.iter().map(|i| i.plate_index + 1))
+        .chain(gcodes.iter().map(|g| g.plate_index + 1))
+        .max()
+        .unwrap_or(1);
+    let plates: Vec<ffi::RawPlateGcode> = (0..plate_count)
+        .map(|plate| {
+            let mut obj_inst = Vec::new();
+            for (o, object) in model.objects.iter().enumerate() {
+                for (i, instance) in object.instances.iter().enumerate() {
+                    if instance.plate_index == plate {
+                        obj_inst.extend([o as u32, i as u32]);
+                    }
+                }
+            }
+            let gcode_path = gcodes
+                .iter()
+                .find(|g| g.plate_index == plate)
+                .map(|g| g.gcode_path.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            ffi::RawPlateGcode {
+                plate_index: plate,
+                gcode_path,
+                obj_inst,
+            }
+        })
+        .collect();
+    let _guard = ffi_guard();
+    let raw_objects = to_raw_objects(model);
+    let json = config_to_orca_json(config);
+    let export_idx = export_plate.map_or(-1, |p| p as i32);
+    ffi::write_gcode_3mf_raw(
+        &raw_objects,
+        &json,
+        &plates,
+        export_idx,
+        &out.to_string_lossy(),
+    )
+    .map_err(|e| EngineError::new(EngineErrorCode::Io, e.to_string()))
 }
 
 /// JSON {clé → valeur sérialisée Orca} → config typée par le registre.

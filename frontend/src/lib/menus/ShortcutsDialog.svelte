@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { dialogFocus } from '$lib/ui/dialog-focus';
 	// Dialogue d'aide des raccourcis clavier (T079, Annexe B §B.6). Modal listant
 	// les 92 raccourcis groupés, ouvert par « ? » ou le menu Aide. Présentational
 	// seulement : les données viennent de `shortcuts.ts`.
@@ -17,29 +18,26 @@
 {#if open}
 	<!-- Fond cliquable pour fermer. -->
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4"
 		role="presentation"
 		onclick={onClose}
 	>
 		<div
-			class="max-h-[85vh] w-full max-w-3xl overflow-y-auto rounded-lg border border-border bg-surface-raised p-6 text-content shadow-xl"
+			class="ws-dialog max-h-[85vh] w-full max-w-3xl overflow-y-auto p-6"
 			role="dialog"
 			aria-modal="true"
 			aria-label="Raccourcis clavier"
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.stopPropagation()}
 			tabindex="-1"
+			use:dialogFocus={onClose}
 		>
 			<div class="mb-4 flex items-center justify-between">
-				<h2 class="text-lg font-semibold text-content">
+				<h2 class="ws-dialog-title">
 					{$t('Keyboard Shortcuts')}
 					<span class="text-sm text-content-subtle">({totalShortcuts()})</span>
 				</h2>
-				<button
-					type="button"
-					class="rounded bg-overlay px-2 py-1 text-sm hover:bg-border-strong"
-					onclick={onClose}
-				>
+				<button type="button" class="ws-btn ws-btn-secondary" onclick={onClose}>
 					{$t('Close')}
 				</button>
 			</div>

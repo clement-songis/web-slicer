@@ -12,10 +12,33 @@ export {
 	type BedShape,
 	type Point2
 } from './bed';
-export { frameBed, fitDistance, viewPose, viewUp, type CameraPose, type NamedView } from './camera';
+export {
+	frameBed,
+	frameBox,
+	boundsOf,
+	fitDistance,
+	viewPose,
+	viewUp,
+	type CameraPose,
+	type NamedView
+} from './camera';
 export { applyPick, isSelected } from './selection';
-export { decodeMesh, centerMesh, type SceneMesh, type SceneObject } from './mesh';
-export { uploadModel, fetchMesh } from './loaders';
+export {
+	objectsOnPlate,
+	viewportObjects,
+	canTransformObject,
+	movableObjectsOnPlate,
+	type PlateMembership
+} from './interactions';
+export {
+	decodeMesh,
+	centerMesh,
+	positionForImport,
+	type SceneMesh,
+	type SceneObject,
+	type MeshPick
+} from './mesh';
+export { uploadModel, fetchMesh, import3mfObjects } from './loaders';
 export {
 	IDENTITY,
 	MIN_SCALE,
@@ -58,13 +81,23 @@ export { PlateSet, DEFAULT_PLATE_TYPE, type Plate, type PlatesDocument } from '.
 export { default as PlateBar } from './PlateBar.svelte';
 export { default as PlateToolbar } from './PlateToolbar.svelte';
 export { default as ContextMenu } from './ContextMenu.svelte';
-export { footprint, arrangeItems, applyPlacements } from './arrange';
+export {
+	footprint,
+	arrangeItems,
+	applyPlacements,
+	objectFootprint,
+	type Footprint
+} from './arrange';
 export {
 	MAIN_TOOLBAR,
 	ASSEMBLE_TOOLBAR,
 	PLATER_MENU,
 	OBJECT_CONTEXT_ITEMS,
 	SCENE_ADD_ITEMS,
+	SCENE_CONTEXT_ITEMS,
+	PLATE_CONTEXT_ITEMS,
+	FILAMENT_CONTEXT_ITEMS,
+	PART_CONTEXT_ITEMS,
 	PLATER_SHORTCUTS,
 	OBJECTS_LIST_SHORTCUTS,
 	GIZMO_SHORTCUTS,

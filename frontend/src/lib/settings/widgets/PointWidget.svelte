@@ -1,34 +1,39 @@
 <script lang="ts">
-	// Point 2D (coPoint*) : coordonnées X/Y. Les types vectoriels de points
-	// éditent ici la première entrée ; le détail par extrudeur relève de T042.
+	import { t } from '$lib/i18n';
+	// Point Orca `coPoint*` : un seul champ texte au format canonique `XxY`.
+	// Le contrat Playwright/Orca remplit ce contrôle avec « 172x172 » ; deux
+	// inputs number (X et Y séparés) ne peuvent pas accepter cette forme.
 	import { FIELD_CLASS, type WidgetProps } from './types';
+	import { formatPoint, parsePoint } from './point';
 
-	let { def, value = $bindable(), disabled = false }: WidgetProps<number[]> = $props();
+	let { def, value = $bindable(), disabled = false, index }: WidgetProps<unknown> = $props();
+	let text = $state('');
+	let focused = $state(false);
 
-	// Garantit un couple [x, y] éditable même si la valeur arrive incomplète.
 	$effect(() => {
-		if (!Array.isArray(value) || value.length < 2) {
-			value = [value?.[0] ?? 0, value?.[1] ?? 0];
-		}
+		if (!focused) text = formatPoint(value);
 	});
+
+	function onInput(event: Event) {
+		text = (event.currentTarget as HTMLInputElement).value;
+		const parsed = parsePoint(text);
+		if (parsed !== null) value = parsed;
+	}
 </script>
 
-<span class="flex items-center gap-1">
-	<input
-		type="number"
-		step="any"
-		bind:value={value[0]}
-		{disabled}
-		aria-label="{def.label} X"
-		class={FIELD_CLASS}
-	/>
-	<span class="text-xs text-content-subtle">×</span>
-	<input
-		type="number"
-		step="any"
-		bind:value={value[1]}
-		{disabled}
-		aria-label="{def.label} Y"
-		class={FIELD_CLASS}
-	/>
-</span>
+<input
+	type="text"
+	inputmode="decimal"
+	value={text}
+	oninput={onInput}
+	onfocus={() => (focused = true)}
+	onblur={() => {
+		focused = false;
+		text = formatPoint(value);
+	}}
+	data-index={index}
+	{disabled}
+	aria-label={$t(def.label)}
+	placeholder="XxY"
+	class={FIELD_CLASS}
+/>

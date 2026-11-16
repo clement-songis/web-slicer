@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { ApiError } from '$lib/api/client';
@@ -8,6 +9,13 @@
 	let password = $state('');
 	let error = $state<string | null>(null);
 	let busy = $state(false);
+	let hydrated = $state(false);
+
+	// Évite une soumission HTML native si l'utilisateur clique pendant le
+	// chargement des modules, avant que le gestionnaire Svelte soit branché.
+	onMount(() => {
+		hydrated = true;
+	});
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
@@ -24,7 +32,9 @@
 	}
 </script>
 
-<h1 class="mb-6 text-xl font-semibold text-content">Connexion</h1>
+<svelte:head><title>Connexion — Web-Slicer</title></svelte:head>
+
+<h1 class="ws-page-title mb-6">Connexion</h1>
 
 <form class="space-y-4" onsubmit={submit}>
 	<label class="block">
@@ -34,7 +44,8 @@
 			bind:value={email}
 			required
 			autocomplete="email"
-			class="w-full rounded border border-border-strong px-3 py-2 bg-surface-raised text-content"
+			data-testid="auth-email"
+			class="ws-field ws-field-lg w-full"
 		/>
 	</label>
 
@@ -45,7 +56,8 @@
 			bind:value={password}
 			required
 			autocomplete="current-password"
-			class="w-full rounded border border-border-strong px-3 py-2 bg-surface-raised text-content"
+			data-testid="auth-password"
+			class="ws-field ws-field-lg w-full"
 		/>
 	</label>
 
@@ -55,8 +67,9 @@
 
 	<button
 		type="submit"
-		disabled={busy}
-		class="w-full rounded bg-primary py-2 font-medium text-white hover:bg-primary-hover disabled:opacity-50"
+		data-testid="auth-submit"
+		disabled={!hydrated || busy}
+		class="ws-btn ws-btn-lg ws-btn-primary w-full"
 	>
 		{busy ? 'Connexion…' : 'Se connecter'}
 	</button>

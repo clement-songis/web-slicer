@@ -10,6 +10,7 @@
 #include "libslic3r/Format/STEP.hpp"
 
 #include <boost/algorithm/string/predicate.hpp>
+#include <nlohmann/json.hpp>
 
 #include <stdexcept>
 #include <string>
@@ -111,6 +112,22 @@ rust::Vec<RawObject> model_to_raw(const Slic3r::Model &model)
     for (const Slic3r::ModelObject *object : model.objects) {
         RawObject raw_object;
         raw_object.name = object->name;
+        nlohmann::json object_config = nlohmann::json::object();
+        for (const std::string &key : object->config.keys())
+            object_config[key] = object->config.opt_serialize(key);
+        raw_object.config_json = object_config.dump();
+        for (double value : object->layer_height_profile.get())
+            raw_object.layer_height_profile.push_back(value);
+        if (!object->layer_config_ranges.empty()) {
+            nlohmann::json ranges = nlohmann::json::array();
+            for (const auto &[range, range_config] : object->layer_config_ranges) {
+                nlohmann::json config = nlohmann::json::object();
+                for (const std::string &key : range_config.keys())
+                    config[key] = range_config.opt_serialize(key);
+                ranges.push_back({{"min", range.first}, {"max", range.second}, {"config", config}});
+            }
+            raw_object.layer_ranges_json = ranges.dump();
+        }
         for (const Slic3r::ModelVolume *volume : object->volumes) {
             RawVolume raw_volume;
             raw_volume.name = volume->name;
@@ -119,11 +136,34 @@ rust::Vec<RawObject> model_to_raw(const Slic3r::Model &model)
             const int extruder = volume->extruder_id();
             raw_volume.extruder = extruder > 0 ? static_cast<uint32_t>(extruder) : 0;
             raw_volume.mesh = to_raw_mesh(volume->mesh());
+            nlohmann::json volume_config = nlohmann::json::object();
+            for (const std::string &key : volume->config.keys())
+                if (key != "extruder")
+                    volume_config[key] = volume->config.opt_serialize(key);
+            raw_volume.config_json = volume_config.dump();
+            // Peintures (relecture 3MF) : même format hex que le writer d'Orca.
+            const Slic3r::FacetsAnnotation *channels[4] = {
+                &volume->supported_facets, &volume->seam_facets,
+                &volume->mmu_segmentation_facets, &volume->fuzzy_skin_facets};
+            for (uint8_t channel = 0; channel < 4; ++channel) {
+                const Slic3r::FacetsAnnotation &facets = *channels[channel];
+                if (facets.empty())
+                    continue;
+                for (const auto &mapping : facets.get_data().triangles_to_split) {
+                    std::string state = facets.get_triangle_as_string(mapping.triangle_idx);
+                    if (state.empty())
+                        continue;
+                    raw_volume.paint_channel.push_back(channel);
+                    raw_volume.paint_triangle.push_back(static_cast<uint32_t>(mapping.triangle_idx));
+                    raw_volume.paint_state.push_back(rust::String(state));
+                }
+            }
             raw_object.volumes.push_back(std::move(raw_volume));
         }
         for (const Slic3r::ModelInstance *instance : object->instances) {
             RawInstance raw_instance;
             raw_instance.matrix = to_col_major(instance->get_matrix());
+            raw_instance.printable = instance->printable;
             raw_object.instances.push_back(std::move(raw_instance));
         }
         objects.push_back(std::move(raw_object));

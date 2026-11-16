@@ -110,8 +110,8 @@ pub fn convert_step(e: &dyn SlicerEngine) {
 }
 
 pub fn repair_reports(e: &dyn SlicerEngine) {
-    // cube valide + triangle dégénéré : admesh le supprime (les trous ne
-    // sont pas rebouchés — fill_holes retiré upstream)
+    // Cube ouvert + triangle dégénéré : l'opération de réparation explicite
+    // utilise admesh avec rebouchage, contrairement à l'import Orca standard.
     let mut broken = e
         .load_model(&fixture("cube20.stl"), ModelFormat::Stl)
         .unwrap()
@@ -120,12 +120,28 @@ pub fn repair_reports(e: &dyn SlicerEngine) {
         .volumes
         .remove(0)
         .mesh;
+    broken.indices.pop();
     broken.indices.push([0, 0, 1]);
     let (repaired, report) = e.repair_mesh(&broken).expect("répare");
-    assert!(!repaired.is_empty());
+    assert_eq!(repaired.triangle_count(), 12, "facette manquante rebouchée");
     assert!(
         report.repaired_anything(),
         "le triangle dégénéré doit être détecté/supprimé : {report:?}"
+    );
+
+    let mut edges = std::collections::HashMap::new();
+    for triangle in &repaired.indices {
+        for (a, b) in [
+            (triangle[0], triangle[1]),
+            (triangle[1], triangle[2]),
+            (triangle[2], triangle[0]),
+        ] {
+            *edges.entry((a.min(b), a.max(b))).or_insert(0usize) += 1;
+        }
+    }
+    assert!(
+        edges.values().all(|&count| count == 2),
+        "maillage réparé étanche : {edges:?}"
     );
 }
 
@@ -209,6 +225,7 @@ fn slice_cube(e: &dyn SlicerEngine, cancel: CancelToken) -> (EngineResult<SliceR
             config,
             plate_index: 0,
             work_dir: dir.keep(),
+            calib: None,
         },
         sink,
         cancel,
@@ -222,6 +239,11 @@ fn slice_cube(e: &dyn SlicerEngine, cancel: CancelToken) -> (EngineResult<SliceR
 fn default_slice_config() -> DynamicPrintConfig {
     let mut cfg = DynamicPrintConfig::new();
     cfg.set("layer_height", ConfigValue::Float(0.2)).unwrap();
+    // Défauts machine Orca : Marlin + E relatif, que `Print::validate` refuse
+    // sans « G92 E0 » à chaque couche (hors imprimante Bambu). Une config
+    // minimale *viable* doit donc fournir ce reset, comme les profils réels.
+    cfg.set("layer_change_gcode", ConfigValue::String("G92 E0".into()))
+        .unwrap();
     cfg
 }
 

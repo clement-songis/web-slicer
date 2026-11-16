@@ -122,4 +122,32 @@ describe('buildPreviewStats', () => {
 		expect(view.types).toHaveLength(0);
 		expect(view.totalTimeText).toBe('3s');
 	});
+
+	test('lists roles exposed by preview metadata before segments are loaded', () => {
+		const view = buildPreviewStats(STATS, undefined, [2, 4]);
+		expect(view.types.map((t) => t.name)).toEqual([SEGMENT_ROLE_NAMES[2], SEGMENT_ROLE_NAMES[4]]);
+		expect(view.types.every((t) => t.timeSeconds === 0)).toBe(true);
+	});
+});
+
+describe('répartition du temps par type (totaux serveur)', () => {
+	test('rapporte les temps nominaux au total estimé et somme exactement au total', () => {
+		const s = buildPreviewStats({ estimated_time_seconds: 1075 } as never, undefined, [
+			{ id: 1, length_mm: 3000, time_s: 300 },
+			{ id: 2, length_mm: 1000, time_s: 100 }
+		]);
+		const byKind = new Map(s.types.map((t) => [t.kind, t]));
+		expect(byKind.get(1)!.timeSeconds).toBeCloseTo(806.25, 6);
+		expect(byKind.get(2)!.timeSeconds).toBeCloseTo(268.75, 6);
+		expect(s.types.reduce((a, t) => a + t.timeSeconds, 0)).toBeCloseTo(1075, 6);
+		expect(byKind.get(1)!.timePercent).toBeCloseTo(75, 6);
+		expect(s.totalTimeSeconds).toBe(1075);
+	});
+
+	test('ne renvoie plus 0 s par type quand seuls les ids étaient connus', () => {
+		const s = buildPreviewStats({ estimated_time_seconds: 60 } as never, undefined, [
+			{ id: 4, length_mm: 10, time_s: 2 }
+		]);
+		expect(s.types[0].timeSeconds).toBeGreaterThan(0);
+	});
 });

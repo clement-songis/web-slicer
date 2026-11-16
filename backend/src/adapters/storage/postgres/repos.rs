@@ -3,14 +3,17 @@
 //! Miroir fonctionnel de l'adaptateur SQLite ; seule la réclamation de job
 //! diffère (`FOR UPDATE SKIP LOCKED` pour la concurrence).
 
+use std::collections::{HashMap, HashSet};
+
 use async_trait::async_trait;
 use sqlx::postgres::PgRow;
-use sqlx::{PgPool, Row};
+use sqlx::{PgConnection, PgPool, Row};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::domain::*;
 
+use super::super::{collect_uuid_strings, json_references_id};
 use super::{enum_str, map_pg, parse_enum};
 
 // --- Helpers -----------------------------------------------------------------
@@ -114,6 +117,7 @@ fn row_to_job(row: &PgRow) -> StorageResult<SlicingJob> {
         progress: row.get("progress"),
         phase: row.get("phase"),
         resolved_settings: row.get("resolved_settings"),
+        scene: row.get("scene"),
         error: row.get("error"),
         gcode_id: get_opt_id(row, "gcode_id"),
         created_at: row.get("created_at"),
@@ -509,6 +513,33 @@ impl ModelRepo for PgModelRepo {
         }
         Ok(())
     }
+
+    async fn set_repair_result(
+        &self,
+        owner: UserId,
+        id: ModelId,
+        mesh_path: &str,
+        triangle_count: i64,
+        repair_report: serde_json::Value,
+    ) -> StorageResult<()> {
+        let n = sqlx::query(concat!(
+            "UPDATE models SET mesh_path = $1, triangle_count = $2, repair_report = $3, ",
+            "conversion_error = NULL WHERE id = $4 AND user_id = $5"
+        ))
+        .bind(mesh_path)
+        .bind(triangle_count)
+        .bind(repair_report)
+        .bind(uid(id))
+        .bind(uid(owner))
+        .execute(&self.pool)
+        .await
+        .map_err(map_pg)?
+        .rows_affected();
+        if n == 0 {
+            return Err(StorageError::NotFound);
+        }
+        Ok(())
+    }
 }
 
 // --- Presets -----------------------------------------------------------------
@@ -550,34 +581,119 @@ impl PgPresetRepo {
 impl PresetRepo for PgPresetRepo {
     async fn reseed_system(&self, presets: Vec<Preset>) -> StorageResult<u64> {
         let mut tx = self.pool.begin().await.map_err(map_pg)?;
-        sqlx::query("DELETE FROM presets WHERE user_id IS NULL")
-            .execute(&mut *tx)
-            .await
-            .map_err(map_pg)?;
-        let mut count = 0u64;
+        type SystemKey = (String, String, Option<String>);
+
+        // Réconciliation différentielle : les lignes conservées gardent leur
+        // UUID, ce qui préserve à la fois la FK des imprimantes et les
+        // références JSON des projets (aucun DELETE/INSERT intermédiaire).
+        let existing_rows =
+            sqlx::query("SELECT id, kind, name, vendor FROM presets WHERE user_id IS NULL")
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(map_pg)?;
+        let mut existing: Vec<(PresetId, SystemKey)> = Vec::with_capacity(existing_rows.len());
+        let mut existing_by_key: HashMap<SystemKey, PresetId> = HashMap::new();
+        for row in &existing_rows {
+            let id = get_id(row, "id");
+            let key = (
+                row.get("kind"),
+                row.get("name"),
+                row.get::<Option<String>, _>("vendor"),
+            );
+            existing.push((id, key.clone()));
+            existing_by_key.insert(key, id);
+        }
+
+        let mut batch_keys = HashSet::with_capacity(presets.len());
+        let mut retained = HashSet::with_capacity(presets.len());
         for p in &presets {
-            sqlx::query(
-                "INSERT INTO presets \
-                 (id, kind, name, origin, user_id, vendor, inherits, instantiation, setting_id, filament_id, compatible_printers, values_json) \
-                 VALUES ($1, $2, $3, 'system', NULL, $4, $5, $6, $7, $8, $9, $10)",
-            )
-            .bind(uid(p.id))
-            .bind(enum_str(&p.kind))
-            .bind(&p.name)
-            .bind(&p.vendor)
-            .bind(&p.inherits)
-            .bind(p.instantiation)
-            .bind(&p.setting_id)
-            .bind(&p.filament_id)
-            .bind(p.compatible_printers.clone())
-            .bind(p.values.clone())
-            .execute(&mut *tx)
-            .await
-            .map_err(map_pg)?;
-            count += 1;
+            let key = (enum_str(&p.kind), p.name.clone(), p.vendor.clone());
+            if !batch_keys.insert(key.clone()) {
+                return Err(StorageError::Conflict(format!(
+                    "preset système dupliqué dans le lot : {:?} / {}",
+                    p.kind, p.name
+                )));
+            }
+            let id = existing_by_key.get(&key).copied().unwrap_or(p.id);
+            retained.insert(id);
+
+            if existing_by_key.contains_key(&key) {
+                sqlx::query(
+                    "UPDATE presets SET origin = 'system', user_id = NULL, vendor = $1, \
+                     inherits = $2, instantiation = $3, setting_id = $4, filament_id = $5, \
+                     compatible_printers = $6, values_json = $7 \
+                     WHERE id = $8 AND user_id IS NULL",
+                )
+                .bind(&p.vendor)
+                .bind(&p.inherits)
+                .bind(p.instantiation)
+                .bind(&p.setting_id)
+                .bind(&p.filament_id)
+                .bind(p.compatible_printers.clone())
+                .bind(p.values.clone())
+                .bind(uid(id))
+                .execute(&mut *tx)
+                .await
+                .map_err(map_pg)?;
+            } else {
+                sqlx::query(
+                    "INSERT INTO presets \
+                     (id, kind, name, origin, user_id, vendor, inherits, instantiation, setting_id, filament_id, compatible_printers, values_json) \
+                     VALUES ($1, $2, $3, 'system', NULL, $4, $5, $6, $7, $8, $9, $10)",
+                )
+                .bind(uid(id))
+                .bind(enum_str(&p.kind))
+                .bind(&p.name)
+                .bind(&p.vendor)
+                .bind(&p.inherits)
+                .bind(p.instantiation)
+                .bind(&p.setting_id)
+                .bind(&p.filament_id)
+                .bind(p.compatible_printers.clone())
+                .bind(p.values.clone())
+                .execute(&mut *tx)
+                .await
+                .map_err(map_pg)?;
+            }
+        }
+
+        let obsolete: Vec<PresetId> = existing
+            .iter()
+            .map(|(id, _)| *id)
+            .filter(|id| !retained.contains(id))
+            .collect();
+        if !obsolete.is_empty() {
+            let project_rows = sqlx::query("SELECT active_presets FROM projects")
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(map_pg)?;
+            let mut project_refs = HashSet::new();
+            for row in &project_rows {
+                let active = row.get::<serde_json::Value, _>("active_presets");
+                collect_uuid_strings(&active, &mut project_refs);
+            }
+            for id in obsolete {
+                let printer_ref = sqlx::query(
+                    "SELECT 1 AS found FROM printers WHERE machine_preset_id = $1 LIMIT 1",
+                )
+                .bind(uid(id))
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(map_pg)?;
+                if printer_ref.is_some() || project_refs.contains(&id.0) {
+                    return Err(StorageError::Conflict(format!(
+                        "reseed refusé : le preset système {id} est encore référencé"
+                    )));
+                }
+                sqlx::query("DELETE FROM presets WHERE id = $1 AND user_id IS NULL")
+                    .bind(uid(id))
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(map_pg)?;
+            }
         }
         tx.commit().await.map_err(map_pg)?;
-        Ok(count)
+        Ok(presets.len() as u64)
     }
 
     async fn system_count(&self) -> StorageResult<i64> {
@@ -648,6 +764,25 @@ impl PresetRepo for PgPresetRepo {
         rows.iter().map(row_to_preset).collect()
     }
 
+    async fn list_by_name(
+        &self,
+        kind: PresetKind,
+        name: &str,
+        user: UserId,
+    ) -> StorageResult<Vec<Preset>> {
+        let rows = sqlx::query(
+            "SELECT * FROM presets \
+             WHERE kind = $1 AND name = $2 AND (user_id IS NULL OR user_id = $3)",
+        )
+        .bind(enum_str(&kind))
+        .bind(name)
+        .bind(uid(user))
+        .fetch_all(&self.pool)
+        .await
+        .map_err(map_pg)?;
+        rows.iter().map(row_to_preset).collect()
+    }
+
     async fn update_user_preset(
         &self,
         owner: UserId,
@@ -671,21 +806,82 @@ impl PresetRepo for PgPresetRepo {
     }
 
     async fn delete_user_preset(&self, owner: UserId, id: PresetId) -> StorageResult<()> {
-        let n = sqlx::query("DELETE FROM presets WHERE id = $1 AND user_id = $2")
-            .bind(uid(id))
-            .bind(uid(owner))
-            .execute(&self.pool)
-            .await
-            .map_err(map_pg)?
-            .rows_affected();
-        if n == 0 {
+        let mut tx = self.pool.begin().await.map_err(map_pg)?;
+        // Le verrou partagé avec la validation des imprimantes évite qu'une
+        // nouvelle FK soit créée entre la vérification et le DELETE.
+        let owned =
+            sqlx::query("SELECT 1 AS found FROM presets WHERE id = $1 AND user_id = $2 FOR UPDATE")
+                .bind(uid(id))
+                .bind(uid(owner))
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(map_pg)?;
+        if owned.is_none() {
             return Err(StorageError::NotFound);
         }
+        let printer_ref =
+            sqlx::query("SELECT 1 AS found FROM printers WHERE machine_preset_id = $1 LIMIT 1")
+                .bind(uid(id))
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(map_pg)?;
+        if printer_ref.is_some() {
+            return Err(StorageError::Conflict(
+                "preset référencé par une imprimante".into(),
+            ));
+        }
+
+        let candidates =
+            sqlx::query("SELECT active_presets FROM projects WHERE active_presets::text LIKE $1")
+                .bind(format!("%{id}%"))
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(map_pg)?;
+        for row in &candidates {
+            let active = row.get::<serde_json::Value, _>("active_presets");
+            if json_references_id(&active, id.into()) {
+                return Err(StorageError::Conflict(
+                    "preset référencé par un projet".into(),
+                ));
+            }
+        }
+
+        sqlx::query("DELETE FROM presets WHERE id = $1 AND user_id = $2")
+            .bind(uid(id))
+            .bind(uid(owner))
+            .execute(&mut *tx)
+            .await
+            .map_err(map_pg)?;
+        tx.commit().await.map_err(map_pg)?;
         Ok(())
     }
 }
 
 // --- Printers ----------------------------------------------------------------
+
+async fn ensure_machine_preset_visible(
+    conn: &mut PgConnection,
+    owner: UserId,
+    id: PresetId,
+) -> StorageResult<()> {
+    let row = sqlx::query("SELECT user_id, kind FROM presets WHERE id = $1 FOR UPDATE")
+        .bind(uid(id))
+        .fetch_optional(conn)
+        .await
+        .map_err(map_pg)?
+        .ok_or(StorageError::NotFound)?;
+    let preset_owner = row.get::<Option<Uuid>, _>("user_id");
+    if preset_owner.is_some() && preset_owner != Some(uid(owner)) {
+        return Err(StorageError::NotFound);
+    }
+    let kind: PresetKind = parse_enum(&row.get::<String, _>("kind"))?;
+    if kind != PresetKind::Machine {
+        return Err(StorageError::Conflict(
+            "machine_preset_id doit référencer un preset machine".into(),
+        ));
+    }
+    Ok(())
+}
 
 pub(crate) struct PgPrinterRepo {
     pool: PgPool,
@@ -699,6 +895,8 @@ impl PgPrinterRepo {
 #[async_trait]
 impl PrinterRepo for PgPrinterRepo {
     async fn create(&self, owner: UserId, printer: NewPrinter) -> StorageResult<Printer> {
+        let mut tx = self.pool.begin().await.map_err(map_pg)?;
+        ensure_machine_preset_visible(&mut tx, owner, printer.machine_preset_id).await?;
         let id = PrinterId::new();
         sqlx::query(
             "INSERT INTO printers (id, user_id, name, moonraker_url, api_key, machine_preset_id) \
@@ -710,9 +908,10 @@ impl PrinterRepo for PgPrinterRepo {
         .bind(&printer.moonraker_url)
         .bind(&printer.api_key)
         .bind(uid(printer.machine_preset_id))
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await
         .map_err(map_pg)?;
+        tx.commit().await.map_err(map_pg)?;
         self.get(owner, id).await
     }
 
@@ -742,6 +941,8 @@ impl PrinterRepo for PgPrinterRepo {
         id: PrinterId,
         printer: NewPrinter,
     ) -> StorageResult<Printer> {
+        let mut tx = self.pool.begin().await.map_err(map_pg)?;
+        ensure_machine_preset_visible(&mut tx, owner, printer.machine_preset_id).await?;
         let n = sqlx::query(
             "UPDATE printers SET name = $1, moonraker_url = $2, api_key = $3, machine_preset_id = $4 \
              WHERE id = $5 AND user_id = $6",
@@ -752,13 +953,14 @@ impl PrinterRepo for PgPrinterRepo {
         .bind(uid(printer.machine_preset_id))
         .bind(uid(id))
         .bind(uid(owner))
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await
         .map_err(map_pg)?
         .rows_affected();
         if n == 0 {
             return Err(StorageError::NotFound);
         }
+        tx.commit().await.map_err(map_pg)?;
         self.get(owner, id).await
     }
 
@@ -786,29 +988,48 @@ impl PgJobRepo {
     pub(crate) fn new(pool: PgPool) -> Self {
         Self { pool }
     }
-}
 
-#[async_trait]
-impl JobRepo for PgJobRepo {
-    async fn enqueue(&self, owner: UserId, job: NewJob) -> StorageResult<SlicingJob> {
+    async fn insert(
+        &self,
+        owner: UserId,
+        job: NewJob,
+        scene: Option<serde_json::Value>,
+    ) -> StorageResult<SlicingJob> {
         let id = JobId::new();
         let ts = now();
         sqlx::query(
             "INSERT INTO slicing_jobs \
-             (id, user_id, project_id, plate_index, status, progress, phase, resolved_settings, created_at, updated_at) \
-             VALUES ($1, $2, $3, $4, 'queued', 0, '', $5, $6, $7)",
+             (id, user_id, project_id, plate_index, status, progress, phase, resolved_settings, scene, created_at, updated_at) \
+             VALUES ($1, $2, $3, $4, 'queued', 0, '', $5, $6, $7, $8)",
         )
         .bind(uid(id))
         .bind(uid(owner))
         .bind(uid(job.project_id))
         .bind(job.plate_index)
         .bind(job.resolved_settings.clone())
+        .bind(scene)
         .bind(ts)
         .bind(ts)
         .execute(&self.pool)
         .await
         .map_err(map_pg)?;
         self.get(owner, id).await
+    }
+}
+
+#[async_trait]
+impl JobRepo for PgJobRepo {
+    async fn enqueue(&self, owner: UserId, job: NewJob) -> StorageResult<SlicingJob> {
+        self.insert(owner, job, None).await
+    }
+
+    async fn enqueue_with_scene(
+        &self,
+        owner: UserId,
+        job: NewJob,
+        scene: serde_json::Value,
+    ) -> StorageResult<SlicingJob> {
+        self.insert(owner, job, Some(scene)).await
     }
 
     async fn get(&self, owner: UserId, id: JobId) -> StorageResult<SlicingJob> {

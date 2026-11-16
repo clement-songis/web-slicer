@@ -2,6 +2,7 @@
 	// Dialog « températures par type de plaque » (T045) : table plaque × (temp
 	// normale, temp 1re couche). Chaque cellule est un coInts à une entrée.
 	import { parseNumbers, PLATE_TYPES, serializeNumbers } from './dialogs';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		/** Valeurs par clé (liable). */
@@ -34,7 +35,7 @@
 		<tbody>
 			{#each PLATE_TYPES as plate (plate.tempKey)}
 				<tr class="border-t border-border">
-					<td class="py-1 pr-4 text-content-muted">{plate.label}</td>
+					<td class="py-1 pr-4 text-content-muted">{$t(plate.label)}</td>
 					<td class="px-2 py-1">
 						<input
 							type="number"

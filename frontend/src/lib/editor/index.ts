@@ -15,7 +15,16 @@ export {
 	type WorkspaceState
 } from './workspace';
 export { copyObjects, pastedPosition, PASTE_OFFSET } from './clipboard';
-export { resolveShortcut, chordString, isToolAction, type KeyChord } from './shortcuts';
+export {
+	resolveShortcut,
+	resolveNudge,
+	extruderFromAction,
+	chordString,
+	isToolAction,
+	shortcutKeyFor,
+	withShortcut,
+	type KeyChord
+} from './shortcuts';
 export {
 	applyJobEvent,
 	prepareSession,
@@ -27,7 +36,6 @@ export {
 } from './session';
 export { buildWindowGeometry, rangesFromMeta, sliceRequestFor } from './preview';
 export {
-	EDITOR_DEFAULT_THEME,
 	EDITOR_TABS,
 	initialLayout,
 	setTab,

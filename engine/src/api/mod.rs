@@ -4,15 +4,26 @@
 pub mod config;
 pub mod error;
 pub mod gcode;
+pub mod gcode_process;
+pub mod layer_profile;
 pub mod mesh;
 pub mod model;
+pub mod paint;
 pub mod presets;
 pub mod slice;
+pub mod split;
 
 pub use config::{ConfigValue, ConfigWarning, DynamicPrintConfig};
 pub use error::{EngineError, EngineErrorCode, EngineResult};
 pub use gcode::{GcodeLayer, GcodePreview, GcodeSegment, LineKind};
 pub use mesh::{DisplayMesh, DisplayMeshError, RepairedMeshErrors, TriangleMesh};
-pub use model::{Model, ModelFormat, ModelInstance, ModelObject, ModelVolume, VolumeRole};
+pub use model::{
+    CustomGcodeItem, CustomGcodeKind, CustomGcodeMode, LayerConfigRange, Model, ModelFormat,
+    ModelInstance, ModelObject, ModelVolume, PaintChannel, PlateCustomGcodes, VolumePaint,
+    VolumeRole,
+};
 pub use presets::{ArrangeParams, RawPreset};
-pub use slice::{BuildVolume, CancelToken, ProgressSink, SliceRequest, SliceResult, SliceStats};
+pub use slice::{
+    BuildVolume, CalibMode, CalibParams, CancelToken, ProgressSink, SliceRequest, SliceResult,
+    SliceStats, OUTPUT_FILENAME_BASE_TOKEN,
+};

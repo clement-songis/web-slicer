@@ -1,3 +1,9 @@
+// ⚠ native-parity : l'éditeur n'utilise PLUS ce module pour créer des objets —
+// les primitives viennent de libslic3r (`POST /api/projects/{id}/primitive`,
+// its_make_* avec les paramètres d'Orca). Tessellation et dimensions ci-dessous
+// ≠ Orca (32 secteurs vs 180, disque 2 mm vs 0,2 mm) : ne pas réutiliser pour
+// une sortie (STL / 3MF / tranchage) ; conservé pour les tests de codec STL.
+//
 // Primitives paramétriques (menu contextuel « Add », T113) : génèrent une soupe
 // de triangles (9 floats/triangle, repère Z-up) assemblée en `SceneMesh` facetté
 // par `meshFromTriangleSoup`. Pur → testable sous bun ; posées sur le plateau

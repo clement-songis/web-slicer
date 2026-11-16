@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { dialogFocus } from '$lib/ui/dialog-focus';
 	// Page imprimantes (T077/US8) : déclaration + test de connexion, panneau
 	// d'état en direct (progression, températures) via WebSocket `printer.status`,
 	// et contrôles pause/reprise/annulation. La logique d'état est pure
@@ -52,6 +53,8 @@
 	let url = $state('');
 	let apiKey = $state('');
 	let machinePreset = $state('');
+	/** Formulaire de déclaration manuelle replié (le catalogue est l'entrée principale). */
+	let showManual = $state(false);
 	let creating = $state(false);
 
 	// Ajout par le catalogue (grille façon OrcaSlicer, Phase 14).
@@ -76,7 +79,9 @@
 				const derived = await createPreset({
 					kind: 'machine',
 					name: detail.name,
-					inherits: presetId,
+					// Orca : `inherits` = nom du parent (le backend exclut la copie
+					// homonyme elle-même et préfère le preset système).
+					inherits: detail.name,
 					values: {}
 				});
 				await updatePrinter(printer.id, {
@@ -139,13 +144,22 @@
 		error = e instanceof ApiError ? e.message : fallback;
 	}
 
+	/** Nom par défaut : hôte de l'URL Moonraker, sinon libellé générique. */
+	function defaultName(rawUrl: string): string {
+		try {
+			return new URL(rawUrl).hostname || 'Imprimante';
+		} catch {
+			return rawUrl.trim() ? rawUrl.trim() : 'Imprimante';
+		}
+	}
+
 	async function declare(event: SubmitEvent) {
 		event.preventDefault();
 		creating = true;
 		error = null;
 		try {
 			const printer = await createPrinter({
-				name,
+				name: name.trim() || defaultName(url),
 				moonraker_url: url || undefined,
 				api_key: apiKey || undefined,
 				machine_preset_id: machinePreset
@@ -231,7 +245,7 @@
 	<AppSidebar email={data.user.email} active="printers" />
 	<div class="flex-1 overflow-auto">
 		<main class="mx-auto flex max-w-3xl flex-col gap-6 p-6 text-content">
-			<h1 class="text-xl font-semibold text-content">Imprimantes</h1>
+			<h1 class="ws-page-title">Imprimantes</h1>
 
 			{#if error}
 				<p class="rounded bg-danger-soft px-3 py-2 text-danger-content" role="alert">{error}</p>
@@ -240,7 +254,7 @@
 			<!-- Ajout par le catalogue (grille façon OrcaSlicer) -->
 			<button
 				type="button"
-				class="self-start rounded bg-primary px-3 py-2 text-sm font-medium text-primary-content hover:bg-primary-hover"
+				class="ws-btn ws-btn-lg ws-btn-primary self-start"
 				onclick={() => (showCatalog = true)}
 			>
 				＋ Ajouter des imprimantes
@@ -251,75 +265,101 @@
 				class="flex flex-col gap-3 rounded border border-border p-4"
 				aria-label="Déclarer une imprimante"
 			>
-				<h2 class="text-sm font-semibold text-content-muted">Déclarer manuellement</h2>
-				<form class="flex flex-col gap-3" onsubmit={declare}>
-					<label class="flex flex-col gap-1 text-sm">
-						<span class="text-content-muted">Nom</span>
-						<input
-							class="rounded border border-border-strong bg-surface-raised text-content px-2 py-1"
-							bind:value={name}
-							required
-							placeholder="Imprimante du salon"
-						/>
-					</label>
-					<label class="flex flex-col gap-1 text-sm">
-						<span class="text-content-muted">URL Moonraker (facultatif)</span>
-						<input
-							class="rounded border border-border-strong bg-surface-raised text-content px-2 py-1"
-							bind:value={url}
-							placeholder="http://klipper.local:7125"
-						/>
-					</label>
-					<label class="flex flex-col gap-1 text-sm">
-						<span class="text-content-muted">Clé API (facultatif)</span>
-						<input
-							class="rounded border border-border-strong bg-surface-raised text-content px-2 py-1"
-							bind:value={apiKey}
-							type="password"
-							autocomplete="off"
-							placeholder="X-Api-Key"
-						/>
-					</label>
-					<label class="flex flex-col gap-1 text-sm">
-						<span class="text-content-muted">Preset machine</span>
-						<select
-							class="rounded border border-border-strong bg-surface-raised text-content px-2 py-1"
-							bind:value={machinePreset}
-							required
+				<button
+					type="button"
+					class="self-start text-sm font-semibold text-content-muted hover:text-content"
+					data-testid="printer-add"
+					aria-expanded={showManual}
+					onclick={() => (showManual = !showManual)}
+				>
+					{showManual ? '▾' : '▸'} Déclarer manuellement (Moonraker)
+				</button>
+				{#if showManual}
+					<form class="flex flex-col gap-3" onsubmit={declare}>
+						<label class="flex flex-col gap-1 text-sm">
+							<span class="text-content-muted">Nom</span>
+							<input
+								class="ws-field"
+								bind:value={name}
+								placeholder="Imprimante du salon (défaut : hôte de l'URL)"
+							/>
+						</label>
+						<label class="flex flex-col gap-1 text-sm">
+							<span class="text-content-muted">URL Moonraker (facultatif)</span>
+							<input
+								class="ws-field"
+								bind:value={url}
+								type="url"
+								data-testid="printer-moonraker-url"
+								placeholder="http://klipper.local:7125"
+							/>
+						</label>
+						<label class="flex flex-col gap-1 text-sm">
+							<span class="text-content-muted">Clé API (facultatif)</span>
+							<input
+								class="ws-field"
+								bind:value={apiKey}
+								type="password"
+								autocomplete="off"
+								placeholder="X-Api-Key"
+							/>
+						</label>
+						<label class="flex flex-col gap-1 text-sm">
+							<span class="text-content-muted">Préréglage machine</span>
+							<select class="ws-field" bind:value={machinePreset} required>
+								{#each machines as preset (preset.id)}
+									<option value={preset.id}>{preset.name}</option>
+								{/each}
+							</select>
+						</label>
+						<button
+							type="submit"
+							class="ws-btn ws-btn-primary self-start"
+							data-testid="printer-save"
+							disabled={creating || machines.length === 0}
 						>
-							{#each machines as preset (preset.id)}
-								<option value={preset.id}>{preset.name}</option>
-							{/each}
-						</select>
-					</label>
-					<button
-						type="submit"
-						class="self-start rounded bg-primary px-3 py-1 text-sm text-primary-content hover:bg-primary-hover disabled:opacity-50"
-						disabled={creating || machines.length === 0}
-					>
-						Déclarer
-					</button>
-					{#if machines.length === 0}
-						<p class="text-xs text-warning">Aucun preset machine disponible.</p>
-					{/if}
-				</form>
+							Déclarer
+						</button>
+						{#if machines.length === 0}
+							<p class="text-xs text-warning">Aucun preset machine disponible.</p>
+						{/if}
+					</form>
+				{/if}
 			</section>
 
 			<!-- Liste -->
 			<section class="flex flex-col gap-3" aria-label="Imprimantes déclarées">
 				<div class="flex items-center justify-between">
-					<h2 class="text-sm font-semibold text-content-muted">Déclarées ({printers.length})</h2>
+					<h2 class="ws-section-title">Déclarées ({printers.length})</h2>
 					<button type="button" class="text-xs text-content-muted hover:underline" onclick={reload}>
 						Rafraîchir
 					</button>
 				</div>
 
-				{#if printers.length === 0}
-					<p class="text-sm text-content-subtle">Aucune imprimante déclarée.</p>
+				{#if creating}
+					<!-- Déclaration en cours : la liste n'est réaffichée qu'une fois
+					     l'imprimante enregistrée (aucune ligne « déjà là » qui laisserait
+					     croire que l'ajout est fait — et quitter la page trop tôt
+					     annulerait la requête). -->
+					<p
+						class="ws-empty rounded-lg border border-dashed border-border"
+						role="status"
+						data-testid="printer-saving"
+					>
+						Enregistrement de l'imprimante…
+					</p>
+				{:else if printers.length === 0}
+					<p class="ws-empty rounded-lg border border-dashed border-border">
+						Aucune imprimante déclarée.
+					</p>
 				{:else}
 					{#each printers as printer (printer.id)}
 						{@const st = statuses[printer.id]}
-						<article class="flex flex-col gap-3 rounded border border-border p-4">
+						<article
+							class="flex flex-col gap-3 rounded border border-border p-4"
+							data-testid="printer-row"
+							data-printer-id={printer.id}
+						>
 							<div class="flex items-start justify-between gap-3">
 								<div class="flex min-w-0 flex-col">
 									<span class="truncate font-medium text-content">{printer.name}</span>
@@ -360,7 +400,7 @@
 							<div class="flex flex-wrap gap-2">
 								<button
 									type="button"
-									class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
+									class="ws-btn ws-btn-sm ws-btn-secondary"
 									disabled={busy[printer.id]}
 									onclick={() => editSettings(printer)}
 								>
@@ -368,7 +408,7 @@
 								</button>
 								<button
 									type="button"
-									class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
+									class="ws-btn ws-btn-sm ws-btn-secondary"
 									disabled={busy[printer.id] || !printer.moonraker_url}
 									onclick={() => runTest(printer.id)}
 								>
@@ -376,7 +416,7 @@
 								</button>
 								<button
 									type="button"
-									class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
+									class="ws-btn ws-btn-sm ws-btn-secondary"
 									disabled={busy[printer.id] || !printer.moonraker_url}
 									onclick={() => refreshStatus(printer.id)}
 								>
@@ -384,7 +424,7 @@
 								</button>
 								<button
 									type="button"
-									class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
+									class="ws-btn ws-btn-sm ws-btn-secondary"
 									disabled={busy[printer.id] || !st || !canPause(st.state)}
 									onclick={() => control(printer.id, pausePrinter)}
 								>
@@ -392,7 +432,7 @@
 								</button>
 								<button
 									type="button"
-									class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
+									class="ws-btn ws-btn-sm ws-btn-secondary"
 									disabled={busy[printer.id] || !st || !canResume(st.state)}
 									onclick={() => control(printer.id, resumePrinter)}
 								>
@@ -400,7 +440,7 @@
 								</button>
 								<button
 									type="button"
-									class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
+									class="ws-btn ws-btn-sm ws-btn-secondary"
 									disabled={busy[printer.id] || !st || !canCancel(st.state)}
 									onclick={() => control(printer.id, cancelPrinter)}
 								>
@@ -408,7 +448,7 @@
 								</button>
 								<button
 									type="button"
-									class="ml-auto rounded bg-danger px-2 py-1 text-xs text-white hover:opacity-90 disabled:opacity-50"
+									class="ws-btn ws-btn-sm ws-btn-danger ml-auto"
 									disabled={busy[printer.id]}
 									onclick={() => remove(printer.id)}
 								>
@@ -426,18 +466,19 @@
 {#if showCatalog}
 	<!-- Grille de sélection façon OrcaSlicer pour ajouter des imprimantes possédées. -->
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4"
 		role="presentation"
 		onclick={() => (showCatalog = false)}
 	>
 		<div
-			class="flex h-[85vh] w-full max-w-4xl flex-col overflow-hidden rounded-lg border border-border bg-surface-raised shadow-xl"
+			class="ws-dialog flex h-[85vh] w-full max-w-4xl flex-col overflow-hidden"
 			role="dialog"
 			aria-modal="true"
 			aria-label="Ajouter des imprimantes"
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.stopPropagation()}
 			tabindex="-1"
+			use:dialogFocus={() => (showCatalog = false)}
 		>
 			<PrinterCatalog
 				vendors={data.catalog}

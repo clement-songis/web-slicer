@@ -6,7 +6,10 @@
 	// est construit en amont (`buildPreviewStats`).
 	import type { PreviewStats } from './stats';
 	import { formatDuration } from './stats';
+	import { formatMoney } from '$lib/settings/preferences';
 	import type { Rgb } from './colorations';
+	// Alias : la boucle des types nomme déjà sa variable `t`.
+	import { t as label } from '$lib/i18n';
 
 	interface Props {
 		stats: PreviewStats;
@@ -14,9 +17,11 @@
 		hidden?: Set<number>;
 		/** Bascule la visibilité d'un type de ligne. */
 		ontoggletype?: (kind: number) => void;
+		/** Devise des coûts (préférence ; filament_cost est en « money/kg »). */
+		currency?: string;
 	}
 
-	let { stats, hidden, ontoggletype }: Props = $props();
+	let { stats, hidden, ontoggletype, currency = '€' }: Props = $props();
 
 	/** Couleur normalisée (0–1) → `rgb()` CSS. */
 	function css(color: Rgb): string {
@@ -28,27 +33,27 @@
 	const mm = (v: number) => `${v.toFixed(1)} mm`;
 	const cm3 = (v: number) => `${v.toFixed(2)} cm³`;
 	const grams = (v: number) => `${v.toFixed(2)} g`;
-	const money = (v: number) => v.toFixed(2);
+	const money = (v: number) => formatMoney(v, currency);
 </script>
 
 <section class="flex w-72 flex-col gap-4 p-3 text-sm text-content" aria-label="Statistiques">
 	<!-- Estimation globale -->
 	<div class="flex flex-col gap-1">
-		<h3 class="font-semibold text-content">Estimation</h3>
-		<dl class="grid grid-cols-2 gap-x-2 gap-y-0.5">
+		<h3 class="ws-section-title">Estimation</h3>
+		<dl class="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5">
 			<dt class="text-content-muted">Temps total</dt>
-			<dd class="text-right tabular-nums">{stats.totalTimeText}</dd>
+			<dd class="text-right whitespace-nowrap tabular-nums">{stats.totalTimeText}</dd>
 			<dt class="text-content-muted">Couches</dt>
-			<dd class="text-right tabular-nums">{stats.layerCount}</dd>
+			<dd class="text-right whitespace-nowrap tabular-nums">{stats.layerCount}</dd>
 			<dt class="text-content-muted">Changements d'outil</dt>
-			<dd class="text-right tabular-nums">{stats.toolchanges}</dd>
+			<dd class="text-right whitespace-nowrap tabular-nums">{stats.toolchanges}</dd>
 		</dl>
 	</div>
 
 	<!-- Répartition par type de ligne -->
 	{#if stats.types.length}
 		<div class="flex flex-col gap-1">
-			<h3 class="font-semibold text-content">Par type de ligne</h3>
+			<h3 class="ws-section-title">Par type de ligne</h3>
 			<table class="w-full border-collapse">
 				<thead>
 					<tr class="text-xs text-content-muted">
@@ -74,7 +79,7 @@
 											class="inline-block h-3 w-3 shrink-0 rounded-sm"
 											style:background-color={css(t.color)}
 										></span>
-										<span class="truncate">{t.name}</span>
+										<span class="truncate">{$label(t.name)}</span>
 									</button>
 								{:else}
 									<span class="flex items-center gap-1.5">
@@ -82,12 +87,16 @@
 											class="inline-block h-3 w-3 shrink-0 rounded-sm"
 											style:background-color={css(t.color)}
 										></span>
-										<span class="truncate">{t.name}</span>
+										<span class="truncate">{$label(t.name)}</span>
 									</span>
 								{/if}
 							</td>
-							<td class="text-right tabular-nums">{formatDuration(t.timeSeconds)}</td>
-							<td class="text-right tabular-nums text-content-muted">{pct(t.timePercent)}</td>
+							<td class="pl-2 text-right whitespace-nowrap tabular-nums"
+								>{formatDuration(t.timeSeconds)}</td
+							>
+							<td class="pl-2 text-right whitespace-nowrap tabular-nums text-content-muted"
+								>{pct(t.timePercent)}</td
+							>
 						</tr>
 					{/each}
 				</tbody>
@@ -98,7 +107,7 @@
 	<!-- Consommation de filament -->
 	{#if stats.filaments.length}
 		<div class="flex flex-col gap-1">
-			<h3 class="font-semibold text-content">Filament</h3>
+			<h3 class="ws-section-title">Filament</h3>
 			<table class="w-full border-collapse">
 				<thead>
 					<tr class="text-xs text-content-muted">
@@ -113,10 +122,10 @@
 					{#each stats.filaments as f (f.extruder)}
 						<tr class="tabular-nums">
 							<td class="text-left text-content-muted">{f.extruder + 1}</td>
-							<td class="text-right">{mm(f.lengthMm)}</td>
-							<td class="text-right">{cm3(f.volumeCm3)}</td>
-							<td class="text-right">{grams(f.massG)}</td>
-							<td class="text-right">{money(f.cost)}</td>
+							<td class="pl-2 text-right whitespace-nowrap tabular-nums">{mm(f.lengthMm)}</td>
+							<td class="pl-2 text-right whitespace-nowrap tabular-nums">{cm3(f.volumeCm3)}</td>
+							<td class="pl-2 text-right whitespace-nowrap tabular-nums">{grams(f.massG)}</td>
+							<td class="pl-2 text-right whitespace-nowrap tabular-nums">{money(f.cost)}</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -125,8 +134,9 @@
 						<td class="text-left text-content-muted">Σ</td>
 						<td></td>
 						<td></td>
-						<td class="text-right">{grams(stats.totalMassG)}</td>
-						<td class="text-right">{money(stats.totalCost)}</td>
+						<td class="pl-2 text-right whitespace-nowrap tabular-nums">{grams(stats.totalMassG)}</td
+						>
+						<td class="pl-2 text-right whitespace-nowrap tabular-nums">{money(stats.totalCost)}</td>
 					</tr>
 				</tfoot>
 			</table>

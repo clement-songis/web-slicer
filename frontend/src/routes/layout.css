@@ -19,28 +19,47 @@
 	--ws-overlay: #eef2f7; /* survol discret, ligne active */
 
 	--ws-content: #0f172a; /* texte principal */
-	--ws-content-muted: #475569; /* texte secondaire */
-	--ws-content-subtle: #94a3b8; /* texte tertiaire, indices */
+	--ws-content-muted: #475569; /* texte secondaire (≥ 6.7:1 sur toutes surfaces) */
+	--ws-content-subtle: #5b6a80; /* texte tertiaire, indices (≥ 4.8:1, WCAG AA) */
 
-	--ws-border: #e2e8f0; /* bordures, séparateurs */
-	--ws-border-strong: #cbd5e1; /* bordures marquées, champs */
+	--ws-border: #e2e8f0; /* bordures décoratives, séparateurs */
+	--ws-border-strong: #7d8ca2; /* contours de champs (≥ 3:1, WCAG 1.4.11) */
 
+	/* Remplissages (`bg-*`) : toujours ≥ 4.5:1 sous du texte blanc, car de
+	 * nombreux composants posent `text-white` en dur sur ces fonds. */
 	--ws-primary: #2563eb; /* action primaire */
 	--ws-primary-hover: #1d4ed8;
 	--ws-primary-content: #ffffff; /* texte sur primaire */
-	--ws-accent: #3b82f6; /* sélection, anneau de focus */
+	--ws-accent: #2563eb; /* sélection, anneau de focus */
 
-	--ws-success: #059669;
+	/* Variantes « texte » (`text-*`, `border-*` d'indicateurs) : lisibles sur
+	 * les surfaces du thème (≥ 4.5:1). Identiques au remplissage en clair. */
+	--ws-primary-text: #1d4ed8; /* texte accent : 4,5:1 aussi sur bg-primary/10 (WCAG AA) */
+	--ws-success-text: #047857;
+	--ws-warning-text: #b45309;
+	--ws-danger-text: #b91c1c;
+
+	--ws-success: #047857;
 	--ws-success-soft: #ecfdf5; /* fond de bandeau */
 	--ws-success-content: #065f46; /* texte sur fond soft */
 
-	--ws-warning: #d97706;
+	--ws-warning: #b45309;
 	--ws-warning-soft: #fffbeb;
 	--ws-warning-content: #92400e;
 
-	--ws-danger: #dc2626;
+	--ws-danger: #b91c1c;
 	--ws-danger-soft: #fef2f2;
 	--ws-danger-content: #991b1b;
+
+	/* Voiles et surfaces inversées (bulles, étiquettes sur la vue 3D). */
+	--ws-scrim: rgb(15 23 42 / 0.5);
+	--ws-inverse: #1e293b;
+	--ws-on-inverse: #f8fafc;
+
+	/* Élévation : une seule échelle (cartes → menus → dialogues). */
+	--ws-shadow-sm: 0 1px 2px rgb(15 23 42 / 0.06);
+	--ws-shadow-md: 0 4px 12px -2px rgb(15 23 42 / 0.12), 0 2px 4px -2px rgb(15 23 42 / 0.08);
+	--ws-shadow-lg: 0 16px 40px -8px rgb(15 23 42 / 0.25), 0 4px 12px -4px rgb(15 23 42 / 0.12);
 }
 
 /* --- Thème sombre --------------------------------------------------------- */
@@ -51,28 +70,41 @@
 	--ws-overlay: #334155;
 
 	--ws-content: #f1f5f9;
-	--ws-content-muted: #94a3b8;
-	--ws-content-subtle: #64748b;
+	--ws-content-muted: #b4c0d0;
+	--ws-content-subtle: #94a3b8;
 
 	--ws-border: #334155;
-	--ws-border-strong: #475569;
+	--ws-border-strong: #64748b;
 
-	--ws-primary: #3b82f6;
-	--ws-primary-hover: #60a5fa;
+	--ws-primary: #2563eb;
+	--ws-primary-hover: #1d4ed8;
 	--ws-primary-content: #ffffff;
 	--ws-accent: #60a5fa;
 
-	--ws-success: #34d399;
+	--ws-primary-text: #60a5fa;
+	--ws-success-text: #34d399;
+	--ws-warning-text: #fbbf24;
+	--ws-danger-text: #f87171;
+
+	--ws-success: #047857;
 	--ws-success-soft: #064e3b;
 	--ws-success-content: #a7f3d0;
 
-	--ws-warning: #fbbf24;
+	--ws-warning: #b45309;
 	--ws-warning-soft: #451a03;
 	--ws-warning-content: #fde68a;
 
-	--ws-danger: #f87171;
+	--ws-danger: #b91c1c;
 	--ws-danger-soft: #450a0a;
 	--ws-danger-content: #fecaca;
+
+	--ws-scrim: rgb(2 6 23 / 0.65);
+	--ws-inverse: #f1f5f9;
+	--ws-on-inverse: #0f172a;
+
+	--ws-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+	--ws-shadow-md: 0 4px 12px -2px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.04);
+	--ws-shadow-lg: 0 16px 40px -8px rgb(0 0 0 / 0.7), 0 0 0 1px rgb(255 255 255 / 0.05);
 }
 
 /* --- Exposition des jetons en utilitaires Tailwind ------------------------ */
@@ -105,6 +137,43 @@
 	--color-danger: var(--ws-danger);
 	--color-danger-soft: var(--ws-danger-soft);
 	--color-danger-content: var(--ws-danger-content);
+
+	--color-scrim: var(--ws-scrim);
+	--color-inverse: var(--ws-inverse);
+	--color-on-inverse: var(--ws-on-inverse);
+
+	/* Rayons : contrôles 6 px, cartes/panneaux 8 px, dialogues 12 px.
+	 * `rounded` (Tailwind v4 = --radius-sm) devient le rayon des contrôles. */
+	--radius-xs: 0.125rem;
+	--radius-sm: 0.375rem;
+	--radius-md: 0.375rem;
+	--radius-lg: 0.5rem;
+	--radius-xl: 0.75rem;
+
+	/* Élévation (cf. --ws-shadow-*) : shadow / shadow-md / shadow-lg / shadow-xl. */
+	--shadow-sm: var(--ws-shadow-sm);
+	--shadow-md: var(--ws-shadow-md);
+	--shadow-lg: var(--ws-shadow-md);
+	--shadow-xl: var(--ws-shadow-lg);
+	--shadow-2xl: var(--ws-shadow-lg);
+
+	/* Typographie : 5 tailles utiles (2xs pour les légendes denses de l'aperçu). */
+	--text-2xs: 0.6875rem;
+	--text-2xs--line-height: 1rem;
+
+	/* Durées : une seule cadence d'interaction. */
+	--default-transition-duration: 120ms;
+	--ws-duration-fast: 120ms;
+	--ws-duration-slow: 200ms;
+
+	/* Tailwind v4 consulte `--text-color-*` / `--border-color-*` avant `--color-*` :
+	 * `text-primary` prend la variante lisible, `bg-primary` le remplissage. */
+	--text-color-primary: var(--ws-primary-text);
+	--text-color-accent: var(--ws-primary-text);
+	--text-color-success: var(--ws-success-text);
+	--text-color-warning: var(--ws-warning-text);
+	--text-color-danger: var(--ws-danger-text);
+	--border-color-primary: var(--ws-primary-text);
 }
 
 /* Fond/texte de page par défaut : évite les zones non peintes hors surfaces. */
@@ -115,4 +184,226 @@
 }
 :root[data-theme='dark'] {
 	color-scheme: dark;
+}
+
+@layer base {
+	/* Focus clavier homogène (WCAG 2.4.7) : tout contrôle interactif reçoit un
+	 * anneau accentué au focus clavier, même sans classe dédiée. Les primitives
+	 * qui posent `focus-visible:ring-*` (couche utilities) le remplacent. */
+	:where(a[href], button, input, select, textarea, summary, [tabindex]):focus-visible {
+		outline: 2px solid var(--ws-accent);
+		outline-offset: 2px;
+	}
+	/* État désactivé explicite : curseur interdit (l'opacité reste au composant). */
+	:where(button, input, select, textarea):disabled {
+		cursor: not-allowed;
+	}
+	/* Cases et radios natives aux couleurs du thème. */
+	input:where([type='checkbox'], [type='radio'], [type='range']) {
+		accent-color: var(--ws-primary);
+	}
+}
+
+/* --- Composants de base (design system v2) ---------------------------------
+ * Source unique des recettes visuelles : les composants Svelte de `lib/ui`
+ * et le balisage brut des écrans utilisent ces mêmes classes. Couche
+ * `components` : un utilitaire posé sur l'élément (largeur, marge…) gagne.
+ *
+ * Hauteurs de contrôle : sm 28 px (barres denses), md 32 px (défaut),
+ * lg 40 px (formulaires de page). Bouton et champ de même taille s'alignent. */
+@layer components {
+	.ws-btn {
+		@apply inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-transparent px-3 text-sm font-medium whitespace-nowrap transition-colors select-none disabled:cursor-not-allowed disabled:opacity-50;
+	}
+	.ws-btn-sm {
+		@apply h-7 gap-1 px-2 text-xs;
+	}
+	.ws-btn-lg {
+		@apply h-10 px-4;
+	}
+	.ws-btn-primary {
+		@apply bg-primary text-primary-content enabled:hover:bg-primary-hover;
+	}
+	.ws-btn-secondary {
+		@apply border-border-strong bg-surface-raised text-content enabled:hover:bg-overlay;
+	}
+	.ws-btn-ghost {
+		@apply text-content-muted enabled:hover:bg-overlay enabled:hover:text-content;
+	}
+	.ws-btn-danger {
+		@apply bg-danger text-primary-content enabled:hover:bg-danger/90;
+	}
+	/* Bouton-icône carré : mêmes variantes, même hauteur que .ws-btn. */
+	.ws-icon-btn {
+		@apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-transparent text-content-muted transition-colors enabled:hover:bg-overlay enabled:hover:text-content disabled:cursor-not-allowed disabled:opacity-50;
+	}
+	.ws-icon-btn-sm {
+		@apply h-7 w-7;
+	}
+	/* Actions de ligne (liste d'objets, plateaux) : 24 px, hors barres. */
+	.ws-icon-btn-xs {
+		@apply h-6 w-6 rounded;
+	}
+	/* Retour d'appui : léger enfoncement (boutons, outils, segments, puces). */
+	:is(.ws-btn, .ws-icon-btn, .ws-tool, .ws-seg-item, .ws-chip):active:not(:disabled) {
+		transform: translateY(0.5px);
+	}
+	/* Chargement : tout contrôle ou zone marqué aria-busy montre l'attente. */
+	[aria-busy='true'] {
+		cursor: progress;
+	}
+	/* Focus clavier des recettes : anneau accentué net (WCAG 2.4.7). */
+	:is(.ws-btn, .ws-icon-btn, .ws-tool, .ws-chip, .ws-menu-item):focus-visible {
+		outline: 2px solid var(--ws-accent);
+		outline-offset: 1px;
+	}
+
+	/* Lien d'action discret (« Afficher tout », « Réinitialiser »). */
+	.ws-link {
+		@apply text-sm text-primary underline-offset-2 hover:underline;
+	}
+
+	/* Champs : input texte/nombre, select, textarea. Chiffres tabulaires
+	 * (lecture des valeurs en atelier), bordure ≥ 3:1, focus accentué. */
+	.ws-field {
+		@apply h-8 min-w-0 rounded-md border border-border-strong bg-surface-raised px-2 text-sm text-content tabular-nums transition-colors placeholder:text-content-subtle focus:border-accent disabled:opacity-50;
+	}
+	.ws-field-sm {
+		@apply h-7 px-1.5 text-xs;
+	}
+	.ws-field-lg {
+		@apply h-10 px-3;
+	}
+	textarea.ws-field {
+		@apply h-auto py-1.5;
+	}
+	/* Champs numériques : pas de flèches natives (elles rognaient la valeur dans
+	 * les colonnes étroites) ; ↑/↓ au clavier et la molette restent actifs. */
+	input.ws-field[type='number'] {
+		appearance: textfield;
+	}
+	input.ws-field[type='number']::-webkit-inner-spin-button,
+	input.ws-field[type='number']::-webkit-outer-spin-button {
+		appearance: none;
+		margin: 0;
+	}
+
+	/* Dialogues : voile + boîte + en-tête/pied homogènes. */
+	.ws-scrim {
+		@apply fixed inset-0 z-50 flex items-center justify-center bg-scrim p-4 backdrop-blur-[2px];
+	}
+	.ws-dialog {
+		@apply rounded-xl border border-border bg-surface-raised text-content shadow-xl;
+	}
+	.ws-dialog-header {
+		@apply flex shrink-0 items-center justify-between gap-3 border-b border-border px-5 py-3;
+	}
+	.ws-dialog-title {
+		@apply text-base font-semibold text-content;
+	}
+	.ws-dialog-body {
+		@apply min-h-0 flex-1 overflow-y-auto px-5 py-4;
+	}
+	.ws-dialog-footer {
+		@apply flex shrink-0 items-center justify-end gap-2 border-t border-border px-5 py-3;
+	}
+
+	/* Titres de page (h1) : une seule taille sur toutes les pages. */
+	.ws-page-title {
+		@apply text-xl font-semibold text-content;
+	}
+
+	/* Panneaux latéraux et sections. */
+	.ws-panel {
+		@apply rounded-lg border border-border bg-surface-raised;
+	}
+	.ws-section-title {
+		@apply text-xs font-semibold tracking-wide text-content-muted uppercase;
+	}
+
+	/* Surfaces flottantes sur la vue 3D (barre d'outils, panneau d'outil,
+	 * curseurs de l'aperçu) : même rayon, même verre dépoli, même ombre, pour
+	 * qu'elles se lisent comme une couche d'interface au-dessus de la scène. */
+	.ws-floating {
+		@apply rounded-lg border border-border bg-surface-raised/90 text-content shadow-md backdrop-blur-sm;
+	}
+	.ws-floating-header {
+		@apply -mx-3 -mt-3 mb-3 flex items-center justify-between gap-2 border-b border-border py-1.5 pr-1.5 pl-3;
+	}
+
+	/* Menus déroulants / contextuels. */
+	.ws-menu {
+		@apply rounded-lg border border-border bg-surface-raised py-1 text-sm text-content shadow-xl;
+	}
+	.ws-menu-item {
+		@apply flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-content enabled:hover:bg-overlay disabled:opacity-50;
+	}
+
+	/* Onglets soulignés (pages de réglages, Traitement/Objets) : bordure basse
+	 * toujours présente (transparente au repos), pas de saut de hauteur. */
+	.ws-tab {
+		@apply -mb-px border-b-2 border-transparent px-2.5 py-1.5 text-xs font-medium whitespace-nowrap text-content-muted transition-colors hover:border-border-strong hover:text-content focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset;
+	}
+	.ws-tab-on {
+		@apply border-primary text-primary hover:border-primary hover:text-primary;
+	}
+
+	/* Contrôle segmenté (modes d'affichage, Global/Objets, vues de l'éditeur) :
+	 * conteneur .ws-seg, options .ws-seg-item, option active .ws-seg-on. */
+	.ws-seg {
+		@apply inline-flex items-center gap-0.5 rounded-md border border-border-strong bg-surface-raised p-0.5;
+	}
+	.ws-seg-item {
+		@apply inline-flex h-6 items-center justify-center gap-1 rounded px-2.5 text-xs font-medium whitespace-nowrap text-content-muted transition-colors hover:bg-overlay hover:text-content focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset;
+	}
+	.ws-seg-on {
+		@apply bg-primary text-primary-content shadow-sm hover:bg-primary-hover hover:text-primary-content;
+	}
+
+	/* Boutons d'outil (rail des gizmos, barre flottante) : carré 36 px, état
+	 * actif = accent plein, inactif = discret ; identiques partout. */
+	.ws-tool {
+		@apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-md text-content-muted transition-colors enabled:hover:bg-overlay enabled:hover:text-content disabled:cursor-not-allowed disabled:opacity-40;
+	}
+	.ws-tool-sm {
+		@apply h-8 w-8;
+	}
+	.ws-tool-on {
+		@apply bg-primary text-primary-content enabled:hover:bg-primary-hover enabled:hover:text-primary-content;
+	}
+
+	/* Puces bascule (axe, outil, source) : groupe de choix compacts dans les
+	 * panneaux d'outils ; .ws-chip-on = choix actif (accent unique). */
+	.ws-chip {
+		@apply inline-flex h-7 items-center justify-center gap-1 rounded-md border border-border-strong bg-surface-raised px-2 text-xs font-medium text-content-muted transition-colors hover:bg-overlay hover:text-content;
+	}
+	.ws-chip-on {
+		@apply border-primary bg-primary text-primary-content hover:bg-primary-hover hover:text-primary-content;
+	}
+	/* Masqué visuellement, lu par les lecteurs d'écran. */
+	.ws-sr-only {
+		@apply sr-only;
+	}
+
+	/* Pastilles d'état. */
+	.ws-badge {
+		@apply inline-flex h-5 items-center gap-1 rounded-full border border-border bg-surface-sunken px-2 text-2xs font-medium text-content-muted;
+	}
+
+	/* Bulle d'aide et étiquettes posées sur la vue 3D (surface inversée). */
+	.ws-tooltip {
+		@apply pointer-events-none rounded-md bg-inverse px-2 py-1 text-xs text-on-inverse shadow-md;
+	}
+
+	/* État vide : icône + phrase + action éventuelle, centrés. */
+	.ws-empty {
+		@apply flex flex-col items-center justify-center gap-2 px-6 py-10 text-center text-sm text-content-muted;
+	}
+}
+
+/* Texte secondaire atténué (compteurs, Z) : pleine opacité sur une puce active
+ * (fond primaire), sinon le contraste tombe sous 4,5:1 (axe color-contrast).
+ * Hors @layer : doit l'emporter sur les utilitaires opacity-*. */
+.ws-chip-on :is(.opacity-60, .opacity-75, .opacity-80, .opacity-90) {
+	opacity: 1;
 }

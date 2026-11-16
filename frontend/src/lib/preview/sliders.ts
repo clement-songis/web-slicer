@@ -71,9 +71,16 @@ export function toggleOneLayerMode(range: LayerRange): LayerRange {
 	return { ...range, oneLayerMode: true, low: range.high, active: 'high' };
 }
 
-/** Indices de couches à afficher (bornes incluses), pour `?from&to`. */
+/**
+ * Indices de couches à afficher (bornes incluses), pour `?from&to` et pour
+ * `GeometryOptions.layerRange`. Normalisé : mode une-couche → `high` seule,
+ * bornes ordonnées et ramenées à `[0, total-1]`.
+ */
 export function visibleRange(range: LayerRange): { from: number; to: number } {
-	return { from: range.low, to: range.high };
+	const last = Math.max(0, range.total - 1);
+	const high = clamp(Math.max(range.low, range.high), 0, last);
+	const low = range.oneLayerMode ? high : clamp(Math.min(range.low, range.high), 0, last);
+	return { from: low, to: high };
 }
 
 // --- Curseur horizontal : progression intra-couche ---------------------------

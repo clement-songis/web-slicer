@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 engine = { path = "../engine" }
+glam = "0.33"
 
 tokio = { workspace = true }
 serde = { workspace = true }
@@ -27,6 +28,8 @@ tower-sessions = "0.15"
 argon2 = { version = "0.5", features = ["std"] }
 garde = { version = "0.23", features = ["derive", "email"] }
 async-trait = "0.1"
+# Conditions `compatible_printers_condition` des profils Orca (`=~ /…/`).
+regex = "1"
 
 # Chiffrement au repos des clés API d'imprimante (T075, FR-060).
 chacha20poly1305 = "0.10"
@@ -44,6 +47,9 @@ tokio-tungstenite = { version = "0.29", default-features = false, features = [
     "handshake",
 ] }
 futures-util = "0.3"
+# Lecture des archives 3MF projet (géométrie OPC + métadonnées Orca).
+quick-xml = "0.41"
+zip = "8"
 # Répertoire de travail isolé du runner de tranchage (T064).
 tempfile = "3"
 
@@ -58,4 +64,3 @@ tokio = { workspace = true }
 futures = "0.3"
 tempfile = "3"
 tower = { version = "0.5", features = ["util"] }
-zip = "8"

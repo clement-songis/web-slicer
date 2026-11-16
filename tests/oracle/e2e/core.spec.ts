@@ -141,7 +141,8 @@ test('envoi vers Moonraker : le fichier arrive sur l’imprimante @F:core.moonra
 	await page.getByTestId('printer-add').click();
 	await page.getByTestId('printer-moonraker-url').fill(moonraker!);
 	await page.getByTestId('printer-save').click();
-	await expect(page.getByTestId('printer-row').first()).toBeVisible();
+	// bootstrap a déjà déclaré une imprimante : attendre la ligne de la nouvelle.
+	await expect(page.getByTestId('printer-row').filter({ hasText: moonraker! })).toBeVisible();
 	const before = new Set(await list());
 	await page.goto(`/projects/${projectId}`);
 	await importModel(page, MODEL);

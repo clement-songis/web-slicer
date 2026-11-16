@@ -18,7 +18,10 @@ fn map_kind(kind: EngineKind) -> PresetKind {
     }
 }
 
-/// Convertit un preset importé en entité système du domaine (id neuf).
+/// Convertit un preset importé en entité système du domaine. L'UUID est
+/// provisoire : lors d'un reseed, les adaptateurs conservent l'UUID de la ligne
+/// ayant la même identité naturelle `(kind, name, vendor)` afin de préserver les
+/// références des imprimantes et des projets.
 pub fn to_system_preset(p: &ImportedPreset) -> Preset {
     let compatible_printers = if p.compatible_printers.is_empty() {
         None
@@ -46,10 +49,10 @@ pub fn to_system_preset(p: &ImportedPreset) -> Preset {
     }
 }
 
-/// Re-seed l'ensemble des presets système depuis un lot importé. Idempotent
-/// (remplace tous les presets système) et **sans toucher aux presets
-/// utilisateur** (garanti par `PresetRepo::reseed_system`). Renvoie le nombre
-/// de presets système écrits.
+/// Re-seed l'ensemble des presets système depuis un lot importé. La
+/// réconciliation est transactionnelle et conserve les UUID des identités déjà
+/// présentes, sans toucher aux presets utilisateur. Renvoie le nombre de
+/// presets du lot écrits.
 pub async fn reseed_system_presets(
     storage: &dyn Storage,
     imported: &[ImportedPreset],

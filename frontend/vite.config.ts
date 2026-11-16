@@ -1,5 +1,5 @@
 import tailwindcss from '@tailwindcss/vite';
-import adapter from '@sveltejs/adapter-auto';
+import adapter from '@sveltejs/adapter-node';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
 import Icons from 'unplugin-icons/vite';
@@ -8,6 +8,20 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
 	server: {
+		// Les scénarios E2E doivent rester sur le même document : une optimisation
+		// tardive de dépendances Vite ne doit pas recharger un formulaire en cours.
+		hmr: process.env.HARNESS_E2E !== '1',
+		// Transforme les parcours d'entrée dès le démarrage. Sans ce préchauffage,
+		// la découverte tardive de dépendances peut recharger la page auth pendant
+		// le premier formulaire et perdre sa soumission (notamment en harness).
+		warmup: {
+			clientFiles: [
+				'./src/routes/(auth)/register/+page.svelte',
+				'./src/routes/(auth)/login/+page.svelte',
+				'./src/routes/setup/+page.svelte',
+				'./src/routes/projects/[id]/+page.svelte'
+			]
+		},
 		// Autorise l'accès via un tunnel Cloudflare (URL éphémère *.trycloudflare.com) :
 		// Vite bloque sinon les hôtes inconnus dans l'en-tête Host.
 		allowedHosts: ['.trycloudflare.com'],
@@ -48,10 +62,16 @@ export default defineConfig({
 					filename.split(/[/\\]/).includes('node_modules') ? undefined : true
 			},
 
-			// adapter-auto only supports some environments, see https://svelte.dev/docs/kit/adapter-auto for a list.
-			// If your environment is not supported, or you settled on a specific environment, switch out the adapter.
-			// See https://svelte.dev/docs/kit/adapters for more information about adapters.
-			adapter: adapter()
+			// Production : serveur Node autonome (`node build`, cf. README « Production »).
+			// Les appels `/api/*` y sont relayés au backend par `src/hooks.server.ts`.
+			adapter: adapter(),
+			// Le contrôle CSRF intégré de SvelteKit s'exécute avant `handle` et
+			// refusait (403) les POST multipart relayés vers `/api/*` dès que
+			// l'Origin différait de l'origine vue par Node (reverse proxy, ORIGIN
+			// absent). Il est désactivé ici (« * ») et réimplémenté à l'identique
+			// dans `src/hooks.server.ts` pour les routes SvelteKit, hors `/api/*`
+			// (relayé au backend, qui porte sa propre authentification).
+			csrf: { trustedOrigins: ['*'] }
 		})
 	]
 });

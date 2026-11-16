@@ -21,8 +21,61 @@ use tokio_tungstenite::tungstenite::Message;
 
 /// Objets Moonraker suivis (R10). L'ordre est stable pour des requêtes
 /// reproductibles.
-pub const SUBSCRIBED_OBJECTS: [&str; 4] =
-    ["print_stats", "display_status", "extruder", "heater_bed"];
+pub const SUBSCRIBED_OBJECTS: [&str; 6] = [
+    "print_stats",
+    "display_status",
+    "extruder",
+    "heater_bed",
+    "fan",
+    "toolhead",
+];
+
+/// Bornes du relais `/printer/gcode/script` (onglet Appareil) : script court,
+/// quelques lignes (déplacement G91/G1/G90, consignes), caractères imprimables.
+pub const MAX_GCODE_SCRIPT_BYTES: usize = 2048;
+pub const MAX_GCODE_SCRIPT_LINES: usize = 32;
+
+/// Fichier G-code présent sur l'imprimante (`/server/files/list`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct PrinterFile {
+    pub path: String,
+    pub size: u64,
+    /// Horodatage Unix (s) de dernière modification.
+    pub modified: f64,
+}
+
+/// Encodage d'un paramètre de requête (RFC 3986, caractères non réservés).
+fn percent_encode(raw: &str) -> String {
+    raw.bytes()
+        .map(|b| match b {
+            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' | b'/' => {
+                (b as char).to_string()
+            }
+            _ => format!("%{b:02X}"),
+        })
+        .collect()
+}
+
+/// Valide un script G-code relayé : vide autorisé (sonde de capacité de
+/// l'UI), sinon longueur et nombre de lignes bornés, ASCII imprimable +
+/// tabulation et sauts de ligne uniquement (pas de caractère de contrôle).
+pub fn validate_gcode_script(script: &str) -> Result<(), String> {
+    if script.len() > MAX_GCODE_SCRIPT_BYTES {
+        return Err(format!(
+            "script trop long (max {MAX_GCODE_SCRIPT_BYTES} octets)"
+        ));
+    }
+    if script.lines().count() > MAX_GCODE_SCRIPT_LINES {
+        return Err(format!("trop de lignes (max {MAX_GCODE_SCRIPT_LINES})"));
+    }
+    if script
+        .chars()
+        .any(|c| !(c == '\n' || c == '\r' || c == '\t' || (' '..='~').contains(&c)))
+    {
+        return Err("caractère non autorisé dans le script".into());
+    }
+    Ok(())
+}
 
 /// Erreurs de dialogue avec Moonraker (surfacées proprement, FR-062).
 #[derive(Debug, thiserror::Error)]
@@ -72,6 +125,14 @@ pub struct PrinterStatus {
     pub extruder_target: f64,
     pub bed_temp: f64,
     pub bed_target: f64,
+    /// `print_stats.info.current_layer` / `total_layer` (si le G-code émet
+    /// SET_PRINT_STATS_INFO, comme celui d'Orca).
+    pub current_layer: Option<i64>,
+    pub total_layer: Option<i64>,
+    /// `fan.speed` (0 → 1).
+    pub fan_speed: Option<f64>,
+    /// `toolhead.homed_axes` (ex. « xyz »).
+    pub homed_axes: Option<String>,
 }
 
 /// Accumulateur d'état : Moonraker envoie des mises à jour **partielles**
@@ -120,6 +181,12 @@ impl StatusAccumulator {
             extruder_target: num("extruder", "target"),
             bed_temp: num("heater_bed", "temperature"),
             bed_target: num("heater_bed", "target"),
+            current_layer: get("print_stats", "info")
+                .and_then(|i| i.get("current_layer").and_then(Value::as_i64)),
+            total_layer: get("print_stats", "info")
+                .and_then(|i| i.get("total_layer").and_then(Value::as_i64)),
+            fan_speed: get("fan", "speed").and_then(|v| v.as_f64()),
+            homed_axes: get("toolhead", "homed_axes").and_then(|v| v.as_str().map(str::to_owned)),
         }
     }
 }
@@ -331,6 +398,109 @@ impl MoonrakerClient {
         self.print_action("cancel").await
     }
 
+    async fn get_result(&self, path: &str) -> MoonrakerResult<Value> {
+        let resp = self
+            .with_key(self.http.get(self.url(path)))
+            .send()
+            .await
+            .map_err(|e| MoonrakerError::Network(e.to_string()))?;
+        let body: Value = Self::ensure_ok(resp)
+            .await?
+            .json()
+            .await
+            .map_err(|e| MoonrakerError::Decode(e.to_string()))?;
+        body.get("result")
+            .cloned()
+            .ok_or_else(|| MoonrakerError::Decode("champ `result` absent".into()))
+    }
+
+    /// `GET /server/files/list?root=gcodes` — fichiers G-code de l'imprimante.
+    pub async fn list_files(&self) -> MoonrakerResult<Vec<PrinterFile>> {
+        let result = self.get_result("/server/files/list?root=gcodes").await?;
+        let items = result
+            .as_array()
+            .ok_or_else(|| MoonrakerError::Decode("liste de fichiers attendue".into()))?;
+        Ok(items
+            .iter()
+            .filter_map(|f| {
+                Some(PrinterFile {
+                    path: f.get("path")?.as_str()?.to_string(),
+                    size: f.get("size").and_then(Value::as_u64).unwrap_or(0),
+                    modified: f.get("modified").and_then(Value::as_f64).unwrap_or(0.0),
+                })
+            })
+            .collect())
+    }
+
+    /// `POST /printer/print/start?filename=` — lance un fichier déjà présent.
+    pub async fn start_print(&self, filename: &str) -> MoonrakerResult<()> {
+        let resp = self
+            .with_key(self.http.post(self.url(&format!(
+                "/printer/print/start?filename={}",
+                percent_encode(filename)
+            ))))
+            .send()
+            .await
+            .map_err(|e| MoonrakerError::Network(e.to_string()))?;
+        Self::ensure_ok(resp).await.map(|_| ())
+    }
+
+    /// `POST /printer/gcode/script` — exécute un script G-code (corps JSON).
+    pub async fn gcode_script(&self, script: &str) -> MoonrakerResult<()> {
+        let resp = self
+            .with_key(
+                self.http
+                    .post(self.url("/printer/gcode/script"))
+                    .json(&json!({ "script": script })),
+            )
+            .send()
+            .await
+            .map_err(|e| MoonrakerError::Network(e.to_string()))?;
+        Self::ensure_ok(resp).await.map(|_| ())
+    }
+
+    /// `GET /server/webcams/list` — URL absolue de la première webcam active
+    /// (instantané de préférence, sinon flux), `None` sans webcam.
+    pub async fn webcam_url(&self) -> MoonrakerResult<Option<String>> {
+        let result = self.get_result("/server/webcams/list").await?;
+        let cams = result
+            .get("webcams")
+            .and_then(Value::as_array)
+            .cloned()
+            .unwrap_or_default();
+        let url = cams
+            .iter()
+            .filter(|c| c.get("enabled").and_then(Value::as_bool).unwrap_or(true))
+            .find_map(|c| {
+                ["snapshot_url", "stream_url"].iter().find_map(|k| {
+                    c.get(*k)
+                        .and_then(Value::as_str)
+                        .filter(|s| !s.is_empty())
+                        .map(str::to_owned)
+                })
+            });
+        Ok(url.map(|u| self.absolute(&u)))
+    }
+
+    /// URL Moonraker relative (`/webcam/…`) → absolue sur l'hôte déclaré.
+    fn absolute(&self, url: &str) -> String {
+        if url.starts_with("http://") || url.starts_with("https://") {
+            return url.to_string();
+        }
+        let host_end = self
+            .base_url
+            .find("://")
+            .map(|i| i + 3)
+            .and_then(|start| self.base_url[start..].find('/').map(|j| start + j))
+            .unwrap_or(self.base_url.len());
+        let origin = &self.base_url[..host_end];
+        if url.starts_with('/') {
+            format!("{origin}{url}")
+        } else {
+            format!("{origin}/{url}")
+        }
+    }
+
     /// Repli d'interrogation `GET /printer/objects/query` (si le WS est coupé).
     pub async fn query_status(&self) -> MoonrakerResult<PrinterStatus> {
         let query = SUBSCRIBED_OBJECTS.join("&");
@@ -407,6 +577,43 @@ impl MoonrakerClient {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn gcode_script_bounds() {
+        assert!(validate_gcode_script("").is_ok());
+        assert!(validate_gcode_script("G91\nG1 X10 F6000\nG90").is_ok());
+        assert!(validate_gcode_script(&"G28\n".repeat(40)).is_err());
+        assert!(validate_gcode_script(&"M117 ".repeat(500)).is_err());
+        assert!(validate_gcode_script("M117 \u{7}").is_err());
+        assert!(validate_gcode_script("M117 é").is_err());
+    }
+
+    #[test]
+    fn status_reads_layers_fan_and_homing() {
+        let mut acc = StatusAccumulator::new();
+        acc.apply(&json!({
+            "print_stats": { "state": "printing", "info": { "current_layer": 12, "total_layer": 50 } },
+            "fan": { "speed": 0.5 },
+            "toolhead": { "homed_axes": "xyz" }
+        }));
+        let s = acc.snapshot();
+        assert_eq!((s.current_layer, s.total_layer), (Some(12), Some(50)));
+        assert_eq!(s.fan_speed, Some(0.5));
+        assert_eq!(s.homed_axes.as_deref(), Some("xyz"));
+        assert_eq!(StatusAccumulator::new().snapshot().current_layer, None);
+    }
+
+    #[test]
+    fn webcam_urls_are_made_absolute() {
+        let c = MoonrakerClient::new("http://klipper.local:7125/", None);
+        assert_eq!(
+            c.absolute("/webcam/?action=snapshot"),
+            "http://klipper.local:7125/webcam/?action=snapshot"
+        );
+        assert_eq!(c.absolute("http://cam/x.jpg"), "http://cam/x.jpg");
+        let c = MoonrakerClient::new("http://h:7125/moonraker", None);
+        assert_eq!(c.absolute("/webcam/a"), "http://h:7125/webcam/a");
+    }
+
     use super::*;
 
     #[test]

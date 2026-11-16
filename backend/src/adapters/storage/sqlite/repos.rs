@@ -1,14 +1,18 @@
 //! Implémentations SQLite des repos du domaine. Requêtes runtime `sqlx`
 //! (pas de macro compile-time : aucune `DATABASE_URL` requise au build).
 
+use std::collections::{HashMap, HashSet};
+
 use async_trait::async_trait;
 use sqlx::sqlite::SqliteRow;
-use sqlx::{Row, SqlitePool};
+use sqlx::{Row, SqliteConnection, SqlitePool};
 
 use crate::domain::*;
 
+use super::super::{collect_uuid_strings, json_references_id};
 use super::{
-    enum_str, id_str, json_text, map_sqlx, now, parse_enum, parse_id, parse_json, parse_time,
+    begin_write, enum_str, id_str, json_text, map_sqlx, now, parse_enum, parse_id, parse_json,
+    parse_time,
 };
 
 // --- Mappers ligne → entité --------------------------------------------------
@@ -107,6 +111,7 @@ fn row_to_job(row: &SqliteRow) -> StorageResult<SlicingJob> {
         progress: row.get("progress"),
         phase: row.get("phase"),
         resolved_settings: parse_json(&row.get::<String, _>("resolved_settings"))?,
+        scene: opt_json(row, "scene")?,
         error: opt_json(row, "error")?,
         gcode_id: opt_id(row, "gcode_id")?,
         created_at: parse_time(&row.get::<String, _>("created_at"))?,
@@ -499,6 +504,33 @@ impl ModelRepo for SqliteModelRepo {
         }
         Ok(())
     }
+
+    async fn set_repair_result(
+        &self,
+        owner: UserId,
+        id: ModelId,
+        mesh_path: &str,
+        triangle_count: i64,
+        repair_report: serde_json::Value,
+    ) -> StorageResult<()> {
+        let n = sqlx::query(concat!(
+            "UPDATE models SET mesh_path = ?, triangle_count = ?, repair_report = ?, ",
+            "conversion_error = NULL WHERE id = ? AND user_id = ?"
+        ))
+        .bind(mesh_path)
+        .bind(triangle_count)
+        .bind(json_text(&repair_report))
+        .bind(id_str(id))
+        .bind(id_str(owner))
+        .execute(&self.pool)
+        .await
+        .map_err(map_sqlx)?
+        .rows_affected();
+        if n == 0 {
+            return Err(StorageError::NotFound);
+        }
+        Ok(())
+    }
 }
 
 // --- Presets -----------------------------------------------------------------
@@ -539,35 +571,120 @@ impl SqlitePresetRepo {
 #[async_trait]
 impl PresetRepo for SqlitePresetRepo {
     async fn reseed_system(&self, presets: Vec<Preset>) -> StorageResult<u64> {
-        let mut tx = self.pool.begin().await.map_err(map_sqlx)?;
-        sqlx::query("DELETE FROM presets WHERE user_id IS NULL")
-            .execute(&mut *tx)
-            .await
-            .map_err(map_sqlx)?;
-        let mut count = 0u64;
+        let mut tx = begin_write(&self.pool).await.map_err(map_sqlx)?;
+        type SystemKey = (String, String, Option<String>);
+
+        // Réconciliation par clé naturelle : ne jamais supprimer/réinsérer un
+        // preset conservé, car la FK des imprimantes a un ON DELETE CASCADE et
+        // les projets retiennent son UUID dans un document JSON.
+        let existing_rows =
+            sqlx::query("SELECT id, kind, name, vendor FROM presets WHERE user_id IS NULL")
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(map_sqlx)?;
+        let mut existing: Vec<(PresetId, SystemKey)> = Vec::with_capacity(existing_rows.len());
+        let mut existing_by_key: HashMap<SystemKey, PresetId> = HashMap::new();
+        for row in &existing_rows {
+            let id = parse_id(&row.get::<String, _>("id"))?;
+            let key = (
+                row.get("kind"),
+                row.get("name"),
+                row.get::<Option<String>, _>("vendor"),
+            );
+            existing.push((id, key.clone()));
+            existing_by_key.insert(key, id);
+        }
+
+        let mut batch_keys = HashSet::with_capacity(presets.len());
+        let mut retained = HashSet::with_capacity(presets.len());
         for p in &presets {
-            sqlx::query(
-                "INSERT INTO presets \
-                 (id, kind, name, origin, user_id, vendor, inherits, instantiation, setting_id, filament_id, compatible_printers, values_json) \
-                 VALUES (?, ?, ?, 'system', NULL, ?, ?, ?, ?, ?, ?, ?)",
-            )
-            .bind(id_str(p.id))
-            .bind(enum_str(&p.kind))
-            .bind(&p.name)
-            .bind(&p.vendor)
-            .bind(&p.inherits)
-            .bind(p.instantiation as i64)
-            .bind(&p.setting_id)
-            .bind(&p.filament_id)
-            .bind(p.compatible_printers.as_ref().map(json_text))
-            .bind(json_text(&p.values))
-            .execute(&mut *tx)
-            .await
-            .map_err(map_sqlx)?;
-            count += 1;
+            let key = (enum_str(&p.kind), p.name.clone(), p.vendor.clone());
+            if !batch_keys.insert(key.clone()) {
+                return Err(StorageError::Conflict(format!(
+                    "preset système dupliqué dans le lot : {:?} / {}",
+                    p.kind, p.name
+                )));
+            }
+            let id = existing_by_key.get(&key).copied().unwrap_or(p.id);
+            retained.insert(id);
+
+            if existing_by_key.contains_key(&key) {
+                sqlx::query(
+                    "UPDATE presets SET origin = 'system', user_id = NULL, vendor = ?, \
+                     inherits = ?, instantiation = ?, setting_id = ?, filament_id = ?, \
+                     compatible_printers = ?, values_json = ? \
+                     WHERE id = ? AND user_id IS NULL",
+                )
+                .bind(&p.vendor)
+                .bind(&p.inherits)
+                .bind(p.instantiation as i64)
+                .bind(&p.setting_id)
+                .bind(&p.filament_id)
+                .bind(p.compatible_printers.as_ref().map(json_text))
+                .bind(json_text(&p.values))
+                .bind(id_str(id))
+                .execute(&mut *tx)
+                .await
+                .map_err(map_sqlx)?;
+            } else {
+                sqlx::query(
+                    "INSERT INTO presets \
+                     (id, kind, name, origin, user_id, vendor, inherits, instantiation, setting_id, filament_id, compatible_printers, values_json) \
+                     VALUES (?, ?, ?, 'system', NULL, ?, ?, ?, ?, ?, ?, ?)",
+                )
+                .bind(id_str(id))
+                .bind(enum_str(&p.kind))
+                .bind(&p.name)
+                .bind(&p.vendor)
+                .bind(&p.inherits)
+                .bind(p.instantiation as i64)
+                .bind(&p.setting_id)
+                .bind(&p.filament_id)
+                .bind(p.compatible_printers.as_ref().map(json_text))
+                .bind(json_text(&p.values))
+                .execute(&mut *tx)
+                .await
+                .map_err(map_sqlx)?;
+            }
+        }
+
+        let obsolete: Vec<PresetId> = existing
+            .iter()
+            .map(|(id, _)| *id)
+            .filter(|id| !retained.contains(id))
+            .collect();
+        if !obsolete.is_empty() {
+            let project_rows = sqlx::query("SELECT active_presets FROM projects")
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(map_sqlx)?;
+            let mut project_refs = HashSet::new();
+            for row in &project_rows {
+                let active = parse_json(&row.get::<String, _>("active_presets"))?;
+                collect_uuid_strings(&active, &mut project_refs);
+            }
+            for id in obsolete {
+                let printer_ref = sqlx::query(
+                    "SELECT 1 AS found FROM printers WHERE machine_preset_id = ? LIMIT 1",
+                )
+                .bind(id_str(id))
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(map_sqlx)?;
+                if printer_ref.is_some() || project_refs.contains(&id.0) {
+                    return Err(StorageError::Conflict(format!(
+                        "reseed refusé : le preset système {id} est encore référencé"
+                    )));
+                }
+                sqlx::query("DELETE FROM presets WHERE id = ? AND user_id IS NULL")
+                    .bind(id_str(id))
+                    .execute(&mut *tx)
+                    .await
+                    .map_err(map_sqlx)?;
+            }
         }
         tx.commit().await.map_err(map_sqlx)?;
-        Ok(count)
+        Ok(presets.len() as u64)
     }
 
     async fn system_count(&self) -> StorageResult<i64> {
@@ -638,6 +755,25 @@ impl PresetRepo for SqlitePresetRepo {
         rows.iter().map(row_to_preset).collect()
     }
 
+    async fn list_by_name(
+        &self,
+        kind: PresetKind,
+        name: &str,
+        user: UserId,
+    ) -> StorageResult<Vec<Preset>> {
+        let rows = sqlx::query(
+            "SELECT * FROM presets \
+             WHERE kind = ? AND name = ? AND (user_id IS NULL OR user_id = ?)",
+        )
+        .bind(enum_str(&kind))
+        .bind(name)
+        .bind(id_str(user))
+        .fetch_all(&self.pool)
+        .await
+        .map_err(map_sqlx)?;
+        rows.iter().map(row_to_preset).collect()
+    }
+
     async fn update_user_preset(
         &self,
         owner: UserId,
@@ -661,21 +797,82 @@ impl PresetRepo for SqlitePresetRepo {
     }
 
     async fn delete_user_preset(&self, owner: UserId, id: PresetId) -> StorageResult<()> {
-        let n = sqlx::query("DELETE FROM presets WHERE id = ? AND user_id = ?")
+        let mut tx = begin_write(&self.pool).await.map_err(map_sqlx)?;
+        let owned = sqlx::query("SELECT 1 AS found FROM presets WHERE id = ? AND user_id = ?")
             .bind(id_str(id))
             .bind(id_str(owner))
-            .execute(&self.pool)
+            .fetch_optional(&mut *tx)
             .await
-            .map_err(map_sqlx)?
-            .rows_affected();
-        if n == 0 {
+            .map_err(map_sqlx)?;
+        if owned.is_none() {
             return Err(StorageError::NotFound);
         }
+        let printer_ref =
+            sqlx::query("SELECT 1 AS found FROM printers WHERE machine_preset_id = ? LIMIT 1")
+                .bind(id_str(id))
+                .fetch_optional(&mut *tx)
+                .await
+                .map_err(map_sqlx)?;
+        if printer_ref.is_some() {
+            return Err(StorageError::Conflict(
+                "preset référencé par une imprimante".into(),
+            ));
+        }
+
+        // SQLite/Postgres ne peuvent pas déclarer une FK vers des UUID contenus
+        // dans du JSON. Le filtre SQL limite les lectures, puis la comparaison
+        // exacte du JSON élimine les simples occurrences textuelles.
+        let candidates =
+            sqlx::query("SELECT active_presets FROM projects WHERE active_presets LIKE ?")
+                .bind(format!("%{}%", id_str(id)))
+                .fetch_all(&mut *tx)
+                .await
+                .map_err(map_sqlx)?;
+        for row in &candidates {
+            let active = parse_json(&row.get::<String, _>("active_presets"))?;
+            if json_references_id(&active, id.into()) {
+                return Err(StorageError::Conflict(
+                    "preset référencé par un projet".into(),
+                ));
+            }
+        }
+
+        sqlx::query("DELETE FROM presets WHERE id = ? AND user_id = ?")
+            .bind(id_str(id))
+            .bind(id_str(owner))
+            .execute(&mut *tx)
+            .await
+            .map_err(map_sqlx)?;
+        tx.commit().await.map_err(map_sqlx)?;
         Ok(())
     }
 }
 
 // --- Printers ----------------------------------------------------------------
+
+async fn ensure_machine_preset_visible(
+    conn: &mut SqliteConnection,
+    owner: UserId,
+    id: PresetId,
+) -> StorageResult<()> {
+    let row = sqlx::query("SELECT user_id, kind FROM presets WHERE id = ?")
+        .bind(id_str(id))
+        .fetch_optional(conn)
+        .await
+        .map_err(map_sqlx)?
+        .ok_or(StorageError::NotFound)?;
+    let preset_owner = row.get::<Option<String>, _>("user_id");
+    if preset_owner.is_some() && preset_owner != Some(id_str(owner)) {
+        return Err(StorageError::NotFound);
+    }
+    let kind: PresetKind = parse_enum(&row.get::<String, _>("kind"))?;
+    if kind != PresetKind::Machine {
+        return Err(StorageError::Conflict(
+            "machine_preset_id doit référencer un preset machine".into(),
+        ));
+    }
+    Ok(())
+}
 
 pub(crate) struct SqlitePrinterRepo {
     pool: SqlitePool,
@@ -689,6 +886,8 @@ impl SqlitePrinterRepo {
 #[async_trait]
 impl PrinterRepo for SqlitePrinterRepo {
     async fn create(&self, owner: UserId, printer: NewPrinter) -> StorageResult<Printer> {
+        let mut tx = begin_write(&self.pool).await.map_err(map_sqlx)?;
+        ensure_machine_preset_visible(&mut tx, owner, printer.machine_preset_id).await?;
         let id = PrinterId::new();
         sqlx::query(
             "INSERT INTO printers (id, user_id, name, moonraker_url, api_key, machine_preset_id) \
@@ -700,9 +899,10 @@ impl PrinterRepo for SqlitePrinterRepo {
         .bind(&printer.moonraker_url)
         .bind(&printer.api_key)
         .bind(id_str(printer.machine_preset_id))
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await
         .map_err(map_sqlx)?;
+        tx.commit().await.map_err(map_sqlx)?;
         self.get(owner, id).await
     }
 
@@ -732,6 +932,8 @@ impl PrinterRepo for SqlitePrinterRepo {
         id: PrinterId,
         printer: NewPrinter,
     ) -> StorageResult<Printer> {
+        let mut tx = begin_write(&self.pool).await.map_err(map_sqlx)?;
+        ensure_machine_preset_visible(&mut tx, owner, printer.machine_preset_id).await?;
         let n = sqlx::query(
             "UPDATE printers SET name = ?, moonraker_url = ?, api_key = ?, machine_preset_id = ? \
              WHERE id = ? AND user_id = ?",
@@ -742,13 +944,14 @@ impl PrinterRepo for SqlitePrinterRepo {
         .bind(id_str(printer.machine_preset_id))
         .bind(id_str(id))
         .bind(id_str(owner))
-        .execute(&self.pool)
+        .execute(&mut *tx)
         .await
         .map_err(map_sqlx)?
         .rows_affected();
         if n == 0 {
             return Err(StorageError::NotFound);
         }
+        tx.commit().await.map_err(map_sqlx)?;
         self.get(owner, id).await
     }
 
@@ -776,29 +979,48 @@ impl SqliteJobRepo {
     pub(crate) fn new(pool: SqlitePool) -> Self {
         Self { pool }
     }
-}
 
-#[async_trait]
-impl JobRepo for SqliteJobRepo {
-    async fn enqueue(&self, owner: UserId, job: NewJob) -> StorageResult<SlicingJob> {
+    async fn insert(
+        &self,
+        owner: UserId,
+        job: NewJob,
+        scene: Option<serde_json::Value>,
+    ) -> StorageResult<SlicingJob> {
         let id = JobId::new();
         let ts = now();
         sqlx::query(
             "INSERT INTO slicing_jobs \
-             (id, user_id, project_id, plate_index, status, progress, phase, resolved_settings, created_at, updated_at) \
-             VALUES (?, ?, ?, ?, 'queued', 0, '', ?, ?, ?)",
+             (id, user_id, project_id, plate_index, status, progress, phase, resolved_settings, scene, created_at, updated_at) \
+             VALUES (?, ?, ?, ?, 'queued', 0, '', ?, ?, ?, ?)",
         )
         .bind(id_str(id))
         .bind(id_str(owner))
         .bind(id_str(job.project_id))
         .bind(job.plate_index)
         .bind(json_text(&job.resolved_settings))
+        .bind(scene.as_ref().map(json_text))
         .bind(&ts)
         .bind(&ts)
         .execute(&self.pool)
         .await
         .map_err(map_sqlx)?;
         self.get(owner, id).await
+    }
+}
+
+#[async_trait]
+impl JobRepo for SqliteJobRepo {
+    async fn enqueue(&self, owner: UserId, job: NewJob) -> StorageResult<SlicingJob> {
+        self.insert(owner, job, None).await
+    }
+
+    async fn enqueue_with_scene(
+        &self,
+        owner: UserId,
+        job: NewJob,
+        scene: serde_json::Value,
+    ) -> StorageResult<SlicingJob> {
+        self.insert(owner, job, Some(scene)).await
     }
 
     async fn get(&self, owner: UserId, id: JobId) -> StorageResult<SlicingJob> {

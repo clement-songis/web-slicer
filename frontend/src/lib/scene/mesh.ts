@@ -1,5 +1,7 @@
 // Décodage du maillage binaire « WSMh » servi par le backend (T049) en
 // tableaux typés prêts pour une BufferGeometry Three.js. Pur → testable.
+import type { SceneVolume } from './volumes';
+import { rotateVectorByEulerDeg } from './transform';
 //
 // Format little-endian : magic(4)=WSMh · version(u32)=1 · vertex_count(u32) ·
 // index_count(u32) · f32 positions[vc*3] · f32 normals[vc*3] · u32 indices[ic].
@@ -9,6 +11,17 @@ export interface SceneMesh {
 	positions: Float32Array;
 	normals: Float32Array;
 	indices: Uint32Array;
+}
+
+/** Résultat du picking d'une facette, en coordonnées monde et locales. */
+export interface MeshPick {
+	point: [number, number, number];
+	localPoint: [number, number, number];
+	triangle: number | null;
+	/** Position de la caméra dans le repère du maillage (curseur cercle d'Orca). */
+	localCamera?: [number, number, number];
+	/** Trait glissé (peinture) : appui, déplacement, relâchement ; absent = clic. */
+	phase?: 'down' | 'move' | 'up';
 }
 
 /** Un objet placé sur le plateau : maillage + transformation (repère plateau). */
@@ -21,6 +34,22 @@ export interface SceneObject {
 	rotation?: [number, number, number];
 	/** Échelle par axe (1 = taille native). */
 	scale?: [number, number, number];
+	/** Volumes ajoutés (modificateur, négatif, bloqueur/forceur), repère recentré. */
+	volumes?: readonly SceneVolume[];
+	/** Maillages recentrés des volumes `mesh` (par `modelId`), non persistés. */
+	volumeMeshes?: Record<string, SceneMesh>;
+	/** Non imprimable : affiché grisé et exclu du tranchage. */
+	printable?: boolean;
+}
+
+/** Position d'un maillage recentré : restauration exacte, ou centre du plateau
+ * pour un nouvel import en conservant la hauteur posée calculée par le moteur. */
+export function positionForImport(
+	center: [number, number, number],
+	bedCenter: [number, number],
+	savedPosition?: [number, number, number]
+): [number, number, number] {
+	return savedPosition ?? [bedCenter[0], bedCenter[1], center[2]];
 }
 
 /**
@@ -63,6 +92,32 @@ export function centerMesh(mesh: SceneMesh): { mesh: SceneMesh; center: [number,
 		out[i + 2] = p[i + 2] - center[2];
 	}
 	return { mesh: { positions: out, normals: mesh.normals, indices: mesh.indices }, center };
+}
+
+/**
+ * Hauteur de pose sur le plateau d'un maillage exprimé dans son repère local
+ * (typiquement recentré par `centerMesh`) : la composante Z de position qui
+ * amène le point le plus bas de l'objet transformé (échelle puis rotation
+ * Euler XYZ, ordre Three.js) exactement à z = 0. Un maillage centré de hauteur
+ * `h` sans rotation renvoie donc `h/2` (et non 0, qui l'enfoncerait à moitié).
+ * Maillage vide → 0. Pur.
+ */
+export function restingZ(
+	mesh: SceneMesh,
+	rotation: [number, number, number] = [0, 0, 0],
+	scale: [number, number, number] = [1, 1, 1]
+): number {
+	const p = mesh.positions;
+	if (p.length === 0) return 0;
+	const rotated = rotation[0] !== 0 || rotation[1] !== 0 || rotation[2] !== 0;
+	let minZ = Infinity;
+	for (let i = 0; i < p.length; i += 3) {
+		const v: [number, number, number] = [p[i] * scale[0], p[i + 1] * scale[1], p[i + 2] * scale[2]];
+		const z = rotated ? rotateVectorByEulerDeg(rotation, v)[2] : v[2];
+		if (z < minZ) minZ = z;
+	}
+	// `+ 0` normalise un éventuel -0 (maillage déjà posé à z = 0).
+	return -minZ + 0;
 }
 
 // "WSMh" (octets 0x57 0x53 0x4d 0x68) lu en big-endian = 0x57534d68 — doit

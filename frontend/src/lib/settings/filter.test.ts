@@ -98,3 +98,17 @@ describe('filterLayout', () => {
 		expect(filterLayout(UI_LAYOUT, 'expert', 'zzz_aucun_param_zzz')).toEqual([]);
 	});
 });
+
+describe('filterLayout — onglets stables (keepEmptyPages)', () => {
+	it('garde un onglet sans option visible au mode courant, vidé de ses sections', () => {
+		const adv = byMode('advanced');
+		const layout = [
+			{ title: 'Speed', kind: 'process', sections: [{ title: 'A', options: [adv.key] }] }
+		] as never;
+		expect(filterLayout(layout, 'simple', '')).toHaveLength(0);
+		const kept = filterLayout(layout, 'simple', '', true);
+		expect(kept).toHaveLength(1);
+		expect(kept[0].sections).toHaveLength(0);
+		expect(filterLayout(layout, 'advanced', '', true)[0].sections[0].options).toEqual([adv.key]);
+	});
+});

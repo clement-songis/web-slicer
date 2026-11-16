@@ -25,6 +25,8 @@ pub async fn run_all(s: &dyn Storage) {
     claim_next_delivers_each_job_once(s).await;
     requeue_running_on_boot(s).await;
     system_reseed_preserves_user_presets(s).await;
+    referenced_user_preset_deletion_is_rejected(s).await;
+    printer_preset_references_are_isolated(s).await;
     account_deletion_cascades(s).await;
 }
 
@@ -274,9 +276,9 @@ async fn system_reseed_preserves_user_presets(s: &dyn Storage) {
     let a = make_user(s).await;
     let user_preset = make_machine_preset(s, a.id, "à-préserver").await;
 
-    let system = |name: &str| Preset {
+    let system = |kind: PresetKind, name: &str| Preset {
         id: PresetId::new(),
-        kind: PresetKind::Process,
+        kind,
         name: name.into(),
         origin: PresetOrigin::System,
         user_id: None,
@@ -288,13 +290,67 @@ async fn system_reseed_preserves_user_presets(s: &dyn Storage) {
         compatible_printers: None,
         values: json!({ "layer_height": "0.2" }),
     };
+    let machine = system(PresetKind::Machine, "Machine stable");
+    let process = system(PresetKind::Process, "0.20 Standard");
+    let filament = system(PresetKind::Filament, "PLA stable");
+    let obsolete = system(PresetKind::Process, "0.28 Draft");
     s.presets()
-        .reseed_system(vec![system("0.20 Standard"), system("0.28 Draft")])
+        .reseed_system(vec![
+            machine.clone(),
+            process.clone(),
+            filament.clone(),
+            obsolete.clone(),
+        ])
         .await
         .expect("premier seed");
-    // Re-seed : remplace les presets système, préserve celui de l'utilisateur.
+
+    let printer = s
+        .printers()
+        .create(
+            a.id,
+            NewPrinter {
+                name: "Imprimante stable".into(),
+                moonraker_url: None,
+                api_key: None,
+                machine_preset_id: machine.id,
+            },
+        )
+        .await
+        .unwrap();
+    let active_presets = json!({
+        "printer": machine.id.to_string(),
+        "filaments": [filament.id.to_string()],
+        "process": process.id.to_string(),
+    });
+    let project = s
+        .projects()
+        .create(
+            a.id,
+            NewProject {
+                name: "Références stables".into(),
+                scene: json!({}),
+                active_presets: active_presets.clone(),
+                thumbnail_path: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    // Les IDs fournis par l'import peuvent changer : l'identité persistée est
+    // la clé naturelle (kind, name, vendor), et les références ne bougent pas.
+    let mut reimported_machine = machine.clone();
+    reimported_machine.id = PresetId::new();
+    reimported_machine.values = json!({ "nozzle_diameter": "0.6" });
+    let mut reimported_process = process.clone();
+    reimported_process.id = PresetId::new();
+    let mut reimported_filament = filament.clone();
+    reimported_filament.id = PresetId::new();
     s.presets()
-        .reseed_system(vec![system("0.20 Standard")])
+        .reseed_system(vec![
+            reimported_machine,
+            reimported_process,
+            reimported_filament,
+        ])
         .await
         .expect("re-seed");
 
@@ -302,6 +358,169 @@ async fn system_reseed_preserves_user_presets(s: &dyn Storage) {
         s.presets().get(user_preset.id).await.unwrap().id,
         user_preset.id,
         "le preset utilisateur survit au re-seed"
+    );
+    assert_eq!(
+        s.presets().get(machine.id).await.unwrap().values,
+        json!({ "nozzle_diameter": "0.6" }),
+        "le re-seed met à jour le preset sans changer son UUID"
+    );
+    assert!(matches!(
+        s.presets().get(obsolete.id).await,
+        Err(StorageError::NotFound)
+    ));
+    assert_eq!(s.presets().system_count().await.unwrap(), 3);
+    assert_eq!(
+        s.printers()
+            .get(a.id, printer.id)
+            .await
+            .unwrap()
+            .machine_preset_id,
+        machine.id,
+        "l'imprimante et sa FK survivent au re-seed du même lot"
+    );
+    assert_eq!(
+        s.projects()
+            .get(a.id, project.id)
+            .await
+            .unwrap()
+            .active_presets,
+        active_presets,
+        "les références JSON du projet restent valides et inchangées"
+    );
+
+    // Retirer du lot un preset encore référencé serait une suppression métier :
+    // elle est refusée et toute la transaction est annulée, plutôt que de
+    // casser silencieusement une imprimante ou un projet.
+    let mut process_only = process.clone();
+    process_only.id = PresetId::new();
+    assert!(matches!(
+        s.presets().reseed_system(vec![process_only]).await,
+        Err(StorageError::Conflict(_))
+    ));
+    assert_eq!(s.presets().get(machine.id).await.unwrap().id, machine.id);
+    assert_eq!(
+        s.printers().get(a.id, printer.id).await.unwrap().id,
+        printer.id
+    );
+    assert_eq!(s.presets().system_count().await.unwrap(), 3);
+}
+
+async fn referenced_user_preset_deletion_is_rejected(s: &dyn Storage) {
+    let a = make_user(s).await;
+    let preset = make_machine_preset(s, a.id, "machine-référencée").await;
+    let printer = s
+        .printers()
+        .create(
+            a.id,
+            NewPrinter {
+                name: "Référence imprimante".into(),
+                moonraker_url: None,
+                api_key: None,
+                machine_preset_id: preset.id,
+            },
+        )
+        .await
+        .unwrap();
+    let project = s
+        .projects()
+        .create(
+            a.id,
+            NewProject {
+                name: "Référence projet".into(),
+                scene: json!({}),
+                active_presets: json!({ "printer": preset.id.to_string() }),
+                thumbnail_path: None,
+            },
+        )
+        .await
+        .unwrap();
+
+    assert!(matches!(
+        s.presets().delete_user_preset(a.id, preset.id).await,
+        Err(StorageError::Conflict(_))
+    ));
+    assert_eq!(s.presets().get(preset.id).await.unwrap().id, preset.id);
+    assert_eq!(
+        s.printers().get(a.id, printer.id).await.unwrap().id,
+        printer.id
+    );
+
+    // La référence JSON suffit à elle seule à interdire la suppression.
+    s.printers().delete(a.id, printer.id).await.unwrap();
+    assert!(matches!(
+        s.presets().delete_user_preset(a.id, preset.id).await,
+        Err(StorageError::Conflict(_))
+    ));
+    assert_eq!(
+        s.projects().get(a.id, project.id).await.unwrap().id,
+        project.id
+    );
+
+    s.projects()
+        .update(a.id, project.id, 1, json!({}), json!({}), None)
+        .await
+        .unwrap();
+    s.presets()
+        .delete_user_preset(a.id, preset.id)
+        .await
+        .expect("suppression possible une fois toutes les références retirées");
+}
+
+async fn printer_preset_references_are_isolated(s: &dyn Storage) {
+    let alice = make_user(s).await;
+    let bob = make_user(s).await;
+    let alice_preset = make_machine_preset(s, alice.id, "machine-privée").await;
+
+    let foreign_reference = s
+        .printers()
+        .create(
+            bob.id,
+            NewPrinter {
+                name: "Référence interdite".into(),
+                moonraker_url: None,
+                api_key: None,
+                machine_preset_id: alice_preset.id,
+            },
+        )
+        .await;
+    assert!(matches!(foreign_reference, Err(StorageError::NotFound)));
+
+    let bob_preset = make_machine_preset(s, bob.id, "machine-de-bob").await;
+    let printer = s
+        .printers()
+        .create(
+            bob.id,
+            NewPrinter {
+                name: "Imprimante de Bob".into(),
+                moonraker_url: None,
+                api_key: None,
+                machine_preset_id: bob_preset.id,
+            },
+        )
+        .await
+        .unwrap();
+    let foreign_update = s
+        .printers()
+        .update(
+            bob.id,
+            printer.id,
+            NewPrinter {
+                name: "Imprimante de Bob".into(),
+                moonraker_url: None,
+                api_key: None,
+                machine_preset_id: alice_preset.id,
+            },
+        )
+        .await;
+    assert!(matches!(foreign_update, Err(StorageError::NotFound)));
+    assert_eq!(
+        s.printers()
+            .get(bob.id, printer.id)
+            .await
+            .unwrap()
+            .machine_preset_id,
+        bob_preset.id,
+        "une mise à jour inter-comptes rejetée ne modifie pas la référence"
     );
 }
 

@@ -3,4 +3,18 @@
 /**
  * Position calculée du centre d'un objet (mm, repère plateau).
  */
-export type Placement = { id: string, x: number, y: number, };
+export type Placement = { id: string, x: number, y: number, 
+/**
+ * Index conservé du plateau d'origine.
+ */
+plate_index?: number, 
+/**
+ * Matrice monde complète (colonne-major), pour ne pas perdre rotation et
+ * scale lorsque le client applique le résultat du nesting.
+ */
+matrix?: Array<number>, 
+/**
+ * Ordre d'impression (1-based, `ModelInstance::arrange_order` d'Orca),
+ * présent seulement en arrangement séquentiel.
+ */
+print_order?: number, };

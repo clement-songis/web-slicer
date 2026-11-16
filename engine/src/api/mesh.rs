@@ -188,6 +188,126 @@ impl RepairedMeshErrors {
     }
 }
 
+/// Erreurs quadriques maximales des 5 niveaux de détail de l'outil
+/// « Simplifier » d'Orca (GLGizmoSimplify::on_render_input_window) :
+/// 0 = « Extra high » (détail maximal) … 4 = « Extra low ».
+pub const SIMPLIFY_DETAIL_MAX_ERRORS: [f32; 5] = [1e-3, 1e-2, 0.1, 0.5, 1.0];
+
+/// Plus petit maillage fermé admissible après simplification (tétraèdre) :
+/// en dessous, la décimation détruirait l'objet.
+pub const MIN_SIMPLIFIED_TRIANGLES: u32 = 4;
+
+/// Paramètre de simplification quadrique, miroir des deux modes de
+/// `GLGizmoSimplify::Configuration` (`use_count` vrai/faux).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "mode", rename_all = "snake_case")]
+pub enum SimplifyParams {
+    /// Pourcentage de triangles à retirer, dans ]0, 100[ (`decimate_ratio`).
+    Ratio { decimate_ratio: f32 },
+    /// Niveau de détail 0..=4 → erreur quadrique maximale
+    /// ([`SIMPLIFY_DETAIL_MAX_ERRORS`]), sans cible de nombre de triangles.
+    Detail { level: u8 },
+}
+
+/// Arguments effectifs de `its_quadric_edge_collapse` : nombre de triangles
+/// visé (0 = sans cible) et erreur maximale (`None` = illimitée).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SimplifyTarget {
+    pub triangle_count: u32,
+    pub max_error: Option<f32>,
+}
+
+/// Paramètre de simplification refusé (erreur utilisateur, jamais une faute
+/// moteur).
+#[derive(Debug, Clone, thiserror::Error, PartialEq)]
+pub enum SimplifyParamsError {
+    #[error("ratio de décimation invalide : {0} (attendu dans ]0, 100[)")]
+    InvalidRatio(f32),
+    #[error("niveau de détail invalide : {0} (attendu 0..=4)")]
+    InvalidLevel(u8),
+    #[error("maillage trop petit pour être simplifié ({0} triangles)")]
+    MeshTooSmall(usize),
+    #[error("ratio trop élevé : {wanted} triangle(s) visé(s), minimum {min}")]
+    TooAggressive { wanted: u32, min: u32 },
+    #[error("ratio trop faible : aucun triangle retiré sur {0}")]
+    NoReduction(usize),
+}
+
+impl SimplifyParams {
+    /// Contrôle de domaine indépendant du maillage : ratio fini dans ]0, 100[,
+    /// niveau dans 0..=4.
+    pub fn validate(&self) -> Result<(), SimplifyParamsError> {
+        match *self {
+            SimplifyParams::Ratio { decimate_ratio }
+                if !decimate_ratio.is_finite()
+                    || decimate_ratio <= 0.0
+                    || decimate_ratio >= 100.0 =>
+            {
+                Err(SimplifyParamsError::InvalidRatio(decimate_ratio))
+            }
+            SimplifyParams::Detail { level }
+                if level as usize >= SIMPLIFY_DETAIL_MAX_ERRORS.len() =>
+            {
+                Err(SimplifyParamsError::InvalidLevel(level))
+            }
+            _ => Ok(()),
+        }
+    }
+
+    /// Traduit le paramètre en arguments `its_quadric_edge_collapse` pour un
+    /// maillage de `triangle_count` triangles. Le mode ratio reprend le calcul
+    /// d'Orca (`GLGizmoSimplify::Configuration::update_percent`) :
+    /// `round(n · (100 − ratio) / 100)`.
+    pub fn target(&self, triangle_count: usize) -> Result<SimplifyTarget, SimplifyParamsError> {
+        self.validate()?;
+        if triangle_count <= MIN_SIMPLIFIED_TRIANGLES as usize {
+            return Err(SimplifyParamsError::MeshTooSmall(triangle_count));
+        }
+        match *self {
+            SimplifyParams::Ratio { decimate_ratio } => {
+                let wanted = (triangle_count as f64 * (100.0 - f64::from(decimate_ratio)) / 100.0)
+                    .round()
+                    .min(u32::MAX as f64) as u32;
+                if wanted < MIN_SIMPLIFIED_TRIANGLES {
+                    return Err(SimplifyParamsError::TooAggressive {
+                        wanted,
+                        min: MIN_SIMPLIFIED_TRIANGLES,
+                    });
+                }
+                if wanted as usize >= triangle_count {
+                    return Err(SimplifyParamsError::NoReduction(triangle_count));
+                }
+                Ok(SimplifyTarget {
+                    triangle_count: wanted,
+                    max_error: None,
+                })
+            }
+            SimplifyParams::Detail { level } => {
+                let max_error = *SIMPLIFY_DETAIL_MAX_ERRORS
+                    .get(level as usize)
+                    .ok_or(SimplifyParamsError::InvalidLevel(level))?;
+                Ok(SimplifyTarget {
+                    triangle_count: 0,
+                    max_error: Some(max_error),
+                })
+            }
+        }
+    }
+}
+
+/// Rapport d'une simplification : comptes d'entrée/sortie et dernière erreur
+/// quadrique effectivement acceptée par la décimation.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct SimplifyReport {
+    pub triangles_before: u32,
+    pub triangles_after: u32,
+    pub vertices_before: u32,
+    pub vertices_after: u32,
+    /// `max_error` en sortie de `its_quadric_edge_collapse` (0 si aucune
+    /// arête n'a été fusionnée).
+    pub max_error: f32,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -220,6 +340,86 @@ mod tests {
         assert!(!e.repaired_anything());
         e.edges_fixed = 2;
         assert!(e.repaired_anything());
+    }
+
+    #[test]
+    fn simplify_ratio_matches_orca_wanted_count() {
+        let p = SimplifyParams::Ratio {
+            decimate_ratio: 50.0,
+        };
+        assert_eq!(
+            p.target(1000).unwrap(),
+            SimplifyTarget {
+                triangle_count: 500,
+                max_error: None
+            }
+        );
+        // round(12 · 0.25) = 3 < 4 : refus plutôt que destruction de l'objet.
+        assert!(matches!(
+            SimplifyParams::Ratio {
+                decimate_ratio: 75.0
+            }
+            .target(12),
+            Err(SimplifyParamsError::TooAggressive { wanted: 3, .. })
+        ));
+        // 0,01 % de 100 triangles = aucune réduction.
+        assert_eq!(
+            SimplifyParams::Ratio {
+                decimate_ratio: 0.01
+            }
+            .target(100),
+            Err(SimplifyParamsError::NoReduction(100))
+        );
+    }
+
+    #[test]
+    fn simplify_rejects_invalid_params() {
+        for ratio in [0.0, 100.0, -1.0, f32::NAN, f32::INFINITY] {
+            assert!(matches!(
+                SimplifyParams::Ratio {
+                    decimate_ratio: ratio
+                }
+                .target(100),
+                Err(SimplifyParamsError::InvalidRatio(_))
+            ));
+        }
+        assert_eq!(
+            SimplifyParams::Detail { level: 5 }.target(100),
+            Err(SimplifyParamsError::InvalidLevel(5))
+        );
+        assert_eq!(
+            SimplifyParams::Detail { level: 2 }.target(4),
+            Err(SimplifyParamsError::MeshTooSmall(4))
+        );
+        // Le contrôle de domaine prime sur la taille du maillage.
+        assert_eq!(
+            SimplifyParams::Detail { level: 7 }.target(2),
+            Err(SimplifyParamsError::InvalidLevel(7))
+        );
+        assert!(SimplifyParams::Detail { level: 4 }.validate().is_ok());
+    }
+
+    #[test]
+    fn simplify_detail_levels_map_to_orca_errors() {
+        let t = SimplifyParams::Detail { level: 0 }.target(100).unwrap();
+        assert_eq!(t.triangle_count, 0);
+        assert_eq!(t.max_error, Some(1e-3));
+        let t = SimplifyParams::Detail { level: 4 }.target(100).unwrap();
+        assert_eq!(t.max_error, Some(1.0));
+    }
+
+    #[test]
+    fn simplify_params_json_shape() {
+        let p: SimplifyParams =
+            serde_json::from_str(r#"{"mode":"ratio","decimate_ratio":40}"#).unwrap();
+        assert_eq!(
+            p,
+            SimplifyParams::Ratio {
+                decimate_ratio: 40.0
+            }
+        );
+        let p: SimplifyParams = serde_json::from_str(r#"{"mode":"detail","level":3}"#).unwrap();
+        assert_eq!(p, SimplifyParams::Detail { level: 3 });
     }
 
     #[test]

@@ -16,7 +16,7 @@
 <div class="flex flex-col gap-4">
 	{#each FILAMENT_MULTIMATERIAL as group (group.title)}
 		<section>
-			<h3 class="mb-1 text-xs font-semibold tracking-wide text-content-subtle uppercase">
+			<h3 class="ws-section-title mb-1">
 				{group.title}
 			</h3>
 			<div class="divide-y divide-border">

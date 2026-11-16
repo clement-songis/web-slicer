@@ -83,6 +83,11 @@ class Refs:
         for k in DROP:
             d.pop(k, None)
         d["name"], d["from"] = name, "User"
+        # Le CLI déduit les noms système des trois presets de `inherits`,
+        # notamment pour la validation imprimante/process. Le lanceur historique
+        # `tools/generate_oracle_refs.py` les conservait pour les trois ; cela
+        # détermine aussi le `inherits_group` écrit dans le G-code de référence.
+        d["inherits"] = name
         return d
 
     def trio(self, process: str | None = None) -> tuple[dict, dict, dict]:
@@ -130,9 +135,17 @@ def run_orca(printer: dict, process: dict, filament: dict, model: str, dest: Pat
         return False
 
 
+# Clés historiques des presets système, converties par libslic3r (PrintConfig.cpp,
+# handle_legacy) : la valeur injectée sous le nom courant serait écrasée par l'alias.
+LEGACY_ALIASES = {"chamber_temperature": "chamber_temperatures"}
+
+
 def place(key: str, scope: str | None, trio: tuple[dict, dict, dict]) -> dict:
     printer, process, filament = trio
+    legacy = LEGACY_ALIASES.get(key)
     for d in (process, filament, printer):
+        if legacy and legacy in d:
+            d.setdefault(key, d.pop(legacy))
         if key in d:
             return d
     return {"printer": printer, "filament": filament}.get(scope or "", process)
@@ -179,7 +192,7 @@ def main() -> None:
                 place(k, c.get("scope"), trio)[k] = v
             (REFS / "param").mkdir(parents=True, exist_ok=True)
             (REFS / "param" / f"{c['key']}.value.json").write_text(json.dumps(value))
-            jobs.append((trio, CFG["param_model"], REFS / "param" / f"{c['key']}.gcode"))
+            jobs.append((trio, c.get("model") or CFG["param_model"], REFS / "param" / f"{c['key']}.gcode"))
 
     todo = [j for j in jobs if a.force or not (j[2].exists() or j[2].with_suffix(".error").exists())]
     print(f"{len(todo)} tranchages Orca à faire ({len(jobs) - len(todo)} déjà présents)")

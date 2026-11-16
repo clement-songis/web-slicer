@@ -7,9 +7,10 @@ use std::sync::{Mutex, MutexGuard, Once, PoisonError};
 use glam::DMat4;
 
 use crate::api::{
-    EngineError, EngineErrorCode, EngineResult, Model, ModelInstance, ModelObject, ModelVolume,
-    TriangleMesh, VolumeRole,
+    DynamicPrintConfig, EngineError, EngineErrorCode, EngineResult, Model, ModelInstance,
+    ModelObject, ModelVolume, TriangleMesh, VolumeRole,
 };
+use crate::params::{self, orca_values};
 
 use super::bridge::ffi;
 
@@ -37,6 +38,7 @@ pub fn load_model(path: &Path) -> EngineResult<Model> {
         .map_err(|e| EngineError::new(EngineErrorCode::InvalidModel, e.to_string()))?;
     Ok(Model {
         objects: raw.into_iter().map(to_object).collect(),
+        custom_gcodes: Vec::new(),
     })
 }
 
@@ -81,9 +83,49 @@ pub(super) fn to_object(raw: ffi::RawObject) -> ModelObject {
             .map(|i| ModelInstance {
                 matrix: DMat4::from_cols_array(&i.matrix),
                 plate_index: 0,
+                printable: i.printable,
             })
             .collect(),
+        settings: config_from_orca_json(&raw.config_json),
+        layer_height_profile: raw.layer_height_profile,
+        layer_config_ranges: ranges_from_json(&raw.layer_ranges_json),
     }
+}
+
+/// `layer_config_ranges` ↔ JSON du bridge (`[{min, max, config}]`).
+fn ranges_from_json(json: &str) -> Vec<crate::api::LayerConfigRange> {
+    let Ok(serde_json::Value::Array(items)) = serde_json::from_str::<serde_json::Value>(json)
+    else {
+        return Vec::new();
+    };
+    items
+        .iter()
+        .filter_map(|item| {
+            Some(crate::api::LayerConfigRange {
+                min_z: item.get("min")?.as_f64()?,
+                max_z: item.get("max")?.as_f64()?,
+                settings: config_from_orca_json(&item.get("config")?.to_string()),
+            })
+        })
+        .collect()
+}
+
+pub(super) fn ranges_to_json(ranges: &[crate::api::LayerConfigRange]) -> String {
+    if ranges.is_empty() {
+        return String::new();
+    }
+    let items: Vec<String> = ranges
+        .iter()
+        .map(|r| {
+            format!(
+                "{{\"min\":{},\"max\":{},\"config\":{}}}",
+                r.min_z,
+                r.max_z,
+                config_to_orca_json(&r.settings)
+            )
+        })
+        .collect();
+    format!("[{}]", items.join(","))
 }
 
 fn to_volume(raw: ffi::RawVolume) -> ModelVolume {
@@ -99,6 +141,38 @@ fn to_volume(raw: ffi::RawVolume) -> ModelVolume {
             _ => VolumeRole::ModelPart,
         },
         extruder: (raw.extruder > 0).then_some(raw.extruder as u16),
+        paint: crate::api::VolumePaint {
+            facets: raw
+                .paint_channel
+                .iter()
+                .zip(&raw.paint_triangle)
+                .zip(&raw.paint_state)
+                .map(|((&channel, &triangle), state)| {
+                    (paint_channel_from_code(channel), triangle, state.clone())
+                })
+                .collect(),
+        },
+        settings: config_from_orca_json(&raw.config_json),
+    }
+}
+
+fn paint_channel_code(channel: crate::api::PaintChannel) -> u8 {
+    use crate::api::PaintChannel::*;
+    match channel {
+        Supports => 0,
+        Seam => 1,
+        Mmu => 2,
+        Fuzzy => 3,
+    }
+}
+
+fn paint_channel_from_code(code: u8) -> crate::api::PaintChannel {
+    use crate::api::PaintChannel::*;
+    match code {
+        1 => Seam,
+        2 => Mmu,
+        3 => Fuzzy,
+        _ => Supports,
     }
 }
 
@@ -154,6 +228,15 @@ pub(super) fn to_raw_objects(model: &Model) -> Vec<ffi::RawObject> {
                         vertices: v.mesh.vertices.iter().flatten().copied().collect(),
                         indices: v.mesh.indices.iter().flatten().copied().collect(),
                     },
+                    paint_channel: v
+                        .paint
+                        .facets
+                        .iter()
+                        .map(|f| paint_channel_code(f.0))
+                        .collect(),
+                    paint_triangle: v.paint.facets.iter().map(|f| f.1).collect(),
+                    paint_state: v.paint.facets.iter().map(|f| f.2.clone()).collect(),
+                    config_json: config_to_orca_json(&v.settings),
                 })
                 .collect(),
             instances: o
@@ -161,8 +244,64 @@ pub(super) fn to_raw_objects(model: &Model) -> Vec<ffi::RawObject> {
                 .iter()
                 .map(|i| ffi::RawInstance {
                     matrix: i.matrix.to_cols_array(),
+                    printable: i.printable,
                 })
                 .collect(),
+            config_json: config_to_orca_json(&o.settings),
+            layer_height_profile: o.layer_height_profile.clone(),
+            layer_ranges_json: ranges_to_json(&o.layer_config_ranges),
         })
         .collect()
+}
+
+/// Configuration typée → JSON {clé → valeur Orca}, partagé par slicing et 3MF.
+pub(super) fn config_to_orca_json(config: &DynamicPrintConfig) -> String {
+    let map: std::collections::BTreeMap<&str, String> = config
+        .0
+        .iter()
+        .map(|(key, value)| {
+            let serialized = match params::get(key) {
+                Some(def) => orca_values::serialize_orca_value_for(def, value),
+                None => orca_values::serialize_orca_value(value),
+            };
+            (key.as_str(), serialized)
+        })
+        .collect();
+    serde_json::to_string(&map).expect("map de chaînes toujours sérialisable")
+}
+
+/// JSON {clé → valeur Orca} → configuration typée, selon le registre généré.
+pub(super) fn config_from_orca_json(json: &str) -> DynamicPrintConfig {
+    let mut config = DynamicPrintConfig::new();
+    if json.is_empty() {
+        return config;
+    }
+    let Ok(values) = serde_json::from_str::<std::collections::BTreeMap<String, String>>(json)
+    else {
+        return config;
+    };
+    for (key, raw) in values {
+        if let Some(def) = params::get(&key) {
+            if let Some(value) = orca_values::parse_orca_value(def, &raw) {
+                config.0.insert(key, value);
+            }
+        }
+    }
+    config
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn float_vectors_use_commas_in_worker_json() {
+        let mut config = DynamicPrintConfig::new();
+        config.0.insert(
+            "machine_max_acceleration_e".into(),
+            crate::api::ConfigValue::Floats(vec![5000.0, 5000.0]),
+        );
+        let json = config_to_orca_json(&config);
+        assert!(json.contains("\"5000,5000\""), "json={json}");
+    }
 }

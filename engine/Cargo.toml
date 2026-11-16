@@ -25,6 +25,8 @@ sha1_smol = "1"
 [dev-dependencies]
 # differential testing : slice via engine vs CLI direct
 assert_fs = "1"
+# normalisation G-code (port de tests/oracle/lib/gcode.ts) des tests de parité
+regex = "1"
 
 [build-dependencies]
 cxx-build = "1"

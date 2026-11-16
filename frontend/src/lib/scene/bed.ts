@@ -33,12 +33,15 @@ const DEFAULT_HEIGHT = 256;
 
 /** Parse une liste de points Orca (`["0x0","340x0",…]`, CSV ou number[]). */
 export function parseAreaPoints(value: unknown): Point2[] {
-	const items = toItems(value);
 	const points: Point2[] = [];
-	for (const item of items) {
-		const [xs, ys] = item.split('x');
-		const x = Number(xs);
-		const y = Number(ys);
+	for (const item of toItems(value)) {
+		// `/resolved` projette ConfigValue::Points en paires numériques, tandis
+		// que les JSON Orca bruts utilisent des chaînes « XxY ».
+		const [x, y] = Array.isArray(item)
+			? [Number(item[0]), Number(item[1])]
+			: typeof item === 'string'
+				? item.split('x').map(Number)
+				: [NaN, NaN];
 		if (Number.isFinite(x) && Number.isFinite(y)) points.push({ x, y });
 	}
 	return points;
@@ -91,8 +94,8 @@ export function gridDivisions(size: number, step = 10): number {
 
 // --- Interne -----------------------------------------------------------------
 
-function toItems(value: unknown): string[] {
-	if (Array.isArray(value)) return value.map((v) => String(v)).filter((s) => s.trim() !== '');
+function toItems(value: unknown): unknown[] {
+	if (Array.isArray(value)) return value.filter((s) => String(s).trim() !== '');
 	if (typeof value === 'string') {
 		return value
 			.split(/[,;]/)

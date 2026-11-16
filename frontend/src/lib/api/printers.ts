@@ -41,6 +41,19 @@ export const getPrinterStatus = (id: string) =>
 export const uploadToPrinter = (id: string, body: UploadToPrinterRequest) =>
 	api.post<PrinterUploadResponse>(`/printers/${id}/upload`, body);
 
+/** Réponse de `POST /printers/{id}/upload-sliced` (« Send all » d'Orca) : un
+ *  .gcode.3mf si l'imprimante l'accepte (`use_3mf`), sinon un G-code par plateau. */
+export interface UploadSlicedResponse {
+	format: 'gcode_3mf' | 'gcode';
+	files: PrinterUploadResponse[];
+}
+
+/** Envoie tous les plateaux tranchés d'un projet (jobs réussis de `POST /slice`). */
+export const uploadSliced = (
+	id: string,
+	body: { project_id: string; job_ids: string[]; start_now: boolean }
+) => api.post<UploadSlicedResponse>(`/printers/${id}/upload-sliced`, body);
+
 /** Met l'impression en pause. */
 export const pausePrinter = (id: string) => api.post<void>(`/printers/${id}/pause`);
 
@@ -49,3 +62,27 @@ export const resumePrinter = (id: string) => api.post<void>(`/printers/${id}/res
 
 /** Annule l'impression. */
 export const cancelPrinter = (id: string) => api.post<void>(`/printers/${id}/cancel`);
+
+// — Contrôles étendus de l'onglet Appareil (parité Device d'Orca). Routes
+//   proposées au backend (relais Moonraker) ; tant qu'elles n'existent pas,
+//   l'UI les détecte (404/405) et désactive les contrôles correspondants.
+
+/** Fichier présent sur l'imprimante (`GET /server/files/list?root=gcodes`). */
+export interface PrinterFile {
+	path: string;
+	size: number;
+	/** Horodatage Unix (s). */
+	modified: number;
+}
+
+/** Fichiers G-code de l'imprimante (relais `/server/files/list`). */
+export const listPrinterFiles = (id: string) => api.get<PrinterFile[]>(`/printers/${id}/files`);
+
+/** Lance l'impression d'un fichier déjà présent (relais `/printer/print/start`). */
+export const startPrinterFile = (id: string, filename: string) =>
+	api.post<void>(`/printers/${id}/print`, { filename });
+
+/** Exécute un script G-code (relais `/printer/gcode/script`) : consignes de
+ *  température, déplacements, mise à l'origine, ventilateurs. */
+export const sendPrinterGcode = (id: string, script: string) =>
+	api.post<void>(`/printers/${id}/gcode`, { script });

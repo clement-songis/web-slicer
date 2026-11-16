@@ -30,7 +30,7 @@ pub fn resolve_preset_chain(chain: &[RawPreset]) -> EngineResult<DynamicPrintCon
             let Some(def) = params::get(key) else {
                 continue; // clé legacy/vendeur inconnue : ignorée comme Orca
             };
-            let text = json_value_to_orca_text(value);
+            let text = json_value_to_orca_text(value, def);
             if let Some(parsed) = orca_values::parse_orca_value(def, &text) {
                 config.0.insert(key.clone(), parsed);
             }
@@ -149,9 +149,13 @@ fn to_raw(p: &ImportedPreset) -> RawPreset {
     }
 }
 
-/// Les profils Orca sérialisent les vecteurs en tableaux JSON de chaînes ;
-/// on les rejoint en CSV, le format qu'attend `parse_orca_value`.
-fn json_value_to_orca_text(value: &serde_json::Value) -> String {
+/// Les profils Orca sérialisent les vecteurs numériques en CSV et les vecteurs
+/// de chaînes avec `;`. Le séparateur dépend donc du type du registre.
+fn json_value_to_orca_text(value: &serde_json::Value, def: &params::ParamDef) -> String {
+    let separator = match def.kind {
+        params::ParamKind::Strings | params::ParamKind::Enums => ";",
+        _ => ",",
+    };
     match value {
         serde_json::Value::String(s) => s.clone(),
         serde_json::Value::Array(items) => items
@@ -160,8 +164,16 @@ fn json_value_to_orca_text(value: &serde_json::Value) -> String {
                 serde_json::Value::String(s) => s.clone(),
                 other => other.to_string(),
             })
+            .map(|text| match def.kind {
+                // Protège les `;` et guillemets contenus dans les valeurs, en
+                // particulier les commentaires G-code qui commencent par `;`.
+                params::ParamKind::Strings | params::ParamKind::Enums => {
+                    format!("\"{}\"", text.replace('\\', "\\\\").replace('"', "\\\""))
+                }
+                _ => text,
+            })
             .collect::<Vec<_>>()
-            .join(","),
+            .join(separator),
         other => other.to_string(),
     }
 }
@@ -210,6 +222,19 @@ mod tests {
         assert_eq!(
             cfg.get("nozzle_diameter"),
             Some(&ConfigValue::Floats(vec![0.4, 0.6]))
+        );
+    }
+
+    #[test]
+    fn orca_json_string_arrays_use_semicolons() {
+        let chain = [preset(
+            "process",
+            &[("compatible_printers", serde_json::json!(["A", "B"]))],
+        )];
+        let cfg = resolve_preset_chain(&chain).unwrap();
+        assert_eq!(
+            cfg.get("compatible_printers"),
+            Some(&ConfigValue::Strings(vec!["A".into(), "B".into()]))
         );
     }
 

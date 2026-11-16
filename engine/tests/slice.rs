@@ -8,14 +8,23 @@ mod common;
 
 use std::sync::{Arc, Mutex};
 
-use engine::api::{CancelToken, ProgressSink, SliceRequest};
+use engine::api::{CancelToken, ConfigValue, ProgressSink, SliceRequest};
 
 #[test]
 fn slices_real_project_with_progress() {
     // Projet OrcaSlicer complet (cube 20 mm + config projet embarquée).
-    let (model, config) =
+    let (model, mut config) =
         engine::adapters::ffi::read_project_3mf(&common::fixture("orca_project.3mf"))
             .expect("lecture du projet 3MF");
+    // Le projet embarqué utilise Marlin + distances E relatives. Orca exige
+    // alors une réinitialisation explicite à chaque couche ; la rendre présente
+    // garde ce test de bout en bout valide au lieu de désactiver la validation.
+    config
+        .set(
+            "before_layer_change_gcode",
+            ConfigValue::String("G92 E0".into()),
+        )
+        .unwrap();
 
     let work = tempfile::tempdir().unwrap();
     let req = SliceRequest {
@@ -23,6 +32,7 @@ fn slices_real_project_with_progress() {
         config,
         plate_index: 0,
         work_dir: work.path().to_path_buf(),
+        calib: None,
     };
 
     let seen = Arc::new(Mutex::new(Vec::<f32>::new()));

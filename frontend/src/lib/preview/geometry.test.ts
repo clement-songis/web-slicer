@@ -35,6 +35,16 @@ const RANGES = {
 };
 
 describe('buildPreviewGeometry', () => {
+	test('curseur horizontal : limite les moves de la couche haute', () => {
+		const g = buildPreviewGeometry(SEGMENTS, {
+			coloration: 'type',
+			ranges: RANGES,
+			moveCursor: { layer: 0, position: 2 }
+		});
+		expect(g.visibleCount).toBe(2);
+		expect(g.positions.length).toBe(12);
+	});
+
 	test('emits two vertices per segment coloured by role in type mode', () => {
 		const opts: GeometryOptions = { coloration: 'type', ranges: RANGES };
 		const g = buildPreviewGeometry(SEGMENTS, opts);
@@ -75,6 +85,84 @@ describe('buildPreviewGeometry', () => {
 		// Gris neutre identique pour tous les sommets.
 		expect(g.colors[0]).toBeCloseTo(g.colors[6]);
 		expect(g.colors[0]).toBeCloseTo(120 / 255);
+	});
+});
+
+describe('buildPreviewGeometry layer range', () => {
+	// Couches 0..4, deux segments par couche (outer wall + sparse infill),
+	// z distinct par couche pour identifier les sommets émis.
+	const layered = (() => {
+		const segs = [];
+		for (let layer = 0; layer < 5; layer++) {
+			for (const kind of [2, 4]) {
+				const z = 0.2 * (layer + 1);
+				segs.push({ ...seg(kind, 0, 1800, layer), start: [0, 0, z], end: [1, 0, z] });
+			}
+		}
+		return decodePreview(encodePreview(0, 4, segs as ReturnType<typeof seg>[]));
+	})();
+	const zs = (g: { positions: Float32Array; visibleCount: number }) => {
+		const out = new Set<number>();
+		for (let i = 0; i < g.visibleCount; i++) out.add(Math.round(g.positions[i * 6 + 2] * 10));
+		return [...out].sort((a, b) => a - b);
+	};
+
+	test('without layerRange every layer is kept (backward compatible)', () => {
+		const g = buildPreviewGeometry(layered, { coloration: 'type', ranges: RANGES });
+		expect(g.visibleCount).toBe(10);
+	});
+
+	test('excludes segments above high', () => {
+		const g = buildPreviewGeometry(layered, {
+			coloration: 'type',
+			ranges: RANGES,
+			layerRange: { low: 0, high: 2 }
+		});
+		expect(g.visibleCount).toBe(6);
+		expect(g.positions.length).toBe(6 * 6);
+		expect(zs(g)).toEqual([2, 4, 6]); // couches 0,1,2 ; 3 et 4 exclues
+	});
+
+	test('excludes segments below low', () => {
+		const g = buildPreviewGeometry(layered, {
+			coloration: 'type',
+			ranges: RANGES,
+			layerRange: { low: 3, high: 4 }
+		});
+		expect(g.visibleCount).toBe(4);
+		expect(zs(g)).toEqual([8, 10]);
+	});
+
+	test('one-layer mode (low === high) keeps exactly that layer', () => {
+		const g = buildPreviewGeometry(layered, {
+			coloration: 'type',
+			ranges: RANGES,
+			layerRange: { low: 2, high: 2 }
+		});
+		expect(g.visibleCount).toBe(2);
+		expect(g.colors.length).toBe(2 * 6);
+		expect(zs(g)).toEqual([6]);
+	});
+
+	test('combines with type visibility and tolerates swapped bounds', () => {
+		const g = buildPreviewGeometry(layered, {
+			coloration: 'type',
+			ranges: RANGES,
+			visibleTypes: new Set([4]),
+			layerRange: { low: 3, high: 1 }
+		});
+		expect(g.visibleCount).toBe(3); // infill des couches 1..3
+		expect(zs(g)).toEqual([4, 6, 8]);
+	});
+
+	test('range outside the buffer yields an empty geometry', () => {
+		const g = buildPreviewGeometry(layered, {
+			coloration: 'type',
+			ranges: RANGES,
+			layerRange: { low: 10, high: 12 }
+		});
+		expect(g.visibleCount).toBe(0);
+		expect(g.positions.length).toBe(0);
 	});
 });
 

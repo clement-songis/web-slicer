@@ -52,7 +52,12 @@
       "line": 1886,
       "label": "Activate air filtration",
       "tooltip": "Activate for better air filtration. G-code command: M106 P3 S(0-255)",
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ]
     },
     "activate_air_filtration_during_print": {
       "type": "coBools",
@@ -60,7 +65,12 @@
       "line": 1893,
       "full_label": "During print",
       "tooltip": "Enable this to override the fan speed set in custom G-code during print.",
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Bools",
+      "default_raw": "{true}",
+      "default": [
+        true
+      ]
     },
     "activate_air_filtration_on_completion": {
       "type": "coBools",
@@ -68,7 +78,12 @@
       "line": 1899,
       "full_label": "On completion",
       "tooltip": "Enable this to override the fan speed set in custom G-code after print completion.",
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Bools",
+      "default_raw": "{true}",
+      "default": [
+        true
+      ]
     },
     "activate_chamber_temp_control": {
       "type": "coBools",
@@ -76,7 +91,12 @@
       "line": 6599,
       "label": "Activate temperature control",
       "tooltip": "Enable this option for automated chamber temperature control. This option activates the emitting of an M191 command before the \"machine_start_gcode\"\n which sets the chamber temperature and waits until it is reached. In addition, it emits an M141 command at the end of the print to turn off the chamber heater, if present.\n\nThis option relies on the firmware supporting the M191 and M141 commands either via macros or natively and is usually used when an active chamber heater is installed.",
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ]
     },
     "adaptive_bed_mesh_margin": {
       "type": "coFloat",
@@ -96,7 +116,12 @@
       "line": 2353,
       "label": "Enable adaptive pressure advance (beta)",
       "tooltip": "With increasing print speeds (and hence increasing volumetric flow through the nozzle) and increasing accelerations, it has been observed that the effective PA value typically decreases. This means that a single PA value is not always 100% optimal for all features and a compromise value is usually used that does not cause too much bulging on features with lower flow speed and accelerations while also not causing gaps on faster features.\n\nThis feature aims to address this limitation by modeling the response of your printer's extrusion system depending on the volumetric flow speed and acceleration it is printing at. Internally, it generates a fitted model that can extrapolate the needed pressure advance for any given volumetric flow speed and acceleration, which is then emitted to the printer depending on the current print conditions.\n\nWhen enabled, the pressure advance value above is overridden. However, a reasonable default value above is strongly recommended to act as a fallback and for when tool changing.\n\n",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ]
     },
     "adaptive_pressure_advance_bridges": {
       "type": "coFloats",
@@ -105,7 +130,12 @@
       "label": "Pressure advance for bridges",
       "tooltip": "Pressure advance value for bridges. Set to 0 to disable.\n\nA lower PA value when printing bridges helps reduce the appearance of slight under extrusion immediately after bridges. This is caused by the pressure drop in the nozzle when printing in the air and a lower PA helps counteract this.",
       "max": 2,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.0}",
+      "default": [
+        0.0
+      ]
     },
     "adaptive_pressure_advance_model": {
       "type": "coStrings",
@@ -113,7 +143,12 @@
       "line": 2369,
       "label": "Adaptive pressure advance measurements (beta)",
       "tooltip": "Add sets of pressure advance (PA) values, the volumetric flow speeds and accelerations they were measured at, separated by a comma. One set of values per line. For example\n0.04,3.96,3000\n0.033,3.96,10000\n0.029,7.91,3000\n0.026,7.91,10000\n\nHow to calibrate:\n1. Run the pressure advance test for at least 3 speeds per acceleration value. It is recommended that the test is run for at least the speed of the external perimeters, the speed of the internal perimeters and the fastest feature print speed in your profile (usually its the sparse or solid infill). Then run them for the same speeds for the slowest and fastest print accelerations, and no faster than the recommended maximum acceleration as given by the Klipper input shaper\n2. Take note of the optimal PA value for each volumetric flow speed and acceleration. You can find the flow number by selecting flow from the color scheme drop down and move the horizontal slider over the PA pattern lines. The number should be visible at the bottom of the page. The ideal PA value should be decreasing the higher the volumetric flow is. If it is not, confirm that your extruder is functioning correctly. The slower and with less acceleration you print, the larger the range of acceptable PA values. If no difference is visible, use the PA value from the faster test\n3. Enter the triplets of PA values, Flow and Accelerations in the text box here and save your filament profile.",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Strings",
+      "default_raw": "{\"0,0,0\\n0,0,0\"}",
+      "default": [
+        "0,0,0\\n0,0,0"
+      ]
     },
     "adaptive_pressure_advance_overhangs": {
       "type": "coBools",
@@ -121,7 +156,12 @@
       "line": 2394,
       "label": "Enable adaptive pressure advance for overhangs (beta)",
       "tooltip": "Enable adaptive PA for overhangs as well as when flow changes within the same feature. This is an experimental option, as if the PA profile is not set accurately, it will cause uniformity issues on the external surfaces before and after overhangs.\n",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ]
     },
     "additional_cooling_fan_speed": {
       "type": "coInts",
@@ -132,7 +172,12 @@
       "sidetext": "%",
       "min": 0,
       "max": 100,
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Ints",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
     },
     "additional_fan_full_speed_layer": {
       "type": "coInts",
@@ -142,7 +187,12 @@
       "tooltip": "Auxiliary fan speed will be ramped up linearly from layer \"For the first\" to maximum at layer \"Full fan speed at layer\".\n\"Full fan speed at layer\" will be ignored if lower than \"For the first\", in which case the fan will run at maximum allowed speed at layer \"For the first\" + 1.",
       "min": 0,
       "max": 1000,
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Ints",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
     },
     "align_infill_direction_to_model": {
       "type": "coBool",
@@ -326,8 +376,10 @@
       "mode": "advanced",
       "gui_type": "one_string",
       "default_type": "Points",
-      "default_raw": "0, 0",
-      "default": "0, 0"
+      "default_raw": "{Vec2d(0, 0)}",
+      "default": [
+        "0x0"
+      ]
     },
     "bed_mesh_max": {
       "type": "coPoint",
@@ -339,7 +391,10 @@
       "mode": "advanced",
       "default_type": "Point",
       "default_raw": "Vec2d(99999, 99999)",
-      "default": "Vec2d(99999, 99999)"
+      "default": [
+        99999,
+        99999
+      ]
     },
     "bed_mesh_min": {
       "type": "coPoint",
@@ -351,7 +406,10 @@
       "mode": "advanced",
       "default_type": "Point",
       "default_raw": "Vec2d(-99999, -99999)",
-      "default": "Vec2d(-99999, -99999)"
+      "default": [
+        -99999,
+        -99999
+      ]
     },
     "bed_mesh_probe_distance": {
       "type": "coPoint",
@@ -364,7 +422,10 @@
       "mode": "advanced",
       "default_type": "Point",
       "default_raw": "Vec2d(50, 50)",
-      "default": "Vec2d(50, 50)"
+      "default": [
+        50,
+        50
+      ]
     },
     "bed_temperature_formula": {
       "type": "coEnum",
@@ -383,7 +444,7 @@
       ],
       "default_type": "Enum<BedTempFormula>",
       "default_raw": "BedTempFormula::btfHighestTemp",
-      "default": "BedTempFormula::btfHighestTemp"
+      "default": "by_highest_temp"
     },
     "before_layer_change_gcode": {
       "type": "coString",
@@ -405,7 +466,10 @@
       "mode": "advanced",
       "default_type": "Point",
       "default_raw": "Vec2d(0.5, 0.5)",
-      "default": "Vec2d(0.5, 0.5)"
+      "default": [
+        0.5,
+        0.5
+      ]
     },
     "bottle_cost": {
       "type": "coFloat",
@@ -525,9 +589,29 @@
       "tooltip": "Line pattern of bottom surface infill, not bridge infill.",
       "default_type": "Enum<InfillPattern>",
       "default_raw": "ipMonotonic",
-      "default": "ipMonotonic",
+      "default": "monotonic",
       "mode": "simple",
-      "mode_is_default": true
+      "mode_is_default": true,
+      "enum_values": [
+        "monotonic",
+        "monotonicline",
+        "rectilinear",
+        "alignedrectilinear",
+        "concentric",
+        "hilbertcurve",
+        "archimedeanchords",
+        "octagramspiral"
+      ],
+      "enum_labels": [
+        "Monotonic",
+        "Monotonic line",
+        "Rectilinear",
+        "Aligned Rectilinear",
+        "Concentric",
+        "Hilbert Curve",
+        "Archimedean Chords",
+        "Octagram Spiral"
+      ]
     },
     "bridge_acceleration": {
       "type": "coFloatOrPercent",
@@ -715,9 +799,27 @@
       "category": "Support",
       "tooltip": "This controls the generation of the brim at outer and/or inner side of models. Auto means the brim width is analyzed and calculated automatically.",
       "mode": "simple",
+      "enum_values": [
+        "auto_brim",
+        "brim_ears",
+        "painted",
+        "outer_only",
+        "inner_only",
+        "outer_and_inner",
+        "no_brim"
+      ],
+      "enum_labels": [
+        "Auto",
+        "Mouse ear",
+        "Painted",
+        "Outer brim only",
+        "Inner brim only",
+        "Outer and inner brim",
+        "No-brim"
+      ],
       "default_type": "Enum<BrimType>",
       "default_raw": "btAutoBrim",
-      "default": "btAutoBrim"
+      "default": "auto_brim"
     },
     "brim_use_efc_outline": {
       "type": "coBool",
@@ -765,6 +867,11 @@
       "sidetext": "\\u2103Chamber minimal temperature",
       "min": 0,
       "max": 1500,
+      "default_type": "Ints",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -778,6 +885,11 @@
       "sidetext": "\\u2103Chamber temperature",
       "min": 0,
       "max": 1500,
+      "default_type": "Ints",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -824,7 +936,12 @@
       "sidetext": "layers",
       "min": 0,
       "max": 1000,
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Ints",
+      "default_raw": "{1}",
+      "default": [
+        1
+      ]
     },
     "close_fan_the_first_x_layers": {
       "type": "coInts",
@@ -835,7 +952,12 @@
       "sidetext": "layers",
       "min": 0,
       "max": 1000,
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Ints",
+      "default_raw": "{1}",
+      "default": [
+        1
+      ]
     },
     "combine_brims": {
       "type": "coBool",
@@ -926,7 +1048,12 @@
       "sidetext": "%",
       "min": 0,
       "max": 100,
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Ints",
+      "default_raw": "{80}",
+      "default": [
+        80
+      ]
     },
     "convert_unit": {
       "type": "coBool",
@@ -950,6 +1077,11 @@
       "sidetext": "\\u2103Bed temperature",
       "min": 0,
       "max": 300,
+      "default_type": "Ints",
+      "default_raw": "{35}",
+      "default": [
+        35
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -963,6 +1095,11 @@
       "sidetext": "\\u2103",
       "min": 0,
       "max": 120,
+      "default_type": "Ints",
+      "default_raw": "{35}",
+      "default": [
+        35
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -1000,9 +1137,19 @@
       "category": "Quality",
       "tooltip": "This option creates bridges for counterbore holes, allowing them to be printed without support. Available modes include:\n1. None: No bridge is created\n2. Partially Bridged: Only a part of the unsupported area will be bridged\n3. Sacrificial Layer: A full sacrificial bridge layer is created",
       "mode": "advanced",
+      "enum_values": [
+        "none",
+        "partiallybridge",
+        "sacrificiallayer"
+      ],
+      "enum_labels": [
+        "None",
+        "Partially bridged",
+        "Sacrificial layer"
+      ],
       "default_type": "Enum<CounterboreHoleBridgingOption>",
       "default_raw": "chbNone",
-      "default": "chbNone"
+      "default": "none"
     },
     "curr_bed_type": {
       "type": "coEnum",
@@ -1011,9 +1158,25 @@
       "label": "Bed type",
       "tooltip": "Bed types supported by the printer.",
       "mode": "simple",
+      "enum_values": [
+        "Cool Plate",
+        "Engineering Plate",
+        "High Temp Plate",
+        "Textured PEI Plate",
+        "Textured Cool Plate",
+        "Supertack Plate"
+      ],
+      "enum_labels": [
+        "Smooth Cool Plate",
+        "Engineering Plate",
+        "Smooth High Temp Plate",
+        "Textured PEI Plate",
+        "Textured Cool Plate",
+        "Cool Plate (SuperTack)"
+      ],
       "default_type": "Enum<BedType>",
       "default_raw": "btPC",
-      "default": "btPC"
+      "default": "Cool Plate"
     },
     "current_extruder": {
       "type": "coInt",
@@ -1095,7 +1258,12 @@
       "label": "Default color",
       "tooltip": "Default filament color.\nRight click to reset value to system default.",
       "mode": "advanced",
-      "gui_type": "color"
+      "gui_type": "color",
+      "default_type": "Strings",
+      "default_raw": "{\"\"}",
+      "default": [
+        ""
+      ]
     },
     "default_filament_profile": {
       "type": "coStrings",
@@ -1146,9 +1314,18 @@
       "label": "Default Nozzle Volume Type.",
       "tooltip": "Default Nozzle volume type for extruders in this printer.",
       "mode": "develop",
+      "enum_values": [
+        "Standard",
+        "High Flow"
+      ],
       "enum_labels": [
         "Standard",
         "High Flow"
+      ],
+      "default_type": "EnumsGeneric",
+      "default_raw": "NozzleVolumeType::nvtStandard",
+      "default": [
+        "Standard"
       ]
     },
     "default_print_profile": {
@@ -1194,7 +1371,12 @@
       "full_label": "De-retraction Speed",
       "tooltip": "Speed for reloading filament into the nozzle. Zero means same speed of retraction.",
       "sidetext": "mm/s",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.}",
+      "default": [
+        0.0
+      ]
     },
     "detect_narrow_internal_solid_infill": {
       "type": "coBool",
@@ -1298,7 +1480,7 @@
       ],
       "default_type": "Enum<SLADisplayOrientation>",
       "default_raw": "sladoPortrait",
-      "default": "sladoPortrait"
+      "default": "portrait"
     },
     "display_pixels_x": {
       "type": "coInt",
@@ -1355,7 +1537,7 @@
       ],
       "default_type": "Enum<InternalBridgeFilter>",
       "default_raw": "ibfDisabled",
-      "default": "ibfDisabled"
+      "default": "disabled"
     },
     "dont_slow_down_outer_wall": {
       "type": "coBools",
@@ -1363,6 +1545,11 @@
       "line": 2428,
       "label": "Don't slow down outer walls",
       "tooltip": "If enabled, this setting will ensure external perimeters are not slowed down to meet the minimum layer time. This is particularly helpful in the below scenarios:\n1. To avoid changes in shine when printing glossy filaments\n2. To avoid changes in external wall speed which may create slight wall artifacts that appear like Z banding\n3. To avoid printing at speeds which cause VFAs (fine artifacts) on the external walls",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -1407,7 +1594,7 @@
       ],
       "default_type": "Enum<DraftShield>",
       "default_raw": "dsDisabled",
-      "default": "dsDisabled"
+      "default": "disabled"
     },
     "during_print_exhaust_fan_speed": {
       "type": "coInts",
@@ -1418,7 +1605,12 @@
       "sidetext": "%",
       "min": 0,
       "max": 100,
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Ints",
+      "default_raw": "{60}",
+      "default": [
+        60
+      ]
     },
     "e_position": {
       "type": "coFloats",
@@ -1545,7 +1737,7 @@
       ],
       "default_type": "Enum<EnableExtraBridgeLayer>",
       "default_raw": "eblDisabled",
-      "default": "eblDisabled"
+      "default": "disabled"
     },
     "enable_filament_dynamic_map": {
       "type": "coBool",
@@ -1573,7 +1765,10 @@
       "type": "coInt",
       "group": "fff",
       "line": 5210,
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "Int",
+      "default_raw": "0",
+      "default": 0
     },
     "enable_overhang_bridge_fan": {
       "type": "coBools",
@@ -1581,7 +1776,12 @@
       "line": 1207,
       "label": "Force cooling for overhangs and bridges",
       "tooltip": "Enable this option to allow adjustment of the part cooling fan speed for specifically for overhangs, internal and external bridges. Setting the fan speed specifically for these features can improve overall print quality and reduce warping.",
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Bools",
+      "default_raw": "{true}",
+      "default": [
+        true
+      ]
     },
     "enable_overhang_speed": {
       "type": "coBool",
@@ -1590,7 +1790,10 @@
       "label": "Slow down for overhang",
       "category": "Speed",
       "tooltip": "Enable this option to slow printing down for different overhang degree.",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "true",
+      "default": true
     },
     "enable_power_loss_recovery": {
       "type": "coEnum",
@@ -1611,7 +1814,7 @@
       ],
       "default_type": "Enum<PowerLossRecoveryMode>",
       "default_raw": "PowerLossRecoveryMode::PrinterConfiguration",
-      "default": "PowerLossRecoveryMode::PrinterConfiguration"
+      "default": "printer_configuration"
     },
     "enable_pressure_advance": {
       "type": "coBools",
@@ -1619,6 +1822,11 @@
       "line": 2340,
       "label": "Enable pressure advance",
       "tooltip": "Enable pressure advance, auto calibration result will be overwritten once enabled.",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -1714,6 +1922,11 @@
       "sidetext": "\\u2103Bed temperature",
       "min": 0,
       "max": 300,
+      "default_type": "Ints",
+      "default_raw": "{45}",
+      "default": [
+        45
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -1727,6 +1940,11 @@
       "sidetext": "\\u2103",
       "min": 0,
       "max": 300,
+      "default_type": "Ints",
+      "default_raw": "{45}",
+      "default": [
+        45
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -1764,7 +1982,7 @@
       ],
       "default_type": "Enum<EnsureVerticalShellThickness>",
       "default_raw": "EnsureVerticalShellThickness::evstAll",
-      "default": "EnsureVerticalShellThickness::evstAll"
+      "default": "ensure_all"
     },
     "exclude_object": {
       "type": "coBool",
@@ -1944,6 +2162,9 @@
       "line": 5379,
       "label": "Extruder AMS count",
       "tooltip": "AMS counts per extruder.",
+      "default_type": "Strings",
+      "default_raw": "{}",
+      "default": [],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -1993,7 +2214,12 @@
       "label": "Extruder Color",
       "tooltip": "Only used as a visual help on UI.",
       "mode": "advanced",
-      "gui_type": "color"
+      "gui_type": "color",
+      "default_type": "Strings",
+      "default_raw": "{\"\"}",
+      "default": [
+        ""
+      ]
     },
     "extruder_offset": {
       "type": "coPoints",
@@ -2003,8 +2229,10 @@
       "sidetext": "mm",
       "mode": "advanced",
       "default_type": "Points",
-      "default_raw": "0,0",
-      "default": "0,0"
+      "default_raw": "{Vec2d(0,0)}",
+      "default": [
+        "0x0"
+      ]
     },
     "extruder_printable_area": {
       "type": "coPointsGroups",
@@ -2012,7 +2240,10 @@
       "line": 692,
       "label": "Extruder printable area",
       "mode": "advanced",
-      "gui_type": "one_string"
+      "gui_type": "one_string",
+      "default_type": "PointsGroups",
+      "default_raw": "{}",
+      "default": []
     },
     "extruder_printable_height": {
       "type": "coFloats",
@@ -2023,7 +2254,12 @@
       "sidetext": "mm",
       "min": 0,
       "max": 1000,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "FloatsNullable",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
     },
     "extruder_type": {
       "type": "coEnums",
@@ -2039,6 +2275,11 @@
       "enum_labels": [
         "Direct Drive",
         "Bowden"
+      ],
+      "default_type": "EnumsGeneric",
+      "default_raw": "ExtruderType::etDirectDrive",
+      "default": [
+        "Direct Drive"
       ]
     },
     "extruder_variant_list": {
@@ -2048,6 +2289,11 @@
       "label": "Extruder variant list",
       "tooltip": "Extruder variant list.",
       "cli": "nocli",
+      "default_type": "Strings",
+      "default_raw": "{\"Direct Drive Standard\"}",
+      "default": [
+        "Direct Drive Standard"
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -2082,7 +2328,12 @@
       "sidetext": "s",
       "min": 0,
       "max": 1000,
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Floats",
+      "default_raw": "{60.0f}",
+      "default": [
+        60.0
+      ]
     },
     "fan_kickstart": {
       "type": "coFloat",
@@ -2106,7 +2357,12 @@
       "sidetext": "%",
       "min": 0,
       "max": 100,
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Floats",
+      "default_raw": "{100}",
+      "default": [
+        100
+      ]
     },
     "fan_min_speed": {
       "type": "coFloats",
@@ -2117,7 +2373,12 @@
       "sidetext": "%",
       "min": 0,
       "max": 100,
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Floats",
+      "default_raw": "{20}",
+      "default": [
+        20
+      ]
     },
     "fan_speedup_overhangs": {
       "type": "coBool",
@@ -2157,7 +2418,12 @@
       "line": 2645,
       "label": "Adaptive volumetric speed",
       "tooltip": "When enabled, the extrusion flow is limited by the smaller of the fitted value (calculated from line width and layer height) and the user-defined maximum flow. When disabled, only the user-defined maximum flow is applied.\n\nNote: Experimental and incomplete feature imported from BBS. Functional for some profiles that already have the variable saved.",
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "BoolsNullable",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ]
     },
     "filament_adhesiveness_category": {
       "type": "coInts",
@@ -2166,7 +2432,12 @@
       "label": "Adhesiveness Category",
       "tooltip": "Filament category.",
       "min": 0,
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "Ints",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
     },
     "filament_change_extrusion_role_gcode": {
       "type": "coStrings",
@@ -2174,7 +2445,12 @@
       "line": 6700,
       "label": "Change extrusion role G-code (filament)",
       "tooltip": "This G-code is inserted when the extrusion role is changed for the active filament.",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Strings",
+      "default_raw": "{\"\"}",
+      "default": [
+        ""
+      ]
     },
     "filament_change_length": {
       "type": "coFloats",
@@ -2184,7 +2460,12 @@
       "tooltip": "When changing the extruder, it is recommended to extrude a certain length of filament from the original extruder. This helps minimize nozzle oozing.",
       "sidetext": "mm",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{10}",
+      "default": [
+        10
+      ]
     },
     "filament_colour": {
       "type": "coStrings",
@@ -2193,12 +2474,22 @@
       "label": "Color",
       "tooltip": "Only used as a visual help on UI.",
       "mode": "advanced",
-      "gui_type": "color"
+      "gui_type": "color",
+      "default_type": "Strings",
+      "default_raw": "{\"#F2754E\"}",
+      "default": [
+        "#F2754E"
+      ]
     },
     "filament_colour_type": {
       "type": "coStrings",
       "group": "fff",
       "line": 2477,
+      "default_type": "Strings",
+      "default_raw": "{\"1\"}",
+      "default": [
+        "1"
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -2209,7 +2500,12 @@
       "label": "Wipe tower cooling",
       "tooltip": "Temperature drop before entering filament tower",
       "sidetext": "\\u2103",
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "FloatsNullable",
+      "default_raw": "{10.}",
+      "default": [
+        10.0
+      ]
     },
     "filament_cooling_final_speed": {
       "type": "coFloats",
@@ -2219,7 +2515,12 @@
       "tooltip": "Cooling moves are gradually accelerating towards this speed.",
       "sidetext": "mm/s",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{3.4}",
+      "default": [
+        3.4
+      ]
     },
     "filament_cooling_initial_speed": {
       "type": "coFloats",
@@ -2229,7 +2530,12 @@
       "tooltip": "Cooling moves are gradually accelerating beginning at this speed.",
       "sidetext": "mm/s",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{2.2}",
+      "default": [
+        2.2
+      ]
     },
     "filament_cooling_moves": {
       "type": "coInts",
@@ -2239,7 +2545,12 @@
       "tooltip": "Filament is cooled by being moved back and forth in the cooling tubes. Specify desired number of these moves.",
       "min": 0,
       "max": 20,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Ints",
+      "default_raw": "{4}",
+      "default": [
+        4
+      ]
     },
     "filament_cost": {
       "type": "coFloats",
@@ -2249,7 +2560,12 @@
       "tooltip": "Filament price. For statistics only.",
       "sidetext": "money/kg",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.}",
+      "default": [
+        0.0
+      ]
     },
     "filament_density": {
       "type": "coFloats",
@@ -2259,7 +2575,12 @@
       "tooltip": "Filament density. For statistics only.",
       "sidetext": "g/cm³",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.}",
+      "default": [
+        0.0
+      ]
     },
     "filament_deretraction_speed": {
       "type": "coFloatsNullable",
@@ -2282,6 +2603,11 @@
       "tooltip": "Filament diameter is used to calculate extrusion in G-code, so it is important and should be accurate.",
       "sidetext": "mm",
       "min": 0,
+      "default_type": "Floats",
+      "default_raw": "{1.75}",
+      "default": [
+        1.75
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -2291,7 +2617,12 @@
       "line": 2046,
       "label": "End G-code",
       "tooltip": "End G-code when finishing the printing of this filament.",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Strings",
+      "default_raw": "{\" \"}",
+      "default": [
+        " "
+      ]
     },
     "filament_extruder_id": {
       "type": "coInt",
@@ -2309,6 +2640,11 @@
       "label": "Filament's extruder variant",
       "tooltip": "Filament's extruder variant.",
       "cli": "nocli",
+      "default_type": "Strings",
+      "default_raw": "{\"Direct Drive Standard\"}",
+      "default": [
+        "Direct Drive Standard"
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -2320,7 +2656,12 @@
       "tooltip": "The material may have volumetric change after switching between molten and crystalline states. This setting changes all extrusion flow of this filament in G-code proportionally. The recommended value range is between 0.95 and 1.05. You may be able to tune this value to get a nice flat surface if there is slight overflow or underflow.",
       "min": 0,
       "max": 2,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "FloatsNullable",
+      "default_raw": "{1.}",
+      "default": [
+        1.0
+      ]
     },
     "filament_flush_temp": {
       "type": "coInts",
@@ -2331,7 +2672,12 @@
       "sidetext": "\\u2103",
       "min": 0,
       "max": 1500,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "IntsNullable",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
     },
     "filament_flush_volumetric_speed": {
       "type": "coFloats",
@@ -2342,7 +2688,12 @@
       "sidetext": "mm³/s",
       "min": 0,
       "max": 200,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "FloatsNullable",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
     },
     "filament_ids": {
       "type": "coStrings",
@@ -2367,7 +2718,7 @@
       "max": 100,
       "mode": "advanced",
       "default_type": "PercentsNullable",
-      "default_raw": "",
+      "default_raw": "{ConfigOptionPercentsNullable::nil_value()}",
       "default": null
     },
     "filament_ironing_inset": {
@@ -2382,7 +2733,7 @@
       "max": 100,
       "mode": "advanced",
       "default_type": "FloatsNullable",
-      "default_raw": "",
+      "default_raw": "{ConfigOptionFloatsNullable::nil_value()}",
       "default": null
     },
     "filament_ironing_spacing": {
@@ -2397,7 +2748,7 @@
       "max": 1,
       "mode": "advanced",
       "default_type": "FloatsNullable",
-      "default_raw": "",
+      "default_raw": "{ConfigOptionFloatsNullable::nil_value()}",
       "default": null
     },
     "filament_ironing_speed": {
@@ -2411,7 +2762,7 @@
       "min": 1,
       "mode": "advanced",
       "default_type": "FloatsNullable",
-      "default_raw": "",
+      "default_raw": "{ConfigOptionFloatsNullable::nil_value()}",
       "default": null
     },
     "filament_is_support": {
@@ -2420,7 +2771,12 @@
       "line": 2900,
       "label": "Support material",
       "tooltip": "Support material is commonly used to print supports and support interfaces.",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ]
     },
     "filament_loading_speed": {
       "type": "coFloats",
@@ -2430,7 +2786,12 @@
       "tooltip": "Speed used for loading the filament on the wipe tower.",
       "sidetext": "mm/s",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{28.}",
+      "default": [
+        28.0
+      ]
     },
     "filament_loading_speed_start": {
       "type": "coFloats",
@@ -2440,7 +2801,12 @@
       "tooltip": "Speed used at the very beginning of loading phase.",
       "sidetext": "mm/s",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{3.}",
+      "default": [
+        3.0
+      ]
     },
     "filament_long_retractions_when_cut": {
       "type": "coBoolsNullable",
@@ -2459,7 +2825,12 @@
       "line": 2489,
       "label": "Filament map to extruder",
       "tooltip": "Filament map to extruder.",
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "Ints",
+      "default_raw": "{1}",
+      "default": [
+        1
+      ]
     },
     "filament_map_mode": {
       "type": "coEnum",
@@ -2482,7 +2853,7 @@
       ],
       "default_type": "Enum<FilamentMapMode>",
       "default_raw": "fmmAutoForFlush",
-      "default": "fmmAutoForFlush"
+      "default": "Auto For Flush"
     },
     "filament_max_volumetric_speed": {
       "type": "coFloats",
@@ -2492,7 +2863,12 @@
       "tooltip": "This setting stands for how much volume of filament can be melted and extruded per second. Printing speed is limited by max volumetric speed, in case of too high and unreasonable speed setting. Can't be zero.",
       "sidetext": "mm³/s",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{2.}",
+      "default": [
+        2.0
+      ]
     },
     "filament_minimal_purge_on_wipe_tower": {
       "type": "coFloats",
@@ -2502,12 +2878,22 @@
       "tooltip": "After a tool change, the exact position of the newly loaded filament inside the nozzle may not be known, and the filament pressure is likely not yet stable. Before purging the print head into an infill or a sacrificial object, Orca Slicer will always prime this amount of material into the wipe tower to produce successive infill or sacrificial object extrusions reliably.",
       "sidetext": "mm³",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{15.}",
+      "default": [
+        15.0
+      ]
     },
     "filament_multi_colour": {
       "type": "coStrings",
       "group": "fff",
       "line": 2473,
+      "default_type": "Strings",
+      "default_raw": "{\"\"}",
+      "default": [
+        ""
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -2517,7 +2903,12 @@
       "line": 2840,
       "label": "Enable ramming for multi-tool setups",
       "tooltip": "Perform ramming when using multi-tool printer (i.e. when the 'Single Extruder Multimaterial' in Printer Settings is unchecked). When checked, a small amount of filament is rapidly extruded on the wipe tower just before the tool change. This option is only used when the wipe tower is enabled.",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ]
     },
     "filament_multitool_ramming_flow": {
       "type": "coFloats",
@@ -2527,7 +2918,12 @@
       "tooltip": "Flow used for ramming the filament before the tool change.",
       "sidetext": "mm³/s",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{10.}",
+      "default": [
+        10.0
+      ]
     },
     "filament_multitool_ramming_volume": {
       "type": "coFloats",
@@ -2537,7 +2933,12 @@
       "tooltip": "The volume to be rammed before the tool change.",
       "sidetext": "mm³",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{10.}",
+      "default": [
+        10.0
+      ]
     },
     "filament_notes": {
       "type": "coStrings",
@@ -2545,7 +2946,12 @@
       "line": 2463,
       "label": "Filament notes",
       "tooltip": "You can put your notes regarding the filament here.",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Strings",
+      "default_raw": "{\"\"}",
+      "default": [
+        ""
+      ]
     },
     "filament_preset": {
       "type": "coString",
@@ -2562,7 +2968,12 @@
       "line": 2910,
       "label": "Filament printable",
       "tooltip": "The filament is printable in extruder.",
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "Ints",
+      "default_raw": "{3}",
+      "default": [
+        3
+      ]
     },
     "filament_ramming_parameters": {
       "type": "coStrings",
@@ -2570,7 +2981,12 @@
       "line": 2833,
       "label": "Ramming parameters",
       "tooltip": "This string is edited by RammingDialog and contains ramming specific parameters.",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Strings",
+      "default_raw": "{\"120 100 6.6 6.8 7.2 7.6 7.9 8.2 8.7 9.4 9.9 10.0|\"\n       \" 0.05 6.6 0.45 6.8 0.95 7.8 1.45 8.3 1.95 9.7 2.45 10 2.95 7.6 3.45 7.6 3.95 7.6 4.45 7.6 4.95 7.6\"}",
+      "default": [
+        "120 100 6.6 6.8 7.2 7.6 7.9 8.2 8.7 9.4 9.9 10.0| 0.05 6.6 0.45 6.8 0.95 7.8 1.45 8.3 1.95 9.7 2.45 10 2.95 7.6 3.45 7.6 3.95 7.6 4.45 7.6 4.95 7.6"
+      ]
     },
     "filament_retract_before_wipe": {
       "type": "coPercentsNullable",
@@ -2712,6 +3128,11 @@
       "label": "Filament self index",
       "tooltip": "Filament self index.",
       "cli": "nocli",
+      "default_type": "Ints",
+      "default_raw": "{1}",
+      "default": [
+        1
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -2719,6 +3140,11 @@
       "type": "coStrings",
       "group": "fff",
       "line": 2933,
+      "default_type": "Strings",
+      "default_raw": "{\"\"}",
+      "default": [
+        ""
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -2732,7 +3158,12 @@
       "min": 50,
       "max": 150,
       "mode": "advanced",
-      "ratio_over": ""
+      "ratio_over": "",
+      "default_type": "Percents",
+      "default_raw": "{100}",
+      "default": [
+        100
+      ]
     },
     "filament_shrinkage_compensation_z": {
       "type": "coPercents",
@@ -2744,7 +3175,12 @@
       "min": 50,
       "max": 150,
       "mode": "advanced",
-      "ratio_over": ""
+      "ratio_over": "",
+      "default_type": "Percents",
+      "default_raw": "{100}",
+      "default": [
+        100
+      ]
     },
     "filament_soluble": {
       "type": "coBools",
@@ -2752,7 +3188,12 @@
       "line": 2886,
       "label": "Soluble material",
       "tooltip": "Soluble material is commonly used to print supports and support interfaces.",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ]
     },
     "filament_stamping_distance": {
       "type": "coFloats",
@@ -2761,7 +3202,12 @@
       "label": "Stamping distance measured from the center of the cooling tube",
       "tooltip": "If set to non-zero value, filament is moved toward the nozzle between the individual cooling moves (\"stamping\"). This option configures how long this movement should be before the filament is retracted again.",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.}",
+      "default": [
+        0.0
+      ]
     },
     "filament_stamping_loading_speed": {
       "type": "coFloats",
@@ -2770,7 +3216,12 @@
       "label": "Stamping loading speed",
       "tooltip": "Speed used for stamping.",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.}",
+      "default": [
+        0.0
+      ]
     },
     "filament_start_gcode": {
       "type": "coStrings",
@@ -2778,7 +3229,12 @@
       "line": 5949,
       "label": "Start G-code",
       "tooltip": "Start G-code when starting the printing of this filament.",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Strings",
+      "default_raw": "{\" \"}",
+      "default": [
+        " "
+      ]
     },
     "filament_toolchange_delay": {
       "type": "coFloats",
@@ -2788,7 +3244,12 @@
       "tooltip": "Time to wait after the filament is unloaded. May help to get reliable tool changes with flexible materials that may need more time to shrink to original dimensions.",
       "sidetext": "s",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.}",
+      "default": [
+        0.0
+      ]
     },
     "filament_tower_interface_pre_extrusion_dist": {
       "type": "coFloats",
@@ -2798,7 +3259,12 @@
       "tooltip": "Pre-extrusion distance for prime tower interface layer (where different materials meet).",
       "sidetext": "mm",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{10.}",
+      "default": [
+        10.0
+      ]
     },
     "filament_tower_interface_pre_extrusion_length": {
       "type": "coFloats",
@@ -2808,7 +3274,12 @@
       "tooltip": "Pre-extrusion length for prime tower interface layer (where different materials meet).",
       "sidetext": "mm",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.}",
+      "default": [
+        0.0
+      ]
     },
     "filament_tower_interface_print_temp": {
       "type": "coInts",
@@ -2818,7 +3289,12 @@
       "tooltip": "Print temperature for prime tower interface layer (where different materials meet). If set to -1, use max recommended nozzle temperature.",
       "sidetext": "\\u2103",
       "min": -1,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Ints",
+      "default_raw": "{-1}",
+      "default": [
+        -1
+      ]
     },
     "filament_tower_interface_purge_volume": {
       "type": "coFloats",
@@ -2828,7 +3304,12 @@
       "tooltip": "Purge length for prime tower interface layer (where different materials meet).",
       "sidetext": "mm",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{20.}",
+      "default": [
+        20.0
+      ]
     },
     "filament_tower_ironing_area": {
       "type": "coFloats",
@@ -2838,7 +3319,12 @@
       "tooltip": "Ironing area for prime tower interface layer (where different materials meet).",
       "sidetext": "mm²",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{4.}",
+      "default": [
+        4.0
+      ]
     },
     "filament_type": {
       "type": "coStrings",
@@ -2847,7 +3333,12 @@
       "label": "Type",
       "tooltip": "The material type of filament.",
       "mode": "simple",
-      "gui_type": "f_enum_open"
+      "gui_type": "f_enum_open",
+      "default_type": "Strings",
+      "default_raw": "{\"PLA\"}",
+      "default": [
+        "PLA"
+      ]
     },
     "filament_unloading_speed": {
       "type": "coFloats",
@@ -2857,7 +3348,12 @@
       "tooltip": "Speed used for unloading the filament on the wipe tower (does not affect initial part of unloading just after ramming).",
       "sidetext": "mm/s",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{90.}",
+      "default": [
+        90.0
+      ]
     },
     "filament_unloading_speed_start": {
       "type": "coFloats",
@@ -2867,7 +3363,12 @@
       "tooltip": "Speed used for unloading the tip of the filament immediately after ramming.",
       "sidetext": "mm/s",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{100.}",
+      "default": [
+        100.0
+      ]
     },
     "filament_vendor": {
       "type": "coStrings",
@@ -2878,7 +3379,7 @@
       "mode": "advanced",
       "cli": "nocli",
       "default_type": "Strings",
-      "default_raw": "\"(Undefined)\"",
+      "default_raw": "{L(\"(Undefined)\")}",
       "default": [
         "(Undefined)"
       ]
@@ -3040,6 +3541,11 @@
       "label": "First layer print sequence",
       "min": 0,
       "max": 16,
+      "default_type": "Ints",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -3068,7 +3574,7 @@
       ],
       "default_type": "Enum<LayerSeq>",
       "default_raw": "flsAuto",
-      "default": "flsAuto"
+      "default": "Auto"
     },
     "first_x_layer_fan_speed": {
       "type": "coFloats",
@@ -3079,7 +3585,12 @@
       "sidetext": "%",
       "min": 0,
       "max": 100,
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Floats",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
     },
     "flashforge_serial_number": {
       "type": "coString",
@@ -3138,6 +3649,11 @@
       "line": 6845,
       "label": "Flush multiplier",
       "tooltip": "The actual flushing volumes is equal to the flush multiplier multiplied by the flushing volumes in the table.",
+      "default_type": "Floats",
+      "default_raw": "{0.3}",
+      "default": [
+        0.3
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -3146,6 +3662,26 @@
       "group": "fff",
       "line": 6835,
       "label": "Purging volumes",
+      "default_type": "Floats",
+      "default_raw": "{0.f, 280.f, 280.f, 280.f,\n                                                    280.f,   0.f, 280.f, 280.f,\n                                                    280.f, 280.f,   0.f, 280.f,\n                                                    280.f, 280.f, 280.f,   0.f}",
+      "default": [
+        0.0,
+        280.0,
+        280.0,
+        280.0,
+        280.0,
+        0.0,
+        280.0,
+        280.0,
+        280.0,
+        280.0,
+        0.0,
+        280.0,
+        280.0,
+        280.0,
+        280.0,
+        0.0
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -3154,6 +3690,18 @@
       "group": "fff",
       "line": 6825,
       "label": "Purging volumes - load/unload volumes",
+      "default_type": "Floats",
+      "default_raw": "{140.f, 140.f, 140.f, 140.f, 140.f, 140.f, 140.f, 140.f}",
+      "default": [
+        140.0,
+        140.0,
+        140.0,
+        140.0,
+        140.0,
+        140.0,
+        140.0,
+        140.0
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -3166,7 +3714,12 @@
       "sidetext": "layer",
       "min": 0,
       "max": 1000,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Ints",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
     },
     "fuzzy_skin": {
       "type": "coEnum",
@@ -3194,7 +3747,7 @@
       ],
       "default_type": "Enum<FuzzySkinType>",
       "default_raw": "FuzzySkinType::Disabled_fuzzy",
-      "default": "FuzzySkinType::Disabled_fuzzy"
+      "default": "disabled_fuzzy"
     },
     "fuzzy_skin_first_layer": {
       "type": "coBool",
@@ -3241,7 +3794,7 @@
       ],
       "default_type": "Enum<FuzzySkinMode>",
       "default_raw": "FuzzySkinMode::Displacement",
-      "default": "FuzzySkinMode::Displacement"
+      "default": "displacement"
     },
     "fuzzy_skin_noise_type": {
       "type": "coEnum",
@@ -3269,7 +3822,7 @@
       ],
       "default_type": "Enum<NoiseType>",
       "default_raw": "NoiseType::Classic",
-      "default": "NoiseType::Classic"
+      "default": "classic"
     },
     "fuzzy_skin_octaves": {
       "type": "coInt",
@@ -3417,7 +3970,7 @@
       ],
       "default_type": "Enum<GapFillTarget>",
       "default_raw": "gftNowhere",
-      "default": "gftNowhere"
+      "default": "nowhere"
     },
     "gap_infill_speed": {
       "type": "coFloat",
@@ -3478,7 +4031,7 @@
       ],
       "default_type": "Enum<GCodeFlavor>",
       "default_raw": "gcfMarlinLegacy",
-      "default": "gcfMarlinLegacy"
+      "default": "marlin"
     },
     "gcode_label_objects": {
       "type": "coBool",
@@ -3566,7 +4119,10 @@
       "group": "fff",
       "line": 6669,
       "label": "Head wrap detect zone",
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "Points",
+      "default_raw": "{}",
+      "default": []
     },
     "help": {
       "type": "coBool",
@@ -3721,7 +4277,7 @@
       ],
       "default_type": "Enum<PrintHostType>",
       "default_raw": "htOctoPrint",
-      "default": "htOctoPrint"
+      "default": "octoprint"
     },
     "hot_plate_temp": {
       "type": "coInts",
@@ -3733,6 +4289,11 @@
       "sidetext": "\\u2103Bed temperature",
       "min": 0,
       "max": 300,
+      "default_type": "Ints",
+      "default_raw": "{45}",
+      "default": [
+        45
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -3745,6 +4306,11 @@
       "tooltip": "Bed temperature of the first layer. A value of 0 means the filament does not support printing on the High Temp Plate.",
       "sidetext": "\\u2103",
       "max": 300,
+      "default_type": "Ints",
+      "default_raw": "{45}",
+      "default": [
+        45
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -3765,6 +4331,11 @@
       "sidetext": "\\u2103",
       "min": 0,
       "max": 1500,
+      "default_type": "Ints",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -3837,7 +4408,15 @@
       "default": {
         "value": 20.0,
         "percent": false
-      }
+      },
+      "enum_values": [
+        "0",
+        "1",
+        "2",
+        "5",
+        "10",
+        "1000"
+      ]
     },
     "infill_combination": {
       "type": "coBool",
@@ -4358,9 +4937,39 @@
       "label": "Input shaper type",
       "tooltip": "Choose the input shaper algorithm.\nDefault uses the firmware default settings.\nDisable turns off input shaping in the firmware.",
       "mode": "expert",
+      "enum_values": [
+        "Default",
+        "MZV",
+        "ZV",
+        "ZVD",
+        "ZVDD",
+        "ZVDDD",
+        "EI",
+        "EI2",
+        "2HUMP_EI",
+        "EI3",
+        "3HUMP_EI",
+        "DAA",
+        "Disable"
+      ],
+      "enum_labels": [
+        "Default",
+        "MZV",
+        "ZV",
+        "ZVD",
+        "ZVDD",
+        "ZVDDD",
+        "EI",
+        "EI2",
+        "2HUMP_EI",
+        "EI3",
+        "3HUMP_EI",
+        "DAA",
+        "Disable"
+      ],
       "default_type": "Enum<InputShaperType>",
       "default_raw": "InputShaperType::Default",
-      "default": "InputShaperType::Default"
+      "default": "Default"
     },
     "interface_shells": {
       "type": "coBool",
@@ -4493,7 +5102,12 @@
       "sidetext": "%",
       "min": -1,
       "max": 100,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Ints",
+      "default_raw": "{-1}",
+      "default": [
+        -1
+      ]
     },
     "internal_bridge_flow": {
       "type": "coFloat",
@@ -4602,9 +5216,29 @@
       "tooltip": "Line pattern of internal solid infill. if the detect narrow internal solid infill be enabled, the concentric pattern will be used for the small area.",
       "default_type": "Enum<InfillPattern>",
       "default_raw": "ipMonotonic",
-      "default": "ipMonotonic",
+      "default": "monotonic",
       "mode": "simple",
-      "mode_is_default": true
+      "mode_is_default": true,
+      "enum_values": [
+        "monotonic",
+        "monotonicline",
+        "rectilinear",
+        "alignedrectilinear",
+        "concentric",
+        "hilbertcurve",
+        "archimedeanchords",
+        "octagramspiral"
+      ],
+      "enum_labels": [
+        "Monotonic",
+        "Monotonic line",
+        "Rectilinear",
+        "Aligned Rectilinear",
+        "Concentric",
+        "Hilbert Curve",
+        "Archimedean Chords",
+        "Octagram Spiral"
+      ]
     },
     "internal_solid_infill_speed": {
       "type": "coFloat",
@@ -4671,7 +5305,12 @@
       "sidetext": "%",
       "min": -1,
       "max": 100,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Ints",
+      "default_raw": "{-1}",
+      "default": [
+        -1
+      ]
     },
     "ironing_flow": {
       "type": "coPercent",
@@ -4722,7 +5361,7 @@
       ],
       "default_type": "Enum<InfillPattern>",
       "default_raw": "ipRectilinear",
-      "default": "ipRectilinear"
+      "default": "rectilinear"
     },
     "ironing_spacing": {
       "type": "coFloat",
@@ -4775,7 +5414,7 @@
       ],
       "default_type": "Enum<IroningType>",
       "default_raw": "IroningType::NoIroning",
-      "default": "IroningType::NoIroning"
+      "default": "no ironing"
     },
     "is_extruder_used": {
       "type": "coBools",
@@ -4793,7 +5432,10 @@
       "label": "Print infill first",
       "category": "Quality",
       "tooltip": "Order of wall/infill. When the tickbox is unchecked the walls are printed first, which works best in most cases.\n\nPrinting infill first may help with extreme overhangs as the walls have the neighbouring infill to adhere to. However, the infill will slightly push out the printed walls where it is attached to them, resulting in a worse external surface finish. It can also cause the infill to shine through the external surfaces of the part.",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
     },
     "lateral_lattice_angle_1": {
       "type": "coFloat",
@@ -5036,14 +5678,24 @@
       "line": 5214,
       "label": "Long retraction when cut (beta)",
       "tooltip": "Experimental feature: Retracting and cutting off the filament at a longer distance during changes to minimize purge. While this reduces flush significantly, it may also raise the risk of nozzle clogs or other printing problems.",
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ]
     },
     "long_retractions_when_ec": {
       "type": "coBools",
       "group": "fff",
       "line": 5229,
       "label": "Long retraction when extruder change",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "BoolsNullable",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ]
     },
     "machine_end_gcode": {
       "type": "coString",
@@ -5094,7 +5746,13 @@
       "tooltip": "Maximum acceleration for extruding (M204 P)",
       "sidetext": "mm/s²",
       "min": 0,
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Floats",
+      "default_raw": "{1500., 1250.}",
+      "default": [
+        1500.0,
+        1250.0
+      ]
     },
     "machine_max_acceleration_retracting": {
       "type": "coFloats",
@@ -5105,7 +5763,13 @@
       "tooltip": "Maximum acceleration for retracting (M204 R)",
       "sidetext": "mm/s²",
       "min": 0,
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Floats",
+      "default_raw": "{1500., 1250.}",
+      "default": [
+        1500.0,
+        1250.0
+      ]
     },
     "machine_max_acceleration_travel": {
       "type": "coFloats",
@@ -5116,7 +5780,13 @@
       "tooltip": "Maximum acceleration for travel (M204 T), it only applies to Marlin 2.",
       "sidetext": "mm/s²",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0., 0.}",
+      "default": [
+        0.0,
+        0.0
+      ]
     },
     "machine_max_acceleration_x": {
       "type": "coFloats",
@@ -5240,7 +5910,12 @@
       "sidetext": "mm",
       "min": 0.0,
       "max": 0.3,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.01f}",
+      "default": [
+        0.01
+      ]
     },
     "machine_max_speed_e": {
       "type": "coFloats",
@@ -5315,7 +5990,13 @@
       "tooltip": "Minimum speed for extruding (M205 S)",
       "sidetext": "mm/s",
       "min": 0,
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "Floats",
+      "default_raw": "{0., 0.}",
+      "default": [
+        0.0,
+        0.0
+      ]
     },
     "machine_min_travel_rate": {
       "type": "coFloats",
@@ -5326,7 +6007,13 @@
       "tooltip": "Minimum travel speed (M205 T)",
       "sidetext": "mm/s",
       "min": 0,
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "Floats",
+      "default_raw": "{0., 0.}",
+      "default": [
+        0.0,
+        0.0
+      ]
     },
     "machine_pause_gcode": {
       "type": "coString",
@@ -5358,7 +6045,10 @@
       "tooltip": "Time taken to switch tools. It's usually applicable for tool changers or multi-tool machines. For single-extruder multi-material machines, it's typically 0. For statistics only.",
       "sidetext": "s",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Float",
+      "default_raw": "0.",
+      "default": 0.0
     },
     "machine_unload_filament_time": {
       "type": "coFloat",
@@ -5455,6 +6145,9 @@
       "line": 5399,
       "label": "Master extruder id",
       "tooltip": "Default extruder id to place filament.",
+      "default_type": "Int",
+      "default_raw": "1",
+      "default": 1,
       "mode": "simple",
       "mode_is_default": true
     },
@@ -5539,7 +6232,7 @@
       ],
       "default_type": "Enum<SLAMaterialSpeed>",
       "default_raw": "slamsFast",
-      "default": "slamsFast"
+      "default": "fast"
     },
     "material_type": {
       "type": "coString",
@@ -5612,7 +6305,12 @@
       "tooltip": "The highest printable layer height for the extruder. Used to limit the maximum layer height when enable adaptive layer height.",
       "sidetext": "mm",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.}",
+      "default": [
+        0.0
+      ]
     },
     "max_layer_z": {
       "type": "coFloat",
@@ -5762,7 +6460,12 @@
       "tooltip": "The lowest printable layer height for the extruder. Used to limit the minimum layer height when enable adaptive layer height.",
       "sidetext": "mm",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.07}",
+      "default": [
+        0.07
+      ]
     },
     "min_length_factor": {
       "type": "coFloat",
@@ -5971,12 +6674,22 @@
       "tooltip": "The diameter of nozzle.",
       "sidetext": "mm",
       "max": 100,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.4}",
+      "default": [
+        0.4
+      ]
     },
     "nozzle_flush_dataset": {
       "type": "coInts",
       "group": "fff",
       "line": 2602,
+      "default_type": "IntsNullable",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -6002,7 +6715,10 @@
       "sidetext": "HRC",
       "min": 0,
       "max": 500,
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "Int",
+      "default_raw": "0",
+      "default": 0
     },
     "nozzle_temperature": {
       "type": "coInts",
@@ -6014,6 +6730,11 @@
       "sidetext": "\\u2103Nozzle temperature",
       "min": 0,
       "max": 1500,
+      "default_type": "Ints",
+      "default_raw": "{200}",
+      "default": [
+        200
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -6027,6 +6748,11 @@
       "sidetext": "\\u2103",
       "min": 0,
       "max": 1500,
+      "default_type": "Ints",
+      "default_raw": "{200}",
+      "default": [
+        200
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -6038,6 +6764,11 @@
       "sidetext": "\\u2103",
       "min": 0,
       "max": 1500,
+      "default_type": "Ints",
+      "default_raw": "{240}",
+      "default": [
+        240
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -6049,6 +6780,11 @@
       "sidetext": "\\u2103",
       "min": 0,
       "max": 1500,
+      "default_type": "Ints",
+      "default_raw": "{190}",
+      "default": [
+        190
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -6084,7 +6820,12 @@
       "label": "Nozzle volume",
       "tooltip": "Volume of nozzle between the cutter and the end of nozzle.",
       "sidetext": "mm³",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "FloatsNullable",
+      "default_raw": "{0.0}",
+      "default": [
+        0.0
+      ]
     },
     "nozzle_volume_type": {
       "type": "coEnums",
@@ -6093,9 +6834,18 @@
       "label": "Nozzle Volume Type",
       "tooltip": "Nozzle volume type for extruders.",
       "mode": "simple",
+      "enum_values": [
+        "Standard",
+        "High Flow"
+      ],
       "enum_labels": [
         "Standard",
         "High Flow"
+      ],
+      "default_type": "EnumsGeneric",
+      "default_raw": "NozzleVolumeType::nvtStandard",
+      "default": [
+        "Standard"
       ]
     },
     "num_extruders": {
@@ -6181,6 +6931,11 @@
       "label": "Other layers print sequence",
       "min": 0,
       "max": 16,
+      "default_type": "Ints",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -6189,6 +6944,9 @@
       "group": "fff",
       "line": 1121,
       "label": "The number of other layers print sequence",
+      "default_type": "Int",
+      "default_raw": "0",
+      "default": 0,
       "mode": "simple",
       "mode_is_default": true
     },
@@ -6209,7 +6967,7 @@
       ],
       "default_type": "Enum<LayerSeq>",
       "default_raw": "flsAuto",
-      "default": "flsAuto"
+      "default": "Auto"
     },
     "outer_wall_acceleration": {
       "type": "coFloat",
@@ -6394,7 +7152,12 @@
       "sidetext": "%",
       "min": 0,
       "max": 100,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Ints",
+      "default_raw": "{100}",
+      "default": [
+        100
+      ]
     },
     "overhang_fan_threshold": {
       "type": "coEnums",
@@ -6403,9 +7166,27 @@
       "label": "Overhang cooling activation threshold",
       "tooltip": "When the overhang exceeds this specified threshold, force the cooling fan to run at the 'Overhang Fan Speed' set below. This threshold is expressed as a percentage, indicating the portion of each line's width that is unsupported by the layer beneath it. Setting this value to 0% forces the cooling fan to run for all outer walls, regardless of the overhang degree.",
       "mode": "advanced",
+      "enum_values": [
+        "0%",
+        "10%",
+        "25%",
+        "50%",
+        "75%",
+        "95%"
+      ],
+      "enum_labels": [
+        "0%",
+        "10%",
+        "25%",
+        "50%",
+        "75%",
+        "95%"
+      ],
       "default_type": "EnumsGeneric",
-      "default_raw": "int",
-      "default": "int"
+      "default_raw": "(int)Overhang_threshold_bridge",
+      "default": [
+        "95%"
+      ]
     },
     "overhang_flow_ratio": {
       "type": "coFloat",
@@ -6608,7 +7389,10 @@
       "tooltip": "Set the number of parallel printheads for machines like OrangeStorm Giga printer.",
       "min": 1,
       "max": 4,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Int",
+      "default_raw": "1",
+      "default": 1
     },
     "parking_pos_retraction": {
       "type": "coFloat",
@@ -6644,6 +7428,11 @@
       "label": "Pellet flow coefficient",
       "tooltip": "Pellet flow coefficient is empirically derived and allows for volume calculation for pellet printers.\n\nInternally it is converted to filament_diameter. All other volume calculations remain the same.\n\nfilament_diameter = sqrt( (4 * pellet_flow_coefficient) / PI )",
       "min": 0,
+      "default_type": "Floats",
+      "default_raw": "{0.4157}",
+      "default": [
+        0.4157
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -6664,7 +7453,12 @@
       "line": 2495,
       "label": "Map the logical extruder to physical extruder",
       "tooltip": "Map the logical extruder to physical extruder.",
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "Ints",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
     },
     "physical_printer_preset": {
       "type": "coString",
@@ -6714,6 +7508,9 @@
       "label": "Precise wall",
       "category": "Quality",
       "tooltip": "Improve shell precision by adjusting outer wall spacing. This also improves layer consistency. NOTE: This option will be ignored for outer-inner or inner-outer-inner wall sequences.",
+      "default_type": "Bool",
+      "default_raw": "true",
+      "default": true,
       "mode": "simple",
       "mode_is_default": true
     },
@@ -6798,7 +7595,12 @@
       "label": "Pressure advance",
       "tooltip": "Pressure advance (Klipper) AKA Linear advance factor (Marlin).",
       "max": 2,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.02}",
+      "default": [
+        0.02
+      ]
     },
     "prime_tower_brim_width": {
       "type": "coFloat",
@@ -6932,6 +7734,11 @@
       "label": "Print extruder id",
       "tooltip": "Print extruder id.",
       "cli": "nocli",
+      "default_type": "Ints",
+      "default_raw": "{1}",
+      "default": [
+        1
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -6942,6 +7749,11 @@
       "label": "Print's extruder variant",
       "tooltip": "Print's extruder variant.",
       "cli": "nocli",
+      "default_type": "Strings",
+      "default_raw": "{\"Direct Drive Standard\"}",
+      "default": [
+        "Direct Drive Standard"
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -7000,7 +7812,7 @@
       ],
       "default_type": "Enum<PrintOrder>",
       "default_raw": "PrintOrder::Default",
-      "default": "PrintOrder::Default"
+      "default": "default"
     },
     "print_preset": {
       "type": "coString",
@@ -7028,7 +7840,7 @@
       ],
       "default_type": "Enum<PrintSequence>",
       "default_raw": "PrintSequence::ByLayer",
-      "default": "PrintSequence::ByLayer"
+      "default": "by layer"
     },
     "print_settings_id": {
       "type": "coString",
@@ -7065,8 +7877,13 @@
       "label": "Printable area",
       "mode": "advanced",
       "default_type": "Points",
-      "default_raw": "0, 0",
-      "default": "0, 0"
+      "default_raw": "{Vec2d(0, 0), Vec2d(200, 0), Vec2d(200, 200), Vec2d(0, 200)}",
+      "default": [
+        "0x0",
+        "200x0",
+        "200x200",
+        "0x200"
+      ]
     },
     "printable_height": {
       "type": "coFloat",
@@ -7101,6 +7918,11 @@
       "label": "Printer extruder id",
       "tooltip": "Printer extruder id.",
       "cli": "nocli",
+      "default_type": "Ints",
+      "default_raw": "{1}",
+      "default": [
+        1
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -7111,6 +7933,11 @@
       "label": "Printer's extruder variant",
       "tooltip": "Printer's extruder variant.",
       "cli": "nocli",
+      "default_type": "Strings",
+      "default_raw": "{\"Direct Drive Standard\"}",
+      "default": [
+        "Direct Drive Standard"
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -7180,7 +8007,7 @@
       ],
       "default_type": "Enum<PrinterStructure>",
       "default_raw": "psUndefine",
-      "default": "psUndefine"
+      "default": "undefine"
     },
     "printer_technology": {
       "type": "coEnum",
@@ -7193,7 +8020,7 @@
       ],
       "default_type": "Enum<PrinterTechnology>",
       "default_raw": "ptFFF",
-      "default": "ptFFF",
+      "default": "FFF",
       "mode": "simple",
       "mode_is_default": true
     },
@@ -7238,7 +8065,7 @@
       ],
       "default_type": "Enum<AuthorizationType>",
       "default_raw": "atKeyPassword",
-      "default": "atKeyPassword"
+      "default": "key"
     },
     "printhost_cafile": {
       "type": "coString",
@@ -7422,6 +8249,11 @@
       "line": 2422,
       "label": "Keep fan always on",
       "tooltip": "Enabling this setting means that the part cooling fan will never stop completely and will run at least at minimum speed to reduce the frequency of starting and stopping.",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -7511,7 +8343,12 @@
       "tooltip": "Minimum HRC of nozzle required to print the filament. Zero means no checking of nozzle's HRC.",
       "min": 0,
       "max": 500,
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "Ints",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
     },
     "resolution": {
       "type": "coFloat",
@@ -7544,7 +8381,12 @@
       "label": "Retract amount before wipe",
       "tooltip": "The length of fast retraction before wipe, relative to retraction length.",
       "sidetext": "%",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Percents",
+      "default_raw": "{100}",
+      "default": [
+        100
+      ]
     },
     "retract_length_toolchange": {
       "type": "coFloats",
@@ -7553,7 +8395,12 @@
       "label": "Length",
       "full_label": "Retraction Length (Toolchange)",
       "sidetext": "mm",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{10.}",
+      "default": [
+        10.0
+      ]
     },
     "retract_lift_above": {
       "type": "coFloats",
@@ -7562,7 +8409,12 @@
       "label": "Only lift Z above",
       "tooltip": "If you set this to a positive value, Z lift will only take place above the specified absolute Z.",
       "sidetext": "mm",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.}",
+      "default": [
+        0.0
+      ]
     },
     "retract_lift_below": {
       "type": "coFloats",
@@ -7571,7 +8423,12 @@
       "label": "Only lift Z below",
       "tooltip": "If you set this to a positive value, Z lift will only take place below the specified absolute Z.",
       "sidetext": "mm",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.}",
+      "default": [
+        0.0
+      ]
     },
     "retract_lift_enforce": {
       "type": "coEnums",
@@ -7591,6 +8448,11 @@
         "Top Only",
         "Bottom Only",
         "Top and Bottom"
+      ],
+      "default_type": "EnumsGeneric",
+      "default_raw": "RetractLiftEnforceType ::rletAllSurfaces",
+      "default": [
+        "All Surfaces"
       ]
     },
     "retract_restart_extra": {
@@ -7600,7 +8462,12 @@
       "label": "Extra length on restart",
       "tooltip": "When the retraction is compensated after the travel move, the extruder will push this additional amount of filament. This setting is rarely needed.",
       "sidetext": "mm",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.}",
+      "default": [
+        0.0
+      ]
     },
     "retract_restart_extra_toolchange": {
       "type": "coFloats",
@@ -7609,7 +8476,12 @@
       "label": "Extra length on restart",
       "tooltip": "When the retraction is compensated after changing tool, the extruder will push this additional amount of filament.",
       "sidetext": "mm",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.}",
+      "default": [
+        0.0
+      ]
     },
     "retract_when_changing_layer": {
       "type": "coBools",
@@ -7617,7 +8489,12 @@
       "line": 5195,
       "label": "Retract when change layer",
       "tooltip": "Force a retraction when changes layer.",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ]
     },
     "retraction_distances_when_cut": {
       "type": "coFloats",
@@ -7627,7 +8504,12 @@
       "tooltip": "Experimental feature: Retraction length before cutting off during filament change.",
       "min": 10,
       "max": 18,
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "Floats",
+      "default_raw": "{18}",
+      "default": [
+        18
+      ]
     },
     "retraction_distances_when_ec": {
       "type": "coFloats",
@@ -7637,7 +8519,12 @@
       "sidetext": "mm",
       "min": 0,
       "max": 10,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "FloatsNullable",
+      "default_raw": "{10}",
+      "default": [
+        10
+      ]
     },
     "retraction_length": {
       "type": "coFloats",
@@ -7647,7 +8534,12 @@
       "full_label": "Retraction Length",
       "tooltip": "Some amount of material in extruder is pulled back to avoid ooze during long travel. Set zero to disable retraction.",
       "sidetext": "mm",
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Floats",
+      "default_raw": "{0.8}",
+      "default": [
+        0.8
+      ]
     },
     "retraction_minimum_travel": {
       "type": "coFloats",
@@ -7656,7 +8548,12 @@
       "label": "Travel distance threshold",
       "tooltip": "Only trigger retraction when the travel distance is longer than this threshold.",
       "sidetext": "mm",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{2.}",
+      "default": [
+        2.0
+      ]
     },
     "retraction_speed": {
       "type": "coFloats",
@@ -7666,7 +8563,12 @@
       "full_label": "Retraction Speed",
       "tooltip": "Speed for retracting filament from the nozzle.",
       "sidetext": "mm/s",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{30.}",
+      "default": [
+        30.0
+      ]
     },
     "role_based_wipe_speed": {
       "type": "coBool",
@@ -7840,7 +8742,7 @@
       ],
       "default_type": "Enum<SeamPosition>",
       "default_raw": "spAligned",
-      "default": "spAligned"
+      "default": "aligned"
     },
     "seam_slope_conditional": {
       "type": "coBool",
@@ -7943,7 +8845,7 @@
       ],
       "default_type": "Enum<SeamScarfType>",
       "default_raw": "SeamScarfType::None",
-      "default": "SeamScarfType::None"
+      "default": "none"
     },
     "second": {
       "type": "coInt",
@@ -8211,7 +9113,7 @@
       ],
       "default_type": "Enum<SkirtType>",
       "default_raw": "stCombined",
-      "default": "stCombined"
+      "default": "combined"
     },
     "sla_material_settings_id": {
       "type": "coString",
@@ -8281,7 +9183,7 @@
       ],
       "default_type": "Enum<SlicingMode>",
       "default_raw": "SlicingMode::Regular",
-      "default": "SlicingMode::Regular"
+      "default": "regular"
     },
     "slow_down_for_layer_cooling": {
       "type": "coBools",
@@ -8289,6 +9191,11 @@
       "line": 1858,
       "label": "Slow printing down for better layer cooling",
       "tooltip": "Enable this option to slow printing speed down to make the final layer time not shorter than the layer time threshold in \"Max fan speed threshold\", so that layer can be cooled for longer time. This can improve the cooling quality for needle and small details.",
+      "default_type": "Bools",
+      "default_raw": "{true}",
+      "default": [
+        true
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -8301,7 +9208,12 @@
       "sidetext": "s",
       "min": 0,
       "max": 1000,
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Floats",
+      "default_raw": "{5.0f}",
+      "default": [
+        5.0
+      ]
     },
     "slow_down_layers": {
       "type": "coInt",
@@ -8325,7 +9237,12 @@
       "tooltip": "The minimum print speed to which the printer slows down to maintain the minimum layer time defined above when the slowdown for better layer cooling is enabled.",
       "sidetext": "mm/s",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{10.}",
+      "default": [
+        10.0
+      ]
     },
     "slow_tilt_time": {
       "type": "coFloat",
@@ -8344,7 +9261,10 @@
       "label": "Slow down for curled perimeters",
       "category": "Speed",
       "tooltip": "Enable this option to slow down printing in areas where perimeters may have curled upwards.\nFor example, additional slowdown will be applied when printing overhangs on sharp corners like the front of the Benchy hull, reducing curling which compounds over multiple layers.\n\nIt is generally recommended to have this option switched on unless your printer cooling is powerful enough or the print speed is slow enough that perimeter curling does not happen. \nIf printing with a high external perimeter speed, this parameter may introduce wall artifacts when slowing down, due to the potentially large variance in print speeds causing the extruder to be unable to keep up with the requested flow change.\nRoot cause of these artifacts is most likely PA tuning being slightly off, especially when combined with a high PA smooth time.\n\nRecommendations when enabling this option:\n1. Reduce Pressure Advance smooth time to 0.015 - 0.02 so the extruder reacts quickly to the speed changes.\n2. Increase the minimum print speeds to limit the magnitude of the slowdown and reduce the variance between fast and slow segments.\n3. If artifacts still appear, enable Extrusion Rate Smoothing (ERS) to further smooth the flow transitions.\n\nNote: When this option is enabled, overhang perimeters are treated like overhangs, meaning the overhang speed is applied even if the overhanging perimeter is part of a bridge.\nFor example, when the perimeters are 100% overhanging, with no wall supporting them from underneath, the 100% overhang speed will be applied.",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
     },
     "small_area_infill_flow_compensation": {
       "type": "coBool",
@@ -8364,7 +9284,21 @@
       "line": 4479,
       "label": "Flow Compensation Model",
       "tooltip": "Flow Compensation Model, used to adjust the flow for small infill areas. The model is expressed as a comma separated pair of values for extrusion length and flow correction factor. Each pair is on a separate line, followed by a semicolon, in the following format: \"1.234, 5.678;\"",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Strings",
+      "default_raw": "{\"0,0\", \"\\n0.2,0.4444\", \"\\n0.4,0.6145\", \"\\n0.6,0.7059\", \"\\n0.8,0.7619\", \"\\n1.5,0.8571\", \"\\n2,0.8889\", \"\\n3,0.9231\", \"\\n5,0.9520\", \"\\n10,1\"}",
+      "default": [
+        "0,0",
+        "\\n0.2,0.4444",
+        "\\n0.4,0.6145",
+        "\\n0.6,0.7059",
+        "\\n0.8,0.7619",
+        "\\n1.5,0.8571",
+        "\\n2,0.8889",
+        "\\n3,0.9231",
+        "\\n5,0.9520",
+        "\\n10,1"
+      ]
     },
     "small_perimeter_speed": {
       "type": "coFloatOrPercent",
@@ -8573,7 +9507,7 @@
       ],
       "default_type": "Enum<InfillPattern>",
       "default_raw": "ipCrossHatch",
-      "default": "ipCrossHatch",
+      "default": "crosshatch",
       "mode": "simple",
       "mode_is_default": true
     },
@@ -8706,8 +9640,11 @@
       "mode": "develop",
       "readonly": true,
       "default_type": "Points",
-      "default_raw": "30, -3",
-      "default": "30, -3"
+      "default_raw": "{Vec2d(30, -3), Vec2d(54, 245)}",
+      "default": [
+        "30x-3",
+        "54x245"
+      ]
     },
     "supertack_plate_temp": {
       "type": "coInts",
@@ -8719,6 +9656,11 @@
       "sidetext": "\\u2103Bed temperature",
       "min": 0,
       "max": 120,
+      "default_type": "Ints",
+      "default_raw": "{35}",
+      "default": [
+        35
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -8732,6 +9674,11 @@
       "sidetext": "\\u2103",
       "min": 0,
       "max": 120,
+      "default_type": "Ints",
+      "default_raw": "{35}",
+      "default": [
+        35
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -8808,7 +9755,7 @@
       ],
       "default_type": "Enum<SupportMaterialPattern>",
       "default_raw": "smpDefault",
-      "default": "smpDefault"
+      "default": "default"
     },
     "support_base_pattern_spacing": {
       "type": "coFloat",
@@ -9075,7 +10022,7 @@
       ],
       "default_type": "Enum<SupportMaterialInterfacePattern>",
       "default_raw": "smipAuto",
-      "default": "smipAuto"
+      "default": "auto"
     },
     "support_interface_spacing": {
       "type": "coFloat",
@@ -9178,7 +10125,7 @@
       ],
       "default_type": "Enum<InfillPattern>",
       "default_raw": "ipRectilinear",
-      "default": "ipRectilinear"
+      "default": "rectilinear"
     },
     "support_ironing_spacing": {
       "type": "coFloat",
@@ -9224,7 +10171,12 @@
       "sidetext": "%",
       "min": -1,
       "max": 100,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Ints",
+      "default_raw": "{-1}",
+      "default": [
+        -1
+      ]
     },
     "support_max_bridge_length": {
       "type": "coFloat",
@@ -9337,7 +10289,10 @@
       "line": 698,
       "label": "Support parallel printheads",
       "tooltip": "Enable printer settings for machines that can use multiple printheads in parallel.",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
     },
     "support_pillar_connection_mode": {
       "type": "coEnum",
@@ -9356,7 +10311,7 @@
       ],
       "default_type": "Enum<SLAPillarConnectionMode>",
       "default_raw": "slapcmDynamic",
-      "default": "slapcmDynamic"
+      "default": "dynamic"
     },
     "support_pillar_diameter": {
       "type": "coFloat",
@@ -9468,7 +10423,7 @@
       ],
       "default_type": "Enum<SupportMaterialStyle>",
       "default_raw": "smsDefault",
-      "default": "smsDefault"
+      "default": "default"
     },
     "support_threshold_angle": {
       "type": "coInt",
@@ -9540,7 +10495,7 @@
       ],
       "default_type": "Enum<SupportType>",
       "default_raw": "stNormalAuto",
-      "default": "stNormalAuto"
+      "default": "normal(auto)"
     },
     "supports_enable": {
       "type": "coBool",
@@ -9570,7 +10525,12 @@
       "label": "Softening temperature",
       "tooltip": "The material softens at this temperature, so when the bed temperature is equal to or greater than this, it's highly recommended to open the front door and/or remove the upper glass to avoid clogging.",
       "sidetext": "\\u2103",
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Ints",
+      "default_raw": "{100}",
+      "default": [
+        100
+      ]
     },
     "template_custom_gcode": {
       "type": "coString",
@@ -9593,6 +10553,11 @@
       "sidetext": "\\u2103Bed temperature",
       "min": 0,
       "max": 300,
+      "default_type": "Ints",
+      "default_raw": "{40}",
+      "default": [
+        40
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -9606,6 +10571,11 @@
       "sidetext": "\\u2103",
       "min": 0,
       "max": 120,
+      "default_type": "Ints",
+      "default_raw": "{40}",
+      "default": [
+        40
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -9619,6 +10589,11 @@
       "sidetext": "\\u2103Bed temperature",
       "min": 0,
       "max": 300,
+      "default_type": "Ints",
+      "default_raw": "{45}",
+      "default": [
+        45
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -9632,6 +10607,11 @@
       "sidetext": "\\u2103",
       "min": 0,
       "max": 300,
+      "default_type": "Ints",
+      "default_raw": "{45}",
+      "default": [
+        45
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -9694,7 +10674,7 @@
       ],
       "default_type": "Enum<GCodeThumbnailsFormat>",
       "default_raw": "GCodeThumbnailsFormat::PNG",
-      "default": "GCodeThumbnailsFormat::PNG"
+      "default": "PNG"
     },
     "time_cost": {
       "type": "coFloat",
@@ -9726,9 +10706,17 @@
       "label": "Timelapse",
       "tooltip": "If smooth or traditional mode is selected, a timelapse video will be generated for each print. After each layer is printed, a snapshot is taken with the chamber camera. All of these snapshots are composed into a timelapse video when printing completes. If smooth mode is selected, the toolhead will move to the excess chute after each layer is printed and then take a snapshot. Since the melt filament may leak from the nozzle during the process of taking a snapshot, a prime tower is required for smooth mode to wipe nozzle.",
       "mode": "simple",
+      "enum_values": [
+        "0",
+        "1"
+      ],
+      "enum_labels": [
+        "Traditional",
+        "Smooth"
+      ],
       "default_type": "Enum<TimelapseType>",
       "default_raw": "tlTraditional",
-      "default": "tlTraditional"
+      "default": "0"
     },
     "timestamp": {
       "type": "coString",
@@ -9917,7 +10905,7 @@
       ],
       "default_type": "Enum<InfillPattern>",
       "default_raw": "ipMonotonicLine",
-      "default": "ipMonotonicLine",
+      "default": "monotonicline",
       "mode": "simple",
       "mode_is_default": true
     },
@@ -10026,7 +11014,12 @@
       "sidetext": "°",
       "min": 1,
       "max": 90,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{3}",
+      "default": [
+        3
+      ]
     },
     "travel_speed": {
       "type": "coFloat",
@@ -10359,6 +11352,11 @@
       "group": "fff",
       "line": 2655,
       "label": "Max volumetric speed multinomial coefficients",
+      "default_type": "Strings",
+      "default_raw": "{\"\"}",
+      "default": [
+        ""
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -10380,7 +11378,7 @@
       ],
       "default_type": "Enum<WallDirection>",
       "default_raw": "WallDirection::CounterClockwise",
-      "default": "WallDirection::CounterClockwise"
+      "default": "ccw"
     },
     "wall_distribution_count": {
       "type": "coInt",
@@ -10413,7 +11411,7 @@
       ],
       "default_type": "Enum<PerimeterGeneratorType>",
       "default_raw": "PerimeterGeneratorType::Arachne",
-      "default": "PerimeterGeneratorType::Arachne"
+      "default": "arachne"
     },
     "wall_loops": {
       "type": "coInt",
@@ -10480,7 +11478,7 @@
       ],
       "default_type": "Enum<WallSequence>",
       "default_raw": "WallSequence::InnerOuter",
-      "default": "WallSequence::InnerOuter"
+      "default": "inner wall/outer wall"
     },
     "wall_transition_angle": {
       "type": "coFloat",
@@ -10531,7 +11529,12 @@
       "line": 6794,
       "label": "Wipe while retracting",
       "tooltip": "Move nozzle along the last extrusion path when retracting to clean any leaked material on the nozzle. This can minimize blobs when printing a new part after traveling.",
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ]
     },
     "wipe_before_external_loop": {
       "type": "coBool",
@@ -10553,7 +11556,12 @@
       "tooltip": "Describe how long the nozzle will move along the last path when retracting.\n\nDepending on how long the wipe operation lasts, how fast and long the extruder/filament retraction settings are, a retraction move may be needed to retract the remaining filament.\n\nSetting a value in the retract amount before wipe setting below will perform any excess retraction before the wipe, else it will be performed after.",
       "sidetext": "mm",
       "min": 0,
-      "mode": "advanced"
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{1.}",
+      "default": [
+        1.0
+      ]
     },
     "wipe_on_loops": {
       "type": "coBool",
@@ -10734,9 +11742,17 @@
       "label": "Wipe tower type",
       "tooltip": "Choose the wipe tower implementation for multi-material prints. Type 1 is recommended for Bambu and Qidi printers with a filament cutter. Type 2 offers better compatibility with multi-tool and MMU printers and provide overall better compatibility.",
       "mode": "advanced",
+      "enum_values": [
+        "type1",
+        "type2"
+      ],
+      "enum_labels": [
+        "Type 1",
+        "Type 2"
+      ],
       "default_type": "Enum<WipeTowerType>",
       "default_raw": "WipeTowerType::Type2",
-      "default": "WipeTowerType::Type2"
+      "default": "type2"
     },
     "wipe_tower_wall_type": {
       "type": "coEnum",
@@ -10745,21 +11761,41 @@
       "label": "Wall type",
       "tooltip": "Wipe tower outer wall type.\n1. Rectangle: The default wall type, a rectangle with fixed width and height.\n2. Cone: A cone with a fillet at the bottom to help stabilize the wipe tower.\n3. Rib: Adds four ribs to the tower wall for enhanced stability.",
       "mode": "advanced",
+      "enum_values": [
+        "rectangle",
+        "cone",
+        "rib"
+      ],
+      "enum_labels": [
+        "Rectangle",
+        "Cone",
+        "Rib"
+      ],
       "default_type": "Enum<WipeTowerWallType>",
       "default_raw": "wtwRib",
-      "default": "wtwRib"
+      "default": "rib"
     },
     "wipe_tower_x": {
       "type": "coFloats",
       "group": "fff",
       "line": 6860,
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "Floats",
+      "default_raw": "{15.}",
+      "default": [
+        15.0
+      ]
     },
     "wipe_tower_y": {
       "type": "coFloats",
       "group": "fff",
       "line": 6868,
-      "mode": "develop"
+      "mode": "develop",
+      "default_type": "Floats",
+      "default_raw": "{220.}",
+      "default": [
+        220.0
+      ]
     },
     "wiping_volumes_extruders": {
       "type": "coFloats",
@@ -10767,6 +11803,20 @@
       "line": 6976,
       "label": "Purging volumes - load/unload volumes",
       "tooltip": "This vector saves required volumes to change from/to each tool used on the wipe tower. These values are used to simplify creation of the full purging volumes below.",
+      "default_type": "Floats",
+      "default_raw": "{70., 70., 70., 70., 70., 70., 70., 70., 70., 70.}",
+      "default": [
+        70.0,
+        70.0,
+        70.0,
+        70.0,
+        70.0,
+        70.0,
+        70.0,
+        70.0,
+        70.0,
+        70.0
+      ],
       "mode": "simple",
       "mode_is_default": true
     },
@@ -10847,7 +11897,12 @@
       "sidetext": "mm",
       "min": 0,
       "max": 5,
-      "mode": "simple"
+      "mode": "simple",
+      "default_type": "Floats",
+      "default_raw": "{0.4}",
+      "default": [
+        0.4
+      ]
     },
     "z_hop_types": {
       "type": "coEnums",
@@ -10867,6 +11922,11 @@
         "Normal",
         "Slope",
         "Spiral"
+      ],
+      "default_type": "EnumsGeneric",
+      "default_raw": "ZHopType::zhtSlope",
+      "default": [
+        "Slope Lift"
       ]
     },
     "z_offset": {

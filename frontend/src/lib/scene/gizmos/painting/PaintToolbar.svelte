@@ -1,7 +1,7 @@
 <script lang="ts">
 	// Barre du gizmo de peinture (T056) : canal, outil (pinceau/sphère/
 	// remplissage), état peint (enforcer/blocker) et rayon ajustable. Raccourci
-	// groupe Gizmo : Ctrl/Alt + molette pour le rayon. Présentationnel — le
+	// groupe Gizmo : Ctrl + molette pour le rayon (Alt + molette = plan de coupe, géré par la page). Présentationnel — le
 	// viewport raycaste et applique via `trianglesInRadius` + `TrianglePainting`.
 	import { CHANNELS, type PaintChannel } from './painting';
 	import { ENFORCER, BLOCKER } from './facets';
@@ -26,10 +26,12 @@
 	const MIN_RADIUS = 0.2;
 	const MAX_RADIUS = 20;
 
-	// Ctrl/Alt + molette ajuste le rayon (raccourci groupe Gizmo d'Orca).
+	// Ctrl + molette ajuste le rayon (raccourci groupe Gizmo d'Orca) ; Alt +
+	// molette remonte jusqu'à la page (plan de coupe).
 	function onwheel(e: WheelEvent) {
-		if (!e.ctrlKey && !e.altKey) return;
+		if (!e.ctrlKey) return;
 		e.preventDefault();
+		e.stopPropagation();
 		const step = e.deltaY < 0 ? 0.2 : -0.2;
 		radius = Math.min(MAX_RADIUS, Math.max(MIN_RADIUS, Math.round((radius + step) * 10) / 10));
 	}
@@ -38,10 +40,7 @@
 <div class="flex flex-col gap-2 text-sm" role="toolbar" tabindex="0" {onwheel}>
 	<label class="flex items-center gap-2">
 		<span class="w-16 text-content-muted">Canal</span>
-		<select
-			bind:value={channel}
-			class="rounded border border-border-strong bg-surface-raised px-1 py-0.5"
-		>
+		<select bind:value={channel} class="ws-field ws-field-sm">
 			{#each CHANNELS as c (c)}
 				<option value={c}>{CHANNEL_LABELS[c]}</option>
 			{/each}
@@ -53,10 +52,9 @@
 		{#each tools as t (t)}
 			<button
 				type="button"
-				class="rounded border border-border-strong px-2 py-0.5 {tool === t
-					? 'bg-primary text-primary-content'
-					: 'bg-surface-sunken'}"
+				class="ws-chip {tool === t ? 'ws-chip-on' : ''}"
 				aria-pressed={tool === t}
+				data-testid={`paint-tool-${t}`}
 				onclick={() => (tool = t)}>{PAINT_TOOL_LABELS[t]}</button
 			>
 		{/each}
@@ -67,16 +65,16 @@
 			<span class="w-16 text-content-muted">Peindre</span>
 			<button
 				type="button"
-				class="rounded border border-border-strong px-2 py-0.5 {state === ENFORCER
-					? 'bg-success text-white'
-					: 'bg-surface-sunken'}"
+				class="ws-chip {state === ENFORCER
+					? 'bg-success text-primary-content border-transparent'
+					: ''}"
 				onclick={() => (state = ENFORCER)}>Forcer</button
 			>
 			<button
 				type="button"
-				class="rounded border border-border-strong px-2 py-0.5 {state === BLOCKER
-					? 'bg-danger text-white'
-					: 'bg-surface-sunken'}"
+				class="ws-chip {state === BLOCKER
+					? 'bg-danger text-primary-content border-transparent'
+					: ''}"
 				onclick={() => (state = BLOCKER)}>Bloquer</button
 			>
 		</div>
@@ -88,7 +86,7 @@
 				min={1}
 				step={1}
 				bind:value={state}
-				class="w-16 rounded border border-border-strong bg-surface-raised px-1 text-right"
+				class="ws-field ws-field-sm w-16 text-right"
 				aria-label="Index d'extrudeur"
 			/>
 		</label>
@@ -107,6 +105,8 @@
 			/>
 			<span class="w-10 text-right text-content-muted">{radius.toFixed(1)}</span>
 		</label>
-		<p class="text-xs text-content-subtle">Ctrl/Alt + molette : ajuster le rayon</p>
+		<p class="text-xs text-content-subtle">
+			Ctrl + molette : rayon · Alt + molette : plan de coupe
+		</p>
 	{/if}
 </div>

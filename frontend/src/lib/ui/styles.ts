@@ -13,33 +13,50 @@ export function cx(...parts: (string | false | null | undefined)[]): string {
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 export type ButtonSize = 'sm' | 'md';
 
-const BUTTON_BASE =
-	'inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-50 disabled:pointer-events-none';
+/** Anneau de focus clavier commun à toutes les primitives (WCAG 2.4.7). */
+export const FOCUS_RING =
+	'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-1 focus-visible:ring-offset-surface-raised';
 
-const BUTTON_SIZE: Record<ButtonSize, string> = {
-	sm: 'px-2.5 py-1 text-sm',
-	md: 'px-4 py-2 text-sm'
+/** Anneau intérieur pour les éléments accolés (segments, onglets). */
+export const FOCUS_RING_INSET =
+	'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent';
+
+// Les recettes visuelles vivent dans `routes/layout.css` (@layer components :
+// .ws-btn, .ws-btn-<variante>, .ws-btn-<taille>) : une seule source pour les
+// composants Svelte ET le balisage brut des écrans.
+
+export type ButtonSizeFull = ButtonSize | 'lg';
+
+const BUTTON_SIZE: Record<ButtonSizeFull, string> = {
+	sm: 'ws-btn-sm',
+	md: '',
+	lg: 'ws-btn-lg'
 };
 
-const BUTTON_VARIANT: Record<ButtonVariant, string> = {
-	primary: 'bg-primary text-primary-content hover:bg-primary-hover',
-	secondary: 'border border-border-strong bg-surface-raised text-content hover:bg-overlay',
-	ghost: 'text-content-muted hover:bg-overlay hover:text-content',
-	danger: 'bg-danger text-white hover:opacity-90'
-};
-
-/** Classes d'un bouton selon sa variante et sa taille. */
-export function buttonClasses(variant: ButtonVariant = 'primary', size: ButtonSize = 'md'): string {
-	return cx(BUTTON_BASE, BUTTON_SIZE[size], BUTTON_VARIANT[variant]);
+/** Classes d'un bouton selon sa variante et sa taille (hauteurs 28/32/40 px). */
+export function buttonClasses(
+	variant: ButtonVariant = 'primary',
+	size: ButtonSizeFull = 'md'
+): string {
+	return cx('ws-btn', BUTTON_SIZE[size], `ws-btn-${variant}`, FOCUS_RING);
 }
 
-/** Classes d'un bouton-icône (carré) : même palette, padding uniforme. */
+/** Classes d'un bouton-icône (carré) : même palette, même hauteur que le bouton. */
 export function iconButtonClasses(
 	variant: ButtonVariant = 'ghost',
 	size: ButtonSize = 'md'
 ): string {
-	const pad = size === 'sm' ? 'p-1' : 'p-1.5';
-	return cx(BUTTON_BASE, pad, BUTTON_VARIANT[variant]);
+	return cx(
+		'ws-icon-btn',
+		size === 'sm' && 'ws-icon-btn-sm',
+		variant !== 'ghost' && `ws-btn-${variant}`,
+		FOCUS_RING
+	);
+}
+
+/** Classes d'un champ (input/select/textarea) selon la taille. */
+export function fieldClasses(size: ButtonSizeFull = 'md'): string {
+	return cx('ws-field', size === 'sm' && 'ws-field-sm', size === 'lg' && 'ws-field-lg');
 }
 
 // --- Banner ------------------------------------------------------------------
@@ -60,24 +77,21 @@ export function bannerClasses(tone: BannerTone = 'info'): string {
 	return cx(BANNER_BASE, BANNER_TONE[tone]);
 }
 
-// --- Segmented control -------------------------------------------------------
+// --- Segmented control / Tabs / Outils --------------------------------------
+// Recettes .ws-seg-item / .ws-tab / .ws-tool (layout.css) : mêmes classes pour
+// les composants et les écrans (modes d'affichage, onglets, rail d'outils).
 
 /** Classe d'un segment (option) : actif = primaire, sinon discret. */
 export function segmentClasses(active: boolean): string {
-	return cx(
-		'px-3 py-1 text-sm transition-colors',
-		active ? 'bg-primary text-primary-content' : 'text-content-muted hover:bg-overlay'
-	);
+	return cx('ws-seg-item', active && 'ws-seg-on');
 }
-
-// --- Tabs --------------------------------------------------------------------
 
 /** Classe d'un onglet : actif = souligné accentué, sinon discret. */
 export function tabClasses(active: boolean): string {
-	return cx(
-		'flex-1 px-3 py-2 text-sm transition-colors',
-		active
-			? 'border-b-2 border-primary font-medium text-primary'
-			: 'text-content-muted hover:text-content'
-	);
+	return cx('ws-tab flex-1', active && 'ws-tab-on');
+}
+
+/** Classe d'un bouton d'outil (rail, barre flottante). */
+export function toolClasses(active: boolean, size: 'sm' | 'md' = 'md'): string {
+	return cx('ws-tool', size === 'sm' && 'ws-tool-sm', active && 'ws-tool-on', FOCUS_RING);
 }

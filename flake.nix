@@ -37,14 +37,28 @@
           ];
         };
 
+        # Correctifs de déterminisme appliqués à libslic3r (moteur). Ex. :
+        # FillConcentricInternal lisait des champs non initialisés de
+        # WallToolPathsParams (démontré par Valgrind).
+        orcaDeterminismPatches = [
+          ./patches/orca-fill-concentric-internal-init-params.patch
+        ];
+
+        # Le CLI Orca (oracle) reste celui de nixpkgs : le patcher imposerait une
+        # recompilation complète d'OrcaSlicer (GUI incluse) pour le devShell, alors
+        # que les refs golden sont figées et capturent déjà la branche déterministe.
         orca = pkgs.orca-slicer;
 
         selfPkgs = self.packages.${pkgs.system};
 
-        libslic3r = orca.overrideAttrs (old: {
+        # Basé sur pkgs.orca-slicer (non patché) : les correctifs de
+        # déterminisme sont ajoutés explicitement ici, sans double application.
+        libslic3r = pkgs.orca-slicer.overrideAttrs (old: {
           pname = "libslic3r-headless";
 
-          patches = builtins.filter (p: !(lib.hasInfix "webkit" (baseNameOf (toString p)))) old.patches;
+          patches =
+            builtins.filter (p: !(lib.hasInfix "webkit" (baseNameOf (toString p)))) old.patches
+            ++ orcaDeterminismPatches;
 
           cmakeFlags = old.cmakeFlags ++ [
             (lib.cmakeBool "SLIC3R_GUI" false)
@@ -162,6 +176,10 @@
 
             # --- Vérification / agent ---
             pkgs.playwright-driver
+            # Harness oracle : générateurs de fixtures/références et Orca CLI
+            # headless (le binaire GUI peut sinon seg-faulter sans DISPLAY).
+            pkgs.python3
+            pkgs.xvfb-run
             pkgs.jq
             pkgs.git
           ];

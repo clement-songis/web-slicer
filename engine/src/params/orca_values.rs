@@ -10,7 +10,13 @@ use super::{ParamDef, ParamKind};
 /// `None` si la valeur est invalide pour ce type.
 pub fn parse_orca_value(def: &ParamDef, s: &str) -> Option<ConfigValue> {
     use ParamKind as K;
-    let s = s.trim();
+    // Les chaînes Orca (notamment les G-code personnalisés) sont sensibles aux
+    // espaces et retours à la ligne. Seules les valeurs numériques/vectorielles
+    // sont normalisées par trim.
+    let s = match def.kind {
+        K::String | K::Enum | K::Strings | K::Enums => s,
+        _ => s.trim(),
+    };
     match def.kind {
         K::Float => parse_float(s).map(ConfigValue::Float),
         K::Int => s.parse().ok().map(ConfigValue::Int),
@@ -55,19 +61,76 @@ pub fn parse_orca_value(def: &ParamDef, s: &str) -> Option<ConfigValue> {
             .map(|t| t.parse().ok())
             .collect::<Option<Vec<i64>>>()
             .map(ConfigValue::Ints),
-        K::Bools => split_vector(s)
-            .map(parse_bool)
-            .collect::<Option<Vec<bool>>>()
-            .map(ConfigValue::Bools),
-        K::Strings | K::Enums => Some(ConfigValue::Strings(
-            split_strings(s).map(|t| unquote(t).to_string()).collect(),
-        )),
+        // `ConfigOptionBoolsTempl<NULLABLE>::deserialize` : éléments séparés
+        // par `,`, `nil` admis seulement si nullable (sinon erreur). Comme pour
+        // les flottants, la variante nullable n'est produite qu'en présence
+        // d'un `nil` : longueur et indices multi-filament sont conservés.
+        K::Bools => {
+            if def.nullable && split_vector(s).any(|t| t == "nil") {
+                split_vector(s)
+                    .map(|t| {
+                        if t == "nil" {
+                            Some(None)
+                        } else {
+                            parse_bool(t).map(Some)
+                        }
+                    })
+                    .collect::<Option<Vec<Option<bool>>>>()
+                    .map(ConfigValue::BoolsNullable)
+            } else {
+                split_vector(s)
+                    .map(parse_bool)
+                    .collect::<Option<Vec<bool>>>()
+                    .map(ConfigValue::Bools)
+            }
+        }
+        K::Enums => parse_enums(def, s).map(ConfigValue::Strings),
+        K::Strings => {
+            if def.nullable && s.trim() == "nil" {
+                Some(ConfigValue::Strings(Vec::new()))
+            } else {
+                Some(ConfigValue::Strings(
+                    split_strings(s)
+                        .into_iter()
+                        .map(|t| unquote(t).to_string())
+                        .collect(),
+                ))
+            }
+        }
         K::Point => parse_point(s).map(ConfigValue::Point),
         K::Points | K::PointsGroups => split_vector(s)
             .map(parse_point)
             .collect::<Option<Vec<Vec<f64>>>>()
             .map(ConfigValue::Points),
     }
+}
+
+/// `ConfigOptionEnumsGenericTempl<NULLABLE>::deserialize` : éléments séparés
+/// par `,` et trimés, `nil` = élément nil (seulement si nullable). Le jeton
+/// `nil` est conservé tel quel dans le vecteur : aucune valeur d'enum Orca ne
+/// peut s'appeler `nil` (mot réservé par le désérialiseur), la représentation
+/// est donc non ambiguë et préserve longueur et indices multi-filament.
+///
+/// Accepte aussi la forme interne `"A";"B"` (tableaux JSON de presets/snapshots
+/// joints par `;` avec guillemets) : un segment entre guillemets est un
+/// élément unique, un segment nu est re-découpé sur `,`.
+fn parse_enums(def: &ParamDef, s: &str) -> Option<Vec<String>> {
+    let mut out = Vec::new();
+    for part in split_strings(s) {
+        let quoted = part.len() >= 2 && part.starts_with('"') && part.ends_with('"');
+        let items: Vec<String> = if quoted {
+            vec![unquote(part).trim().to_string()]
+        } else {
+            part.split(',').map(|t| t.trim().to_string()).collect()
+        };
+        for item in items {
+            if item == "nil" && !def.nullable {
+                return None; // Orca : « Deserializing nil into a non-nullable object »
+            }
+            out.push(item);
+        }
+    }
+    Some(out)
 }
 
 /// Sérialise une valeur au format texte Orca (inverse de `parse_orca_value`).
@@ -86,6 +149,11 @@ pub fn serialize_orca_value(value: &ConfigValue) -> String {
         ConfigValue::String(s) => s.clone(),
         ConfigValue::Point(p) => serialize_point(p),
         ConfigValue::Bools(v) => join(v.iter().map(|b| if *b { "1".into() } else { "0".into() })),
+        ConfigValue::BoolsNullable(v) => join(v.iter().map(|b| match b {
+            Some(true) => "1".into(),
+            Some(false) => "0".into(),
+            None => "nil".into(),
+        })),
         ConfigValue::Ints(v) => join(v.iter().map(|i| i.to_string())),
         ConfigValue::Floats(v) => join(v.iter().map(|x| format_float(*x))),
         ConfigValue::FloatsNullable(v) => {
@@ -109,6 +177,16 @@ pub fn serialize_orca_value(value: &ConfigValue) -> String {
 /// mais la fidélité évite toute divergence latente et garde l'interop 3MF valide.
 pub fn serialize_orca_value_for(def: &ParamDef, value: &ConfigValue) -> String {
     use ParamKind as K;
+    if def.kind == K::Enums {
+        return match value {
+            // Héritage : l'ancien parseur rendait `nil` en `Strings([])` ; un
+            // vecteur vide déjà persisté repart donc en `nil` (un élément nil)
+            // plutôt qu'en chaîne vide (vecteur vide, invalide pour Orca).
+            ConfigValue::Strings(values) if values.is_empty() && def.nullable => "nil".into(),
+            ConfigValue::Strings(values) => values.join(","),
+            other => serialize_orca_value(other),
+        };
+    }
     let raw = serialize_orca_value(value);
     match def.kind {
         K::Percent => ensure_percent(&raw),
@@ -171,14 +249,62 @@ fn split_vector(s: &str) -> impl Iterator<Item = &str> {
 
 /// Les vecteurs de chaînes Orca sont séparés par `;` (avec guillemets
 /// optionnels) ; les scalars multilignes ne passent pas par ici.
-fn split_strings(s: &str) -> impl Iterator<Item = &str> {
-    s.split(';').map(str::trim).filter(|t| !t.is_empty())
+fn split_strings(s: &str) -> Vec<&str> {
+    let mut out = Vec::new();
+    let mut start = 0;
+    let mut quoted = false;
+    let mut escaped = false;
+    for (index, ch) in s.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        match ch {
+            '\\' if quoted => escaped = true,
+            '"' => quoted = !quoted,
+            ';' if !quoted => {
+                let part = s[start..index].trim();
+                if !part.is_empty() {
+                    out.push(part);
+                }
+                start = index + 1;
+            }
+            _ => {}
+        }
+    }
+    let part = s[start..].trim();
+    if !part.is_empty() {
+        out.push(part);
+    }
+    out
 }
 
-fn unquote(s: &str) -> &str {
-    s.strip_prefix('"')
+fn unquote(s: &str) -> String {
+    let inner = s
+        .strip_prefix('"')
         .and_then(|t| t.strip_suffix('"'))
-        .unwrap_or(s)
+        .unwrap_or(s);
+    let mut out = String::with_capacity(inner.len());
+    let mut chars = inner.chars();
+    while let Some(ch) = chars.next() {
+        if ch != '\\' {
+            out.push(ch);
+            continue;
+        }
+        match chars.next() {
+            Some('n') => out.push('\n'),
+            Some('r') => out.push('\r'),
+            Some('t') => out.push('\t'),
+            Some('\\') => out.push('\\'),
+            Some('"') => out.push('"'),
+            Some(other) => {
+                out.push('\\');
+                out.push(other);
+            }
+            None => out.push('\\'),
+        }
+    }
+    out
 }
 
 #[cfg(test)]
@@ -258,6 +384,102 @@ mod tests {
     }
 
     #[test]
+    fn preserves_custom_gcode_comments_and_newlines() {
+        let def = get("filament_start_gcode").unwrap();
+        assert_eq!(
+            parse_orca_value(def, "\"; Filament gcode\\n\""),
+            Some(ConfigValue::Strings(vec!["; Filament gcode\n".into()]))
+        );
+    }
+
+    #[test]
+    fn nullable_enum_nil_keeps_length_and_indices() {
+        let def = get("filament_z_hop_types").unwrap();
+        // Un seul filament nil : un élément, pas un vecteur vide.
+        assert_eq!(
+            parse_orca_value(def, "nil"),
+            Some(ConfigValue::Strings(vec!["nil".into()]))
+        );
+        // Forme Orca native (`opt_serialize`) : séparateur `,`, trim.
+        let v = parse_orca_value(def, "Normal Lift, nil,Spiral Lift").unwrap();
+        assert_eq!(
+            v,
+            ConfigValue::Strings(vec![
+                "Normal Lift".into(),
+                "nil".into(),
+                "Spiral Lift".into()
+            ])
+        );
+        assert_eq!(
+            serialize_orca_value_for(def, &v),
+            "Normal Lift,nil,Spiral Lift"
+        );
+        // Forme interne des tableaux JSON joints (`"A";"nil"`).
+        assert_eq!(
+            parse_orca_value(def, "\"nil\";\"Slope Lift\""),
+            Some(ConfigValue::Strings(vec![
+                "nil".into(),
+                "Slope Lift".into()
+            ]))
+        );
+        let enforce = get("filament_retract_lift_enforce").unwrap();
+        let v = parse_orca_value(enforce, "nil,nil").unwrap();
+        assert_eq!(v, ConfigValue::Strings(vec!["nil".into(), "nil".into()]));
+        assert_eq!(serialize_orca_value_for(enforce, &v), "nil,nil");
+    }
+
+    #[test]
+    fn non_nullable_enums_reject_nil_and_split_on_commas() {
+        let def = get("extruder_type").unwrap();
+        assert!(!def.nullable);
+        assert_eq!(parse_orca_value(def, "nil"), None);
+        assert_eq!(
+            parse_orca_value(def, "Direct Drive,Bowden"),
+            Some(ConfigValue::Strings(vec![
+                "Direct Drive".into(),
+                "Bowden".into()
+            ]))
+        );
+    }
+
+    #[test]
+    fn nullable_bools_with_nil() {
+        let def = get("filament_wipe").unwrap();
+        let v = parse_orca_value(def, "1, nil,0").unwrap();
+        assert_eq!(
+            v,
+            ConfigValue::BoolsNullable(vec![Some(true), None, Some(false)])
+        );
+        assert_eq!(serialize_orca_value(&v), "1,nil,0");
+        assert_eq!(serialize_orca_value_for(def, &v), "1,nil,0");
+        assert_eq!(
+            roundtrip("filament_retract_when_changing_layer", "nil"),
+            "nil"
+        );
+        // Sans nil, la forme historique `Bools` est conservée.
+        assert_eq!(
+            parse_orca_value(def, "1,0"),
+            Some(ConfigValue::Bools(vec![true, false]))
+        );
+        // Forme snapshot backend (`true`/`false`/`nil`).
+        assert_eq!(
+            parse_orca_value(
+                get("filament_long_retractions_when_cut").unwrap(),
+                "true,nil"
+            ),
+            Some(ConfigValue::BoolsNullable(vec![Some(true), None]))
+        );
+    }
+
+    #[test]
+    fn non_nullable_bools_reject_nil() {
+        let def = get("filament_soluble").unwrap();
+        assert!(!def.nullable);
+        assert_eq!(parse_orca_value(def, "1,nil"), None);
+        assert_eq!(parse_orca_value(def, "1,x"), None);
+    }
+
+    #[test]
     fn invalid_value_rejected() {
         let def = get("layer_height").unwrap();
         assert_eq!(parse_orca_value(def, "abc"), None);
@@ -275,5 +497,17 @@ mod tests {
         let lh = get("layer_height").unwrap();
         let hv = parse_orca_value(lh, "0.2").unwrap();
         assert_eq!(serialize_orca_value_for(lh, &hv), "0.2");
+    }
+
+    #[test]
+    fn enums_are_serialized_without_string_quotes() {
+        let def = get("z_hop_types").unwrap();
+        let value = ConfigValue::Strings(vec!["Normal Lift".into()]);
+        assert_eq!(serialize_orca_value_for(def, &value), "Normal Lift");
+        let nullable = get("filament_z_hop_types").unwrap();
+        assert_eq!(
+            serialize_orca_value_for(nullable, &ConfigValue::Strings(Vec::new())),
+            "nil"
+        );
     }
 }

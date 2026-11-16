@@ -106,6 +106,8 @@ export type ParamCase = {
 	section?: string;
 	scope?: Scope;
 	requires?: Record<string, string | string[]>;
+	/** Modèle de fixtures propre au cas (défaut : oracle.json param_model). */
+	model?: string;
 };
 
 /** Niveaux de visibilité Orca (ConfigOptionMode) : une option de niveau N est visible à partir du mode N. */
@@ -121,8 +123,11 @@ export async function openSettings(page: Page, scope: Scope) {
 	if (await dialog.isVisible()) return dialog;
 	if (scope === 'plate') await page.getByTestId('plate-settings-button').first().click();
 	else if (scope === 'object') {
+		// Réglages par objet : panneau latéral (pas un dialogue), comme Orca.
 		await page.getByTestId('object-row').first().click();
-		await page.getByTestId('object-settings-button').click();
+		const panel = page.getByTestId('object-settings-panel');
+		await expect(panel).toBeVisible();
+		return panel;
 	} else await page.getByTestId(`open-settings-${scope}`).click();
 	await expect(dialog).toBeVisible();
 	return dialog;
@@ -135,6 +140,16 @@ export async function setMode(page: Page, mode: string) {
 /** Ligne `[data-param=key]` dans l'onglet Orca, au mode demandé (expert par défaut). */
 export async function paramRow(page: Page, scope: Scope, tab: string | undefined, key: string, mode = 'develop') {
 	const dialog = await openSettings(page, scope);
+	if (scope === 'object') {
+		// Une surcharge d'objet n'existe qu'une fois ajoutée via « + Réglage ».
+		const row = dialog.locator(`[data-param="${key}"]`);
+		if (!(await row.count())) {
+			await dialog.getByTestId('object-settings-add').click();
+			await dialog.getByTestId('object-settings-search').fill(key);
+			await dialog.locator(`[data-testid="object-settings-result"][data-key="${key}"]`).click();
+		}
+		return row;
+	}
 	await setMode(page, mode);
 	if (tab) {
 		const tabBtn = dialog.getByTestId(`settings-tab-${slug(tab)}`);

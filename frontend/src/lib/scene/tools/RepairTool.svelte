@@ -32,7 +32,7 @@
 <div class="flex flex-col gap-2 text-sm">
 	<button
 		type="button"
-		class="self-start rounded bg-primary px-3 py-1 text-white hover:bg-primary-hover disabled:opacity-50"
+		class="ws-btn ws-btn-primary self-start"
 		disabled={loading}
 		onclick={analyze}>{loading ? 'Analyse…' : 'Analyser le maillage'}</button
 	>

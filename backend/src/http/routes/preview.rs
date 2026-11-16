@@ -58,6 +58,55 @@ pub async fn meta(
     Ok(Json(PreviewMeta::from(summary)))
 }
 
+/// Résultat GCodeProcessor d'Orca du G-code d'un compte (404 si autre compte).
+async fn processed_for(
+    state: &AppState,
+    gcode_id: GcodeId,
+    user: crate::domain::UserId,
+) -> ApiResult<std::sync::Arc<engine::api::gcode_process::ProcessedGcode>> {
+    let gcode = state.storage.gcodes().get(user, gcode_id).await?; // 404, SC-008
+    crate::engine::gcode_process::processed(FsPath::new(&gcode.file_path))
+        .await
+        .map_err(|e| {
+            tracing::warn!(error = %e, "GCodeProcessor (préviz)");
+            ApiError::conversion_failed("simulation du G-code par le moteur impossible")
+        })
+}
+
+/// `GET /api/gcodes/{id}/preview/processed/meta` — résumé GCodeProcessor :
+/// couches (cote, plage de mouvements, temps Normal/Silencieux), temps par
+/// rôle / extrudeur / déplacements, estimations, volumes, G-code personnalisés.
+pub async fn processed_meta(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let id = parse_gcode_id(&id)?;
+    let p = processed_for(&state, id, user.id).await?;
+    Ok(Json(p.meta.clone()))
+}
+
+/// `GET /api/gcodes/{id}/preview/processed/moves?from=&to=` — mouvements
+/// simulés d'une plage de couches (format binaire `WSPm`, cf. engine::api::gcode_process).
+pub async fn processed_moves(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Query(range): Query<LayerRange>,
+) -> ApiResult<Response> {
+    let id = parse_gcode_id(&id)?;
+    let p = processed_for(&state, id, user.id).await?;
+    let from = range.from.unwrap_or(0);
+    let to = range.to.unwrap_or(usize::MAX);
+    let buffer = p.encode_range(from, to);
+    Ok((
+        StatusCode::OK,
+        [(header::CONTENT_TYPE, "application/octet-stream")],
+        buffer,
+    )
+        .into_response())
+}
+
 /// Plage de couches demandée (indices inclusifs ; bornes optionnelles).
 #[derive(Debug, Deserialize)]
 pub struct LayerRange {

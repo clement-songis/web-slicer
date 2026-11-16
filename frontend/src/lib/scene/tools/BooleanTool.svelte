@@ -1,17 +1,28 @@
+<script lang="ts" module>
+	export type BooleanOp = 'union' | 'difference' | 'intersection';
+</script>
+
 <script lang="ts">
 	// Outil d'opérations booléennes (T055) : union / différence / intersection
-	// sur la sélection. Le calcul CSG fidèle est délégué au moteur libslic3r via
-	// le worker FFI (non câblé — phase P5) : le composant choisit l'opération et
-	// l'émet, mais reste désactivé tant que l'endpoint moteur n'est pas exposé.
-	export type BooleanOp = 'union' | 'difference' | 'intersection';
-
+	// entre deux objets sélectionnés (A = premier sélectionné, B = second). Le
+	// calcul est fait par mcut (`MeshBoolean::mcut::make_boolean`) dans le worker
+	// moteur via `POST /api/projects/{id}/boolean` ; le composant choisit
+	// l'opération et l'émet.
 	interface Props {
 		onapply: (op: BooleanOp) => void;
-		/** Vrai quand l'endpoint booléen moteur est disponible (phase P5). */
+		/** Vrai quand l'opération est applicable (deux objets prêts sélectionnés). */
 		available?: boolean;
+		/** Raison affichée quand l'opération n'est pas applicable. */
+		hint?: string;
+		busy?: boolean;
 	}
 
-	let { onapply, available = false }: Props = $props();
+	let {
+		onapply,
+		available = false,
+		hint = 'Sélectionnez deux objets (A puis B).',
+		busy = false
+	}: Props = $props();
 
 	let op = $state<BooleanOp>('union');
 	const ops: BooleanOp[] = ['union', 'difference', 'intersection'];
@@ -25,10 +36,7 @@
 <div class="flex flex-col gap-2 text-sm">
 	<label class="flex items-center gap-2">
 		<span class="text-content-muted">Opération</span>
-		<select
-			bind:value={op}
-			class="rounded border border-border-strong bg-surface-raised px-1 py-0.5"
-		>
+		<select data-testid="boolean-op" bind:value={op} class="ws-field ws-field-sm">
 			{#each ops as key (key)}
 				<option value={key}>{labels[key]}</option>
 			{/each}
@@ -37,12 +45,13 @@
 
 	<button
 		type="button"
-		class="self-start rounded bg-primary px-3 py-1 text-white hover:bg-primary-hover disabled:opacity-50"
-		disabled={!available}
+		class="ws-btn ws-btn-primary self-start"
+		data-testid="boolean-apply"
+		disabled={!available || busy}
 		onclick={() => onapply(op)}>Appliquer</button
 	>
 
 	{#if !available}
-		<p class="text-content-subtle">Nécessite le moteur (à venir).</p>
+		<p class="text-content-subtle">{hint}</p>
 	{/if}
 </div>

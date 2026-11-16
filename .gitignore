@@ -29,3 +29,7 @@ Thumbs.db
 # Harness autonome (état autoritaire hors dépôt : $HARNESS_STATE)
 harness/logs/
 harness/features.json
+
+# Caches moteur générés à côté des modèles
+*.raw-*.json
+*.wspg

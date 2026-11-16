@@ -4,6 +4,7 @@
 use glam::DMat4;
 use serde::{Deserialize, Serialize};
 
+use super::config::DynamicPrintConfig;
 use super::mesh::TriangleMesh;
 
 /// Format d'un fichier modèle importable (FR-010).
@@ -58,6 +59,39 @@ pub struct ModelVolume {
     pub role: VolumeRole,
     /// Extrudeur/filament attribué (None = héritage objet, FR-015).
     pub extruder: Option<u16>,
+    /// Peintures au triangle (format 3MF Orca), transmises au slicing.
+    #[serde(default, skip_serializing_if = "VolumePaint::is_empty")]
+    pub paint: VolumePaint,
+    /// Surcharges `ModelVolume.config` (réglages d'un modificateur, FR-015).
+    #[serde(default)]
+    pub settings: DynamicPrintConfig,
+}
+
+/// Canal de peinture d'un volume (miroir des `FacetsAnnotation` de `ModelVolume`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PaintChannel {
+    /// `supported_facets` (3MF `slic3rpe:custom_supports`).
+    Supports,
+    /// `seam_facets` (`slic3rpe:custom_seam`).
+    Seam,
+    /// `mmu_segmentation_facets` (`slic3rpe:mmu_segmentation`).
+    Mmu,
+    /// `fuzzy_skin_facets` (`slic3rpe:fuzzy_skin`).
+    Fuzzy,
+}
+
+/// Facettes peintes d'un volume : (canal, indice de triangle, état sérialisé Orca
+/// en hexadécimal, cf. `FacetsAnnotation::set_triangle_from_string`).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct VolumePaint {
+    pub facets: Vec<(PaintChannel, u32, String)>,
+}
+
+impl VolumePaint {
+    pub fn is_empty(&self) -> bool {
+        self.facets.is_empty()
+    }
 }
 
 /// Occurrence d'un objet sur le plateau.
@@ -66,6 +100,13 @@ pub struct ModelInstance {
     pub matrix: DMat4,
     /// Plateau d'appartenance (multi-plateaux, FR-014).
     pub plate_index: u32,
+    /// `ModelInstance::printable` d'Orca : false exclut l'occurrence du slicing.
+    #[serde(default = "default_printable")]
+    pub printable: bool,
+}
+
+const fn default_printable() -> bool {
+    true
 }
 
 /// Objet imprimable : volumes + instances.
@@ -74,12 +115,95 @@ pub struct ModelObject {
     pub name: String,
     pub volumes: Vec<ModelVolume>,
     pub instances: Vec<ModelInstance>,
+    /// Surcharges `ModelObject.config`, appliquées avant le slicing.
+    pub settings: DynamicPrintConfig,
+    /// Profil variable : vecteur plat `<z, hauteur>` d'Orca.
+    pub layer_height_profile: Vec<f64>,
+    /// Plages de hauteur à réglages propres (`ModelObject::layer_config_ranges`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub layer_config_ranges: Vec<LayerConfigRange>,
+}
+
+/// Plage `[min_z, max_z]` (mm, objet posé) et ses surcharges de réglages,
+/// miroir d'une entrée de `ModelObject::layer_config_ranges` d'Orca.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LayerConfigRange {
+    pub min_z: f64,
+    pub max_z: f64,
+    #[serde(default)]
+    pub settings: DynamicPrintConfig,
 }
 
 /// Scène complète (miroir `Model`).
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct Model {
     pub objects: Vec<ModelObject>,
+    /// G-code personnalisés par couche et par plateau (`Model::plates_custom_gcodes`
+    /// d'Orca : changement de couleur, pause, G-code perso — curseur de couches).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub custom_gcodes: Vec<PlateCustomGcodes>,
+}
+
+/// `CustomGCode::Type` d'Orca (même ordre).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CustomGcodeKind {
+    ColorChange,
+    PausePrint,
+    ToolChange,
+    Template,
+    Custom,
+}
+
+/// `CustomGCode::Item`.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CustomGcodeItem {
+    /// Cote (mm) de la couche après laquelle le code est inséré.
+    pub print_z: f64,
+    pub kind: CustomGcodeKind,
+    /// Extrudeur (1-based) pour changement de couleur / d'outil.
+    #[serde(default = "one")]
+    pub extruder: i32,
+    #[serde(default)]
+    pub color: String,
+    /// Texte de la pause ou G-code personnalisé.
+    #[serde(default)]
+    pub extra: String,
+}
+
+fn one() -> i32 {
+    1
+}
+
+/// `CustomGCode::Mode` (choisi par Orca selon le nombre d'extrudeurs).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CustomGcodeMode {
+    #[default]
+    SingleExtruder,
+    MultiAsSingle,
+    MultiExtruder,
+}
+
+/// `CustomGCode::Info` d'un plateau.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PlateCustomGcodes {
+    pub plate_index: u32,
+    #[serde(default)]
+    pub mode: CustomGcodeMode,
+    pub items: Vec<CustomGcodeItem>,
+}
+
+impl CustomGcodeItem {
+    pub fn validate(&self) -> Result<(), String> {
+        if !(self.print_z.is_finite() && self.print_z > 0.0 && self.print_z < 10_000.0) {
+            return Err("cote de G-code personnalisé invalide".into());
+        }
+        if self.extra.len() > 4096 || self.color.len() > 32 || !(1..=64).contains(&self.extruder) {
+            return Err("G-code personnalisé hors bornes".into());
+        }
+        Ok(())
+    }
 }
 
 impl Model {
@@ -96,11 +220,17 @@ impl Model {
                 matrix: DMat4::IDENTITY,
                 role: VolumeRole::ModelPart,
                 extruder: None,
+                paint: VolumePaint::default(),
+                settings: DynamicPrintConfig::new(),
             }],
             instances: vec![ModelInstance {
                 matrix: DMat4::IDENTITY,
                 plate_index: 0,
+                printable: true,
             }],
+            settings: DynamicPrintConfig::new(),
+            layer_height_profile: Vec::new(),
+            layer_config_ranges: Vec::new(),
         });
         self.objects.last_mut().expect("objet tout juste ajouté")
     }

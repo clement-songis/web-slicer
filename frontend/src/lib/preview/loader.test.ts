@@ -120,6 +120,53 @@ describe('LazyPreviewLoader memory budget', () => {
 	});
 });
 
+describe('LazyPreviewLoader range coverage', () => {
+	test('chunksForRange covers exactly low..high (clamped, swapped bounds tolerated)', () => {
+		const { loader } = instrumented({ layerCount: 100, chunkSize: 20 });
+		expect(loader.chunksForRange(0, 99)).toEqual([0, 1, 2, 3, 4]);
+		expect(loader.chunksForRange(25, 41)).toEqual([1, 2]);
+		expect(loader.chunksForRange(41, 25)).toEqual([1, 2]);
+		expect(loader.chunksForRange(-5, 500)).toEqual([0, 1, 2, 3, 4]);
+		expect(loader.chunksForRange(30, 30)).toEqual([1]);
+	});
+
+	test('ensureRange loads low layers far below the cursor window', async () => {
+		const { loader } = instrumented({ layerCount: 500, chunkSize: 20, windowRadius: 40 });
+		await loader.ensureRange(0, 499);
+		expect(loader.loadedChunks().length).toBe(25);
+		const segs = loader.rangeSegments(0, 499);
+		expect(segs[0].from).toBe(0);
+		expect(segs[segs.length - 1].to).toBe(499);
+	});
+
+	test('ensureRange for one layer fetches a single chunk', async () => {
+		const { loader, ranges } = instrumented({ layerCount: 500, chunkSize: 20, windowRadius: 40 });
+		await loader.ensureRange(250, 250);
+		expect(ranges).toEqual([[240, 259]]);
+		expect(loader.rangeSegments(250, 250).map((s) => s.from)).toEqual([240]);
+	});
+
+	test('ensureRange protects the requested chunks and evicts others over budget', async () => {
+		const { loader } = instrumented({
+			layerCount: 1000,
+			chunkSize: 20,
+			windowRadius: 0,
+			perLayer: 100,
+			maxBytes: 160_000 // deux tranches
+		});
+		await loader.ensure(500); // tranche 25
+		await loader.ensureRange(0, 39); // tranches 0,1 → 25 évincée
+		expect(loader.loadedChunks()).toEqual([0, 1]);
+	});
+
+	test('cursor window API is unchanged by range loading', async () => {
+		const { loader } = instrumented({ layerCount: 500, chunkSize: 20, windowRadius: 40 });
+		await loader.ensureRange(0, 10);
+		await loader.ensure(250);
+		expect(loader.window(250).map((s) => s.from)).toEqual([200, 220, 240, 260, 280]);
+	});
+});
+
 describe('segmentsBytes', () => {
 	test('accounts 40 bytes per segment', () => {
 		expect(segmentsBytes(fakeSegments(0, 0, 1000))).toBe(40_000);

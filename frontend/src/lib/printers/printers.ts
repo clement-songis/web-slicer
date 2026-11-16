@@ -63,10 +63,12 @@ export interface StateMeta {
 const STATE_META: Record<string, StateMeta> = {
 	standby: { label: 'En veille', badge: 'bg-overlay text-content' },
 	printing: { label: 'Impression', badge: 'bg-primary text-primary-content' },
-	paused: { label: 'En pause', badge: 'bg-warning text-white' },
-	complete: { label: 'Terminé', badge: 'bg-success text-white' },
-	cancelled: { label: 'Annulé', badge: 'bg-content-subtle text-white' },
-	error: { label: 'Erreur', badge: 'bg-danger text-white' }
+	// Teintes douces du design system : texte ≥ 4,5:1 en clair comme en sombre
+	// (le blanc sur ambre / vert / gris tombait sous 3:1).
+	paused: { label: 'En pause', badge: 'bg-warning-soft text-warning-content' },
+	complete: { label: 'Terminé', badge: 'bg-success-soft text-success-content' },
+	cancelled: { label: 'Annulé', badge: 'bg-overlay text-content-muted' },
+	error: { label: 'Erreur', badge: 'bg-danger-soft text-danger-content' }
 };
 
 /** Métadonnées d'un état (repli neutre si inconnu ou vide). */

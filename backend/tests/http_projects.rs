@@ -8,6 +8,7 @@ use axum::response::Response;
 use axum::Router;
 use backend::adapters::files::FileStore;
 use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::domain::{ModelFormat, ModelId, NewModel, ProjectId, Storage};
 use backend::http::routes::router;
 use backend::http::state::AppState;
 use std::sync::Arc;
@@ -15,13 +16,18 @@ use tower::ServiceExt;
 use tower_sessions::{MemoryStore, SessionManagerLayer};
 
 async fn app() -> (tempfile::TempDir, Router) {
+    let (dir, app, _, _) = app_with_storage().await;
+    (dir, app)
+}
+
+async fn app_with_storage() -> (tempfile::TempDir, Router, Arc<SqliteStorage>, FileStore) {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("projects.db").display());
     let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
-    let state = AppState::new(storage, files);
+    let state = AppState::new(storage.clone(), files.clone());
     let session_layer = SessionManagerLayer::new(MemoryStore::default()).with_secure(false);
-    (dir, router(state, session_layer))
+    (dir, router(state, session_layer), storage, files)
 }
 
 fn request(
@@ -216,6 +222,158 @@ async fn duplicate_and_rename() {
 }
 
 #[tokio::test]
+async fn duplicate_copies_models_files_meshes_and_remaps_the_scene() {
+    let (_d, app, storage, files) = app_with_storage().await;
+    let user = register(&app, "duplicate@test.local").await;
+    let project = create_project(&app, &user, "Projet complet").await;
+    let source_id = project["id"].as_str().unwrap();
+    let project_id = ProjectId(uuid::Uuid::parse_str(source_id).unwrap());
+    let user_id = storage.users().list().await.unwrap()[0].id;
+
+    let source_bytes = b"solid source\nfacet normal 0 0 1\nendsolid\n".to_vec();
+    let storage_key = ModelId::new();
+    let file_path = files
+        .write_model(user_id, storage_key, "stl", &source_bytes)
+        .await
+        .unwrap();
+    let source_model = storage
+        .models()
+        .create(
+            user_id,
+            NewModel {
+                project_id: Some(project_id),
+                filename: "piece.stl".into(),
+                format: ModelFormat::Stl,
+                file_path: file_path.to_string_lossy().into_owned(),
+                mesh_path: None,
+                size_bytes: source_bytes.len() as i64,
+                triangle_count: 1,
+                repair_report: Some(serde_json::json!({"fixed": 2})),
+            },
+        )
+        .await
+        .unwrap();
+    let mesh_bytes = engine::api::TriangleMesh {
+        vertices: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        indices: vec![[0, 1, 2]],
+    }
+    .encode_display();
+    let mesh_path = files
+        .write_mesh(user_id, source_model.id, &mesh_bytes)
+        .await
+        .unwrap();
+    storage
+        .models()
+        .set_mesh(user_id, source_model.id, &mesh_path.to_string_lossy(), 1)
+        .await
+        .unwrap();
+
+    let save = app
+        .clone()
+        .oneshot(request(
+            "PUT",
+            &format!("/api/projects/{source_id}"),
+            serde_json::json!({
+                "expected_version": 1,
+                "scene": {
+                    "schema_version": 1,
+                    "objects": [{
+                        "id": "object-source",
+                        "modelId": source_model.id.to_string(),
+                        "settings": {"wall_loops": 4}
+                    }],
+                    "plates": {
+                        "activeId": "plate-source",
+                        "plates": [{
+                            "id": "plate-source",
+                            "name": "Plateau A",
+                            "objectIds": ["object-source"]
+                        }]
+                    }
+                },
+                "active_presets": {"process": "preset-partage"}
+            }),
+            Some(&user),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(save.status(), StatusCode::OK);
+
+    let response = app
+        .clone()
+        .oneshot(request(
+            "POST",
+            &format!("/api/projects/{source_id}/duplicate"),
+            serde_json::json!({}),
+            Some(&user),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let copy = json_body(response).await;
+    let copy_id = copy["id"].as_str().unwrap();
+    assert_ne!(copy_id, source_id);
+    let copied_object = &copy["scene"]["objects"][0];
+    let copied_model_id = copied_object["modelId"].as_str().unwrap();
+    assert_ne!(copied_model_id, source_model.id.to_string());
+    assert_ne!(copied_object["id"], "object-source");
+    assert_eq!(copied_object["settings"]["wall_loops"], 4);
+    assert_ne!(copy["scene"]["plates"]["activeId"], "plate-source");
+    assert_eq!(
+        copy["scene"]["plates"]["plates"][0]["objectIds"][0],
+        copied_object["id"]
+    );
+    assert_eq!(copy["active_presets"]["process"], "preset-partage");
+
+    let copied = storage
+        .models()
+        .get(
+            user_id,
+            ModelId(uuid::Uuid::parse_str(copied_model_id).unwrap()),
+        )
+        .await
+        .unwrap();
+    assert_ne!(copied.file_path, source_model.file_path);
+    assert_ne!(
+        copied.mesh_path,
+        Some(mesh_path.to_string_lossy().into_owned())
+    );
+    assert_eq!(copied.repair_report, source_model.repair_report);
+    assert_eq!(
+        files
+            .read(std::path::Path::new(&copied.file_path))
+            .await
+            .unwrap(),
+        source_bytes
+    );
+    assert_eq!(
+        files
+            .read(std::path::Path::new(copied.mesh_path.as_deref().unwrap()))
+            .await
+            .unwrap(),
+        mesh_bytes
+    );
+
+    // Les artefacts sont physiquement indépendants, pas des chemins partagés.
+    tokio::fs::write(&copied.file_path, b"solid copy\nendsolid\n")
+        .await
+        .unwrap();
+    assert_eq!(
+        files
+            .read(std::path::Path::new(&source_model.file_path))
+            .await
+            .unwrap(),
+        source_bytes
+    );
+    let original = storage.projects().get(user_id, project_id).await.unwrap();
+    assert_eq!(original.scene["objects"][0]["id"], "object-source");
+    assert_eq!(
+        original.scene["objects"][0]["modelId"],
+        source_model.id.to_string()
+    );
+}
+
+#[tokio::test]
 async fn delete_removes_the_project() {
     let (_d, app) = app().await;
     let user = register(&app, "boss@test.local").await;
@@ -334,4 +492,102 @@ async fn projects_require_a_session() {
         .await
         .unwrap();
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
+}
+
+/// « Split to parts » : la duplication remappe aussi le `modelId` des volumes
+/// maillés vers les modèles copiés du nouveau projet.
+#[tokio::test]
+async fn duplicate_remaps_mesh_volume_model_ids() {
+    let (_d, app, storage, files) = app_with_storage().await;
+    let user = register(&app, "duplicate-parts@test.local").await;
+    let project = create_project(&app, &user, "Projet pièces").await;
+    let source_id = project["id"].as_str().unwrap();
+    let project_id = ProjectId(uuid::Uuid::parse_str(source_id).unwrap());
+    let user_id = storage.users().list().await.unwrap()[0].id;
+    let mut ids = Vec::new();
+    for name in ["base.stl", "piece_2.stl"] {
+        let bytes = b"solid p\nendsolid\n".to_vec();
+        let path = files
+            .write_model(user_id, ModelId::new(), "stl", &bytes)
+            .await
+            .unwrap();
+        let model = storage
+            .models()
+            .create(
+                user_id,
+                NewModel {
+                    project_id: Some(project_id),
+                    filename: name.into(),
+                    format: ModelFormat::Stl,
+                    file_path: path.to_string_lossy().into_owned(),
+                    mesh_path: None,
+                    size_bytes: bytes.len() as i64,
+                    triangle_count: 1,
+                    repair_report: None,
+                },
+            )
+            .await
+            .unwrap();
+        ids.push(model.id.to_string());
+    }
+    let save = app
+        .clone()
+        .oneshot(request(
+            "PUT",
+            &format!("/api/projects/{source_id}"),
+            serde_json::json!({
+                "expected_version": 1,
+                "scene": {
+                    "schema_version": 1,
+                    "objects": [{
+                        "id": "o", "modelId": ids[0],
+                        "volumes": [{
+                            "id": "v", "type": "part", "name": "piece_2", "shape": "mesh",
+                            "modelId": ids[1], "size": [10, 10, 10], "offset": [20, 0, 0],
+                            "settings": {}
+                        }, {
+                            "id": "m", "type": "modifier", "name": "Modificateur", "shape": "box",
+                            "size": [5, 5, 5], "offset": [0, 0, 0], "settings": {}
+                        }]
+                    }],
+                    "plates": {"activeId": "p", "plates": [{"id": "p", "name": "A", "objectIds": ["o"]}]}
+                },
+                "active_presets": {}
+            }),
+            Some(&user),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(save.status(), StatusCode::OK);
+
+    let response = app
+        .clone()
+        .oneshot(request(
+            "POST",
+            &format!("/api/projects/{source_id}/duplicate"),
+            serde_json::json!({}),
+            Some(&user),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let copy = json_body(response).await;
+    let copy_id = ProjectId(uuid::Uuid::parse_str(copy["id"].as_str().unwrap()).unwrap());
+    let copied: Vec<String> = storage
+        .models()
+        .list(user_id, Some(copy_id))
+        .await
+        .unwrap()
+        .iter()
+        .map(|m| m.id.to_string())
+        .collect();
+    assert_eq!(copied.len(), 2);
+    let object = &copy["scene"]["objects"][0];
+    let volume = &object["volumes"][0];
+    let volume_model = volume["modelId"].as_str().unwrap();
+    assert_ne!(volume_model, ids[1], "modelId du volume non remappé");
+    assert!(copied.iter().any(|id| id == volume_model));
+    assert_ne!(volume_model, object["modelId"].as_str().unwrap());
+    // Volume pavé : aucune référence de modèle ajoutée.
+    assert!(object["volumes"][1].get("modelId").is_none());
 }

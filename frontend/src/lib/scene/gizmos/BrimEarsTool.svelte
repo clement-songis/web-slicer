@@ -3,6 +3,7 @@
 	// sur le modèle et permet de les retirer. Présentationnel — le gizmo place les
 	// points par raycast ; les paramètres (`brim_ears_*`) vivent dans les réglages.
 	import type { BrimEarPoint } from './brim-ears';
+	import IconX from '~icons/lucide/x';
 
 	interface Props {
 		points: readonly BrimEarPoint[];
@@ -23,17 +24,15 @@
 					<span>{p.x.toFixed(1)}, {p.y.toFixed(1)}</span>
 					<button
 						type="button"
-						class="px-1 text-xs"
+						class="ws-icon-btn ws-icon-btn-xs"
 						aria-label={`Retirer l'oreille ${i + 1}`}
-						onclick={() => onremove(i)}>✕</button
+						onclick={() => onremove(i)}><IconX class="h-3.5 w-3.5" aria-hidden="true" /></button
 					>
 				</li>
 			{/each}
 		</ul>
-		<button
-			type="button"
-			class="self-start rounded border border-border-strong px-3 py-1 hover:bg-overlay"
-			onclick={() => onclear?.()}>Tout effacer</button
+		<button type="button" class="ws-btn ws-btn-secondary self-start" onclick={() => onclear?.()}
+			>Tout effacer</button
 		>
 	{/if}
 </div>

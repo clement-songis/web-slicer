@@ -61,6 +61,35 @@ async fn enqueue_n(s: &dyn Storage, owner: UserId, project: ProjectId, n: i64) {
     }
 }
 
+#[tokio::test]
+async fn persists_and_claims_the_frozen_scene_with_the_job() {
+    let (_d, store) = storage().await;
+    let (owner, project) = make_project(store.as_ref()).await;
+    let scene = json!({
+        "objects": [{"id": "frozen", "modelId": "mesh-at-enqueue"}],
+        "plates": [{"id": "p1", "objectIds": ["frozen"]}]
+    });
+    let queued = store
+        .jobs()
+        .enqueue_with_scene(
+            owner,
+            NewJob {
+                project_id: project,
+                plate_index: 0,
+                resolved_settings: json!({"layer_height": 0.16}),
+            },
+            scene.clone(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(queued.scene, Some(scene.clone()));
+
+    let claimed = store.jobs().claim_next().await.unwrap().unwrap();
+    assert_eq!(claimed.id, queued.id);
+    assert_eq!(claimed.scene, Some(scene));
+    assert_eq!(claimed.resolved_settings, json!({"layer_height": 0.16}));
+}
+
 /// Runner instantané : enregistre chaque job vu, puis échoue (état terminal
 /// sans dépendre d'un G-code réel).
 struct RecordingRunner {

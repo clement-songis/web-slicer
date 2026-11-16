@@ -77,6 +77,7 @@ fn run_slice(engine: &FfiEngine, path: &Path) -> engine::api::EngineResult<()> {
             config,
             plate_index: 0,
             work_dir,
+            calib: None,
         },
         progress,
         CancelToken::new(),

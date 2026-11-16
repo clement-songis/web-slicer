@@ -50,6 +50,10 @@ pub struct GcodeStats {
     /// Coût de filament par extrudeur.
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub filament_cost: Vec<f64>,
+    /// Nom d'export calculé par libslic3r au tranchage (`Print::output_filename`),
+    /// base = `engine::api::OUTPUT_FILENAME_BASE_TOKEN` (cf. gcode_filename).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub output_filename: Option<String>,
 }
 
 /// Vignette embarquée dans le G-code (PNG encodé base64).
@@ -270,6 +274,9 @@ pub struct PreviewSummary {
     pub feedrate_range: (f32, f32),
     pub width_range: (f32, f32),
     pub height_range: (f32, f32),
+    /// Par rôle (même ordre que `kinds_present`) : longueur (mm) et temps
+    /// nominal (s, longueur / F, sans accélérations) sur tout le G-code.
+    pub kind_totals: Vec<(f64, f64)>,
 }
 
 const PREVIEW_MAGIC: &[u8; 4] = b"WSPv";
@@ -336,6 +343,8 @@ impl PreviewModel {
     /// Calcule les méta-données de la préviz (plages, types, échelles).
     pub fn summary(&self) -> PreviewSummary {
         let mut kinds = std::collections::BTreeSet::new();
+        let mut totals: std::collections::BTreeMap<u8, (f64, f64)> =
+            std::collections::BTreeMap::new();
         let mut extruders = std::collections::BTreeSet::new();
         let (mut fmin, mut fmax) = (f32::INFINITY, f32::NEG_INFINITY);
         let (mut wmin, mut wmax) = (f32::INFINITY, f32::NEG_INFINITY);
@@ -345,6 +354,14 @@ impl PreviewModel {
             for s in &layer.segments {
                 kinds.insert(s.kind);
                 extruders.insert(s.extruder);
+                let len = ((s.end[0] - s.start[0]) as f64)
+                    .hypot((s.end[1] - s.start[1]) as f64)
+                    .hypot((s.end[2] - s.start[2]) as f64);
+                let entry = totals.entry(s.kind).or_insert((0.0, 0.0));
+                entry.0 += len;
+                if s.feedrate > 0.0 {
+                    entry.1 += len / (s.feedrate as f64 / 60.0);
+                }
                 if s.feedrate > 0.0 {
                     fmin = fmin.min(s.feedrate);
                     fmax = fmax.max(s.feedrate);
@@ -368,6 +385,10 @@ impl PreviewModel {
                 .layers
                 .iter()
                 .map(|l| l.segments.len() as u32)
+                .collect(),
+            kind_totals: kinds
+                .iter()
+                .map(|k| totals.get(k).copied().unwrap_or((0.0, 0.0)))
                 .collect(),
             kinds_present: kinds.into_iter().collect(),
             extruders_present: extruders.into_iter().collect(),
@@ -529,7 +550,20 @@ pub async fn store_gcode(
     job_id: JobId,
     gcode_text: &str,
 ) -> anyhow::Result<Gcode> {
-    let stats = parse_stats(gcode_text);
+    store_gcode_named(files, gcodes, owner, job_id, gcode_text, None).await
+}
+
+/// Comme [`store_gcode`], avec le nom d'export d'Orca calculé au tranchage.
+pub async fn store_gcode_named(
+    files: &FileStore,
+    gcodes: &dyn GcodeRepo,
+    owner: UserId,
+    job_id: JobId,
+    gcode_text: &str,
+    output_filename: Option<String>,
+) -> anyhow::Result<Gcode> {
+    let mut stats = parse_stats(gcode_text);
+    stats.output_filename = output_filename;
     let thumbnails = extract_thumbnails(gcode_text);
 
     let storage_key = GcodeId::new();
@@ -724,6 +758,37 @@ G1 X0 Y0 E2.0 F1800
         assert_eq!(s.extruders_present, vec![0, 1]);
         assert_eq!(s.feedrate_range, (1800.0, 3000.0));
         assert_eq!(s.width_range, (0.45, 0.45));
+    }
+
+    #[test]
+    fn summary_reports_length_and_nominal_time_per_kind() {
+        let seg = |kind: u8, x1: f32, f: f32| PreviewSegment {
+            start: [0.0, 0.0, 0.2],
+            end: [x1, 0.0, 0.2],
+            kind,
+            extruder: 0,
+            feedrate: f,
+            width: 0.4,
+            height: 0.2,
+        };
+        let model = PreviewModel {
+            layers: vec![PreviewLayer {
+                z: 0.2,
+                segments: vec![
+                    seg(1, 60.0, 3600.0),
+                    seg(1, 30.0, 1800.0),
+                    seg(2, 10.0, 0.0),
+                ],
+            }],
+        };
+        let s = model.summary();
+        assert_eq!(s.kinds_present, vec![1, 2]);
+        let (len1, t1) = s.kind_totals[0];
+        assert!((len1 - 90.0).abs() < 1e-6);
+        // 60 mm à 60 mm/s + 30 mm à 30 mm/s = 1 s + 1 s.
+        assert!((t1 - 2.0).abs() < 1e-6);
+        // F nul : longueur comptée, temps non estimable.
+        assert_eq!(s.kind_totals[1], (10.0, 0.0));
     }
 
     #[test]

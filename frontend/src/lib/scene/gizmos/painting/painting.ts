@@ -21,26 +21,45 @@ export const CHANNEL_ATTR: Record<PaintChannel, string> = {
 /** Document de peinture sérialisé : par canal, index de triangle → hex Orca. */
 export type PaintDocument = Partial<Record<PaintChannel, Record<string, string>>>;
 
-/** Peinture au triangle d'un objet, tous canaux confondus. */
+/**
+ * Peinture au triangle d'un objet, tous canaux confondus. L'état est stocké
+ * tel qu'écrit dans le 3MF d'Orca (chaîne hex par triangle) : une facette
+ * entière (aperçu TS, `paint`) ou un triangle **subdivisé** produit par le
+ * `TriangleSelector` du moteur (`replaceChannel`, résultat persisté).
+ */
 export class TrianglePainting {
-	private readonly channels: Record<PaintChannel, Map<number, number>> = {
+	private readonly channels: Record<PaintChannel, Map<number, string>> = {
 		supports: new Map(),
 		seam: new Map(),
 		fuzzy: new Map(),
 		mmu: new Map()
 	};
 
-	/** État peint d'un triangle dans un canal (0 = non peint). */
+	/**
+	 * État d'un triangle entier (0 = non peint). Un triangle subdivisé par le
+	 * moteur renvoie -1 (peint partiellement, cf. `decodeFacet`).
+	 */
 	get(channel: PaintChannel, triangle: number): number {
-		return this.channels[channel].get(triangle) ?? 0;
+		const hex = this.channels[channel].get(triangle);
+		return hex === undefined ? 0 : decodeFacet(hex);
 	}
 
-	/** Peint des triangles dans un canal (état ≤ 0 efface). */
+	/** Peint des triangles entiers dans un canal (état ≤ 0 efface) — aperçu. */
 	paint(channel: PaintChannel, triangles: Iterable<number>, state: number): void {
 		const map = this.channels[channel];
+		const hex = encodeFacet(state);
 		for (const t of triangles) {
 			if (state <= 0) map.delete(t);
-			else map.set(t, state);
+			else map.set(t, hex);
+		}
+	}
+
+	/** Remplace un canal par l'état calculé par le moteur (chaînes hex Orca). */
+	replaceChannel(channel: PaintChannel, facets: Record<string, string>): void {
+		const map = this.channels[channel];
+		map.clear();
+		for (const [triangle, hex] of Object.entries(facets)) {
+			if (hex && /^[0-9A-Fa-f]+$/.test(hex)) map.set(Number(triangle), hex.toUpperCase());
 		}
 	}
 
@@ -60,22 +79,20 @@ export class TrianglePainting {
 			const map = this.channels[c];
 			if (map.size === 0) continue;
 			const out: Record<string, string> = {};
-			for (const [triangle, state] of map) out[String(triangle)] = encodeFacet(state);
+			for (const [triangle, hex] of [...map].sort((a, b) => a[0] - b[0])) {
+				out[String(triangle)] = hex;
+			}
 			doc[c] = out;
 		}
 		return doc;
 	}
 
-	/** Reconstruit depuis un document 3MF Orca. */
+	/** Reconstruit depuis un document 3MF Orca (triangles subdivisés conservés). */
 	static deserialize(doc: PaintDocument): TrianglePainting {
 		const painting = new TrianglePainting();
 		for (const c of CHANNELS) {
 			const entries = doc[c];
-			if (!entries) continue;
-			for (const [triangle, hex] of Object.entries(entries)) {
-				const state = decodeFacet(hex);
-				if (state > 0) painting.channels[c].set(Number(triangle), state);
-			}
+			if (entries) painting.replaceChannel(c, entries);
 		}
 		return painting;
 	}

@@ -5,6 +5,7 @@
 	// au parent (la page orchestre ajout/arrange/orient/split/instances/couches).
 	import { MAIN_TOOLBAR, ASSEMBLE_TOOLBAR, type ToolbarButton } from './menus';
 	import { t } from '$lib/i18n';
+	import { shortcutKeyFor, withShortcut } from '$lib/editor';
 	import IconAdd from '~icons/lucide/plus';
 	import IconAddPlate from '~icons/lucide/copy-plus';
 	import IconOrient from '~icons/lucide/compass';
@@ -36,7 +37,12 @@
 	// Items affichés : barre principale + vue d'assemblage (le séparateur d'assemblage
 	// n'est pas un bouton). `sep` insère un séparateur avant l'item.
 	type Item = ToolbarButton & { sep?: boolean };
-	const ITEMS: Item[] = [...MAIN_TOOLBAR, { ...ASSEMBLE_TOOLBAR[0], sep: true }];
+	// Familles séparées : ajout | disposition | instances | découpe | couches | assemblage.
+	const SEP_BEFORE = new Set(['orient', 'more', 'splitobjects', 'layersediting']);
+	const ITEMS: Item[] = [
+		...MAIN_TOOLBAR.map((item) => ({ ...item, sep: SEP_BEFORE.has(item.id) })),
+		{ ...ASSEMBLE_TOOLBAR[0], sep: true }
+	];
 
 	const ICONS: Record<string, typeof IconAdd> = {
 		add: IconAdd,
@@ -62,26 +68,28 @@
 </script>
 
 <div
-	class="flex items-center gap-0.5 rounded border border-border bg-surface-raised/95 px-1 py-0.5 shadow-lg"
+	class="ws-floating flex items-center gap-0.5 p-1"
 	role="toolbar"
 	aria-label="Barre d'outils de plateau"
 >
 	{#each ITEMS as item (item.id)}
 		{@const Icon = ICONS[item.id]}
 		{#if item.sep}
-			<div class="mx-1 h-6 w-px bg-border"></div>
+			<div class="mx-1 h-6 w-px bg-border" aria-hidden="true"></div>
 		{/if}
 		<button
 			type="button"
-			class="flex h-8 w-8 items-center justify-center rounded {active.has(item.id)
-				? 'bg-primary text-primary-content'
-				: 'text-content-muted hover:bg-overlay hover:text-content'} disabled:cursor-not-allowed disabled:opacity-40"
+			class="ws-tool ws-tool-sm {active.has(item.id) ? 'ws-tool-on' : ''}"
 			aria-pressed={active.has(item.id)}
 			disabled={disabled(item.id)}
-			title={$t(item.label)}
+			data-testid={`toolbar-${item.id}`}
+			aria-label={$t(item.label)}
+			aria-keyshortcuts={shortcutKeyFor(item.id) ?? undefined}
+			data-tip={withShortcut($t(item.label), shortcutKeyFor(item.id))}
+			data-tip-side="bottom"
 			onclick={() => onaction(item.id)}
 		>
-			{#if Icon}<Icon class="h-5 w-5" />{/if}
+			{#if Icon}<Icon class="h-5 w-5" aria-hidden="true" />{/if}
 		</button>
 	{/each}
 </div>

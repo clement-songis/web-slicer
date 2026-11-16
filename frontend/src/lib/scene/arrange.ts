@@ -24,6 +24,26 @@ export function footprint(mesh: SceneMesh): { width: number; depth: number } {
 	return { width: maxX - minX, depth: maxY - minY };
 }
 
+/** Rectangle occupé au sol (centre XY + dimensions, mm). */
+export interface Footprint {
+	x: number;
+	y: number;
+	width: number;
+	depth: number;
+}
+
+/** Empreinte au sol d'un objet de la scène (position + échelle XY). */
+export function objectFootprint(o: SceneObject, fallback: [number, number]): Footprint {
+	const { width, depth } = footprint(o.mesh);
+	const [sx, sy] = [o.scale?.[0] ?? 1, o.scale?.[1] ?? 1];
+	return {
+		x: o.position?.[0] ?? fallback[0],
+		y: o.position?.[1] ?? fallback[1],
+		width: width * Math.abs(sx),
+		depth: depth * Math.abs(sy)
+	};
+}
+
 /** Empreintes des objets pour le corps `ArrangeRequest.items`. */
 export function arrangeItems(objects: readonly SceneObject[]): ArrangeItem[] {
 	return objects.map((o) => {

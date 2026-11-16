@@ -1,6 +1,7 @@
 // Barrel du système de thème (T093).
 export {
 	themePref,
+	resolvedTheme,
 	setTheme,
 	initTheme,
 	resolveTheme,

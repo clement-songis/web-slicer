@@ -40,17 +40,22 @@
 
 <div class="flex flex-col gap-2 text-sm">
 	{#each rows as row (row.field)}
-		<div class="grid grid-cols-[6rem_repeat(3,1fr)] items-center gap-2">
-			<span class="text-content-muted">{row.label}</span>
+		<!-- Libellé + 3 champs ; l'axe est un préfixe dans le champ, la valeur
+		     dispose de toute la largeur (« -123.45 » sans troncature). -->
+		<div class="grid grid-cols-[4rem_repeat(3,minmax(0,1fr))] items-center gap-1.5">
+			<span class="text-xs leading-tight text-content-muted">{row.label}</span>
 			{#each axes as axis, i (axis)}
-				<label class="flex items-center gap-1">
-					<span class="text-content-subtle">{axis}</span>
+				<label class="relative flex min-w-0 items-center">
+					<span
+						class="pointer-events-none absolute left-1.5 text-2xs font-semibold text-content-subtle"
+						aria-hidden="true">{axis}</span
+					>
 					<input
 						type="number"
 						step={row.field === 'scale' ? 0.01 : 1}
 						value={transform[row.field][i]}
 						oninput={(e) => setAxis(row.field, i, e.currentTarget.value)}
-						class="w-full rounded border border-border-strong bg-surface-raised px-1 py-0.5 text-right"
+						class="ws-field ws-field-sm w-full min-w-0 pr-1.5 pl-4 text-right"
 						aria-label={`${row.label} ${axis}`}
 					/>
 				</label>
@@ -60,7 +65,7 @@
 
 	<button
 		type="button"
-		class="mt-1 self-start rounded border border-border-strong bg-surface-sunken px-3 py-1 text-content hover:bg-overlay disabled:opacity-40"
+		class="ws-btn ws-btn-secondary mt-1 self-start"
 		disabled={!canLayFlat}
 		onclick={() => onlayflat?.()}
 	>

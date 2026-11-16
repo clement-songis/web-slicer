@@ -61,6 +61,30 @@ optional** (a printer can be owned without being reachable over the network) and
 can be added later from the printers management page. Printer selection in the
 editor and slicing is restricted to the printers you own.
 
+## Production
+
+The frontend uses `@sveltejs/adapter-node`: `bun run build` produces a standalone
+Node server in `frontend/build/`. Start it with `frontend/server.js`, which serves
+the SvelteKit handler and relays `/api/*` to the backend: plain HTTP requests go
+through `src/hooks.server.ts`, and the WebSocket upgrade `/api/ws` (queue events:
+import conversion, slicing progress) is piped by `server.js` itself.
+
+```sh
+cargo build --release -p backend          # backend, e.g. listening on :8080
+cd frontend && bun install --frozen-lockfile && bun run build
+PORT=3000 HOST=0.0.0.0 \
+ORIGIN=https://slicer.example.com \
+BACKEND_URL=http://127.0.0.1:8080 \
+node server.js
+```
+
+- `ORIGIN` must be the public URL seen by browsers (SvelteKit CSRF check on form
+  posts); behind a TLS reverse proxy set it to the `https://` URL.
+- `BACKEND_URL` is the backend base URL (default `http://127.0.0.1:8080`).
+- `node build` alone also serves pages and proxies `/api` over HTTP, but **not**
+  the `/api/ws` WebSocket: imports then stay "converting". Use `node server.js`,
+  or route `/api/` (with WebSocket upgrade) to the backend in your reverse proxy.
+
 ## Quality (constitution gates)
 
 ```sh

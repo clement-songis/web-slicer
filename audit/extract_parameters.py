@@ -68,6 +68,10 @@ def parse_default(ctor: str, args: str, consts: dict):
     args = args.strip()
     if args == "":
         return None
+    # Nullable initialisé à nil (`ConfigOptionFloatsNullable::nil_value()`) :
+    # pas de valeur par défaut (l'option hérite).
+    if "nil_value()" in args:
+        return None
     if args in consts:
         return consts[args]
     if ctor.startswith("Enum"):
@@ -81,7 +85,29 @@ def parse_default(ctor: str, args: str, consts: dict):
     if ctor == "Strings":
         m = re.search(r"\{(.*)\}", args, re.S)
         if m:
-            return [s for s in re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1))]
+            # Éléments séparés par les virgules hors guillemets ; des littéraux
+            # adjacents (« "a" "b" ») forment UN élément (concaténation C++).
+            items, cur, quoted, esc = [], "", False, False
+            for ch in m.group(1):
+                if quoted:
+                    cur += ch
+                    if esc:
+                        esc = False
+                    elif ch == "\\":
+                        esc = True
+                    elif ch == '"':
+                        quoted = False
+                elif ch == '"':
+                    quoted = True
+                    cur += ch
+                elif ch == ",":
+                    items.append(cur)
+                    cur = ""
+                else:
+                    cur += ch
+            if cur.strip():
+                items.append(cur)
+            return ["".join(re.findall(r'"((?:[^"\\]|\\.)*)"', it)) for it in items if '"' in it]
         s = concat_strings(args)
         return [s] if s is not None else args
     if ctor == "FloatOrPercent" or ctor == "FloatsOrPercents":
@@ -92,7 +118,17 @@ def parse_default(ctor: str, args: str, consts: dict):
         if m:
             return [{"value": float(m.group(1)), "percent": m.group(2) == "true"}]
         return args
-    if ctor == "Point" or ctor == "Points":
+    if ctor == "Point":
+        # Vec2d(50, 50) → [50, 50] (sérialisé « 50x50 » par le registre).
+        m = re.match(r"^Vec2d\s*\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)$", args)
+        if m:
+            return [parse_number(m.group(1), consts), parse_number(m.group(2), consts)]
+        return args
+    if ctor == "Points":
+        # { Vec2d(0, 0), Vec2d(200, 0) } → ["0x0", "200x0"] (forme texte d'Orca).
+        pts = re.findall(r"Vec2d\s*\(\s*([-\d.eE+]+)\s*,\s*([-\d.eE+]+)\s*\)", args)
+        if pts or args.strip("{} ") == "":
+            return [f"{parse_number(x, consts)}x{parse_number(y, consts)}" for x, y in pts]
         return args
     # Types numériques scalaires ou vecteurs : Float, Int, Percent, Floats{..}, Ints{..}
     m = re.match(r"^\{(.*)\}$", args, re.S)
@@ -100,6 +136,10 @@ def parse_default(ctor: str, args: str, consts: dict):
         items = [x.strip() for x in m.group(1).split(",") if x.strip()]
         parsed = []
         for x in items:
+            # Littéraux flottants C++ suffixés (140.f, 0.01f).
+            if re.fullmatch(r"-?[\d.]+[fF]", x):
+                x = x.rstrip("fF")
+                x = x + "0" if x.endswith(".") else x
             try:
                 parsed.append(float(x) if "." in x else int(x))
             except ValueError:
@@ -146,14 +186,31 @@ def extract_block_attrs(block: str, consts: dict) -> dict:
     if m:
         attrs["ratio_over"] = m.group(1)
 
-    enum_values = re.findall(r'def->enum_values\.push_back\(\s*"((?:[^"\\]|\\.)*)"\s*\)', block)
+    # Orca utilise indifféremment push_back et emplace_back pour les listes d'enum.
+    enum_values = re.findall(
+        r'def->enum_values\.(?:push_back|emplace_back)\(\s*(?:L\(\s*)?"((?:[^"\\]|\\.)*)"\s*\)?\s*\)',
+        block,
+    )
+    # Liste littérale : `def->enum_values = {"a", "b", …};`.
+    if not enum_values:
+        m = re.search(r"def->enum_values\s*=\s*\{(.*?)\}\s*;", block, re.S)
+        if m:
+            enum_values = re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1))
+    # Liste partagée avec une autre option : `def->enum_values = def_xxx->enum_values;`.
+    m = re.search(r"def->enum_values\s*=\s*(\w+)->enum_values\s*;", block)
+    if m and not enum_values:
+        attrs["enum_values_from"] = m.group(1)
     if enum_values:
         attrs["enum_values"] = enum_values
     enum_labels = [
         concat_strings(e)
-        for e in re.findall(r"def->enum_labels\.push_back\((.*?)\);", block, re.S)
+        for e in re.findall(r"def->enum_labels\.(?:push_back|emplace_back)\((.*?)\);", block, re.S)
     ]
     enum_labels = [e for e in enum_labels if e is not None]
+    if not enum_labels:
+        m = re.search(r"def->enum_labels\s*=\s*\{(.*?)\}\s*;", block, re.S)
+        if m:
+            enum_labels = re.findall(r'"((?:[^"\\]|\\.)*)"', m.group(1))
     if enum_labels:
         attrs["enum_labels"] = enum_labels
 
@@ -161,10 +218,37 @@ def extract_block_attrs(block: str, consts: dict) -> dict:
     m = re.search(r"def->set_default_value\s*\(\s*new\s+ConfigOption(\w+)(?:<(\w+)>)?\s*", block)
     if m:
         ctor, enum_t = m.group(1), m.group(2)
-        open_pos = block.find("(", m.end() - 1)
-        # m.end() peut tomber juste avant '(' des arguments
-        open_pos = block.find("(", m.end())
-        if open_pos != -1:
+        # Arguments : `ConfigOptionX(...)` ou initialisation par accolades
+        # `ConfigOptionX{...}` (ex. precise_outer_wall : ConfigOptionBool{true}).
+        # Avant, seule la parenthèse était cherchée : pour `{true}` on lisait la
+        # parenthèse suivante du bloc et le défaut tombait à null.
+        rest = block[m.end():]
+        lead = len(rest) - len(rest.lstrip())
+        first = rest.lstrip()[:1]
+        open_pos = -1
+        if first == "{":
+            open_pos = m.end() + lead
+            depth, close_pos = 0, -1
+            for i in range(open_pos, len(block)):
+                if block[i] == "{":
+                    depth += 1
+                elif block[i] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        close_pos = i
+                        break
+            inner = block[open_pos + 1 : close_pos].strip()
+            # Vecteurs (Floats, Ints, Bools…) : la liste d'initialisation reste
+            # entre accolades ; scalaires : l'unique valeur.
+            vector = ctor.endswith("s") or ctor.endswith("sNullable")
+            raw_args = ("{" + inner + "}") if vector and not inner.startswith("{") else inner
+            if vector and inner.startswith("{"):
+                raw_args = inner
+            attrs["default_type"] = ctor + (f"<{enum_t}>" if enum_t else "")
+            attrs["default_raw"] = raw_args
+            attrs["default"] = parse_default(ctor, raw_args, consts)
+        elif first == "(":
+            open_pos = m.end() + lead
             close_pos = find_matching_paren(block, open_pos)
             raw_args = block[open_pos + 1 : close_pos].strip()
             attrs["default_type"] = ctor + (f"<{enum_t}>" if enum_t else "")
@@ -190,8 +274,26 @@ def load_macro_constants() -> dict:
     return consts
 
 
+def load_enum_keys_maps(code: str) -> dict[str, dict[str, str]]:
+    """`static const t_config_enum_values s_keys_map_<T> = { {"clé", enumérateur}, … }` →
+    {T: {enumérateur: clé}} (défauts d'enum exprimés en clés Orca, comme
+    `ConfigOptionEnum<T>::serialize`)."""
+    maps: dict[str, dict[str, str]] = {}
+    # Deux styles dans Orca : `= { … };` et initialisation directe `{ … };`.
+    for m in re.finditer(r"s_keys_map_(\w+)\s*=?\s*\{(.*?)\n\s*\};", code, re.S):
+        pairs = re.findall(
+            r'\{\s*"((?:[^"\\]|\\.)*)"\s*,\s*(?:int\s*\(\s*)?(?:\w+::)*(\w+)\s*\)?\s*\}', m.group(2)
+        )
+        table: dict[str, str] = {}
+        for key, enumerator in pairs:
+            table.setdefault(enumerator, key)  # premier alias = clé canonique
+        maps[m.group(1)] = table
+    return maps
+
+
 def main() -> None:
     code = strip_comments(read_source(SOURCE))
+    enum_keys = load_enum_keys_maps(code)
 
     consts: dict = load_macro_constants()
     for m in CONST_RE.finditer(code):
@@ -240,11 +342,49 @@ def main() -> None:
         if m.group("nullable"):
             entry["nullable"] = True
         entry.update(extract_block_attrs(block, consts))
+        dt = entry.get("default_type", "")
+        mt = re.match(r"^Enums?(?:Nullable)?<(\w+)>$", dt)
+        if mt and isinstance(entry.get("default"), str):
+            table = enum_keys.get(mt.group(1), {})
+            raw = entry["default"].strip()
+            if raw.startswith("{") and raw.endswith("}"):  # vecteur d'enums
+                items = [x.strip().split("::")[-1] for x in raw[1:-1].split(",") if x.strip()]
+                if items and all(x in table for x in items):
+                    entry["default"] = [table[x] for x in items]
+            elif raw.split("::")[-1] in table:
+                entry["default"] = table[raw.split("::")[-1]]
+        # EnumsGeneric{ ZHopType::zhtSlope } / { (int)Overhang_threshold_bridge } :
+        # vecteur d'enums sans paramètre de type → table déduite du préfixe, ou
+        # recherche de l'énumérateur dans toutes les tables.
+        if dt == "EnumsGeneric" and isinstance(entry.get("default"), str):
+            raw = entry["default"].strip().strip("{}")
+            keys = []
+            for item in [x.strip() for x in raw.split(",") if x.strip()]:
+                item = re.sub(r"^\(\s*int\s*\)", "", item).replace(" ", "")
+                prefix, _, name = item.rpartition("::")
+                table = enum_keys.get(prefix) if prefix else None
+                if not table:
+                    table = next((t for t in enum_keys.values() if name in t), {})
+                if name in table:
+                    keys.append(table[name])
+            if keys:
+                entry["default"] = keys
         if "mode" not in entry:
             # ConfigOptionDef::mode vaut comSimple par défaut (Config.hpp)
             entry["mode"] = "simple"
             entry["mode_is_default"] = True
         params[m.group("key")] = entry
+
+    # `def_xxx = def = this->add("clé", …)` : variables C++ réutilisées pour partager
+    # les listes d'enum (`def->enum_values = def_xxx->enum_values;`).
+    var_keys = dict(re.findall(r"(\w+)\s*=\s*def\s*=\s*this->add\(\s*\"(\w+)\"", code))
+    for entry in params.values():
+        src = entry.pop("enum_values_from", None)
+        source = params.get(var_keys.get(src, ""), {}) if src else {}
+        if source.get("enum_values"):
+            entry["enum_values"] = list(source["enum_values"])
+            if source.get("enum_labels") and not entry.get("enum_labels"):
+                entry["enum_labels"] = list(source["enum_labels"])
 
     # Définitions dynamiques : surcharges filament_* des options extrudeur
     # (boucle sur filament_extruder_override_keys dans init_filament_option_keys)

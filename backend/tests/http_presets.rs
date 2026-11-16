@@ -271,6 +271,126 @@ async fn raw_versus_resolved_values() {
     .await;
     assert_eq!(resolved["values"]["layer_height"], 0.2);
     assert_eq!(resolved["values"]["wall_loops"], 3);
+    // Clés absentes de la chaîne : défauts du registre (comme l'UI Orca).
+    assert_eq!(resolved["values"]["support_chamber_temp_control"], true);
+    assert_eq!(resolved["values"]["pellet_modded_printer"], false);
+    // Défauts C++ convertis par l'audit : `Vec2d(50, 50)` → point, énumérateur → clé Orca.
+    assert_eq!(
+        resolved["values"]["bed_mesh_probe_distance"],
+        serde_json::json!([50.0, 50.0])
+    );
+    assert_eq!(resolved["values"]["brim_type"], "auto_brim");
+    assert_eq!(resolved["values"]["bottom_surface_pattern"], "monotonic");
+    assert_eq!(resolved["values"]["wall_sequence"], "inner wall/outer wall");
+    // Défaut non exprimable en texte Orca (forme C++) : laissé absent, jamais faux.
+    assert!(resolved["values"]
+        .get("gcode_flavor")
+        .is_none_or(|v| v.as_str().is_some_and(|s| !s.starts_with("gcf"))));
+}
+
+/// L'éditeur dérive avec `inherits = <id du parent>` : la résolution doit
+/// remonter la chaîne par id comme par nom (sinon seules les différences
+/// restent et le modèle d'imprimante est perdu).
+#[tokio::test]
+async fn resolved_follows_parent_given_by_id() {
+    let (_d, app) = app().await;
+    let user = register(&app, "boss@test.local").await;
+    let list = json_body(
+        send(
+            &app,
+            request(
+                "GET",
+                "/api/presets?kind=process",
+                serde_json::json!({}),
+                Some(&user),
+            ),
+        )
+        .await,
+    )
+    .await;
+    let parent_id = list[0]["id"].as_str().unwrap().to_string();
+    let created = json_body(
+        send(
+            &app,
+            request(
+                "POST",
+                "/api/presets",
+                serde_json::json!({
+                    "kind": "process",
+                    "name": "0.20mm Standard (copie)",
+                    "inherits": parent_id,
+                    "values": { "wall_loops": "5" }
+                }),
+                Some(&user),
+            ),
+        )
+        .await,
+    )
+    .await;
+    let id = created["id"].as_str().unwrap().to_string();
+    let resolved = json_body(
+        send(
+            &app,
+            request(
+                "GET",
+                &format!("/api/presets/{id}/resolved"),
+                serde_json::json!({}),
+                Some(&user),
+            ),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(resolved["values"]["wall_loops"], 5);
+    assert_eq!(
+        resolved["values"]["layer_height"], 0.2,
+        "hérité du parent (par id)"
+    );
+}
+
+/// Copie d'imprimante « même nom » (page Imprimantes) : `inherits` = son propre
+/// nom ; le parent est le preset système homonyme, jamais la copie elle-même.
+#[tokio::test]
+async fn resolved_homonym_copy_inherits_system_parent() {
+    let (_d, app) = app().await;
+    let user = register(&app, "boss@test.local").await;
+    let created = json_body(
+        send(
+            &app,
+            request(
+                "POST",
+                "/api/presets",
+                serde_json::json!({
+                    "kind": "process",
+                    "name": "0.20mm Standard",
+                    "inherits": "0.20mm Standard",
+                    "values": { "wall_loops": "6" }
+                }),
+                Some(&user),
+            ),
+        )
+        .await,
+    )
+    .await;
+    let id = created["id"].as_str().unwrap().to_string();
+    let resolved = json_body(
+        send(
+            &app,
+            request(
+                "GET",
+                &format!("/api/presets/{id}/resolved"),
+                serde_json::json!({}),
+                Some(&user),
+            ),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(resolved["values"]["wall_loops"], 6);
+    assert_eq!(
+        resolved["values"]["layer_height"], 0.2,
+        "chaîne système suivie"
+    );
 }
 
 /// FR-022 : cycle de vie d'un preset utilisateur (créer / renommer+valeurs /

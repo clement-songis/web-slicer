@@ -54,6 +54,20 @@ describe('plateau', () => {
 		expect(bed.customModel).toBeNull();
 	});
 
+	it('accepte les paires numériques produites par /resolved', () => {
+		const bed = bedFromValues({
+			printable_area: [
+				[0, 0],
+				[350, 0],
+				[350, 350],
+				[0, 350]
+			]
+		});
+		expect(bed.center).toEqual({ x: 175, y: 175 });
+		expect(bed.width).toBe(350);
+		expect(bed.rectangular).toBe(true);
+	});
+
 	it('retombe sur un plateau par défaut si le contour manque', () => {
 		const bed = bedFromValues({});
 		expect(bed.width).toBe(256);

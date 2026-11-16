@@ -10,15 +10,30 @@
 		/** Emprise du modèle (mm) pour borner le curseur de décalage. */
 		min?: [number, number, number];
 		max?: [number, number, number];
-		oncut: (plane: CutPlane, connectorSpacing: number) => void;
+		oncut: (
+			plane: CutPlane,
+			connectorSpacing: number,
+			keep: { upper: boolean; lower: boolean }
+		) => void;
 		oncancel?: () => void;
+		/** Coupe serveur en cours : bouton désactivé. */
+		busy?: boolean;
 	}
 
-	let { min = [-100, -100, -100], max = [100, 100, 100], oncut, oncancel }: Props = $props();
+	let {
+		min = [-100, -100, -100],
+		max = [100, 100, 100],
+		oncut,
+		oncancel,
+		busy = false
+	}: Props = $props();
 
 	let axis = $state<Axis>('z');
 	let offset = $state(0);
 	let connectorSpacing = $state(0);
+	// Moitiés conservées (attributs KeepUpper / KeepLower de `Cut` d'Orca).
+	let keepUpper = $state(true);
+	let keepLower = $state(true);
 
 	const axisIndex: Record<Axis, number> = { x: 0, y: 1, z: 2 };
 	const bounds = $derived({ lo: min[axisIndex[axis]], hi: max[axisIndex[axis]] });
@@ -38,9 +53,7 @@
 		{#each ['x', 'y', 'z'] as const as a (a)}
 			<button
 				type="button"
-				class="rounded border border-border-strong px-2 py-0.5 {axis === a
-					? 'bg-primary text-primary-content'
-					: 'bg-surface-sunken'}"
+				class="ws-chip {axis === a ? 'ws-chip-on' : ''}"
 				onclick={() => (axis = a)}>{a.toUpperCase()}</button
 			>
 		{/each}
@@ -50,6 +63,7 @@
 		<span class="w-20 text-content-muted">Décalage</span>
 		<input
 			type="range"
+			data-testid="cut-offset"
 			min={bounds.lo}
 			max={bounds.hi}
 			step={0.5}
@@ -58,8 +72,9 @@
 		/>
 		<input
 			type="number"
+			data-testid="cut-offset-input"
 			bind:value={offset}
-			class="w-20 rounded border border-border-strong bg-surface-raised px-1 text-right"
+			class="ws-field ws-field-sm w-20 text-right"
 		/>
 	</label>
 
@@ -70,22 +85,34 @@
 			min={0}
 			step={1}
 			bind:value={connectorSpacing}
-			class="w-20 rounded border border-border-strong bg-surface-raised px-1 text-right"
+			class="ws-field ws-field-sm w-20 text-right"
 			aria-label="Pas des connecteurs (mm, 0 = aucun)"
 		/>
 		<span class="text-content-subtle">mm (0 = aucun)</span>
 	</label>
 
+	<div class="flex items-center gap-3">
+		<label class="flex items-center gap-1">
+			<input type="checkbox" data-testid="cut-keep-upper" bind:checked={keepUpper} />
+			<span>Garder le haut</span>
+		</label>
+		<label class="flex items-center gap-1">
+			<input type="checkbox" data-testid="cut-keep-lower" bind:checked={keepLower} />
+			<span>Garder le bas</span>
+		</label>
+	</div>
+
 	<div class="flex gap-2">
 		<button
 			type="button"
-			class="rounded bg-primary px-3 py-1 text-white hover:bg-primary-hover"
-			onclick={() => oncut(plane(), connectorSpacing)}>Couper</button
+			data-testid="cut-apply"
+			class="ws-btn ws-btn-primary"
+			disabled={busy || (!keepUpper && !keepLower)}
+			onclick={() => oncut(plane(), connectorSpacing, { upper: keepUpper, lower: keepLower })}
+			>Couper</button
 		>
-		<button
-			type="button"
-			class="rounded border border-border-strong px-3 py-1 hover:bg-overlay"
-			onclick={() => oncancel?.()}>Annuler</button
+		<button type="button" class="ws-btn ws-btn-secondary" onclick={() => oncancel?.()}
+			>Annuler</button
 		>
 	</div>
 </div>

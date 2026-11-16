@@ -14,6 +14,7 @@ use serde::Deserialize;
 use serde_json::{Map, Value};
 use uuid::Uuid;
 
+use crate::domain::preset_compat::{self, ActivePrinter, RegexCache};
 use crate::domain::{Preset, PresetId, PresetKind, PresetOrigin, UserId};
 use crate::http::dto::{
     CreatePresetRequest, ImportPresetRequest, PresetDetail, PresetSummary, ResolvedPreset,
@@ -35,8 +36,6 @@ const META_FIELDS: &[&str] = &[
     "url",
     "description",
     "filament_id",
-    "compatible_printers",
-    "compatible_printers_condition",
 ];
 
 #[derive(Debug, Deserialize)]
@@ -87,12 +86,125 @@ pub async fn list(
     Query(q): Query<ListQuery>,
 ) -> ApiResult<Json<Vec<PresetSummary>>> {
     let kind = parse_kind(&q.kind)?;
+    // Process et filaments : compatibilité exacte Orca (héritage + condition,
+    // `PresetCollection::update_compatible` filtre les deux collections avec
+    // `is_compatible_with_printer`) quand l'imprimante est connue ; sinon
+    // filtre de liste historique (FR-021).
+    if matches!(kind, PresetKind::Process | PresetKind::Filament) {
+        if let Some(name) = q.printer.as_deref() {
+            if let Some(printer) = active_printer(&state, user.id, name).await? {
+                let presets = list_compatible_exact(&state, user.id, kind, &printer).await?;
+                return Ok(Json(presets.into_iter().map(Into::into).collect()));
+            }
+        }
+    }
     let presets = state
         .storage
         .presets()
         .list_compatible(kind, q.printer.as_deref(), user.id)
         .await?;
     Ok(Json(presets.into_iter().map(Into::into).collect()))
+}
+
+/// Imprimante active par nom (système en priorité, sinon copie utilisateur),
+/// avec sa config résolue — défauts du registre inclus, comme la config
+/// complète d'Orca sur laquelle s'évaluent les conditions. `None` si inconnue.
+async fn active_printer(
+    state: &AppState,
+    user: UserId,
+    name: &str,
+) -> ApiResult<Option<ActivePrinter>> {
+    let named = state
+        .storage
+        .presets()
+        .list_by_name(PresetKind::Machine, name, user)
+        .await?;
+    let Some(machine) = named
+        .iter()
+        .find(|p| p.origin == PresetOrigin::System)
+        .or_else(|| named.iter().find(|p| p.user_id == Some(user)))
+    else {
+        return Ok(None);
+    };
+    let chain = load_chain(state, user, machine).await?;
+    let mut config = engine::presets::resolve_preset_chain(&chain).map_err(|e| {
+        tracing::error!(error = %e, "résolution de l'imprimante active");
+        ApiError::internal()
+    })?;
+    fill_registry_defaults(&mut config);
+    let user_parent = (machine.origin == PresetOrigin::User)
+        .then(|| chain.get(1).map(|p| p.name.clone()))
+        .flatten();
+    let mut values = config_to_json(&config);
+    // Clés hors registre (ex. `printer_notes`, base des conditions Prusa) :
+    // valeur brute la plus proche de la feuille.
+    for raw in &chain {
+        for (key, value) in &raw.values {
+            values.entry(key.clone()).or_insert_with(|| value.clone());
+        }
+    }
+    Ok(Some(ActivePrinter::new(
+        machine.name.clone(),
+        user_parent,
+        values,
+    )))
+}
+
+/// Presets instanciables d'un type compatibles avec `printer` selon
+/// `Preset::is_compatible_with_printer` d'Orca : `compatible_printers` et
+/// `compatible_printers_condition` résolus sur la chaîne `inherits` (parents
+/// abstraits inclus, chargés en une requête), puis évalués. Ordre de
+/// `list_compatible` (origine, nom).
+async fn list_compatible_exact(
+    state: &AppState,
+    user: UserId,
+    kind: PresetKind,
+    printer: &ActivePrinter,
+) -> ApiResult<Vec<Preset>> {
+    let all = state.storage.presets().list_by_kind(kind, user).await?;
+    let mut by_name: HashMap<&str, Vec<&Preset>> = HashMap::new();
+    let mut by_id: HashMap<String, &Preset> = HashMap::new();
+    for p in &all {
+        by_name.entry(p.name.as_str()).or_default().push(p);
+        by_id.insert(p.id.to_string(), p);
+    }
+    let empty = Map::new();
+    let mut cache = RegexCache::default();
+    let mut out: Vec<Preset> = all
+        .iter()
+        .filter(|p| p.instantiation && (p.user_id.is_none() || p.user_id == Some(user)))
+        .filter(|leaf| {
+            let mut chain: Vec<&Map<String, Value>> = Vec::new();
+            let mut seen: HashSet<String> = HashSet::new();
+            let mut current: &Preset = leaf;
+            loop {
+                if !seen.insert(current.id.to_string()) {
+                    break; // cycle
+                }
+                chain.push(match &current.values {
+                    Value::Object(m) => m,
+                    _ => &empty,
+                });
+                let Some(parent) = current.inherits.as_deref() else {
+                    break;
+                };
+                let next = pick_parent(by_name.get(parent), current)
+                    .or_else(|| by_id.get(parent).copied().filter(|p| p.kind == kind));
+                match next {
+                    Some(p) => current = p,
+                    None => break,
+                }
+            }
+            let spec = preset_compat::resolve_spec(chain);
+            preset_compat::is_compatible(&spec, printer, &mut cache)
+        })
+        .cloned()
+        .collect();
+    out.sort_by(|a, b| {
+        let origin = |p: &Preset| p.origin == PresetOrigin::User;
+        origin(a).cmp(&origin(b)).then_with(|| a.name.cmp(&b.name))
+    });
+    Ok(out)
 }
 
 /// `GET /api/presets/{id}` — valeurs brutes.
@@ -115,20 +227,69 @@ pub async fn resolved(
 ) -> ApiResult<Json<ResolvedPreset>> {
     let id = parse_preset_id(&id)?;
     let leaf = load_visible(&state, user.id, id).await?;
-    let candidates = state
-        .storage
-        .presets()
-        .list_by_kind(leaf.kind, user.id)
-        .await?;
-    let chain = build_chain(&candidates, &leaf);
-    let config = engine::presets::resolve_preset_chain(&chain).map_err(|e| {
+    let chain = load_chain(&state, user.id, &leaf).await?;
+    let mut config = engine::presets::resolve_preset_chain(&chain).map_err(|e| {
         tracing::error!(error = %e, "résolution de preset");
         ApiError::internal()
     })?;
+    fill_registry_defaults(&mut config);
     Ok(Json(ResolvedPreset {
         id: leaf.id.to_string(),
         values: Value::Object(config_to_json(&config)),
     }))
+}
+
+/// Complète les clés absentes de la chaîne avec les défauts du registre, comme
+/// l'UI Orca (config complète `full_print_config`) : sans cela l'éditeur
+/// affiche l'état neutre du contrôle (case décochée, champ vide) au lieu du
+/// défaut Orca (ex. `support_chamber_temp_control = 1`). Seuls les défauts
+/// exprimables en texte Orca valide sont posés (les formes C++ non résolues
+/// par l'audit — `Vec2d(…)`, noms d'enum internes — sont ignorées).
+pub(crate) fn fill_registry_defaults(config: &mut engine::api::DynamicPrintConfig) {
+    for def in engine::params::REGISTRY.iter() {
+        if config.0.contains_key(def.key) {
+            continue;
+        }
+        let Some(raw) = def.default_json else {
+            continue;
+        };
+        let Ok(json) = serde_json::from_str::<Value>(raw) else {
+            continue;
+        };
+        let scalar = |v: &Value| match v {
+            Value::String(s) => Some(s.clone()),
+            Value::Bool(b) => Some(if *b { "1" } else { "0" }.to_string()),
+            Value::Number(n) => Some(n.to_string()),
+            _ => None,
+        };
+        let text = match &json {
+            Value::Array(items) => {
+                let parts: Option<Vec<String>> = items.iter().map(scalar).collect();
+                let Some(parts) = parts else { continue };
+                let sep = if def.kind == engine::params::ParamKind::Point {
+                    "x"
+                } else {
+                    ","
+                };
+                parts.join(sep)
+            }
+            other => {
+                let Some(t) = scalar(other) else { continue };
+                t
+            }
+        };
+        // Un enum n'accepte qu'une valeur de sa liste (pas un nom C++ interne).
+        if matches!(
+            def.kind,
+            engine::params::ParamKind::Enum | engine::params::ParamKind::Enums
+        ) && !text.split(',').all(|t| def.enum_values.contains(&t.trim()))
+        {
+            continue;
+        }
+        if let Some(value) = engine::params::orca_values::parse_orca_value(def, &text) {
+            config.0.insert(def.key.to_string(), value);
+        }
+    }
 }
 
 /// `POST /api/presets` — crée un preset utilisateur.
@@ -308,35 +469,94 @@ pub(crate) fn build_chain(candidates: &[Preset], leaf: &Preset) -> Vec<RawPreset
     for p in candidates {
         by_name.entry(p.name.as_str()).or_default().push(p);
     }
+    // L'éditeur dérive un preset avec `inherits = <id du parent>` (et non son
+    // nom Orca) : on résout aussi le parent par id, sinon la chaîne s'arrête à la
+    // feuille (valeurs = seules les différences, modèle d'imprimante introuvable
+    // → « Imprimante non possédée » au tranchage).
+    let by_id: HashMap<String, Vec<&Preset>> = candidates
+        .iter()
+        .map(|p| (p.id.to_string(), vec![p]))
+        .collect();
     let mut chain = Vec::new();
-    let mut seen: HashSet<&str> = HashSet::new();
+    // Cycle détecté par id : une copie peut porter le nom de son parent.
+    let mut seen: HashSet<String> = HashSet::new();
     let mut current = Some(leaf);
     while let Some(p) = current {
-        if !seen.insert(p.name.as_str()) {
+        if !seen.insert(p.id.to_string()) {
             break; // cycle
         }
         chain.push(to_raw(p));
-        current = p
-            .inherits
-            .as_deref()
-            .and_then(|parent| pick_parent(by_name.get(parent), p));
+        current = p.inherits.as_deref().and_then(|parent| {
+            pick_parent(by_name.get(parent), p).or_else(|| pick_parent(by_id.get(parent), p))
+        });
     }
     chain.reverse();
     chain
 }
 
+/// Comme [`build_chain`] mais par requêtes ciblées (un `list_by_name` par
+/// maillon, repli par id) au lieu de charger tous les presets du type : la
+/// résolution d'un filament lisait ~7000 presets système (~7 Mo de JSON).
+pub(crate) async fn load_chain(
+    state: &AppState,
+    user: UserId,
+    leaf: &Preset,
+) -> ApiResult<Vec<RawPreset>> {
+    let repo = state.storage.presets();
+    let mut chain = Vec::new();
+    let mut seen: HashSet<String> = HashSet::new();
+    let mut current = leaf.clone();
+    loop {
+        if !seen.insert(current.id.to_string()) {
+            break; // cycle
+        }
+        chain.push(to_raw(&current));
+        let Some(parent) = current.inherits.clone() else {
+            break;
+        };
+        let named = repo.list_by_name(current.kind, &parent, user).await?;
+        let refs: Vec<&Preset> = named.iter().collect();
+        let mut next = pick_parent(Some(&refs), &current).cloned();
+        if next.is_none() {
+            // L'éditeur a pu dériver avec `inherits = <id du parent>`.
+            if let Ok(pid) = parse_preset_id(&parent) {
+                if let Ok(p) = repo.get(pid).await {
+                    let visible = p.user_id.is_none() || p.user_id == Some(user);
+                    if visible && p.kind == current.kind && p.id != current.id {
+                        next = Some(p);
+                    }
+                }
+            }
+        }
+        match next {
+            Some(p) => current = p,
+            None => break,
+        }
+    }
+    chain.reverse();
+    Ok(chain)
+}
+
 /// Choisit le parent : même vendeur que l'enfant en priorité, sinon l'unique.
 fn pick_parent<'a>(candidates: Option<&Vec<&'a Preset>>, child: &Preset) -> Option<&'a Preset> {
-    let candidates = candidates?;
+    // Un preset utilisateur peut porter le nom de son parent (copie d'imprimante
+    // « même nom → même modèle ») : il ne peut pas être son propre parent.
+    let candidates: Vec<&'a Preset> = candidates?
+        .iter()
+        .copied()
+        .filter(|c| c.id != child.id)
+        .collect();
     if let Some(v) = &child.vendor {
         if let Some(p) = candidates.iter().find(|c| c.vendor.as_ref() == Some(v)) {
             return Some(p);
         }
     }
-    match candidates.as_slice() {
-        [only] => Some(only),
-        _ => candidates.first().copied(),
-    }
+    // Sinon un preset système en priorité (parent Orca), puis le premier.
+    candidates
+        .iter()
+        .find(|c| c.origin == PresetOrigin::System)
+        .or_else(|| candidates.first())
+        .copied()
 }
 
 fn to_raw(p: &Preset) -> RawPreset {
@@ -374,6 +594,11 @@ fn config_value_to_json(value: &ConfigValue) -> Value {
         ConfigValue::String(s) => Value::String(s.clone()),
         ConfigValue::Point(v) | ConfigValue::Floats(v) => Value::from(v.clone()),
         ConfigValue::Bools(v) => Value::from(v.clone()),
+        ConfigValue::BoolsNullable(v) => Value::Array(
+            v.iter()
+                .map(|o| o.map(Value::Bool).unwrap_or(Value::Null))
+                .collect(),
+        ),
         ConfigValue::Ints(v) => Value::from(v.clone()),
         ConfigValue::FloatsNullable(v) => Value::Array(
             v.iter()

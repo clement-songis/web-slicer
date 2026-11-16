@@ -56,7 +56,7 @@ pub async fn upload(
 /// Déclenche la conversion moteur du modèle en tâche détachée (bornée par le
 /// sémaphore du convertisseur). L'upload ne bloque pas ; un échec est persisté
 /// (`conversion_error`) sans affecter la réponse.
-fn spawn_conversion(state: &AppState, model: Model) {
+pub(crate) fn spawn_conversion(state: &AppState, model: Model) {
     let converter = state.converter.clone();
     tokio::spawn(async move {
         converter.convert(model).await;
@@ -136,6 +136,99 @@ pub(crate) async fn write_model_record(
         )
         .await?;
     Ok(model)
+}
+
+/// Copie un modèle et tous ses artefacts sous de nouvelles clés. Le maillage
+/// prêt est copié directement ; l'état d'erreur est conservé. Un modèle encore
+/// en attente sera converti par l'appelant après remappage de la scène.
+pub(crate) async fn clone_model_record(
+    state: &AppState,
+    user_id: UserId,
+    project_id: ProjectId,
+    source: &Model,
+) -> ApiResult<Model> {
+    let bytes = state
+        .files
+        .read(FsPath::new(&source.file_path))
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, model = %source.id, "lecture du modèle à dupliquer");
+            ApiError::internal()
+        })?;
+    let mesh = match source.mesh_path.as_deref() {
+        Some(path) => Some(state.files.read(FsPath::new(path)).await.map_err(|e| {
+            tracing::error!(error = %e, model = %source.id, "lecture du maillage à dupliquer");
+            ApiError::internal()
+        })?),
+        None => None,
+    };
+
+    let storage_key = ModelId::new();
+    let file_path = state
+        .files
+        .write_model(user_id, storage_key, format_ext(source.format), &bytes)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "écriture de la copie du modèle");
+            ApiError::internal()
+        })?;
+    let file_path_text = file_path.to_string_lossy().into_owned();
+    let mut copy = state
+        .storage
+        .models()
+        .create(
+            user_id,
+            NewModel {
+                project_id: Some(project_id),
+                filename: source.filename.clone(),
+                format: source.format,
+                file_path: file_path_text.clone(),
+                mesh_path: None,
+                size_bytes: source.size_bytes,
+                triangle_count: source.triangle_count,
+                repair_report: source.repair_report.clone(),
+            },
+        )
+        .await?;
+
+    let result = async {
+        if let Some(bytes) = mesh {
+            let path = state
+                .files
+                .write_mesh(user_id, copy.id, &bytes)
+                .await
+                .map_err(|e| {
+                    tracing::error!(error = %e, "écriture de la copie du maillage");
+                    ApiError::internal()
+                })?;
+            let path = path.to_string_lossy().into_owned();
+            state
+                .storage
+                .models()
+                .set_mesh(user_id, copy.id, &path, source.triangle_count)
+                .await?;
+            copy.mesh_path = Some(path);
+        }
+        if let Some(error) = source.conversion_error.as_deref() {
+            state
+                .storage
+                .models()
+                .mark_conversion_failed(user_id, copy.id, error)
+                .await?;
+            copy.conversion_error = Some(error.to_string());
+        }
+        Ok(())
+    }
+    .await;
+    if let Err(error) = result {
+        let _ = state.storage.models().delete(user_id, copy.id).await;
+        let _ = tokio::fs::remove_file(&file_path).await;
+        if let Some(path) = copy.mesh_path.as_deref() {
+            let _ = tokio::fs::remove_file(path).await;
+        }
+        return Err(error);
+    }
+    Ok(copy)
 }
 
 fn parse_model_id(raw: &str) -> ApiResult<ModelId> {

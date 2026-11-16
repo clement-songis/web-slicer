@@ -76,6 +76,31 @@ export async function uploadModel(projectId: string, file: File): Promise<ModelR
 	return data as ModelResponse;
 }
 
+/**
+ * Ajoute le contenu d'un 3MF au projet comme Orca : un objet de scène par
+ * objet du 3MF (nom, transformation, volumes, réglages), modèles créés côté
+ * serveur (`POST /projects/{id}/import-3mf`).
+ */
+export async function import3mfObjects(
+	projectId: string,
+	file: File
+): Promise<{ objects: import('./document').SceneObjectDoc[]; models: ModelResponse[] }> {
+	const form = new FormData();
+	form.append('file', file, file.name);
+	const res = await fetch(`${API_BASE}/projects/${projectId}/import-3mf`, {
+		method: 'POST',
+		credentials: 'include',
+		body: form
+	});
+	const text = await res.text();
+	const data: unknown = text ? JSON.parse(text) : undefined;
+	if (!res.ok) {
+		const err = (data ?? {}) as Partial<ErrorBody>;
+		throw new ApiError(res.status, err.code ?? 'error', err.message ?? res.statusText, err.details);
+	}
+	return data as { objects: import('./document').SceneObjectDoc[]; models: ModelResponse[] };
+}
+
 /** Récupère le maillage WSMh servi par le backend (`GET …/mesh`) et le décode. */
 export async function fetchMesh(modelId: string): Promise<SceneMesh> {
 	const res = await fetch(`${API_BASE}/models/${modelId}/mesh`, { credentials: 'include' });

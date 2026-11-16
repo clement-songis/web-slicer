@@ -20,7 +20,8 @@ export function buildWindowGeometry(
 	return {
 		positions: concatFloat(parts.map((p) => p.positions)),
 		colors: concatFloat(parts.map((p) => p.colors)),
-		visibleCount: parts.reduce((n, p) => n + p.visibleCount, 0)
+		visibleCount: parts.reduce((n, p) => n + p.visibleCount, 0),
+		sizes: concatFloat(parts.map((p) => p.sizes ?? new Float32Array(p.visibleCount * 2)))
 	};
 }
 

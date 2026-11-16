@@ -16,6 +16,30 @@
 
 	let { open, x, y, items, onaction, onclose }: Props = $props();
 
+	const MARGIN = 8;
+	let menuElement: HTMLDivElement | null = null;
+	let left = $state(x);
+	let top = $state(y);
+
+	// Mesure le menu rendu puis le retourne vers l'intérieur du viewport. La
+	// hauteur CSS est bornée ; une liste plus longue que l'écran défile donc au
+	// lieu de rendre ses dernières actions inaccessibles.
+	function reposition() {
+		if (!open || !menuElement) return;
+		const rect = menuElement.getBoundingClientRect();
+		const maxLeft = Math.max(MARGIN, window.innerWidth - rect.width - MARGIN);
+		const maxTop = Math.max(MARGIN, window.innerHeight - rect.height - MARGIN);
+		left = Math.max(MARGIN, Math.min(x, maxLeft));
+		top = Math.max(MARGIN, Math.min(y, maxTop));
+	}
+
+	$effect(() => {
+		if (!open) return;
+		// Les props sont lues par reposition pendant l'effet : ouverture, nouveau
+		// clic et changement de contenu recalculent ainsi la position.
+		reposition();
+	});
+
 	function pick(action: string) {
 		onaction(action);
 		onclose();
@@ -36,8 +60,9 @@
 		}}
 	></button>
 	<div
-		class="fixed z-50 min-w-48 rounded border border-border bg-surface-raised py-1 shadow-xl"
-		style="left: {x}px; top: {y}px"
+		bind:this={menuElement}
+		class="fixed z-50 max-h-[calc(100vh-1rem)] min-w-48 max-w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain ws-menu"
+		style="left: {left}px; top: {top}px"
 		role="menu"
 	>
 		{#each items as item, i (i)}
@@ -46,7 +71,7 @@
 			{:else}
 				<button
 					type="button"
-					class="block w-full px-3 py-1.5 text-left text-sm text-content-muted hover:bg-overlay hover:text-content"
+					class="ws-menu-item"
 					role="menuitem"
 					onclick={() => pick(item.action)}
 				>
@@ -56,3 +81,11 @@
 		{/each}
 	</div>
 {/if}
+
+<!-- Échap referme le menu, comme les menus contextuels natifs d'Orca (wxMenu). -->
+<svelte:window
+	onresize={reposition}
+	onkeydown={(e) => {
+		if (open && e.key === 'Escape') onclose();
+	}}
+/>

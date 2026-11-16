@@ -82,7 +82,45 @@ fn check_nominal(failures: &mut Vec<String>) {
     let gcode =
         std::fs::read_to_string(common::fixture("cube_bbl.gcode")).expect("G-code de référence");
     let reference = parse_reference_gcode(&gcode);
-    let ffi = slice_via_ffi("orca_project.3mf");
+
+    // Ce 3MF ne porte aucune identité machine (`printer_model`,
+    // `printer_settings_id`, `inherits_group` vides) avec Marlin + E relatif et
+    // sans « G92 E0 ». Le CLI en déduit `is_bbl_vendor_preset = false` et
+    // `Print::validate` refuse : le moteur doit reproduire ce refus.
+    let (model, config) =
+        engine::adapters::ffi::read_project_3mf(&common::fixture("orca_project.3mf"))
+            .expect("lecture du projet 3MF");
+    let work = tempfile::tempdir().unwrap();
+    let refused = engine::adapters::ffi::slice(
+        SliceRequest {
+            model,
+            config,
+            plate_index: 0,
+            work_dir: work.path().to_path_buf(),
+            calib: None,
+        },
+        Box::new(|_, _| {}),
+        CancelToken::new(),
+    )
+    .expect_err("sans preset connu, défaut du CLI : imprimante non Bambu → refus");
+    assert!(
+        refused.message.contains("G92 E0"),
+        "refus de validation attendu : {}",
+        refused.message
+    );
+
+    // La référence vient d'Orca desktop, où `is_BBL_printer()` provient du
+    // preset machine sélectionné dans le bundle (`is_bbl_vendor()`), pas du 3MF
+    // (le G-code de référence porte d'ailleurs les marqueurs Bambu
+    // `; CHANGE_LAYER`). On rejoue ce contexte : preset machine Bambu chargé.
+    let ffi = slice_via_ffi_with("orca_project.3mf", |config| {
+        config
+            .set(
+                "printer_settings_id",
+                ConfigValue::String("Bambu Lab X1 Carbon 0.4 nozzle".into()),
+            )
+            .unwrap();
+    });
     compare("orca_project.3mf (nominal)", &ffi, &reference, failures);
 }
 
@@ -169,8 +207,14 @@ fn compare(label: &str, ffi: &FfiMetrics, r: &Reference, failures: &mut Vec<Stri
 
 /// Tranche un projet via le worker FFI et renvoie ses métriques.
 fn slice_via_ffi(project: &str) -> FfiMetrics {
-    let (model, config) = engine::adapters::ffi::read_project_3mf(&common::fixture(project))
+    slice_via_ffi_with(project, |_| {})
+}
+
+/// Variante qui ajuste le config lu (contexte de bundle, ex. preset machine).
+fn slice_via_ffi_with(project: &str, adjust: impl FnOnce(&mut DynamicPrintConfig)) -> FfiMetrics {
+    let (model, mut config) = engine::adapters::ffi::read_project_3mf(&common::fixture(project))
         .expect("lecture du projet 3MF");
+    adjust(&mut config);
     let diameter = filament_diameter(&config);
     let work = tempfile::tempdir().unwrap();
     let req = SliceRequest {
@@ -178,6 +222,7 @@ fn slice_via_ffi(project: &str) -> FfiMetrics {
         config,
         plate_index: 0,
         work_dir: work.path().to_path_buf(),
+        calib: None,
     };
     let progress: ProgressSink = Box::new(|_phase, _ratio| {});
     let result = engine::adapters::ffi::slice(req, progress, CancelToken::new())

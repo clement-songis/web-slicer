@@ -1,3 +1,1075 @@
 {
- "_doc": "Valeurs de test choisies à la main (fichier gelé, édition humaine). Forme : \"clé\": \"valeur\" ou {\"value\": ..., \"requires\": {\"autre_clé\": \"1\"}}. Relancer gen_features.py puis make_refs.py --keys clé."
+ "_doc": "Valeurs de test choisies à la main (fichier gelé, édition humaine). Forme : \"clé\": \"valeur\" ou {\"value\": ..., \"requires\": {\"autre_clé\": \"1\"}}. Relancer gen_features.py puis make_refs.py --keys clé.",
+ "bed_mesh_max": {
+  "value": "172x172",
+  "requires": {
+   "machine_start_gcode": "M190 S[bed_temperature_initial_layer_single]\nM109 S[nozzle_temperature_initial_layer]\nPRINT_START EXTRUDER=[nozzle_temperature_initial_layer] BED=[bed_temperature_initial_layer_single]\n; You can use following code instead if your PRINT_START macro support Chamber and print area bedmesh\n; PRINT_START EXTRUDER=[nozzle_temperature_initial_layer] BED=[bed_temperature_initial_layer_single] Chamber=[chamber_temperature] PRINT_MIN={first_layer_print_min[0]},{first_layer_print_min[1]} PRINT_MAX={first_layer_print_max[0]},{first_layer_print_max[1]}\nBED_MESH_CALIBRATE MESH_MIN={adaptive_bed_mesh_min[0]},{adaptive_bed_mesh_min[1]} MESH_MAX={adaptive_bed_mesh_max[0]},{adaptive_bed_mesh_max[1]} PROBE_COUNT={bed_mesh_probe_count[0]},{bed_mesh_probe_count[1]}"
+  }
+ },
+ "bed_mesh_min": {
+  "value": "170x170",
+  "requires": {
+   "machine_start_gcode": "M190 S[bed_temperature_initial_layer_single]\nM109 S[nozzle_temperature_initial_layer]\nPRINT_START EXTRUDER=[nozzle_temperature_initial_layer] BED=[bed_temperature_initial_layer_single]\n; You can use following code instead if your PRINT_START macro support Chamber and print area bedmesh\n; PRINT_START EXTRUDER=[nozzle_temperature_initial_layer] BED=[bed_temperature_initial_layer_single] Chamber=[chamber_temperature] PRINT_MIN={first_layer_print_min[0]},{first_layer_print_min[1]} PRINT_MAX={first_layer_print_max[0]},{first_layer_print_max[1]}\nBED_MESH_CALIBRATE MESH_MIN={adaptive_bed_mesh_min[0]},{adaptive_bed_mesh_min[1]} MESH_MAX={adaptive_bed_mesh_max[0]},{adaptive_bed_mesh_max[1]} PROBE_COUNT={bed_mesh_probe_count[0]},{bed_mesh_probe_count[1]}"
+  }
+ },
+ "bed_mesh_probe_distance": {
+  "value": "5x5",
+  "requires": {
+   "machine_start_gcode": "M190 S[bed_temperature_initial_layer_single]\nM109 S[nozzle_temperature_initial_layer]\nPRINT_START EXTRUDER=[nozzle_temperature_initial_layer] BED=[bed_temperature_initial_layer_single]\n; You can use following code instead if your PRINT_START macro support Chamber and print area bedmesh\n; PRINT_START EXTRUDER=[nozzle_temperature_initial_layer] BED=[bed_temperature_initial_layer_single] Chamber=[chamber_temperature] PRINT_MIN={first_layer_print_min[0]},{first_layer_print_min[1]} PRINT_MAX={first_layer_print_max[0]},{first_layer_print_max[1]}\nBED_MESH_CALIBRATE MESH_MIN={adaptive_bed_mesh_min[0]},{adaptive_bed_mesh_min[1]} MESH_MAX={adaptive_bed_mesh_max[0]},{adaptive_bed_mesh_max[1]} PROBE_COUNT={bed_mesh_probe_count[0]},{bed_mesh_probe_count[1]}"
+  }
+ },
+ "bridge_line_width": {
+  "value": "0.3"
+ },
+ "brim_type": {
+  "value": "outer_only"
+ },
+ "curr_bed_type": {
+  "value": "Textured PEI Plate"
+ },
+ "default_junction_deviation": {
+  "value": "0.2",
+  "requires": {
+   "gcode_flavor": "marlin2",
+   "machine_max_junction_deviation": [
+    "0.3"
+   ]
+  }
+ },
+ "extruder_offset": {
+  "value": [
+   "5x5"
+  ]
+ },
+ "head_wrap_detect_zone": {
+  "value": [
+   "0x0",
+   "350x0",
+   "350x350",
+   "0x350"
+  ],
+  "requires": {
+   "machine_start_gcode": "M190 S[bed_temperature_initial_layer_single]\nM109 S[nozzle_temperature_initial_layer]\nPRINT_START EXTRUDER=[nozzle_temperature_initial_layer] BED=[bed_temperature_initial_layer_single]\n; You can use following code instead if your PRINT_START macro support Chamber and print area bedmesh\n; PRINT_START EXTRUDER=[nozzle_temperature_initial_layer] BED=[bed_temperature_initial_layer_single] Chamber=[chamber_temperature] PRINT_MIN={first_layer_print_min[0]},{first_layer_print_min[1]} PRINT_MAX={first_layer_print_max[0]},{first_layer_print_max[1]}\nM118 HEAD_WRAP_ZONE={in_head_wrap_detect_zone}"
+  }
+ },
+ "input_shaping_type": {
+  "value": "Disable",
+  "requires": {
+   "input_shaping_emit": "1",
+   "gcode_flavor": "marlin2"
+  }
+ },
+ "machine_max_junction_deviation": {
+  "value": [
+   "0.2"
+  ],
+  "requires": {
+   "gcode_flavor": "marlin2"
+  }
+ },
+ "nozzle_diameter": {
+  "value": [
+   "0.6"
+  ]
+ },
+ "overhang_fan_threshold": {
+  "value": [
+   "0%"
+  ]
+ },
+ "printable_area": {
+  "value": [
+   "0x0",
+   "300x0",
+   "300x300",
+   "0x300"
+  ]
+ },
+ "timelapse_type": {
+  "value": "1"
+ },
+ "use_firmware_retraction": {
+  "value": "1",
+  "requires": {
+   "wipe": [
+    "0"
+   ]
+  }
+ },
+ "use_relative_e_distances": {
+  "value": "0",
+  "requires": {
+   "before_layer_change_gcode": ";BEFORE_LAYER_CHANGE\n;[layer_z]\n"
+  }
+ },
+ "wipe_tower_type": {
+  "value": "type1",
+  "requires": {
+   "enable_prime_tower": "1",
+   "timelapse_type": "1"
+  }
+ },
+ "wipe_tower_wall_type": {
+  "value": "rectangle",
+  "requires": {
+   "enable_prime_tower": "1",
+   "timelapse_type": "1"
+  }
+ },
+ "wipe_tower_x": {
+  "value": [
+   "100"
+  ],
+  "requires": {
+   "enable_prime_tower": "1",
+   "timelapse_type": "1"
+  }
+ },
+ "wipe_tower_y": {
+  "value": [
+   "100"
+  ],
+  "requires": {
+   "enable_prime_tower": "1",
+   "timelapse_type": "1"
+  }
+ },
+ "wall_direction": {
+  "value": "cw"
+ },
+ "wall_sequence": {
+  "value": "outer wall/inner wall"
+ },
+ "enable_power_loss_recovery": {
+  "value": "enable",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "retract_lift_enforce": {
+  "value": [
+   "Top Only"
+  ]
+ },
+ "emit_machine_limits_to_gcode": {
+  "value": "0",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0",
+   "gcode_flavor": "marlin2"
+  }
+ },
+ "initial_layer_travel_speed": {
+  "value": "1",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "temperature_vitrification": {
+  "value": [
+   "60"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0",
+   "machine_start_gcode": "M190 S[bed_temperature_initial_layer_single]\nM109 S[nozzle_temperature_initial_layer]\nPRINT_START EXTRUDER=[nozzle_temperature_initial_layer] BED=[bed_temperature_initial_layer_single]\n; You can use following code instead if your PRINT_START macro support Chamber and print area bedmesh\n; PRINT_START EXTRUDER=[nozzle_temperature_initial_layer] BED=[bed_temperature_initial_layer_single] Chamber=[chamber_temperature] PRINT_MIN={first_layer_print_min[0]},{first_layer_print_min[1]} PRINT_MAX={first_layer_print_max[0]},{first_layer_print_max[1]}\nM118 VITRIFICATION={min_vitrification_temperature}"
+  }
+ },
+ "filament_vendor": {
+  "value": [
+   "Bambu Lab"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0",
+   "machine_start_gcode": "M190 S[bed_temperature_initial_layer_single]\nM109 S[nozzle_temperature_initial_layer]\nPRINT_START EXTRUDER=[nozzle_temperature_initial_layer] BED=[bed_temperature_initial_layer_single]\n; You can use following code instead if your PRINT_START macro support Chamber and print area bedmesh\n; PRINT_START EXTRUDER=[nozzle_temperature_initial_layer] BED=[bed_temperature_initial_layer_single] Chamber=[chamber_temperature] PRINT_MIN={first_layer_print_min[0]},{first_layer_print_min[1]} PRINT_MAX={first_layer_print_max[0]},{first_layer_print_max[1]}\nM118 ALL_BBL={is_all_bbl_filament}"
+  }
+ },
+ "bed_exclude_area": {
+  "value": [
+   "150x150",
+   "200x150",
+   "200x200",
+   "150x200"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "extruder_printable_area": {
+  "value": [
+   "0x0,100x0,100x100,0x100"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "inherits_group": {
+  "value": [
+   "harness_test"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "wipe_tower_max_purge_speed": {
+  "value": "112.5",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "printer_technology": {
+  "value": "SLA",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "filament_colour": {
+  "value": [
+   "#FF0000"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "bed_custom_model": {
+  "value": "harness_bed.stl",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "bed_custom_texture": {
+  "value": "harness_bed.png",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "default_print_profile": {
+  "value": "0.12mm Fine @Voron",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "default_filament_profile": {
+  "value": [
+   "Generic PETG @System"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "printer_variant": {
+  "value": "0.6",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "host_type": {
+  "value": "prusalink",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "printhost_authorization_type": {
+  "value": "user",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "printhost_ssl_ignore_revoke": {
+  "value": "1",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "start_end_points": {
+  "value": [
+   "20x-3",
+   "54x245"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "wrapping_exclude_area": {
+  "value": [
+   "0x0",
+   "50x0",
+   "50x50",
+   "0x50"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "best_object_pos": {
+  "value": "0.25x0.25",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "preset_name": {
+  "value": "harness_preset",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "adaptive_pressure_advance_overhangs": {
+  "value": [
+   "1"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "bed_temperature_formula": {
+  "value": "by_first_filament",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "bottom_surface_pattern": {
+  "value": "monotonicline",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "brim_flow_ratio": {
+  "value": "1.25",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "combine_brims": {
+  "value": "1",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "default_acceleration": {
+  "value": "625",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "default_filament_colour": {
+  "value": [
+   "harness_test"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "deretraction_speed": {
+  "value": [
+   "1"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "different_settings_to_system": {
+  "value": [
+   "harness_test"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "eng_plate_temp_initial_layer": {
+  "value": [
+   "1"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "extra_loading_move": {
+  "value": "-2.5",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "extruder_clearance_height_to_lid": {
+  "value": "150",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "filament_cost": {
+  "value": [
+   "1"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "filament_multitool_ramming_flow": {
+  "value": [
+   "1"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "filament_stamping_distance": {
+  "value": [
+   "1"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "filament_toolchange_delay": {
+  "value": [
+   "1"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "filament_tower_interface_pre_extrusion_length": {
+  "value": [
+   "1"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "gcode_flavor": {
+  "value": "klipper",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "initial_layer_infill_speed": {
+  "value": "75",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "initial_layer_travel_jerk": {
+  "value": "1",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "inner_wall_speed": {
+  "value": "75",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "long_retractions_when_ec": {
+  "value": [
+   "1"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "machine_load_filament_time": {
+  "value": "1",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "machine_tool_change_time": {
+  "value": "1",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "max_layer_height": {
+  "value": [
+   "1"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "parking_pos_retraction": {
+  "value": "115",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "precise_outer_wall": {
+  "value": "0",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "required_nozzle_HRC": {
+  "value": [
+   "1"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "resonance_avoidance": {
+  "value": "1",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "retract_length_toolchange": {
+  "value": [
+   "1"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "retraction_distances_when_ec": {
+  "value": [
+   "1"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "retraction_minimum_travel": {
+  "value": [
+   "1"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "seam_position": {
+  "value": "nearest",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "skirt_distance": {
+  "value": "2.5",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "small_perimeter_threshold": {
+  "value": "1",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "sparse_infill_acceleration": {
+  "value": "1",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "sparse_infill_density": {
+  "value": "21%",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "sparse_infill_line_width": {
+  "value": "1",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "support_multi_bed_types": {
+  "value": "1",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "support_speed": {
+  "value": "100",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "travel_speed": {
+  "value": "150",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "use_3mf": {
+  "value": "1",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "wipe": {
+  "value": [
+   "1"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "z_offset": {
+  "value": "1",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "internal_solid_infill_pattern": {
+  "value": "monotonicline",
+  "requires": {
+   "detect_narrow_internal_solid_infill": "0"
+  }
+ },
+ "compatible_machine_expression_group": {
+  "value": [
+   "harness"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "compatible_printers": {
+  "value": [
+   "harness printer"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "compatible_printers_condition": {
+  "value": "printer_notes=~/.*harness.*/",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "compatible_prints": {
+  "value": [
+   "harness print"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "compatible_prints_condition": {
+  "value": "layer_height > 0",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "compatible_process_expression_group": {
+  "value": [
+   "harness"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "extruder_colour": {
+  "value": [
+   "#00FF00"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "filament_ids": {
+  "value": [
+   "harness_fid"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "filament_notes": {
+  "value": [
+   "harness note"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "filament_settings_id": {
+  "value": [
+   "harness_filament"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0",
+   "inherits_group": [
+    "0.20mm Standard @Voron",
+    "Generic PLA @System",
+    "Voron 2.4 350 0.4 nozzle"
+   ]
+  }
+ },
+ "inherits": {
+  "value": "harness_parent",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "print_host": {
+  "value": "192.168.0.10",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "print_host_webui": {
+  "value": "http://192.168.0.10",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "print_settings_id": {
+  "value": "harness_print",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "printer_model": {
+  "value": "harness_model",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "printer_notes": {
+  "value": "harness note",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "printer_settings_id": {
+  "value": "harness_printer",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0",
+   "inherits_group": [
+    "0.20mm Standard @Voron",
+    "Generic PLA @System",
+    "Voron 2.4 350 0.4 nozzle"
+   ]
+  }
+ },
+ "printhost_apikey": {
+  "value": "harness-key",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "printhost_cafile": {
+  "value": "/tmp/harness-ca.pem",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "printhost_password": {
+  "value": "harness-pass",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "printhost_port": {
+  "value": "7125",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "printhost_user": {
+  "value": "harness",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "thumbnails": {
+  "value": "96x96/PNG",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "thumbnails_format": {
+  "value": "JPG",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "upward_compatible_machine": {
+  "value": [
+   "harness printer"
+  ],
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "counterbore_hole_bridging": {
+  "value": "partiallybridge",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "other_layers_print_sequence_nums": {
+  "value": "1",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "support_object_skip_flush": {
+  "value": "1",
+  "requires": {
+   "bottom_shell_layers": "1",
+   "top_shell_layers": "1",
+   "top_shell_thickness": "0"
+  }
+ },
+ "enable_overhang_speed": "0",
+ "enable_overhang_bridge_fan": [
+  "0"
+ ],
+ "parallel_printheads_count": "2",
+ "wipe_distance": [
+  "2"
+ ],
+ "adaptive_pressure_advance_bridges": {
+  "value": [
+   "1"
+  ],
+  "model": "bridge",
+  "requires": {
+   "enable_pressure_advance": [
+    "1"
+   ],
+   "adaptive_pressure_advance": [
+    "1"
+   ]
+  }
+ },
+ "bridge_angle": {
+  "value": "1",
+  "model": "bridge"
+ },
+ "bridge_density": {
+  "value": "101%",
+  "model": "bridge"
+ },
+ "bridge_no_support": {
+  "value": "1",
+  "model": "bridge",
+  "requires": {
+   "enable_support": "1"
+  }
+ },
+ "bridge_speed": {
+  "value": "31.25",
+  "model": "bridge"
+ },
+ "enable_extra_bridge_layer": {
+  "value": "external_bridge_only",
+  "model": "bridge"
+ },
+ "make_overhang_printable_angle": {
+  "value": "68.75",
+  "model": "bridge",
+  "requires": {
+   "make_overhang_printable": "1"
+  }
+ },
+ "overhang_1_4_speed": {
+  "value": "1",
+  "model": "overhang"
+ },
+ "overhang_reverse": {
+  "value": "1",
+  "model": "bridge"
+ },
+ "overhang_reverse_internal_only": {
+  "value": "1",
+  "model": "bridge",
+  "requires": {
+   "overhang_reverse": "1"
+  }
+ },
+ "thick_bridges": {
+  "value": "1",
+  "model": "bridge"
+ }
 }

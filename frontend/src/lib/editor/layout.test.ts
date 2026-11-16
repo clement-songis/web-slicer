@@ -1,19 +1,11 @@
 // Tests de l'orchestrateur de disposition de l'éditeur (T097).
 import { describe, expect, test } from 'vitest';
-import {
-	EDITOR_DEFAULT_THEME,
-	EDITOR_TABS,
-	initialLayout,
-	setTab,
-	showsPrepare,
-	showsPreview
-} from './layout';
+import { EDITOR_TABS, initialLayout, setTab, showsPrepare, showsPreview } from './layout';
 
 describe('layout', () => {
-	test('défaut : onglet Préparer, thème sombre', () => {
+	test('défaut : onglet Préparer', () => {
 		const s = initialLayout();
 		expect(s.tab).toBe('prepare');
-		expect(EDITOR_DEFAULT_THEME).toBe('dark');
 		expect(showsPrepare(s)).toBe(true);
 		expect(showsPreview(s)).toBe(false);
 	});

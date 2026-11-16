@@ -88,7 +88,7 @@
 	<AppSidebar email={data.user.email} active="queue" />
 	<div class="flex-1 overflow-auto">
 		<main class="mx-auto flex max-w-3xl flex-col gap-6 p-6 text-content">
-			<h1 class="text-xl font-semibold text-content">File de tranchage</h1>
+			<h1 class="ws-page-title">File de tranchage</h1>
 
 			{#if error}
 				<p class="rounded bg-danger-soft px-3 py-2 text-danger-content" role="alert">{error}</p>
@@ -102,9 +102,11 @@
 
 			<!-- File active -->
 			<section class="flex flex-col gap-2" aria-label="File active">
-				<h2 class="text-sm font-semibold text-content-muted">En cours ({parts.active.length})</h2>
+				<h2 class="ws-section-title">En cours ({parts.active.length})</h2>
 				{#if parts.active.length === 0}
-					<p class="text-sm text-content-subtle">Aucun tranchage en cours.</p>
+					<p class="ws-empty rounded-lg border border-dashed border-border py-6">
+						Aucun tranchage en cours.
+					</p>
 				{:else}
 					{#each parts.active as job (job.id)}
 						<article class="flex items-center gap-3 rounded border border-border p-3">
@@ -123,7 +125,7 @@
 							</div>
 							<button
 								type="button"
-								class="rounded border border-border-strong bg-surface-raised px-2 py-1 text-xs text-content hover:bg-overlay disabled:opacity-50"
+								class="ws-btn ws-btn-sm ws-btn-secondary"
 								disabled={busy[job.id]}
 								onclick={() => cancel(job.id)}
 							>
@@ -136,11 +138,13 @@
 
 			<!-- Historique -->
 			<section class="flex flex-col gap-2" aria-label="Historique">
-				<h2 class="text-sm font-semibold text-content-muted">
+				<h2 class="ws-section-title">
 					Historique ({parts.history.length})
 				</h2>
 				{#if parts.history.length === 0}
-					<p class="text-sm text-content-subtle">Aucun tranchage terminé.</p>
+					<p class="ws-empty rounded-lg border border-dashed border-border py-6">
+						Aucun tranchage terminé.
+					</p>
 				{:else}
 					<table class="w-full border-collapse text-sm">
 						<thead>
@@ -178,7 +182,7 @@
 													<!-- Envoi vers une imprimante déclarée (start_now, FR-061). -->
 													<div class="flex flex-wrap items-center gap-1 text-xs">
 														<select
-															class="rounded border border-border-strong bg-surface-raised text-content px-1 py-0.5"
+															class="ws-field ws-field-sm"
 															bind:value={sendTarget[job.id]}
 															aria-label="Imprimante cible"
 														>
@@ -192,7 +196,7 @@
 														</label>
 														<button
 															type="button"
-															class="rounded border border-border-strong bg-surface-raised px-2 py-0.5 text-content hover:bg-overlay disabled:opacity-50"
+															class="ws-btn ws-btn-sm ws-btn-secondary"
 															disabled={busy[job.id]}
 															onclick={() => sendToPrinter(job)}
 														>

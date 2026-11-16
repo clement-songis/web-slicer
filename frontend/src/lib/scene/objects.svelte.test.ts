@@ -88,6 +88,20 @@ describe('ObjectTree', () => {
 		expect(t.effectiveExtruder(a.id)).toBe(1); // propre prioritaire
 	});
 
+	test('drapeau imprimable et héritage du groupe', () => {
+		const t = new ObjectTree();
+		const a = t.add('a');
+		const b = t.add('b');
+		const grp = t.group([a.id, b.id])!;
+		t.setPrintable(a.id, false);
+		expect(t.isPrintable(a.id)).toBe(false);
+		expect(t.isPrintable(b.id)).toBe(true);
+		t.setPrintable(a.id, true);
+		t.setPrintable(grp.id, false);
+		expect(t.isPrintable(a.id)).toBe(false);
+		expect(t.duplicate(a.id)!.printable).toBe(true);
+	});
+
 	test('setSetting définit puis efface une surcharge', () => {
 		const t = new ObjectTree();
 		const a = t.add('a');
@@ -95,5 +109,33 @@ describe('ObjectTree', () => {
 		expect(t.get(a.id)!.settings['layer_height']).toBe(0.2);
 		t.setSetting(a.id, 'layer_height', undefined);
 		expect('layer_height' in t.get(a.id)!.settings).toBe(false);
+	});
+
+	test('meshName est conservé par snapshot/restore et duplicate', () => {
+		const t = new ObjectTree();
+		const a = t.add('pair.stl', { meshName: 'pair.stl_1' });
+		expect(t.add('cube').meshName).toBeUndefined();
+		const snap = t.snapshot();
+		t.remove(a.id);
+		t.restore(snap);
+		expect(t.get(a.id)!.meshName).toBe('pair.stl_1');
+		expect(t.duplicate(a.id)!.meshName).toBe('pair.stl_1');
+	});
+
+	test('moveAfter insère un nœud à la place voulue parmi ses frères', () => {
+		const t = new ObjectTree();
+		const a = t.add('twoparts');
+		const b = t.add('cube20');
+		const g = t.group([a.id, b.id], 'Assemblage')!;
+		const p1 = t.add('twoparts_1', { parentId: g.id });
+		const p2 = t.add('twoparts_2', { parentId: g.id });
+		t.moveAfter(p1.id, a.id);
+		t.moveAfter(p2.id, p1.id);
+		t.remove(a.id);
+		expect(t.children(g.id).map((n) => n.name)).toEqual(['twoparts_1', 'twoparts_2', 'cube20']);
+		// Ids inconnus ou identiques : sans effet.
+		t.moveAfter('nope', p1.id);
+		t.moveAfter(p1.id, p1.id);
+		expect(t.children(g.id).map((n) => n.name)).toEqual(['twoparts_1', 'twoparts_2', 'cube20']);
 	});
 });

@@ -20,6 +20,8 @@ const WORKER_BIN_NAME: &str = "engine-worker";
 
 /// Timeout par défaut d'une opération worker (décodage/tranchage).
 pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(120);
+/// Bornes mémoire des flux capturés (les gros artefacts passent par fichiers).
+pub const MAX_WORKER_OUTPUT_BYTES: usize = 16 * 1024 * 1024;
 
 /// Échec d'une exécution du worker.
 #[derive(Debug, thiserror::Error)]
@@ -37,11 +39,21 @@ pub enum WorkerError {
     #[error("worker terminé par signal (crash contenu) — stderr : {stderr}")]
     Crashed { stderr: String },
     /// Sortie en code ≠ 0 (erreur applicative : ligne `E` sur stdout/stderr).
-    #[error("worker sorti en code {code} — stderr : {stderr}")]
-    Failed { code: i32, stderr: String },
+    /// `stdout` est conservé : le protocole worker y porte le détail structuré
+    /// `E <code> <message>`, notamment les refus de `Print::validate`.
+    #[error("worker sorti en code {code} — stderr : {stderr} — stdout : {}", String::from_utf8_lossy(.stdout))]
+    Failed {
+        code: i32,
+        stdout: Vec<u8>,
+        stderr: String,
+    },
     /// Erreur d'E/S pendant la lecture des flux.
     #[error("E/S worker : {0}")]
     Io(#[from] std::io::Error),
+    /// Log/protocole excessif : la lecture est bornée et le process est tué au
+    /// plus tard au timeout plutôt que de laisser grossir la mémoire backend.
+    #[error("flux {stream} du worker au-delà de {limit} octets")]
+    OutputTooLarge { stream: &'static str, limit: usize },
 }
 
 /// Résout le chemin du binaire worker : `ENGINE_WORKER_BIN` s'il est défini,
@@ -60,7 +72,20 @@ fn resolve_binary(env_override: Option<&str>, current_exe: Option<&Path>) -> Pat
     }
     current_exe
         .and_then(Path::parent)
-        .map(|dir| dir.join(WORKER_BIN_NAME))
+        .map(|dir| {
+            // Binaire de test dans target/<profil>/deps : le worker est dans
+            // le répertoire parent. En production, le voisin direct fait foi.
+            let sibling = dir.join(WORKER_BIN_NAME);
+            if sibling.exists() {
+                return sibling;
+            }
+            let parent = dir.join("..").join(WORKER_BIN_NAME);
+            if parent.exists() {
+                parent
+            } else {
+                sibling
+            }
+        })
         .unwrap_or_else(|| PathBuf::from(WORKER_BIN_NAME))
 }
 
@@ -77,7 +102,7 @@ pub async fn run_worker_at(
     args: &[&str],
     timeout: Duration,
 ) -> Result<Vec<u8>, WorkerError> {
-    let child = Command::new(binary)
+    let mut child = Command::new(binary)
         .args(args)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
@@ -90,11 +115,58 @@ pub async fn run_worker_at(
             source,
         })?;
 
-    // `wait_with_output` prend possession de l'enfant : en cas de timeout, le
-    // futur (donc l'enfant) est abandonné → `kill_on_drop` le termine (SIGKILL).
-    let output = match tokio::time::timeout(timeout, child.wait_with_output()).await {
+    use tokio::io::AsyncReadExt;
+    let stdout = child.stdout.take().expect("stdout demandé en pipe");
+    let stderr = child.stderr.take().expect("stderr demandé en pipe");
+    let stdout_reader = tokio::spawn(async move {
+        let mut bytes = Vec::new();
+        stdout
+            .take((MAX_WORKER_OUTPUT_BYTES + 1) as u64)
+            .read_to_end(&mut bytes)
+            .await?;
+        Ok::<_, std::io::Error>(bytes)
+    });
+    let stderr_reader = tokio::spawn(async move {
+        let mut bytes = Vec::new();
+        stderr
+            .take((MAX_WORKER_OUTPUT_BYTES + 1) as u64)
+            .read_to_end(&mut bytes)
+            .await?;
+        Ok::<_, std::io::Error>(bytes)
+    });
+
+    let status = match tokio::time::timeout(timeout, child.wait()).await {
         Ok(result) => result?,
-        Err(_elapsed) => return Err(WorkerError::Timeout(timeout)),
+        Err(_elapsed) => {
+            let _ = child.kill().await;
+            let _ = stdout_reader.await;
+            let _ = stderr_reader.await;
+            return Err(WorkerError::Timeout(timeout));
+        }
+    };
+    let join_io = |error: tokio::task::JoinError| {
+        WorkerError::Io(std::io::Error::other(format!(
+            "lecture des flux worker : {error}"
+        )))
+    };
+    let stdout = stdout_reader.await.map_err(join_io)??;
+    let stderr = stderr_reader.await.map_err(join_io)??;
+    if stdout.len() > MAX_WORKER_OUTPUT_BYTES {
+        return Err(WorkerError::OutputTooLarge {
+            stream: "stdout",
+            limit: MAX_WORKER_OUTPUT_BYTES,
+        });
+    }
+    if stderr.len() > MAX_WORKER_OUTPUT_BYTES {
+        return Err(WorkerError::OutputTooLarge {
+            stream: "stderr",
+            limit: MAX_WORKER_OUTPUT_BYTES,
+        });
+    }
+    let output = std::process::Output {
+        status,
+        stdout,
+        stderr,
     };
 
     if output.status.success() {
@@ -102,7 +174,11 @@ pub async fn run_worker_at(
     }
     let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
     match output.status.code() {
-        Some(code) => Err(WorkerError::Failed { code, stderr }),
+        Some(code) => Err(WorkerError::Failed {
+            code,
+            stdout: output.stdout,
+            stderr,
+        }),
         // Pas de code = terminaison par signal (crash C++ contenu).
         None => Err(WorkerError::Crashed { stderr }),
     }

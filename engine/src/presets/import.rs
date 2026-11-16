@@ -67,10 +67,6 @@ const META_FIELDS: &[&str] = &[
     "url",
     "description",
     "filament_id",
-    "printer_model",
-    "printer_variant",
-    "compatible_printers",
-    "compatible_printers_condition",
     "sub_path",
     "family",
     "model_id",
@@ -80,7 +76,6 @@ const META_FIELDS: &[&str] = &[
     "default_materials",
     "default_bed_type",
     "hotend_model",
-    "nozzle_diameter",
 ];
 
 /// Preset importé depuis un profil vendeur.
@@ -319,6 +314,13 @@ mod tests {
         // les champs méta ne polluent pas les surcharges de config
         assert!(!leaf.values.contains_key("inherits"));
         assert!(!leaf.values.contains_key("name"));
+        // Ces champs sont aussi de vraies options Orca : ils doivent survivre
+        // à la résolution pour le bloc de configuration du G-code.
+        assert!(leaf.values.contains_key("compatible_printers"));
+        assert!(out
+            .presets
+            .iter()
+            .any(|p| p.values.contains_key("compatible_printers_condition")));
     }
 
     #[test]
@@ -330,6 +332,25 @@ mod tests {
             .find(|p| p.name == "fdm_process_common")
             .expect("preset abstrait fdm_process_common présent");
         assert!(!common.instantiation, "preset abstrait");
+    }
+
+    #[test]
+    fn machine_variants_keep_their_nozzle_diameter() {
+        let out = outcome();
+        let variant = out
+            .presets
+            .iter()
+            .find(|preset| preset.kind == PresetKind::Machine && preset.name.contains("0.6 nozzle"))
+            .expect("au moins une variante 0.6 nozzle");
+        let diameter = variant
+            .values
+            .get("nozzle_diameter")
+            .and_then(Value::as_array)
+            .and_then(|values| values.first())
+            .and_then(Value::as_str);
+        assert_eq!(diameter, Some("0.6"));
+        assert!(variant.values.contains_key("printer_model"));
+        assert!(variant.values.contains_key("printer_variant"));
     }
 
     #[test]

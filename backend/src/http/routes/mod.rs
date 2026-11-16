@@ -4,15 +4,20 @@
 pub mod admin;
 pub mod auth;
 pub mod export;
+pub mod gcode_open;
 pub mod gcodes;
+pub mod harness;
 pub mod jobs;
+pub mod mesh_ops;
 pub mod models;
+pub mod paint;
 pub mod presets;
 pub mod preview;
 pub mod printers;
 pub mod projects;
 pub mod scene;
 pub mod slice;
+pub mod sliced;
 
 use axum::extract::DefaultBodyLimit;
 use axum::routing::{get, patch, post};
@@ -33,7 +38,7 @@ pub fn router<Store>(state: AppState, session_layer: SessionManagerLayer<Store>)
 where
     Store: SessionStore + Clone + 'static,
 {
-    Router::new()
+    let app = Router::new()
         .route("/api/health", get(health))
         .route("/api/auth/register", post(auth::register))
         .route("/api/auth/login", post(auth::login))
@@ -60,6 +65,10 @@ where
             post(projects::import).layer(DefaultBodyLimit::max(models::MAX_BODY_BYTES)),
         )
         .route(
+            "/api/projects/{id}/import-3mf",
+            post(projects::import_into).layer(DefaultBodyLimit::max(models::MAX_BODY_BYTES)),
+        )
+        .route(
             "/api/projects/{id}",
             get(projects::get)
                 .put(projects::save)
@@ -77,10 +86,30 @@ where
         .route("/api/models/{id}/mesh", get(models::mesh))
         .route("/api/models/{id}/file", get(models::download_file))
         .route("/api/models/{id}/repair", post(scene::repair))
+        .route("/api/models/{id}/simplify", post(scene::simplify))
+        .route("/api/models/{id}/split", post(mesh_ops::split))
+        .route("/api/models/{id}/smooth", post(mesh_ops::smooth))
+        .route("/api/models/{id}/cut", post(mesh_ops::cut))
+        .route("/api/projects/{id}/boolean", post(mesh_ops::boolean))
+        .route("/api/projects/{id}/emboss", post(mesh_ops::emboss))
+        .route("/api/projects/{id}/emboss-svg", post(mesh_ops::emboss_svg))
+        .route("/api/projects/{id}/primitive", post(mesh_ops::primitive))
+        .route("/api/projects/{id}/paint", get(paint::paint_ws))
+        .route(
+            "/api/models/{id}/layer-profile",
+            post(mesh_ops::layer_profile),
+        )
+        .route("/api/emboss/fonts", get(mesh_ops::emboss_fonts))
         .route("/api/projects/{id}/arrange", post(scene::arrange))
         .route("/api/projects/{id}/orient", post(scene::orient))
         .route("/api/projects/{id}/slice", post(slice::slice))
         .route("/api/projects/{id}/export/3mf", get(export::export_3mf))
+        .route("/api/projects/{id}/export/drc", post(export::export_drc))
+        .route("/api/projects/{id}/export/stl", post(export::export_stl))
+        .route(
+            "/api/projects/{id}/export/sliced",
+            post(sliced::export_sliced),
+        )
         .route("/api/jobs", get(jobs::list))
         .route("/api/jobs/{id}", get(jobs::get))
         .route("/api/jobs/{id}/cancel", post(jobs::cancel))
@@ -88,6 +117,18 @@ where
         .route("/api/gcodes/{id}/stats", get(gcodes::stats))
         .route("/api/gcodes/{id}/preview/meta", get(preview::meta))
         .route("/api/gcodes/{id}/preview/layers", get(preview::layers))
+        .route(
+            "/api/gcodes/{id}/preview/processed/meta",
+            get(preview::processed_meta),
+        )
+        .route(
+            "/api/gcodes/{id}/preview/processed/moves",
+            get(preview::processed_moves),
+        )
+        .route(
+            "/api/gcode/preview",
+            post(gcode_open::preview).layer(DefaultBodyLimit::max(models::MAX_BODY_BYTES)),
+        )
         .route("/api/ws", get(ws::ws))
         .route("/api/presets", get(presets::list).post(presets::create))
         .route(
@@ -109,10 +150,29 @@ where
         )
         .route("/api/printers/{id}/test", post(printers::test))
         .route("/api/printers/{id}/upload", post(printers::upload))
+        .route(
+            "/api/printers/{id}/upload-sliced",
+            post(sliced::upload_sliced),
+        )
         .route("/api/printers/{id}/status", get(printers::status))
         .route("/api/printers/{id}/pause", post(printers::pause))
         .route("/api/printers/{id}/resume", post(printers::resume))
         .route("/api/printers/{id}/cancel", post(printers::cancel))
-        .layer(session_layer)
-        .with_state(state)
+        .route("/api/printers/{id}/files", get(printers::files))
+        .route("/api/printers/{id}/print", post(printers::print))
+        .route("/api/printers/{id}/gcode", post(printers::gcode));
+
+    // API de testabilité strictement absente de la configuration normale :
+    // aucune réponse d'erreur spécifique, les URI restent de simples 404.
+    let app = if std::env::var("HARNESS_API").as_deref() == Ok("1") {
+        app.route("/api/_harness/bootstrap", post(harness::bootstrap))
+            .route(
+                "/api/_harness/slice",
+                post(harness::slice).layer(DefaultBodyLimit::max(models::MAX_BODY_BYTES)),
+            )
+    } else {
+        app
+    };
+
+    app.layer(session_layer).with_state(state)
 }

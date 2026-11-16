@@ -96,6 +96,10 @@ impl MockServer {
             .route("/printer/print/resume", post(resume))
             .route("/printer/print/cancel", post(cancel))
             .route("/printer/objects/query", get(query))
+            .route("/printer/print/start", post(start))
+            .route("/printer/gcode/script", post(gcode_script))
+            .route("/server/files/list", get(files_list))
+            .route("/server/webcams/list", get(webcams))
             .route("/websocket", get(websocket))
             .with_state(state.clone());
 
@@ -226,6 +230,58 @@ async fn resume(State(state): State<MockState>, headers: HeaderMap) -> impl Into
 
 async fn cancel(State(state): State<MockState>, headers: HeaderMap) -> impl IntoResponse {
     print_action(&state, &headers, "cancel").await
+}
+
+/// `POST /printer/print/start?filename=` : trace « start:<fichier> ».
+async fn start(
+    State(state): State<MockState>,
+    headers: HeaderMap,
+    axum::extract::Query(q): axum::extract::Query<std::collections::HashMap<String, String>>,
+) -> impl IntoResponse {
+    let name = q.get("filename").cloned().unwrap_or_default();
+    print_action(&state, &headers, &format!("start:{name}")).await
+}
+
+/// `POST /printer/gcode/script` (corps JSON `{script}`) : trace « gcode:<script> ».
+async fn gcode_script(
+    State(state): State<MockState>,
+    headers: HeaderMap,
+    Json(body): Json<Value>,
+) -> impl IntoResponse {
+    let script = body["script"].as_str().unwrap_or_default().to_string();
+    print_action(&state, &headers, &format!("gcode:{script}")).await
+}
+
+async fn files_list(State(state): State<MockState>, headers: HeaderMap) -> impl IntoResponse {
+    if !key_ok(&state, &headers) {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({ "error": "unauthorized" })),
+        );
+    }
+    (
+        StatusCode::OK,
+        Json(json!({ "result": [
+            { "path": "old.gcode", "size": 10, "modified": 100.0, "permissions": "rw" },
+            { "path": "benchy.gcode", "size": 1234, "modified": 200.0, "permissions": "rw" }
+        ] })),
+    )
+}
+
+async fn webcams(State(state): State<MockState>, headers: HeaderMap) -> impl IntoResponse {
+    if !key_ok(&state, &headers) {
+        return (
+            StatusCode::UNAUTHORIZED,
+            Json(json!({ "error": "unauthorized" })),
+        );
+    }
+    (
+        StatusCode::OK,
+        Json(json!({ "result": { "webcams": [
+            { "name": "cam", "enabled": true, "stream_url": "/webcam/?action=stream",
+              "snapshot_url": "/webcam/?action=snapshot" }
+        ] } })),
+    )
 }
 
 async fn query(State(state): State<MockState>, headers: HeaderMap) -> impl IntoResponse {

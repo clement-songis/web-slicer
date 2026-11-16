@@ -54,6 +54,16 @@ describe('LayerRange (curseur vertical)', () => {
 		expect(visibleRange(r)).toEqual({ from: 0, to: 14 });
 	});
 
+	test('visibleRange is normalised for geometry filtering', () => {
+		const base = makeLayerRange(50);
+		expect(visibleRange({ ...base, low: 30, high: 10 })).toEqual({ from: 10, to: 30 });
+		expect(visibleRange({ ...base, low: -3, high: 99 })).toEqual({ from: 0, to: 49 });
+		expect(visibleRange({ ...base, low: 5, high: 20, oneLayerMode: true })).toEqual({
+			from: 20,
+			to: 20
+		});
+	});
+
 	test('empty model yields a single degenerate layer', () => {
 		const r = makeLayerRange(0);
 		expect(visibleRange(r)).toEqual({ from: 0, to: 0 });

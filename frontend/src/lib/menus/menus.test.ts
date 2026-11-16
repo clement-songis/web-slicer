@@ -2,10 +2,43 @@
 import { describe, expect, test } from 'vitest';
 import { MAIN_MENUS, allMenuLabels, menuLabels } from './menus';
 import { SHORTCUT_GROUPS, totalShortcuts } from './shortcuts';
+import type { MenuItem } from './menus';
+import { isSaveChord, resolveShortcut, type KeyChord } from '../editor/shortcuts';
+
+/** Convertit un raccourci affiché (« Ctrl+Shift+S », « Del ») en accord clavier. */
+function parseDisplayed(shortcut: string): KeyChord {
+	const parts = shortcut.split('+');
+	const key = parts.pop()!;
+	const mods = new Set(parts.map((p) => p.toLowerCase()));
+	return {
+		key: key === 'Del' ? 'Delete' : key === 'Esc' ? 'Escape' : key.toLowerCase(),
+		ctrl: mods.has('ctrl'),
+		shift: mods.has('shift'),
+		alt: mods.has('alt')
+	};
+}
+
+/** Tous les items (feuilles + sous-items) portant un raccourci affiché. */
+function itemsWithShortcut(): MenuItem[] {
+	const out: MenuItem[] = [];
+	for (const menu of MAIN_MENUS) {
+		for (const entry of menu.entries) {
+			if (entry === 'separator') continue;
+			for (const it of [entry, ...(entry.items ?? [])]) if (it.shortcut) out.push(it);
+		}
+	}
+	return out;
+}
+
+// Accélérateurs affichés mais non interceptables (exclusions.md) : le navigateur
+// les capte ; l'item de menu reste fonctionnel au clic.
+const BROWSER_RESERVED = new Set(['Ctrl+N']);
+// `C` (fenêtre G-code) n'existe qu'en Aperçu, résolu par preview/sliders.ts.
+const PREVIEW_ONLY = new Set(['C']);
 
 describe('MAIN_MENUS', () => {
 	test('exposes File / Edit / View / Help (Annexe B §B.2)', () => {
-		expect(MAIN_MENUS.map((m) => m.title)).toEqual(['File', 'Edit', 'View', 'Help']);
+		expect(MAIN_MENUS.map((m) => m.title)).toEqual(['File', 'Edit', 'View', 'Calibration', 'Help']);
 	});
 
 	test('File menu carries the core project + import/export actions', () => {
@@ -49,6 +82,31 @@ describe('MAIN_MENUS', () => {
 			}
 		}
 		expect(new Set(ids).size).toBe(ids.length);
+	});
+
+	test('every displayed shortcut has exactly one keyboard owner for its action', () => {
+		for (const item of itemsWithShortcut()) {
+			const shown = item.shortcut!;
+			if (BROWSER_RESERVED.has(shown) || PREVIEW_ONLY.has(shown)) continue;
+			const chord = parseDisplayed(shown);
+			const resolved = resolveShortcut(chord, false);
+			if (item.action === 'project.save') {
+				// Ctrl+S : SaveControls seul ; le dispatcher ne doit pas le doubler.
+				expect(isSaveChord(chord), shown).toBe(true);
+				expect(resolved, shown).toBeNull();
+			} else {
+				expect(resolved, `${shown} → ${item.action}`).toBe(item.action);
+				expect(isSaveChord(chord), shown).toBe(false);
+			}
+		}
+	});
+
+	test('Save / Save as display distinct, non-colliding chords', () => {
+		const byAction = Object.fromEntries(itemsWithShortcut().map((i) => [i.action, i.shortcut]));
+		expect(byAction['project.save']).toBe('Ctrl+S');
+		expect(byAction['project.saveAs']).toBe('Ctrl+Shift+S');
+		expect(isSaveChord(parseDisplayed('Ctrl+Shift+S'))).toBe(false);
+		expect(resolveShortcut(parseDisplayed('Ctrl+Shift+S'), false)).toBe('project.saveAs');
 	});
 
 	test('allMenuLabels is non-empty and includes Keyboard Shortcuts', () => {

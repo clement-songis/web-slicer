@@ -176,6 +176,79 @@ async fn downloads_the_stored_gcode_as_attachment() {
     assert_eq!(body_bytes(resp).await, SAMPLE_GCODE.as_bytes());
 }
 
+/// Nom de téléchargement : convention Orca `filename_format`
+/// (`{input_filename_base}_{filament_type[initial_tool]}_{print_time}.gcode`),
+/// base = nom du projet, temps au format `short_time`.
+#[tokio::test]
+async fn download_is_named_like_orca() {
+    let h = harness().await;
+    let session = register(&h.app, "boss@test.local").await;
+    let owner = user_id(&h.storage, "boss@test.local").await;
+    let (project, job) = make_job(&h.storage, owner).await;
+    let with_config = format!(
+        "{SAMPLE_GCODE}; CONFIG_BLOCK_START\n; filament_type = PETG\n; filename_format = {{input_filename_base}}_{{filament_type[initial_tool]}}_{{print_time}}.gcode\n; CONFIG_BLOCK_END\n"
+    );
+    let gcode = backend::gcode::store_gcode(&h.files, h.storage.gcodes(), owner, job, &with_config)
+        .await
+        .unwrap();
+    let resp = get(
+        &h.app,
+        &format!("/api/gcodes/{}/download", gcode.id),
+        &session,
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let disposition = resp.headers()[header::CONTENT_DISPOSITION]
+        .to_str()
+        .unwrap()
+        .to_string();
+    // Projet « P », PETG, « 1h 2m 3s » → short_time « 1h2m ».
+    assert_eq!(disposition, "attachment; filename=\"P_PETG_1h2m.gcode\"");
+
+    // filename_format personnalisé du preset : appliqué tel quel.
+    // Second job du même projet (noms de projet uniques par compte).
+    let job2 = h
+        .storage
+        .jobs()
+        .enqueue(
+            owner,
+            NewJob {
+                project_id: project,
+                plate_index: 0,
+                resolved_settings: json!({}),
+            },
+        )
+        .await
+        .unwrap()
+        .id;
+    let custom = with_config.replace(
+        "{input_filename_base}_{filament_type[initial_tool]}_{print_time}.gcode",
+        "{input_filename_base}-{print_time}.gcode",
+    );
+    let gcode = backend::gcode::store_gcode(&h.files, h.storage.gcodes(), owner, job2, &custom)
+        .await
+        .unwrap();
+    let resp = get(
+        &h.app,
+        &format!("/api/gcodes/{}/download", gcode.id),
+        &session,
+    )
+    .await;
+    let status = resp.status();
+    let headers = resp.headers().clone();
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "{:?}",
+        String::from_utf8_lossy(&body_bytes(resp).await)
+    );
+    let disposition = headers[header::CONTENT_DISPOSITION]
+        .to_str()
+        .unwrap()
+        .to_string();
+    assert_eq!(disposition, "attachment; filename=\"P-1h2m.gcode\"");
+}
+
 #[tokio::test]
 async fn returns_parsed_stats() {
     let h = harness().await;

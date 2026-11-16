@@ -114,15 +114,19 @@
 	}
 </script>
 
+<svelte:head><title>Récent — Web-Slicer</title></svelte:head>
+
 <div class="flex h-screen bg-surface text-content">
 	<AppSidebar email={data.user.email} active="recent" />
 
 	<!-- Zone principale -->
 	<main class="flex-1 overflow-auto p-8">
+		<h1 class="ws-sr-only">Bibliothèque de projets</h1>
 		<!-- Deux cartes d'entrée -->
 		<div class="flex flex-wrap gap-4">
 			<button
 				onclick={createAndOpen}
+				data-testid="new-project"
 				disabled={busy}
 				class="flex w-72 items-center gap-4 rounded-lg border border-border bg-surface-raised p-5 text-left hover:border-primary disabled:opacity-50"
 			>
@@ -148,7 +152,7 @@
 				</span>
 				<span class="flex flex-col">
 					<span class="font-medium text-content">Ouvrir un projet</span>
-					<span class="text-sm text-content-muted">3mf</span>
+					<span class="text-sm text-content-muted">Projet .3mf ou modèle 3D</span>
 				</span>
 			</button>
 			<input
@@ -166,13 +170,12 @@
 
 		<!-- Récemment ouvert -->
 		<div class="mt-8 flex items-center gap-3">
-			<h2 class="text-base font-semibold text-content">Récemment ouvert</h2>
+			<h2 class="ws-section-title">Récemment ouvert</h2>
 			{#if projects.length}
 				<button
 					onclick={() => (removeMode = !removeMode)}
-					class="flex items-center gap-1 rounded-full px-3 py-1 text-xs {removeMode
-						? 'bg-danger-soft text-danger-content'
-						: 'bg-overlay text-content-muted hover:bg-overlay/70'}"
+					class="ws-btn ws-btn-sm {removeMode ? 'ws-btn-danger' : 'ws-btn-ghost'}"
+					aria-pressed={removeMode}
 				>
 					<IconTrash class="h-3.5 w-3.5" /> Supprimer
 				</button>
@@ -180,7 +183,9 @@
 		</div>
 
 		{#if projects.length === 0}
-			<p class="mt-4 text-content-subtle">Aucun projet pour le moment.</p>
+			<p class="ws-empty mt-4 rounded-lg border border-dashed border-border">
+				Aucun projet pour le moment.
+			</p>
 		{:else}
 			<ul class="mt-4 grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-5">
 				{#each projects as project (project.id)}
@@ -204,7 +209,7 @@
 								onclick={() => remove(project.id)}
 								disabled={busy}
 								title="Supprimer {project.name}"
-								class="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-danger text-white shadow hover:bg-danger/90"
+								class="ws-btn ws-btn-sm ws-btn-danger absolute right-2 top-2 w-7 justify-center"
 							>
 								<IconTrash class="h-4 w-4" />
 							</button>
@@ -217,23 +222,36 @@
 								autofocus
 								onblur={() => commitRename(project.id)}
 								onkeydown={(e) => e.key === 'Enter' && commitRename(project.id)}
-								class="w-full rounded border border-border-strong bg-surface-raised px-2 py-1 text-sm text-content"
+								class="ws-field w-full"
 							/>
 						{:else}
+							<!-- Le nom ouvre le projet comme la vignette (clic attendu) ; renommer
+							     passe par l'action « Renommer » (un seul lien par carte). -->
 							<button
-								ondblclick={() => startRename(project)}
-								class="truncate text-left text-sm font-medium text-content"
-								title={project.name}
+								type="button"
+								onclick={() => goto(resolve('/projects/[id]', { id: project.id }))}
+								class="truncate text-left text-sm font-medium text-content hover:underline"
+								title="Ouvrir {project.name}"
 							>
 								{project.name}
 							</button>
 						{/if}
 						<p class="text-xs text-content-subtle">Modifié le {formatDate(project.updated_at)}</p>
-						<div class="flex gap-3 text-xs text-content-muted opacity-0 group-hover:opacity-100">
-							<button onclick={() => startRename(project)} disabled={busy} class="hover:underline">
+						<div class="flex gap-3 text-xs text-content-muted">
+							<!-- Actions toujours lisibles (contraste du texte secondaire, pas d'opacité
+							     réduite) ; l'accent au survol signale qu'elles sont cliquables. -->
+							<button
+								onclick={() => startRename(project)}
+								disabled={busy}
+								class="hover:text-primary hover:underline"
+							>
 								Renommer
 							</button>
-							<button onclick={() => duplicate(project.id)} disabled={busy} class="hover:underline">
+							<button
+								onclick={() => duplicate(project.id)}
+								disabled={busy}
+								class="hover:text-primary hover:underline"
+							>
 								Dupliquer
 							</button>
 						</div>

@@ -41,7 +41,21 @@ pub async fn download(
             ApiError::internal()
         })?;
 
-    let filename = format!("{}.gcode", gcode.id);
+    // Nom Orca (`filename_format` du preset, base = nom du projet) ; job ou
+    // projet supprimé depuis : base « Untitled », comme un projet Orca sans nom.
+    let project_name = match state.storage.jobs().get(user.id, gcode.job_id).await {
+        Ok(job) => state
+            .storage
+            .projects()
+            .get(user.id, job.project_id)
+            .await
+            .map(|p| p.name)
+            .unwrap_or_default(),
+        Err(_) => String::new(),
+    };
+    // Nom calculé par libslic3r au tranchage ; repli (G-code ancien ou ouvert
+    // depuis un fichier) sur la relecture du bloc de configuration.
+    let filename = crate::gcode_filename::for_gcode(&gcode.stats, &bytes, &project_name);
     Ok((
         StatusCode::OK,
         [

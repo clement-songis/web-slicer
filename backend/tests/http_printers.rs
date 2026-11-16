@@ -341,7 +341,7 @@ async fn upload_sends_owned_gcode_to_the_printer() {
         .create(
             owner,
             NewProject {
-                name: "P".into(),
+                name: "Mon Projet été #2 / Benchy".into(),
                 scene: json!({}),
                 active_presets: json!({}),
                 thumbnail_path: None,
@@ -366,6 +366,13 @@ async fn upload_sends_owned_gcode_to_the_printer() {
     let uploads = mock.uploads();
     assert_eq!(uploads.len(), 1);
     assert!(uploads[0].start_now);
+    // Nom d'Orca (send_gcode_legacy) : nom d'export calculé par libslic3r au
+    // tranchage, base = nom du projet replié en ASCII.
+    assert_eq!(
+        uploads[0].filename,
+        "Mon Projet ete #2 _ Benchy_PLA_8m52s.gcode"
+    );
+    assert_eq!(body["path"], "Mon Projet ete #2 _ Benchy_PLA_8m52s.gcode");
     // Le démarrage immédiat lance aussi l'impression côté hôte.
     assert_eq!(mock.actions(), vec!["print".to_string()]);
 }
@@ -608,11 +615,125 @@ async fn seed_gcode(h: &Harness, owner: UserId, project: ProjectId) -> String {
                 job_id: job.id,
                 file_path: path.to_string_lossy().into_owned(),
                 preview_path: String::new(),
-                stats: json!({}),
+                // Nom calculé par le moteur au tranchage (Print::output_filename).
+                stats: json!({ "output_filename": format!("{}_PLA_8m52s.gcode", engine::api::OUTPUT_FILENAME_BASE_TOKEN) }),
                 thumbnails: json!([]),
             },
         )
         .await
         .unwrap();
     gcode.id.to_string()
+}
+
+/// Onglet Appareil : fichiers, lancement, script G-code (bornes), champs
+/// d'état étendus (couches, ventilateur, axes) et webcam relayée.
+#[tokio::test]
+async fn device_routes_relay_files_print_gcode_and_extended_status() {
+    let mock = MockServer::start().await;
+    {
+        let mut status = mock.state.status.lock().unwrap();
+        status["print_stats"]["info"] = json!({ "current_layer": 12, "total_layer": 50 });
+        status["fan"] = json!({ "speed": 0.5 });
+        status["toolhead"] = json!({ "homed_axes": "xyz" });
+    }
+    let h = harness().await;
+    let session = register(&h.app, "boss@test.local").await;
+    let owner = user_id(&h.storage, "boss@test.local").await;
+    let preset = seed_machine_preset(&h.storage, owner).await;
+    let id = declare_printer(&h, &session, &preset, &mock.base_url(), None).await;
+
+    let status =
+        json_body(get(&h.app, &format!("/api/printers/{id}/status"), &session).await).await;
+    assert_eq!(status["current_layer"], 12);
+    assert_eq!(status["total_layer"], 50);
+    assert_eq!(status["fan_speed"], 0.5);
+    assert_eq!(status["homed_axes"], "xyz");
+    assert_eq!(
+        status["webcam_url"],
+        format!(
+            "{}/webcam/?action=snapshot",
+            mock.base_url().trim_end_matches('/')
+        )
+    );
+
+    let files = json_body(get(&h.app, &format!("/api/printers/{id}/files"), &session).await).await;
+    assert_eq!(files[0]["path"], "benchy.gcode", "plus récent d'abord");
+    assert_eq!(files[0]["size"], 1234);
+    assert_eq!(files.as_array().unwrap().len(), 2);
+
+    let resp = send(
+        &h.app,
+        "POST",
+        &format!("/api/printers/{id}/print"),
+        &session,
+        json!({ "filename": "benchy.gcode" }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+    let resp = send(
+        &h.app,
+        "POST",
+        &format!("/api/printers/{id}/print"),
+        &session,
+        json!({ "filename": "../etc/passwd" }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+    let resp = send(
+        &h.app,
+        "POST",
+        &format!("/api/printers/{id}/gcode"),
+        &session,
+        json!({ "script": "G91\nG1 X10 F6000\nG90" }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+    // Sonde de capacité : script vide → 204 sans appel à l'imprimante.
+    let resp = send(
+        &h.app,
+        "POST",
+        &format!("/api/printers/{id}/gcode"),
+        &session,
+        json!({ "script": "" }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+    // Bornes : trop de lignes, caractère de contrôle.
+    for bad in ["G28\n".repeat(40), "M117 \u{1b}[2J".to_string()] {
+        let resp = send(
+            &h.app,
+            "POST",
+            &format!("/api/printers/{id}/gcode"),
+            &session,
+            json!({ "script": bad }),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    }
+    assert_eq!(
+        mock.actions(),
+        vec![
+            "start:benchy.gcode".to_string(),
+            "gcode:G91\nG1 X10 F6000\nG90".to_string()
+        ]
+    );
+
+    // Appartenance : autre compte → 404 sur les nouvelles routes.
+    let other = register(&h.app, "other@test.local").await;
+    for (method, uri) in [("GET", "files"), ("POST", "print"), ("POST", "gcode")] {
+        let resp = if method == "GET" {
+            get(&h.app, &format!("/api/printers/{id}/{uri}"), &other).await
+        } else {
+            send(
+                &h.app,
+                method,
+                &format!("/api/printers/{id}/{uri}"),
+                &other,
+                json!({ "filename": "a.gcode", "script": "G28" }),
+            )
+            .await
+        };
+        assert_eq!(resp.status(), StatusCode::NOT_FOUND, "{uri}");
+    }
 }

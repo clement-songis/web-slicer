@@ -54,8 +54,8 @@ const fileMenu: Menu = {
 			label: 'Export',
 			action: 'file.export',
 			items: [
-				{ label: 'Export G-code…', shortcut: 'Ctrl+G', action: 'export.gcode' },
-				{ label: 'Export plate sliced file…', action: 'export.plate' },
+				{ label: 'Export G-code…', action: 'export.gcode' },
+				{ label: 'Export plate sliced file…', shortcut: 'Ctrl+G', action: 'export.plate' },
 				{ label: 'Export all plate sliced file…', action: 'export.allPlates' },
 				{ label: 'Export all objects as one STL…', action: 'export.stlOne' },
 				{ label: 'Export all objects as STLs…', action: 'export.stlMany' },
@@ -118,13 +118,44 @@ const viewMenu: Menu = {
 	]
 };
 
+// Menu Calibration d'OrcaSlicer (MainFrame::init_menubar, calib_menu) : les
+// calibrations exprimables sans `calib_params` moteur (cf. lib/calibration).
+const calibrationMenu: Menu = {
+	title: 'Calibration',
+	entries: [
+		{ label: 'Temperature', action: 'calib.temperature' },
+		{ label: 'Max flowrate', action: 'calib.maxVolumetricSpeed' },
+		{ label: 'Pressure advance', action: 'calib.pressureAdvance' },
+		{ label: 'Pressure advance pattern', action: 'calib.paPattern' },
+		{ label: 'Flow ratio', action: 'calib.flowRate' },
+		// Calibrations « mode moteur » (calib_params transmis au moteur).
+		// « Retraction test » : libellé conservé tant que le spec gelé
+		// editor-calibration-engine le cible (Orca : « Retraction »).
+		{ label: 'Retraction test', action: 'calib.retraction' },
+		{ label: 'Cornering', action: 'calib.cornering' },
+		// Sous-menu « Input Shaping » d'Orca aplati : les specs gelés ciblent
+		// directement l'entrée « Input Shaping Frequency ».
+		{ label: 'Input Shaping Frequency', action: 'calib.inputShapingFreq' },
+		{ label: 'Input Shaping Damping/zeta factor', action: 'calib.inputShapingDamp' },
+		{ label: 'VFA', action: 'calib.vfa' },
+		// Passes directes historiques (spec gelé editor-calibration-more).
+		{ label: 'Flow rate (pass 1)', action: 'calib.flowPass1' },
+		{ label: 'Flow rate (pass 2)', action: 'calib.flowPass2' },
+		{ label: 'Calibration Guide', action: 'calib.guide' }
+	]
+};
+
 const helpMenu: Menu = {
 	title: 'Help',
-	entries: [{ label: 'Keyboard Shortcuts', shortcut: '?', action: 'help.shortcuts' }]
+	entries: [
+		{ label: 'Keyboard Shortcuts', shortcut: '?', action: 'help.shortcuts' },
+		{ label: 'Setup Wizard', action: 'help.setupWizard' },
+		{ label: 'Show Tip of the Day', action: 'help.tipOfTheDay' }
+	]
 };
 
 /** Barre de menus principale (Annexe B §B.2, adaptée au navigateur). */
-export const MAIN_MENUS: Menu[] = [fileMenu, editMenu, viewMenu, helpMenu];
+export const MAIN_MENUS: Menu[] = [fileMenu, editMenu, viewMenu, calibrationMenu, helpMenu];
 
 /** Aplati les libellés d'un menu (items + sous-items) — utile aux tests. */
 export function menuLabels(menu: Menu): string[] {

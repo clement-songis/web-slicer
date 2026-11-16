@@ -5,7 +5,7 @@
 use super::{Mode, ParamDef, ParamGroup, ParamKind};
 
 /// SHA-1 de audit/parameters.json au moment de la génération.
-pub const SOURCE_SHA1: &str = "1d858279d630049b0cc1393045ad281bd92c51e7";
+pub const SOURCE_SHA1: &str = "1445d68527ff4288b1d26d11cceb34b288ce76a6";
 
 /// Registre complet, trié par clé (recherche dichotomique via `get`).
 pub static REGISTRY: &[ParamDef] = &[
@@ -74,7 +74,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[false]"),
         readonly: false,
     },
     ParamDef {
@@ -91,7 +91,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[true]"),
         readonly: false,
     },
     ParamDef {
@@ -108,7 +108,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[true]"),
         readonly: false,
     },
     ParamDef {
@@ -125,7 +125,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[false]"),
         readonly: false,
     },
     ParamDef {
@@ -159,7 +159,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[false]"),
         readonly: false,
     },
     ParamDef {
@@ -176,7 +176,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(2.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -193,7 +193,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"0,0,0\\\\n0,0,0\"]"),
         readonly: false,
     },
     ParamDef {
@@ -210,7 +210,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[false]"),
         readonly: false,
     },
     ParamDef {
@@ -227,7 +227,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(100.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -244,7 +244,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(1000.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -516,7 +516,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: Some("\"0, 0\""),
+        default_json: Some("[\"0x0\"]"),
         readonly: false,
     },
     ParamDef {
@@ -533,7 +533,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: Some("\"Vec2d(99999, 99999)\""),
+        default_json: Some("[99999, 99999]"),
         readonly: false,
     },
     ParamDef {
@@ -550,7 +550,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: Some("\"Vec2d(-99999, -99999)\""),
+        default_json: Some("[-99999, -99999]"),
         readonly: false,
     },
     ParamDef {
@@ -567,7 +567,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: Some("\"Vec2d(50, 50)\""),
+        default_json: Some("[50, 50]"),
         readonly: false,
     },
     ParamDef {
@@ -584,7 +584,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["by_first_filament", "by_highest_temp"],
         enum_labels: &["By First filament", "By Highest Temp"],
-        default_json: None,
+        default_json: Some("\"by_highest_temp\""),
         readonly: false,
     },
     ParamDef {
@@ -618,7 +618,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: Some("\"Vec2d(0.5, 0.5)\""),
+        default_json: Some("[0.5, 0.5]"),
         readonly: false,
     },
     ParamDef {
@@ -769,9 +769,9 @@ pub static REGISTRY: &[ParamDef] = &[
         sidetext: None,
         min: None,
         max: None,
-        enum_values: &[],
-        enum_labels: &[],
-        default_json: Some("\"ipMonotonic\""),
+        enum_values: &["monotonic", "monotonicline", "rectilinear", "alignedrectilinear", "concentric", "hilbertcurve", "archimedeanchords", "octagramspiral"],
+        enum_labels: &["Monotonic", "Monotonic line", "Rectilinear", "Aligned Rectilinear", "Concentric", "Hilbert Curve", "Archimedean Chords", "Octagram Spiral"],
+        default_json: Some("\"monotonic\""),
         readonly: false,
     },
     ParamDef {
@@ -990,9 +990,9 @@ pub static REGISTRY: &[ParamDef] = &[
         sidetext: None,
         min: None,
         max: None,
-        enum_values: &[],
-        enum_labels: &[],
-        default_json: Some("\"btAutoBrim\""),
+        enum_values: &["auto_brim", "brim_ears", "painted", "outer_only", "inner_only", "outer_and_inner", "no_brim"],
+        enum_labels: &["Auto", "Mouse ear", "Painted", "Outer brim only", "Inner brim only", "Outer and inner brim", "No-brim"],
+        default_json: Some("\"auto_brim\""),
         readonly: false,
     },
     ParamDef {
@@ -1060,7 +1060,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(1500.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -1077,7 +1077,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(1500.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -1145,7 +1145,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(1000.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[1]"),
         readonly: false,
     },
     ParamDef {
@@ -1162,7 +1162,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(1000.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[1]"),
         readonly: false,
     },
     ParamDef {
@@ -1298,7 +1298,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(100.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[80]"),
         readonly: false,
     },
     ParamDef {
@@ -1332,7 +1332,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(300.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[35]"),
         readonly: false,
     },
     ParamDef {
@@ -1349,7 +1349,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(120.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[35]"),
         readonly: false,
     },
     ParamDef {
@@ -1398,9 +1398,9 @@ pub static REGISTRY: &[ParamDef] = &[
         sidetext: None,
         min: None,
         max: None,
-        enum_values: &[],
-        enum_labels: &[],
-        default_json: Some("\"chbNone\""),
+        enum_values: &["none", "partiallybridge", "sacrificiallayer"],
+        enum_labels: &["None", "Partially bridged", "Sacrificial layer"],
+        default_json: Some("\"none\""),
         readonly: false,
     },
     ParamDef {
@@ -1415,9 +1415,9 @@ pub static REGISTRY: &[ParamDef] = &[
         sidetext: None,
         min: None,
         max: None,
-        enum_values: &[],
-        enum_labels: &[],
-        default_json: Some("\"btPC\""),
+        enum_values: &["Cool Plate", "Engineering Plate", "High Temp Plate", "Textured PEI Plate", "Textured Cool Plate", "Supertack Plate"],
+        enum_labels: &["Smooth Cool Plate", "Engineering Plate", "Smooth High Temp Plate", "Textured PEI Plate", "Textured Cool Plate", "Cool Plate (SuperTack)"],
+        default_json: Some("\"Cool Plate\""),
         readonly: false,
     },
     ParamDef {
@@ -1553,7 +1553,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"\"]"),
         readonly: false,
     },
     ParamDef {
@@ -1619,9 +1619,9 @@ pub static REGISTRY: &[ParamDef] = &[
         sidetext: None,
         min: None,
         max: None,
-        enum_values: &[],
+        enum_values: &["Standard", "High Flow"],
         enum_labels: &["Standard", "High Flow"],
-        default_json: None,
+        default_json: Some("[\"Standard\"]"),
         readonly: false,
     },
     ParamDef {
@@ -1689,7 +1689,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -1927,7 +1927,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[false]"),
         readonly: false,
     },
     ParamDef {
@@ -1995,7 +1995,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(100.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[60]"),
         readonly: false,
     },
     ParamDef {
@@ -2216,7 +2216,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("0"),
         readonly: false,
     },
     ParamDef {
@@ -2233,7 +2233,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[true]"),
         readonly: false,
     },
     ParamDef {
@@ -2250,7 +2250,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("true"),
         readonly: false,
     },
     ParamDef {
@@ -2267,7 +2267,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["printer_configuration", "enable", "disable"],
         enum_labels: &["Printer configuration", "Enable", "Disable"],
-        default_json: None,
+        default_json: Some("\"printer_configuration\""),
         readonly: false,
     },
     ParamDef {
@@ -2284,7 +2284,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[false]"),
         readonly: false,
     },
     ParamDef {
@@ -2420,7 +2420,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(300.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[45]"),
         readonly: false,
     },
     ParamDef {
@@ -2437,7 +2437,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(300.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[45]"),
         readonly: false,
     },
     ParamDef {
@@ -2471,7 +2471,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["none", "ensure_critical_only", "ensure_moderate", "ensure_all"],
         enum_labels: &["None", "Critical Only", "Moderate", "All"],
-        default_json: None,
+        default_json: Some("\"ensure_all\""),
         readonly: false,
     },
     ParamDef {
@@ -2743,7 +2743,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[]"),
         readonly: false,
     },
     ParamDef {
@@ -2811,7 +2811,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"\"]"),
         readonly: false,
     },
     ParamDef {
@@ -2828,7 +2828,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: Some("\"0,0\""),
+        default_json: Some("[\"0x0\"]"),
         readonly: false,
     },
     ParamDef {
@@ -2845,7 +2845,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[]"),
         readonly: false,
     },
     ParamDef {
@@ -2862,7 +2862,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(1000.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -2879,7 +2879,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["Direct Drive", "Bowden"],
         enum_labels: &["Direct Drive", "Bowden"],
-        default_json: None,
+        default_json: Some("[\"Direct Drive\"]"),
         readonly: false,
     },
     ParamDef {
@@ -2896,7 +2896,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"Direct Drive Standard\"]"),
         readonly: false,
     },
     ParamDef {
@@ -2947,7 +2947,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(1000.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[60.0]"),
         readonly: false,
     },
     ParamDef {
@@ -2981,7 +2981,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(100.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[100]"),
         readonly: false,
     },
     ParamDef {
@@ -2998,7 +2998,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(100.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[20]"),
         readonly: false,
     },
     ParamDef {
@@ -3066,7 +3066,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[false]"),
         readonly: false,
     },
     ParamDef {
@@ -3083,7 +3083,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -3100,7 +3100,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"\"]"),
         readonly: false,
     },
     ParamDef {
@@ -3117,7 +3117,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[10]"),
         readonly: false,
     },
     ParamDef {
@@ -3134,7 +3134,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"#F2754E\"]"),
         readonly: false,
     },
     ParamDef {
@@ -3151,7 +3151,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"1\"]"),
         readonly: false,
     },
     ParamDef {
@@ -3168,7 +3168,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[10.0]"),
         readonly: false,
     },
     ParamDef {
@@ -3185,7 +3185,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[3.4]"),
         readonly: false,
     },
     ParamDef {
@@ -3202,7 +3202,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[2.2]"),
         readonly: false,
     },
     ParamDef {
@@ -3219,7 +3219,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(20.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[4]"),
         readonly: false,
     },
     ParamDef {
@@ -3236,7 +3236,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -3253,7 +3253,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -3287,7 +3287,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[1.75]"),
         readonly: false,
     },
     ParamDef {
@@ -3304,7 +3304,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\" \"]"),
         readonly: false,
     },
     ParamDef {
@@ -3338,7 +3338,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"Direct Drive Standard\"]"),
         readonly: false,
     },
     ParamDef {
@@ -3355,7 +3355,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(2.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[1.0]"),
         readonly: false,
     },
     ParamDef {
@@ -3372,7 +3372,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(1500.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -3389,7 +3389,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(200.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -3491,7 +3491,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[false]"),
         readonly: false,
     },
     ParamDef {
@@ -3508,7 +3508,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[28.0]"),
         readonly: false,
     },
     ParamDef {
@@ -3525,7 +3525,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[3.0]"),
         readonly: false,
     },
     ParamDef {
@@ -3559,7 +3559,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[1]"),
         readonly: false,
     },
     ParamDef {
@@ -3576,7 +3576,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["Auto For Flush", "Auto For Match", "Manual", "Default"],
         enum_labels: &["Auto For Flush", "Auto For Match", "Manual", "Default"],
-        default_json: None,
+        default_json: Some("\"Auto For Flush\""),
         readonly: false,
     },
     ParamDef {
@@ -3593,7 +3593,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[2.0]"),
         readonly: false,
     },
     ParamDef {
@@ -3610,7 +3610,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[15.0]"),
         readonly: false,
     },
     ParamDef {
@@ -3627,7 +3627,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"\"]"),
         readonly: false,
     },
     ParamDef {
@@ -3644,7 +3644,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[false]"),
         readonly: false,
     },
     ParamDef {
@@ -3661,7 +3661,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[10.0]"),
         readonly: false,
     },
     ParamDef {
@@ -3678,7 +3678,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[10.0]"),
         readonly: false,
     },
     ParamDef {
@@ -3695,7 +3695,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"\"]"),
         readonly: false,
     },
     ParamDef {
@@ -3729,7 +3729,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[3]"),
         readonly: false,
     },
     ParamDef {
@@ -3746,7 +3746,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"120 100 6.6 6.8 7.2 7.6 7.9 8.2 8.7 9.4 9.9 10.0| 0.05 6.6 0.45 6.8 0.95 7.8 1.45 8.3 1.95 9.7 2.45 10 2.95 7.6 3.45 7.6 3.95 7.6 4.45 7.6 4.95 7.6\"]"),
         readonly: false,
     },
     ParamDef {
@@ -3933,7 +3933,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[1]"),
         readonly: false,
     },
     ParamDef {
@@ -3950,7 +3950,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"\"]"),
         readonly: false,
     },
     ParamDef {
@@ -3967,7 +3967,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(150.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[100]"),
         readonly: false,
     },
     ParamDef {
@@ -3984,7 +3984,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(150.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[100]"),
         readonly: false,
     },
     ParamDef {
@@ -4001,7 +4001,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[false]"),
         readonly: false,
     },
     ParamDef {
@@ -4018,7 +4018,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -4035,7 +4035,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -4052,7 +4052,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\" \"]"),
         readonly: false,
     },
     ParamDef {
@@ -4069,7 +4069,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -4086,7 +4086,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[10.0]"),
         readonly: false,
     },
     ParamDef {
@@ -4103,7 +4103,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -4120,7 +4120,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[-1]"),
         readonly: false,
     },
     ParamDef {
@@ -4137,7 +4137,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[20.0]"),
         readonly: false,
     },
     ParamDef {
@@ -4154,7 +4154,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[4.0]"),
         readonly: false,
     },
     ParamDef {
@@ -4171,7 +4171,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"PLA\"]"),
         readonly: false,
     },
     ParamDef {
@@ -4188,7 +4188,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[90.0]"),
         readonly: false,
     },
     ParamDef {
@@ -4205,7 +4205,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[100.0]"),
         readonly: false,
     },
     ParamDef {
@@ -4443,7 +4443,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(16.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -4494,7 +4494,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(100.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -4579,7 +4579,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.3]"),
         readonly: false,
     },
     ParamDef {
@@ -4596,7 +4596,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0, 280.0, 280.0, 280.0, 280.0, 0.0, 280.0, 280.0, 280.0, 280.0, 0.0, 280.0, 280.0, 280.0, 280.0, 0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -4613,7 +4613,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[140.0, 140.0, 140.0, 140.0, 140.0, 140.0, 140.0, 140.0]"),
         readonly: false,
     },
     ParamDef {
@@ -4630,7 +4630,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(1000.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -4647,7 +4647,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["none", "external", "hole", "all", "allwalls", "disabled_fuzzy"],
         enum_labels: &["Painted only", "Contour", "Hole", "Contour and hole", "All walls", "Disabled"],
-        default_json: None,
+        default_json: Some("\"disabled_fuzzy\""),
         readonly: false,
     },
     ParamDef {
@@ -4698,7 +4698,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["displacement", "extrusion", "combined"],
         enum_labels: &["Displacement", "Extrusion", "Combined"],
-        default_json: None,
+        default_json: Some("\"displacement\""),
         readonly: false,
     },
     ParamDef {
@@ -4715,7 +4715,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["classic", "perlin", "billow", "ridgedmulti", "voronoi", "ripple"],
         enum_labels: &["Classic", "Perlin", "Billow", "Ridged Multifractal", "Voronoi", "Ripple"],
-        default_json: None,
+        default_json: Some("\"classic\""),
         readonly: false,
     },
     ParamDef {
@@ -4953,7 +4953,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["marlin", "klipper", "reprapfirmware", "repetier", "marlin2"],
         enum_labels: &["Marlin(legacy)", "Klipper", "RepRapFirmware", "Repetier", "Marlin 2"],
-        default_json: None,
+        default_json: Some("\"marlin\""),
         readonly: false,
     },
     ParamDef {
@@ -5089,7 +5089,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[]"),
         readonly: false,
     },
     ParamDef {
@@ -5276,7 +5276,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(300.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[45]"),
         readonly: false,
     },
     ParamDef {
@@ -5293,7 +5293,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(300.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[45]"),
         readonly: false,
     },
     ParamDef {
@@ -5327,7 +5327,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(1500.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -5376,7 +5376,7 @@ pub static REGISTRY: &[ParamDef] = &[
         sidetext: None,
         min: None,
         max: None,
-        enum_values: &[],
+        enum_values: &["0", "1", "2", "5", "10", "1000"],
         enum_labels: &["0 (Simple connect)", "1 mm", "2 mm", "5 mm", "10 mm", "1000 (unlimited)"],
         default_json: Some("{\"value\": 20.0, \"percent\": false}"),
         readonly: false,
@@ -6022,9 +6022,9 @@ pub static REGISTRY: &[ParamDef] = &[
         sidetext: None,
         min: None,
         max: None,
-        enum_values: &[],
-        enum_labels: &[],
-        default_json: Some("\"InputShaperType::Default\""),
+        enum_values: &["Default", "MZV", "ZV", "ZVD", "ZVDD", "ZVDDD", "EI", "EI2", "2HUMP_EI", "EI3", "3HUMP_EI", "DAA", "Disable"],
+        enum_labels: &["Default", "MZV", "ZV", "ZVD", "ZVDD", "ZVDDD", "EI", "EI2", "2HUMP_EI", "EI3", "3HUMP_EI", "DAA", "Disable"],
+        default_json: Some("\"Default\""),
         readonly: false,
     },
     ParamDef {
@@ -6194,7 +6194,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(100.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[-1]"),
         readonly: false,
     },
     ParamDef {
@@ -6311,9 +6311,9 @@ pub static REGISTRY: &[ParamDef] = &[
         sidetext: None,
         min: None,
         max: None,
-        enum_values: &[],
-        enum_labels: &[],
-        default_json: Some("\"ipMonotonic\""),
+        enum_values: &["monotonic", "monotonicline", "rectilinear", "alignedrectilinear", "concentric", "hilbertcurve", "archimedeanchords", "octagramspiral"],
+        enum_labels: &["Monotonic", "Monotonic line", "Rectilinear", "Aligned Rectilinear", "Concentric", "Hilbert Curve", "Archimedean Chords", "Octagram Spiral"],
+        default_json: Some("\"monotonic\""),
         readonly: false,
     },
     ParamDef {
@@ -6398,7 +6398,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(100.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[-1]"),
         readonly: false,
     },
     ParamDef {
@@ -6500,7 +6500,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["no ironing", "top", "topmost", "solid"],
         enum_labels: &["No ironing", "Top surfaces", "Topmost surface", "All solid layers"],
-        default_json: None,
+        default_json: Some("\"no ironing\""),
         readonly: false,
     },
     ParamDef {
@@ -6534,7 +6534,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("false"),
         readonly: false,
     },
     ParamDef {
@@ -6857,7 +6857,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[false]"),
         readonly: false,
     },
     ParamDef {
@@ -6874,7 +6874,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[false]"),
         readonly: false,
     },
     ParamDef {
@@ -6942,7 +6942,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[1500.0, 1250.0]"),
         readonly: false,
     },
     ParamDef {
@@ -6959,7 +6959,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[1500.0, 1250.0]"),
         readonly: false,
     },
     ParamDef {
@@ -6976,7 +6976,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0, 0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -7112,7 +7112,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(0.3_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.01]"),
         readonly: false,
     },
     ParamDef {
@@ -7197,7 +7197,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0, 0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -7214,7 +7214,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0, 0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -7265,7 +7265,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("0.0"),
         readonly: false,
     },
     ParamDef {
@@ -7401,7 +7401,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("1"),
         readonly: false,
     },
     ParamDef {
@@ -7622,7 +7622,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -7826,7 +7826,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.07]"),
         readonly: false,
     },
     ParamDef {
@@ -8115,7 +8115,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(100.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.4]"),
         readonly: false,
     },
     ParamDef {
@@ -8132,7 +8132,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -8166,7 +8166,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(500.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("0"),
         readonly: false,
     },
     ParamDef {
@@ -8183,7 +8183,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(1500.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[200]"),
         readonly: false,
     },
     ParamDef {
@@ -8200,7 +8200,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(1500.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[200]"),
         readonly: false,
     },
     ParamDef {
@@ -8217,7 +8217,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(1500.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[240]"),
         readonly: false,
     },
     ParamDef {
@@ -8234,7 +8234,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(1500.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[190]"),
         readonly: false,
     },
     ParamDef {
@@ -8268,7 +8268,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -8283,9 +8283,9 @@ pub static REGISTRY: &[ParamDef] = &[
         sidetext: None,
         min: None,
         max: None,
-        enum_values: &[],
+        enum_values: &["Standard", "High Flow"],
         enum_labels: &["Standard", "High Flow"],
-        default_json: None,
+        default_json: Some("[\"Standard\"]"),
         readonly: false,
     },
     ParamDef {
@@ -8421,7 +8421,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(16.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -8438,7 +8438,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("0"),
         readonly: false,
     },
     ParamDef {
@@ -8659,7 +8659,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(100.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[100]"),
         readonly: false,
     },
     ParamDef {
@@ -8674,9 +8674,9 @@ pub static REGISTRY: &[ParamDef] = &[
         sidetext: None,
         min: None,
         max: None,
-        enum_values: &[],
-        enum_labels: &[],
-        default_json: Some("\"int\""),
+        enum_values: &["0%", "10%", "25%", "50%", "75%", "95%"],
+        enum_labels: &["0%", "10%", "25%", "50%", "75%", "95%"],
+        default_json: Some("[\"95%\"]"),
         readonly: false,
     },
     ParamDef {
@@ -8982,7 +8982,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(4.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("1"),
         readonly: false,
     },
     ParamDef {
@@ -9033,7 +9033,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.4157]"),
         readonly: false,
     },
     ParamDef {
@@ -9067,7 +9067,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -9152,7 +9152,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("true"),
         readonly: false,
     },
     ParamDef {
@@ -9271,7 +9271,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(2.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.02]"),
         readonly: false,
     },
     ParamDef {
@@ -9475,7 +9475,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[1]"),
         readonly: false,
     },
     ParamDef {
@@ -9492,7 +9492,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"Direct Drive Standard\"]"),
         readonly: false,
     },
     ParamDef {
@@ -9560,7 +9560,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["default", "as_obj_list"],
         enum_labels: &["Default", "As object list"],
-        default_json: None,
+        default_json: Some("\"default\""),
         readonly: false,
     },
     ParamDef {
@@ -9594,7 +9594,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["by layer", "by object"],
         enum_labels: &["By layer", "By object"],
-        default_json: None,
+        default_json: Some("\"by layer\""),
         readonly: false,
     },
     ParamDef {
@@ -9662,7 +9662,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: Some("\"0, 0\""),
+        default_json: Some("[\"0x0\", \"200x0\", \"200x200\", \"0x200\"]"),
         readonly: false,
     },
     ParamDef {
@@ -9713,7 +9713,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[1]"),
         readonly: false,
     },
     ParamDef {
@@ -9730,7 +9730,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"Direct Drive Standard\"]"),
         readonly: false,
     },
     ParamDef {
@@ -9883,7 +9883,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["key", "user"],
         enum_labels: &["API key", "HTTP digest"],
-        default_json: None,
+        default_json: Some("\"key\""),
         readonly: false,
     },
     ParamDef {
@@ -10138,7 +10138,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[false]"),
         readonly: false,
     },
     ParamDef {
@@ -10274,7 +10274,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(500.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0]"),
         readonly: false,
     },
     ParamDef {
@@ -10325,7 +10325,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[100]"),
         readonly: false,
     },
     ParamDef {
@@ -10342,7 +10342,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[10.0]"),
         readonly: false,
     },
     ParamDef {
@@ -10359,7 +10359,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -10376,7 +10376,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -10393,7 +10393,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["All Surfaces", "Top Only", "Bottom Only", "Top and Bottom"],
         enum_labels: &["All Surfaces", "Top Only", "Bottom Only", "Top and Bottom"],
-        default_json: None,
+        default_json: Some("[\"All Surfaces\"]"),
         readonly: false,
     },
     ParamDef {
@@ -10410,7 +10410,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -10427,7 +10427,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.0]"),
         readonly: false,
     },
     ParamDef {
@@ -10444,7 +10444,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[false]"),
         readonly: false,
     },
     ParamDef {
@@ -10461,7 +10461,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(18.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[18]"),
         readonly: false,
     },
     ParamDef {
@@ -10478,7 +10478,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(10.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[10]"),
         readonly: false,
     },
     ParamDef {
@@ -10495,7 +10495,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.8]"),
         readonly: false,
     },
     ParamDef {
@@ -10512,7 +10512,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[2.0]"),
         readonly: false,
     },
     ParamDef {
@@ -10529,7 +10529,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[30.0]"),
         readonly: false,
     },
     ParamDef {
@@ -10852,7 +10852,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["none", "external", "all"],
         enum_labels: &["None", "Contour", "Contour and hole"],
-        default_json: None,
+        default_json: Some("\"none\""),
         readonly: false,
     },
     ParamDef {
@@ -11277,7 +11277,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["regular", "even_odd", "close_holes"],
         enum_labels: &["Regular", "Even-odd", "Close holes"],
-        default_json: None,
+        default_json: Some("\"regular\""),
         readonly: false,
     },
     ParamDef {
@@ -11294,7 +11294,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[true]"),
         readonly: false,
     },
     ParamDef {
@@ -11311,7 +11311,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(1000.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[5.0]"),
         readonly: false,
     },
     ParamDef {
@@ -11345,7 +11345,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[10.0]"),
         readonly: false,
     },
     ParamDef {
@@ -11379,7 +11379,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("false"),
         readonly: false,
     },
     ParamDef {
@@ -11413,7 +11413,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"0,0\", \"\\\\n0.2,0.4444\", \"\\\\n0.4,0.6145\", \"\\\\n0.6,0.7059\", \"\\\\n0.8,0.7619\", \"\\\\n1.5,0.8571\", \"\\\\n2,0.8889\", \"\\\\n3,0.9231\", \"\\\\n5,0.9520\", \"\\\\n10,1\"]"),
         readonly: false,
     },
     ParamDef {
@@ -11753,7 +11753,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: Some("\"30, -3\""),
+        default_json: Some("[\"30x-3\", \"54x245\"]"),
         readonly: true,
     },
     ParamDef {
@@ -11770,7 +11770,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(120.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[35]"),
         readonly: false,
     },
     ParamDef {
@@ -11787,7 +11787,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(120.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[35]"),
         readonly: false,
     },
     ParamDef {
@@ -12365,7 +12365,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(100.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[-1]"),
         readonly: false,
     },
     ParamDef {
@@ -12535,7 +12535,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("false"),
         readonly: false,
     },
     ParamDef {
@@ -12756,7 +12756,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["normal(auto)", "tree(auto)", "normal(manual)", "tree(manual)"],
         enum_labels: &["Normal (auto)", "Tree (auto)", "Normal (manual)", "Tree (manual)"],
-        default_json: None,
+        default_json: Some("\"normal(auto)\""),
         readonly: false,
     },
     ParamDef {
@@ -12807,7 +12807,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[100]"),
         readonly: false,
     },
     ParamDef {
@@ -12841,7 +12841,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(300.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[40]"),
         readonly: false,
     },
     ParamDef {
@@ -12858,7 +12858,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(120.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[40]"),
         readonly: false,
     },
     ParamDef {
@@ -12875,7 +12875,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(300.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[45]"),
         readonly: false,
     },
     ParamDef {
@@ -12892,7 +12892,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(300.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[45]"),
         readonly: false,
     },
     ParamDef {
@@ -12960,7 +12960,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["PNG", "JPG", "QOI", "BTT_TFT", "COLPIC"],
         enum_labels: &["PNG", "JPG", "QOI", "BTT TT", "ColPic"],
-        default_json: None,
+        default_json: Some("\"PNG\""),
         readonly: false,
     },
     ParamDef {
@@ -13009,9 +13009,9 @@ pub static REGISTRY: &[ParamDef] = &[
         sidetext: None,
         min: None,
         max: None,
-        enum_values: &[],
-        enum_labels: &[],
-        default_json: Some("\"tlTraditional\""),
+        enum_values: &["0", "1"],
+        enum_labels: &["Traditional", "Smooth"],
+        default_json: Some("\"0\""),
         readonly: false,
     },
     ParamDef {
@@ -13385,7 +13385,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(90.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[3]"),
         readonly: false,
     },
     ParamDef {
@@ -13827,7 +13827,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[\"\"]"),
         readonly: false,
     },
     ParamDef {
@@ -13844,7 +13844,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["ccw", "cw"],
         enum_labels: &["Counter clockwise", "Clockwise"],
-        default_json: None,
+        default_json: Some("\"ccw\""),
         readonly: false,
     },
     ParamDef {
@@ -13878,7 +13878,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["classic", "arachne"],
         enum_labels: &["Classic", "Arachne"],
-        default_json: None,
+        default_json: Some("\"arachne\""),
         readonly: false,
     },
     ParamDef {
@@ -13946,7 +13946,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["inner wall/outer wall", "outer wall/inner wall", "inner-outer-inner wall"],
         enum_labels: &["Inner/Outer", "Outer/Inner", "Inner/Outer/Inner"],
-        default_json: None,
+        default_json: Some("\"inner wall/outer wall\""),
         readonly: false,
     },
     ParamDef {
@@ -14014,7 +14014,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[false]"),
         readonly: false,
     },
     ParamDef {
@@ -14048,7 +14048,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[1.0]"),
         readonly: false,
     },
     ParamDef {
@@ -14284,9 +14284,9 @@ pub static REGISTRY: &[ParamDef] = &[
         sidetext: None,
         min: None,
         max: None,
-        enum_values: &[],
-        enum_labels: &[],
-        default_json: Some("\"WipeTowerType::Type2\""),
+        enum_values: &["type1", "type2"],
+        enum_labels: &["Type 1", "Type 2"],
+        default_json: Some("\"type2\""),
         readonly: false,
     },
     ParamDef {
@@ -14301,9 +14301,9 @@ pub static REGISTRY: &[ParamDef] = &[
         sidetext: None,
         min: None,
         max: None,
-        enum_values: &[],
-        enum_labels: &[],
-        default_json: Some("\"wtwRib\""),
+        enum_values: &["rectangle", "cone", "rib"],
+        enum_labels: &["Rectangle", "Cone", "Rib"],
+        default_json: Some("\"rib\""),
         readonly: false,
     },
     ParamDef {
@@ -14320,7 +14320,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[15.0]"),
         readonly: false,
     },
     ParamDef {
@@ -14337,7 +14337,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[220.0]"),
         readonly: false,
     },
     ParamDef {
@@ -14354,7 +14354,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[70.0, 70.0, 70.0, 70.0, 70.0, 70.0, 70.0, 70.0, 70.0, 70.0]"),
         readonly: false,
     },
     ParamDef {
@@ -14473,7 +14473,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: Some(5.0_f64),
         enum_values: &[],
         enum_labels: &[],
-        default_json: None,
+        default_json: Some("[0.4]"),
         readonly: false,
     },
     ParamDef {
@@ -14490,7 +14490,7 @@ pub static REGISTRY: &[ParamDef] = &[
         max: None,
         enum_values: &["Auto Lift", "Normal Lift", "Slope Lift", "Spiral Lift"],
         enum_labels: &["Auto", "Normal", "Slope", "Spiral"],
-        default_json: None,
+        default_json: Some("[\"Slope Lift\"]"),
         readonly: false,
     },
     ParamDef {

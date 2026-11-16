@@ -112,6 +112,24 @@ impl FileStore {
             .await
     }
 
+    /// Vignette de projet rendue côté serveur : `<uid>/thumbnails/project-<id>.png`.
+    pub fn project_thumbnail_path(&self, user: UserId, project: impl std::fmt::Display) -> PathBuf {
+        self.space_dir(user, Space::Thumbnails)
+            .join(format!("project-{project}.png"))
+    }
+
+    /// Écrit la vignette de projet (atomique).
+    pub async fn write_project_thumbnail(
+        &self,
+        user: UserId,
+        project: impl std::fmt::Display,
+        bytes: &[u8],
+    ) -> FilesResult<PathBuf> {
+        let name = format!("project-{project}.png");
+        self.write_atomic(user, Space::Thumbnails, &name, bytes)
+            .await
+    }
+
     /// Écriture atomique : fichier temporaire dans le même dossier puis rename.
     async fn write_atomic(
         &self,

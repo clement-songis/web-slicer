@@ -91,6 +91,19 @@ export class LazyPreviewLoader {
 		return out;
 	}
 
+	/**
+	 * Tranches couvrant exactement la plage de couches `[low, high]` (incluses,
+	 * bornées au domaine, bornes inversées tolérées).
+	 */
+	chunksForRange(low: number, high: number): number[] {
+		if (this.layerCount === 0) return [];
+		const lo = this.clampLayer(Math.min(low, high));
+		const hi = this.clampLayer(Math.max(low, high));
+		const out: number[] = [];
+		for (let i = this.chunkOf(lo); i <= this.chunkOf(hi); i++) out.push(i);
+		return out;
+	}
+
 	/** Octets de segments actuellement résidents. */
 	residentBytes(): number {
 		return this.resident;
@@ -106,7 +119,32 @@ export class LazyPreviewLoader {
 	 * tranches hors fenêtre jusqu'à retomber sous le budget mémoire.
 	 */
 	async ensure(cursor: number): Promise<void> {
-		const needed = this.chunksForWindow(cursor);
+		await this.load(this.chunksForWindow(cursor));
+	}
+
+	/**
+	 * Garantit que toutes les tranches couvrant `[low, high]` sont chargées
+	 * (protégées de l'éviction pendant l'appel), puis évince le reste au-delà
+	 * du budget. Le budget reste « souple » : une plage très large peut le
+	 * dépasser plutôt que d'afficher des couches manquantes.
+	 */
+	async ensureRange(low: number, high: number): Promise<void> {
+		await this.load(this.chunksForRange(low, high));
+	}
+
+	/**
+	 * Segments des tranches couvrant `[low, high]` (déjà chargées). Les tranches
+	 * débordent la plage aux extrémités : filtrer ensuite par couche via
+	 * `GeometryOptions.layerRange`.
+	 */
+	rangeSegments(low: number, high: number): PreviewSegments[] {
+		return this.chunksForRange(low, high)
+			.map((i) => this.cache.get(i)?.segments)
+			.filter((s): s is PreviewSegments => s !== undefined);
+	}
+
+	/** Charge les tranches manquantes de `needed`, puis évince hors `needed`. */
+	private async load(needed: number[]): Promise<void> {
 		for (const index of needed) {
 			if (!this.cache.has(index)) {
 				const { from, to } = this.chunkRange(index);

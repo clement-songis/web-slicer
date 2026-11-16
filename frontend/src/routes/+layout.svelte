@@ -4,6 +4,7 @@
 	import favicon from '$lib/assets/favicon.svg';
 	import { initLocale } from '$lib/i18n';
 	import { initTheme } from '$lib/theme';
+	import TooltipLayer from '$lib/ui/TooltipLayer.svelte';
 
 	let { children } = $props();
 
@@ -16,3 +17,4 @@
 
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 {@render children()}
+<TooltipLayer />

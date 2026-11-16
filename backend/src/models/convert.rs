@@ -93,15 +93,19 @@ fn parse_result_path(stdout: &[u8]) -> Option<String> {
 }
 
 /// Argument `<format>` du worker `load-model` (None = pas de conversion moteur).
-fn format_arg(format: ModelFormat) -> Option<&'static str> {
+pub(crate) fn format_arg(format: ModelFormat) -> Option<&'static str> {
     match format {
         ModelFormat::Stl => Some("stl"),
         ModelFormat::Obj => Some("obj"),
         ModelFormat::ThreeMf => Some("3mf"),
         ModelFormat::Step => Some("step"),
         ModelFormat::Amf => Some("amf"),
-        // SVG (2D) et DRC (Draco) ne sont pas décodés en maillage par le worker.
-        ModelFormat::Svg | ModelFormat::Drc => None,
+        // Draco : décodé par libslic3r (Model::read_from_file → load_drc), comme
+        // les modèles de calibration d'Orca (resources/calib/*.drc).
+        ModelFormat::Drc => Some("drc"),
+        // SVG : libslic3r extrude les profils (Format/svg.cpp, load_svg) comme
+        // l'import SVG d'Orca.
+        ModelFormat::Svg => Some("svg"),
     }
 }
 
@@ -161,10 +165,31 @@ impl ModelConverter {
         }
     }
 
+    /// Convertit une géométrie déjà extraite d'un projet 3MF. Le cycle de vie
+    /// reste identique à un upload classique : en attente à la réponse HTTP,
+    /// persistance du maillage puis événement `model.converted` en tâche de fond.
+    pub async fn convert_mesh(&self, model: Model, mesh: engine::api::TriangleMesh) {
+        let _permit = match self.limiter.acquire().await {
+            Ok(permit) => permit,
+            Err(_) => return,
+        };
+        if let Err(error) = self.store_mesh(&model, mesh.encode_display()).await {
+            let message = error.to_string();
+            let _ = self
+                .models
+                .mark_conversion_failed(model.user_id, model.id, &message)
+                .await;
+        }
+    }
+
     /// Chemin heureux : décode, stocke, met à jour, notifie.
     async fn run(&self, model: &Model) -> Result<(), ConvertError> {
         let source = Path::new(&model.file_path);
         let wsmh = self.decoder.decode(source, model.format).await?;
+        self.store_mesh(model, wsmh).await
+    }
+
+    async fn store_mesh(&self, model: &Model, wsmh: Vec<u8>) -> Result<(), ConvertError> {
         let triangles = wsmh_triangle_count(&wsmh)?;
         let mesh_path = self
             .files
@@ -200,8 +225,8 @@ mod tests {
         assert_eq!(format_arg(ModelFormat::Stl), Some("stl"));
         assert_eq!(format_arg(ModelFormat::ThreeMf), Some("3mf"));
         assert_eq!(format_arg(ModelFormat::Step), Some("step"));
-        assert_eq!(format_arg(ModelFormat::Svg), None);
-        assert_eq!(format_arg(ModelFormat::Drc), None);
+        assert_eq!(format_arg(ModelFormat::Svg), Some("svg"));
+        assert_eq!(format_arg(ModelFormat::Drc), Some("drc"));
     }
 
     #[test]

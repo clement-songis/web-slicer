@@ -18,6 +18,8 @@ export function modelKey(model: PrinterCatalogModel): string {
 
 /** URL statique de la vignette ; le composant retombe sur un placeholder si 404. */
 export function coverUrl(model: PrinterCatalogModel): string {
+	// Pas de vignette Orca (imprimantes « Custom ») : aucune requête, pictogramme.
+	if (!model.cover) return '';
 	return `${COVER_BASE}/${model.cover}`;
 }
 

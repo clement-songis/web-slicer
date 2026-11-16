@@ -19,6 +19,12 @@ export interface EmbossParams {
 	depth: number;
 	/** Grave en creux plutôt qu'en relief. */
 	embossed: boolean;
+	/** Police (id serveur, cf. GET /api/emboss/fonts). */
+	font: string;
+	/** Graisse (mm, FontProp::boldness d'Orca) ; 0 = police telle quelle. */
+	boldness: number;
+	/** Largeur de la forme SVG (mm). */
+	svgWidth: number;
 }
 
 export function defaultEmbossParams(): EmbossParams {
@@ -26,6 +32,9 @@ export function defaultEmbossParams(): EmbossParams {
 		source: 'text',
 		text: 'Texte',
 		svg: '',
+		font: 'noto-sans',
+		boldness: 0,
+		svgWidth: 30,
 		fontSize: 10,
 		depth: 2,
 		embossed: true

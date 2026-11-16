@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
 	import { ApiError } from '$lib/api/client';
@@ -9,11 +10,28 @@
 	let inviteToken = $state('');
 	let error = $state<string | null>(null);
 	let busy = $state(false);
+	let hydrated = $state(false);
+
+	// Sans JS, le bouton reste inactif plutôt que de recharger la page en GET
+	// avec les champs du formulaire dans l'URL avant l'hydratation.
+	onMount(() => {
+		hydrated = true;
+	});
 
 	async function submit(event: SubmitEvent) {
 		event.preventDefault();
-		busy = true;
 		error = null;
+		// Validation en français dans le formulaire (la bulle native suit la langue
+		// du navigateur et disparaît aussitôt).
+		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+			error = 'Adresse e-mail invalide.';
+			return;
+		}
+		if (password.length < 8) {
+			error = `Mot de passe trop court : ${password.length} caractère(s), 8 minimum.`;
+			return;
+		}
+		busy = true;
 		try {
 			await register(email, password, inviteToken.trim() || undefined);
 			// Première connexion → wizard de sélection d'imprimante (Phase 14).
@@ -26,9 +44,11 @@
 	}
 </script>
 
-<h1 class="mb-6 text-xl font-semibold text-content">Créer un compte</h1>
+<svelte:head><title>Créer un compte — Web-Slicer</title></svelte:head>
 
-<form class="space-y-4" onsubmit={submit}>
+<h1 class="ws-page-title mb-6">Créer un compte</h1>
+
+<form class="space-y-4" onsubmit={submit} novalidate>
 	<label class="block">
 		<span class="mb-1 block text-sm text-content-muted">Email</span>
 		<input
@@ -36,7 +56,8 @@
 			bind:value={email}
 			required
 			autocomplete="email"
-			class="w-full rounded border border-border-strong px-3 py-2 bg-surface-raised text-content"
+			data-testid="auth-email"
+			class="ws-field ws-field-lg w-full"
 		/>
 	</label>
 
@@ -50,7 +71,8 @@
 			required
 			minlength={8}
 			autocomplete="new-password"
-			class="w-full rounded border border-border-strong px-3 py-2 bg-surface-raised text-content"
+			data-testid="auth-password"
+			class="ws-field ws-field-lg w-full"
 		/>
 	</label>
 
@@ -62,7 +84,7 @@
 			type="text"
 			bind:value={inviteToken}
 			autocomplete="off"
-			class="w-full rounded border border-border-strong px-3 py-2 bg-surface-raised text-content"
+			class="ws-field ws-field-lg w-full"
 		/>
 	</label>
 
@@ -72,8 +94,9 @@
 
 	<button
 		type="submit"
-		disabled={busy}
-		class="w-full rounded bg-primary py-2 font-medium text-white hover:bg-primary-hover disabled:opacity-50"
+		data-testid="auth-submit"
+		disabled={!hydrated || busy}
+		class="ws-btn ws-btn-lg ws-btn-primary w-full"
 	>
 		{busy ? 'Création…' : 'Créer le compte'}
 	</button>

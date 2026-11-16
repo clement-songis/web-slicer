@@ -1,0 +1,87 @@
+import { describe, expect, it } from 'vitest';
+import { ApiError } from '$lib/api/client';
+import type { PrinterResponse } from '$lib/api/types';
+import {
+	normalizeMoonrakerUrl,
+	printerOptionLabel,
+	sendChoices,
+	sendErrorMessage,
+	sendSuccessMessage,
+	sendTargets
+} from './send';
+
+const printer = (id: string, url: string | null) =>
+	({ id, name: id, moonraker_url: url }) as unknown as PrinterResponse;
+
+describe('sendTargets', () => {
+	it('ne garde que les imprimantes avec URL Moonraker', () => {
+		const out = sendTargets([printer('a', 'http://x:7125'), printer('b', null), printer('c', ' ')]);
+		expect(out.map((p) => p.id)).toEqual(['a']);
+	});
+});
+
+describe('sendChoices', () => {
+	it('liste aussi les imprimantes non connectées, les connectées en premier', () => {
+		const out = sendChoices([
+			printer('setup', null),
+			printer('a', 'http://x:7125'),
+			printer('b', ' ')
+		]);
+		expect(out.map((p) => p.id)).toEqual(['a', 'setup', 'b']);
+	});
+	it('libellé : URL ou « non connectée »', () => {
+		expect(printerOptionLabel(printer('Voron', 'http://x:7125'))).toBe('Voron — http://x:7125');
+		expect(printerOptionLabel(printer('Voron', null))).toBe('Voron — non connectée');
+	});
+});
+
+describe('normalizeMoonrakerUrl', () => {
+	it('ajoute http:// et retire la barre finale', () => {
+		expect(normalizeMoonrakerUrl(' 192.168.1.20:7125/ ')).toBe('http://192.168.1.20:7125');
+		expect(normalizeMoonrakerUrl('https://voron.local')).toBe('https://voron.local');
+	});
+	it('refuse le vide et les schémas non http', () => {
+		expect(normalizeMoonrakerUrl('  ')).toBeNull();
+		expect(normalizeMoonrakerUrl('ftp://x')).toBeNull();
+		expect(normalizeMoonrakerUrl('http://')).toBeNull();
+	});
+});
+
+describe('sendSuccessMessage', () => {
+	it('mentionne le démarrage seulement si honoré', () => {
+		expect(sendSuccessMessage('Voron', { path: 'a.gcode', print_started: true })).toContain(
+			'impression démarrée'
+		);
+		expect(sendSuccessMessage('Voron', { path: 'a.gcode', print_started: false })).not.toContain(
+			'démarrée'
+		);
+	});
+});
+
+describe('sendErrorMessage', () => {
+	it('imprimante injoignable (erreur réseau relayée en 502)', () => {
+		const e = new ApiError(
+			502,
+			'bad_gateway',
+			'erreur réseau Moonraker : error sending request: connection refused'
+		);
+		expect(sendErrorMessage(e, 'Voron')).toMatch(/Voron est injoignable/);
+	});
+	it('refus HTTP : clé API pour 401/403, statut sinon', () => {
+		expect(
+			sendErrorMessage(new ApiError(502, 'bad_gateway', 'Moonraker a renvoyé le statut HTTP 401'))
+		).toMatch(/clé API/);
+		expect(
+			sendErrorMessage(new ApiError(502, 'bad_gateway', 'Moonraker a renvoyé le statut HTTP 500'))
+		).toMatch(/HTTP 500/);
+	});
+	it('réponse illisible, 404 et coupure côté navigateur', () => {
+		expect(
+			sendErrorMessage(new ApiError(502, 'bad_gateway', 'réponse Moonraker illisible : x'))
+		).toMatch(/inattendue/);
+		expect(sendErrorMessage(new ApiError(404, 'not_found', 'G-code'))).toMatch(
+			/tranchez à nouveau/
+		);
+		expect(sendErrorMessage(new TypeError('Failed to fetch'))).toMatch(/web-slicer injoignable/);
+	});
+});

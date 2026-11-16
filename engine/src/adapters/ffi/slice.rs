@@ -9,15 +9,13 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::api::{
-    CancelToken, DynamicPrintConfig, EngineError, EngineErrorCode, EngineResult, ProgressSink,
-    SliceRequest, SliceResult, SliceStats,
-};
-use crate::params::{self, orca_values};
-
 use super::bridge::ffi;
-use super::model::{ffi_guard, to_raw_objects};
+use super::model::{config_to_orca_json, ffi_guard, to_raw_objects};
 use super::worker;
+use crate::api::{
+    CancelToken, EngineError, EngineErrorCode, EngineResult, ProgressSink, SliceRequest,
+    SliceResult, SliceStats,
+};
 
 const REQUEST_FILE: &str = "slice-request.json";
 
@@ -59,8 +57,48 @@ pub fn run_in_worker(request_path: &Path) -> EngineResult<SliceResult> {
     let objects = to_raw_objects(&req.model);
     let config_json = config_to_orca_json(&req.config);
 
-    let result = ffi::slice_raw(&objects, &config_json, &req.work_dir.to_string_lossy())
-        .map_err(|e| EngineError::new(EngineErrorCode::EngineCrashed, e.to_string()))?;
+    let calib = match req.calib {
+        Some(params) => {
+            params
+                .validate()
+                .map_err(|e| EngineError::new(EngineErrorCode::InvalidConfig, e))?;
+            ffi::RawCalibParams {
+                mode: params.mode.code(),
+                start: params.start,
+                end: params.end,
+                step: params.step,
+                print_numbers: params.print_numbers,
+                freq_start_x: params.freq_start_x,
+                freq_end_x: params.freq_end_x,
+                freq_start_y: params.freq_start_y,
+                freq_end_y: params.freq_end_y,
+            }
+        }
+        None => ffi::RawCalibParams::default(),
+    };
+    // G-code personnalisés du plateau tranché seulement (rangés sous le plateau
+    // courant du modèle C++).
+    let plate_gcodes: Vec<_> = req
+        .model
+        .custom_gcodes
+        .iter()
+        .filter(|p| p.plate_index == req.plate_index)
+        .collect();
+    for plate in &plate_gcodes {
+        for item in &plate.items {
+            item.validate()
+                .map_err(|e| EngineError::new(EngineErrorCode::InvalidConfig, e))?;
+        }
+    }
+    let custom_gcodes_json = serde_json::to_string(&plate_gcodes).expect("sérialisable");
+    let result = ffi::slice_raw(
+        &objects,
+        &config_json,
+        &req.work_dir.to_string_lossy(),
+        &calib,
+        &custom_gcodes_json,
+    )
+    .map_err(|e| EngineError::new(EngineErrorCode::EngineCrashed, e.to_string()))?;
 
     Ok(SliceResult {
         gcode_path: PathBuf::from(result.gcode_path),
@@ -72,24 +110,6 @@ pub fn run_in_worker(request_path: &Path) -> EngineResult<SliceResult> {
             tool_changes: result.tool_changes,
         },
         thumbnails: result.thumbnails.into_iter().map(PathBuf::from).collect(),
+        output_filename: (!result.output_filename.is_empty()).then_some(result.output_filename),
     })
-}
-
-/// Config typée → JSON {clé → valeur sérialisée Orca} (format attendu par le
-/// bridge C++, symétrique de la lecture 3MF).
-fn config_to_orca_json(config: &DynamicPrintConfig) -> String {
-    let map: std::collections::BTreeMap<&str, String> = config
-        .0
-        .iter()
-        .map(|(k, v)| {
-            // Sérialisation pilotée par le registre : réimpose `%` aux pourcentages
-            // (que `ConfigValue::Float` ne porte pas), sinon repli sur la forme nue.
-            let s = match params::get(k) {
-                Some(def) => orca_values::serialize_orca_value_for(def, v),
-                None => orca_values::serialize_orca_value(v),
-            };
-            (k.as_str(), s)
-        })
-        .collect();
-    serde_json::to_string(&map).expect("map de chaînes toujours sérialisable")
 }

@@ -41,24 +41,54 @@ for (const value of Object.values(m)) {
 	}
 }
 
-/** Vrai si le libellé anglais dispose d'un message traduisible (couverture parité). */
+/**
+ * Dictionnaires chargés à la demande (« libellé anglais → traduction ») : les
+ * gros volumes (≈1100 libellés/infobulles des réglages) ne sont pas compilés
+ * par Paraglide dans le chunk initial mais importés à l'ouverture du dialogue
+ * (`lib/settings/i18n`). Même contrat additif : repli sur la clé anglaise.
+ */
+const lazyDicts = writable<Partial<Record<Locale, Record<string, string>>>>({});
+
+/** Ajoute un dictionnaire paresseux pour une locale (fusion, réactif). */
+export function registerTranslations(loc: Locale, dict: Record<string, string>): void {
+	lazyDicts.update((all) => ({ ...all, [loc]: { ...all[loc], ...dict } }));
+}
+
+function lookup(
+	dicts: Partial<Record<Locale, Record<string, string>>>,
+	loc: Locale,
+	key: string
+): string {
+	const fn = byEnglish.get(key);
+	if (fn) return fn({}, { locale: loc });
+	return dicts[loc]?.[key] ?? key;
+}
+
+/** Vrai si le libellé anglais dispose d'une traduction (Paraglide ou dictionnaire chargé). */
 export function isTranslatable(label: string): boolean {
-	return byEnglish.has(label);
+	if (byEnglish.has(label)) return true;
+	const dicts = get(lazyDicts);
+	return Object.values(dicts).some((d) => d !== undefined && label in d);
 }
 
 /** Traduit une clé (libellé anglais) pour une locale ; repli additif sur la clé. */
 export function translate(loc: Locale, key: string): string {
-	const fn = byEnglish.get(key);
-	return fn ? fn({}, { locale: loc }) : key;
+	return lookup(get(lazyDicts), loc, key);
 }
 
 /** Locale courante (store réactif) ; synchronisée avec Paraglide. */
 export const locale = writable<Locale>(currentLocale());
 
 /**
- * Helper réactif : `$t('New Project')`. Se réévalue au changement de locale.
+ * Helper réactif : `$t('New Project')`. Se réévalue au changement de locale et
+ * à l'arrivée d'un dictionnaire paresseux.
  */
-export const t = derived(locale, (loc) => (key: string) => translate(loc, key));
+export const t = derived(
+	[locale, lazyDicts],
+	([loc, dicts]) =>
+		(key: string) =>
+			lookup(dicts, loc, key)
+);
 
 /** Traduit avec la locale courante hors composant (usage impératif). */
 export function tr(key: string): string {

@@ -4,33 +4,70 @@
 	// `Scene.svelte` de préparation, réutilisé par le workspace éditeur.
 	import { Canvas, T } from '@threlte/core';
 	import { OrbitControls } from '@threlte/extras';
-	import { frameBed, type BedShape } from '$lib/scene';
+	import { frameBed, frameBox, type BedShape } from '$lib/scene';
 	import PreviewLines from './PreviewLines.svelte';
-	import type { PreviewGeometry } from './geometry';
+	import PreviewPoints from './PreviewPoints.svelte';
+	import PreviewExtrusions from './PreviewExtrusions.svelte';
+	import type { PreviewGeometry, PreviewOverlay } from './geometry';
 
 	interface Props {
 		geometry: PreviewGeometry;
 		bed: BedShape;
+		/** Options d'affichage : déplacements, essuyages, marqueurs. */
+		overlay?: PreviewOverlay | null;
+		/** Boîte des objets imprimés (cadrage « Objets ») ; null → plateau. */
+		frame?: { min: [number, number, number]; max: [number, number, number] } | null;
+		/** Cadrage demandé ; `frameKey` change à chaque demande (re-cadre). */
+		fit?: 'objects' | 'bed';
+		frameKey?: number;
+		/** Rendu des extrusions : volumes éclairés (défaut) ou lignes. */
+		renderMode?: 'volumes' | 'lines';
 	}
 
-	let { geometry, bed }: Props = $props();
+	let {
+		geometry,
+		bed,
+		overlay = null,
+		frame = null,
+		fit = 'objects',
+		frameKey = 0,
+		renderMode = 'volumes'
+	}: Props = $props();
 
-	const pose = $derived(frameBed(bed));
+	const pose = $derived(
+		fit === 'objects' && frame ? frameBox(frame.min, frame.max) : frameBed(bed)
+	);
 </script>
 
 <div class="h-full w-full">
 	<Canvas>
-		<T.PerspectiveCamera
-			makeDefault
-			position={pose.position}
-			up={[0, 0, 1]}
-			fov={50}
-			near={1}
-			far={20000}
-		>
-			<OrbitControls enableDamping target={pose.target} />
-		</T.PerspectiveCamera>
-		<T.AmbientLight intensity={0.9} />
-		<PreviewLines {geometry} />
+		{#key frameKey}
+			<T.PerspectiveCamera
+				makeDefault
+				position={pose.position}
+				up={[0, 0, 1]}
+				fov={50}
+				near={1}
+				far={20000}
+			>
+				<OrbitControls enableDamping target={pose.target} />
+			</T.PerspectiveCamera>
+		{/key}
+		{#if renderMode === 'volumes'}
+			<!-- Éclairage des volumes : ambiant + lumière principale + contre-jour doux. -->
+			<T.AmbientLight intensity={0.85} />
+			<T.DirectionalLight position={[-0.5, -1, 1.6]} intensity={1.25} />
+			<T.DirectionalLight position={[1, 0.8, 0.4]} intensity={0.6} />
+			<PreviewExtrusions {geometry} />
+		{:else}
+			<T.AmbientLight intensity={0.9} />
+			<PreviewLines {geometry} />
+		{/if}
+		{#if overlay && overlay.lines.visibleCount > 0}
+			<PreviewLines geometry={overlay.lines} />
+		{/if}
+		{#if overlay && overlay.points.visibleCount > 0}
+			<PreviewPoints geometry={overlay.points} />
+		{/if}
 	</Canvas>
 </div>

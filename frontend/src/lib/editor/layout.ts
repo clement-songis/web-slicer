@@ -4,17 +4,13 @@
 // cet état dans une rune `$state` et délègue chaque transition ici.
 //
 // Distinct de `workspace.ts` (sélection, gizmo, réglages) : `layout.ts` ne gère
-// que la navigation entre les grandes vues et le thème par défaut de l'éditeur.
+// que la navigation entre les grandes vues (le thème suit la préférence utilisateur).
 
 /** Onglet supérieur de l'éditeur, miroir des vues OrcaSlicer. */
 export type EditorTab = 'prepare' | 'preview' | 'device' | 'project';
 
 /** Ordre d'affichage des onglets (parité barre supérieure OrcaSlicer). */
 export const EDITOR_TABS: readonly EditorTab[] = ['prepare', 'preview', 'device', 'project'];
-
-/** Thème par défaut de l'éditeur : sombre, comme OrcaSlicer (les surfaces 3D et
- *  les panneaux d'outils sont pensés pour un fond sombre). */
-export const EDITOR_DEFAULT_THEME = 'dark' as const;
 
 /** État de disposition (immuable : chaque transition renvoie une copie). */
 export interface LayoutState {

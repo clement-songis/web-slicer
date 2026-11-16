@@ -227,6 +227,12 @@ def ui_features(feats: dict) -> None:
     add("ui", "preset-save-as", "Preset modifié (astérisque) puis « Enregistrer sous » un preset utilisateur, "
         "système resté intact, preset réutilisable dans un autre projet", 45, ["core.settings-ui"],
         ["src/slic3r/GUI/Tab.cpp", "src/slic3r/GUI/SavePresetDialog.cpp"], "ui")
+    add("ui", "library-crud", "Bibliothèque (accueil « Récemment ouvert ») : renommer, dupliquer, supprimer un projet, "
+        "persistés après rechargement", 45, ["core.project-save"], ["src/slic3r/GUI/WebViewDialog.cpp"], "ui")
+    add("ui", "library-open", "Bibliothèque : « Ouvrir un projet » avec un modèle 3D crée un projet et ouvre l'éditeur",
+        45, ["core.import"], ["src/slic3r/GUI/MainFrame.cpp"], "ui")
+    add("ui", "queue", "File de tranchage : le tranchage lancé depuis l'éditeur apparaît dans l'historique, "
+        "G-code téléchargeable", 45, ["core.slice-ui"], ["src/slic3r/GUI/BackgroundSlicingProcess.cpp"], "ui")
     for g in UI["plater_gizmos"]:
         name = g.get("type") or g["class"].replace("GLGizmo", "")
         add("gizmo", name, f"Gizmo {name} ({g['class']})", 50, base_deps,
@@ -253,6 +259,102 @@ def ui_features(feats: dict) -> None:
                 base_deps, ["src/slic3r/GUI/KBShortcutsDialog.cpp"], f"shortcut/{slug(grp['group'])}")
 
 
+# Features « éditeur » ajoutées pendant la consolidation de parité : chaque id
+# correspond à un tag @F: d'un test e2e existant (tests/oracle/e2e/*.spec.ts).
+# (id, titre, fichier de test, dépendances, sources Orca)
+EDITOR = [
+    ("editor.object-settings", "Réglages par objet : wall_loops=5 sur un seul objet (document scène) atteint le G-code de cet objet",
+     "editor-object-settings", ["core.project-save", "core.slice-ui"], ["src/slic3r/GUI/GUI_ObjectSettings.cpp"]),
+    ("editor.object-panel", "Panneau des réglages par objet : clic droit › Add settings, recherche wall_loops=5, sauvegarde, G-code",
+     "editor-object-panel", ["editor.object-settings"], ["src/slic3r/GUI/GUI_ObjectSettings.cpp", "src/slic3r/GUI/GUI_Factories.cpp"]),
+    ("editor.paint-supports", "Peinture de supports : les facettes peintes « enforcer » génèrent des supports (mode manuel)",
+     "editor-object-settings", ["core.project-save", "core.slice-ui"], ["src/slic3r/GUI/Gizmos/GLGizmoFdmSupports.cpp"]),
+    ("editor.paint-supports-local", "Peinture de supports : supports seulement sous la zone peinte",
+     "editor-object-settings", ["editor.paint-supports"], ["src/slic3r/GUI/Gizmos/GLGizmoFdmSupports.cpp"]),
+    ("editor.paint-seam", "Peinture de couture : coutures placées sur la face peinte",
+     "editor-object-settings", ["core.project-save", "core.slice-ui"], ["src/slic3r/GUI/Gizmos/GLGizmoSeam.cpp"]),
+    ("editor.volume-negative", "Volume négatif ajouté depuis le menu contextuel, persistant, creuse l'objet au tranchage",
+     "editor-object-settings", ["core.project-save", "core.slice-ui"], ["src/slic3r/GUI/GUI_ObjectList.cpp"]),
+    ("editor.volume-modifier", "Modificateur : ses réglages s'appliquent dans son volume",
+     "editor-object-settings", ["editor.volume-negative"], ["src/slic3r/GUI/GUI_ObjectList.cpp"]),
+    ("editor.volume-blocker", "Bloqueur de supports : supprime les supports automatiques dans son volume",
+     "editor-object-settings", ["editor.volume-negative"], ["src/slic3r/GUI/GUI_ObjectList.cpp"]),
+    ("editor.volume-transform", "Volume sélectionné : panneau de transformation (position, rotation, échelle) persisté",
+     "editor-volume-transform", ["editor.volume-modifier"], ["src/slic3r/GUI/GUI_ObjectManipulation.cpp"]),
+    ("editor.export-3mf-paint-volumes", "Export 3MF : emporte peinture et volumes (types, réglages)",
+     "editor-object-settings", ["editor.paint-supports", "editor.volume-modifier"], ["src/libslic3r/Format/bbs_3mf.cpp"]),
+    ("editor.import-3mf-paint-volumes", "3MF : export → import → export restitue volumes et peinture",
+     "editor-object-settings", ["editor.export-3mf-paint-volumes"], ["src/libslic3r/Format/bbs_3mf.cpp"]),
+    ("editor.plate-settings", "Réglages par plateau (séquence d'impression, vase spirale) persistés et appliqués au G-code du plateau",
+     "editor-plate-settings", ["core.project-save", "core.slice-ui"], ["src/slic3r/GUI/PlateSettingsDialog.cpp"]),
+    ("editor.plate-duplicate", "Édition › Dupliquer le plateau courant : copie active avec ses objets",
+     "editor-scene", ["core.import"], ["src/slic3r/GUI/PartPlate.cpp"]),
+    ("editor.filament-slots", "Slots filament : ajout et retrait persistés après rechargement",
+     "editor-scene", ["core.project-save"], ["src/slic3r/GUI/Plater.cpp"]),
+    ("editor.preview-plates", "Aperçu multi-plateaux : curseur de couches, coloration par filament, export du plateau 2",
+     "editor-preview", ["core.preview"], ["src/slic3r/GUI/GCodeViewer.cpp"]),
+    ("editor.view-gcode-window", "Aperçu : fenêtre G-code synchronisée avec la couche affichée",
+     "editor-view", ["core.preview"], ["src/slic3r/GUI/GCodeViewer.cpp"]),
+    ("editor.export-toolpaths-obj", "Aperçu : export des trajets en OBJ",
+     "editor-view", ["core.preview"], ["src/slic3r/GUI/GCodeViewer.cpp"]),
+    ("editor.view-labels-overhang", "Vue : étiquettes d'objets et surplombs de la scène",
+     "editor-view", ["core.import"], ["src/slic3r/GUI/GLCanvas3D.cpp"]),
+    ("editor.undo-redo", "Édition › Annuler / Rétablir : suppression puis restauration de l'objet",
+     "editor-history", ["core.import"], ["src/slic3r/GUI/Plater.cpp"]),
+    ("editor.rename", "Objets › Renommer un objet et un plateau : persisté après rechargement",
+     "editor-history", ["core.project-save"], ["src/slic3r/GUI/GUI_ObjectList.cpp"]),
+    ("editor.menu-export-stl", "Menu Fichier › Export STL : un fichier binaire puis une archive par objet",
+     "editor-menus", ["core.import"], ["src/slic3r/GUI/MainFrame.cpp"]),
+    ("editor.menu-export-plates", "Menu Fichier › Exporter tous les plateaux : archive avec un G-code par plateau",
+     "editor-menus", ["core.slice-ui"], ["src/slic3r/GUI/MainFrame.cpp"]),
+    ("editor.menu-open-gcode", "Menu Fichier › Ouvrir un G-code local : aperçu sans tranchage",
+     "editor-menus", ["core.preview"], ["src/slic3r/GUI/MainFrame.cpp"]),
+    ("editor.menu-view-prefs", "Menu Vue : vue orthogonale et préférences",
+     "editor-menus", ["core.import"], ["src/slic3r/GUI/MainFrame.cpp"]),
+    ("editor.mesh-repair", "Outil maillage : réparation d'un maillage troué par le serveur, rechargé",
+     "editor-mesh", ["core.import"], ["src/slic3r/Utils/FixModelByWin10.cpp"]),
+    ("editor.mesh-simplify", "Outil maillage : simplification câblée à l'endpoint, maillage remplacé et persistant",
+     "editor-mesh", ["core.import"], ["src/slic3r/GUI/Gizmos/GLGizmoSimplify.cpp"]),
+    ("editor.mesh-simplify-error", "Outil maillage : erreur de simplification affichée clairement",
+     "editor-mesh", ["editor.mesh-simplify"], ["src/slic3r/GUI/Gizmos/GLGizmoSimplify.cpp"]),
+    ("editor.mesh-split", "Outil maillage : séparer en objets (deux cubes disjoints → deux objets)",
+     "editor-split", ["core.import"], ["src/slic3r/GUI/GUI_ObjectList.cpp"]),
+    ("editor.mesh-cut", "Outil maillage : coupe horizontale d'un cube de 20 mm",
+     "editor-split", ["core.import"], ["src/slic3r/GUI/Gizmos/GLGizmoCut.cpp"]),
+    ("editor.mesh-boolean", "Outil maillage : booléen différence A − B",
+     "editor-split", ["core.import"], ["src/slic3r/GUI/Gizmos/GLGizmoMeshBoolean.cpp"]),
+    ("editor.emboss-text", "Emboss : texte en relief créé et tranché",
+     "editor-emboss", ["core.import", "core.slice-ui"], ["src/slic3r/GUI/Gizmos/GLGizmoEmboss.cpp"]),
+    ("editor.calibration-temp", "Calibration › Température : tour tranchée, M104 S230…S190 par paliers",
+     "editor-calibration", ["core.slice-ui"], ["src/slic3r/GUI/calib_dlg.cpp", "src/libslic3r/calib.cpp"]),
+    ("editor.calibration-retraction", "Calibration › Rétraction : longueur croissante par paliers",
+     "editor-calibration-engine", ["core.slice-ui"], ["src/slic3r/GUI/calib_dlg.cpp", "src/libslic3r/calib.cpp"]),
+    ("editor.calib-pa-pattern", "Calibration › Pressure advance pattern : motif injecté avec cinq paliers de PA",
+     "editor-calibration-shaping", ["core.slice-ui"], ["src/slic3r/GUI/Plater.cpp", "src/libslic3r/calib.cpp"]),
+    ("editor.calib-input-shaping", "Calibration › Input shaping : fréquences variables couche par couche",
+     "editor-calibration-shaping", ["core.slice-ui"], ["src/slic3r/GUI/calib_dlg.cpp", "src/libslic3r/calib.cpp"]),
+    ("editor.calib-cornering", "Calibration › Virages : jerk ou junction deviation variable par couche",
+     "editor-calibration-shaping", ["core.slice-ui"], ["src/slic3r/GUI/calib_dlg.cpp", "src/libslic3r/calib.cpp"]),
+    ("editor.volume-gizmo", "Volume sélectionné : gizmo 3D, déplacement persisté et un seul pas d'historique par geste",
+     "editor-volume-gizmo", ["editor.volume-transform"], ["src/slic3r/GUI/GUI_ObjectManipulation.cpp", "src/slic3r/GUI/Gizmos/GLGizmoMove.cpp"]),
+    ("ui.import-3mf-multi", "Import d'un 3MF multi-objets (produit par Orca) dans un projet : un objet nommé par "
+     "objet du 3MF (transformations, volumes, réglages), persistant après rechargement",
+     "import-3mf-multi", ["core.import"], ["src/slic3r/GUI/Plater.cpp", "src/libslic3r/Format/bbs_3mf.cpp"]),
+    ("ui.device", "Onglet Appareil (Moonraker) : consignes de température, déplacements/origine, ventilateur, "
+     "fichiers de l'imprimante et lancement, couche/progression/durée, webcam",
+     "device", ["core.moonraker"], ["src/slic3r/GUI/DeviceManager.cpp", "src/slic3r/GUI/StatusPanel.cpp"]),
+    ("preview.engine", "Aperçu alimenté par GCodeProcessor (moteur) : méta au tranchage, mouvements par fenêtre de "
+     "couches, Résumé (temps simulé = en-tête du G-code), vitesse / débit réels, temps de couche simulés",
+     "engine-preview", ["core.preview"], ["src/libslic3r/GCode/GCodeProcessor.cpp", "src/slic3r/GUI/GCodeViewer.cpp"]),
+]
+
+
+def editor_features(feats: dict) -> None:
+    for i, (fid, title, spec, deps, orca) in enumerate(EDITOR):
+        feats[fid] = {"kind": "editor", "title": title, "priority": 40 + i / 100, "deps": deps, "batch": None,
+                      "test": f"tests/oracle/e2e/{spec}.spec.ts", "orca": orca, "default_status": "red"}
+
+
 # ------------------------------------------------------------------ fusion
 
 def excluded_reason(fid: str) -> str | None:
@@ -274,6 +376,19 @@ def main() -> None:
     golden_features(fresh, golden_cases)
     param_features(fresh, param_cases)
     ui_features(fresh)
+    editor_features(fresh)
+
+    # Trois scénarios e2e intégrés après preuve navigateur : rattache chaque
+    # feature portant leur tag @F: au fichier réel au lieu d'un scénario
+    # unitaire inexistant. Restreint à ces fichiers pour ne pas recâbler les
+    # autres lots pendant leur intégration.
+    for spec_name in ("editor-volume-gizmo", "editor-calibration-shaping", "editor-shortcuts-ctx",
+                      "menu-a", "menu-a-drc", "menu-b", "ctx-menus", "ctx-menus-2", "shortcuts-rest",
+                      "ui-gizmo-toolbar"):
+        spec = ORACLE / "e2e" / f"{spec_name}.spec.ts"
+        for fid in set(re.findall(r"@F:([\w.-]+)", spec.read_text())):
+            if fid in fresh:
+                fresh[fid]["test"] = f"tests/oracle/e2e/{spec_name}.spec.ts"
 
     req_dir = ORACLE / "params" / "requires"
     for c in param_cases:
@@ -286,6 +401,8 @@ def main() -> None:
             o = overrides[c["key"]]
             if isinstance(o, dict):
                 c["value"] = o.get("value")
+                if o.get("model"):
+                    c["model"] = o["model"]
                 if o.get("requires"):
                     c["requires"] = o["requires"]
             else:

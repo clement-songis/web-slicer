@@ -77,6 +77,39 @@ Pour plus d'autonomie et de sûreté, lance la boucle dans un conteneur et passe
   la session Claude qui l'édite, puis `python3 harness/loopctl.py freeze`.
 - Utiliser l'app de temps en temps : c'est le seul test que rien ne remplace.
 
+## Gel des tests (freeze)
+
+Le gel enregistre, hors dépôt, l'empreinte de chaque fichier de
+`tests/oracle/`, `harness/` et `.claude/settings.json` (`FROZEN_ROOTS` de
+`lib.py`, moins `FROZEN_IGNORE` : `node_modules`, `test-results`, `logs`,
+`features.json`…) : manifeste `$HARNESS_STATE/frozen.json` + archive
+`$HARNESS_STATE/frozen.tar` (fonction `lib.freeze()`). `verify.py` compare
+ensuite l'arborescence à ce manifeste : toute modification, ajout ou
+suppression est restauré depuis l'archive, la session est annulée et la
+tentative comptée (code de sortie 4).
+
+Quand regeler : après **toute** modification volontaire d'un chemin gelé,
+c'est-à-dire nouveaux tests e2e, références Orca régénérées
+(`refs/REGENERATED.md`), correctif de `make_refs.py`, nouvelles entrées
+`EDITOR` de `gen_features.py`, édition de ce README. Sans regel, le prochain
+`verify.py` (hors `--check`) restaure l'ancienne version et annule tout.
+
+Procédure (humain ou session parente, jamais une session « impl ») :
+
+1. Valider d'abord : `HARNESS_NO_STACK=1 python3 harness/verify.py --check <ids>`
+   (lecture seule, aucun effet sur l'état) sur les features touchées.
+2. Relire `git status tests/oracle harness` : seuls les changements voulus.
+3. Geler : `python3 harness/loopctl.py freeze` (affiche « gelé : N fichiers »).
+   Dans une session Claude de la boucle, `guard.py` bloque cette commande ;
+   la lancer depuis un terminal, ou avec `HARNESS_UNLOCK=1`.
+4. Faire passer les nouvelles features à `passing` :
+   `python3 harness/verify.py <ids>` (mode impl, écrit l'état).
+
+`features.json` n'est pas gelé : l'état faisant foi est
+`$HARNESS_STATE/features.json` (miroir dans `harness/`, écrit par
+`save_features`). Les features « éditeur » (`kind: editor`, liste `EDITOR` de
+`gen_features.py`) arrivent en `red`, avec un test e2e déjà écrit.
+
 ## Coût
 
 Chaque session repart d'un contexte vide : CLAUDE.md, le contrat et le lot,

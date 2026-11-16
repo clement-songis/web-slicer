@@ -8,9 +8,26 @@
 /** Couleur RGB normalisée (composantes 0–1). */
 export type Rgb = [number, number, number];
 
-/** Les sept colorations de FR-041. */
+/** Colorations (EViewType d'Orca) : les sept de FR-041 + celles servies par la
+ *  piste G-code (`track.ts`) : ventilateur, temps de couche (linéaire /
+ *  logarithmique), accélération, jerk, pressure advance. */
 export type Coloration =
-	'type' | 'speed' | 'height' | 'width' | 'flow' | 'temperature' | 'filament';
+	| 'type'
+	| 'speed'
+	| 'height'
+	| 'width'
+	| 'flow'
+	| 'temperature'
+	| 'filament'
+	| 'fan'
+	| 'layer-time'
+	| 'layer-time-log'
+	| 'acceleration'
+	| 'jerk'
+	| 'pa'
+	/** Vitesse / débit réels simulés par GCodeProcessor (moteur). */
+	| 'actual-speed'
+	| 'actual-flow';
 
 const rgb = (r: number, g: number, b: number): Rgb => [r / 255, g / 255, b / 255];
 
@@ -100,6 +117,21 @@ export const DEFAULT_FILAMENT_COLORS: Rgb[] = [
 	rgb(200, 90, 160)
 ];
 
+/**
+ * Couleurs des options d'affichage, miroir de `DEFAULT_OPTIONS_COLORS`
+ * (libvgcode/src/ViewerImpl.cpp).
+ */
+export const OPTION_COLORS = {
+	travel: rgb(56, 72, 155),
+	wipe: rgb(255, 255, 0),
+	retract: rgb(205, 34, 214),
+	unretract: rgb(73, 173, 207),
+	seam: rgb(230, 230, 230),
+	toolchange: rgb(193, 190, 99),
+	colorchange: rgb(218, 148, 139),
+	pause: rgb(82, 240, 131)
+} satisfies Record<string, Rgb>;
+
 /** Échantillonne le dégradé de valeurs à `t ∈ [0,1]` (interpolation linéaire). */
 export function sampleRange(t: number): Rgb {
 	const clamped = Math.max(0, Math.min(1, t));
@@ -112,10 +144,31 @@ export function sampleRange(t: number): Rgb {
 	return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f];
 }
 
-/** Couleur d'une valeur dans `[min,max]` (échelle plate → couleur médiane). */
-export function rangeColor(value: number, min: number, max: number): Rgb {
+/**
+ * Couleur d'une valeur dans `[min,max]`, comme `ColorRange::get_color_at`
+ * d'Orca : échelle linéaire, ou logarithmique (`log(v/min)/log(max/min)`,
+ * repli linéaire si `min ≤ 0`). Échelle plate → couleur médiane.
+ */
+export function rangeColor(value: number, min: number, max: number, log = false): Rgb {
 	if (!(max > min)) return sampleRange(0.5);
-	return sampleRange((value - min) / (max - min));
+	const v = Math.max(min, Math.min(max, value));
+	if (log && min > 0) return sampleRange(Math.log(v / min) / Math.log(max / min));
+	return sampleRange((v - min) / (max - min));
+}
+
+/**
+ * Valeurs de la légende d'une échelle (une par couleur de la palette, comme
+ * `ColorRange::get_values` : 1 valeur si plate, sinon 11 arrêts).
+ */
+export function rangeValues(min: number, max: number, log = false): number[] {
+	if (!(max > min)) return [min];
+	const n = RANGE_PALETTE.length;
+	if (log && min > 0) {
+		const step = Math.log(max / min) / (n - 1);
+		return Array.from({ length: n }, (_, i) => Math.exp(Math.log(min) + i * step));
+	}
+	const step = (max - min) / (n - 1);
+	return Array.from({ length: n }, (_, i) => min + i * step);
 }
 
 /** Une entrée de légende. */
@@ -131,6 +184,10 @@ export interface LegendScale {
 	max: number;
 	unit: string;
 	stops: Rgb[];
+	/** Échelle logarithmique (temps de couche log). */
+	log?: boolean;
+	/** Valeurs affichées (une par arrêt de la palette d'Orca). */
+	values?: number[];
 }
 
 /** Légende discrète (mode « type » / « filament »). */

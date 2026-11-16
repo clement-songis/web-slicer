@@ -14,11 +14,11 @@
 	let { measurement = null, angle = null, onclear }: Props = $props();
 </script>
 
-<div class="flex flex-col gap-2 text-sm">
+<div class="flex flex-col gap-2 text-sm" data-testid="measure-tool">
 	{#if measurement}
 		<dl class="grid grid-cols-2 gap-x-4 gap-y-1">
 			<dt class="text-content-muted">Distance</dt>
-			<dd>{measurement.distance.toFixed(2)} mm</dd>
+			<dd data-testid="measure-distance">{measurement.distance.toFixed(2)} mm</dd>
 			<dt class="text-content-muted">ΔX / ΔY / ΔZ</dt>
 			<dd>{measurement.delta.map((d) => d.toFixed(2)).join(' / ')}</dd>
 		</dl>
@@ -35,9 +35,7 @@
 		<p class="text-content-subtle">Cliquez deux points ou deux facettes à mesurer.</p>
 	{/if}
 
-	<button
-		type="button"
-		class="self-start rounded border border-border-strong px-3 py-1 hover:bg-overlay"
-		onclick={() => onclear?.()}>Effacer</button
+	<button type="button" class="ws-btn ws-btn-secondary self-start" onclick={() => onclear?.()}
+		>Effacer</button
 	>
 </div>

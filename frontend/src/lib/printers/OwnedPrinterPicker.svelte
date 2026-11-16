@@ -5,7 +5,12 @@
 	// marque — puis la **buse** parmi les variantes du modèle de l'imprimante
 	// choisie. Deux actions à côté : « ＋ » (ajouter une imprimante, ouvre la
 	// grille) et « ✎ » (éditer les réglages, ouvre le dialogue). Aucun accès réseau.
-	import type { PrinterCatalogModel, PrinterCatalogVendor, PrinterResponse } from '$lib/api/types';
+	import type {
+		PresetSummary,
+		PrinterCatalogModel,
+		PrinterCatalogVendor,
+		PrinterResponse
+	} from '$lib/api/types';
 	import IconAdd from '~icons/lucide/plus';
 	import IconEdit from '~icons/lucide/pencil';
 
@@ -16,6 +21,10 @@
 		catalog: PrinterCatalogVendor[];
 		/** Preset machine actif (= buse retenue) ; liable, piloté par les deux menus. */
 		selectedMachinePresetId?: string | null;
+		/** Presets machine visibles, dont une éventuelle dérivation utilisateur. */
+		machinePresets?: PresetSummary[];
+		/** Le brouillon machine diffère de sa configuration résolue. */
+		modified?: boolean;
 		/** Ouvre la grille d'ajout d'imprimante. */
 		onadd: () => void;
 		/** Ouvre le dialogue de réglages de l'imprimante. */
@@ -26,6 +35,8 @@
 		printers,
 		catalog,
 		selectedMachinePresetId = $bindable(null),
+		machinePresets = [],
+		modified = false,
 		onadd,
 		onedit
 	}: Props = $props();
@@ -57,13 +68,33 @@
 			printers.find((p) => modelKeyOf(p.machine_preset_id) === key) ??
 			printers[0];
 		selectedPrinterId = inferred?.id ?? null;
+		// Nouveau projet : aucun preset machine actif alors qu'une imprimante est
+		// affichée — on l'active (buse déclarée), sinon le filtre de compatibilité
+		// filament/process et la buse restent vides (« Choisir… » partout).
+		if (!selectedMachinePresetId && inferred) selectedMachinePresetId = inferred.machine_preset_id;
 	});
 
 	const selectedPrinter = $derived(printers.find((p) => p.id === selectedPrinterId) ?? null);
 	const selectedModel = $derived(
 		selectedPrinter ? modelOf(selectedPrinter.machine_preset_id) : null
 	);
-	const nozzles = $derived(selectedModel?.variants ?? []);
+	const nozzles = $derived.by(() => {
+		const options = (selectedModel?.variants ?? []).map((variant) => ({
+			id: variant.machine_preset_id,
+			label: `${variant.nozzle} mm`
+		}));
+		// Une dérivation du preset actif n'appartient pas encore à une variante du
+		// catalogue : elle doit néanmoins rester sélectionnée après « Appliquer ».
+		for (const preset of machinePresets) {
+			if (
+				preset.id === selectedMachinePresetId &&
+				!options.some((option) => option.id === preset.id)
+			) {
+				options.push({ id: preset.id, label: preset.name });
+			}
+		}
+		return options;
+	});
 
 	// Change d'imprimante : réinitialise la buse sur celle déclarée pour elle.
 	function onPrinterChange(id: string) {
@@ -74,8 +105,7 @@
 
 	const FIELD =
 		'w-full rounded border border-border-strong px-2 py-1 text-sm bg-surface-raised text-content';
-	const ICON_BTN =
-		'flex shrink-0 items-center justify-center rounded border border-border-strong px-2 py-1 text-content-muted hover:bg-overlay disabled:opacity-40';
+	const ICON_BTN = 'ws-icon-btn border-border-strong bg-surface-raised';
 </script>
 
 <div class="flex flex-col gap-2">
@@ -96,6 +126,7 @@
 		<button
 			type="button"
 			class={ICON_BTN}
+			data-testid="open-settings-printer"
 			title="Réglages de l'imprimante"
 			onclick={onedit}
 			disabled={!selectedPrinter}
@@ -105,9 +136,15 @@
 	</div>
 
 	{#if nozzles.length > 0}
-		<select class={FIELD} aria-label="Buse" bind:value={selectedMachinePresetId}>
-			{#each nozzles as v (v.machine_preset_id)}
-				<option value={v.machine_preset_id}>{v.nozzle} mm</option>
+		<select
+			class={FIELD}
+			aria-label="Buse"
+			bind:value={selectedMachinePresetId}
+			data-testid="preset-select-printer"
+			data-modified={modified ? 'true' : 'false'}
+		>
+			{#each nozzles as option (option.id)}
+				<option value={option.id}>{option.label}</option>
 			{/each}
 		</select>
 	{/if}

@@ -81,6 +81,13 @@ function segmentLength(segments: PreviewSegments, i: number): number {
 	return Math.hypot(dx, dy, dz);
 }
 
+/** Totaux par rôle fournis par `/preview/meta` (`types_present`). */
+export interface TypeTotal {
+	id: number;
+	length_mm: number;
+	time_s: number;
+}
+
 /** Longueur et temps estimé agrégés par type de ligne. */
 export function perTypeStats(
 	segments: PreviewSegments
@@ -104,21 +111,50 @@ export function perTypeStats(
  * en priorité des stats figées (moteur, FR-043) ; la répartition par type est
  * dérivée des segments décodés (si fournis).
  */
-export function buildPreviewStats(stats: GcodeStats, segments?: PreviewSegments): PreviewStats {
-	const perType = segments ? perTypeStats(segments) : new Map();
+export function buildPreviewStats(
+	stats: GcodeStats,
+	segments?: PreviewSegments,
+	typesPresent: Array<number | TypeTotal> = []
+): PreviewStats {
+	// Priorité : totaux calculés côté serveur sur tout le G-code (méta), sinon
+	// segments décodés (fenêtre de couches chargée seulement).
+	const serverTotals = typesPresent.filter(
+		(t): t is TypeTotal => typeof t === 'object' && t !== null
+	);
+	const perType: Map<number, { length: number; time: number }> =
+		serverTotals.length > 0
+			? new Map(serverTotals.map((t) => [t.id, { length: t.length_mm, time: t.time_s }]))
+			: segments
+				? perTypeStats(segments)
+				: new Map();
+	const nominalTypeTime = [...perType.values()].reduce((a, v) => a + v.time, 0);
+	// Le temps nominal (longueur / F) ignore les accélérations : on le rapporte
+	// au temps total estimé par le moteur pour que la somme des types y corresponde.
+	const scale =
+		stats.estimated_time_seconds && nominalTypeTime > 0
+			? stats.estimated_time_seconds / nominalTypeTime
+			: 1;
+	if (scale !== 1) for (const v of perType.values()) v.time *= scale;
 	const totalTypeTime = [...perType.values()].reduce((a, v) => a + v.time, 0);
 	const totalTypeLength = [...perType.values()].reduce((a, v) => a + v.length, 0);
+	const kinds = new Set([
+		...perType.keys(),
+		...typesPresent.map((t) => (typeof t === 'number' ? t : t.id))
+	]);
 
-	const types: TypeStat[] = [...perType.entries()]
-		.map(([kind, v]) => ({
-			kind,
-			name: SEGMENT_ROLE_NAMES[kind] ?? `#${kind}`,
-			color: SEGMENT_ROLE_COLORS[kind] ?? NO_DATA_COLOR,
-			length: v.length,
-			timeSeconds: v.time,
-			timePercent: totalTypeTime > 0 ? (v.time / totalTypeTime) * 100 : 0,
-			lengthPercent: totalTypeLength > 0 ? (v.length / totalTypeLength) * 100 : 0
-		}))
+	const types: TypeStat[] = [...kinds]
+		.map((kind) => {
+			const v = perType.get(kind) ?? { length: 0, time: 0 };
+			return {
+				kind,
+				name: SEGMENT_ROLE_NAMES[kind] ?? `#${kind}`,
+				color: SEGMENT_ROLE_COLORS[kind] ?? NO_DATA_COLOR,
+				length: v.length,
+				timeSeconds: v.time,
+				timePercent: totalTypeTime > 0 ? (v.time / totalTypeTime) * 100 : 0,
+				lengthPercent: totalTypeLength > 0 ? (v.length / totalTypeLength) * 100 : 0
+			};
+		})
 		.sort((a, b) => b.timeSeconds - a.timeSeconds);
 
 	const filaments = buildFilaments(stats);

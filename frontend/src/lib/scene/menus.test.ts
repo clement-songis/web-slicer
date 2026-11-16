@@ -10,7 +10,8 @@ import {
 	PLATER_MENU,
 	PLATER_SHORTCUTS,
 	OBJECTS_LIST_SHORTCUTS,
-	GIZMO_SHORTCUTS
+	GIZMO_SHORTCUTS,
+	PLATE_CONTEXT_ITEMS
 } from './menus';
 
 const ANNEXE = readFileSync(
@@ -53,6 +54,48 @@ function shortcutKeys(title: string): string[] {
 	}
 	return out;
 }
+
+describe('menu contextuel du plateau', () => {
+	test('expose les huit actions Orca câblées par PlateBar', () => {
+		expect(
+			PLATE_CONTEXT_ITEMS.filter((item) => item !== 'separator').map((item) => item.action)
+		).toEqual([
+			'plate.selectAll',
+			'plate.selectAllPlates',
+			'plate.deleteAll',
+			'plate.arrange',
+			'plate.autoRotate',
+			'plate.reloadAll',
+			'plate.delete',
+			'plate.addModels'
+		]);
+	});
+
+	test('chaque nouveau libellé contextuel a une traduction française', () => {
+		const en = JSON.parse(
+			readFileSync(resolve(import.meta.dirname, '../../../messages/en.json'), 'utf8')
+		);
+		const fr = JSON.parse(
+			readFileSync(resolve(import.meta.dirname, '../../../messages/fr.json'), 'utf8')
+		);
+		const labels = [
+			...PLATE_CONTEXT_ITEMS,
+			'Set number of instances…',
+			'Scale to build volume',
+			'Along X axis',
+			'Along Y axis',
+			'Along Z axis',
+			'Mesh boolean',
+			'Export as one STL…'
+		].filter((item) => item !== 'separator');
+		for (const item of labels) {
+			const label = typeof item === 'string' ? item : item.label;
+			const key = Object.keys(en).find((key) => en[key] === label);
+			expect(key, `clé EN pour ${label}`).toBeDefined();
+			expect(fr[key!], `traduction FR pour ${label}`).toBeTruthy();
+		}
+	});
+});
 
 describe('couverture menus.ts ↔ Annexe B', () => {
 	test('menu contextuel du plateau (B.3) : tous les libellés couverts', () => {

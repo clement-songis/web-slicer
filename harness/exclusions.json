@@ -1,6 +1,10 @@
 {
  "_doc": "Exclusions décidées par un HUMAIN uniquement (fichier gelé, l'agent ne peut pas le modifier). Seules les fonctions sans objet en web auto-hébergé sont exclues.",
- "ids": {},
+ "ids": {
+  "shortcut.ctrl-n": "Réservé par le navigateur (nouvelle fenêtre), non interceptable par une page ; Nouveau projet reste dans le menu Fichier",
+  "shortcut.ctrl-tab": "Réservé par le navigateur (onglet suivant), non interceptable par une page",
+  "shortcut.l": "Mort dans Orca côté Plater : gizmo SLA commenté (GLGizmosManager.cpp:222), handler L commenté (GLCanvas3D.cpp:3525) ; le L actif de l'aperçu est shortcut.l-2"
+ },
  "patterns": [
   {"re": "^menu\\.(upload-models|download-models|sync-presets|open-network-test|show-configuration-folder|new-window|reset-window-layout|quit|open-slicer|check-for-updates|troubleshoot-center)", "reason": "Notion de bureau ou service cloud Bambu, sans objet en web auto-hébergé"},
   {"re": "3dconnexion", "reason": "Périphérique local inaccessible depuis un navigateur"},

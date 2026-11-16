@@ -3,4 +3,13 @@
 /**
  * Rôle d'extrusion présent dans la préviz (id stable ↔ nom pour la légende).
  */
-export type PreviewSegmentType = { id: number, name: string, };
+export type PreviewSegmentType = { id: number, name: string, 
+/**
+ * Longueur totale de ce rôle sur tout le G-code (mm).
+ */
+length_mm: number, 
+/**
+ * Temps nominal de ce rôle (s) : longueur / vitesse commandée, sans
+ * accélérations. Sert à répartir le temps total estimé par type.
+ */
+time_s: number, };

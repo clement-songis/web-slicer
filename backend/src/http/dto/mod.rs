@@ -454,6 +454,11 @@ pub struct SliceResponse {
 pub struct PreviewSegmentType {
     pub id: u32,
     pub name: String,
+    /// Longueur totale de ce rôle sur tout le G-code (mm).
+    pub length_mm: f64,
+    /// Temps nominal de ce rôle (s) : longueur / vitesse commandée, sans
+    /// accélérations. Sert à répartir le temps total estimé par type.
+    pub time_s: f64,
 }
 
 /// Méta d'une couche : hauteur `z` et nombre de segments (dimensionnement client).
@@ -500,9 +505,12 @@ impl From<crate::gcode::PreviewSummary> for PreviewMeta {
             types_present: s
                 .kinds_present
                 .iter()
-                .map(|id| PreviewSegmentType {
+                .zip(s.kind_totals.iter())
+                .map(|(id, (length_mm, time_s))| PreviewSegmentType {
                     id: *id as u32,
                     name: crate::gcode::kind_name(*id).to_string(),
+                    length_mm: *length_mm,
+                    time_s: *time_s,
                 })
                 .collect(),
             extruders_present: s.extruders_present.iter().map(|e| *e as u32).collect(),
@@ -588,6 +596,34 @@ pub struct ArrangeRequest {
     /// Dégagement entre objets et vis-à-vis des bords (mm).
     pub spacing: f64,
     pub items: Vec<ArrangeItem>,
+    /// Contour réel du plateau ; à défaut, `printable_area` du preset actif,
+    /// puis le rectangle `bed_width × bed_depth`.
+    #[serde(default)]
+    pub bed_shape: Option<Vec<[f64; 2]>>,
+    /// Zones exclues ; à défaut, `bed_exclude_area` du preset actif.
+    #[serde(default)]
+    pub excluded: Option<Vec<Vec<[f64; 2]>>>,
+    #[serde(default)]
+    pub max_height: Option<f64>,
+    /// Arrangement séquentiel « objet par objet » (`ArrangeParams::is_seq_print`
+    /// d'Orca) : forcé par le plateau ; sinon déduit de `print_sequence` du
+    /// preset actif.
+    #[serde(default)]
+    #[ts(optional)]
+    pub is_seq_print: Option<bool>,
+    /// Dégagements extrudeur (surcharge des clés machine du preset actif).
+    #[serde(default)]
+    #[ts(optional)]
+    pub extruder_clearance_radius: Option<f64>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub extruder_clearance_height_to_rod: Option<f64>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub extruder_clearance_height_to_lid: Option<f64>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub nozzle_height: Option<f64>,
 }
 
 /// Position calculée du centre d'un objet (mm, repère plateau).
@@ -597,6 +633,20 @@ pub struct Placement {
     pub id: String,
     pub x: f64,
     pub y: f64,
+    /// Index conservé du plateau d'origine.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub plate_index: Option<u32>,
+    /// Matrice monde complète (colonne-major), pour ne pas perdre rotation et
+    /// scale lorsque le client applique le résultat du nesting.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub matrix: Option<Vec<f64>>,
+    /// Ordre d'impression (1-based, `ModelInstance::arrange_order` d'Orca),
+    /// présent seulement en arrangement séquentiel.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub print_order: Option<u32>,
 }
 
 /// Réponse de `POST /api/projects/{id}/arrange`.
@@ -624,10 +674,35 @@ pub struct OrientResponse {
 #[derive(Debug, Clone, Serialize, TS)]
 #[ts(export)]
 pub struct RepairResponse {
+    /// État du maillage **après** réparation.
     pub triangles: u32,
     pub degenerate: u32,
     pub open_edges: u32,
     pub watertight: bool,
+    /// Compteurs de corrections effectivement réalisées par admesh.
+    pub repairs: RepairCounters,
+}
+
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct RepairCounters {
+    pub edges_fixed: u32,
+    pub degenerate_facets: u32,
+    pub facets_removed: u32,
+    pub facets_reversed: u32,
+    pub backwards_edges: u32,
+}
+
+impl From<engine::api::RepairedMeshErrors> for RepairCounters {
+    fn from(report: engine::api::RepairedMeshErrors) -> Self {
+        Self {
+            edges_fixed: report.edges_fixed,
+            degenerate_facets: report.degenerate_facets,
+            facets_removed: report.facets_removed,
+            facets_reversed: report.facets_reversed,
+            backwards_edges: report.backwards_edges,
+        }
+    }
 }
 
 /// Sérialise un enum unité du domaine en sa forme texte (serde `rename_all`).
@@ -763,6 +838,43 @@ pub struct PrinterStatusResponse {
     pub extruder_target: f64,
     pub bed_temp: f64,
     pub bed_target: f64,
+    /// Couche en cours / total (`print_stats.info`), si l'imprimante les publie.
+    #[ts(optional)]
+    pub current_layer: Option<i64>,
+    #[ts(optional)]
+    pub total_layer: Option<i64>,
+    /// Ventilateur de pièce (`fan.speed`, 0 → 1).
+    #[ts(optional)]
+    pub fan_speed: Option<f64>,
+    /// Axes référencés (`toolhead.homed_axes`).
+    #[ts(optional)]
+    pub homed_axes: Option<String>,
+    /// URL absolue de la webcam (relais `/server/webcams/list`).
+    #[ts(optional)]
+    pub webcam_url: Option<String>,
+}
+
+/// Fichier présent sur l'imprimante (`GET /api/printers/{id}/files`).
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct PrinterFileResponse {
+    pub path: String,
+    pub size: u64,
+    pub modified: f64,
+}
+
+/// Corps de `POST /api/printers/{id}/print`.
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct StartPrintRequest {
+    pub filename: String,
+}
+
+/// Corps de `POST /api/printers/{id}/gcode`.
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct GcodeScriptRequest {
+    pub script: String,
 }
 
 impl From<crate::adapters::moonraker::PrinterStatus> for PrinterStatusResponse {
@@ -776,6 +888,11 @@ impl From<crate::adapters::moonraker::PrinterStatus> for PrinterStatusResponse {
             extruder_target: s.extruder_target,
             bed_temp: s.bed_temp,
             bed_target: s.bed_target,
+            current_layer: s.current_layer,
+            total_layer: s.total_layer,
+            fan_speed: s.fan_speed,
+            homed_axes: s.homed_axes,
+            webcam_url: None,
         }
     }
 }

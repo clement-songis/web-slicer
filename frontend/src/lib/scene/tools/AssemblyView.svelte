@@ -6,10 +6,20 @@
 	interface Props {
 		exploded?: boolean;
 		factor?: number;
+		/** Mode Orca `GLGizmoAssembly` : vue éclatée, face à face, point à point. */
+		mode?: 'explode' | 'face' | 'point';
+		/** Nombre d'entités déjà choisies (0 ou 1) en mode face/point. */
+		picks?: number;
 		onchange?: (exploded: boolean, factor: number) => void;
 	}
 
-	let { exploded = $bindable(false), factor = $bindable(0.5), onchange }: Props = $props();
+	let {
+		exploded = $bindable(false),
+		factor = $bindable(0.5),
+		mode = $bindable('explode'),
+		picks = 0,
+		onchange
+	}: Props = $props();
 
 	function emit() {
 		onchange?.(exploded, factor);
@@ -17,6 +27,21 @@
 </script>
 
 <div class="flex flex-col gap-2 text-sm">
+	<label class="flex items-center gap-2">
+		<span class="text-content-muted">Mode</span>
+		<select bind:value={mode} data-testid="assembly-mode" class="ws-field ws-field-sm">
+			<option value="explode">Vue éclatée</option>
+			<option value="face">Assemblage face à face</option>
+			<option value="point">Assemblage point à point</option>
+		</select>
+	</label>
+	{#if mode !== 'explode'}
+		<p class="text-content-subtle" data-testid="assembly-hint" data-picks={picks}>
+			{picks === 0
+				? `Cliquez ${mode === 'face' ? 'une face' : 'un point'} de l’objet fixe.`
+				: `Cliquez ${mode === 'face' ? 'une face' : 'un point'} de l’objet à déplacer.`}
+		</p>
+	{/if}
 	<label class="flex items-center gap-2">
 		<input type="checkbox" bind:checked={exploded} onchange={emit} />
 		<span class="text-content-muted">Vue éclatée</span>

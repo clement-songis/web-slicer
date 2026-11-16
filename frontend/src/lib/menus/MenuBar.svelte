@@ -36,9 +36,9 @@
 		<div class="relative">
 			<button
 				type="button"
-				class="rounded px-2 py-1 text-sm {openTitle === menu.title
+				class="ws-btn ws-btn-ghost px-2 font-normal {openTitle === menu.title
 					? 'bg-overlay text-content'
-					: 'text-content-muted hover:bg-overlay hover:text-content'}"
+					: ''}"
 				aria-haspopup="menu"
 				aria-expanded={openTitle === menu.title}
 				onclick={() => toggle(menu.title)}
@@ -47,10 +47,7 @@
 			</button>
 
 			{#if openTitle === menu.title}
-				<div
-					class="absolute top-full left-0 z-30 mt-1 min-w-56 rounded border border-border bg-surface-raised py-1 shadow-xl"
-					role="menu"
-				>
+				<div class="absolute top-full left-0 z-30 mt-1 min-w-56 ws-menu" role="menu">
 					{#each menu.entries as entry, i (i)}
 						{#if entry === 'separator'}
 							<div class="my-1 h-px bg-border"></div>
@@ -58,7 +55,7 @@
 							<!-- Sous-menu (Import/Export) : dépliable en place. -->
 							<button
 								type="button"
-								class="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm text-content-muted hover:bg-overlay hover:text-content"
+								class="ws-menu-item justify-between"
 								aria-haspopup="menu"
 								aria-expanded={openSub === entry.label}
 								onclick={() => (openSub = openSub === entry.label ? null : entry.label)}
@@ -70,7 +67,7 @@
 								{#each entry.items as sub (sub.action)}
 									<button
 										type="button"
-										class="flex w-full items-center justify-between py-1.5 pr-3 pl-6 text-left text-sm text-content-muted hover:bg-overlay hover:text-content"
+										class="ws-menu-item justify-between pl-6"
 										role="menuitem"
 										onclick={() => pick(sub.action)}
 									>
@@ -84,7 +81,7 @@
 						{:else}
 							<button
 								type="button"
-								class="flex w-full items-center justify-between px-3 py-1.5 text-left text-sm text-content-muted hover:bg-overlay hover:text-content"
+								class="ws-menu-item justify-between"
 								role="menuitem"
 								onclick={() => pick(entry.action)}
 							>
@@ -100,6 +97,9 @@
 		</div>
 	{/each}
 </div>
+
+<!-- Échap referme le menu déroulant ouvert (comportement natif des barres de menus). -->
+<svelte:window onkeydown={(e) => openTitle && e.key === 'Escape' && close()} />
 
 <!-- Fond transparent : referme la barre au clic extérieur. -->
 {#if openTitle}

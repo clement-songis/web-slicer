@@ -38,6 +38,43 @@ export function frameBed(bed: BedShape): CameraPose {
 	};
 }
 
+/**
+ * Pose cadrant une boîte englobante (aperçu G-code : objets imprimés, comme le
+ * zoom d'Orca sur la boîte du G-code au premier affichage). Même direction
+ * trois-quarts que `frameBed` ; rayon minimal 5 mm (petite pièce).
+ */
+export function frameBox(
+	min: [number, number, number],
+	max: [number, number, number],
+	margin = 1.15
+): CameraPose {
+	const c: [number, number, number] = [
+		(min[0] + max[0]) / 2,
+		(min[1] + max[1]) / 2,
+		(min[2] + max[2]) / 2
+	];
+	const radius = Math.max(5, 0.5 * Math.hypot(max[0] - min[0], max[1] - min[1], max[2] - min[2]));
+	const d = fitDistance(radius * margin);
+	const dir = normalize([-0.6, -0.8, 0.7]);
+	return { position: [c[0] + dir[0] * d, c[1] + dir[1] * d, c[2] + dir[2] * d], target: c };
+}
+
+/** Boîte englobante de sommets (x,y,z à plat), ou null si vide. */
+export function boundsOf(
+	positions: Float32Array
+): { min: [number, number, number]; max: [number, number, number] } | null {
+	if (positions.length < 3) return null;
+	const min: [number, number, number] = [Infinity, Infinity, Infinity];
+	const max: [number, number, number] = [-Infinity, -Infinity, -Infinity];
+	for (let i = 0; i < positions.length; i += 3)
+		for (let k = 0; k < 3; k++) {
+			const v = positions[i + k];
+			if (v < min[k]) min[k] = v;
+			if (v > max[k]) max[k] = v;
+		}
+	return { min, max };
+}
+
 function normalize([x, y, z]: [number, number, number]): [number, number, number] {
 	const len = Math.hypot(x, y, z) || 1;
 	return [x / len, y / len, z / len];
@@ -83,4 +120,69 @@ export function viewUp(view: NamedView): [number, number, number] {
 	if (view === 'top') return [0, 1, 0];
 	if (view === 'bottom') return [0, -1, 0];
 	return [0, 0, 1];
+}
+
+/**
+ * Ctrl+flèches d'Orca : déplacement de la sélection dans le repère caméra,
+ * projeté sur le plateau (GLCanvas3D::TranslationProcessor). Les vues de
+ * profil peuvent donc avoir un déplacement vertical nul après projection.
+ */
+export function cameraSpaceNudge(
+	view: NamedView,
+	key: string,
+	fine = false
+): [number, number] | null {
+	const forward = VIEW_DIR[view].map((v) => -v) as [number, number, number];
+	const up = viewUp(view);
+	const cross = (
+		a: [number, number, number],
+		b: [number, number, number]
+	): [number, number, number] => [
+		a[1] * b[2] - a[2] * b[1],
+		a[2] * b[0] - a[0] * b[2],
+		a[0] * b[1] - a[1] * b[0]
+	];
+	const right = normalize(cross(forward, up));
+	const cameraUp = cross(right, forward);
+	const direction =
+		key === 'ArrowLeft'
+			? right.map((v) => -v)
+			: key === 'ArrowRight'
+				? right
+				: key === 'ArrowUp'
+					? cameraUp
+					: key === 'ArrowDown'
+						? cameraUp.map((v) => -v)
+						: null;
+	if (!direction) return null;
+	const step = fine ? 1 : 10;
+	return [direction[0] * step, direction[1] * step];
+}
+
+/** Facteur de zoom borné des raccourcis I/O (1 = cadrage nominal). */
+export function clampZoom(factor: number): number {
+	return Number.isFinite(factor) ? Math.max(0.2, Math.min(5, factor)) : 1;
+}
+
+/** Rapproche/éloigne la caméra de sa cible sans changer son orientation. */
+export function zoomPose(pose: CameraPose, factor: number): CameraPose {
+	const z = clampZoom(factor);
+	return {
+		target: pose.target,
+		position: pose.position.map(
+			(v, i) => pose.target[i] + (v - pose.target[i]) / z
+		) as CameraPose['position']
+	};
+}
+
+/** Projection caméra (menu Vue : « Use Perspective View » / « Use Orthogonal View »). */
+export type Projection = 'perspective' | 'orthographic';
+
+/**
+ * Zoom d'une caméra orthogonale Three.js (pixels par mm) cadrant le plateau
+ * dans une vue d'environ 900 px, comme la vue perspective par défaut. Pur.
+ */
+export function orthoZoom(bed: BedShape, viewportPx = 900): number {
+	const extent = Math.max(bed.width, bed.depth, 1);
+	return Math.max(0.1, viewportPx / (extent * 1.6));
 }

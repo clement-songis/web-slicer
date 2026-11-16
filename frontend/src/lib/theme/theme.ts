@@ -20,6 +20,10 @@ const STORAGE_KEY = 'web-slicer.theme';
 /** Préférence courante (store réactif). Défaut `system`. */
 export const themePref = writable<ThemePref>('system');
 
+/** Thème effectivement appliqué (réactif) : consommé par la vue 3D, dont les
+ *  matériaux three.js ne lisent pas les variables CSS. */
+export const resolvedTheme = writable<ResolvedTheme>('light');
+
 /** Résout une préférence en thème concret ; `system` → OS (`systemDark`). */
 export function resolveTheme(pref: ThemePref, systemDark: boolean): ResolvedTheme {
 	if (pref === 'light' || pref === 'dark') return pref;
@@ -45,6 +49,7 @@ function applyResolved(theme: ResolvedTheme): void {
 	if (typeof document !== 'undefined') {
 		document.documentElement.setAttribute('data-theme', theme);
 	}
+	resolvedTheme.set(theme);
 }
 
 /** Recalcule et applique le thème depuis la préférence courante. */

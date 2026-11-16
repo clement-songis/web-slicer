@@ -47,6 +47,17 @@ describe('TrianglePainting', () => {
 		expect(back.get('mmu', 7)).toBe(4);
 	});
 
+	test('conserve les triangles subdivisés du moteur (TriangleSelector)', () => {
+		const p = new TrianglePainting();
+		p.paint('supports', [1], ENFORCER);
+		// Chaîne Orca subdivisée (≠ facette entière) : remplacée telle quelle.
+		p.replaceChannel('supports', { '2': '4433441', '3': '4' });
+		expect(p.get('supports', 1)).toBe(0);
+		expect(p.get('supports', 2)).toBe(-1);
+		const back = TrianglePainting.deserialize(p.serialize());
+		expect(back.serialize().supports).toEqual({ '2': '4433441', '3': '4' });
+	});
+
 	test('un document vide donne une peinture vide', () => {
 		expect(TrianglePainting.deserialize({}).isEmpty()).toBe(true);
 	});

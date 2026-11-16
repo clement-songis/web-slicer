@@ -16,6 +16,19 @@ export interface Plate {
 	name: string;
 	plateType: string;
 	objectIds: string[];
+	/** Réglages par plateau (Orca « Plate settings ») : clés de PLATE_SETTING_KEYS
+	 *  côté moteur (curr_bed_type, print_sequence, spiral_mode…), appliquées
+	 *  par-dessus les presets au tranchage de ce plateau. Absent = suit le profil. */
+	settings?: Record<string, unknown>;
+}
+
+/** Copie profonde d'un plateau (objets et réglages). */
+function clonePlate(p: Plate): Plate {
+	return {
+		...p,
+		objectIds: [...p.objectIds],
+		...(p.settings ? { settings: { ...p.settings } } : {})
+	};
 }
 
 /** Document sérialisé du jeu de plateaux. */
@@ -34,20 +47,68 @@ export class PlateSet {
 		this.activeId = this.addPlate().id;
 	}
 
+	// Ne réémet jamais un id déjà présent : après désérialisation ou suppression,
+	// `plate-<n>` peut déjà exister (ids non contigus, ids UUID d'une copie).
 	private nextId(): string {
-		this.counter += 1;
-		return `plate-${this.counter}`;
+		let id: string;
+		do {
+			this.counter += 1;
+			id = `plate-${this.counter}`;
+		} while (this.plates.some((p) => p.id === id));
+		return id;
+	}
+
+	// Premier nom « Plateau <n> » libre, à partir du rang du nouveau plateau.
+	private freeName(): string {
+		let n = this.plates.length + 1;
+		while (this.plates.some((p) => p.name === `Plateau ${n}`)) n += 1;
+		return `Plateau ${n}`;
 	}
 
 	/** Ajoute un plateau (vide) et le renvoie. */
 	addPlate(): Plate {
 		const plate: Plate = {
 			id: this.nextId(),
-			name: `Plateau ${this.plates.length + 1}`,
+			name: this.freeName(),
 			plateType: DEFAULT_PLATE_TYPE,
 			objectIds: []
 		};
 		this.plates.push(plate);
+		return plate;
+	}
+
+	/**
+	 * Duplique un plateau : nouvel id unique, nom « <source> (copie) » libre,
+	 * même type de plaque, inséré juste après la source puis activé. Chaque
+	 * objet de la source est confié à `copyObject` (qui crée l'instance copiée et
+	 * renvoie son id, ou `null` si l'objet ne peut pas être copié) ; les copies
+	 * sont affectées au nouveau plateau, la source reste intacte. `null` si le
+	 * plateau source n'existe pas.
+	 */
+	duplicatePlate(
+		sourceId: string,
+		copyObject: (objectId: string, plateId: string) => string | null
+	): Plate | null {
+		const source = this.get(sourceId);
+		if (!source) return null;
+		const sourceObjects = [...source.objectIds];
+		let name = `${source.name} (copie)`;
+		for (let n = 2; this.plates.some((p) => p.name === name); n += 1) {
+			name = `${source.name} (copie ${n})`;
+		}
+		this.plates.splice(this.plateIndex(sourceId) + 1, 0, {
+			id: this.nextId(),
+			name,
+			plateType: source.plateType,
+			objectIds: []
+		});
+		// Relit le plateau via le proxy réactif (l'objet littéral n'est pas suivi).
+		const plate = this.plates[this.plateIndex(sourceId) + 1];
+		for (const objectId of sourceObjects) {
+			const copyId = copyObject(objectId, plate.id);
+			if (copyId) this.assign(copyId, plate.id);
+		}
+		this.activeId = plate.id;
 		return plate;
 	}
 
@@ -105,6 +166,17 @@ export class PlateSet {
 		if (plate) plate.plateType = plateType;
 	}
 
+	/** Définit (ou efface si `undefined`) un réglage du plateau. */
+	setPlateSetting(id: string, key: string, value: unknown): void {
+		const plate = this.get(id);
+		if (!plate) return;
+		const next = { ...(plate.settings ?? {}) };
+		if (value === undefined) delete next[key];
+		else next[key] = value;
+		if (Object.keys(next).length) plate.settings = next;
+		else delete plate.settings;
+	}
+
 	setName(id: string, name: string): void {
 		const plate = this.get(id);
 		if (plate) plate.name = name;
@@ -124,18 +196,42 @@ export class PlateSet {
 		}
 	}
 
+	/** Renomme un plateau (nom vide ignoré). */
+	rename(id: string, name: string): void {
+		const plate = this.get(id);
+		const trimmed = name.trim();
+		if (plate && trimmed) plate.name = trimmed;
+	}
+
+	/** Restaure sur place un document issu de `serialize()` (historique). */
+	restore(doc: PlatesDocument): void {
+		this.plates = doc.plates.map(clonePlate);
+		for (const p of doc.plates) {
+			const m = /^plate-(\d+)$/.exec(p.id);
+			if (m) this.counter = Math.max(this.counter, Number(m[1]));
+		}
+		this.activeId =
+			doc.activeId && this.get(doc.activeId) ? doc.activeId : (this.plates[0]?.id ?? null);
+	}
+
 	serialize(): PlatesDocument {
 		return {
-			plates: this.plates.map((p) => ({ ...p, objectIds: [...p.objectIds] })),
+			plates: this.plates.map(clonePlate),
 			activeId: this.activeId
 		};
 	}
 
 	static deserialize(doc: PlatesDocument): PlateSet {
 		const set = new PlateSet();
-		set.plates = (doc.plates ?? []).map((p) => ({ ...p, objectIds: [...p.objectIds] }));
-		set.counter = set.plates.length;
-		set.activeId = doc.activeId ?? set.plates[0]?.id ?? null;
+		set.plates = (doc.plates ?? []).map(clonePlate);
+		// Compteur = plus grand suffixe `plate-<n>` existant (et non le nombre de
+		// plateaux, qui recréait un id déjà présent après une suppression).
+		set.counter = set.plates.reduce((max, p) => {
+			const m = /^plate-(\d+)$/.exec(p.id);
+			return m ? Math.max(max, Number(m[1])) : max;
+		}, 0);
+		const active = doc.activeId && set.get(doc.activeId) ? doc.activeId : null;
+		set.activeId = active ?? set.plates[0]?.id ?? null;
 		if (set.plates.length === 0) set.activeId = set.addPlate().id;
 		return set;
 	}

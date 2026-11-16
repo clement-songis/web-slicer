@@ -7,6 +7,7 @@
 	// disposition).
 	import type { PrinterCatalogModel, PrinterCatalogVendor } from '$lib/api/types';
 	import {
+		modelKey,
 		coverUrl,
 		filterCatalog,
 		isSelected,
@@ -29,7 +30,10 @@
 		/** Catalogue (marque → modèle → variantes) renvoyé par `getPrinterCatalog`. */
 		vendors: PrinterCatalogVendor[];
 		/** Confirmation : les modèles sélectionnés (un par imprimante à créer). */
-		onconfirm: (models: PrinterCatalogModel[]) => void;
+		onconfirm: (models: PrinterCatalogModel[], nozzles?: Record<string, string[]>) => void;
+		/** Choix des buses par modèle (assistant d'Orca) : `nozzles[modelKey]` =
+		 *  presets machine retenus, transmis à `onconfirm`. */
+		chooseNozzle?: boolean;
 		/** Annulation (facultatif). */
 		oncancel?: () => void;
 		/** Création d'une imprimante custom (facultatif). */
@@ -46,12 +50,31 @@
 		oncancel,
 		oncreate,
 		confirmLabel = 'Confirmer',
-		busy = false
+		busy = false,
+		chooseNozzle = false
 	}: Props = $props();
+
+	let selected = $state<Set<string>>(new Set());
+
+	// Buses cochées par modèle (défaut : variante par défaut du catalogue).
+	let nozzlePick = $state<Record<string, string[]>>({});
+	const picked = $derived(
+		selectedModels(vendors, selected).map((m) => ({
+			model: m,
+			key: modelKey(m),
+			ids: nozzlePick[modelKey(m)] ?? [m.default_machine_preset_id]
+		}))
+	);
+	const sortedVariants = (m: PrinterCatalogModel) =>
+		[...m.variants].sort((a, b) => Number(a.nozzle || 0) - Number(b.nozzle || 0));
+	function toggleNozzle(key: string, current: string[], id: string) {
+		const next = current.includes(id) ? current.filter((x) => x !== id) : [...current, id];
+		nozzlePick = { ...nozzlePick, [key]: next };
+	}
+	const missingNozzle = $derived(chooseNozzle && picked.some((p) => p.ids.length === 0));
 
 	let query = $state('');
 	let view = $state<CatalogView>('grid');
-	let selected = $state<Set<string>>(new Set());
 
 	const filtered = $derived(filterCatalog(vendors, query));
 	const count = $derived(selected.size);
@@ -69,7 +92,12 @@
 	);
 
 	function confirm() {
-		onconfirm(selectedModels(vendors, selected));
+		if (chooseNozzle)
+			onconfirm(
+				picked.map((p) => p.model),
+				Object.fromEntries(picked.map((p) => [p.key, p.ids]))
+			);
+		else onconfirm(selectedModels(vendors, selected));
 	}
 
 	const VIEWS: { id: CatalogView; icon: typeof ListIcon; label: string }[] = [
@@ -91,7 +119,7 @@
 				type="search"
 				placeholder="Rechercher une imprimante…"
 				aria-label="Rechercher une imprimante"
-				class="w-full rounded border border-border-strong bg-surface-raised py-1 pl-8 pr-2 text-sm text-content"
+				class="ws-field w-full pl-8 pr-2"
 			/>
 		</div>
 		<div class="flex items-center gap-1" role="group" aria-label="Densité d'affichage">
@@ -103,9 +131,7 @@
 					aria-pressed={view === v.id}
 					aria-label={v.label}
 					title={v.label}
-					class="rounded p-1.5 {view === v.id
-						? 'bg-primary text-primary-content'
-						: 'text-content-subtle hover:bg-surface-raised'}"
+					class="ws-tool ws-tool-sm {view === v.id ? 'ws-tool-on' : ''}"
 				>
 					<Icon />
 				</button>
@@ -116,7 +142,7 @@
 	<!-- Sections par marque -->
 	<div class="flex-1 overflow-y-auto px-3 py-2" data-testid="printer-catalog">
 		{#if filtered.length === 0}
-			<p class="py-8 text-center text-sm text-content-subtle">Aucune imprimante trouvée.</p>
+			<p class="ws-empty">Aucune imprimante trouvée.</p>
 		{/if}
 
 		{#each filtered as vendor (vendor.vendor)}
@@ -126,13 +152,13 @@
 				<header
 					class="mb-2 flex items-center gap-2 border-b border-accent/40 pb-1 text-sm font-medium text-accent"
 				>
-					<span class="flex-1">{vendor.vendor}</span>
+					<span class="flex-1">{vendor.vendor === 'Custom' ? 'Personnalisé' : vendor.vendor}</span>
 					<span class="text-xs tabular-nums text-content-subtle">{sel} / {n}</span>
 					<input
 						type="checkbox"
 						checked={vendorAllSelected(selected, vendor)}
 						onchange={() => (selected = toggleVendorAll(selected, vendor))}
-						aria-label={`Tout sélectionner — ${vendor.vendor}`}
+						aria-label={`Tout sélectionner — ${vendor.vendor === 'Custom' ? 'Personnalisé' : vendor.vendor}`}
 					/>
 				</header>
 
@@ -151,7 +177,9 @@
 						>
 							<!-- Coche de sélection -->
 							{#if on}
-								<span class="absolute right-1 top-1 z-10 rounded-full bg-accent p-0.5 text-white">
+								<span
+									class="absolute right-1 top-1 z-10 rounded-full bg-accent p-0.5 text-primary-content"
+								>
 									<Check class="text-xs" />
 								</span>
 							{/if}
@@ -175,7 +203,7 @@
 								title={model.model}>{model.model}</span
 							>
 							{#if model.variants.length > 1}
-								<span class="text-[10px] text-content-subtle">{model.variants.length} buses</span>
+								<span class="text-2xs text-content-subtle">{model.variants.length} buses</span>
 							{/if}
 						</button>
 					{/each}
@@ -184,14 +212,41 @@
 		{/each}
 	</div>
 
+	<!-- Buses des modèles choisis (assistant d'Orca : diamètres cochés par modèle). -->
+	{#if chooseNozzle && picked.some((p) => p.model.variants.length > 1)}
+		<div
+			class="flex max-h-40 flex-col gap-1.5 overflow-y-auto border-t border-border px-3 py-2"
+			data-testid="nozzle-choice"
+		>
+			<span class="ws-section-title">Buses</span>
+			{#each picked.filter((p) => p.model.variants.length > 1) as p (p.key)}
+				<div class="flex flex-wrap items-center gap-2 text-sm">
+					<span class="min-w-40 text-content">{p.model.model}</span>
+					<div class="flex flex-wrap gap-1" role="group" aria-label="Diamètres de buse">
+						{#each sortedVariants(p.model) as v (v.machine_preset_id)}
+							{@const on = p.ids.includes(v.machine_preset_id)}
+							<button
+								type="button"
+								class="ws-chip {on ? 'ws-chip-on' : ''}"
+								aria-pressed={on}
+								data-testid="nozzle-option"
+								onclick={() => toggleNozzle(p.key, p.ids, v.machine_preset_id)}
+								>{v.nozzle ? `${v.nozzle} mm` : 'standard'}</button
+							>
+						{/each}
+					</div>
+					{#if p.ids.length === 0}
+						<span class="text-xs text-danger">Choisissez au moins une buse.</span>
+					{/if}
+				</div>
+			{/each}
+		</div>
+	{/if}
+
 	<!-- Pied : Create · compteur · Annuler / Confirmer -->
 	<div class="flex items-center gap-2 border-t border-border px-3 py-2">
 		{#if oncreate}
-			<button
-				type="button"
-				onclick={oncreate}
-				class="flex items-center gap-1 rounded border border-border-strong px-2 py-1 text-sm text-content hover:bg-surface-raised"
-			>
+			<button type="button" onclick={oncreate} class="ws-btn ws-btn-secondary">
 				<Plus /> Create
 			</button>
 		{/if}
@@ -199,19 +254,13 @@
 			{count} imprimante{count > 1 ? 's' : ''} sélectionnée{count > 1 ? 's' : ''}
 		</span>
 		{#if oncancel}
-			<button
-				type="button"
-				onclick={oncancel}
-				class="rounded border border-border-strong px-3 py-1 text-sm text-content hover:bg-surface-raised"
-			>
-				Annuler
-			</button>
+			<button type="button" onclick={oncancel} class="ws-btn ws-btn-secondary"> Annuler </button>
 		{/if}
 		<button
 			type="button"
 			onclick={confirm}
-			disabled={count === 0 || busy}
-			class="rounded bg-primary px-3 py-1 text-sm font-medium text-primary-content disabled:opacity-50"
+			disabled={count === 0 || busy || missingNozzle}
+			class="ws-btn ws-btn-primary"
 		>
 			{confirmLabel}
 		</button>
