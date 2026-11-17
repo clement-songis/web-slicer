@@ -4,4 +4,8 @@
  * Imprimante déclarée renvoyée au client. La clé API n'est **jamais** exposée :
  * seul `has_api_key` indique sa présence (FR-060).
  */
-export type PrinterResponse = { id: string, name: string, moonraker_url?: string, has_api_key: boolean, machine_preset_id: string, };
+export type PrinterResponse = { id: string, name: string, moonraker_url?: string, has_api_key: boolean, machine_preset_id: string, 
+/**
+ * Type d'hôte d'impression (moonraker, octoprint, prusalink, …).
+ */
+host_type: string, host_auth?: string, host_user?: string, has_host_password: boolean, host_port?: string, };

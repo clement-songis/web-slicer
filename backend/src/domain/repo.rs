@@ -191,6 +191,14 @@ pub struct NewPrinter {
 
 #[async_trait]
 pub trait PrinterRepo: Send + Sync {
+    /// Type et options de l'hôte d'impression (hors NewPrinter : Moonraker par défaut).
+    async fn set_host(
+        &self,
+        owner: UserId,
+        id: PrinterId,
+        host_type: &str,
+        host_options: &serde_json::Value,
+    ) -> StorageResult<Printer>;
     async fn create(&self, owner: UserId, printer: NewPrinter) -> StorageResult<Printer>;
     async fn get(&self, owner: UserId, id: PrinterId) -> StorageResult<Printer>;
     async fn list(&self, owner: UserId) -> StorageResult<Vec<Printer>>;

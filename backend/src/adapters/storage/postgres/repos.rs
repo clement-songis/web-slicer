@@ -104,6 +104,8 @@ fn row_to_printer(row: &PgRow) -> StorageResult<Printer> {
         moonraker_url: row.get("moonraker_url"),
         api_key: row.get("api_key"),
         machine_preset_id: get_id(row, "machine_preset_id"),
+        host_type: row.get("host_type"),
+        host_options: row.get("host_options"),
     })
 }
 
@@ -894,6 +896,30 @@ impl PgPrinterRepo {
 
 #[async_trait]
 impl PrinterRepo for PgPrinterRepo {
+    async fn set_host(
+        &self,
+        owner: UserId,
+        id: PrinterId,
+        host_type: &str,
+        host_options: &serde_json::Value,
+    ) -> StorageResult<Printer> {
+        let n = sqlx::query(
+            "UPDATE printers SET host_type = $1, host_options = $2 WHERE id = $3 AND user_id = $4",
+        )
+        .bind(host_type)
+        .bind(host_options)
+        .bind(Uuid::from(id))
+        .bind(Uuid::from(owner))
+        .execute(&self.pool)
+        .await
+        .map_err(map_pg)?
+        .rows_affected();
+        if n == 0 {
+            return Err(StorageError::NotFound);
+        }
+        self.get(owner, id).await
+    }
+
     async fn create(&self, owner: UserId, printer: NewPrinter) -> StorageResult<Printer> {
         let mut tx = self.pool.begin().await.map_err(map_pg)?;
         ensure_machine_preset_visible(&mut tx, owner, printer.machine_preset_id).await?;

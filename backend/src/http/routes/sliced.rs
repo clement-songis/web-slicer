@@ -258,6 +258,21 @@ pub async fn upload_sliced(
                 .zip(gcode_files.into_iter().map(|(_, b)| b)),
         );
     }
+    let printer = state.storage.printers().get(user.id, printer_id).await?; // 404, SC-008
+    if let Some(host) = super::printers::host_client(&state, &printer)? {
+        let mut files = Vec::with_capacity(uploads.len());
+        for (name, bytes) in uploads {
+            let up = host.upload(&name, bytes, body.start_now, None).await?;
+            files.push(PrinterUploadResponse {
+                path: up.path,
+                print_started: up.print_started,
+            });
+        }
+        return Ok(Json(UploadSlicedResponse {
+            format: if use_3mf { "gcode_3mf" } else { "gcode" },
+            files,
+        }));
+    }
     let (_printer, client) = super::printers::load_client(&state, user.id, printer_id).await?;
     let mut files = Vec::with_capacity(uploads.len());
     for (name, bytes) in uploads {

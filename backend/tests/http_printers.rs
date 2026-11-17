@@ -737,3 +737,159 @@ async fn device_routes_relay_files_print_gcode_and_extended_status() {
         assert_eq!(resp.status(), StatusCode::NOT_FOUND, "{uri}");
     }
 }
+
+/// Hôtes d'Orca autres que Moonraker par l'API (PrusaLink, utilisateur/mot de
+/// passe chiffré) : test de connexion, stockages, envoi ; actions propres à
+/// Moonraker refusées (409) ; type inconnu refusé (422).
+#[tokio::test]
+async fn prusalink_host_through_the_api() {
+    let h = harness().await;
+    let session = register(&h.app, "prusa@test.local").await;
+    let owner = user_id(&h.storage, "prusa@test.local").await;
+    let preset = seed_machine_preset(&h.storage, owner).await;
+
+    // Faux PrusaLink : clé API requise, version 0.7 → PUT.
+    let puts = Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+    let p = puts.clone();
+    let fake = Router::new().fallback(move |req: Request<Body>| {
+        let p = p.clone();
+        async move {
+            let key = req
+                .headers()
+                .get("X-Api-Key")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("")
+                .to_string();
+            let (method, uri) = (req.method().to_string(), req.uri().path().to_string());
+            let _ = to_bytes(req.into_body(), usize::MAX).await;
+            if key != "pl-key" {
+                return axum::http::Response::builder()
+                    .status(401)
+                    .body(Body::empty())
+                    .unwrap();
+            }
+            let body = match (method.as_str(), uri.as_str()) {
+                ("GET", "/api/version") => r#"{"text":"PrusaLink 0.7.1"}"#.to_string(),
+                ("GET", "/api/v1/storage") => {
+                    r#"{"storage_list":[{"name":"USB","path":"/usb","available":true}]}"#.into()
+                }
+                ("PUT", u) => {
+                    p.lock().unwrap().push(u.to_string());
+                    String::new()
+                }
+                _ => "{}".into(),
+            };
+            axum::http::Response::builder()
+                .status(if method == "PUT" { 201 } else { 200 })
+                .body(Body::from(body))
+                .unwrap()
+        }
+    });
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move { axum::serve(listener, fake).await.unwrap() });
+
+    let resp = send(
+        &h.app,
+        "POST",
+        "/api/printers",
+        &session,
+        json!({
+            "name": "MK4", "moonraker_url": format!("127.0.0.1:{port}"), "api_key": "pl-key",
+            "machine_preset_id": preset, "host_type": "prusalink"
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let body = json_body(resp).await;
+    assert_eq!(body["host_type"], "prusalink");
+    let id = body["id"].as_str().unwrap().to_string();
+
+    let resp = send(
+        &h.app,
+        "POST",
+        &format!("/api/printers/{id}/test"),
+        &session,
+        json!({}),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = json_body(resp).await;
+    assert_eq!(body["connected"], true);
+    assert_eq!(body["moonraker_version"], "PrusaLink 0.7.1");
+    let storages =
+        json_body(get(&h.app, &format!("/api/printers/{id}/storages"), &session).await).await;
+    assert_eq!(
+        storages,
+        json!({ "kind": "storage", "items": [{ "path": "/usb", "name": "USB" }] })
+    );
+
+    let project = h
+        .storage
+        .projects()
+        .create(
+            owner,
+            NewProject {
+                name: "P".into(),
+                scene: json!({}),
+                active_presets: json!({}),
+                thumbnail_path: None,
+            },
+        )
+        .await
+        .unwrap();
+    let gcode = seed_gcode(&h, owner, project.id).await;
+    let resp = send(
+        &h.app,
+        "POST",
+        &format!("/api/printers/{id}/upload"),
+        &session,
+        json!({ "gcode_id": gcode, "start_now": false, "storage": "/usb" }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let up = json_body(resp).await;
+    assert!(up["path"].as_str().unwrap().starts_with("/usb/"), "{up}");
+    assert_eq!(puts.lock().unwrap().len(), 1);
+    assert!(puts.lock().unwrap()[0].starts_with("/api/v1/files/usb/"));
+
+    // Actions propres à Moonraker : 409.
+    let resp = get(&h.app, &format!("/api/printers/{id}/status"), &session).await;
+    assert_eq!(resp.status(), StatusCode::CONFLICT);
+    // Mot de passe chiffré, jamais renvoyé.
+    let resp = send(&h.app, "PUT", &format!("/api/printers/{id}"), &session, json!({
+        "name": "MK4", "moonraker_url": format!("127.0.0.1:{port}"), "machine_preset_id": preset,
+        "host_auth": "user", "host_user": "maker", "host_password": "secret"
+    }))
+    .await;
+    let body = json_body(resp).await;
+    assert_eq!(
+        (
+            body["host_auth"].as_str(),
+            body["host_user"].as_str(),
+            body["has_host_password"].as_bool()
+        ),
+        (Some("user"), Some("maker"), Some(true))
+    );
+    assert!(!body.to_string().contains("secret"));
+    let stored = h
+        .storage
+        .printers()
+        .get(owner, PrinterId(uuid::Uuid::parse_str(&id).unwrap()))
+        .await
+        .unwrap();
+    assert!(
+        !stored.host_options.to_string().contains("secret"),
+        "mot de passe chiffré au repos"
+    );
+    assert_eq!(
+        stored.host_type, "prusalink",
+        "type conservé à la mise à jour"
+    );
+    // Type inconnu : 422.
+    let resp = send(&h.app, "POST", "/api/printers", &session, json!({
+        "name": "X", "moonraker_url": "x", "machine_preset_id": preset, "host_type": "imaginaire"
+    }))
+    .await;
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}

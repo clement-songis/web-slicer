@@ -152,6 +152,71 @@ impl FileStore {
         Ok(final_path)
     }
 
+    /// Dossier des fichiers auxiliaires d'un projet (Orca : Auxiliaries/ du 3MF) :
+    /// `<uid>/auxiliaries/<projet>/<dossier Orca>/<fichier>`.
+    pub fn auxiliaries_dir(&self, user: UserId, project: impl std::fmt::Display) -> PathBuf {
+        self.user_root(user)
+            .join("auxiliaries")
+            .join(project.to_string())
+    }
+
+    /// Valide un chemin auxiliaire relatif « <dossier>/<fichier> » : dossiers
+    /// d'Orca (AuxiliaryDataViewModel), composants sûrs, pas de remontée.
+    pub fn auxiliary_path(
+        &self,
+        user: UserId,
+        project: impl std::fmt::Display,
+        rel: &str,
+    ) -> FilesResult<PathBuf> {
+        let mut parts = rel.split('/');
+        let (Some(folder), Some(name), None) = (parts.next(), parts.next(), parts.next()) else {
+            return Err(FilesError::UnsafeName(rel.to_string()));
+        };
+        if !AUXILIARY_FOLDERS.contains(&folder) || name.starts_with('.') {
+            return Err(FilesError::UnsafeName(rel.to_string()));
+        }
+        ensure_component(name)?;
+        Ok(self.auxiliaries_dir(user, project).join(folder).join(name))
+    }
+
+    /// Fichiers auxiliaires d'un projet (chemins relatifs triés, tailles).
+    pub async fn list_auxiliaries(
+        &self,
+        user: UserId,
+        project: impl std::fmt::Display,
+    ) -> FilesResult<Vec<(String, u64)>> {
+        let root = self.auxiliaries_dir(user, project);
+        let mut out = Vec::new();
+        for folder in AUXILIARY_FOLDERS {
+            let mut dir = match fs::read_dir(root.join(folder)).await {
+                Ok(d) => d,
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+                Err(e) => return Err(e.into()),
+            };
+            while let Some(entry) = dir.next_entry().await? {
+                let meta = entry.metadata().await?;
+                let name = entry.file_name().to_string_lossy().into_owned();
+                if meta.is_file() && !name.starts_with('.') {
+                    out.push((format!("{folder}/{name}"), meta.len()));
+                }
+            }
+        }
+        out.sort();
+        Ok(out)
+    }
+
+    /// Écrit un fichier auxiliaire (atomique).
+    pub async fn write_auxiliary(&self, path: &Path, bytes: &[u8]) -> FilesResult<()> {
+        let dir = path
+            .parent()
+            .ok_or_else(|| FilesError::UnsafeName(path.display().to_string()))?;
+        fs::create_dir_all(dir).await?;
+        let tmp = dir.join(format!(".{}.tmp", uuid::Uuid::new_v4()));
+        fs::write(&tmp, bytes).await?;
+        fs::rename(&tmp, path).await?;
+        Ok(())
+    }
+
     /// Lit un fichier déjà stocké (chemin issu du magasin).
     pub async fn read(&self, path: &Path) -> FilesResult<Vec<u8>> {
         Ok(fs::read(path).await?)
@@ -168,6 +233,14 @@ impl FileStore {
         }
     }
 }
+
+/// Dossiers de fichiers auxiliaires d'Orca (AuxiliaryDataViewModel).
+pub const AUXILIARY_FOLDERS: [&str; 4] = [
+    "Model Pictures",
+    "Bill of Materials",
+    "Assembly Guide",
+    "Others",
+];
 
 /// Valide qu'une extension ne contient que des caractères sûrs.
 fn safe_ext(ext: &str) -> FilesResult<&str> {

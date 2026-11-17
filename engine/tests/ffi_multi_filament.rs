@@ -222,6 +222,20 @@ fn bambu_h2d_two_nozzles_match_orca() {
     check_printer_scene("bambu_h2d");
 }
 
+/// Bambu H2D en affectation MANUELLE (filament_map_mode = Manual,
+/// filament_map = 1,2 dans la config du projet, inverse du choix automatique
+/// 2,1) : G-code identique à Orca (make_h2d_manual.py ; le CLI lit le mode du
+/// plateau, posé aussi dans le 3MF de référence).
+#[test]
+fn bambu_h2d_manual_filament_map_matches_orca() {
+    let orca = std::fs::read_to_string(fixture("bambu_h2d_manual.orca.gcode")).unwrap_or_default();
+    assert!(
+        orca.contains("; filament_map = 1,2"),
+        "référence : affectation manuelle 1,2"
+    );
+    check_printer_scene("bambu_h2d_manual");
+}
+
 /// SeeMeCNC Artemis : SEMM avec change_filament_gcode (T[next_extruder]) et
 /// tour d'essuyage type2, réglages du constructeur.
 #[test]
@@ -232,6 +246,41 @@ fn seemecnc_artemis_change_filament_gcode_and_type2_tower_match_orca() {
         "référence : tour type2"
     );
     check_printer_scene("seemecnc_artemis");
+}
+
+/// Ramming (dialogue Ramming d'Orca, filament_ramming_parameters) en SEMM,
+/// tour type2 : (1) la chaîne du dialogue fait l'aller-retour exact
+/// moteur → 3MF → moteur ; (2) le G-code (courbe de ramming dans la tour)
+/// est identique à Orca (seemecnc_ramming.orca.gcode, make_ramming_ref.py).
+#[test]
+fn ramming_curve_round_trips_and_matches_orca_on_semm_tower() {
+    let (model, config) =
+        engine::adapters::ffi::read_project_3mf(&fixture("seemecnc_ramming.3mf")).unwrap();
+    let Some(engine::api::ConfigValue::Strings(curves)) = config.get("filament_ramming_parameters")
+    else {
+        panic!("filament_ramming_parameters absent");
+    };
+    const RAMMING: &str = "150 80 3.1 4.2 5.5 6.8 7.6 8.1 8.8 9.4 9.9 10.4| 0.05 3.1 0.55 4.2 1.05 5.5 1.55 6.8 2.05 7.6 2.55 8.1 3.05 8.8 3.55 9.4 4.05 9.9";
+    assert!(curves.iter().all(|c| c == RAMMING), "{curves:?}");
+    // Aller-retour par l'écriture 3MF de libslic3r.
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("rt.3mf");
+    engine::adapters::ffi::write_project_3mf_with_plates(&model, &config, &[], &out).unwrap();
+    let (_, back) = engine::adapters::ffi::read_project_3mf(&out).unwrap();
+    assert_eq!(
+        back.get("filament_ramming_parameters"),
+        config.get("filament_ramming_parameters")
+    );
+
+    let ours = without_known_x1c_gaps(printer_scene("seemecnc_ramming").expect("tranchage"));
+    let orca = without_known_x1c_gaps(normalize(
+        &std::fs::read_to_string(fixture("seemecnc_ramming.orca.gcode")).unwrap(),
+    ));
+    let base = without_known_x1c_gaps(normalize(
+        &std::fs::read_to_string(fixture("seemecnc_artemis.orca.gcode")).unwrap(),
+    ));
+    assert_ne!(orca, base, "la courbe de ramming change la tour chez Orca");
+    assert_same("seemecnc_ramming", &ours, &orca);
 }
 
 /// Peinture MMU (canal mmu_segmentation) : moitié haute du cube peinte en

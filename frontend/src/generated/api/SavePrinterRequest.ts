@@ -4,4 +4,21 @@
  * Corps de `POST`/`PUT /api/printers` : déclaration ou mise à jour. `api_key`
  * est chiffrée au repos avant stockage (T075).
  */
-export type SavePrinterRequest = { name: string, moonraker_url?: string, api_key?: string, machine_preset_id: string, };
+export type SavePrinterRequest = { name: string, moonraker_url?: string, api_key?: string, machine_preset_id: string, 
+/**
+ * Type d'hôte d'impression (host_type d'Orca) ; absent = moonraker.
+ * `moonraker_url` porte l'adresse de l'hôte (print_host) quel que soit le type.
+ */
+host_type?: string, 
+/**
+ * PrusaLink : « user » = utilisateur/mot de passe (digest), « key » = clé API.
+ */
+host_auth?: string, host_user?: string, 
+/**
+ * Mot de passe (chiffré au repos, jamais renvoyé) ; absent = conservé.
+ */
+host_password?: string, 
+/**
+ * Repetier : slug de l'imprimante sur le serveur (printhost_port).
+ */
+host_port?: string, };

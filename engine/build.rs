@@ -55,6 +55,7 @@ fn main() {
         .file("src/adapters/ffi/bridge/export_mesh.cpp")
         .file("src/adapters/ffi/bridge/flush.cpp")
         .file("src/adapters/ffi/bridge/calib_project.cpp")
+        .file("src/adapters/ffi/bridge/obj_colors.cpp")
         .std("c++17")
         .include(libslic3r_dir.join("include"))
         .include(libslic3r_dir.join("include/libslic3r"))
@@ -139,6 +140,9 @@ fn main() {
         "expat",
         "draco",
         "nlopt",
+        // OpenCV (ObjColorUtils : k-means des couleurs d'un OBJ importé)
+        "opencv_core",
+        "opencv_imgproc",
         // OCCT (lecture STEP, Format/STEP.cpp)
         "TKXDESTEP",
         "TKSTEP",
@@ -187,6 +191,7 @@ fn main() {
     println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/export_mesh.cpp");
     println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/flush.cpp");
     println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/calib_project.cpp");
+    println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/obj_colors.cpp");
     println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/flush.hpp");
     println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/export_mesh.hpp");
     println!("cargo:rerun-if-env-changed=LIBSLIC3R_DIR");

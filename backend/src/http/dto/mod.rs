@@ -733,16 +733,36 @@ pub struct PrinterResponse {
     pub moonraker_url: Option<String>,
     pub has_api_key: bool,
     pub machine_preset_id: String,
+    /// Type d'hôte d'impression (moonraker, octoprint, prusalink, …).
+    pub host_type: String,
+    #[ts(optional)]
+    pub host_auth: Option<String>,
+    #[ts(optional)]
+    pub host_user: Option<String>,
+    pub has_host_password: bool,
+    #[ts(optional)]
+    pub host_port: Option<String>,
 }
 
 impl From<Printer> for PrinterResponse {
     fn from(p: Printer) -> Self {
+        let opt = |k: &str| {
+            p.host_options
+                .get(k)
+                .and_then(|v| v.as_str())
+                .map(str::to_string)
+        };
         Self {
             id: p.id.to_string(),
-            name: p.name,
-            moonraker_url: p.moonraker_url,
+            name: p.name.clone(),
+            moonraker_url: p.moonraker_url.clone(),
             has_api_key: p.api_key.is_some(),
             machine_preset_id: p.machine_preset_id.to_string(),
+            host_type: p.host_type.clone(),
+            host_auth: opt("auth"),
+            host_user: opt("user"),
+            has_host_password: opt("password").is_some(),
+            host_port: opt("port"),
         }
     }
 }
@@ -758,6 +778,26 @@ pub struct SavePrinterRequest {
     #[ts(optional)]
     pub api_key: Option<String>,
     pub machine_preset_id: String,
+    /// Type d'hôte d'impression (host_type d'Orca) ; absent = moonraker.
+    /// `moonraker_url` porte l'adresse de l'hôte (print_host) quel que soit le type.
+    #[serde(default)]
+    #[ts(optional)]
+    pub host_type: Option<String>,
+    /// PrusaLink : « user » = utilisateur/mot de passe (digest), « key » = clé API.
+    #[serde(default)]
+    #[ts(optional)]
+    pub host_auth: Option<String>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub host_user: Option<String>,
+    /// Mot de passe (chiffré au repos, jamais renvoyé) ; absent = conservé.
+    #[serde(default)]
+    #[ts(optional)]
+    pub host_password: Option<String>,
+    /// Repetier : slug de l'imprimante sur le serveur (printhost_port).
+    #[serde(default)]
+    #[ts(optional)]
+    pub host_port: Option<String>,
 }
 
 // --- Catalogue de sélection d'imprimante (wizard/onboarding, Phase 14) --------
@@ -809,6 +849,10 @@ pub struct TestPrinterResponse {
 #[ts(export)]
 pub struct UploadToPrinterRequest {
     pub gcode_id: String,
+    /// Stockage PrusaLink (« /usb »…) ou groupe Repetier (GET …/storages).
+    #[serde(default)]
+    #[ts(optional)]
+    pub storage: Option<String>,
     /// Démarrer l'impression immédiatement (`print=true`, FR-061).
     pub start_now: bool,
 }

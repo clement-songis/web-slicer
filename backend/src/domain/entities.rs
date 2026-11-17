@@ -195,6 +195,11 @@ pub struct Printer {
     /// Chiffrée au repos (clé d'instance).
     pub api_key: Option<String>,
     pub machine_preset_id: PresetId,
+    /// Type d'hôte d'impression (host_type d'Orca : moonraker, octoprint,
+    /// prusalink, prusaconnect, duet, repetier, mks, flashair, astrobox, esp3d).
+    pub host_type: String,
+    /// Options de l'hôte : { auth_user, user, password (chiffré), port }.
+    pub host_options: Value,
 }
 
 /// Résultat de calibration d'avance de pression retenu (historique, comme

@@ -22,6 +22,8 @@ struct RawSliceResult;
 void init_runtime(rust::Str temp_dir, rust::Str data_dir);
 
 rust::Vec<RawObject> load_model_raw(rust::Str path);
+struct RawStepMesh;
+RawStepMesh load_step_raw(rust::Str path, double linear, double angle, bool split_compound);
 
 RawProject read_project_3mf_raw(rust::Str path);
 // Model::plates_custom_gcodes <-> JSON (Vec<PlateCustomGcodes> côté Rust).
@@ -32,6 +34,9 @@ void custom_gcodes_from_json(Slic3r::Model &model, const std::string &json, int 
 void write_project_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
                            rust::Str out_path, rust::Str custom_gcodes_json);
 
+struct RawObjColors;
+RawObjColors load_obj_colors_raw(rust::Str path);
+
 struct RawCalibProject;
 RawCalibProject calib_project_raw(rust::Str kind, double start, double end, double step, rust::Str config_json,
                                   rust::Str resources, rust::Str extra_json);
@@ -39,7 +44,8 @@ RawCalibProject calib_project_raw(rust::Str kind, double start, double end, doub
 struct RawProjectPlate;
 void write_project_plates_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
                               rust::Str custom_gcodes_json,
-                              const rust::Vec<RawProjectPlate> &plates, rust::Str out_path);
+                              const rust::Vec<RawProjectPlate> &plates, rust::Str aux_dir, rust::Str out_path);
+rust::Vec<rust::String> read_project_auxiliaries_raw(rust::Str path, rust::Str out_dir);
 
 struct RawPlateGcode;
 void write_gcode_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,

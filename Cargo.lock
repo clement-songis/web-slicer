@@ -232,6 +232,7 @@ dependencies = [
  "futures-util",
  "garde",
  "glam",
+ "md-5",
  "quick-xml",
  "regex",
  "reqwest",

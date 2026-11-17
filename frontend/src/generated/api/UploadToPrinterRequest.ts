@@ -5,6 +5,10 @@
  */
 export type UploadToPrinterRequest = { gcode_id: string, 
 /**
+ * Stockage PrusaLink (« /usb »…) ou groupe Repetier (GET …/storages).
+ */
+storage?: string, 
+/**
  * Démarrer l'impression immédiatement (`print=true`, FR-061).
  */
 start_now: boolean, };

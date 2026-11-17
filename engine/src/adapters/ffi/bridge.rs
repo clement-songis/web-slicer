@@ -49,6 +49,22 @@ pub(crate) mod ffi {
         is_seq_print: bool,
     }
 
+    /// STEP maillé (StepMeshDialog) : objets et triangles annoncés par le dialogue.
+    #[derive(Debug)]
+    struct RawStepMesh {
+        objects: Vec<RawObject>,
+        dialog_triangles: u32,
+    }
+
+    /// OBJ coloré importé comme Orca : objets (peinture MMU par facette) et
+    /// palette des couleurs regroupées (filaments 1..k, « #RRGGBBAA »).
+    #[derive(Debug)]
+    struct RawObjColors {
+        objects: Vec<RawObject>,
+        palette: Vec<String>,
+        colored: bool,
+    }
+
     /// Projet de calibration (portage des Plater::calib_* d'Orca).
     #[derive(Debug)]
     struct RawCalibProject {
@@ -296,6 +312,15 @@ pub(crate) mod ffi {
         /// (STL/OBJ/3MF géométrie, STEP via OCCT) → scène brute.
         fn load_model_raw(path: &str) -> Result<Vec<RawObject>>;
 
+        /// STEP maillé avec déflexions linéaire/angulaire et découpe des
+        /// compounds (StepMeshDialog d'Orca).
+        fn load_step_raw(
+            path: &str,
+            linear: f64,
+            angle: f64,
+            split_compound: bool,
+        ) -> Result<RawStepMesh>;
+
         /// Lit un projet 3MF OrcaSlicer : scène + config embarquée.
         fn read_project_3mf_raw(path: &str) -> Result<RawProject>;
 
@@ -313,8 +338,13 @@ pub(crate) mod ffi {
             config_json: &str,
             custom_gcodes_json: &str,
             plates: &Vec<RawProjectPlate>,
+            aux_dir: &str,
             out_path: &str,
         ) -> Result<()>;
+
+        /// Fichiers auxiliaires (Auxiliaries/) d'un projet 3MF copiés dans
+        /// `out_dir` ; chemins relatifs (« Model Pictures/a.png »…).
+        fn read_project_auxiliaries_raw(path: &str, out_dir: &str) -> Result<Vec<String>>;
 
         /// Écrit un .gcode.3mf comme « Export (all) plate sliced file » d'Orca
         /// (`export_plate_idx` < 0 = tous les plateaux).
@@ -357,6 +387,9 @@ pub(crate) mod ffi {
 
         /// Orientation automatique d'un objet.
         fn orient_raw(object: &RawObject) -> Result<RawObject>;
+
+        /// OBJ avec couleurs (sommets / MTL) → peinture MMU + palette.
+        fn load_obj_colors_raw(path: &str) -> Result<RawObjColors>;
 
         /// Projet de calibration d'Orca (modèle, coupes, échelle, réglages).
         fn calib_project_raw(

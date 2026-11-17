@@ -42,6 +42,115 @@ fn parse_preset_id(raw: &str) -> ApiResult<crate::domain::PresetId> {
         .map_err(|_| ApiError::validation("machine_preset_id invalide", serde_json::json!({})))
 }
 
+/// Options d'hôte depuis le corps (mot de passe chiffré ; absent = `previous`).
+fn host_from_body(
+    state: &AppState,
+    body: &SavePrinterRequest,
+    previous: Option<&Printer>,
+) -> ApiResult<(String, Value)> {
+    use crate::adapters::print_host::HostKind;
+    let kind = match body.host_type.as_deref().filter(|t| !t.is_empty()) {
+        None => previous.map(|p| p.host_type.clone()).unwrap_or_else(|| "moonraker".into()),
+        Some(raw) => HostKind::parse(raw)
+            .ok_or_else(|| {
+                ApiError::validation(
+                    "type d'hôte inconnu",
+                    serde_json::json!({ "host_type": raw, "types": ["moonraker", "octoprint", "astrobox", "prusalink",
+                        "prusaconnect", "duet", "repetier", "mks", "flashair", "esp3d"] }),
+                )
+            })?
+            .as_str()
+            .to_string(),
+    };
+    let mut options = previous
+        .map(|p| p.host_options.clone())
+        .filter(Value::is_object)
+        .unwrap_or_else(|| serde_json::json!({}));
+    let set = |o: &mut Value, k: &str, v: &Option<String>| {
+        if let Some(v) = v {
+            if v.is_empty() {
+                o.as_object_mut().unwrap().remove(k);
+            } else {
+                o[k] = Value::String(v.clone());
+            }
+        }
+    };
+    if let Some(auth) = body.host_auth.as_deref() {
+        if !matches!(auth, "key" | "user" | "") {
+            return Err(ApiError::validation(
+                "host_auth : key | user",
+                serde_json::json!({ "host_auth": auth }),
+            ));
+        }
+    }
+    set(&mut options, "auth", &body.host_auth);
+    set(&mut options, "user", &body.host_user);
+    set(&mut options, "port", &body.host_port);
+    let password = body.host_password.as_ref().map(|p| {
+        if p.is_empty() {
+            String::new()
+        } else {
+            state.secrets.encrypt(p)
+        }
+    });
+    set(&mut options, "password", &password);
+    Ok((kind, options))
+}
+
+/// Client d'un hôte d'impression non Moonraker (adapters::print_host), secrets
+/// déchiffrés à la volée.
+pub(crate) fn host_client(
+    state: &AppState,
+    printer: &Printer,
+) -> ApiResult<Option<crate::adapters::print_host::HostClient>> {
+    use crate::adapters::print_host::{HostClient, HostConfig, HostKind};
+    let kind = HostKind::parse(&printer.host_type).unwrap_or(HostKind::Moonraker);
+    if kind == HostKind::Moonraker {
+        return Ok(None);
+    }
+    let Some(host) = printer.moonraker_url.clone() else {
+        return Err(ApiError::printer_not_connected(
+            "Imprimante non connectée (aucune adresse d'hôte)",
+        ));
+    };
+    let opt = |k: &str| {
+        printer
+            .host_options
+            .get(k)
+            .and_then(Value::as_str)
+            .map(str::to_string)
+    };
+    Ok(Some(HostClient::new(
+        kind,
+        HostConfig {
+            host,
+            api_key: printer
+                .api_key
+                .as_deref()
+                .and_then(|e| state.secrets.decrypt(e)),
+            auth_user: opt("auth").as_deref() == Some("user"),
+            user: opt("user"),
+            password: opt("password").and_then(|e| state.secrets.decrypt(&e)),
+            port: opt("port"),
+            start_delay: std::time::Duration::from_millis(1500),
+            mks_console_port: 8080,
+        },
+    )))
+}
+
+impl From<crate::adapters::print_host::HostError> for ApiError {
+    fn from(e: crate::adapters::print_host::HostError) -> Self {
+        use crate::adapters::print_host::HostError as E;
+        match e {
+            E::Unsupported(_) => ApiError::conflict(e.to_string()),
+            _ => {
+                tracing::warn!(error = %e, "dialogue avec l'hôte d'impression en échec");
+                ApiError::bad_gateway(e.to_string())
+            }
+        }
+    }
+}
+
 /// Traduit un corps de requête en `NewPrinter`, en chiffrant la clé API.
 fn to_new_printer(state: &AppState, body: SavePrinterRequest) -> ApiResult<NewPrinter> {
     let machine_preset_id = parse_preset_id(&body.machine_preset_id)?;
@@ -67,8 +176,16 @@ pub(crate) async fn load_client(
     id: PrinterId,
 ) -> ApiResult<(Printer, MoonrakerClient)> {
     let printer = state.storage.printers().get(user, id).await?; // 404, SC-008
-                                                                 // Imprimante déclarée mais sans connexion réseau : aucun appel Moonraker
-                                                                 // possible → 409 `printer_not_connected` (l'UI propose de la connecter).
+                                                                 // Hôte non Moonraker : état, pause, fichiers, G-code… sont propres à
+                                                                 // Moonraker (Orca ne les propose pas non plus pour ces hôtes).
+    if printer.host_type != "moonraker" {
+        return Err(ApiError::conflict(format!(
+            "opération réservée à Moonraker (hôte : {})",
+            printer.host_type
+        )));
+    }
+    // Imprimante déclarée mais sans connexion réseau : aucun appel Moonraker
+    // possible → 409 `printer_not_connected` (l'UI propose de la connecter).
     let Some(url) = printer.moonraker_url.clone() else {
         return Err(ApiError::printer_not_connected(
             "Imprimante non connectée (aucune URL Moonraker)",
@@ -236,16 +353,22 @@ pub async fn create(
     State(state): State<AppState>,
     Json(body): Json<SavePrinterRequest>,
 ) -> ApiResult<(StatusCode, Json<PrinterResponse>)> {
+    let (host_type, host_options) = host_from_body(&state, &body, None)?;
     let new_printer = to_new_printer(&state, body)?;
     // Écriture détachée de la requête : si le client se déconnecte (navigation
     // juste après « Enregistrer »), axum abandonne le handler ; la tâche, elle,
     // va au bout et l'imprimante déclarée n'est pas perdue.
     let storage = state.storage.clone();
     let user_id = user.id;
-    let printer =
-        tokio::spawn(async move { storage.printers().create(user_id, new_printer).await })
+    let printer = tokio::spawn(async move {
+        let printer = storage.printers().create(user_id, new_printer).await?;
+        storage
+            .printers()
+            .set_host(user_id, printer.id, &host_type, &host_options)
             .await
-            .map_err(|_| ApiError::internal())??;
+    })
+    .await
+    .map_err(|_| ApiError::internal())??;
     Ok((StatusCode::CREATED, Json(PrinterResponse::from(printer))))
 }
 
@@ -268,19 +391,25 @@ pub async fn update(
     Json(body): Json<SavePrinterRequest>,
 ) -> ApiResult<Json<PrinterResponse>> {
     let id = parse_printer_id(&id)?;
+    let existing = state.storage.printers().get(user.id, id).await?; // 404, SC-008
+    let (host_type, host_options) = host_from_body(&state, &body, Some(&existing))?;
     let mut new_printer = to_new_printer(&state, body)?;
     // Mise à jour partielle : si la requête ne fournit pas de clé API, on préserve
     // celle déjà stockée (chiffrée) au lieu de l'effacer silencieusement. Permet de
     // repointer le preset machine d'une imprimante (édition des réglages sur la page
     // de gestion) sans reperdre le secret Moonraker.
     if new_printer.api_key.is_none() {
-        let existing = state.storage.printers().get(user.id, id).await?; // 404, SC-008
-        new_printer.api_key = existing.api_key;
+        new_printer.api_key = existing.api_key.clone();
     }
-    let printer = state
+    state
         .storage
         .printers()
         .update(user.id, id, new_printer)
+        .await?;
+    let printer = state
+        .storage
+        .printers()
+        .set_host(user.id, id, &host_type, &host_options)
         .await?;
     Ok(Json(PrinterResponse::from(printer)))
 }
@@ -303,6 +432,16 @@ pub async fn test(
     Path(id): Path<String>,
 ) -> ApiResult<Json<TestPrinterResponse>> {
     let id = parse_printer_id(&id)?;
+    let printer = state.storage.printers().get(user.id, id).await?; // 404, SC-008
+    if let Some(host) = host_client(&state, &printer)? {
+        // Hôtes d'Orca : PrintHost::test (connexion + type d'hôte vérifié).
+        let info = host.test().await?;
+        return Ok(Json(TestPrinterResponse {
+            connected: true,
+            klippy_state: info.name,
+            moonraker_version: info.version.unwrap_or_default(),
+        }));
+    }
     let (_printer, client) = load_client(&state, user.id, id).await?;
     let info = client.server_info().await?; // 502 propre si injoignable (FR-062)
     Ok(Json(TestPrinterResponse {
@@ -349,9 +488,65 @@ pub async fn upload(
     };
     let filename = crate::gcode_filename::for_gcode(&gcode.stats, &bytes, &project_name);
 
+    let printer = state.storage.printers().get(user.id, id).await?; // 404, SC-008
+    if let Some(host) = host_client(&state, &printer)? {
+        let up = host
+            .upload(&filename, bytes, body.start_now, body.storage.as_deref())
+            .await?;
+        return Ok(Json(PrinterUploadResponse {
+            path: up.path,
+            print_started: up.print_started,
+        }));
+    }
     let (_printer, client) = load_client(&state, user.id, id).await?;
     let result = client.upload(&filename, bytes, body.start_now).await?;
     Ok(Json(PrinterUploadResponse::from(result)))
+}
+
+/// `GET /api/printers/{id}/storages` — destinations proposées par l'hôte, comme
+/// la boîte d'envoi d'Orca : stockages PrusaLink/PrusaConnect (PrusaLink::get_storage)
+/// ou groupes Repetier (Repetier::get_groups). `{ kind, items: [{path, name}] }`.
+pub async fn storages(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> ApiResult<Json<Value>> {
+    use crate::adapters::print_host::HostKind;
+    let id = parse_printer_id(&id)?;
+    let printer = state.storage.printers().get(user.id, id).await?; // 404, SC-008
+    let Some(host) = host_client(&state, &printer)? else {
+        return Ok(Json(serde_json::json!({ "kind": "none", "items": [] })));
+    };
+    let value = match host.kind() {
+        HostKind::Prusalink | HostKind::Prusaconnect => {
+            let list = host.storages().await?;
+            serde_json::json!({ "kind": "storage", "items": list })
+        }
+        HostKind::Repetier => {
+            let groups = host.groups().await?;
+            let items: Vec<Value> = groups
+                .into_iter()
+                .map(|g| serde_json::json!({ "path": g, "name": g }))
+                .collect();
+            serde_json::json!({ "kind": "group", "items": items })
+        }
+        _ => serde_json::json!({ "kind": "none", "items": [] }),
+    };
+    Ok(Json(value))
+}
+
+/// `GET /api/printers/{id}/host-printers` — imprimantes d'un serveur Repetier
+/// (Repetier::get_printers : slugs, à reporter dans `host_port`).
+pub async fn host_printers(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> ApiResult<Json<Vec<String>>> {
+    let id = parse_printer_id(&id)?;
+    let printer = state.storage.printers().get(user.id, id).await?; // 404, SC-008
+    let host = host_client(&state, &printer)?
+        .ok_or_else(|| ApiError::conflict("hôte Moonraker : pas de liste d'imprimantes"))?;
+    Ok(Json(host.printers().await?))
 }
 
 /// Slug ASCII sûr pour un nom de fichier Moonraker : minuscules, accents

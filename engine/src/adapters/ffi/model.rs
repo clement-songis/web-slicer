@@ -42,7 +42,80 @@ pub fn load_model(path: &Path) -> EngineResult<Model> {
     })
 }
 
+/// Réglages de maillage STEP du dialogue d'Orca (StepMeshDialog) ; défauts =
+/// Step::mesh (0,003 mm ; 0,5 rad ; pas de découpe) = import du CLI.
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+pub struct StepMeshOptions {
+    #[serde(default = "default_linear")]
+    pub linear_deflection: f64,
+    #[serde(default = "default_angle")]
+    pub angle_deflection: f64,
+    #[serde(default)]
+    pub split_compound: bool,
+}
+
+fn default_linear() -> f64 {
+    0.003
+}
+fn default_angle() -> f64 {
+    0.5
+}
+
+impl Default for StepMeshOptions {
+    fn default() -> Self {
+        Self {
+            linear_deflection: default_linear(),
+            angle_deflection: default_angle(),
+            split_compound: false,
+        }
+    }
+}
+
+/// STEP maillé avec `options` ; renvoie le modèle et le nombre de triangles
+/// annoncé par le dialogue d'Orca (Step::get_triangle_num).
+pub fn load_step(path: &Path, options: StepMeshOptions) -> EngineResult<(Model, u32)> {
+    let _guard = ffi_guard();
+    let raw = ffi::load_step_raw(
+        &path.to_string_lossy(),
+        options.linear_deflection,
+        options.angle_deflection,
+        options.split_compound,
+    )
+    .map_err(|e| EngineError::new(EngineErrorCode::InvalidModel, e.to_string()))?;
+    Ok((
+        Model {
+            objects: raw.objects.into_iter().map(to_object).collect(),
+            custom_gcodes: Vec::new(),
+        },
+        raw.dialog_triangles,
+    ))
+}
+
 /// Conversion vers maillage unique (STEP → mesh, R7) : fusion des volumes.
+/// Fusion des volumes d'un modèle en un maillage (repère objet, matrices des
+/// volumes appliquées), comme [`convert_to_mesh`].
+pub fn convert_to_mesh_model(model: &Model) -> TriangleMesh {
+    let mut merged = TriangleMesh::default();
+    for object in &model.objects {
+        for volume in &object.volumes {
+            let offset = merged.vertices.len() as u32;
+            let m = volume.matrix;
+            merged.vertices.extend(volume.mesh.vertices.iter().map(|v| {
+                let p = m.transform_point3(glam::DVec3::new(v[0] as f64, v[1] as f64, v[2] as f64));
+                [p.x as f32, p.y as f32, p.z as f32]
+            }));
+            merged.indices.extend(
+                volume
+                    .mesh
+                    .indices
+                    .iter()
+                    .map(|t| [t[0] + offset, t[1] + offset, t[2] + offset]),
+            );
+        }
+    }
+    merged
+}
+
 pub fn convert_to_mesh(path: &Path) -> EngineResult<TriangleMesh> {
     let model = load_model(path)?;
     let mut merged = TriangleMesh::default();

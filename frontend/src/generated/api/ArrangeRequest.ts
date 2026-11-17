@@ -4,30 +4,30 @@ import type { ArrangeItem } from "./ArrangeItem";
 /**
  * Corps de `POST /api/projects/{id}/arrange`.
  */
-export type ArrangeRequest = { bed_width: number, bed_depth: number,
+export type ArrangeRequest = { bed_width: number, bed_depth: number, 
 /**
  * Dégagement entre objets et vis-à-vis des bords (mm).
  */
-spacing: number, items: Array<ArrangeItem>,
+spacing: number, items: Array<ArrangeItem>, 
 /**
  * Contour réel du plateau ; à défaut, `printable_area` du preset actif,
  * puis le rectangle `bed_width × bed_depth`.
  */
-bed_shape: Array<[number, number]> | null,
+bed_shape: Array<[number, number]> | null, 
 /**
  * Zones exclues ; à défaut, `bed_exclude_area` du preset actif.
  */
-excluded: Array<Array<[number, number]>> | null, max_height: number | null,
+excluded: Array<Array<[number, number]>> | null, max_height: number | null, 
 /**
  * Arrangement séquentiel « objet par objet » (`ArrangeParams::is_seq_print`
  * d'Orca) : forcé par le plateau ; sinon déduit de `print_sequence` du
  * preset actif.
  */
-is_seq_print?: boolean,
+is_seq_print?: boolean, 
 /**
  * Dégagements extrudeur (surcharge des clés machine du preset actif).
  */
-extruder_clearance_radius?: number, extruder_clearance_height_to_rod?: number, extruder_clearance_height_to_lid?: number, nozzle_height?: number,
+extruder_clearance_radius?: number, extruder_clearance_height_to_rod?: number, extruder_clearance_height_to_lid?: number, nozzle_height?: number, 
 /**
  * « Remplir le plateau avec des instances » (FillBedJob d'Orca) : objet de
  * `items` à dupliquer ; les autres items sont fixes. La réponse contient

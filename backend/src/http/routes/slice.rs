@@ -935,6 +935,34 @@ mod tests {
         assert_eq!(&m[16..], &[0.0, 80.0, 560.0, 0.0]);
     }
 
+    /// Chaîne du dialogue Ramming d'Orca : aller-retour exact preset JSON →
+    /// config moteur → JSON (sauvegarde de preset, snapshot du job).
+    #[test]
+    fn ramming_parameters_round_trip_exactly() {
+        let curve = "120 100 6.6 6.8 7.2 7.6 7.9 8.2 8.7 9.4 9.9 10.0| 0.05 6.6 0.45 6.8 0.95 7.8 1.45 8.3 1.95 9.7 2.45 10 2.95 7.6 3.45 7.6 3.95 7.6 4.45 7.6 4.95 7.6";
+        let mut values = serde_json::Map::new();
+        values.insert(
+            "filament_ramming_parameters".into(),
+            serde_json::json!([curve, curve]),
+        );
+        let config = engine::presets::resolve_preset_chain(&[engine::api::RawPreset {
+            name: "f".into(),
+            inherits: None,
+            values,
+        }])
+        .unwrap();
+        assert_eq!(
+            config.get("filament_ramming_parameters"),
+            Some(&ConfigValue::Strings(vec![curve.into(), curve.into()]))
+        );
+        let json = presets::config_to_json(&config);
+        let back = crate::slicing::config_from_snapshot(&Value::Object(json)).unwrap();
+        assert_eq!(
+            back.get("filament_ramming_parameters"),
+            config.get("filament_ramming_parameters")
+        );
+    }
+
     #[test]
     fn post_process_scripts_are_reported_not_run() {
         let mut config = DynamicPrintConfig::new();

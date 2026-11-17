@@ -3,6 +3,7 @@
 
 pub mod admin;
 pub mod auth;
+pub mod auxiliaries;
 pub mod calibration;
 pub mod export;
 pub mod flush;
@@ -87,6 +88,8 @@ where
         )
         .route("/api/models/{id}/mesh", get(models::mesh))
         .route("/api/models/{id}/file", get(models::download_file))
+        .route("/api/models/{id}/obj-colors", post(models::obj_colors))
+        .route("/api/models/{id}/step-mesh", post(models::step_mesh))
         .route("/api/models/{id}/repair", post(scene::repair))
         .route("/api/models/{id}/simplify", post(scene::simplify))
         .route("/api/models/{id}/split", post(mesh_ops::split))
@@ -112,6 +115,13 @@ where
         .route(
             "/api/projects/{id}/calibration",
             post(calibration::create_project_calibration),
+        )
+        .route("/api/projects/{id}/auxiliaries", get(auxiliaries::list))
+        .route(
+            "/api/projects/{id}/auxiliaries/{folder}/{name}",
+            get(auxiliaries::get)
+                .put(auxiliaries::put)
+                .delete(auxiliaries::delete),
         )
         .route(
             "/api/calibrations/pa",
@@ -167,6 +177,11 @@ where
                 .delete(printers::delete),
         )
         .route("/api/printers/{id}/test", post(printers::test))
+        .route("/api/printers/{id}/storages", get(printers::storages))
+        .route(
+            "/api/printers/{id}/host-printers",
+            get(printers::host_printers),
+        )
         .route("/api/printers/{id}/upload", post(printers::upload))
         .route(
             "/api/printers/{id}/upload-sliced",

@@ -321,6 +321,163 @@ pub async fn download_file(
         .into_response())
 }
 
+/// Réglages StepMeshDialog (même forme que engine::adapters::ffi::StepMeshOptions,
+/// transmis tels quels au worker).
+#[derive(Debug, Clone, Copy, serde::Serialize, serde::Deserialize)]
+pub struct StepMeshOptions {
+    #[serde(default = "default_linear")]
+    pub linear_deflection: f64,
+    #[serde(default = "default_angle")]
+    pub angle_deflection: f64,
+    #[serde(default)]
+    pub split_compound: bool,
+}
+
+fn default_linear() -> f64 {
+    0.003
+}
+
+fn default_angle() -> f64 {
+    0.5
+}
+
+/// `POST /api/models/{id}/step-mesh` — remaillage d'un STEP avec les réglages du
+/// dialogue StepMeshDialog d'Orca : `{ linear_deflection (0,003), angle_deflection
+/// (0,5), split_compound (false) }`. Le maillage d'affichage du modèle est remplacé
+/// (événement model.converted) ; réponse `{ triangles, dialog_triangles, objects:
+/// [{ name, triangles }] }` : une entrée par pièce (Step::mesh crée un objet ;
+/// découpe des compounds = une pièce « <nom>-SOLID-<n> » par solide).
+pub async fn step_mesh(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(options): Json<StepMeshOptions>,
+) -> ApiResult<Json<serde_json::Value>> {
+    let id = parse_model_id(&id)?;
+    let model = state.storage.models().get(user.id, id).await?; // 404 si autre compte
+    if model.format != ModelFormat::Step {
+        return Err(ApiError::validation(
+            "modèle STEP attendu",
+            serde_json::json!({ "format": model.format }),
+        ));
+    }
+    let valid = |v: f64, max: f64| v.is_finite() && v > 0.0 && v <= max;
+    if !valid(options.linear_deflection, 1.0) || !valid(options.angle_deflection, 1.0) {
+        return Err(ApiError::validation(
+            "déflexions hors bornes (dialogue d'Orca : linéaire 0,001–0,1 mm, angulaire 0,01–1 rad)",
+            serde_json::json!({}),
+        ));
+    }
+    let dir = crate::workdir::tempdir().map_err(|_| ApiError::internal())?;
+    let opts_path = dir.path().join("opts.json");
+    let out = dir.path().join("step.json");
+    std::fs::write(
+        &opts_path,
+        serde_json::to_vec(&options).map_err(|_| ApiError::internal())?,
+    )
+    .map_err(|_| ApiError::internal())?;
+    crate::engine::run_worker(
+        &[
+            "load-step",
+            &model.file_path,
+            &opts_path.to_string_lossy(),
+            &out.to_string_lossy(),
+        ],
+        std::time::Duration::from_secs(170),
+    )
+    .await
+    .map_err(|e| ApiError::validation(format!("maillage STEP : {e}"), serde_json::json!({})))?;
+    let view: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&out).map_err(|_| ApiError::internal())?)
+            .map_err(|_| ApiError::internal())?;
+    let meshes: Vec<(String, engine::api::TriangleMesh)> = view["objects"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|o| {
+            Some((
+                o["name"].as_str().unwrap_or_default().to_string(),
+                serde_json::from_value(o["mesh"].clone()).ok()?,
+            ))
+        })
+        .collect();
+    let mut merged = engine::api::TriangleMesh::default();
+    for (_, mesh) in &meshes {
+        let offset = merged.vertices.len() as u32;
+        merged.vertices.extend(mesh.vertices.iter().copied());
+        merged.indices.extend(
+            mesh.indices
+                .iter()
+                .map(|t| [t[0] + offset, t[1] + offset, t[2] + offset]),
+        );
+    }
+    let triangles = merged.indices.len();
+    let converter = state.converter.clone();
+    converter.convert_mesh(model, merged).await;
+    Ok(Json(serde_json::json!({
+        "triangles": triangles,
+        "dialog_triangles": view["dialog_triangles"],
+        "objects": meshes.iter().map(|(n, m)| serde_json::json!({ "name": n, "triangles": m.indices.len() })).collect::<Vec<_>>(),
+    })))
+}
+
+/// `POST /api/models/{id}/obj-colors` — couleurs d'un OBJ (sommets « v x y z r g b »
+/// ou matériaux MTL) lues par libslic3r et regroupées comme Orca (ObjColorDialog,
+/// réglage par défaut : un nouveau filament par couleur regroupée) :
+/// `{ colored, palette: ["#RRGGBBAA"…] (filament n = palette[n-1]), extruder,
+/// triangles, painting: { mmu: { "<triangle>": "<état TriangleSelector>" } } }`,
+/// même forme que la peinture d'un 3MF importé. Corps optionnel : texte du MTL
+/// (l'OBJ téléversé seul ne porte pas son .mtl), écrit sous le nom de son `mtllib`.
+pub async fn obj_colors(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    mtl: axum::body::Bytes,
+) -> ApiResult<Json<serde_json::Value>> {
+    let id = parse_model_id(&id)?;
+    let model = state.storage.models().get(user.id, id).await?; // 404 si autre compte
+    if model.format != ModelFormat::Obj {
+        return Err(ApiError::validation(
+            "modèle OBJ attendu",
+            serde_json::json!({ "format": model.format }),
+        ));
+    }
+    let obj = state
+        .files
+        .read(FsPath::new(&model.file_path))
+        .await
+        .map_err(|_| ApiError::internal())?;
+    let dir = crate::workdir::tempdir().map_err(|_| ApiError::internal())?;
+    let obj_path = dir.path().join("model.obj");
+    std::fs::write(&obj_path, &obj).map_err(|_| ApiError::internal())?;
+    if !mtl.is_empty() {
+        let text = String::from_utf8_lossy(&obj);
+        let name = text
+            .lines()
+            .find_map(|l| l.trim().strip_prefix("mtllib "))
+            .map(str::trim)
+            .filter(|n| !n.is_empty() && !n.contains('/') && !n.contains('\\') && *n != "..")
+            .unwrap_or("model.mtl");
+        std::fs::write(dir.path().join(name), &mtl).map_err(|_| ApiError::internal())?;
+    }
+    let out = dir.path().join("colors.json");
+    crate::engine::run_worker(
+        &[
+            "load-obj-colors",
+            &obj_path.to_string_lossy(),
+            &out.to_string_lossy(),
+        ],
+        std::time::Duration::from_secs(120),
+    )
+    .await
+    .map_err(|e| ApiError::validation(format!("couleurs OBJ : {e}"), serde_json::json!({})))?;
+    let view: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&out).map_err(|_| ApiError::internal())?)
+            .map_err(|_| ApiError::internal())?;
+    Ok(Json(view))
+}
+
 /// Lit le premier champ fichier du multipart → (nom, octets).
 async fn read_upload(mut multipart: Multipart) -> ApiResult<(String, Vec<u8>)> {
     while let Some(field) = multipart

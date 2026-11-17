@@ -115,6 +115,19 @@ pub fn write_project_3mf_with_plates(
     plates: &[crate::threemf::ProjectPlate],
     out: &Path,
 ) -> EngineResult<()> {
+    write_project_3mf_with_auxiliaries(model, config, plates, None, out)
+}
+
+/// Comme [`write_project_3mf_with_plates`] avec les fichiers auxiliaires du
+/// dossier `aux_dir` (arborescence « Model Pictures/… », « Others/… »),
+/// empaquetés sous Auxiliaries/ par store_bbs_3mf comme dans Orca.
+pub fn write_project_3mf_with_auxiliaries(
+    model: &Model,
+    config: &DynamicPrintConfig,
+    plates: &[crate::threemf::ProjectPlate],
+    aux_dir: Option<&Path>,
+    out: &Path,
+) -> EngineResult<()> {
     let plate_count = model
         .objects
         .iter()
@@ -154,9 +167,21 @@ pub fn write_project_3mf_with_plates(
         &json,
         &custom,
         &raw_plates,
+        &aux_dir
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_default(),
         &out.to_string_lossy(),
     )
     .map_err(|e| EngineError::new(EngineErrorCode::Io, e.to_string()))
+}
+
+/// Fichiers auxiliaires d'un projet 3MF (Orca : Auxiliaries/) copiés dans
+/// `out_dir` ; renvoie leurs chemins relatifs triés.
+pub fn read_project_auxiliaries(path: &Path, out_dir: &Path) -> EngineResult<Vec<String>> {
+    let _guard = ffi_guard();
+    ffi::read_project_auxiliaries_raw(&path.to_string_lossy(), &out_dir.to_string_lossy())
+        .map(|v| v.into_iter().collect())
+        .map_err(|e| EngineError::new(EngineErrorCode::InvalidModel, e.to_string()))
 }
 
 /// G-code tranché d'un plateau pour un .gcode.3mf.

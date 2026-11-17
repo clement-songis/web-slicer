@@ -171,6 +171,14 @@ pub async fn import(
         )
         .await?;
 
+    // Fichiers auxiliaires du 3MF (Auxiliaries/), extraits par libslic3r comme à
+    // l'ouverture d'un projet dans Orca. Un échec n'empêche pas l'import.
+    let aux_dir = state.files.auxiliaries_dir(user.id, project.id);
+    if let Err(error) = crate::engine::project_3mf::read_project_auxiliaries(&bytes, &aux_dir).await
+    {
+        tracing::warn!(%error, "fichiers auxiliaires du 3MF ignorés");
+    }
+
     for (model, mesh) in models {
         let converter = state.converter.clone();
         tokio::spawn(async move {

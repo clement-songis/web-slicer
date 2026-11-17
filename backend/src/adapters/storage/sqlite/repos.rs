@@ -98,6 +98,9 @@ fn row_to_printer(row: &SqliteRow) -> StorageResult<Printer> {
         moonraker_url: row.get("moonraker_url"),
         api_key: row.get("api_key"),
         machine_preset_id: parse_id(&row.get::<String, _>("machine_preset_id"))?,
+        host_type: row.get("host_type"),
+        host_options: serde_json::from_str(&row.get::<String, _>("host_options"))
+            .unwrap_or_else(|_| serde_json::json!({})),
     })
 }
 
@@ -885,6 +888,30 @@ impl SqlitePrinterRepo {
 
 #[async_trait]
 impl PrinterRepo for SqlitePrinterRepo {
+    async fn set_host(
+        &self,
+        owner: UserId,
+        id: PrinterId,
+        host_type: &str,
+        host_options: &serde_json::Value,
+    ) -> StorageResult<Printer> {
+        let n = sqlx::query(
+            "UPDATE printers SET host_type = ?, host_options = ? WHERE id = ? AND user_id = ?",
+        )
+        .bind(host_type)
+        .bind(host_options.to_string())
+        .bind(id_str(id))
+        .bind(id_str(owner))
+        .execute(&self.pool)
+        .await
+        .map_err(map_sqlx)?
+        .rows_affected();
+        if n == 0 {
+            return Err(StorageError::NotFound);
+        }
+        self.get(owner, id).await
+    }
+
     async fn create(&self, owner: UserId, printer: NewPrinter) -> StorageResult<Printer> {
         let mut tx = begin_write(&self.pool).await.map_err(map_sqlx)?;
         ensure_machine_preset_visible(&mut tx, owner, printer.machine_preset_id).await?;

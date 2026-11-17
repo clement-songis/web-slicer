@@ -121,6 +121,9 @@ struct Project3mfRequest {
     config: engine::api::DynamicPrintConfig,
     #[serde(default)]
     plates: Vec<engine::threemf::ProjectPlate>,
+    /// Fichiers auxiliaires à empaqueter (Auxiliaries/), optionnel.
+    #[serde(default)]
+    aux_dir: Option<PathBuf>,
     output_path: PathBuf,
 }
 
@@ -377,6 +380,97 @@ fn main() {
             }
         }
         // Export Draco (menu Export › … DRC d'Orca, `store_drc`).
+        Some("load-step") => {
+            // load-step <fichier.step> <options.json> <sortie.json> : StepMeshDialog d'Orca.
+            let (Some(path), Some(opts), Some(out)) = (
+                args.get(2).map(PathBuf::from),
+                args.get(3).map(PathBuf::from),
+                args.get(4).map(PathBuf::from),
+            ) else {
+                eprintln!("usage: load-step <fichier.step> <options.json> <sortie.json>");
+                std::process::exit(2);
+            };
+            let result = read_json_bounded::<engine::adapters::ffi::StepMeshOptions>(&opts)
+                .and_then(|o| engine::adapters::ffi::load_step(&path, o))
+                .and_then(|(model, dialog_triangles)| {
+                    // Un maillage par pièce (volume ; découpe : un par solide).
+                    let mut objects: Vec<serde_json::Value> = Vec::new();
+                    for o in &model.objects {
+                        for v in &o.volumes {
+                            let mut single = o.clone();
+                            single.volumes = vec![v.clone()];
+                            let mesh = engine::adapters::ffi::convert_to_mesh_model(&engine::api::Model {
+                                objects: vec![single],
+                                custom_gcodes: Vec::new(),
+                            });
+                            objects.push(serde_json::json!({ "name": v.name, "mesh": mesh }));
+                        }
+                    }
+                    let view = serde_json::json!({ "dialog_triangles": dialog_triangles, "objects": objects });
+                    std::fs::write(&out, view.to_string())
+                        .map_err(|e| engine::api::EngineError::new(engine::api::EngineErrorCode::Io, e.to_string()))
+                });
+            match result {
+                Ok(()) => emit_json_result(&serde_json::json!({ "path": out })),
+                Err(e) => {
+                    emit_error(&code_slug(e.code), &e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Some("load-obj-colors") => {
+            // load-obj-colors <fichier.obj> <sortie.json> : peinture MMU + palette.
+            let (Some(path), Some(out)) = (
+                args.get(2).map(PathBuf::from),
+                args.get(3).map(PathBuf::from),
+            ) else {
+                eprintln!("usage: load-obj-colors <fichier.obj> <sortie.json>");
+                std::process::exit(2);
+            };
+            let result = engine::adapters::ffi::load_obj_colors(&path).and_then(|colors| {
+                let volume = &colors.model.objects[0].volumes[0];
+                let mut mmu = serde_json::Map::new();
+                for (channel, triangle, state) in &volume.paint.facets {
+                    if *channel == engine::api::PaintChannel::Mmu {
+                        mmu.insert(triangle.to_string(), state.clone().into());
+                    }
+                }
+                let view = serde_json::json!({
+                    "colored": colors.colored,
+                    "palette": colors.palette,
+                    "extruder": volume.extruder,
+                    "triangles": volume.mesh.indices.len(),
+                    "painting": { "mmu": mmu },
+                });
+                std::fs::write(&out, view.to_string()).map_err(|e| {
+                    engine::api::EngineError::new(engine::api::EngineErrorCode::Io, e.to_string())
+                })
+            });
+            match result {
+                Ok(()) => emit_json_result(&serde_json::json!({ "path": out })),
+                Err(e) => {
+                    emit_error(&code_slug(e.code), &e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Some("read-project-aux") => {
+            // read-project-aux <fichier.3mf> <dossier> : fichiers auxiliaires.
+            let (Some(path), Some(out)) = (
+                args.get(2).map(PathBuf::from),
+                args.get(3).map(PathBuf::from),
+            ) else {
+                eprintln!("usage: read-project-aux <fichier.3mf> <dossier>");
+                std::process::exit(2);
+            };
+            match engine::adapters::ffi::read_project_auxiliaries(&path, &out) {
+                Ok(files) => emit_json_result(&serde_json::json!({ "files": files })),
+                Err(e) => {
+                    emit_error(&code_slug(e.code), &e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
         Some("calib-project") => {
             // calib-project <request.json> : { request, config, resources } → CalibProject
             let Some(path) = args.get(2).map(PathBuf::from) else {
@@ -604,10 +698,11 @@ fn run_simplify(path: &Path) -> engine::api::EngineResult<SimplifyResponse> {
 
 fn run_export_project_3mf(path: &Path) -> engine::api::EngineResult<Gcode3mfResponse> {
     let request: Project3mfRequest = read_json_bounded(path)?;
-    engine::adapters::ffi::write_project_3mf_with_plates(
+    engine::adapters::ffi::write_project_3mf_with_auxiliaries(
         &request.model,
         &request.config,
         &request.plates,
+        request.aux_dir.as_deref().filter(|p| p.is_dir()),
         &request.output_path,
     )?;
     Ok(Gcode3mfResponse {

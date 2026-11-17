@@ -96,6 +96,34 @@ Slic3r::Model read_any(const std::string &file)
 
 } // namespace
 
+rust::Vec<RawObject> model_to_raw(const Slic3r::Model &model);
+
+// Import STEP avec les réglages du dialogue StepMeshDialog d'Orca (Model::
+// read_from_step : Step::load puis Step::mesh(linear, angle, split compound)).
+// Renvoie aussi le nombre de triangles annoncé par le dialogue
+// (Step::get_triangle_num) pour ces déflexions.
+RawStepMesh load_step_raw(rust::Str path_str, double linear, double angle, bool split_compound)
+{
+    const std::string file(path_str);
+    if (!(linear > 0.0) || !(angle > 0.0))
+        throw std::runtime_error("déflexions STEP strictement positives attendues");
+    Slic3r::Step step(file);
+    if (step.load() != Slic3r::Step::Step_Status::LOAD_SUCCESS)
+        throw std::runtime_error("échec de lecture STEP : " + file);
+    RawStepMesh out;
+    out.dialog_triangles = step.get_triangle_num(linear, angle);
+    Slic3r::Model model;
+    bool cancel = false;
+    if (step.mesh(&model, cancel, split_compound, linear, angle) != Slic3r::Step::Step_Status::MESH_SUCCESS)
+        throw std::runtime_error("échec de tessellation STEP : " + file);
+    if (model.objects.empty())
+        throw std::runtime_error("STEP vide : " + file);
+    for (Slic3r::ModelObject *object : model.objects)
+        object->add_instance();
+    out.objects = model_to_raw(model);
+    return out;
+}
+
 // Point d'accès non anonyme (calib_project.cpp : modèles de resources/calib).
 Slic3r::Model load_any_model(const std::string &file)
 {

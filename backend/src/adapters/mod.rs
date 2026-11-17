@@ -3,5 +3,6 @@
 
 pub mod files;
 pub mod moonraker;
+pub mod print_host;
 pub mod sessions;
 pub mod storage;

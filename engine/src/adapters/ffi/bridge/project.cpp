@@ -17,6 +17,7 @@
 #include "libslic3r/Format/bbs_3mf.hpp"
 #include "libslic3r/GCode/GCodeProcessor.hpp"
 
+#include <boost/filesystem.hpp>
 #include <cstdio>
 
 #include <nlohmann/json.hpp>
@@ -373,13 +374,55 @@ void write_project_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config
 // ShareMesh)) : projet 3MF écrit par store_bbs_3mf avec ses plateaux
 // (PartPlateList::store_to_3mf_structure sans tranchage : index, nom, réglages
 // du plateau, instances posées), G-code personnalisés par couche et config.
+namespace {
+// Copie récursive (fichiers ordinaires) de `from` vers `to` ; chemins relatifs.
+std::vector<std::string> copy_tree(const boost::filesystem::path &from, const boost::filesystem::path &to)
+{
+    namespace fs = boost::filesystem;
+    std::vector<std::string> copied;
+    if (!fs::is_directory(from))
+        return copied;
+    for (fs::recursive_directory_iterator it(from), end; it != end; ++it) {
+        if (!fs::is_regular_file(it->path()))
+            continue;
+        const fs::path rel = fs::relative(it->path(), from);
+        fs::create_directories((to / rel).parent_path());
+        fs::copy_file(it->path(), to / rel, fs::copy_options::overwrite_existing);
+        copied.push_back(rel.generic_string());
+    }
+    std::sort(copied.begin(), copied.end());
+    return copied;
+}
+} // namespace
+
+// Fichiers auxiliaires d'un projet 3MF (dossier Auxiliaries/ : images du
+// modèle, nomenclature, guide d'assemblage, autres), extraits par load_bbs_3mf
+// dans le dossier temporaire du modèle (Model::get_auxiliary_file_temp_path)
+// comme à l'ouverture d'un projet dans Orca, puis copiés dans `out_dir`.
+rust::Vec<rust::String> read_project_auxiliaries_raw(rust::Str path, rust::Str out_dir)
+{
+    using namespace Slic3r;
+    DynamicPrintConfig config;
+    ConfigSubstitutionContext ctx{ForwardCompatibilitySubstitutionRule::Enable};
+    Model model = Model::read_from_file(std::string(path), &config, &ctx,
+                                        LoadStrategy::LoadModel | LoadStrategy::LoadAuxiliary);
+    rust::Vec<rust::String> out;
+    for (const std::string &rel : copy_tree(model.get_auxiliary_file_temp_path(), std::string(out_dir)))
+        out.push_back(rust::String(rel));
+    return out;
+}
+
 void write_project_plates_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
                               rust::Str custom_gcodes_json,
-                              const rust::Vec<RawProjectPlate> &plates, rust::Str out_path)
+                              const rust::Vec<RawProjectPlate> &plates, rust::Str aux_dir, rust::Str out_path)
 {
     using namespace Slic3r;
     Model model;
     raw_into_model(objects, model);
+    // Fichiers auxiliaires : déposés dans le dossier temporaire du modèle, que
+    // store_bbs_3mf empaquette sous Auxiliaries/ (comme Orca).
+    if (!aux_dir.empty())
+        copy_tree(std::string(aux_dir), model.get_auxiliary_file_temp_path());
     custom_gcodes_from_json(model, std::string(custom_gcodes_json));
     // Extrudeur de l'objet (ModelObject::config « extruder », celui qu'Orca
     // affiche et relit) : la scène le porte sur les volumes ; on le remonte
