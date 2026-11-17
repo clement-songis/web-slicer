@@ -132,6 +132,41 @@ def two_volumes(src: Path, dest: Path) -> None:
                 out.writestr(i, d)
 
 
+def mmu_painted(src: Path, dest: Path) -> None:
+    """cube20 seul, moitié haute PEINTE en filament 2 (peinture MMU, canal
+    mmu_segmentation : état « 8 » = extrudeur 2 dans la sérialisation
+    TriangleSelector), le reste sur le filament 1. Écrit par engine-worker
+    (store_bbs_3mf), config = celle de two_objects.3mf."""
+    worker = Path(__file__).resolve().parents[3].parent / "target/debug/engine-worker"
+    with tempfile.TemporaryDirectory() as tmp:
+        t = Path(tmp)
+        subprocess.run([str(worker), "load-model-raw", str(src), "3mf", str(t / "m.json")], check=True,
+                       capture_output=True)
+        m = json.loads((t / "m.json").read_text())
+        cube = m["objects"][0]
+        vol = cube["volumes"][0]
+        vol["extruder"] = 1
+        verts = vol["mesh"]["vertices"]
+        zs = [v[2] for v in verts]
+        mid = (min(zs) + max(zs)) / 2
+        facets = []
+        for i, tri in enumerate(vol["mesh"]["indices"]):
+            if sum(verts[k][2] for k in tri) / 3 > mid:
+                facets.append(["mmu", i, "8"])
+        vol["paint"] = {"facets": facets}
+        req = {"model": {"objects": [cube]}, "config": {}, "plates": [], "output_path": str(t / "out.3mf")}
+        (t / "req.json").write_text(json.dumps(req))
+        subprocess.run([str(worker), "export-project-3mf", str(t / "req.json")], check=True, capture_output=True)
+        cfg = zipfile.ZipFile(src).read("Metadata/project_settings.config")
+        z = zipfile.ZipFile(t / "out.3mf")
+        with zipfile.ZipFile(dest, "w", zipfile.ZIP_DEFLATED) as out:
+            for i in z.infolist():
+                d = z.read(i.filename)
+                if i.filename == "Metadata/project_settings.config":
+                    d = cfg
+                out.writestr(i, d)
+
+
 def dump_presets() -> None:
     """Presets aplatis (mêmes que la scène) pour le test de fusion backend."""
     d = HERE / "presets"; d.mkdir(exist_ok=True)
@@ -144,6 +179,10 @@ if __name__ == "__main__":
     if "--presets-only" in sys.argv:
         raise SystemExit(0)
     raw = HERE / "_scene.3mf"
+    if "--mmu-only" in sys.argv:
+        mmu_painted(HERE / "two_objects.3mf", HERE / "mmu_painted.3mf")
+        reference(HERE / "mmu_painted.3mf")
+        raise SystemExit(0)
     if "--volumes-only" in sys.argv:
         two_volumes(HERE / "two_objects.3mf", HERE / "two_volumes.3mf")
         reference(HERE / "two_volumes.3mf")

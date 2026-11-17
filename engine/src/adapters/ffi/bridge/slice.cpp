@@ -17,6 +17,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <boost/algorithm/string.hpp>
 #include <cstdlib>
 #include <memory>
 #include <new>
@@ -141,6 +142,43 @@ void restore_export_metadata(const std::string &path,
     auto has = [&source](const std::string &key) { return source.has(key); };
     auto value = [&source](const std::string &key) { return source.opt_serialize(key); };
 
+    // Imprimante à plusieurs variantes d'extrudeur (ex. X1C : Direct Drive
+    // Standard / High Flow) : le 3MF et les presets stockent les vecteurs par
+    // variante ; Orca (Print::apply → update_values_to_printer_extruders) les
+    // réduit à la variante de l'extrudeur courant dans le G-code. Indice de
+    // cette variante pour l'extrudeur 1 (printer_extruder_variant).
+    int variant_index = -1;
+    size_t variant_count = 0;
+    std::string variant_name;
+    if (const auto *variants = source.option<Slic3r::ConfigOptionStrings>("printer_extruder_variant");
+        variants && variants->values.size() > 1) {
+        variant_count = variants->values.size();
+        int type = int(Slic3r::etDirectDrive), volume = int(Slic3r::nvtStandard);
+        if (const auto *opt = dynamic_cast<const Slic3r::ConfigOptionEnumsGeneric *>(source.option("extruder_type"));
+            opt && !opt->values.empty())
+            type = opt->values[0];
+        if (const auto *opt = dynamic_cast<const Slic3r::ConfigOptionEnumsGeneric *>(source.option("nozzle_volume_type"));
+            opt && !opt->values.empty())
+            volume = opt->values[0];
+        variant_name = Slic3r::get_extruder_variant_string(static_cast<Slic3r::ExtruderType>(type),
+                                                           static_cast<Slic3r::NozzleVolumeType>(volume));
+        const auto found = std::find(variants->values.begin(), variants->values.end(), variant_name);
+        variant_index = found == variants->values.end() ? 0 : int(found - variants->values.begin());
+    }
+    // Sous-vecteur de la variante courante : `stride` valeurs par variante.
+    auto pick_variant = [&](const std::vector<std::string> &values, size_t stride) {
+        if (variant_index < 0 || values.size() != variant_count * stride)
+            return values;
+        return std::vector<std::string>(values.begin() + variant_index * stride,
+                                        values.begin() + (variant_index + 1) * stride);
+    };
+    auto join = [](const std::vector<std::string> &values) {
+        std::string out;
+        for (size_t i = 0; i < values.size(); ++i)
+            out += (i ? "," : "") + values[i];
+        return out;
+    };
+
     // Valeurs machine saisies par l'utilisateur, avant la normalisation interne.
     const auto raw = nlohmann::json::parse(raw_json);
     for (const char *key : {
@@ -151,15 +189,28 @@ void restore_export_metadata(const std::string &path,
              "machine_max_jerk_y", "machine_max_jerk_z", "machine_max_speed_e",
              "machine_max_speed_x", "machine_max_speed_y", "machine_max_speed_z",
              "machine_min_extruding_rate", "machine_min_travel_rate"})
-        if (raw.contains(key) && raw[key].is_string())
-            set(key, raw[key].get<std::string>());
+        if (raw.contains(key) && raw[key].is_string()) {
+            std::string text = raw[key].get<std::string>();
+            if (variant_index >= 0) {
+                // machine_max_* : [normal, silencieux] par variante.
+                std::vector<std::string> parts;
+                boost::split(parts, text, boost::is_any_of(","));
+                text = join(pick_variant(parts, 2));
+            }
+            set(key, text);
+        }
 
     // Les enums de projet ne sont jamais entre guillemets dans le G-code.
     for (const auto &[key, fallback] : std::vector<std::pair<std::string, std::string>>{
              {"extruder_type", "Direct Drive"}, {"nozzle_type", "undefine"},
              {"nozzle_volume_type", "Standard"}, {"overhang_fan_threshold", "50%"},
              {"retract_lift_enforce", "All Surfaces"}, {"z_hop_types", "Normal Lift"}}) {
-        const std::string current = has(key) ? value(key) : std::string();
+        std::string current = has(key) ? value(key) : std::string();
+        if (variant_index >= 0 && (key == "nozzle_type" || key == "z_hop_types") && !current.empty()) {
+            std::vector<std::string> parts;
+            boost::split(parts, current, boost::is_any_of(","));
+            current = join(pick_variant(parts, 1));
+        }
         set(key, current.empty() ? fallback : current);
     }
 
@@ -191,14 +242,29 @@ void restore_export_metadata(const std::string &path,
         for (auto &variant : values)
             if (std::find(known.begin(), known.end(), variant) == known.end())
                 variant = fallback;
+        // Vecteur par (filament × variante) : une entrée par filament, celle
+        // de la variante courante (même réduction qu'Orca).
+        if (variant_index >= 0 && values.size() == static_cast<size_t>(filaments) * variant_count) {
+            std::vector<std::string> reduced;
+            for (int f = 0; f < filaments; ++f)
+                reduced.push_back(values[f * variant_count + variant_index]);
+            values = reduced;
+        }
         set("filament_extruder_variant", Slic3r::ConfigOptionStrings(values).serialize());
     }
     set("filament_ids",
         Slic3r::ConfigOptionStrings(std::vector<std::string>(filaments, "")).serialize());
-    std::vector<int> self_indices;
-    for (int index = 0; index < filaments; ++index)
-        self_indices.push_back(index + 1);
-    set("filament_self_index", Slic3r::ConfigOptionInts(self_indices).serialize());
+    // filament_self_index : conservé tel que fourni (par filament × variante,
+    // Orca l'écrit inchangé : X1C « 1,1,2,2 »), sinon 1..N.
+    if (const auto *given = source.option<Slic3r::ConfigOptionInts>("filament_self_index");
+        given && given->values.size() > static_cast<size_t>(filaments)) {
+        set("filament_self_index", given->serialize());
+    } else {
+        std::vector<int> self_indices;
+        for (int index = 0; index < filaments; ++index)
+            self_indices.push_back(index + 1);
+        set("filament_self_index", Slic3r::ConfigOptionInts(self_indices).serialize());
+    }
 
     // inherits_group[0] = `inherits` du preset d'impression, comme Orca
     // (CLI : OrcaSlicer.cpp:2985 `new_process_system_name` = inherits d'un preset
@@ -465,6 +531,67 @@ void cli_update_flush_volumes(Slic3r::DynamicPrintConfig &config,
     config.set_key_value("flush_multiplier", new ConfigOptionFloats(multipliers));
 }
 
+// PresetBundle::update_multi_material_filament_presets (Orca) : la matrice de
+// purge est redimensionnée au nombre de filaments × buses quand sa taille ne
+// correspond pas (anciens nombres déduits de flush_multiplier) : valeurs
+// existantes recopiées, nouvelles = flush_volumes_vector[2i] +
+// flush_volumes_vector[2j+1] (140 par défaut), diagonale nulle ;
+// flush_multiplier complété à 1 par buse. Sans cela libslic3r lit hors de la
+// matrice (SIGSEGV dans calc_filament_change_info_by_toolorder).
+void orca_resize_flush_matrix(Slic3r::DynamicPrintConfig &config, int num_filaments)
+{
+    using namespace Slic3r;
+    const DynamicPrintConfig &view = config;
+    const auto *matrix_opt = view.option<ConfigOptionFloats>("flush_volumes_matrix");
+    if (!matrix_opt || num_filaments < 1)
+        return;
+    const std::vector<double> old_matrix = matrix_opt->values;
+    std::vector<double> multipliers;
+    if (const auto *opt = view.option<ConfigOptionFloats>("flush_multiplier"))
+        multipliers = opt->values;
+    const size_t old_nozzle_nums = std::max<size_t>(1, multipliers.size());
+    size_t nozzle_nums = 1;
+    if (const auto *nozzles = view.option<ConfigOptionFloats>("nozzle_diameter"))
+        nozzle_nums = std::max<size_t>(1, nozzles->values.size());
+    const size_t n = static_cast<size_t>(num_filaments);
+    if (old_matrix.size() >= n * n * nozzle_nums)
+        return;
+    if (old_nozzle_nums != nozzle_nums) {
+        multipliers.resize(nozzle_nums, 1.);
+        config.set_key_value("flush_multiplier", new ConfigOptionFloats(multipliers));
+    }
+    const size_t old_n = size_t(std::sqrt(double(old_matrix.size() / old_nozzle_nums)) + EPSILON);
+    // Le CLI n'appelle pas cette règle (elle vit dans le PresetBundle de la GUI) :
+    // une matrice plus grande que nécessaire (ex. 4×4 du preset pour un seul
+    // filament) est conservée telle quelle, comme dans le bloc de config du CLI.
+    // Elle n'est redimensionnée que si elle est trop petite pour libslic3r
+    // (filaments² × buses), cas où Orca plante faute de la règle GUI.
+    if (old_matrix.size() >= n * n * nozzle_nums)
+        return;
+    std::vector<double> volumes;
+    if (const auto *opt = view.option<ConfigOptionFloats>("flush_volumes_vector"))
+        volumes = opt->values;
+    while (volumes.size() < 2 * n) {
+        volumes.push_back(volumes.size() > 1 ? volumes[0] : 140.);
+        volumes.push_back(volumes.size() > 1 ? volumes[1] : 140.);
+    }
+    volumes.resize(2 * n);
+    const size_t old_size = old_n * old_n, new_size = n * n;
+    std::vector<double> next(new_size * nozzle_nums, 0.);
+    for (size_t i = 0; i < n; ++i)
+        for (size_t j = 0; j < n; ++j)
+            for (size_t nozzle = 0; nozzle < nozzle_nums; ++nozzle) {
+                const size_t at = i * n + j + new_size * nozzle;
+                const size_t from = i * old_n + j + old_size * nozzle;
+                if (i < old_n && j < old_n && nozzle < old_nozzle_nums && from < old_matrix.size())
+                    next[at] = old_matrix[from];
+                else
+                    next[at] = i == j ? 0. : volumes[2 * i] + volumes[2 * j + 1];
+            }
+    config.set_key_value("flush_volumes_matrix", new ConfigOptionFloats(next));
+    config.set_key_value("flush_volumes_vector", new ConfigOptionFloats(volumes));
+}
+
 bool is_bbl_vendor_preset(const Slic3r::DynamicPrintConfig &config)
 {
     const auto starts_with_bambu = [](const std::string &name) {
@@ -616,6 +743,7 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
             prepare_pa_pattern(model, config, params, print.is_BBL_printer());
         print.set_calib_params(params);
     }
+    orca_resize_flush_matrix(config, filament_count(config));
     print.apply(model, config);
 
     // Paramètres par extrudeur/vitesse renseignés côté Model avant le slicing
@@ -654,6 +782,19 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
                         std::to_string(filaments) + " (filament_colour / filament_settings_id)");
             }
         const Slic3r::DynamicPrintConfig &view = config;
+        // Vecteurs par filament lus SANS borne par l'ordonnancement des outils
+        // (calc_filament_change_info_by_toolorder) : un projet incohérent (ex.
+        // 3MF exporté par le CLI pour la Prusa XL 5T : 2 filament_diameter,
+        // 1 filament_colour) fait planter Orca ; ici erreur explicite.
+        // (filament_printable est lu borné : un seul élément est valide.)
+        for (const char *key : {"filament_colour", "filament_is_support"}) {
+            const auto *opt = dynamic_cast<const Slic3r::ConfigOptionVectorBase *>(view.option(key));
+            if (opt && opt->size() > 0 && opt->size() < static_cast<size_t>(filaments))
+                throw std::runtime_error("configuration invalide : " + std::string(key) + " a " +
+                                         std::to_string(opt->size()) + " valeur(s) pour " +
+                                         std::to_string(filaments) +
+                                         " filaments (projet incohérent : filaments manquants)");
+        }
         const auto *matrix = view.option<Slic3r::ConfigOptionFloats>("flush_volumes_matrix");
         const auto *nozzles = view.option<Slic3r::ConfigOptionFloats>("nozzle_diameter");
         const size_t nozzle_count = nozzles ? std::max<size_t>(1, nozzles->values.size()) : 1;

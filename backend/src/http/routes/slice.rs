@@ -351,12 +351,18 @@ fn join_string_items(items: &[Value]) -> String {
 /// filament qui ne définit pas `filament_colour` (défaut #F2754E) décalait
 /// les vecteurs : [#FF0000] au lieu de [#F2754E, #FF0000] (lot multi-filament).
 fn merge_filament_configs(merged: &mut DynamicPrintConfig, filaments: Vec<DynamicPrintConfig>) {
-    let vector_keys: std::collections::BTreeSet<String> = filaments
+    // Clés par filament lues sans borne par libslic3r (ordonnancement des outils) :
+    // toujours une valeur par filament, même si aucun preset ne les définit
+    // (presets Prusa sans filament_is_support : vecteur à 1 entrée pour 2
+    // filaments → refus « projet incohérent »). Orca les complète par le défaut.
+    const ALWAYS_PER_FILAMENT: [&str; 2] = ["filament_colour", "filament_is_support"];
+    let mut vector_keys: std::collections::BTreeSet<String> = filaments
         .iter()
         .flat_map(|f| f.0.iter())
         .filter(|(_, v)| is_extruder_vector(v))
         .map(|(k, _)| k.clone())
         .collect();
+    vector_keys.extend(ALWAYS_PER_FILAMENT.iter().map(|k| k.to_string()));
     let multi = filaments.len() > 1;
     for (index, mut filament) in filaments.into_iter().enumerate() {
         if multi {
@@ -815,7 +821,10 @@ mod tests {
         merged.0.extend(extra.0);
         apply_project_config(
             &mut merged,
-            &serde_json::json!({ "projectConfig": { "filament_colour": ["", "#FF0000"] } }),
+            &serde_json::json!({ "projectConfig": std::env::var("MF_PROJECT_CONFIG")
+                .ok()
+                .and_then(|s| serde_json::from_str::<Value>(&s).ok())
+                .unwrap_or_else(|| serde_json::json!({ "filament_colour": ["", "#FF0000"] })) }),
         );
         std::fs::write(
             std::env::var("MF_MERGED_OUT").unwrap(),

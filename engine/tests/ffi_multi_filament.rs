@@ -155,14 +155,9 @@ fn printer_scene(name: &str) -> Result<Vec<String>, engine::api::EngineError> {
 ///   doublés sur une imprimante à deux variantes (Direct Drive Standard /
 ///   High Flow) — bloc de configuration seulement.
 fn without_known_x1c_gaps(lines: Vec<String>) -> Vec<String> {
-    const VARIANT_KEYS: [&str; 6] = [
-        "machine_max_",
-        "nozzle_type",
-        "z_hop_types",
-        "filament_self_index",
-        "filament_extruder_variant",
-        "inherits_group",
-    ];
+    // Les vecteurs par variante sont alignés sur Orca (réduits à la variante
+    // courante) ; reste inherits_group (noms de presets du 3MF).
+    const VARIANT_KEYS: [&str; 1] = ["inherits_group"];
     lines
         .into_iter()
         .filter(|l| !(l.contains("label id") || l.contains("object ids of")))
@@ -200,6 +195,23 @@ fn prusa_xl_5t_two_filaments_does_not_crash() {
             "le worker meurt au lieu d'une erreur claire : {e:?}"
         ),
     }
+}
+
+/// Peinture MMU (canal mmu_segmentation) : moitié haute du cube peinte en
+/// filament 2 → segmentation multi-matériau et changements d'outil d'Orca.
+#[test]
+fn mmu_painted_cube_matches_orca() {
+    let (model, ours) = slice_3mf("mmu_painted.3mf");
+    let painted = model.objects[0].volumes[0]
+        .paint
+        .facets
+        .iter()
+        .filter(|(c, _, _)| *c == engine::api::PaintChannel::Mmu)
+        .count();
+    assert!(painted > 0, "peinture MMU relue");
+    let orca = normalize(&std::fs::read_to_string(fixture("mmu_painted.orca.gcode")).unwrap());
+    assert!(tool_changes(&orca) > 2, "la référence change d'outil");
+    assert_same("mmu_painted", &ours, &orca);
 }
 
 /// Purge dans les objets (`flush_into_objects`) : le moteur tranchait en
