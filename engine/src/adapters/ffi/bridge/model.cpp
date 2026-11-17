@@ -96,6 +96,12 @@ Slic3r::Model read_any(const std::string &file)
 
 } // namespace
 
+// Point d'accès non anonyme (calib_project.cpp : modèles de resources/calib).
+Slic3r::Model load_any_model(const std::string &file)
+{
+    return read_any(file);
+}
+
 void init_runtime(rust::Str temp_dir, rust::Str data_dir)
 {
     Slic3r::set_temporary_dir(std::string(temp_dir));

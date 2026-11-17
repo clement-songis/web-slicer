@@ -3,6 +3,7 @@
 
 pub mod admin;
 pub mod auth;
+pub mod calibration;
 pub mod export;
 pub mod flush;
 pub mod gcode_open;
@@ -108,6 +109,20 @@ where
         .route("/api/projects/{id}/export/drc", post(export::export_drc))
         .route("/api/projects/{id}/export/stl", post(export::export_stl))
         .route("/api/flush-volumes", post(flush::flush_volumes))
+        .route(
+            "/api/projects/{id}/calibration",
+            post(calibration::create_project_calibration),
+        )
+        .route(
+            "/api/calibrations/pa",
+            get(calibration::list_pa).post(calibration::create_pa),
+        )
+        .route(
+            "/api/calibrations/pa/{id}",
+            get(calibration::get_pa)
+                .put(calibration::update_pa)
+                .delete(calibration::delete_pa),
+        )
         .route(
             "/api/projects/{id}/export/sliced",
             post(sliced::export_sliced),

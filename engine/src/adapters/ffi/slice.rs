@@ -72,6 +72,8 @@ pub fn run_in_worker(request_path: &Path) -> EngineResult<SliceResult> {
                 freq_end_x: params.freq_end_x,
                 freq_start_y: params.freq_start_y,
                 freq_end_y: params.freq_end_y,
+                test_model: params.test_model,
+                shaper_type: params.shaper_type.as_orca().to_string(),
             }
         }
         None => ffi::RawCalibParams::default(),

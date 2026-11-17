@@ -6,6 +6,7 @@
 //! Le contrat `Storage` (T024) est **validé** contre un Postgres réel par
 //! `tests/storage_contract_postgres.rs` (base éphémère isolée).
 
+mod pa_calib;
 mod repos;
 
 use std::sync::Arc;
@@ -16,8 +17,8 @@ use sqlx::postgres::PgPoolOptions;
 use sqlx::PgPool;
 
 use crate::domain::{
-    GcodeRepo, InstanceRepo, JobRepo, ModelRepo, PresetRepo, PrinterRepo, ProjectRepo, Storage,
-    StorageError, StorageResult, UserRepo,
+    GcodeRepo, InstanceRepo, JobRepo, ModelRepo, PaCalibrationRepo, PresetRepo, PrinterRepo,
+    ProjectRepo, Storage, StorageError, StorageResult, UserRepo,
 };
 
 use repos::{
@@ -35,6 +36,7 @@ pub struct PostgresStorage {
     jobs: PgJobRepo,
     gcodes: PgGcodeRepo,
     instance: PgInstanceRepo,
+    pa_calibrations: pa_calib::PgPaCalibrationRepo,
 }
 
 impl PostgresStorage {
@@ -62,6 +64,7 @@ impl PostgresStorage {
             printers: PgPrinterRepo::new(pool.clone()),
             jobs: PgJobRepo::new(pool.clone()),
             gcodes: PgGcodeRepo::new(pool.clone()),
+            pa_calibrations: pa_calib::PgPaCalibrationRepo::new(pool.clone()),
             instance: PgInstanceRepo::new(pool),
         }
     }
@@ -94,6 +97,9 @@ impl Storage for PostgresStorage {
     }
     fn instance(&self) -> &dyn InstanceRepo {
         &self.instance
+    }
+    fn pa_calibrations(&self) -> &dyn PaCalibrationRepo {
+        &self.pa_calibrations
     }
 }
 

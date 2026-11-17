@@ -199,7 +199,10 @@ impl CustomGcodeItem {
         if !(self.print_z.is_finite() && self.print_z > 0.0 && self.print_z < 10_000.0) {
             return Err("cote de G-code personnalisé invalide".into());
         }
-        if self.extra.len() > 4096 || self.color.len() > 32 || !(1..=64).contains(&self.extruder) {
+        // extra : motifs PA générés (Plater::_calib_pa_pattern_gen_gcode) — plusieurs
+        // dizaines de Ko par couche ; extrudeur 0 = extrudeur courant (Orca).
+        if self.extra.len() > 1 << 20 || self.color.len() > 32 || !(0..=64).contains(&self.extruder)
+        {
             return Err("G-code personnalisé hors bornes".into());
         }
         Ok(())

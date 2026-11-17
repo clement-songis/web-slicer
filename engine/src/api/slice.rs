@@ -60,6 +60,47 @@ impl CalibMode {
     }
 }
 
+/// `InputShaperType` d'Orca (PrintConfig.cpp, `input_shaping_type`), valeur
+/// transmise à `GCodeWriter::set_input_shaping` (`Calib_Params::shaper_type`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
+pub enum ShaperType {
+    #[default]
+    Default,
+    #[serde(rename = "MZV")]
+    Mzv,
+    #[serde(rename = "ZV")]
+    Zv,
+    #[serde(rename = "ZVD")]
+    Zvd,
+    #[serde(rename = "ZVDD")]
+    Zvdd,
+    #[serde(rename = "ZVDDD")]
+    Zvddd,
+    #[serde(rename = "EI")]
+    Ei,
+    #[serde(rename = "EI2")]
+    Ei2,
+    #[serde(rename = "2HUMP_EI")]
+    TwoHumpEi,
+    #[serde(rename = "EI3")]
+    Ei3,
+    #[serde(rename = "3HUMP_EI")]
+    ThreeHumpEi,
+    #[serde(rename = "DAA")]
+    Daa,
+    Disable,
+}
+
+impl ShaperType {
+    /// Chaîne d'Orca (`enum_values` de `input_shaping_type`).
+    pub fn as_orca(self) -> &'static str {
+        [
+            "Default", "MZV", "ZV", "ZVD", "ZVDD", "ZVDDD", "EI", "EI2", "2HUMP_EI", "EI3",
+            "3HUMP_EI", "DAA", "Disable",
+        ][self as usize]
+    }
+}
+
 /// Sous-ensemble de `Calib_Params` posé par les calibrations du menu
 /// (`Plater::calib_retraction` / `calib_VFA` / `calib_max_vol_speed`…).
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -80,6 +121,13 @@ pub struct CalibParams {
     pub freq_start_y: f64,
     #[serde(default)]
     pub freq_end_y: f64,
+    /// `Calib_Params::test_model` : modèle de tour (input shaping / cornering :
+    /// 0 = ringing_tower, 1 = fast_tower_test, 2 = SCV-V2 (cornering)).
+    #[serde(default)]
+    pub test_model: i32,
+    /// `Calib_Params::shaper_type` (input shaping).
+    #[serde(default)]
+    pub shaper_type: ShaperType,
 }
 
 impl CalibParams {
@@ -110,7 +158,16 @@ impl CalibParams {
         if damping.iter().any(|d| !(0.0..=1.0).contains(d)) {
             return Err("amortissement d'input shaping hors de [0, 1]".into());
         }
-        if self.mode != CalibMode::None && self.step <= 0.0 {
+        // Input shaping et cornering n'utilisent pas de pas (dialogues d'Orca :
+        // plage de fréquences / d'amortissement / de jerk interpolée par couche).
+        let uses_step = !matches!(
+            self.mode,
+            CalibMode::None
+                | CalibMode::InputShapingFreq
+                | CalibMode::InputShapingDamp
+                | CalibMode::Cornering
+        );
+        if uses_step && self.step <= 0.0 {
             return Err("pas de calibration nul ou négatif".into());
         }
         Ok(())

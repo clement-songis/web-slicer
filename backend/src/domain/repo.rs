@@ -10,11 +10,11 @@ use std::sync::Arc;
 use async_trait::async_trait;
 
 use super::entities::{
-    Gcode, InstanceSettings, Invitation, Model, Preset, PresetKind, Printer, Project,
-    RegistrationPolicy, Role, SlicingJob, User, UserStatus,
+    Gcode, InstanceSettings, Invitation, Model, NewPaCalibration, PaCalibration, Preset,
+    PresetKind, Printer, Project, RegistrationPolicy, Role, SlicingJob, User, UserStatus,
 };
 use super::error::StorageResult;
-use super::id::{GcodeId, JobId, ModelId, PresetId, PrinterId, ProjectId, UserId};
+use super::id::{GcodeId, JobId, ModelId, PaCalibrationId, PresetId, PrinterId, ProjectId, UserId};
 
 /// Point d'accès unique aux repos (constitution III : le métier ne connaît ni
 /// SQL ni SGBD).
@@ -27,6 +27,7 @@ pub trait Storage: Send + Sync {
     fn jobs(&self) -> &dyn JobRepo;
     fn gcodes(&self) -> &dyn GcodeRepo;
     fn instance(&self) -> &dyn InstanceRepo;
+    fn pa_calibrations(&self) -> &dyn PaCalibrationRepo;
     /// Handle partagé du dépôt de modèles — le service de conversion (T123) le
     /// capture dans une tâche `tokio` détachée (durée de vie indépendante de la
     /// requête d'upload).
@@ -200,6 +201,35 @@ pub trait PrinterRepo: Send + Sync {
         printer: NewPrinter,
     ) -> StorageResult<Printer>;
     async fn delete(&self, owner: UserId, id: PrinterId) -> StorageResult<()>;
+}
+
+/// Filtre de l'historique PA (champs absents = pas de filtre).
+#[derive(Debug, Clone, Default)]
+pub struct PaCalibrationFilter {
+    pub printer_id: Option<PrinterId>,
+    pub machine_preset: Option<String>,
+    pub filament_id: Option<String>,
+    pub filament_preset: Option<String>,
+    pub nozzle_diameter: Option<f64>,
+}
+
+#[async_trait]
+pub trait PaCalibrationRepo: Send + Sync {
+    async fn create(&self, owner: UserId, data: NewPaCalibration) -> StorageResult<PaCalibration>;
+    async fn get(&self, owner: UserId, id: PaCalibrationId) -> StorageResult<PaCalibration>;
+    /// Plus récents d'abord.
+    async fn list(
+        &self,
+        owner: UserId,
+        filter: &PaCalibrationFilter,
+    ) -> StorageResult<Vec<PaCalibration>>;
+    async fn update(
+        &self,
+        owner: UserId,
+        id: PaCalibrationId,
+        data: NewPaCalibration,
+    ) -> StorageResult<PaCalibration>;
+    async fn delete(&self, owner: UserId, id: PaCalibrationId) -> StorageResult<()>;
 }
 
 #[derive(Debug, Clone)]

@@ -336,6 +336,12 @@ void custom_gcodes_from_json(Slic3r::Model &model, const std::string &json, int 
     }
 }
 
+// Point d'accès public à config_to_json (calib_project.cpp).
+std::string config_to_json_public(const Slic3r::DynamicPrintConfig &config)
+{
+    return config_to_json(config);
+}
+
 // Point d'accès non template à config_from_json (arrange.cpp).
 void config_from_json_print(Slic3r::DynamicPrintConfig &config, const std::string &json_text)
 {

@@ -244,7 +244,7 @@ async fn source_3mf(name: &str, mesh: &engine::api::TriangleMesh) -> ApiResult<V
     })
 }
 
-async fn import_3mf_contents(
+pub(crate) async fn import_3mf_contents(
     state: &AppState,
     user_id: UserId,
     project_id: ProjectId,

@@ -5,6 +5,7 @@
 
 mod arrange;
 mod bridge;
+mod calib_project;
 mod engine;
 mod export_mesh;
 mod flush;
@@ -20,6 +21,7 @@ mod threemf;
 pub mod worker;
 
 pub use arrange::{arrange, arrange_ordered, fill_bed, orient};
+pub use calib_project::{calib_project, CalibProject, CalibRequest, CALIB_KINDS};
 pub use engine::FfiEngine;
 pub use export_mesh::export_meshes;
 pub use flush::{flush_volumes, min_flush_volumes};

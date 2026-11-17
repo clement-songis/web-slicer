@@ -833,9 +833,16 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
         params.freqEndX = calib.freq_end_x;
         params.freqStartY = calib.freq_start_y;
         params.freqEndY = calib.freq_end_y;
-        params.test_model = 0;
-        params.shaper_type = "";
-        if (params.mode == Slic3r::CalibMode::Calib_PA_Pattern)
+        params.test_model = calib.test_model;
+        params.shaper_type = std::string(calib.shaper_type);
+        // Projet construit par le serveur (calib_project.cpp, objets
+        // « pa_pattern_<vitesse>_<accél> » et G-code du motif déjà générés
+        // comme Plater::_calib_pa_pattern / _gen_gcode) : rien à préparer.
+        // Sinon (cube poignée fourni par l'interface) : préparation ici.
+        const bool prepared = !model.objects.empty() &&
+                              model.objects.front()->name.rfind("pa_pattern_", 0) == 0 &&
+                              !model.plates_custom_gcodes[model.curr_plate_index].gcodes.empty();
+        if (params.mode == Slic3r::CalibMode::Calib_PA_Pattern && !prepared)
             prepare_pa_pattern(model, config, params, print.is_BBL_printer());
         print.set_calib_params(params);
     }
@@ -950,6 +957,17 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
     }
 
     return raw;
+}
+
+// Accès publics (calib_project.cpp : _calib_pa_pattern / calib_input_shaping_*).
+bool calib_is_bbl(const Slic3r::DynamicPrintConfig &config)
+{
+    return is_bbl_vendor_preset(config);
+}
+
+bool calib_has_junction_deviation(const Slic3r::DynamicPrintConfig &config)
+{
+    return has_junction_deviation(config);
 }
 
 } // namespace webslicer

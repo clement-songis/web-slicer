@@ -97,6 +97,8 @@ fn calib(mode: CalibMode) -> CalibParams {
         freq_end_x: 0.0,
         freq_start_y: 0.0,
         freq_end_y: 0.0,
+        test_model: 0,
+        shaper_type: engine::api::ShaperType::Default,
     }
 }
 
@@ -134,6 +136,8 @@ fn input_shaping_frequency_sweeps_shaper_freq_per_layer() {
             freq_end_x: 110.0,
             freq_start_y: 15.0,
             freq_end_y: 110.0,
+            test_model: 0,
+            shaper_type: engine::api::ShaperType::Default,
             ..calib(CalibMode::InputShapingFreq)
         }),
         &klipper(),

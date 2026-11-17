@@ -49,6 +49,21 @@ pub(crate) mod ffi {
         is_seq_print: bool,
     }
 
+    /// Projet de calibration (portage des Plater::calib_* d'Orca).
+    #[derive(Debug)]
+    struct RawCalibProject {
+        name: String,
+        objects: Vec<RawObject>,
+        /// Surcharges des presets édités par Orca (JSON clé → valeur Orca).
+        overrides_json: String,
+        calib_mode: i32,
+        calib_start: f64,
+        calib_end: f64,
+        calib_step: f64,
+        /// G-code personnalisés par couche (motif PA, comme plates_custom_gcodes).
+        custom_gcodes_json: String,
+    }
+
     /// Plateau d'un projet 3MF : index, nom, réglages du plateau (JSON clé →
     /// valeur Orca) et paires plates (objet, instance) posées dessus.
     #[derive(Debug)]
@@ -168,6 +183,8 @@ pub(crate) mod ffi {
         freq_end_x: f64,
         freq_start_y: f64,
         freq_end_y: f64,
+        test_model: i32,
+        shaper_type: String,
     }
 
     /// Facettes peintes d'un canal : triangle (croissant) → chaîne hex Orca.
@@ -340,6 +357,17 @@ pub(crate) mod ffi {
 
         /// Orientation automatique d'un objet.
         fn orient_raw(object: &RawObject) -> Result<RawObject>;
+
+        /// Projet de calibration d'Orca (modèle, coupes, échelle, réglages).
+        fn calib_project_raw(
+            kind: &str,
+            start: f64,
+            end: f64,
+            step: f64,
+            config_json: &str,
+            resources: &str,
+            extra_json: &str,
+        ) -> Result<RawCalibProject>;
 
         /// Répare un maillage (admesh : arêtes, dégénérés, orientation).
         fn repair_mesh_raw(mesh: &RawMesh) -> Result<RawRepairResult>;

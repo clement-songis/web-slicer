@@ -3,6 +3,7 @@
 //! TEXT ; l'isolation repose sur `user_id` + FK ON DELETE CASCADE (PRAGMA
 //! foreign_keys activé sur la connexion).
 
+mod pa_calib;
 mod repos;
 
 use std::str::FromStr;
@@ -18,8 +19,8 @@ use time::OffsetDateTime;
 use uuid::Uuid;
 
 use crate::domain::{
-    GcodeRepo, InstanceRepo, JobRepo, ModelRepo, PresetRepo, PrinterRepo, ProjectRepo, Storage,
-    StorageError, StorageResult, UserRepo,
+    GcodeRepo, InstanceRepo, JobRepo, ModelRepo, PaCalibrationRepo, PresetRepo, PrinterRepo,
+    ProjectRepo, Storage, StorageError, StorageResult, UserRepo,
 };
 
 use repos::{
@@ -37,6 +38,7 @@ pub struct SqliteStorage {
     jobs: SqliteJobRepo,
     gcodes: SqliteGcodeRepo,
     instance: SqliteInstanceRepo,
+    pa_calibrations: pa_calib::SqlitePaCalibrationRepo,
 }
 
 impl SqliteStorage {
@@ -76,6 +78,7 @@ impl SqliteStorage {
             printers: SqlitePrinterRepo::new(pool.clone()),
             jobs: SqliteJobRepo::new(pool.clone()),
             gcodes: SqliteGcodeRepo::new(pool.clone()),
+            pa_calibrations: pa_calib::SqlitePaCalibrationRepo::new(pool.clone()),
             instance: SqliteInstanceRepo::new(pool),
         }
     }
@@ -108,6 +111,9 @@ impl Storage for SqliteStorage {
     }
     fn instance(&self) -> &dyn InstanceRepo {
         &self.instance
+    }
+    fn pa_calibrations(&self) -> &dyn PaCalibrationRepo {
+        &self.pa_calibrations
     }
 }
 

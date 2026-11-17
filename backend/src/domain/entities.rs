@@ -5,7 +5,9 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use time::OffsetDateTime;
 
-use super::id::{GcodeId, InvitationId, JobId, ModelId, PresetId, PrinterId, ProjectId, UserId};
+use super::id::{
+    GcodeId, InvitationId, JobId, ModelId, PaCalibrationId, PresetId, PrinterId, ProjectId, UserId,
+};
 
 // --- Utilisateurs & instance -------------------------------------------------
 
@@ -193,6 +195,41 @@ pub struct Printer {
     /// Chiffrée au repos (clé d'instance).
     pub api_key: Option<String>,
     pub machine_preset_id: PresetId,
+}
+
+/// Résultat de calibration d'avance de pression retenu (historique, comme
+/// PACalibResult / CaliHistoryDialog d'Orca) : par imprimante, filament et buse.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct PaCalibration {
+    pub id: PaCalibrationId,
+    pub user_id: UserId,
+    #[serde(flatten)]
+    pub data: NewPaCalibration,
+    pub created_at: OffsetDateTime,
+    pub updated_at: OffsetDateTime,
+}
+
+/// Champs saisissables d'un résultat PA (création / mise à jour).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct NewPaCalibration {
+    /// Imprimante déclarée (optionnelle) et preset machine utilisé.
+    pub printer_id: Option<PrinterId>,
+    pub machine_preset: String,
+    /// Preset filament et son identifiant Orca (`filament_id`, ex. GFL99).
+    pub filament_preset: String,
+    pub filament_id: Option<String>,
+    pub nozzle_diameter: f64,
+    /// Extrudeur (0-based) et type de volume de buse (Standard / High Flow).
+    pub extruder_id: i64,
+    pub nozzle_volume_type: Option<String>,
+    /// Valeur d'avance de pression (K) et coefficient n d'Orca.
+    pub k_value: f64,
+    pub n_coef: f64,
+    /// Méthode : pa_line | pa_pattern | pa_tower | manual.
+    pub method: String,
+    /// Nom affiché (Orca : nom du résultat) et note libre.
+    pub name: String,
+    pub note: Option<String>,
 }
 
 // --- File de tranchage & G-code ---------------------------------------------

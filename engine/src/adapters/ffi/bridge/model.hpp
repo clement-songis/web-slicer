@@ -32,6 +32,10 @@ void custom_gcodes_from_json(Slic3r::Model &model, const std::string &json, int 
 void write_project_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
                            rust::Str out_path, rust::Str custom_gcodes_json);
 
+struct RawCalibProject;
+RawCalibProject calib_project_raw(rust::Str kind, double start, double end, double step, rust::Str config_json,
+                                  rust::Str resources, rust::Str extra_json);
+
 struct RawProjectPlate;
 void write_project_plates_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
                               rust::Str custom_gcodes_json,

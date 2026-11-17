@@ -377,6 +377,29 @@ fn main() {
             }
         }
         // Export Draco (menu Export › … DRC d'Orca, `store_drc`).
+        Some("calib-project") => {
+            // calib-project <request.json> : { request, config, resources } → CalibProject
+            let Some(path) = args.get(2).map(PathBuf::from) else {
+                eprintln!("usage: calib-project <request.json>");
+                std::process::exit(2);
+            };
+            #[derive(Deserialize)]
+            struct Req {
+                request: engine::adapters::ffi::CalibRequest,
+                config: engine::api::DynamicPrintConfig,
+                resources: PathBuf,
+            }
+            let result = read_json_bounded::<Req>(&path).and_then(|r| {
+                engine::adapters::ffi::calib_project(&r.request, &r.config, &r.resources)
+            });
+            match result {
+                Ok(project) => emit_json_result(&project),
+                Err(e) => {
+                    emit_error(&code_slug(e.code), &e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
         Some("flush-volumes") => {
             let Some(path) = args.get(2).map(PathBuf::from) else {
                 eprintln!("usage: flush-volumes <request.json>");

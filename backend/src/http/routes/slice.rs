@@ -527,6 +527,14 @@ pub(crate) fn post_process_warning(
 /// Sans matrice explicite, le moteur la recalcule depuis les couleurs
 /// (FlushVolCalculator, comme le CLI quand les couleurs changent).
 pub(crate) fn apply_project_config(config: &mut engine::api::DynamicPrintConfig, scene: &Value) {
+    // Projet de calibration (POST …/calibration) : presets édités par Orca
+    // (Plater::calib_*), posés par-dessus les presets résolus.
+    if let Some(overrides) = scene.get("calibrationOverrides").filter(|v| v.is_object()) {
+        match crate::slicing::config_from_snapshot(overrides) {
+            Ok(values) => config.0.extend(values.0),
+            Err(error) => tracing::warn!(%error, "surcharges de calibration ignorées"),
+        }
+    }
     let Some(project) = scene.get("projectConfig").and_then(Value::as_object) else {
         return;
     };

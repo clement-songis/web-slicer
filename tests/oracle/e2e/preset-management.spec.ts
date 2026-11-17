@@ -52,6 +52,7 @@ test('presets : marqueurs par option, renommer, comparer, transférer, supprimer
 	await control.press('Tab');
 	await page.getByRole('button', { name: /^(Fermer|Close)$/ }).first().click();
 	await page.getByTestId('preset-select-print').selectOption(systemId);
+	await expect(page.getByTestId('editor-topbar')).not.toHaveAttribute('data-preset-switch-pending', /.+/);
 	const unsaved = page.getByTestId('unsaved-preset-dialog');
 	await expect(unsaved.locator('[data-testid=unsaved-row][data-key=wall_loops]')).toBeVisible();
 	await unsaved.getByTestId('unsaved-transfer').click();
@@ -68,7 +69,7 @@ test('presets : marqueurs par option, renommer, comparer, transférer, supprimer
 	await page.getByTestId('preset-select-print').selectOption(userId);
 	// Brouillon encore différent du preset système (transfert) : abandonner.
 	const discard = page.getByTestId('unsaved-preset-dialog').getByTestId('unsaved-discard');
-	await page.waitForTimeout(500);
+	await expect(page.getByTestId('editor-topbar')).not.toHaveAttribute('data-preset-switch-pending', /.+/);
 	if (await discard.isVisible().catch(() => false)) await discard.click();
 	await expect(page.getByTestId('preset-select-print')).toHaveValue(userId);
 	await page.getByTestId('open-settings-print').click();

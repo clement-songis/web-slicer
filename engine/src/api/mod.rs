@@ -1,6 +1,7 @@
 //! Types miroirs de l'API publique de libslic3r consommée par la GUI
 //! (`audit/engine_api.json` fait foi — contrat slicer-engine-trait.md).
 
+pub mod calib;
 pub mod config;
 pub mod error;
 pub mod gcode;
@@ -24,6 +25,6 @@ pub use model::{
 };
 pub use presets::{ArrangeParams, RawPreset};
 pub use slice::{
-    BuildVolume, CalibMode, CalibParams, CancelToken, ProgressSink, SliceRequest, SliceResult,
-    SliceStats, OUTPUT_FILENAME_BASE_TOKEN,
+    BuildVolume, CalibMode, CalibParams, CancelToken, ProgressSink, ShaperType, SliceRequest,
+    SliceResult, SliceStats, OUTPUT_FILENAME_BASE_TOKEN,
 };

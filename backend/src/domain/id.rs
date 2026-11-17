@@ -73,6 +73,10 @@ typed_id!(
     JobId
 );
 typed_id!(
+    /// Identifiant d'un résultat de calibration d'avance de pression retenu.
+    PaCalibrationId
+);
+typed_id!(
     /// Identifiant de G-code produit.
     GcodeId
 );
