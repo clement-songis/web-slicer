@@ -218,6 +218,21 @@ fn config_value_from_json(
                 .map(C::Strings),
             _ => None,
         },
+        // Groupes de points : tableau de chaînes « 0x0,325x0,… » (une par buse).
+        K::PointsGroups
+            if value
+                .as_array()
+                .is_some_and(|a| a.iter().all(|v| v.is_string())) =>
+        {
+            value.as_array().map(|items| {
+                C::Strings(
+                    items
+                        .iter()
+                        .filter_map(|v| v.as_str().map(str::to_string))
+                        .collect(),
+                )
+            })
+        }
         K::Points | K::PointsGroups => value.as_array().and_then(|items| {
             items
                 .iter()
@@ -315,7 +330,8 @@ fn value_matches_kind(v: &ConfigValue, kind: ParamKind, nullable: bool) -> bool 
         | (K::Ints, V::Ints(_))
         | (K::Floats | K::Percents | K::FloatsOrPercents, V::Floats(_))
         | (K::Strings | K::Enums, V::Strings(_))
-        | (K::Points | K::PointsGroups, V::Points(_)) => true,
+        | (K::Points | K::PointsGroups, V::Points(_))
+        | (K::PointsGroups, V::Strings(_)) => true,
         (K::Floats | K::Percents, V::FloatsNullable(_)) => nullable,
         (K::Bools, V::BoolsNullable(_)) => nullable,
         _ => false,

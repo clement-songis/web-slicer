@@ -1241,5 +1241,70 @@
   "requires": {
    "single_extruder_multi_material": "0"
   }
+ },
+ "mmu_segmented_region_max_width": {
+  "value": "3",
+  "scene": "mmu_painted"
+ },
+ "mmu_segmented_region_interlocking_depth": {
+  "value": "2",
+  "scene": "mmu_painted",
+  "requires": {
+   "mmu_segmented_region_max_width": "3"
+  }
+ },
+ "interlocking_beam": {
+  "value": "1",
+  "scene": "mmu_painted"
+ },
+ "interlocking_beam_width": {
+  "value": "1.2",
+  "scene": "mmu_painted",
+  "requires": {
+   "interlocking_beam": "1"
+  }
+ },
+ "interlocking_depth": {
+  "value": "3",
+  "scene": "mmu_painted",
+  "requires": {
+   "interlocking_beam": "1"
+  }
+ },
+ "interlocking_beam_layer_count": {
+  "value": "3",
+  "scene": "mmu_painted",
+  "requires": {
+   "interlocking_beam": "1"
+  }
+ },
+ "interlocking_orientation": {
+  "value": "45",
+  "scene": "mmu_painted",
+  "requires": {
+   "interlocking_beam": "1"
+  }
+ },
+ "interlocking_boundary_avoidance": {
+  "value": "3",
+  "scene": "mmu_painted",
+  "requires": {
+   "interlocking_beam": "1"
+  }
+ },
+ "prime_tower_infill_gap": {
+  "value": "151%",
+  "scene": "bambu_h2d"
+ },
+ "prime_tower_skip_points": {
+  "value": "0",
+  "scene": "bambu_h2d"
+ },
+ "wipe_tower_rib_width": {
+  "value": "10",
+  "scene": "bambu_h2d",
+  "requires": {
+   "wipe_tower_wall_type": "rib"
+  }
  }
 }

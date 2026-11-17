@@ -154,6 +154,9 @@ fn to_raw(p: &ImportedPreset) -> RawPreset {
 fn json_value_to_orca_text(value: &serde_json::Value, def: &params::ParamDef) -> String {
     let separator = match def.kind {
         params::ParamKind::Strings | params::ParamKind::Enums => ";",
+        // Groupes de points (extruder_printable_area) : un groupe par élément,
+        // séparés par « # » comme dans la sérialisation Orca.
+        params::ParamKind::PointsGroups => "#",
         _ => ",",
     };
     match value {

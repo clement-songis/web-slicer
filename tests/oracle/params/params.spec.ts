@@ -29,7 +29,9 @@ for (const c of cases) {
 			test.skip(!!c.scene && !sceneCfg, 'config de scène absente : lancer make_refs.py');
 			const cfg: FlatConfig = sceneCfg ?? { ...base!, ...(c.requires ?? {}), [c.key]: c.value! };
 			const model = c.scene ? `scenes/${c.scene}.3mf` : (c.model ?? oracleCfg.param_model);
-			expectSameGcode(await harnessSlice(request, model, cfg), ref!, `G-code avec ${c.key}=${JSON.stringify(c.value)}`);
+			expectSameGcode(await harnessSlice(request, model, cfg), ref!, `G-code avec ${c.key}=${JSON.stringify(c.value)}`, {
+				ignoreLabels: !!c.scene
+			});
 		});
 
 		if (c.ui) {

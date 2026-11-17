@@ -536,18 +536,45 @@ pub(crate) fn apply_project_config(config: &mut engine::api::DynamicPrintConfig,
         }
         .filter(|v: &Vec<f64>| !v.is_empty() && v.iter().all(|f| f.is_finite() && *f >= 0.0))
     };
+    // Imprimantes à plusieurs buses : Orca stocke une matrice N×N et un
+    // multiplicateur PAR BUSE (flush_volumes_matrix = N²×buses). Une matrice
+    // N×N et un multiplicateur unique venant du projet valent pour toutes les
+    // buses (répétés), au lieu de ne viser que la première.
+    let nozzles = match config.get("nozzle_diameter") {
+        Some(ConfigValue::Floats(v)) => v.len().max(1),
+        _ => 1,
+    };
     if let Some(matrix) = project.get("flush_volumes_matrix").and_then(floats) {
         let n = (matrix.len() as f64).sqrt().round() as usize;
         if n * n == matrix.len() {
+            let full: Vec<f64> = matrix
+                .iter()
+                .copied()
+                .cycle()
+                .take(matrix.len() * nozzles)
+                .collect();
             config
                 .0
-                .insert("flush_volumes_matrix".into(), ConfigValue::Floats(matrix));
+                .insert("flush_volumes_matrix".into(), ConfigValue::Floats(full));
+        } else if nozzles > 1 && matrix.len() % nozzles == 0 {
+            let per = matrix.len() / nozzles;
+            let n = (per as f64).sqrt().round() as usize;
+            if n * n == per {
+                config
+                    .0
+                    .insert("flush_volumes_matrix".into(), ConfigValue::Floats(matrix));
+            }
         }
     }
     if let Some(multiplier) = project.get("flush_multiplier").and_then(floats) {
+        let full = if multiplier.len() == 1 {
+            vec![multiplier[0]; nozzles]
+        } else {
+            multiplier
+        };
         config
             .0
-            .insert("flush_multiplier".into(), ConfigValue::Floats(multiplier));
+            .insert("flush_multiplier".into(), ConfigValue::Floats(full));
     }
 }
 
@@ -801,7 +828,19 @@ mod tests {
         let outcome = engine::presets::import_profiles(&profiles).unwrap();
         let index = engine::presets::PresetIndex::new(&outcome.presets);
         use engine::presets::PresetKind;
-        let get = |kind, name: &str| index.resolve(parts[0], kind, name).unwrap();
+        // Vendeur donné, sinon celui du preset portant ce nom (bibliothèque de
+        // filaments Orca : « Generic PLA @System »).
+        let get = |kind, name: &str| {
+            index.resolve(parts[0], kind, name).unwrap_or_else(|_| {
+                let vendor = outcome
+                    .presets
+                    .iter()
+                    .find(|p| p.kind == kind && p.name == name)
+                    .map(|p| p.vendor.clone())
+                    .expect("preset introuvable");
+                index.resolve(&vendor, kind, name).unwrap()
+            })
+        };
         let mut merged = DynamicPrintConfig::new();
         merged.0.extend(get(PresetKind::Machine, parts[1]).0);
         merged.0.extend(get(PresetKind::Process, parts[2]).0);
@@ -835,6 +874,30 @@ mod tests {
 
     /// scene.projectConfig appliqué par-dessus les presets (couleurs, matrice,
     /// multiplicateur) ; entrées vides et matrices non carrées ignorées.
+    /// Plusieurs buses (Prusa XL 5T) : matrice N×N et multiplicateur unique du
+    /// projet répétés pour chaque buse.
+    #[test]
+    fn project_flush_settings_apply_to_every_nozzle() {
+        let mut config = DynamicPrintConfig::new();
+        config
+            .0
+            .insert("nozzle_diameter".into(), ConfigValue::Floats(vec![0.4; 5]));
+        let scene = serde_json::json!({ "projectConfig": {
+            "flush_volumes_matrix": [0, 80, 560, 0],
+            "flush_multiplier": 0.3
+        }});
+        apply_project_config(&mut config, &scene);
+        assert_eq!(
+            config.get("flush_multiplier"),
+            Some(&ConfigValue::Floats(vec![0.3; 5]))
+        );
+        let Some(ConfigValue::Floats(m)) = config.get("flush_volumes_matrix") else {
+            panic!()
+        };
+        assert_eq!(m.len(), 20);
+        assert_eq!(&m[16..], &[0.0, 80.0, 560.0, 0.0]);
+    }
+
     #[test]
     fn project_config_overrides_presets() {
         let mut config = DynamicPrintConfig::new();

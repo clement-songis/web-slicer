@@ -213,6 +213,14 @@ fn snapshot_value_to_orca(kind: ParamKind, value: &Value) -> Option<String> {
         Value::Number(n) => Some(n.to_string()),
         Value::Array(items) => match kind {
             ParamKind::Point => join_orca_items(items, "x", false),
+            // Groupes de points : une chaîne par groupe, jointes par « # » (Orca).
+            ParamKind::PointsGroups if items.iter().all(Value::is_string) => Some(
+                items
+                    .iter()
+                    .filter_map(Value::as_str)
+                    .collect::<Vec<_>>()
+                    .join("#"),
+            ),
             ParamKind::Points | ParamKind::PointsGroups => {
                 let points: Option<Vec<String>> = items
                     .iter()

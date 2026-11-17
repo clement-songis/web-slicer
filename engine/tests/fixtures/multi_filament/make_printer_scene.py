@@ -14,6 +14,9 @@ import make_refs
 HERE = Path(__file__).resolve().parent
 name, machine, process_name, filament_name = sys.argv[1:5]
 N = int(sys.argv[5]) if len(sys.argv) > 5 and sys.argv[5].isdigit() else 5
+# --project '{"clé": valeur}' : réglages du projet posés dans project_settings.config
+# (ex. H2D : filament_map_mode = Manual, filament_map = [1, 2] → un filament par buse).
+PROJECT = json.loads(sys.argv[sys.argv.index("--project") + 1]) if "--project" in sys.argv else {}
 refs = make_refs.Refs(make_refs.DEFAULT_PROFILES)
 printer, process, filament = refs.preset(machine), refs.preset(process_name), refs.preset(filament_name)
 proc = dict(process); proc["enable_prime_tower"] = "1"
@@ -49,6 +52,10 @@ with tempfile.TemporaryDirectory() as tmp:
                 s = d.decode()
                 s = re.sub(r'(<metadata key="name" value="cylinder.stl"/>\s*<metadata key="extruder" value=")1', r"\g<1>2", s, count=1)
                 d = s.encode()
+            elif i.filename == "Metadata/project_settings.config" and PROJECT:
+                cfg = json.loads(d)
+                cfg.update(PROJECT)
+                d = json.dumps(cfg, indent=4, ensure_ascii=False).encode()
             z.writestr(i, d)
 
 draws = collections.Counter(); keep = {}; why = ""

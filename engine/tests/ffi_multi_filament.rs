@@ -197,6 +197,43 @@ fn prusa_xl_5t_two_filaments_does_not_crash() {
     }
 }
 
+/// Scène d'imprimante : identique à Orca si la référence existe (hors
+/// commentaires d'étiquette, cf. without_known_x1c_gaps), sinon refus clair.
+fn check_printer_scene(name: &str) {
+    let reference = fixture(&format!("{name}.orca.gcode"));
+    let ours = printer_scene(name);
+    if reference.exists() {
+        let ours = without_known_x1c_gaps(ours.unwrap_or_else(|e| panic!("{name} : {e:?}")));
+        let orca = without_known_x1c_gaps(normalize(&std::fs::read_to_string(reference).unwrap()));
+        assert!(tool_changes(&orca) > 2, "la référence change d'outil");
+        assert_same(name, &ours, &orca);
+    } else if let Err(e) = ours {
+        assert!(
+            e.code != engine::api::EngineErrorCode::EngineCrashed,
+            "{name} : {e:?}"
+        );
+    }
+}
+
+/// Bambu H2D (deux buses) : un filament par buse (filament_map_mode Manual,
+/// filament_map [1, 2]), préparation de buse et purge propres au double nez.
+#[test]
+fn bambu_h2d_two_nozzles_match_orca() {
+    check_printer_scene("bambu_h2d");
+}
+
+/// SeeMeCNC Artemis : SEMM avec change_filament_gcode (T[next_extruder]) et
+/// tour d'essuyage type2, réglages du constructeur.
+#[test]
+fn seemecnc_artemis_change_filament_gcode_and_type2_tower_match_orca() {
+    let gcode = std::fs::read_to_string(fixture("seemecnc_artemis.orca.gcode")).unwrap_or_default();
+    assert!(
+        gcode.contains("; wipe_tower_type = type2"),
+        "référence : tour type2"
+    );
+    check_printer_scene("seemecnc_artemis");
+}
+
 /// Peinture MMU (canal mmu_segmentation) : moitié haute du cube peinte en
 /// filament 2 → segmentation multi-matériau et changements d'outil d'Orca.
 #[test]

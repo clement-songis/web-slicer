@@ -240,8 +240,13 @@ pub(crate) async fn slice(
     // `orca-slicer --slice 0 <scène>.3mf` (pas d'arrangement ni de centrage).
     if format == crate::domain::ModelFormat::ThreeMf {
         if let Some(scene) = crate::engine::raw_model::load(&source, format).await {
-            let multi =
-                scene.objects.len() > 1 || scene.objects.iter().any(|o| o.volumes.len() > 1);
+            // Scène : plusieurs objets/volumes, ou peinture (MMU, supports…)
+            // portée par le maillage tel quel — un recentrage la décalerait.
+            let multi = scene.objects.len() > 1
+                || scene
+                    .objects
+                    .iter()
+                    .any(|o| o.volumes.len() > 1 || o.volumes.iter().any(|v| !v.paint.is_empty()));
             if multi {
                 // Le CLI crée ces options (vides si absentes) à la lecture d'un
                 // 3MF (OrcaSlicer.cpp:1769, option(…, true)) ; elles figurent

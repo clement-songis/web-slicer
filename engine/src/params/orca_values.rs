@@ -98,7 +98,16 @@ pub fn parse_orca_value(def: &ParamDef, s: &str) -> Option<ConfigValue> {
             }
         }
         K::Point => parse_point(s).map(ConfigValue::Point),
-        K::Points | K::PointsGroups => split_vector(s)
+        // Groupes de points (extruder_printable_area : une zone par buse) :
+        // sérialisation Orca « g1#g2 », gardés en chaînes « 0x0,325x0,… ».
+        K::PointsGroups => Some(ConfigValue::Strings(
+            s.split('#')
+                .map(str::trim)
+                .filter(|g| !g.is_empty())
+                .map(str::to_string)
+                .collect(),
+        )),
+        K::Points => split_vector(s)
             .map(parse_point)
             .collect::<Option<Vec<Vec<f64>>>>()
             .map(ConfigValue::Points),
@@ -116,7 +125,7 @@ pub fn parse_orca_value(def: &ParamDef, s: &str) -> Option<ConfigValue> {
 /// élément unique, un segment nu est re-découpé sur `,`.
 fn parse_enums(def: &ParamDef, s: &str) -> Option<Vec<String>> {
     let mut out = Vec::new();
-    for part in split_strings(s) {
+    for part in split_strings(s).into_iter().filter(|p| !p.is_empty()) {
         let quoted = part.len() >= 2 && part.starts_with('"') && part.ends_with('"');
         let items: Vec<String> = if quoted {
             vec![unquote(part).trim().to_string()]
@@ -187,6 +196,18 @@ pub fn serialize_orca_value_for(def: &ParamDef, value: &ConfigValue) -> String {
             other => serialize_orca_value(other),
         };
     }
+    match (def.kind, value) {
+        (K::PointsGroups, ConfigValue::Strings(groups)) => return groups.join("#"),
+        // ConfigOptionPoint::serialize d'Orca : « x,y » (ex. best_object_pos).
+        (K::Point, ConfigValue::Point(p)) => {
+            return p
+                .iter()
+                .map(|c| format_float(*c))
+                .collect::<Vec<_>>()
+                .join(",")
+        }
+        _ => {}
+    }
     let raw = serialize_orca_value(value);
     match def.kind {
         K::Percent => ensure_percent(&raw),
@@ -226,7 +247,9 @@ fn parse_bool(s: &str) -> Option<bool> {
 }
 
 fn parse_point(s: &str) -> Option<Vec<f64>> {
-    let coords: Option<Vec<f64>> = s.trim().split('x').map(|c| c.trim().parse().ok()).collect();
+    // ConfigOptionPoint d'Orca : « x,y » (sérialisation) ou « xXy » (presets).
+    let sep = if s.contains('x') { 'x' } else { ',' };
+    let coords: Option<Vec<f64>> = s.trim().split(sep).map(|c| c.trim().parse().ok()).collect();
     coords.filter(|c| c.len() >= 2)
 }
 
@@ -263,19 +286,19 @@ fn split_strings(s: &str) -> Vec<&str> {
             '\\' if quoted => escaped = true,
             '"' => quoted = !quoted,
             ';' if !quoted => {
-                let part = s[start..index].trim();
-                if !part.is_empty() {
-                    out.push(part);
-                }
+                out.push(s[start..index].trim());
                 start = index + 1;
             }
             _ => {}
         }
     }
-    let part = s[start..].trim();
-    if !part.is_empty() {
-        out.push(part);
+    // Comme unescape_strings_cstyle d'Orca : les entrées vides sont conservées
+    // (« ;;; » = 4 chaînes vides, ex. compatible_machine_expression_group d'un
+    // projet à 2 filaments) ; seule une valeur entièrement vide donne [].
+    if s.trim().is_empty() {
+        return Vec::new();
     }
+    out.push(s[start..].trim());
     out
 }
 

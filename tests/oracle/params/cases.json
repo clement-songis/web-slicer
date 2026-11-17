@@ -4219,7 +4219,8 @@
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "mmu_painted"
  },
  {
   "id": "param.interlocking_beam_layer_count",
@@ -4233,13 +4234,17 @@
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "mmu_painted",
+  "requires": {
+   "interlocking_beam": "1"
+  }
  },
  {
   "id": "param.interlocking_beam_width",
   "key": "interlocking_beam_width",
   "type": "coFloat",
-  "value": "1",
+  "value": "1.2",
   "ui": true,
   "label": "Interlocking beam width",
   "mode": "advanced",
@@ -4247,7 +4252,11 @@
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "mmu_painted",
+  "requires": {
+   "interlocking_beam": "1"
+  }
  },
  {
   "id": "param.interlocking_boundary_avoidance",
@@ -4261,7 +4270,11 @@
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "mmu_painted",
+  "requires": {
+   "interlocking_beam": "1"
+  }
  },
  {
   "id": "param.interlocking_depth",
@@ -4275,13 +4288,17 @@
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "mmu_painted",
+  "requires": {
+   "interlocking_beam": "1"
+  }
  },
  {
   "id": "param.interlocking_orientation",
   "key": "interlocking_orientation",
   "type": "coFloat",
-  "value": "28.125",
+  "value": "45",
   "ui": true,
   "label": "Interlocking direction",
   "mode": "advanced",
@@ -4289,7 +4306,11 @@
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "mmu_painted",
+  "requires": {
+   "interlocking_beam": "1"
+  }
  },
  {
   "id": "param.internal_bridge_angle",
@@ -5318,7 +5339,7 @@
   "id": "param.mmu_segmented_region_interlocking_depth",
   "key": "mmu_segmented_region_interlocking_depth",
   "type": "coFloat",
-  "value": "1",
+  "value": "2",
   "ui": true,
   "label": "Interlocking depth of a segmented region",
   "mode": "advanced",
@@ -5326,13 +5347,17 @@
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "mmu_painted",
+  "requires": {
+   "mmu_segmented_region_max_width": "3"
+  }
  },
  {
   "id": "param.mmu_segmented_region_max_width",
   "key": "mmu_segmented_region_max_width",
   "type": "coFloat",
-  "value": "1",
+  "value": "3",
   "ui": true,
   "label": "Maximum width of a segmented region",
   "mode": "advanced",
@@ -5340,7 +5365,8 @@
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "mmu_painted"
  },
  {
   "id": "param.notes",
@@ -6093,7 +6119,8 @@
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "bambu_h2d"
  },
  {
   "id": "param.prime_tower_skip_points",
@@ -6107,7 +6134,8 @@
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "bambu_h2d"
  },
  {
   "id": "param.prime_tower_width",
@@ -9494,7 +9522,11 @@
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "bambu_h2d",
+  "requires": {
+   "wipe_tower_wall_type": "rib"
+  }
  },
  {
   "id": "param.wipe_tower_rotation_angle",

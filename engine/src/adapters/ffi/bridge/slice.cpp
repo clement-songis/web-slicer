@@ -147,30 +147,57 @@ void restore_export_metadata(const std::string &path,
     // variante ; Orca (Print::apply → update_values_to_printer_extruders) les
     // réduit à la variante de l'extrudeur courant dans le G-code. Indice de
     // cette variante pour l'extrudeur 1 (printer_extruder_variant).
-    int variant_index = -1;
+    // Une variante par extrudeur (X1C : 1 extrudeur × 2 variantes ; H2D :
+    // 2 extrudeurs × 2 variantes, printer_extruder_id = 1,1,2,2).
+    std::vector<int> variant_indices; // indice dans printer_extruder_variant, par extrudeur
+    std::vector<std::string> extruder_variant_names;
     size_t variant_count = 0;
-    std::string variant_name;
     if (const auto *variants = source.option<Slic3r::ConfigOptionStrings>("printer_extruder_variant");
         variants && variants->values.size() > 1) {
         variant_count = variants->values.size();
-        int type = int(Slic3r::etDirectDrive), volume = int(Slic3r::nvtStandard);
-        if (const auto *opt = dynamic_cast<const Slic3r::ConfigOptionEnumsGeneric *>(source.option("extruder_type"));
-            opt && !opt->values.empty())
-            type = opt->values[0];
-        if (const auto *opt = dynamic_cast<const Slic3r::ConfigOptionEnumsGeneric *>(source.option("nozzle_volume_type"));
-            opt && !opt->values.empty())
-            volume = opt->values[0];
-        variant_name = Slic3r::get_extruder_variant_string(static_cast<Slic3r::ExtruderType>(type),
-                                                           static_cast<Slic3r::NozzleVolumeType>(volume));
-        const auto found = std::find(variants->values.begin(), variants->values.end(), variant_name);
-        variant_index = found == variants->values.end() ? 0 : int(found - variants->values.begin());
+        std::vector<int> ids;
+        if (const auto *opt = source.option<Slic3r::ConfigOptionInts>("printer_extruder_id"))
+            ids = opt->values;
+        size_t extruders = 1;
+        if (const auto *opt = source.option<Slic3r::ConfigOptionFloats>("nozzle_diameter"))
+            extruders = std::max<size_t>(1, opt->values.size());
+        std::vector<int> types, volumes;
+        if (const auto *opt = dynamic_cast<const Slic3r::ConfigOptionEnumsGeneric *>(source.option("extruder_type")))
+            types = opt->values;
+        if (const auto *opt = dynamic_cast<const Slic3r::ConfigOptionEnumsGeneric *>(source.option("nozzle_volume_type")))
+            volumes = opt->values;
+        auto at = [](const std::vector<int> &v, size_t i, int fallback) {
+            return v.empty() ? fallback : v[std::min(i, v.size() - 1)];
+        };
+        for (size_t e = 0; e < extruders; ++e) {
+            const std::string name = Slic3r::get_extruder_variant_string(
+                static_cast<Slic3r::ExtruderType>(at(types, e, int(Slic3r::etDirectDrive))),
+                static_cast<Slic3r::NozzleVolumeType>(at(volumes, e, int(Slic3r::nvtStandard))));
+            int found = -1, first = -1;
+            for (size_t i = 0; i < variants->values.size(); ++i) {
+                const int id = ids.empty() ? 1 : at(ids, i, 1);
+                if (id != int(e) + 1)
+                    continue;
+                if (first < 0)
+                    first = int(i);
+                if (variants->values[i] == name) {
+                    found = int(i);
+                    break;
+                }
+            }
+            variant_indices.push_back(found >= 0 ? found : std::max(first, 0));
+            extruder_variant_names.push_back(name);
+        }
     }
-    // Sous-vecteur de la variante courante : `stride` valeurs par variante.
+    const bool reduce_variants = !variant_indices.empty();
+    // Sous-vecteur des variantes courantes : `stride` valeurs par variante.
     auto pick_variant = [&](const std::vector<std::string> &values, size_t stride) {
-        if (variant_index < 0 || values.size() != variant_count * stride)
+        if (!reduce_variants || values.size() != variant_count * stride)
             return values;
-        return std::vector<std::string>(values.begin() + variant_index * stride,
-                                        values.begin() + (variant_index + 1) * stride);
+        std::vector<std::string> out;
+        for (int k : variant_indices)
+            out.insert(out.end(), values.begin() + k * stride, values.begin() + (k + 1) * stride);
+        return out;
     };
     auto join = [](const std::vector<std::string> &values) {
         std::string out;
@@ -191,7 +218,7 @@ void restore_export_metadata(const std::string &path,
              "machine_min_extruding_rate", "machine_min_travel_rate"})
         if (raw.contains(key) && raw[key].is_string()) {
             std::string text = raw[key].get<std::string>();
-            if (variant_index >= 0) {
+            if (reduce_variants) {
                 // machine_max_* : [normal, silencieux] par variante.
                 std::vector<std::string> parts;
                 boost::split(parts, text, boost::is_any_of(","));
@@ -206,10 +233,19 @@ void restore_export_metadata(const std::string &path,
              {"nozzle_volume_type", "Standard"}, {"overhang_fan_threshold", "50%"},
              {"retract_lift_enforce", "All Surfaces"}, {"z_hop_types", "Normal Lift"}}) {
         std::string current = has(key) ? value(key) : std::string();
-        if (variant_index >= 0 && (key == "nozzle_type" || key == "z_hop_types") && !current.empty()) {
+        if (reduce_variants && (key == "nozzle_type" || key == "z_hop_types") && !current.empty()) {
             std::vector<std::string> parts;
             boost::split(parts, current, boost::is_any_of(","));
             current = join(pick_variant(parts, 1));
+        }
+        // retract_lift_enforce : option par extrudeur, complétée au nombre
+        // d'extrudeurs par Print::apply (H2D : 1 valeur → « All Surfaces,All Surfaces »).
+        if (reduce_variants && key == "retract_lift_enforce" && !current.empty()) {
+            std::vector<std::string> parts;
+            boost::split(parts, current, boost::is_any_of(","));
+            while (parts.size() < variant_indices.size())
+                parts.push_back(parts.back());
+            current = join(parts);
         }
         set(key, current.empty() ? fallback : current);
     }
@@ -244,10 +280,34 @@ void restore_export_metadata(const std::string &path,
                 variant = fallback;
         // Vecteur par (filament × variante) : une entrée par filament, celle
         // de la variante courante (même réduction qu'Orca).
-        if (variant_index >= 0 && values.size() == static_cast<size_t>(filaments) * variant_count) {
+        // Entrées groupées par filament (filament_self_index) : pour chaque
+        // filament, celle de la variante de son extrudeur (filament_map).
+        if (reduce_variants && values.size() > static_cast<size_t>(filaments)) {
+            std::vector<int> self;
+            if (const auto *opt = source.option<Slic3r::ConfigOptionInts>("filament_self_index"))
+                self = opt->values;
+            std::vector<int> maps;
+            if (const auto *opt = source.option<Slic3r::ConfigOptionInts>("filament_map"))
+                maps = opt->values;
             std::vector<std::string> reduced;
-            for (int f = 0; f < filaments; ++f)
-                reduced.push_back(values[f * variant_count + variant_index]);
+            for (int f = 0; f < filaments; ++f) {
+                const int extruder = maps.empty() ? 1 : maps[std::min<size_t>(f, maps.size() - 1)];
+                const std::string &wanted =
+                    extruder_variant_names[std::min<size_t>(std::max(extruder, 1) - 1, extruder_variant_names.size() - 1)];
+                std::string pick;
+                for (size_t i = 0; i < values.size(); ++i) {
+                    const int owner = self.size() == values.size() ? self[i] : int(i / (values.size() / filaments)) + 1;
+                    if (owner != f + 1)
+                        continue;
+                    if (pick.empty())
+                        pick = values[i];
+                    if (values[i] == wanted) {
+                        pick = values[i];
+                        break;
+                    }
+                }
+                reduced.push_back(pick.empty() ? fallback : pick);
+            }
             values = reduced;
         }
         set("filament_extruder_variant", Slic3r::ConfigOptionStrings(values).serialize());
@@ -661,6 +721,42 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
     if (calib.mode == static_cast<int>(Slic3r::CalibMode::Calib_PA_Pattern))
         apply_pa_pattern_config(config);
 
+    // Imprimante multi-extrudeur en affectation automatique (filament_map_mode <
+    // Manual) : le CLI pose des paramètres AMS par défaut (OrcaSlicer.cpp ~6000)
+    // — extruder_ams_count = « 1#0|4#1 » par extrudeur et 4 filaments fictifs
+    // par extrudeur (blanc, type cyclé sur filament_type) pour le regroupement.
+    std::vector<std::vector<Slic3r::DynamicPrintConfig>> extruder_filament_info;
+    {
+        const Slic3r::DynamicPrintConfig &view = config;
+        size_t extruders = 1;
+        if (const auto *nozzles = view.option<Slic3r::ConfigOptionFloats>("nozzle_diameter"))
+            extruders = std::max<size_t>(1, nozzles->values.size());
+        Slic3r::FilamentMapMode mode = Slic3r::fmmAutoForFlush;
+        if (const auto *opt = view.option<Slic3r::ConfigOptionEnum<Slic3r::FilamentMapMode>>("filament_map_mode"))
+            mode = opt->value;
+        if (extruders > 1 && mode < Slic3r::fmmManual) {
+            std::vector<std::string> types{"PLA"};
+            if (const auto *opt = dynamic_cast<const Slic3r::ConfigOptionStrings *>(view.option("filament_type")))
+                types = opt->vserialize();
+            if (types.empty())
+                types = {"PLA"};
+            std::vector<std::string> ams(extruders, "1#0|4#1");
+            extruder_filament_info.assign(extruders, {});
+            int color_count = 0;
+            for (size_t e = 0; e < extruders; ++e)
+                for (int c = 0; c < 4; ++c, ++color_count) {
+                    Slic3r::DynamicPrintConfig temp;
+                    temp.set_key_value("filament_colour",
+                                       new Slic3r::ConfigOptionStrings(std::vector<std::string>{"#FFFFFFFF"}));
+                    temp.set_key_value("filament_type", new Slic3r::ConfigOptionStrings(
+                                                            std::vector<std::string>{types[color_count % types.size()]}));
+                    temp.set_key_value("filament_is_support", new Slic3r::ConfigOptionBools(std::vector<unsigned char>{0}));
+                    extruder_filament_info[e].push_back(std::move(temp));
+                }
+            config.set_key_value("extruder_ams_count", new Slic3r::ConfigOptionStrings(ams));
+        }
+    }
+
     // Comme le CLI juste avant `print->apply` : `filament_map` couvre tous les
     // filaments (complété par 1) et, en mono-extrudeur, tout pointe sur 1.
     // (Lectures via la vue const : l'accesseur non-const template de
@@ -745,6 +841,8 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
     }
     orca_resize_flush_matrix(config, filament_count(config));
     print.apply(model, config);
+    if (!extruder_filament_info.empty())
+        print.set_extruder_filament_info(extruder_filament_info);
 
     // Paramètres par extrudeur/vitesse renseignés côté Model avant le slicing
     // (comme le CLI : sans quoi certains calculs de vitesse plantent).
