@@ -89,7 +89,7 @@ test('imprimante personnalisée : volume, buse, modèle de départ ; process com
 
 // Backend (phase19/BACKEND.md §1) : un preset machine utilisateur n'hérite pas
 // encore de la compatibilité de son parent → aucun process proposé.
-test.fixme('imprimante personnalisée : process et filaments compatibles proposés @F:ui.create-printer-compat', async ({ page }) => {
+test('imprimante personnalisée : process et filaments compatibles proposés @F:ui.create-printer-compat', async ({ page }) => {
 	await bootstrap(page);
 	const machines = (await (await page.request.get('/api/presets?kind=machine')).json()) as { name: string; origin: string }[];
 	const base = machines.find((p) => p.name === 'Voron 2.4 350 0.4 nozzle')!;
