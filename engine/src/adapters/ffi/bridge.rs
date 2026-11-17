@@ -220,6 +220,21 @@ pub(crate) mod ffi {
     }
 
     unsafe extern "C++" {
+        include!("engine/src/adapters/ffi/bridge/flush.hpp");
+
+        /// Volumes de purge depuis les couleurs (FlushVolCalculator d'Orca).
+        fn flush_volumes_raw(
+            colours: &Vec<String>,
+            is_support: &Vec<bool>,
+            min_flush: &Vec<i32>,
+            flush_dataset: i32,
+        ) -> Result<Vec<f64>>;
+
+        /// Minimum de purge par filament (portage de get_min_flush_volumes, GUI).
+        fn min_flush_volumes_raw(config_json: &str, nozzle_id: u32) -> Result<Vec<i32>>;
+    }
+
+    unsafe extern "C++" {
         include!("engine/src/adapters/ffi/bridge/export_mesh.hpp");
 
         /// Maillage d'export par objet comme `Plater::export_stl` d'Orca

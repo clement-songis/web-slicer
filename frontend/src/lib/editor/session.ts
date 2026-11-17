@@ -118,8 +118,16 @@ export function friendlySliceError(raw: string): string {
 	const invalid = /configuration invalide\s*:\s*([\s\S]*)$/i.exec(msg);
 	if (invalid) msg = invalid[1].trim();
 	else {
-		const out = /stdout\s*:\s*(?:E\s+\S+\s+)?([\s\S]*)$/i.exec(msg);
-		if (out && out[1].trim()) msg = out[1].trim();
+		// Journal du worker (horodatages, « P 0.25 … » de progression) : seul le
+		// dernier code d'erreur « E <code> <message> » est retenu.
+		const coded = [...msg.matchAll(/(?:^|\s)E\s+[a-z_]+\s+/g)].pop();
+		if (coded && coded.index !== undefined) msg = msg.slice(coded.index + coded[0].length).trim();
+		else {
+			const out = /stdout\s*:\s*([\s\S]*)$/i.exec(msg);
+			if (out && out[1].trim()) msg = out[1].trim();
+		}
+		// Enveloppe vide (« — stderr : » sans contenu).
+		msg = msg.replace(/\s*—\s*(stderr|stdout)\s*:\s*$/i, '').trim();
 	}
 	// Orca concatène un message par objet (séparés par un saut de ligne, que la
 	// sortie du worker peut réduire à une espace).

@@ -4,6 +4,7 @@
 pub mod admin;
 pub mod auth;
 pub mod export;
+pub mod flush;
 pub mod gcode_open;
 pub mod gcodes;
 pub mod harness;
@@ -106,6 +107,7 @@ where
         .route("/api/projects/{id}/export/3mf", get(export::export_3mf))
         .route("/api/projects/{id}/export/drc", post(export::export_drc))
         .route("/api/projects/{id}/export/stl", post(export::export_stl))
+        .route("/api/flush-volumes", post(flush::flush_volumes))
         .route(
             "/api/projects/{id}/export/sliced",
             post(sliced::export_sliced),

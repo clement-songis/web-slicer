@@ -234,6 +234,34 @@ pub(crate) async fn slice(
     // Cuire le décalage dans les sommets (WSMh) arrondit autrement en f32 et
     // décale des points d'1 µm sur les maillages non entiers (trou lamé :
     // ordre des chemins différent, params-review cb2).
+    // Scène multi-objets (3MF de référence : plusieurs objets ou volumes,
+    // positions et extrudeurs par objet/volume figés dans le fichier, cf.
+    // tests/oracle/fixtures/scenes) : tranchée telle quelle, comme
+    // `orca-slicer --slice 0 <scène>.3mf` (pas d'arrangement ni de centrage).
+    if format == crate::domain::ModelFormat::ThreeMf {
+        if let Some(scene) = crate::engine::raw_model::load(&source, format).await {
+            let multi =
+                scene.objects.len() > 1 || scene.objects.iter().any(|o| o.volumes.len() > 1);
+            if multi {
+                // Le CLI crée ces options (vides si absentes) à la lecture d'un
+                // 3MF (OrcaSlicer.cpp:1769, option(…, true)) ; elles figurent
+                // donc dans le bloc de config du G-code.
+                let mut config = config;
+                for key in [
+                    "upward_compatible_machine",
+                    "print_compatible_printers",
+                    "different_settings_to_system",
+                ] {
+                    config
+                        .0
+                        .entry(key.to_string())
+                        .or_insert_with(|| engine::api::ConfigValue::Strings(Vec::new()));
+                }
+                return slice_model(scene, config, work).await;
+            }
+        }
+    }
+
     let mut model = match load_raw_model(&source, format, &work).await {
         Some(model) => model,
         None => {
@@ -265,7 +293,15 @@ pub(crate) async fn slice(
     } else {
         center_single_occurrence(&mut model, &arrange_bed);
     }
+    slice_model(model, config, work).await
+}
 
+/// Tranche `model` (placements déjà finaux) avec `config` via engine-worker.
+async fn slice_model(
+    model: engine::api::Model,
+    config: engine::api::DynamicPrintConfig,
+    work: tempfile::TempDir,
+) -> HarnessResult<Response> {
     let request = engine::api::SliceRequest {
         model,
         config,

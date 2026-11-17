@@ -403,6 +403,8 @@ def main() -> None:
                 c["value"] = o.get("value")
                 if o.get("model"):
                     c["model"] = o["model"]
+                if o.get("scene"):
+                    c["scene"] = o["scene"]
                 if o.get("requires"):
                     c["requires"] = o["requires"]
             else:

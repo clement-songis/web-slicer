@@ -50,4 +50,14 @@ describe('messages d échec du tranchage', () => {
 		expect(next.phase).toBe('error');
 		expect(next.error).toContain('cylinder.stl');
 	});
+	it('journal du worker : seul le dernier code d erreur est gardé', () => {
+		const log =
+			'worker sorti en code 1 — stderr :  — stdout : [2026-11-17 01:49:40] [warning] option x not found P 0.05 Slicing mesh [2026-11-17] [warning] SupportSpotsGenerator E engine_crashed Grouping error: PLA can not be placed in the right nozzle\n';
+		expect(friendlySliceError(log)).toBe(
+			'Grouping error: PLA can not be placed in the right nozzle'
+		);
+		expect(friendlySliceError('worker terminé par signal (crash contenu) — stderr : ')).toBe(
+			'worker terminé par signal (crash contenu)'
+		);
+	});
 });

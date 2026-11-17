@@ -29,7 +29,8 @@ export function readJsonRef<T>(rel: string): T | null {
 }
 
 export function fixture(model: string): string {
-	return join(FIXTURES, `${model}.stl`);
+	// Scène multi-objets : chemin relatif avec extension (ex. scenes/two_objects.3mf).
+	return join(FIXTURES, model.endsWith('.3mf') ? model : `${model}.stl`);
 }
 
 export function slug(s: string): string {
@@ -40,7 +41,9 @@ export function slug(s: string): string {
 export async function harnessSlice(request: APIRequestContext, model: string, config: FlatConfig): Promise<string> {
 	const res = await request.post('/api/_harness/slice', {
 		multipart: {
-			model: { name: `${model}.stl`, mimeType: 'model/stl', buffer: readFileSync(fixture(model)) },
+			model: model.endsWith('.3mf')
+				? { name: model.split('/').pop()!, mimeType: 'model/3mf', buffer: readFileSync(fixture(model)) }
+				: { name: `${model}.stl`, mimeType: 'model/stl', buffer: readFileSync(fixture(model)) },
 			config: JSON.stringify(config)
 		},
 		timeout: 170_000
@@ -106,6 +109,9 @@ export type ParamCase = {
 	section?: string;
 	scope?: Scope;
 	requires?: Record<string, string | string[]>;
+	/** Scène multi-objets/multi-filament (fixtures/scenes/<scene>.3mf) : config plate
+	 * complète dans refs/param/<clé>.config.json, tranchée telle quelle. */
+	scene?: string;
 	/** Modèle de fixtures propre au cas (défaut : oracle.json param_model). */
 	model?: string;
 };

@@ -79,6 +79,23 @@ struct SimplifyRequest {
     output_path: PathBuf,
 }
 
+/// `flush-volumes` : volumes de purge depuis les couleurs (FlushVolCalculator).
+#[derive(Debug, Deserialize)]
+struct FlushVolumesRequest {
+    colours: Vec<String>,
+    #[serde(default)]
+    is_support: Vec<bool>,
+    #[serde(default)]
+    min_flush: Vec<i32>,
+    #[serde(default)]
+    flush_dataset: i32,
+    /// Config résolue du projet : minimum (get_min_flush_volumes), jeu de
+    /// données (nozzle_flush_dataset[0]) et filaments support en dérivent
+    /// quand ils ne sont pas fournis.
+    #[serde(default)]
+    config: Option<engine::api::DynamicPrintConfig>,
+}
+
 /// `fill-bed` : « Remplir le plateau avec des instances » d'Orca.
 #[derive(Debug, Deserialize)]
 struct FillBedRequest {
@@ -360,6 +377,43 @@ fn main() {
             }
         }
         // Export Draco (menu Export › … DRC d'Orca, `store_drc`).
+        Some("flush-volumes") => {
+            let Some(path) = args.get(2).map(PathBuf::from) else {
+                eprintln!("usage: flush-volumes <request.json>");
+                std::process::exit(2);
+            };
+            let result = read_json_bounded::<FlushVolumesRequest>(&path).and_then(|mut r| {
+                if let Some(config) = &r.config {
+                    use engine::api::ConfigValue;
+                    if r.min_flush.is_empty() {
+                        r.min_flush = engine::adapters::ffi::min_flush_volumes(config, 0)?;
+                    }
+                    if r.flush_dataset == 0 {
+                        if let Some(ConfigValue::Ints(v)) = config.get("nozzle_flush_dataset") {
+                            r.flush_dataset = v.first().copied().unwrap_or(0) as i32;
+                        }
+                    }
+                    if r.is_support.is_empty() {
+                        if let Some(ConfigValue::Bools(v)) = config.get("filament_is_support") {
+                            r.is_support = v.clone();
+                        }
+                    }
+                }
+                engine::adapters::ffi::flush_volumes(
+                    &r.colours,
+                    &r.is_support,
+                    &r.min_flush,
+                    r.flush_dataset,
+                )
+            });
+            match result {
+                Ok(matrix) => emit_json_result(&serde_json::json!({ "matrix": matrix })),
+                Err(e) => {
+                    emit_error(&code_slug(e.code), &e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
         Some("fill-bed") => {
             let Some(path) = args.get(2).map(PathBuf::from) else {
                 eprintln!("usage: fill-bed <request.json>");

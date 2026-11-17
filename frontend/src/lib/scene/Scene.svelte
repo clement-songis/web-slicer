@@ -41,6 +41,17 @@
 		labels?: Record<string, string> | null;
 		/** Rang d'impression par objet (objet par objet), null = masqué. */
 		printOrder?: Record<string, number> | null;
+		extruderColors?: readonly string[] | null;
+		objectExtruders?: Record<string, number> | null;
+		wipeTower?: {
+			x: number;
+			y: number;
+			size: [number, number, number];
+			brim: number;
+			rotation: number;
+			color?: string;
+		} | null;
+		onmovewipetower?: (x: number, y: number) => void;
 		/** Volume sélectionné de l'objet sélectionné (mis en évidence). */
 		selectedVolumeId?: string | null;
 		/** Clic sur un volume dans la vue 3D (objet, volume). */
@@ -79,6 +90,10 @@
 		overhangNormalZ = null,
 		labels = null,
 		printOrder = null,
+		extruderColors = null,
+		objectExtruders = null,
+		wipeTower = null,
+		onmovewipetower,
 		selectedVolumeId = null,
 		onpickvolume,
 		onmeshpick,
@@ -185,6 +200,12 @@
 	data-overhang-faces={overhangNormalZ === null ? undefined : overhangFaces}
 	data-labels={labels ? Object.keys(labels).length : undefined}
 	data-print-order={printOrder ? Object.keys(printOrder).length : undefined}
+	data-extruder-colors={extruderColors ? extruderColors.length : undefined}
+	data-wipe-tower={wipeTower
+		? [wipeTower.x, wipeTower.y, wipeTower.size[0], wipeTower.size[1]]
+				.map((v) => v.toFixed(2))
+				.join(',')
+		: undefined}
 	data-selected-volume={selectedVolumeId ?? undefined}
 	data-flatten-planes={flattenAnchors ? flattenAnchors.length : undefined}
 	data-flatten-anchors={flattenAnchors
@@ -215,6 +236,10 @@
 			{overhangNormalZ}
 			{labels}
 			{printOrder}
+			{extruderColors}
+			{objectExtruders}
+			{wipeTower}
+			{onmovewipetower}
 			{selectedVolumeId}
 			{onpickvolume}
 			{onmeshpick}

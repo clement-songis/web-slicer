@@ -41,6 +41,11 @@
 		/** Peinture glissée : `onmeshpick` reçoit appui / déplacements / relâchement
 		 *  (phase) au lieu du seul clic, comme le pinceau de GLGizmoPainterBase. */
 		paintstroke?: boolean;
+		/** Multi-filament : couleur de chaque extrudeur (Orca teinte les objets
+		 *  à la couleur de leur filament) ; null = rendu neutre. */
+		extruderColors?: readonly string[] | null;
+		/** Extrudeur effectif de l'objet (1-based). */
+		extruder?: number;
 	}
 
 	// Couleurs par rôle, proches du rendu Orca (GLVolume) : pièce opaque,
@@ -69,8 +74,17 @@
 		selectedVolumeId = null,
 		onpickvolume,
 		clipPlane = null,
-		paintstroke = false
+		paintstroke = false,
+		extruderColors = null,
+		extruder = 1
 	}: Props = $props();
+
+	const tint = $derived(
+		extruderColors ? (extruderColors[Math.max(1, extruder) - 1] ?? null) : null
+	);
+	/** Couleur d'une pièce : son extrudeur propre, sinon celui de l'objet. */
+	const partTint = (v: SceneVolume) =>
+		extruderColors && v.extruder ? (extruderColors[v.extruder - 1] ?? tint) : tint;
 
 	// Coupe (Alt+molette en peinture) : Three garde -n·p + offset >= 0.
 	const clippingPlanes = $derived(
@@ -224,10 +238,16 @@
 >
 	<T.MeshStandardMaterial
 		color={printable
-			? selected
-				? $sceneColors.partSelected
-				: $sceneColors.part
+			? tint
+				? tint
+				: selected
+					? $sceneColors.partSelected
+					: $sceneColors.part
 			: $sceneColors.partUnprintable}
+		emissive={tint && selected && printable
+			? $sceneColors.emissiveActive
+			: $sceneColors.emissiveNone}
+		emissiveIntensity={tint && selected && printable ? 0.35 : 0}
 		transparent={!printable}
 		opacity={printable ? 1 : 0.45}
 		metalness={0.1}
@@ -264,7 +284,7 @@
 				<T.BoxGeometry args={volume.size} />
 			{/if}
 			<T.MeshStandardMaterial
-				color={style.color}
+				color={volume.type === 'part' ? (partTint(volume) ?? style.color) : style.color}
 				emissive={active ? $sceneColors.emissiveActive : $sceneColors.emissiveNone}
 				emissiveIntensity={active ? 0.6 : 0}
 				transparent={style.opacity < 1}

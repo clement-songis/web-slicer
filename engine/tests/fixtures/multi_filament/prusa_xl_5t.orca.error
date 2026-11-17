@@ -1,0 +1,2 @@
+
+/nix/store/m7fcb57wsl0i03mpxglml9xbm70rpzsv-xvfb-run-1+g87f6705/bin/.xvfb-run-wrapped: line 181: 2927876 Erreur de segmentation     (core dumped) DISPLAY=:$SERVERNUM XAUTHORITY=$AUTHFILE "$@"

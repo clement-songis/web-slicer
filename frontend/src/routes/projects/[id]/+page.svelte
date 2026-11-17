@@ -187,6 +187,7 @@
 		toggleOneLayerMode,
 		resolvePreviewKey,
 		defaultFilamentColor,
+		parseOrcaColor,
 		rgbToHex,
 		FAST_STEP,
 		type LayerRange,
@@ -275,6 +276,25 @@
 	} from '$lib/api/presets';
 	import { listPrinters, getPrinterCatalog, createPrinter, uploadSliced } from '$lib/api/printers';
 	import { friendlySliceError } from '$lib/editor/session';
+	import {
+		clampTowerPosition,
+		effectiveBrim,
+		estimateWipeTowerSize,
+		showWipeTower
+	} from '$lib/scene/wipe-tower';
+	import FlushVolumesDialog from '$lib/editor/FlushVolumesDialog.svelte';
+	import { computeFlushVolumes, flushVolumesAvailable } from '$lib/api/flush';
+	import {
+		afterSlotAdded,
+		afterSlotRemoved,
+		compactProjectConfig,
+		effectiveColours,
+		parseProjectConfig,
+		setSlotColour,
+		setTowerPosition,
+		towerPosition,
+		type ProjectFilamentConfig
+	} from '$lib/editor/multi-filament';
 	import { dialogFocus } from '$lib/ui/dialog-focus';
 	import { subscribeEvents, type EventSubscription } from '$lib/queue/events';
 	import type {
@@ -578,10 +598,29 @@
 		filamentAt(activePresets, clampFilamentSlot(activePresets, filamentSlot))
 	);
 	// Couleur CSS de chaque slot (pastilles colonne Filament / liste d'objets).
-	const filamentSlotColors = $derived(
+	// Config projet multi-filament (couleurs par slot, volumes de purge), Orca :
+	// config projet, pas preset (lib/editor/multi-filament).
+	let projectFilament = $state<ProjectFilamentConfig>({});
+	let flushDialogOpen = $state(false);
+	// Extrudeur effectif de chaque objet (teinte de la scène en multi-filament ;
+	// « auto » = 1, comme Orca).
+	const sceneObjectExtruders = $derived.by(() => {
+		if (filamentSlots < 2) return null;
+		const out: Record<string, number> = {};
+		for (const o of sceneObjects)
+			out[o.id] = clampExtruder(tree.effectiveExtruder(o.id), filamentSlots) || 1;
+		return out;
+	});
+	// Couleur du preset de chaque slot (avant surcharge projet).
+	const presetSlotColors = $derived(
 		Array.from({ length: filamentSlots }, (_, i) =>
 			rgbToHex(filamentColors?.[i] ?? defaultFilamentColor(i))
 		)
+	);
+	const filamentSlotColors = $derived(effectiveColours(presetSlotColors, projectFilament));
+	// Couleurs de l'aperçu (coloration « filament », légende) : surcharges comprises.
+	const previewFilamentColors = $derived(
+		filamentSlotColors.map((c, i) => parseOrcaColor(c) ?? defaultFilamentColor(i))
 	);
 	// Recharge filament/process compatibles quand l'imprimante change (baseline
 	// posée à la première exécution de l'effet, d'où le sentinel `undefined`).
@@ -610,6 +649,7 @@
 		if (next === activePresets) return;
 		activePresets = next;
 		filamentSlot = next.filaments.length - 1;
+		projectFilament = afterSlotAdded(projectFilament, next.filaments.length);
 	}
 	// Retire un slot : les objets qui l'utilisaient repassent en auto, ceux des
 	// slots suivants sont renumérotés pour garder leur filament.
@@ -620,6 +660,14 @@
 			const extruder = remapExtruderAfterRemoval(node.extruder, slot);
 			if (extruder !== node.extruder) tree.setExtruder(node.id, extruder);
 		}
+		// Volumes : même renumérotation que les objets (0 = hérite de l'objet).
+		for (const [objectId, volumes] of Object.entries(volumesByObject))
+			for (const v of volumes) {
+				const ex = remapExtruderAfterRemoval(v.extruder ?? 0, slot);
+				if (ex !== (v.extruder ?? 0))
+					updateVolume(objectId, v.id, { extruder: ex > 0 ? ex : undefined });
+			}
+		projectFilament = afterSlotRemoved(projectFilament, slot);
 		filamentSlot = slotAfterRemoval(filamentSlot, slot, next.filaments.length);
 		activePresets = next;
 	}
@@ -662,6 +710,12 @@
 	// Dialogue « Réglages du plateau » (surcharges par plateau).
 	let plateSettingsOpen = $state(false);
 	let processValues = $state<Record<string, unknown>>({});
+	// Tour d'essuyage active (résumé de la colonne Filament en multi-filament).
+	const primeTowerOn = $derived(
+		processValues.enable_prime_tower === true ||
+			processValues.enable_prime_tower === '1' ||
+			processValues.enable_prime_tower === 1
+	);
 	let filamentValues = $state<Record<string, unknown>>({});
 	let machineValues = $state<Record<string, unknown>>({});
 	let processResolvedValues = $state<Record<string, unknown>>({});
@@ -1013,6 +1067,7 @@
 		// servent à retrouver le plateau d'origine ; l'arbre régénère les ids vivants.
 		const saved = parseScene(data.project.scene);
 		sceneCalibration = saved.calibration ?? null;
+		projectFilament = parseProjectConfig(saved.projectConfig);
 		const plateByOldId: Record<string, string> = {};
 		for (const p of saved.plates.plates ?? []) {
 			for (const oid of p.objectIds ?? []) plateByOldId[oid] = p.id;
@@ -1417,7 +1472,10 @@
 		}
 	}
 
-	function openSettingsDialog(kind: 'process' | 'filament' | 'machine') {
+	// Onglet ouvert par le dialogue (raccourci « Tour d'essuyage » → Multimatériau).
+	let settingsInitialPage = $state<string | undefined>(undefined);
+	function openSettingsDialog(kind: 'process' | 'filament' | 'machine', page?: string) {
+		settingsInitialPage = page;
 		settingsDialog = kind;
 		// Base déjà chargée pour ce preset : pas de rechargement (il écraserait
 		// une saisie en cours si la réponse arrivait après).
@@ -3112,6 +3170,71 @@
 				rank[node.id] = ++n;
 		return n > 0 ? rank : null;
 	});
+	// — Tour d'essuyage sur le plateau (Préparer) : taille estimée comme Orca,
+	//   position par plateau dans la config projet (wipe_tower_x/y).
+	const firstNum = (v: unknown, d: number) => {
+		const n = Number(Array.isArray(v) ? v[0] : v);
+		return Number.isFinite(n) ? n : d;
+	};
+	const towerDefault = $derived<[number, number]>([
+		firstNum(processValues.wipe_tower_x ?? machineValues.wipe_tower_x, 15),
+		firstNum(processValues.wipe_tower_y ?? machineValues.wipe_tower_y, 220)
+	]);
+	const activePlateIndex = $derived(plates.plateIndex(plates.activeId ?? ''));
+	const sceneWipeTower = $derived.by(() => {
+		if (filamentSlots < 2) return null;
+		const objs = activeSceneObjects.filter((o) => tree.isPrintable(o.id) && !tree.isHidden(o.id));
+		const used = new SvelteSet<number>();
+		let maxHeight = 0;
+		for (const o of objs) {
+			const ex = clampExtruder(tree.effectiveExtruder(o.id), filamentSlots) || 1;
+			used.add(ex);
+			for (const v of volumesByObject[o.id] ?? [])
+				if (v.type === 'part' && v.extruder) used.add(v.extruder);
+			maxHeight = Math.max(maxHeight, worldSize(o.mesh, o.rotation, o.scale)[2]);
+		}
+		if (
+			!showWipeTower({
+				enabled: primeTowerOn,
+				plateExtruders: used.size,
+				objects: objs.length,
+				byObject: sequentialPrint
+			})
+		)
+			return null;
+		const nozzles = Array.isArray(machineValues.nozzle_diameter)
+			? machineValues.nozzle_diameter.length
+			: 1;
+		const size = estimateWipeTowerSize({
+			width: firstNum(processValues.prime_tower_width, 60),
+			primeVolume: firstNum(processValues.prime_volume, 45),
+			layerHeight: firstNum(processValues.layer_height, 0.2),
+			infillGap: firstNum(
+				String(processValues.prime_tower_infill_gap ?? '150').replace('%', ''),
+				150
+			),
+			wallType: String(processValues.wipe_tower_wall_type ?? 'rib'),
+			ribWidth: firstNum(processValues.wipe_tower_rib_width, 8),
+			extraRibLength: firstNum(processValues.wipe_tower_extra_rib_length, 0),
+			maxHeight,
+			plateExtruders: used.size,
+			nozzles,
+			changeLength: firstNum(filamentValues.filament_change_length, 10),
+			filamentDiameter: firstNum(filamentValues.filament_diameter, 1.75)
+		});
+		if (size[0] <= 0 || size[1] <= 0) return null;
+		const brim = effectiveBrim(firstNum(processValues.prime_tower_brim_width, 3), size[2]);
+		const [px, py] = towerPosition(projectFilament, activePlateIndex, towerDefault);
+		const [x, y] = clampTowerPosition(px, py, size, bed, brim);
+		return { x, y, size, brim, rotation: firstNum(processValues.wipe_tower_rotation_angle, 0) };
+	});
+	function moveWipeTower(x: number, y: number) {
+		if (!sceneWipeTower) return;
+		const [cx, cy] = clampTowerPosition(x, y, sceneWipeTower.size, bed, sceneWipeTower.brim);
+		projectFilament = setTowerPosition(projectFilament, activePlateIndex, cx, cy, towerDefault);
+		saveMessage = `Tour d'essuyage déplacée en X ${cx.toFixed(1)} · Y ${cy.toFixed(1)} mm.`;
+	}
+
 	function reorderObject(id: string, targetId: string) {
 		if (!tree.moveTo(id, targetId)) return;
 		// La scène suit l'ordre de l'arbre (et non un déplacement relatif : les
@@ -5067,7 +5190,7 @@
 			coloration,
 			ranges: { ...rangesFromMeta(previewMeta), flow: previewFlowRange },
 			visibleTypes,
-			filamentColors,
+			filamentColors: previewFilamentColors,
 			layerRange: { low: from, high: to },
 			moveCursor: { layer: to, position: moveCursor.position },
 			track:
@@ -5188,7 +5311,8 @@
 				projectId: data.project.id,
 				ids: [...new Set([...projectModelIds, ...objects.map((o) => o.modelId)])]
 			},
-			sceneCalibration
+			sceneCalibration,
+			compactProjectConfig(projectFilament) as Record<string, unknown> | null
 		);
 		return scene;
 	}
@@ -5585,15 +5709,22 @@
 		open={filamentMenu.open}
 		x={filamentMenu.x}
 		y={filamentMenu.y}
-		items={filamentSlots > 1
-			? FILAMENT_CONTEXT_ITEMS
-			: FILAMENT_CONTEXT_ITEMS.filter(
-					(item) => item === 'separator' || item.action !== 'filament.delete'
-				)}
+		items={[
+			...(filamentSlots > 1
+				? FILAMENT_CONTEXT_ITEMS
+				: FILAMENT_CONTEXT_ITEMS.filter(
+						(item) => item === 'separator' || item.action !== 'filament.delete'
+					)),
+			...(projectFilament.filament_colour?.[filamentMenu.slot]
+				? [{ label: 'Couleur du preset', action: 'filament.resetColour' }]
+				: [])
+		]}
 		onaction={(action) => {
 			filamentSlot = filamentMenu.slot;
 			if (action === 'filament.edit') openSettingsDialog('filament');
 			else if (action === 'filament.delete') removeFilament(filamentMenu.slot);
+			else if (action === 'filament.resetColour')
+				projectFilament = setSlotColour(projectFilament, filamentMenu.slot, null);
 		}}
 		onclose={() => (filamentMenu = { ...filamentMenu, open: false })}
 	/>
@@ -5762,15 +5893,33 @@
 										filamentMenu = { open: true, x: e.clientX, y: e.clientY, slot };
 									}}
 								>
-									<button
-										type="button"
-										class="flex h-7 w-6 shrink-0 items-center justify-center rounded text-xs font-semibold shadow-inner"
+									<!-- Pastille : numéro de l'extrudeur ; un clic ouvre le sélecteur de
+									     couleur (couleur du projet, comme Orca : pas une modification du
+									     preset filament). -->
+									<label
+										class="relative flex h-7 w-6 shrink-0 cursor-pointer items-center justify-center rounded text-xs font-semibold shadow-inner focus-within:ring-2 focus-within:ring-accent"
 										style={swatchStyle(filamentSlotColors[slot])}
-										title={`Filament ${slot + 1} (extrudeur ${slot + 1})`}
-										aria-label={`Sélectionner le filament ${slot + 1}`}
-										aria-pressed={active}
-										onclick={() => (filamentSlot = slot)}>{slot + 1}</button
+										title={`Filament ${slot + 1} (extrudeur ${slot + 1}) — cliquer pour changer la couleur`}
+										data-testid="filament-swatch"
+										data-colour={filamentSlotColors[slot]}
+										data-custom={projectFilament.filament_colour?.[slot] ? 'true' : undefined}
 									>
+										{slot + 1}
+										<input
+											type="color"
+											class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+											aria-label={`Couleur du filament ${slot + 1}`}
+											data-testid="filament-colour"
+											value={filamentSlotColors[slot]}
+											onclick={() => (filamentSlot = slot)}
+											onchange={(e) =>
+												(projectFilament = setSlotColour(
+													projectFilament,
+													slot,
+													e.currentTarget.value
+												))}
+										/>
+									</label>
 									<div class="min-w-0 flex-1">
 										<PresetSelect
 											compact
@@ -5819,7 +5968,104 @@
 									{/if}
 								</div>
 							{/each}
+							{#if filamentSlots > 1}
+								<!-- Multi-filament : purge entre filaments (config projet) et tour
+								     d'essuyage (réglages d'impression, onglet Multimatériau). -->
+								<div
+									class="flex flex-wrap items-center gap-2 pt-1"
+									data-testid="multi-filament-tools"
+								>
+									<button
+										type="button"
+										class="ws-btn ws-btn-sm ws-btn-secondary"
+										data-testid="open-flush-volumes"
+										onclick={() => (flushDialogOpen = true)}
+										>Volumes de purge
+										{#if projectFilament.flush_volumes_matrix || projectFilament.flush_multiplier}
+											<span class="ws-badge h-4 px-1.5">projet</span>
+										{/if}</button
+									>
+									<button
+										type="button"
+										class="ws-btn ws-btn-sm ws-btn-ghost"
+										data-testid="open-prime-tower"
+										title="Réglages de la tour d'essuyage (réglages d'impression › Multimatériau)"
+										onclick={() => openSettingsDialog('process', 'Multimaterial')}
+									>
+										Tour d'essuyage :
+										<span
+											class={primeTowerOn ? 'text-success-content' : 'text-content-muted'}
+											data-testid="prime-tower-state"
+											>{primeTowerOn
+												? `activée · ${Number(processValues.prime_tower_width ?? 35)} mm`
+												: 'désactivée'}</span
+										>
+									</button>
+								</div>
+								{#if sceneWipeTower}
+									<!-- Alternative au glisser sur le plateau (clavier, valeurs exactes). -->
+									<div
+										class="flex items-center gap-2 text-xs text-content-muted"
+										data-testid="wipe-tower-position"
+									>
+										<span>Position de la tour</span>
+										{#each [0, 1] as axis (axis)}
+											<label class="flex items-center gap-1">
+												<span>{axis === 0 ? 'X' : 'Y'}</span>
+												<input
+													type="number"
+													step="1"
+													class="ws-field ws-field-sm w-16 tabular-nums"
+													aria-label={`Position ${axis === 0 ? 'X' : 'Y'} de la tour d'essuyage (mm)`}
+													data-testid={`wipe-tower-${axis === 0 ? 'x' : 'y'}`}
+													value={(axis === 0 ? sceneWipeTower.x : sceneWipeTower.y).toFixed(1)}
+													onchange={(e) => {
+														const v = Number(e.currentTarget.value);
+														if (!Number.isFinite(v) || !sceneWipeTower) return;
+														moveWipeTower(
+															axis === 0 ? v : sceneWipeTower.x,
+															axis === 0 ? sceneWipeTower.y : v
+														);
+													}}
+												/>
+											</label>
+										{/each}
+										<span>mm</span>
+										<span
+											class="ml-auto text-content-subtle tabular-nums"
+											data-testid="wipe-tower-size"
+											>{sceneWipeTower.size[0].toFixed(0)} × {sceneWipeTower.size[1].toFixed(0)} mm</span
+										>
+									</div>
+								{/if}
+								{#if !primeTowerOn}
+									<p
+										class="text-xs text-warning-content"
+										role="note"
+										data-testid="prime-tower-warning"
+									>
+										Sans tour d'essuyage, la purge des changements de filament se fait dans l'objet
+										ou en l'air.
+									</p>
+								{/if}
+							{/if}
 						</section>
+						<FlushVolumesDialog
+							open={flushDialogOpen}
+							colours={filamentSlotColors}
+							matrix={projectFilament.flush_volumes_matrix}
+							multiplier={projectFilament.flush_multiplier ?? 1}
+							onclose={() => (flushDialogOpen = false)}
+							compute={async (colours, multiplier) =>
+								(await computeFlushVolumes(colours, multiplier, data.project.id)).matrix}
+							computeAvailable={flushVolumesAvailable}
+							onapply={(matrix, multiplier) =>
+								(projectFilament = {
+									...projectFilament,
+									flush_volumes_matrix: matrix,
+									flush_multiplier: multiplier
+								})}
+						/>
 						<!-- Traitement : dropdown + réglages en ligne (onglets), sans bouton d’enregistrement. -->
 						<section class="flex flex-col gap-2">
 							<div class="flex items-center justify-between gap-2">
@@ -5866,6 +6112,7 @@
 								open={settingsDialog === 'process'}
 								title="Réglages d'impression"
 								kind="process"
+								initialPage={settingsInitialPage}
 								bind:mode={settingsMode}
 								bind:values={processValues}
 								valuesByKind={{
@@ -5982,6 +6229,34 @@
 										>{volume.name}</button
 									>
 									<span class="text-xs text-content-subtle">{volume.size.join('×')}</span>
+									{#if filamentSlots > 1 && (volume.type === 'part' || volume.type === 'modifier')}
+										<!-- Extrudeur propre du volume (Orca : pièces et modificateurs) ;
+										     « objet » = hérite de l'extrudeur de l'objet. -->
+										{@const vx = volume.extruder ?? 0}
+										<span
+											class="h-3 w-3 shrink-0 rounded-full ring-1 ring-border-strong"
+											style:background-color={filamentSlotColors[
+												(vx || tree.effectiveExtruder(selId) || 1) - 1
+											] ?? 'transparent'}
+											aria-hidden="true"
+										></span>
+										<select
+											class="ws-field ws-field-sm h-6 px-0.5"
+											aria-label={`Extrudeur de ${volume.name}`}
+											data-testid="object-volume-extruder"
+											value={vx}
+											onchange={(e) => {
+												const v = Number(e.currentTarget.value);
+												if (selId)
+													updateVolume(selId, volume.id, { extruder: v > 0 ? v : undefined });
+											}}
+										>
+											<option value={0}>objet</option>
+											{#each Array.from({ length: filamentSlots }, (_, i) => i + 1) as ex (ex)}
+												<option value={ex}>{ex}</option>
+											{/each}
+										</select>
+									{/if}
 									<button
 										type="button"
 										class="px-1 text-xs text-content-muted hover:text-content"
@@ -6114,6 +6389,10 @@
 						{overhangNormalZ}
 						labels={objectLabels}
 						printOrder={scenePrintOrder}
+						extruderColors={filamentSlots > 1 ? filamentSlotColors : null}
+						objectExtruders={sceneObjectExtruders}
+						wipeTower={layout.tab === 'prepare' ? sceneWipeTower : null}
+						onmovewipetower={moveWipeTower}
 						{selectedVolumeId}
 						onpickvolume={pickVolume}
 						onmeshpick={onMeshPick}
@@ -6657,7 +6936,7 @@
 											ranges: { ...rangesFromMeta(previewMeta), flow: previewFlowRange },
 											typesPresent: previewMeta.types_present,
 											extrudersPresent: previewMeta.extruders_present,
-											filamentColors,
+											filamentColors: previewFilamentColors,
 											track: previewTrack
 										})}
 										showTypes={coloration === 'type'}

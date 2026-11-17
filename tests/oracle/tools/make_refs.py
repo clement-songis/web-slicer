@@ -151,6 +151,62 @@ def place(key: str, scope: str | None, trio: tuple[dict, dict, dict]) -> dict:
     return {"printer": printer, "filament": filament}.get(scope or "", process)
 
 
+def run_orca_scene(scene: str, cfg: dict, dest: Path, draws: int = 1) -> bool:
+    """Cas « scène » (multi-objets / multi-filament) : la scène est un 3MF de
+    fixtures/scenes (objets placés, extrudeur par objet/volume). Sa
+    project_settings.config est remplacée par la config plate du cas, puis
+    `orca-slicer --slice 0` (config embarquée, positions figées) ; variante
+    majoritaire sur `draws` tirages (refs/README.md)."""
+    import collections, hashlib, zipfile
+    src = ORACLE / "fixtures" / "scenes" / f"{scene}.3mf"
+    counter, keep, why = collections.Counter(), {}, ""
+    for _ in range(max(draws, 1)):
+        with tempfile.TemporaryDirectory() as tmp:
+            t = Path(tmp); f = t / f"{scene}.3mf"; out = t / "out"; out.mkdir()
+            z = zipfile.ZipFile(src)
+            with zipfile.ZipFile(f, "w", zipfile.ZIP_DEFLATED) as w:
+                for i in z.infolist():
+                    d = z.read(i.filename)
+                    if i.filename == "Metadata/project_settings.config":
+                        d = json.dumps(cfg, indent=4, ensure_ascii=False).encode()
+                    w.writestr(i, d)
+            r = subprocess.run(orca_cmd() + ["--slice", "0", "--outputdir", str(out), str(f)],
+                               capture_output=True, text=True, timeout=900)
+            g = sorted(out.glob("*.gcode"))
+            if not g:
+                res = out / "result.json"
+                why = (json.loads(res.read_text()).get("error_string", "") if res.exists() else "") + "\n" + (r.stdout + r.stderr)[-1500:]
+                counter["ERROR"] += 1
+                continue
+            text = g[0].read_text()
+            h = hashlib.md5("\n".join(l for l in text.split("\n") if not l.startswith(";")).encode()).hexdigest()
+            counter[h] += 1; keep.setdefault(h, text)
+    best, _ = counter.most_common(1)[0]
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if best == "ERROR":
+        dest.with_suffix(".error").write_text(why); dest.unlink(missing_ok=True)
+        return False
+    dest.write_text(keep[best]); dest.with_suffix(".error").unlink(missing_ok=True)
+    return True
+
+
+def scene_config(scene: str, key: str, value, requires: dict) -> dict:
+    """Config plate d'un cas scène : config Orca de la scène + requires + valeur,
+    vecteurs ajustés à la longueur de la scène (par filament / par extrudeur)."""
+    import zipfile
+    cfg = json.loads(zipfile.ZipFile(ORACLE / "fixtures" / "scenes" / f"{scene}.3mf").read("Metadata/project_settings.config"))
+
+    def fit(v, base):
+        if isinstance(base, list):
+            vals = v if isinstance(v, list) else [v]
+            n = max(len(base), 1)
+            return (vals * n)[:n] if len(vals) < n else vals[:n]
+        return v[0] if isinstance(v, list) and v else v
+    for k, v in {**(requires or {}), key: value}.items():
+        cfg[k] = fit(v, cfg.get(k))
+    return cfg
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--only", default="base,golden,params")
@@ -158,10 +214,12 @@ def main() -> None:
     ap.add_argument("--jobs", type=int, default=os.cpu_count() or 4)
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--profiles", type=Path, default=DEFAULT_PROFILES)
+    ap.add_argument("--draws", type=int, default=5, help="tirages des cas scène (variante majoritaire)")
     a = ap.parse_args()
     only = set(a.only.split(","))
     refs = Refs(a.profiles)
     jobs = []
+    scene_jobs = []
 
     if "base" in only:
         trio = refs.trio()
@@ -185,6 +243,13 @@ def main() -> None:
             req = ORACLE / "params" / "requires" / f"{c['key']}.json"
             if req.exists():
                 c["requires"] = json.loads(req.read_text()).get("requires", {})
+            if c.get("scene"):
+                cfg = scene_config(c["scene"], c["key"], c["value"], c.get("requires") or {})
+                (REFS / "param").mkdir(parents=True, exist_ok=True)
+                (REFS / "param" / f"{c['key']}.value.json").write_text(json.dumps(cfg[c["key"]]))
+                (REFS / "param" / f"{c['key']}.config.json").write_text(json.dumps(cfg, indent=1, ensure_ascii=False))
+                scene_jobs.append((c["scene"], cfg, REFS / "param" / f"{c['key']}.gcode"))
+                continue
             trio = tuple(json.loads(json.dumps(x)) for x in refs.trio())
             target = place(c["key"], c.get("scope"), trio)
             value = distinct_value(c["key"], c["value"], target.get(c["key"]))
@@ -202,6 +267,11 @@ def main() -> None:
             ok += good
             if i % 25 == 0 or i == len(todo):
                 print(f"  {i}/{len(todo)} ({ok} ok)")
+    todo_scenes = [j for j in scene_jobs if a.force or not (j[2].exists() or j[2].with_suffix(".error").exists())]
+    if todo_scenes:
+        print(f"{len(todo_scenes)} cas scène × {a.draws} tirages (séquentiels)")
+        for scene, cfg, dest in todo_scenes:
+            run_orca_scene(scene, cfg, dest, a.draws)
     errs = sorted(p.name for p in REFS.rglob("*.error"))
     if errs:
         print(f"{len(errs)} refus d'Orca (→ needs_review) : {', '.join(errs[:20])}")

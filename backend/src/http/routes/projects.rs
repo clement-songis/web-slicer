@@ -257,6 +257,9 @@ async fn import_3mf_contents(
     Vec<(crate::domain::Model, engine::api::TriangleMesh)>,
 )> {
     let mut active_presets = json!({});
+    // Réglages du projet Orca (project_settings.config) → scene.projectConfig :
+    // couleurs des filaments, matrice et multiplicateur de purge.
+    let project_config = imported_project_config(&imported.config);
     if !imported.config.is_empty() {
         let preset = create_imported_preset(state, user_id, project_name, imported.config).await?;
         active_presets = json!({ "process": preset.id.to_string() });
@@ -386,13 +389,57 @@ async fn import_3mf_contents(
         }));
     }
     let active_id = plates.first().and_then(|plate| plate["id"].as_str());
-    let scene = json!({
+    let mut scene = json!({
         "schema_version": SCENE_SCHEMA_VERSION,
         "schemaVersion": SCENE_SCHEMA_VERSION,
         "objects": scene_objects,
         "plates": { "plates": plates, "activeId": active_id },
     });
+    if !project_config.is_empty() {
+        scene["projectConfig"] = Value::Object(project_config);
+    }
     Ok((scene, active_presets, models))
+}
+
+/// `scene.projectConfig` depuis la config Orca d'un 3MF (chaînes ou tableaux
+/// de chaînes) : `filament_colour` (tableau), `flush_volumes_matrix` (nombres),
+/// `flush_multiplier` (nombre, première buse).
+fn imported_project_config(config: &Map<String, Value>) -> Map<String, Value> {
+    let strings = |v: &Value| -> Vec<String> {
+        match v {
+            Value::Array(items) => items
+                .iter()
+                .filter_map(|i| i.as_str().map(str::to_string))
+                .collect(),
+            Value::String(s) => s
+                .split([';', ','])
+                .map(|p| p.trim().trim_matches('"').to_string())
+                .collect(),
+            _ => Vec::new(),
+        }
+    };
+    let mut out = Map::new();
+    if let Some(colours) = config
+        .get("filament_colour")
+        .map(strings)
+        .filter(|c| !c.is_empty())
+    {
+        out.insert("filament_colour".into(), json!(colours));
+    }
+    if let Some(matrix) = config.get("flush_volumes_matrix").map(strings) {
+        let values: Option<Vec<f64>> = matrix.iter().map(|s| s.parse().ok()).collect();
+        if let Some(values) = values.filter(|v| !v.is_empty()) {
+            out.insert("flush_volumes_matrix".into(), json!(values));
+        }
+    }
+    if let Some(first) = config
+        .get("flush_multiplier")
+        .map(strings)
+        .and_then(|v| v.first().and_then(|s| s.parse::<f64>().ok()))
+    {
+        out.insert("flush_multiplier".into(), json!(first));
+    }
+    out
 }
 
 fn imported_scene_object(

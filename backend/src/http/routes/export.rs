@@ -44,6 +44,8 @@ pub async fn export_3mf(
     // Configuration figée : presets actifs résolus.
     let (mut config, _warnings) =
         super::slice::resolve_active_config(&state, user.id, &project.active_presets).await?;
+    // Réglages du projet (couleurs, purges) par-dessus les presets, comme au tranchage.
+    super::slice::apply_project_config(&mut config, &project.scene);
     // G-code personnalisés par couche (Metadata/custom_gcode_per_layer.xml).
     let mode = crate::slicing::custom_gcode_mode(&config);
     model.custom_gcodes = crate::slicing::scene_custom_gcodes(&project.scene)

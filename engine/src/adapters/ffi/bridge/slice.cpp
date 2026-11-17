@@ -17,6 +17,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstdlib>
+#include <memory>
+#include <new>
+#include <set>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -568,7 +572,22 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
         }
     }
 
-    Slic3r::Print print;
+    // Print alloué sur une mémoire mise à zéro : Orca 2.4.1 laisse des membres
+    // POD non initialisés (FakeWipeTower : height, layer_height… — lus par le
+    // contrôle de conflits de Print::process quand la tour d'essuyage n'a pas
+    // reçu ses données, ex. flush_into_objects). Le CLI alloue Print sur le
+    // tas (mémoire fraîche, nulle en pratique) ; sur la pile du worker ces
+    // champs valaient n'importe quoi → SIGSEGV intermittent dans
+    // FakeWipeTower::getFakeExtrusionPathsFromWipeTower2 (lot multi-filament).
+    std::unique_ptr<void, decltype(&std::free)> print_mem(std::calloc(1, sizeof(Slic3r::Print)),
+                                                          &std::free);
+    if (!print_mem)
+        throw std::bad_alloc();
+    Slic3r::Print &print = *new (print_mem.get()) Slic3r::Print();
+    struct PrintGuard {
+        Slic3r::Print *p;
+        ~PrintGuard() { p->~Print(); }
+    } print_guard{&print};
     // Orca 2.4.1 laisse `m_isBBLPrinter` non initialisé : on reproduit
     // exactement `is_bbl_vendor_preset` du CLI (OrcaSlicer.cpp, juste avant
     // `Print::validate`), sans quoi un profil Voron pouvait prendre la branche
@@ -618,6 +637,43 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
     Slic3r::StringObjectException err = print.validate();
     if (!err.string.empty() && !err.is_warning)
         throw std::runtime_error("configuration invalide : " + err.string);
+
+    // Cohérence multi-filament AVANT Print::process : Orca 2.4.1 ne la vérifie
+    // pas et plante (SIGSEGV dans calc_filament_change_info_by_toolorder, CLI
+    // compris : scène Prusa XL 5T dont le 3MF exporté par le CLI n'a gardé
+    // qu'un filament) quand un objet/volume vise un filament absent ou quand
+    // flush_volumes_matrix n'a pas filaments² × buses entrées.
+    {
+        for (const Slic3r::ModelObject *object : model.objects)
+            for (const Slic3r::ModelVolume *volume : object->volumes) {
+                const int extruder = volume->extruder_id();
+                if (extruder > filaments)
+                    throw std::runtime_error(
+                        "configuration invalide : l'objet « " + object->name + " » utilise le filament " +
+                        std::to_string(extruder) + " mais le projet n'en définit que " +
+                        std::to_string(filaments) + " (filament_colour / filament_settings_id)");
+            }
+        const Slic3r::DynamicPrintConfig &view = config;
+        const auto *matrix = view.option<Slic3r::ConfigOptionFloats>("flush_volumes_matrix");
+        const auto *nozzles = view.option<Slic3r::ConfigOptionFloats>("nozzle_diameter");
+        const size_t nozzle_count = nozzles ? std::max<size_t>(1, nozzles->values.size()) : 1;
+        const bool used_tool_change = [&] {
+            std::set<int> used;
+            for (const Slic3r::ModelObject *object : model.objects)
+                for (const Slic3r::ModelVolume *volume : object->volumes)
+                    used.insert(std::max(1, volume->extruder_id()));
+            return used.size() > 1;
+        }();
+        if (used_tool_change && matrix && !matrix->values.empty()) {
+            const size_t per_nozzle = static_cast<size_t>(filaments) * static_cast<size_t>(filaments);
+            const size_t size = matrix->values.size();
+            if (size != per_nozzle && size != per_nozzle * nozzle_count)
+                throw std::runtime_error(
+                    "configuration invalide : flush_volumes_matrix a " + std::to_string(size) +
+                    " valeurs, " + std::to_string(per_nozzle) + " attendues (" + std::to_string(filaments) +
+                    " filaments²" + (nozzle_count > 1 ? " × " + std::to_string(nozzle_count) + " buses" : "") + ")");
+        }
+    }
 
     print.process();
 

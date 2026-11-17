@@ -24,6 +24,7 @@
 	import type { Transform } from './transform';
 	import { applyPick } from './selection';
 	import { worldSize } from './transform-ops';
+	import WipeTower from './WipeTower.svelte';
 	import { volumeFromWorld, volumeWorldTransform } from './volume-frame';
 	import { BufferAttribute, BufferGeometry, DoubleSide } from 'three';
 	import { flattenPlanes, flattenRotation, type FlattenPlane } from './gizmos/flatten';
@@ -53,6 +54,19 @@
 		/** Rang d'impression par objet (Orca, objet par objet : « Sequence #N »
 		 *  sous le nom de l'étiquette), null = masqué. */
 		printOrder?: Record<string, number> | null;
+		/** Multi-filament : couleur par extrudeur et extrudeur effectif par objet. */
+		extruderColors?: readonly string[] | null;
+		objectExtruders?: Record<string, number> | null;
+		/** Tour d'essuyage estimée (coin min, taille, bordure) ; null = masquée. */
+		wipeTower?: {
+			x: number;
+			y: number;
+			size: [number, number, number];
+			brim: number;
+			rotation: number;
+			color?: string;
+		} | null;
+		onmovewipetower?: (x: number, y: number) => void;
 		/** Volume sélectionné de l'objet sélectionné (mis en évidence). */
 		selectedVolumeId?: string | null;
 		/** Clic sur un volume dans la vue 3D (objet, volume). */
@@ -105,6 +119,10 @@
 		overhangNormalZ = null,
 		labels = null,
 		printOrder = null,
+		extruderColors = null,
+		objectExtruders = null,
+		wipeTower = null,
+		onmovewipetower,
 		selectedVolumeId = null,
 		onpickvolume,
 		onmeshpick,
@@ -436,8 +454,14 @@
 
 <Bed {bed} {showGrid} />
 
+{#if wipeTower}
+	<WipeTower {...wipeTower} {bed} onmove={onmovewipetower} ondragchange={(d) => (dragging = d)} />
+{/if}
+
 {#each objects as obj (obj.id)}
 	<ModelObject
+		{extruderColors}
+		extruder={objectExtruders?.[obj.id] ?? 1}
 		mesh={obj.mesh}
 		position={obj.position}
 		rotation={obj.rotation}

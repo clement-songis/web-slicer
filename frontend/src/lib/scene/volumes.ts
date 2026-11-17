@@ -25,6 +25,9 @@ export interface SceneVolume {
 	rotation?: [number, number, number];
 	/** Surcharges de réglages (modificateur), clés du registre. */
 	settings: Record<string, unknown>;
+	/** Extrudeur propre du volume (1-based ; absent/0 = celui de l'objet),
+	 *  Orca `ModelVolume` « extruder » (pièces et modificateurs). */
+	extruder?: number;
 }
 
 /** Action de menu → rôle (libellés de parité Orca). */
@@ -99,7 +102,10 @@ export function parseVolumes(raw: unknown): SceneVolume[] {
 				...(Array.isArray(o.rotation) && vec(o.rotation, 0).some((r) => r !== 0)
 					? { rotation: vec(o.rotation, 0) }
 					: {}),
-				settings: o.settings && typeof o.settings === 'object' ? { ...o.settings } : {}
+				settings: o.settings && typeof o.settings === 'object' ? { ...o.settings } : {},
+				...(Number.isInteger(o.extruder) && (o.extruder as number) > 0
+					? { extruder: o.extruder as number }
+					: {})
 			}
 		];
 	});

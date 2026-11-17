@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { untrack } from 'svelte';
 	// Rendu générique des onglets de réglages (T042, cadré par type en T099) à
 	// partir de `ui-layout.ts`. Reproduit l'organisation OrcaSlicer (pages →
 	// sections → options) mais **cadré par type de preset** (`kind`) : une instance
@@ -34,6 +35,8 @@
 		/** Pages des autres presets liées dans la même modale. Chaque section garde
 		 *  son type d'origine pour éditer le bon brouillon (dépendances inter-presets). */
 		valuesByKind?: Record<PresetKind, Record<string, unknown>>;
+		/** Onglet ouvert à l'affichage (titre de page Orca, ex. « Multimaterial »). */
+		initialPage?: string;
 	}
 
 	type LinkedSection = UiSection & { kind: PresetKind };
@@ -44,7 +47,8 @@
 		mode = $bindable('simple'),
 		values = $bindable({}),
 		loading = false,
-		valuesByKind
+		valuesByKind,
+		initialPage
 	}: Props = $props();
 
 	let query = $state('');
@@ -125,7 +129,7 @@
 	// Page active suivie par position : les titres de page ne sont pas uniques
 	// entre types (« Notes », « Multimaterial »), mais le cadrage par type limite
 	// les collisions ; on repère l'onglet par son index et on se replie sur 0.
-	let activeSlug = $state('');
+	let activeSlug = $state(untrack(() => (initialPage ? pageSlug(initialPage) : '')));
 	// Pendant une recherche, tous les onglets correspondants sont affichés tant
 	// que l'utilisateur n'a pas choisi un onglet ; nouvelle saisie → tout revoir.
 	let pickedDuringSearch = $state(false);

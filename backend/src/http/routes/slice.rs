@@ -95,8 +95,13 @@ pub async fn slice(
         }
     }
 
-    // Presets actifs résolus (figés) + avertissements moteur.
-    let (resolved, warnings) = resolve_active(&state, user.id, &project.active_presets).await?;
+    // Presets actifs résolus (figés) + avertissements moteur, puis réglages du
+    // projet (scene.projectConfig : couleurs, matrice/multiplicateur de purge)
+    // par-dessus, comme Orca applique sa config projet sur les presets.
+    let (mut merged, warnings) =
+        resolve_active_config(&state, user.id, &project.active_presets).await?;
+    apply_project_config(&mut merged, &project.scene);
+    let resolved = Value::Object(presets::config_to_json(&merged));
 
     let mut jobs = Vec::with_capacity(targets.len());
     for &t in &targets {
@@ -125,17 +130,8 @@ pub async fn slice(
 
 /// Résout les presets actifs (`{printer, process, filaments[]}`) en une config
 /// unique figée ; les valeurs hors bornes sont clampées et signalées (FR-032).
-async fn resolve_active(
-    state: &AppState,
-    user: crate::domain::UserId,
-    active: &Value,
-) -> ApiResult<(Value, Vec<SliceWarning>)> {
-    let (merged, warnings) = resolve_active_config(state, user, active).await?;
-    Ok((Value::Object(presets::config_to_json(&merged)), warnings))
-}
-
-/// Comme [`resolve_active`], mais renvoie la `DynamicPrintConfig` typée (export
-/// 3MF, T072) plutôt que sa projection JSON.
+/// Résout les presets actifs en `DynamicPrintConfig` typée (tranchage, export
+/// 3MF, T072).
 pub(crate) async fn resolve_active_config(
     state: &AppState,
     user: crate::domain::UserId,
@@ -223,11 +219,13 @@ pub(crate) async fn resolve_active_config(
         }
     }
     let mut filament_names = Vec::new();
-    for (index, id) in filament_ids.into_iter().enumerate() {
+    let mut filament_configs = Vec::new();
+    for id in filament_ids {
         let (preset, cfg) = resolve_one_preset(state, user, id).await?;
         filament_names.push(preset.name);
-        merge_filament_config(&mut merged, cfg, index);
+        filament_configs.push(cfg);
     }
+    merge_filament_configs(&mut merged, filament_configs);
     if !filament_names.is_empty() {
         merged.0.insert(
             "filament_settings_id".into(),
@@ -346,6 +344,49 @@ fn join_string_items(items: &[Value]) -> String {
         .join(";")
 }
 
+/// Fusionne les presets filament dans l'ordre, comme
+/// `PresetBundle::construct_full_config` sur des presets COMPLETS : une clé
+/// par filament absente d'un preset y prend sa valeur par défaut
+/// (`print_config_def`, registre) avant d'être concaténée. Sans cela, un
+/// filament qui ne définit pas `filament_colour` (défaut #F2754E) décalait
+/// les vecteurs : [#FF0000] au lieu de [#F2754E, #FF0000] (lot multi-filament).
+fn merge_filament_configs(merged: &mut DynamicPrintConfig, filaments: Vec<DynamicPrintConfig>) {
+    let vector_keys: std::collections::BTreeSet<String> = filaments
+        .iter()
+        .flat_map(|f| f.0.iter())
+        .filter(|(_, v)| is_extruder_vector(v))
+        .map(|(k, _)| k.clone())
+        .collect();
+    let multi = filaments.len() > 1;
+    for (index, mut filament) in filaments.into_iter().enumerate() {
+        if multi {
+            for key in &vector_keys {
+                if !filament.0.contains_key(key) {
+                    if let Some(default) = registry_default(key) {
+                        filament.0.insert(key.clone(), default);
+                    }
+                }
+            }
+        }
+        merge_filament_config(merged, filament, index);
+    }
+}
+
+/// Valeur par défaut d'Orca (`print_config_def`, via le registre) d'une clé.
+fn registry_default(key: &str) -> Option<ConfigValue> {
+    let def = engine::params::get(key)?;
+    let value: Value = serde_json::from_str(def.default_json?).ok()?;
+    let mut values = serde_json::Map::new();
+    values.insert(key.to_string(), value);
+    let resolved = engine::presets::resolve_preset_chain(&[engine::api::RawPreset {
+        name: "défauts".into(),
+        inherits: None,
+        values,
+    }])
+    .ok()?;
+    resolved.0.get(key).cloned()
+}
+
 /// Ajoute les valeurs du filament `index` aux vecteurs par extrudeur. Chaque
 /// preset filament apporte ses propres valeurs : elles ne doivent jamais
 /// remplacer celles des filaments déjà fusionnés. Comme dans
@@ -439,6 +480,70 @@ fn parse_preset_id(raw: &str) -> ApiResult<PresetId> {
 }
 
 // --- Lecture tolérante du document scène -------------------------------------
+
+/// Réglages du PROJET (`scene.projectConfig`, pas des presets) appliqués sur la
+/// config résolue, comme la config projet d'Orca par-dessus les presets
+/// (`PresetBundle::full_fff_config` : `filament_colour` y est une option projet,
+/// `flush_volumes_matrix` / `flush_multiplier` aussi) :
+/// - `filament_colour` : entrées non vides seulement (`""` = couleur du preset) ;
+/// - `flush_volumes_matrix` : matrice N×N aplatie (mm³) ;
+/// - `flush_multiplier` : nombre (ou tableau par buse).
+///
+/// Sans matrice explicite, le moteur la recalcule depuis les couleurs
+/// (FlushVolCalculator, comme le CLI quand les couleurs changent).
+pub(crate) fn apply_project_config(config: &mut engine::api::DynamicPrintConfig, scene: &Value) {
+    let Some(project) = scene.get("projectConfig").and_then(Value::as_object) else {
+        return;
+    };
+    if let Some(colours) = project.get("filament_colour").and_then(Value::as_array) {
+        let mut current = match config.get("filament_colour") {
+            Some(ConfigValue::Strings(v)) => v.clone(),
+            _ => Vec::new(),
+        };
+        for (index, colour) in colours.iter().enumerate() {
+            let Some(colour) = colour.as_str().map(str::trim).filter(|c| !c.is_empty()) else {
+                continue;
+            };
+            if current.len() <= index {
+                current.resize(index + 1, "#FFFFFF".into());
+            }
+            current[index] = colour.to_string();
+        }
+        if !current.is_empty() {
+            config
+                .0
+                .insert("filament_colour".into(), ConfigValue::Strings(current));
+        }
+    }
+    let floats = |value: &Value| -> Option<Vec<f64>> {
+        match value {
+            Value::Number(n) => n.as_f64().map(|f| vec![f]),
+            Value::String(s) => s.trim().parse().ok().map(|f| vec![f]),
+            Value::Array(items) => items
+                .iter()
+                .map(|v| {
+                    v.as_f64()
+                        .or_else(|| v.as_str().and_then(|s| s.trim().parse().ok()))
+                })
+                .collect(),
+            _ => None,
+        }
+        .filter(|v: &Vec<f64>| !v.is_empty() && v.iter().all(|f| f.is_finite() && *f >= 0.0))
+    };
+    if let Some(matrix) = project.get("flush_volumes_matrix").and_then(floats) {
+        let n = (matrix.len() as f64).sqrt().round() as usize;
+        if n * n == matrix.len() {
+            config
+                .0
+                .insert("flush_volumes_matrix".into(), ConfigValue::Floats(matrix));
+        }
+    }
+    if let Some(multiplier) = project.get("flush_multiplier").and_then(floats) {
+        config
+            .0
+            .insert("flush_multiplier".into(), ConfigValue::Floats(multiplier));
+    }
+}
 
 /// Liste des `objectIds` par plateau (deux formes de scène tolérées : tableau de
 /// plateaux, ou document `{ plates: [...], activeId }`). Vide si aucun plateau.
@@ -604,6 +709,166 @@ mod tests {
             engine::params::orca_values::serialize_orca_value(value),
             "\"PLA\";\"PETG\""
         );
+    }
+
+    /// Fusion multi-filament comme Orca : presets aplatis de la scène
+    /// engine/tests/fixtures/multi_filament (Voron 2.4 350 + 0.20 Standard +
+    /// 2 × Generic PLA) fusionnés comme `resolve_active_config`, comparés à la
+    /// config que le CLI Orca a écrite dans two_objects.3mf
+    /// (project_settings.config) pour toutes les clés par filament et
+    /// multi-matériau (+ toutes les clés que les deux définissent).
+    #[test]
+    fn multi_filament_merge_matches_orca_project_settings() {
+        use std::io::Read;
+        let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../engine/tests/fixtures/multi_filament");
+        let resolve = |name: &str| {
+            let values: serde_json::Map<String, Value> = serde_json::from_slice(
+                &std::fs::read(dir.join(format!("presets/{name}.json"))).unwrap(),
+            )
+            .unwrap();
+            engine::presets::resolve_preset_chain(&[engine::api::RawPreset {
+                name: name.into(),
+                inherits: None,
+                values,
+            }])
+            .unwrap()
+        };
+        let mut merged = DynamicPrintConfig::new();
+        for name in ["printer", "process"] {
+            merged.0.extend(resolve(name).0);
+        }
+        merge_filament_configs(&mut merged, vec![resolve("filament"), resolve("filament2")]);
+
+        let mut zip =
+            zip::ZipArchive::new(std::fs::File::open(dir.join("two_objects.3mf")).unwrap())
+                .unwrap();
+        let mut text = String::new();
+        zip.by_name("Metadata/project_settings.config")
+            .unwrap()
+            .read_to_string(&mut text)
+            .unwrap();
+        let orca_values: serde_json::Map<String, Value> = serde_json::from_str(&text).unwrap();
+        let orca = engine::presets::resolve_preset_chain(&[engine::api::RawPreset {
+            name: "orca".into(),
+            inherits: None,
+            values: orca_values,
+        }])
+        .unwrap();
+        let mut diffs = Vec::new();
+        for (key, ours) in &merged.0 {
+            if matches!(
+                key.as_str(),
+                "inherits" | "name" | "from" | "compatible_printers" | "compatible_prints"
+            ) || key.ends_with("_settings_id")
+            {
+                continue;
+            }
+            if let Some(theirs) = orca.0.get(key) {
+                if theirs != ours {
+                    diffs.push(format!("{key} : moteur {ours:?} / Orca {theirs:?}"));
+                }
+            }
+        }
+        assert!(
+            diffs.is_empty(),
+            "{} écarts :\n{}",
+            diffs.len(),
+            diffs.join("\n")
+        );
+    }
+
+    /// Outil (ignoré) : fusionne les presets aplatis d'un dossier
+    /// (MF_PRESETS_DIR : printer/process/filament/filament2.json) comme
+    /// `resolve_active_config` et écrit la config (DynamicPrintConfig JSON)
+    /// dans MF_MERGED_OUT — reproduction des tranchages de production.
+    #[test]
+    #[ignore = "outil de reproduction (MF_PRESETS_DIR / MF_MERGED_OUT)"]
+    fn dump_merged_presets() {
+        // MF_SYSTEM = "vendor|machine|process|filament" : presets SYSTÈME résolus
+        // comme le backend (chaîne d'héritage des profils Orca importés), deux
+        // filaments identiques, couleur du 2e via scene.projectConfig.
+        let spec = std::env::var("MF_SYSTEM").unwrap();
+        let parts: Vec<&str> = spec.split('|').collect();
+        let profiles = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../vendor/OrcaSlicer/resources/profiles");
+        let outcome = engine::presets::import_profiles(&profiles).unwrap();
+        let index = engine::presets::PresetIndex::new(&outcome.presets);
+        use engine::presets::PresetKind;
+        let get = |kind, name: &str| index.resolve(parts[0], kind, name).unwrap();
+        let mut merged = DynamicPrintConfig::new();
+        merged.0.extend(get(PresetKind::Machine, parts[1]).0);
+        merged.0.extend(get(PresetKind::Process, parts[2]).0);
+        let filament = get(PresetKind::Filament, parts[3]);
+        merge_filament_configs(&mut merged, vec![filament.clone(), filament]);
+        let mut extra = std::env::var("MF_PROCESS_EXTRA").unwrap_or_default();
+        if extra.is_empty() {
+            extra = "{}".into();
+        }
+        let extra: serde_json::Map<String, Value> = serde_json::from_str(&extra).unwrap();
+        let extra = engine::presets::resolve_preset_chain(&[engine::api::RawPreset {
+            name: "extra".into(),
+            inherits: None,
+            values: extra,
+        }])
+        .unwrap();
+        merged.0.extend(extra.0);
+        apply_project_config(
+            &mut merged,
+            &serde_json::json!({ "projectConfig": { "filament_colour": ["", "#FF0000"] } }),
+        );
+        std::fs::write(
+            std::env::var("MF_MERGED_OUT").unwrap(),
+            serde_json::to_vec(&merged).unwrap(),
+        )
+        .unwrap();
+    }
+
+    /// scene.projectConfig appliqué par-dessus les presets (couleurs, matrice,
+    /// multiplicateur) ; entrées vides et matrices non carrées ignorées.
+    #[test]
+    fn project_config_overrides_presets() {
+        let mut config = DynamicPrintConfig::new();
+        config.0.insert(
+            "filament_colour".into(),
+            ConfigValue::Strings(vec!["#F2754E".into(), "#F2754E".into()]),
+        );
+        config
+            .0
+            .insert("flush_multiplier".into(), ConfigValue::Floats(vec![1.0]));
+        let scene = serde_json::json!({ "projectConfig": {
+            "filament_colour": ["", "#00A0FF"],
+            "flush_volumes_matrix": [0, 480, 220, 0],
+            "flush_multiplier": 1.5
+        }});
+        apply_project_config(&mut config, &scene);
+        assert_eq!(
+            config.get("filament_colour"),
+            Some(&ConfigValue::Strings(vec![
+                "#F2754E".into(),
+                "#00A0FF".into()
+            ]))
+        );
+        assert_eq!(
+            config.get("flush_volumes_matrix"),
+            Some(&ConfigValue::Floats(vec![0.0, 480.0, 220.0, 0.0]))
+        );
+        assert_eq!(
+            config.get("flush_multiplier"),
+            Some(&ConfigValue::Floats(vec![1.5]))
+        );
+        // Matrice non carrée : ignorée ; pas de projectConfig : inchangé.
+        apply_project_config(
+            &mut config,
+            &serde_json::json!({ "projectConfig": { "flush_volumes_matrix": [1, 2, 3] } }),
+        );
+        assert_eq!(
+            config.get("flush_volumes_matrix"),
+            Some(&ConfigValue::Floats(vec![0.0, 480.0, 220.0, 0.0]))
+        );
+        let before = config.0.clone();
+        apply_project_config(&mut config, &serde_json::json!({}));
+        assert_eq!(config.0, before);
     }
 
     #[test]

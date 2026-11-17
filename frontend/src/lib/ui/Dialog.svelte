@@ -46,7 +46,7 @@
 			aria-modal="true"
 			aria-label={label}
 			tabindex="-1"
-			use:dialogFocus
+			use:dialogFocus={onclose}
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => {
 				if (e.key === 'Escape') {

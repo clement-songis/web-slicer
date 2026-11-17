@@ -107,14 +107,16 @@
   "requires": {
    "enable_prime_tower": "1",
    "timelapse_type": "1"
-  }
+  },
+  "scene": "two_objects"
  },
  "wipe_tower_wall_type": {
   "value": "rectangle",
   "requires": {
    "enable_prime_tower": "1",
    "timelapse_type": "1"
-  }
+  },
+  "scene": "two_objects"
  },
  "wipe_tower_x": {
   "value": [
@@ -123,7 +125,8 @@
   "requires": {
    "enable_prime_tower": "1",
    "timelapse_type": "1"
-  }
+  },
+  "scene": "two_objects"
  },
  "wipe_tower_y": {
   "value": [
@@ -132,7 +135,8 @@
   "requires": {
    "enable_prime_tower": "1",
    "timelapse_type": "1"
-  }
+  },
+  "scene": "two_objects"
  },
  "wall_direction": {
   "value": "cw"
@@ -231,7 +235,8 @@
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
    "top_shell_thickness": "0"
-  }
+  },
+  "scene": "two_objects"
  },
  "printer_technology": {
   "value": "SLA",
@@ -453,7 +458,8 @@
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
    "top_shell_thickness": "0"
-  }
+  },
+  "scene": "two_objects"
  },
  "extruder_clearance_height_to_lid": {
   "value": "150",
@@ -481,7 +487,8 @@
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
    "top_shell_thickness": "0"
-  }
+  },
+  "scene": "two_objects"
  },
  "filament_stamping_distance": {
   "value": [
@@ -501,7 +508,8 @@
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
    "top_shell_thickness": "0"
-  }
+  },
+  "scene": "two_objects"
  },
  "filament_tower_interface_pre_extrusion_length": {
   "value": [
@@ -561,7 +569,8 @@
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
    "top_shell_thickness": "0"
-  }
+  },
+  "scene": "two_objects"
  },
  "machine_tool_change_time": {
   "value": "1",
@@ -569,7 +578,8 @@
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
    "top_shell_thickness": "0"
-  }
+  },
+  "scene": "two_objects"
  },
  "max_layer_height": {
   "value": [
@@ -587,7 +597,8 @@
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
    "top_shell_thickness": "0"
-  }
+  },
+  "scene": "two_objects"
  },
  "precise_outer_wall": {
   "value": "0",
@@ -623,7 +634,8 @@
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
    "top_shell_thickness": "0"
-  }
+  },
+  "scene": "two_objects"
  },
  "retraction_distances_when_ec": {
   "value": [
@@ -1071,5 +1083,163 @@
  "thick_bridges": {
   "value": "1",
   "model": "bridge"
+ },
+ "cooling_tube_length": {
+  "value": "6.25",
+  "scene": "two_objects"
+ },
+ "cooling_tube_retraction": {
+  "value": "114.375",
+  "scene": "two_objects"
+ },
+ "enable_filament_ramming": {
+  "value": "0",
+  "scene": "two_objects"
+ },
+ "filament_minimal_purge_on_wipe_tower": {
+  "value": [
+   "18.75"
+  ],
+  "scene": "two_objects"
+ },
+ "filament_unloading_speed": {
+  "value": [
+   "112.5"
+  ],
+  "scene": "two_objects"
+ },
+ "filament_unloading_speed_start": {
+  "value": [
+   "125"
+  ],
+  "scene": "two_objects"
+ },
+ "flush_into_infill": {
+  "value": "1",
+  "scene": "two_objects"
+ },
+ "flush_into_objects": {
+  "value": "1",
+  "scene": "two_objects"
+ },
+ "flush_multiplier": {
+  "value": [
+   "0.375"
+  ],
+  "scene": "two_objects"
+ },
+ "flush_volumes_matrix": {
+  "value": [
+   "1"
+  ],
+  "scene": "two_objects"
+ },
+ "machine_unload_filament_time": {
+  "value": "1",
+  "scene": "two_objects"
+ },
+ "prime_tower_brim_width": {
+  "value": "3.75",
+  "scene": "two_objects"
+ },
+ "prime_tower_flat_ironing": {
+  "value": "1",
+  "scene": "two_objects"
+ },
+ "prime_tower_width": {
+  "value": "75",
+  "scene": "two_objects"
+ },
+ "purge_in_prime_tower": {
+  "value": "0",
+  "scene": "two_objects"
+ },
+ "single_extruder_multi_material": {
+  "value": "0",
+  "scene": "two_objects"
+ },
+ "single_extruder_multi_material_priming": {
+  "value": "1",
+  "scene": "two_objects"
+ },
+ "wipe_tower_bridging": {
+  "value": "12.5",
+  "scene": "two_objects"
+ },
+ "wipe_tower_extra_rib_length": {
+  "value": "1",
+  "scene": "two_objects"
+ },
+ "wipe_tower_extra_spacing": {
+  "value": "101%",
+  "scene": "two_objects"
+ },
+ "wipe_tower_filament": {
+  "value": "1",
+  "scene": "two_objects"
+ },
+ "wipe_tower_rotation_angle": {
+  "value": "1",
+  "scene": "two_objects"
+ },
+ "filament_ramming_parameters": {
+  "value": [
+   "harness_test"
+  ],
+  "scene": "two_objects"
+ },
+ "wipe_tower_extra_flow": {
+  "value": "101%",
+  "scene": "two_objects"
+ },
+ "wipe_tower_fillet_wall": {
+  "value": "0",
+  "scene": "two_objects"
+ },
+ "wipe_tower_no_sparse_layers": {
+  "value": "1",
+  "scene": "two_objects"
+ },
+ "enable_prime_tower": {
+  "value": "0",
+  "scene": "two_objects"
+ },
+ "ooze_prevention": {
+  "value": "1",
+  "scene": "two_objects",
+  "requires": {
+   "single_extruder_multi_material": "0"
+  }
+ },
+ "standby_temperature_delta": {
+  "value": "-4",
+  "scene": "two_objects",
+  "requires": {
+   "single_extruder_multi_material": "0",
+   "ooze_prevention": "1"
+  }
+ },
+ "preheat_time": {
+  "value": "37.5",
+  "scene": "two_objects",
+  "requires": {
+   "single_extruder_multi_material": "0",
+   "ooze_prevention": "1"
+  }
+ },
+ "preheat_steps": {
+  "value": "2",
+  "scene": "two_objects",
+  "requires": {
+   "single_extruder_multi_material": "0",
+   "ooze_prevention": "1"
+  }
+ },
+ "tool_change_on_wipe_tower": {
+  "value": "1",
+  "scene": "two_objects",
+  "requires": {
+   "single_extruder_multi_material": "0"
+  }
  }
 }

@@ -53,6 +53,7 @@ fn main() {
         .file("src/adapters/ffi/bridge/paint.cpp")
         .file("src/adapters/ffi/bridge/gcode_process.cpp")
         .file("src/adapters/ffi/bridge/export_mesh.cpp")
+        .file("src/adapters/ffi/bridge/flush.cpp")
         .std("c++17")
         .include(libslic3r_dir.join("include"))
         .include(libslic3r_dir.join("include/libslic3r"))
@@ -183,6 +184,8 @@ fn main() {
     println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/gcode_process.cpp");
     println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/gcode_process.hpp");
     println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/export_mesh.cpp");
+    println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/flush.cpp");
+    println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/flush.hpp");
     println!("cargo:rerun-if-changed=src/adapters/ffi/bridge/export_mesh.hpp");
     println!("cargo:rerun-if-env-changed=LIBSLIC3R_DIR");
     println!("cargo:rerun-if-env-changed=ORCA_SRC");

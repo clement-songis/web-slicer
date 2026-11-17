@@ -98,7 +98,19 @@ pub fn run_in_worker(request_path: &Path) -> EngineResult<SliceResult> {
         &calib,
         &custom_gcodes_json,
     )
-    .map_err(|e| EngineError::new(EngineErrorCode::EngineCrashed, e.to_string()))?;
+    .map_err(|e| {
+        let message = e.to_string();
+        // Refus explicites du pont (validation Orca / cohérence multi-filament)
+        // : erreur de configuration, pas un plantage du moteur.
+        let code = if message.starts_with("configuration invalide")
+            || message.starts_with("rien à trancher")
+        {
+            EngineErrorCode::InvalidConfig
+        } else {
+            EngineErrorCode::EngineCrashed
+        };
+        EngineError::new(code, message)
+    })?;
 
     Ok(SliceResult {
         gcode_path: PathBuf::from(result.gcode_path),

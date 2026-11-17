@@ -964,7 +964,8 @@
   "tab": "Multimaterial",
   "section": "Single extruder multi-material parameters",
   "scope": "printer",
-  "tab_line": 4964
+  "tab_line": 4964,
+  "scene": "two_objects"
  },
  {
   "id": "param.cooling_tube_retraction",
@@ -978,7 +979,8 @@
   "tab": "Multimaterial",
   "section": "Single extruder multi-material parameters",
   "scope": "printer",
-  "tab_line": 4964
+  "tab_line": 4964,
+  "scene": "two_objects"
  },
  {
   "id": "param.counterbore_hole_bridging",
@@ -1404,7 +1406,8 @@
   "tab": "Multimaterial",
   "section": "Wipe tower",
   "scope": "printer",
-  "tab_line": 4964
+  "tab_line": 4964,
+  "scene": "two_objects"
  },
  {
   "id": "param.enable_long_retraction_when_cut",
@@ -1485,7 +1488,7 @@
   "id": "param.enable_prime_tower",
   "key": "enable_prime_tower",
   "type": "coBool",
-  "value": "1",
+  "value": "0",
   "ui": true,
   "label": "Enable",
   "mode": "simple",
@@ -1493,7 +1496,8 @@
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects"
  },
  {
   "id": "param.enable_support",
@@ -1631,6 +1635,7 @@
   "section": "Single extruder multi-material parameters",
   "scope": "printer",
   "tab_line": 4964,
+  "scene": "two_objects",
   "requires": {
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
@@ -2387,7 +2392,8 @@
   "tab": "Multimaterial",
   "section": "Wipe tower parameters",
   "scope": "filament",
-  "tab_line": 4165
+  "tab_line": 4165,
+  "scene": "two_objects"
  },
  {
   "id": "param.filament_multi_colour",
@@ -2432,6 +2438,7 @@
   "section": "Tool change parameters with multi extruder MM printers",
   "scope": "filament",
   "tab_line": 4165,
+  "scene": "two_objects",
   "requires": {
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
@@ -2493,7 +2500,8 @@
   "ui": false,
   "label": "Ramming parameters",
   "mode": "advanced",
-  "nullable": false
+  "nullable": false,
+  "scene": "two_objects"
  },
  {
   "id": "param.filament_retract_before_wipe",
@@ -2801,6 +2809,7 @@
   "section": "Tool change parameters with single extruder MM printers",
   "scope": "filament",
   "tab_line": 4165,
+  "scene": "two_objects",
   "requires": {
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
@@ -2922,7 +2931,8 @@
   "tab": "Multimaterial",
   "section": "Tool change parameters with single extruder MM printers",
   "scope": "filament",
-  "tab_line": 4165
+  "tab_line": 4165,
+  "scene": "two_objects"
  },
  {
   "id": "param.filament_unloading_speed_start",
@@ -2938,7 +2948,8 @@
   "tab": "Multimaterial",
   "section": "Tool change parameters with single extruder MM printers",
   "scope": "filament",
-  "tab_line": 4165
+  "tab_line": 4165,
+  "scene": "two_objects"
  },
  {
   "id": "param.filament_vendor",
@@ -3148,7 +3159,8 @@
   "tab": "Multimaterial",
   "section": "Flush options",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects"
  },
  {
   "id": "param.flush_into_objects",
@@ -3162,7 +3174,8 @@
   "tab": "Multimaterial",
   "section": "Flush options",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects"
  },
  {
   "id": "param.flush_into_support",
@@ -3188,7 +3201,8 @@
   "ui": false,
   "label": "Flush multiplier",
   "mode": "simple",
-  "nullable": false
+  "nullable": false,
+  "scene": "two_objects"
  },
  {
   "id": "param.flush_volumes_matrix",
@@ -3200,7 +3214,8 @@
   "ui": false,
   "label": "Purging volumes",
   "mode": "simple",
-  "nullable": false
+  "nullable": false,
+  "scene": "two_objects"
  },
  {
   "id": "param.flush_volumes_vector",
@@ -4751,6 +4766,7 @@
   "section": "Advanced",
   "scope": "printer",
   "tab_line": 4964,
+  "scene": "two_objects",
   "requires": {
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
@@ -5009,6 +5025,7 @@
   "section": "Advanced",
   "scope": "printer",
   "tab_line": 4964,
+  "scene": "two_objects",
   "requires": {
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
@@ -5027,7 +5044,8 @@
   "tab": "Multimaterial",
   "section": "Advanced",
   "scope": "printer",
-  "tab_line": 4964
+  "tab_line": 4964,
+  "scene": "two_objects"
  },
  {
   "id": "param.make_overhang_printable",
@@ -5518,7 +5536,11 @@
   "tab": "Multimaterial",
   "section": "Ooze prevention",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects",
+  "requires": {
+   "single_extruder_multi_material": "0"
+  }
  },
  {
   "id": "param.other_layers_print_sequence",
@@ -5818,6 +5840,7 @@
   "section": "Single extruder multi-material parameters",
   "scope": "printer",
   "tab_line": 4964,
+  "scene": "two_objects",
   "requires": {
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
@@ -5949,7 +5972,12 @@
   "tab": "Multimaterial",
   "section": "Ooze prevention",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects",
+  "requires": {
+   "single_extruder_multi_material": "0",
+   "ooze_prevention": "1"
+  }
  },
  {
   "id": "param.preheat_time",
@@ -5963,7 +5991,12 @@
   "tab": "Multimaterial",
   "section": "Ooze prevention",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects",
+  "requires": {
+   "single_extruder_multi_material": "0",
+   "ooze_prevention": "1"
+  }
  },
  {
   "id": "param.preset_name",
@@ -6020,7 +6053,8 @@
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects"
  },
  {
   "id": "param.prime_tower_enable_framework",
@@ -6044,7 +6078,8 @@
   "ui": false,
   "label": null,
   "mode": "advanced",
-  "nullable": false
+  "nullable": false,
+  "scene": "two_objects"
  },
  {
   "id": "param.prime_tower_infill_gap",
@@ -6086,7 +6121,8 @@
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects"
  },
  {
   "id": "param.prime_volume",
@@ -6519,7 +6555,8 @@
   "tab": "Multimaterial",
   "section": "Wipe tower",
   "scope": "printer",
-  "tab_line": 4964
+  "tab_line": 4964,
+  "scene": "two_objects"
  },
  {
   "id": "param.raft_contact_distance",
@@ -6730,6 +6767,7 @@
   "section": "Retraction when switching material",
   "scope": "printer",
   "tab_line": 5079,
+  "scene": "two_objects",
   "requires": {
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
@@ -7173,7 +7211,8 @@
   "tab": "Multimaterial",
   "section": "Single extruder multi-material setup",
   "scope": "printer",
-  "tab_line": 4964
+  "tab_line": 4964,
+  "scene": "two_objects"
  },
  {
   "id": "param.single_extruder_multi_material_priming",
@@ -7187,7 +7226,8 @@
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects"
  },
  {
   "id": "param.single_loop_draft_shield",
@@ -7772,7 +7812,12 @@
   "tab": "Multimaterial",
   "section": "Ooze prevention",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects",
+  "requires": {
+   "single_extruder_multi_material": "0",
+   "ooze_prevention": "1"
+  }
  },
  {
   "id": "param.start_end_points",
@@ -8570,7 +8615,11 @@
   "tab": "Multimaterial",
   "section": "Wipe tower",
   "scope": "printer",
-  "tab_line": 4964
+  "tab_line": 4964,
+  "scene": "two_objects",
+  "requires": {
+   "single_extruder_multi_material": "0"
+  }
  },
  {
   "id": "param.top_bottom_infill_wall_overlap",
@@ -9306,7 +9355,8 @@
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects"
  },
  {
   "id": "param.wipe_tower_cone_angle",
@@ -9334,7 +9384,8 @@
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects"
  },
  {
   "id": "param.wipe_tower_extra_rib_length",
@@ -9348,7 +9399,8 @@
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects"
  },
  {
   "id": "param.wipe_tower_extra_spacing",
@@ -9362,7 +9414,8 @@
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects"
  },
  {
   "id": "param.wipe_tower_filament",
@@ -9376,7 +9429,8 @@
   "tab": "Multimaterial",
   "section": "Filament for Features",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects"
  },
  {
   "id": "param.wipe_tower_fillet_wall",
@@ -9390,7 +9444,8 @@
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects"
  },
  {
   "id": "param.wipe_tower_max_purge_speed",
@@ -9405,6 +9460,7 @@
   "section": "Prime tower",
   "scope": "print",
   "tab_line": 2647,
+  "scene": "two_objects",
   "requires": {
    "bottom_shell_layers": "1",
    "top_shell_layers": "1",
@@ -9423,7 +9479,8 @@
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects"
  },
  {
   "id": "param.wipe_tower_rib_width",
@@ -9451,7 +9508,8 @@
   "tab": "Multimaterial",
   "section": "Prime tower",
   "scope": "print",
-  "tab_line": 2647
+  "tab_line": 2647,
+  "scene": "two_objects"
  },
  {
   "id": "param.wipe_tower_type",
@@ -9466,6 +9524,7 @@
   "section": "Wipe tower",
   "scope": "printer",
   "tab_line": 4964,
+  "scene": "two_objects",
   "requires": {
    "enable_prime_tower": "1",
    "timelapse_type": "1"
@@ -9484,6 +9543,7 @@
   "section": "Prime tower",
   "scope": "print",
   "tab_line": 2647,
+  "scene": "two_objects",
   "requires": {
    "enable_prime_tower": "1",
    "timelapse_type": "1"
@@ -9500,6 +9560,7 @@
   "label": null,
   "mode": "develop",
   "nullable": false,
+  "scene": "two_objects",
   "requires": {
    "enable_prime_tower": "1",
    "timelapse_type": "1"
@@ -9516,6 +9577,7 @@
   "label": null,
   "mode": "develop",
   "nullable": false,
+  "scene": "two_objects",
   "requires": {
    "enable_prime_tower": "1",
    "timelapse_type": "1"

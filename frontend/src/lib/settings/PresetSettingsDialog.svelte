@@ -36,6 +36,8 @@
 		saveAsName?: string | null;
 		/** Erreur de validation du nom (vide, doublon). */
 		saveAsError?: string | null;
+		/** Onglet ouvert à l'ouverture (titre de page Orca). */
+		initialPage?: string;
 	}
 
 	let {
@@ -50,7 +52,8 @@
 		saveDisabled = false,
 		saveHint,
 		saveAsName = $bindable(null),
-		saveAsError = null
+		saveAsError = null,
+		initialPage
 	}: Props = $props();
 
 	function onKeydown(event: KeyboardEvent) {
@@ -99,6 +102,7 @@
 					bind:mode
 					bind:values
 					{valuesByKind}
+					{initialPage}
 					loading={Object.keys(values).length === 0}
 				/>
 			</div>

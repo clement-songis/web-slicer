@@ -67,6 +67,9 @@ export interface SceneDocument {
 	knownModels?: KnownModels;
 	/** Mode calibration moteur (posé par le menu Calibration, lu par le backend). */
 	calibration?: Record<string, unknown>;
+	/** Config projet multi-filament (clés Orca : filament_colour,
+	 *  flush_volumes_matrix, flush_multiplier), cf. lib/editor/multi-filament. */
+	projectConfig?: Record<string, unknown>;
 }
 
 /** État vivant d'un objet (modèles riches côté client). */
@@ -131,7 +134,8 @@ export function serializeScene(
 	plates: PlatesDocument,
 	objects: SceneObjectState[],
 	knownModels?: KnownModels,
-	calibration?: Record<string, unknown> | null
+	calibration?: Record<string, unknown> | null,
+	projectConfig?: Record<string, unknown> | null
 ): SceneDocument {
 	const doc: SceneDocument = {
 		schemaVersion: SCENE_SCHEMA_VERSION,
@@ -141,6 +145,7 @@ export function serializeScene(
 	if (knownModels)
 		doc.knownModels = { projectId: knownModels.projectId, ids: [...knownModels.ids] };
 	if (calibration) doc.calibration = { ...calibration };
+	if (projectConfig) doc.projectConfig = structuredClone(projectConfig);
 	return doc;
 }
 
@@ -168,6 +173,8 @@ export function parseScene(raw: unknown): SceneDocument {
 		plates,
 		objects: Array.isArray(doc.objects) ? doc.objects : []
 	};
+	if (doc.projectConfig && typeof doc.projectConfig === 'object')
+		parsed.projectConfig = { ...doc.projectConfig };
 	const known = doc.knownModels;
 	if (known && typeof known.projectId === 'string' && Array.isArray(known.ids)) {
 		parsed.knownModels = {

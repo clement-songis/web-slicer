@@ -24,8 +24,12 @@ for (const c of cases) {
 			const ref = readRef(`param/${c.key}.gcode`);
 			const base = readJsonRef<FlatConfig>('base_config.json');
 			test.skip(!ref || !base, 'référence Orca absente : lancer tests/oracle/tools/make_refs.py');
-			const cfg: FlatConfig = { ...base!, ...(c.requires ?? {}), [c.key]: c.value! };
-			expectSameGcode(await harnessSlice(request, (c.model ?? oracleCfg.param_model), cfg), ref!, `G-code avec ${c.key}=${JSON.stringify(c.value)}`);
+			// Cas scène : config plate complète écrite par make_refs (scène + requires + valeur).
+			const sceneCfg = c.scene ? readJsonRef<FlatConfig>(`param/${c.key}.config.json`) : null;
+			test.skip(!!c.scene && !sceneCfg, 'config de scène absente : lancer make_refs.py');
+			const cfg: FlatConfig = sceneCfg ?? { ...base!, ...(c.requires ?? {}), [c.key]: c.value! };
+			const model = c.scene ? `scenes/${c.scene}.3mf` : (c.model ?? oracleCfg.param_model);
+			expectSameGcode(await harnessSlice(request, model, cfg), ref!, `G-code avec ${c.key}=${JSON.stringify(c.value)}`);
 		});
 
 		if (c.ui) {
@@ -33,7 +37,19 @@ for (const c of cases) {
 				test.skip(c.value === null, 'valeur de test manuelle requise');
 				const ref = readRef(`param/${c.key}.gcode`);
 				test.skip(!ref, 'référence Orca absente');
-				const expected = configBlock(ref!)[c.key];
+				// Cas scène : la référence vient d'une scène à N filaments (vecteur par
+				// filament), le test UI tranche le modèle de paramètre à un seul
+				// filament → valeur commune attendue (vecteur aux entrées identiques).
+				const raw = configBlock(ref!)[c.key];
+				const common = (v: string | undefined) => {
+					if (v === undefined) return v;
+					for (const sep of [';', ',']) {
+						const parts = v.split(sep);
+						if (parts.length > 1 && parts.every((p) => p === parts[0])) return parts[0];
+					}
+					return v;
+				};
+				const expected = c.scene ? common(raw) : raw;
 				expect(expected, `${c.key} absent du bloc de config de la référence Orca`).toBeDefined();
 				const scope = c.scope!;
 				const fromPreset = scope === 'print' || scope === 'filament' || scope === 'printer';

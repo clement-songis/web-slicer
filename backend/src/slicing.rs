@@ -1257,6 +1257,181 @@ mod production_parity {
         Some((normalize(&gcode), differing))
     }
 
+    /// Chemin de PRODUCTION multi-filament : deux modèles STL téléversés,
+    /// scène à deux objets (extrudeur 1 / 2) placés comme dans le 3MF d'Orca
+    /// (engine/tests/fixtures/multi_filament/two_objects.3mf), config = celle
+    /// que le CLI a écrite dans ce 3MF → build_scene_model → engine-worker
+    /// slice, comparé au G-code Orca (tour d'essuyage, purges, T0/T1).
+    #[tokio::test]
+    async fn production_multi_filament_scene_matches_orca() {
+        production_multi_filament(None, "two_objects.orca.gcode").await;
+    }
+
+    /// Réglages du projet (scene.projectConfig : couleurs, matrice et
+    /// multiplicateur de purge) appliqués par-dessus les presets comme Orca :
+    /// G-code identique à Orca tranchant la même scène avec ces valeurs dans
+    /// sa config projet (two_objects_project.orca.gcode, 5/5 tirages).
+    #[tokio::test]
+    async fn production_project_config_overrides_match_orca() {
+        production_multi_filament(
+            Some(serde_json::json!({
+                "filament_colour": ["#F2754E", "#00A0FF"],
+                "flush_volumes_matrix": [0, 480, 220, 0],
+                "flush_multiplier": 1.5
+            })),
+            "two_objects_project.orca.gcode",
+        )
+        .await;
+    }
+
+    async fn production_multi_filament(project_config: Option<Value>, reference: &str) {
+        let Some(worker) = worker() else {
+            eprintln!("engine-worker absent — ignoré");
+            return;
+        };
+        let _serial = SERIAL.lock().await;
+        let fixtures = repo().join("engine/tests/fixtures/multi_filament");
+        let dir = tempfile::tempdir().unwrap();
+        let url = format!("sqlite://{}", dir.path().join("p.db").display());
+        let storage = Arc::new(
+            crate::adapters::storage::sqlite::SqliteStorage::connect(&url)
+                .await
+                .unwrap(),
+        );
+        let state = AppState::new(
+            storage as Arc<dyn crate::domain::Storage>,
+            crate::adapters::files::FileStore::new(dir.path().join("data")),
+        );
+        let user = state
+            .storage
+            .users()
+            .create(crate::domain::repo::NewUser {
+                email: "mf@harness.local".into(),
+                password_hash: "x".into(),
+                role: crate::domain::Role::User,
+            })
+            .await
+            .unwrap();
+        let project = state
+            .storage
+            .projects()
+            .create(
+                user.id,
+                crate::domain::NewProject {
+                    name: "mf".into(),
+                    scene: serde_json::json!({}),
+                    active_presets: serde_json::json!({}),
+                    thumbnail_path: None,
+                },
+            )
+            .await
+            .unwrap();
+        // Placement Orca : origine du maillage recentré = instance × volume.
+        let orca_scene =
+            crate::engine::raw_model::load(&fixtures.join("two_objects.3mf"), ModelFormat::ThreeMf)
+                .await
+                .expect("scène Orca");
+        let mut objects = Vec::new();
+        for (index, (name, extruder)) in [("cube20", 1), ("cylinder", 2)].into_iter().enumerate() {
+            let stl = repo().join(format!("tests/oracle/fixtures/{name}.stl"));
+            let bytes = std::fs::read(&stl).unwrap();
+            let model = crate::http::routes::models::write_model_record(
+                &state,
+                user.id,
+                project.id,
+                ModelFormat::Stl,
+                format!("{name}.stl"),
+                &bytes,
+            )
+            .await
+            .unwrap();
+            state.converter.convert(model.clone()).await;
+            let object = &orca_scene.objects[index];
+            let world = object.instances[0].matrix * object.volumes[0].matrix;
+            let origin = world.transform_point3(glam::DVec3::ZERO);
+            // Le CLI pivote les pièces à l'arrangement (allow_rotations) : angle Z.
+            let angle_z = world.x_axis.y.atan2(world.x_axis.x).to_degrees();
+            objects.push(serde_json::json!({
+                "id": format!("o{index}"),
+                "modelId": model.id.to_string(),
+                "extruder": extruder,
+                "transform": { "position": [origin.x, origin.y, origin.z], "rotation": [0.0, 0.0, angle_z], "scale": [1.0, 1.0, 1.0] }
+            }));
+        }
+        let scene = serde_json::json!({
+            "objects": objects,
+            "plates": { "plates": [{ "id": "p1", "objectIds": ["o0", "o1"] }], "activeId": "p1" }
+        });
+        let built = build_scene_model(&state, user.id, project.id, &scene, None)
+            .await
+            .unwrap();
+        let extruders: Vec<_> = built
+            .objects
+            .iter()
+            .map(|o| o.volumes[0].extruder)
+            .collect();
+        assert_eq!(extruders, vec![Some(1), Some(2)]);
+
+        // Config : project_settings.config écrite par Orca dans le 3MF, plus les
+        // options que le CLI crée vides à la lecture d'un 3MF (OrcaSlicer.cpp:1769).
+        let archive = std::fs::read(fixtures.join("two_objects.3mf")).unwrap();
+        let mut zip = zip::ZipArchive::new(std::io::Cursor::new(archive)).unwrap();
+        let mut text = String::new();
+        std::io::Read::read_to_string(
+            &mut zip.by_name("Metadata/project_settings.config").unwrap(),
+            &mut text,
+        )
+        .unwrap();
+        let values: serde_json::Map<String, Value> = serde_json::from_str(&text).unwrap();
+        let mut config = engine::presets::resolve_preset_chain(&[engine::api::RawPreset {
+            name: "orca".into(),
+            inherits: None,
+            values,
+        }])
+        .unwrap();
+        for key in [
+            "upward_compatible_machine",
+            "print_compatible_printers",
+            "different_settings_to_system",
+        ] {
+            config
+                .0
+                .entry(key.to_string())
+                .or_insert_with(|| engine::api::ConfigValue::Strings(Vec::new()));
+        }
+        if let Some(project_config) = project_config {
+            crate::http::routes::slice::apply_project_config(
+                &mut config,
+                &serde_json::json!({ "projectConfig": project_config }),
+            );
+        }
+        let work = tempfile::tempdir().unwrap();
+        let request = engine::api::SliceRequest {
+            model: built,
+            config,
+            plate_index: 0,
+            work_dir: work.path().to_path_buf(),
+            calib: None,
+        };
+        let path = work.path().join("req.json");
+        std::fs::write(&path, serde_json::to_vec(&request).unwrap()).unwrap();
+        let stdout = crate::engine::worker::run_worker_at(
+            &worker,
+            &["slice", path.to_str().unwrap()],
+            Duration::from_secs(170),
+        )
+        .await
+        .unwrap();
+        let result = parse_slice_result(&stdout).unwrap();
+        let ours = normalize(&std::fs::read_to_string(&result.gcode_path).unwrap());
+        let orca = normalize(&std::fs::read_to_string(fixtures.join(reference)).unwrap());
+        assert!(
+            ours == orca,
+            "{}",
+            first_diff(&ours, &orca).unwrap_or_default()
+        );
+    }
+
     /// Sommets du maillage de production historique (WSMh cuit puis recentré
     /// en f32) vs sommets Orca (libslic3r) : nombre de différences.
     async fn vertex_differences(stl: &std::path::Path) -> Option<(usize, usize)> {
