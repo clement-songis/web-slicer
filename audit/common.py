@@ -31,6 +31,12 @@ def unescape_c(s: str) -> str:
     while i < len(s):
         c = s[i]
         if c == "\\" and i + 1 < len(s):
+            # \uXXXX / \UXXXXXXXX (littéraux u8"\u2103" : « ℃ »).
+            width = {"u": 4, "U": 8}.get(s[i + 1])
+            if width and re.fullmatch(r"[0-9A-Fa-f]{%d}" % width, s[i + 2 : i + 2 + width]):
+                out.append(chr(int(s[i + 2 : i + 2 + width], 16)))
+                i += 2 + width
+                continue
             out.append(_ESCAPES.get(s[i + 1], "\\" + s[i + 1]))
             i += 2
         else:

@@ -331,18 +331,243 @@ pub async fn update(
 }
 
 /// `DELETE /api/presets/{id}` — supprime un preset utilisateur.
+///
+/// Comme Orca (PresetCollection::delete_current_preset : les projets gardent
+/// leur config et retombent sur le preset parent), un preset utilisateur
+/// référencé par des projets ne bloque pas la suppression : ces projets sont
+/// basculés sur le preset PARENT (`inherits`), puis le preset est supprimé.
+/// Réponse : 204 si aucun projet n'était concerné, sinon 200
+/// `{ parent: {id, name}, projects: [{id, name}] }`. Sans parent résoluble
+/// (preset racine), 409 avec `details.projects` (rien n'est modifié).
 pub async fn delete(
     CurrentUser(user): CurrentUser,
     State(state): State<AppState>,
     Path(id): Path<String>,
-) -> ApiResult<StatusCode> {
+) -> ApiResult<axum::response::Response> {
+    use axum::response::IntoResponse;
     let id = parse_preset_id(&id)?;
+    let preset = state.storage.presets().get(id).await?;
+    if preset.user_id != Some(user.id) {
+        return Err(ApiError::not_found("Preset"));
+    }
+    let uuid: uuid::Uuid = id.into();
+    let projects: Vec<crate::domain::Project> = state
+        .storage
+        .projects()
+        .list(user.id)
+        .await?
+        .into_iter()
+        .filter(|p| crate::adapters::storage::json_references_id(&p.active_presets, uuid))
+        .collect();
+    if projects.is_empty() {
+        state
+            .storage
+            .presets()
+            .delete_user_preset(user.id, id)
+            .await?;
+        return Ok(StatusCode::NO_CONTENT.into_response());
+    }
+    let listed = |projects: &[crate::domain::Project]| -> Vec<Value> {
+        projects
+            .iter()
+            .map(|p| serde_json::json!({ "id": p.id.to_string(), "name": p.name }))
+            .collect()
+    };
+    // Parent : preset de même type portant le nom `inherits` (utilisateur
+    // d'abord, sinon système), visible par l'utilisateur.
+    let parent = match preset.inherits.as_deref().filter(|n| !n.is_empty()) {
+        None => None,
+        Some(name) => {
+            let mut candidates: Vec<_> = state
+                .storage
+                .presets()
+                .list_by_kind(preset.kind, user.id)
+                .await?
+                .into_iter()
+                .filter(|p| p.name == name && p.id != id)
+                .collect();
+            candidates.sort_by_key(|p| p.user_id.is_none());
+            candidates.into_iter().next()
+        }
+    };
+    let Some(parent) = parent else {
+        return Err(ApiError::conflict_with(
+            "preset référencé par des projets et sans parent",
+            serde_json::json!({ "projects": listed(&projects) }),
+        ));
+    };
+    let parent_id = parent.id.to_string();
+    let target = id.to_string();
+    fn replace(value: &mut Value, from: &str, to: &str) {
+        match value {
+            Value::String(s) if s == from => *s = to.to_string(),
+            Value::Array(items) => items.iter_mut().for_each(|v| replace(v, from, to)),
+            Value::Object(map) => map.values_mut().for_each(|v| replace(v, from, to)),
+            _ => {}
+        }
+    }
+    for project in &projects {
+        let mut active = project.active_presets.clone();
+        replace(&mut active, &target, &parent_id);
+        state
+            .storage
+            .projects()
+            .update(
+                user.id,
+                project.id,
+                project.version,
+                project.scene.clone(),
+                active,
+                project.thumbnail_path.clone(),
+            )
+            .await?;
+    }
     state
         .storage
         .presets()
         .delete_user_preset(user.id, id)
         .await?;
-    Ok(StatusCode::NO_CONTENT)
+    Ok((
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "parent": { "id": parent_id, "name": parent.name },
+            "projects": listed(&projects),
+        })),
+    )
+        .into_response())
+}
+
+/// `GET /api/presets/create-options` — métadonnées des assistants « Créer un
+/// filament / une imprimante » d'Orca (CreateFilamentPresetDialog /
+/// CreatePrinterPresetDialog) :
+/// - listes du dialogue Orca (fournisseurs, types, constructeurs, modèles,
+///   diamètres de buse ; audit/create_preset_lists.json, extrait de
+///   CreatePresetsDialog.cpp) complétées par les fournisseurs et types des
+///   filaments système (comme m_system_filament_types_set) ;
+/// - gabarits : presets système instanciables (filaments : nom, fournisseur,
+///   type, filament_id, imprimantes compatibles ; imprimantes : nom,
+///   constructeur, modèle, diamètre de buse), valeurs héritées résolues.
+pub async fn create_options(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+) -> ApiResult<Json<Value>> {
+    static LISTS: &str = include_str!("../../../../audit/create_preset_lists.json");
+    let lists: Value = serde_json::from_str(LISTS).map_err(|_| ApiError::internal())?;
+    let system = |presets: Vec<Preset>| -> Vec<Preset> {
+        presets
+            .into_iter()
+            .filter(|p| p.user_id.is_none())
+            .collect()
+    };
+    let filaments = system(
+        state
+            .storage
+            .presets()
+            .list_by_kind(PresetKind::Filament, user.id)
+            .await?,
+    );
+    let machines = system(
+        state
+            .storage
+            .presets()
+            .list_by_kind(PresetKind::Machine, user.id)
+            .await?,
+    );
+
+    // Première valeur d'une clé, en remontant la chaîne `inherits` (presets
+    // Orca partiels : filament_type porté par le parent).
+    fn inherited(presets: &[Preset], start: &Preset, key: &str) -> Option<String> {
+        let by_name: HashMap<&str, &Preset> =
+            presets.iter().map(|p| (p.name.as_str(), p)).collect();
+        let mut current = Some(start);
+        for _ in 0..16 {
+            let preset = current?;
+            if let Some(v) = preset.values.get(key) {
+                let first = match v {
+                    Value::Array(items) => {
+                        items.first().and_then(Value::as_str).map(str::to_string)
+                    }
+                    Value::String(s) => Some(
+                        s.split(';')
+                            .next()
+                            .unwrap_or("")
+                            .trim_matches('"')
+                            .to_string(),
+                    ),
+                    _ => None,
+                };
+                if let Some(first) = first.filter(|s| !s.is_empty()) {
+                    return Some(first);
+                }
+            }
+            current = preset
+                .inherits
+                .as_deref()
+                .and_then(|n| by_name.get(n).copied());
+        }
+        None
+    }
+    let strings = |v: &Value| -> Vec<String> {
+        v.as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|s| s.as_str().map(str::to_string))
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+    let mut vendors: std::collections::BTreeSet<String> =
+        strings(&lists["filament_vendors"]).into_iter().collect();
+    let mut types: Vec<String> = strings(&lists["filament_types"]);
+    let mut filament_templates = Vec::new();
+    for preset in filaments.iter().filter(|p| p.instantiation) {
+        let vendor = inherited(&filaments, preset, "filament_vendor");
+        let kind = inherited(&filaments, preset, "filament_type");
+        if let Some(v) = &vendor {
+            vendors.insert(v.clone());
+        }
+        if let Some(t) = &kind {
+            if !types.contains(t) {
+                types.push(t.clone());
+            }
+        }
+        filament_templates.push(serde_json::json!({
+            "id": preset.id.to_string(),
+            "name": preset.name,
+            "vendor": vendor,
+            "type": kind,
+            "filament_id": preset.filament_id,
+            "compatible_printers": preset.compatible_printers,
+        }));
+    }
+    let printer_templates: Vec<Value> = machines
+        .iter()
+        .filter(|p| p.instantiation)
+        .map(|preset| {
+            serde_json::json!({
+                "id": preset.id.to_string(),
+                "name": preset.name,
+                "vendor": preset.vendor,
+                "model": inherited(&machines, preset, "printer_model"),
+                "nozzle_diameter": inherited(&machines, preset, "nozzle_diameter")
+                    .or_else(|| inherited(&machines, preset, "printer_variant")),
+            })
+        })
+        .collect();
+    Ok(Json(serde_json::json!({
+        "source": lists["source"],
+        "filament": {
+            "vendors": vendors.into_iter().collect::<Vec<_>>(),
+            "types": types,
+            "templates": filament_templates,
+        },
+        "printer": {
+            "vendors": lists["printer_vendors"],
+            "models": lists["printer_models"],
+            "nozzle_diameters": lists["nozzle_diameters"],
+            "templates": printer_templates,
+        },
+    })))
 }
 
 /// `POST /api/presets/import` — importe un profil JSON Orca, clés legacy

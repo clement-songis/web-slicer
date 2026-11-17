@@ -98,9 +98,12 @@ pub async fn slice(
     // Presets actifs résolus (figés) + avertissements moteur, puis réglages du
     // projet (scene.projectConfig : couleurs, matrice/multiplicateur de purge)
     // par-dessus, comme Orca applique sa config projet sur les presets.
-    let (mut merged, warnings) =
+    let (mut merged, mut warnings) =
         resolve_active_config(&state, user.id, &project.active_presets).await?;
     apply_project_config(&mut merged, &project.scene);
+    if let Some(warning) = post_process_warning(&merged) {
+        warnings.push(warning);
+    }
     let resolved = Value::Object(presets::config_to_json(&merged));
 
     let mut jobs = Vec::with_capacity(targets.len());
@@ -486,6 +489,32 @@ fn parse_preset_id(raw: &str) -> ApiResult<PresetId> {
 }
 
 // --- Lecture tolérante du document scène -------------------------------------
+
+/// Scripts de post-traitement (`post_process`) : jamais exécutés côté serveur
+/// (exécution de commandes arbitraires sur un serveur partagé). Orca les lance
+/// seulement depuis la GUI, après l'export (BackgroundSlicingProcess →
+/// run_post_process_scripts) ; le CLI et libslic3r ne les exécutent pas. Le
+/// réglage est conservé (G-code, projet, export 3MF) ; avertissement explicite.
+pub(crate) fn post_process_warning(
+    config: &engine::api::DynamicPrintConfig,
+) -> Option<SliceWarning> {
+    let scripts: Vec<String> = match config.get("post_process") {
+        Some(ConfigValue::Strings(v)) => v
+            .iter()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect(),
+        Some(ConfigValue::String(s)) if !s.trim().is_empty() => vec![s.trim().to_string()],
+        _ => Vec::new(),
+    };
+    (!scripts.is_empty()).then(|| SliceWarning {
+        key: "post_process".into(),
+        message: format!(
+            "Scripts de post-traitement non exécutés sur le serveur ({}) : ils sont conservés dans le              projet et le G-code ; exécutez-les localement sur le fichier téléchargé.",
+            scripts.join(" ; ")
+        ),
+    })
+}
 
 /// Réglages du PROJET (`scene.projectConfig`, pas des presets) appliqués sur la
 /// config résolue, comme la config projet d'Orca par-dessus les presets
@@ -896,6 +925,23 @@ mod tests {
         };
         assert_eq!(m.len(), 20);
         assert_eq!(&m[16..], &[0.0, 80.0, 560.0, 0.0]);
+    }
+
+    #[test]
+    fn post_process_scripts_are_reported_not_run() {
+        let mut config = DynamicPrintConfig::new();
+        assert!(post_process_warning(&config).is_none());
+        config
+            .0
+            .insert("post_process".into(), ConfigValue::Strings(vec!["".into()]));
+        assert!(post_process_warning(&config).is_none());
+        config.0.insert(
+            "post_process".into(),
+            ConfigValue::Strings(vec!["/usr/bin/python3 fix.py".into()]),
+        );
+        let w = post_process_warning(&config).expect("avertissement");
+        assert_eq!(w.key, "post_process");
+        assert!(w.message.contains("fix.py") && w.message.contains("non exécutés"));
     }
 
     #[test]

@@ -393,6 +393,231 @@ async fn resolved_homonym_copy_inherits_system_parent() {
     );
 }
 
+/// Métadonnées des assistants « Créer un filament / une imprimante » : listes
+/// du dialogue Orca + fournisseurs/types des filaments système (valeurs
+/// héritées résolues), gabarits système instanciables uniquement.
+#[tokio::test]
+async fn create_options_list_orca_dialog_data_and_system_templates() {
+    let dir = tempfile::tempdir().unwrap();
+    let url = format!("sqlite://{}", dir.path().join("p.db").display());
+    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let base = sys(
+        PresetKind::Filament,
+        "fdm_filament_exotic",
+        None,
+        false,
+        serde_json::json!({ "filament_type": ["XYZ"], "filament_vendor": ["AcmeFil"] }),
+    );
+    let child = sys(
+        PresetKind::Filament,
+        "Acme XYZ",
+        Some("fdm_filament_exotic"),
+        true,
+        serde_json::json!({}),
+    );
+    let machine = sys(
+        PresetKind::Machine,
+        "Voron 2.4 350 0.4 nozzle",
+        None,
+        true,
+        serde_json::json!({ "printer_model": "Voron 2.4 350", "nozzle_diameter": ["0.4"] }),
+    );
+    storage
+        .presets()
+        .reseed_system(vec![base, child, machine])
+        .await
+        .unwrap();
+    let state = AppState::new(storage, FileStore::new(dir.path().join("data")));
+    let app = router(
+        state,
+        SessionManagerLayer::new(MemoryStore::default()).with_secure(false),
+    );
+
+    let anonymous = send(
+        &app,
+        request(
+            "GET",
+            "/api/presets/create-options",
+            serde_json::json!({}),
+            None,
+        ),
+    )
+    .await;
+    assert_eq!(anonymous.status(), StatusCode::UNAUTHORIZED);
+    let user = register(&app, "wizard@test.local").await;
+    // Un preset utilisateur n'est pas un gabarit.
+    send(
+        &app,
+        request(
+            "POST",
+            "/api/presets",
+            serde_json::json!({ "kind": "filament", "name": "Perso", "inherits": "Acme XYZ", "values": {} }),
+            Some(&user),
+        ),
+    )
+    .await;
+    let resp = send(
+        &app,
+        request(
+            "GET",
+            "/api/presets/create-options",
+            serde_json::json!({}),
+            Some(&user),
+        ),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = json_body(resp).await;
+    let has = |v: &serde_json::Value, s: &str| v.as_array().unwrap().iter().any(|x| x == s);
+    assert!(has(&body["filament"]["vendors"], "Polymaker"), "liste Orca");
+    assert!(
+        has(&body["filament"]["vendors"], "AcmeFil"),
+        "fournisseur système hérité"
+    );
+    assert!(has(&body["filament"]["types"], "PLA") && has(&body["filament"]["types"], "XYZ"));
+    let templates = body["filament"]["templates"].as_array().unwrap();
+    assert_eq!(templates.len(), 1, "{templates:?}");
+    assert_eq!(templates[0]["name"], "Acme XYZ");
+    assert_eq!(templates[0]["type"], "XYZ");
+    assert_eq!(templates[0]["vendor"], "AcmeFil");
+    assert!(has(&body["printer"]["vendors"], "Voron"));
+    assert!(!body["printer"]["models"]["Voron"]
+        .as_array()
+        .unwrap()
+        .is_empty());
+    assert!(has(&body["printer"]["nozzle_diameters"], "0.4"));
+    let printers = body["printer"]["templates"].as_array().unwrap();
+    assert_eq!(printers[0]["model"], "Voron 2.4 350");
+    assert_eq!(printers[0]["nozzle_diameter"], "0.4");
+}
+
+/// Suppression d'un preset utilisateur utilisé par des projets : comme Orca,
+/// pas de blocage — les projets basculent sur le preset parent et la réponse
+/// liste les projets touchés. Preset racine (sans parent) : 409 + projets.
+#[tokio::test]
+async fn deleting_a_used_preset_switches_projects_to_its_parent() {
+    let (_d, app) = app().await;
+    let user = register(&app, "boss@test.local").await;
+    let create = |name: &str, inherits: Option<&str>| {
+        let mut body = serde_json::json!({ "kind": "filament", "name": name, "values": {} });
+        if let Some(parent) = inherits {
+            body["inherits"] = parent.into();
+        }
+        request("POST", "/api/presets", body, Some(&user))
+    };
+    let child = json_body(send(&app, create("Mon PLA", Some("Generic PLA"))).await).await;
+    let root = json_body(send(&app, create("PLA maison", None)).await).await;
+    let (child_id, root_id) = (child["id"].as_str().unwrap(), root["id"].as_str().unwrap());
+
+    let mut projects = Vec::new();
+    for (name, preset) in [("A", child_id), ("B", child_id), ("C", root_id), ("D", "")] {
+        let created = json_body(
+            send(
+                &app,
+                request(
+                    "POST",
+                    "/api/projects",
+                    serde_json::json!({ "name": name }),
+                    Some(&user),
+                ),
+            )
+            .await,
+        )
+        .await;
+        let id = created["id"].as_str().unwrap().to_string();
+        let filaments: Vec<&str> = if preset.is_empty() {
+            vec![]
+        } else {
+            vec![preset]
+        };
+        let resp = send(
+            &app,
+            request(
+                "PUT",
+                &format!("/api/projects/{id}"),
+                serde_json::json!({
+                    "expected_version": created["version"],
+                    "scene": created["scene"],
+                    "active_presets": { "filaments": filaments }
+                }),
+                Some(&user),
+            ),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::OK, "sauvegarde {name}");
+        projects.push(id);
+    }
+
+    // Preset racine utilisé : 409 avec la liste des projets, rien supprimé.
+    let resp = send(
+        &app,
+        request(
+            "DELETE",
+            &format!("/api/presets/{root_id}"),
+            serde_json::json!({}),
+            Some(&user),
+        ),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CONFLICT);
+    let body = json_body(resp).await;
+    assert_eq!(body["details"]["projects"][0]["name"], "C");
+
+    // Preset avec parent : 200, A et B basculés sur « Generic PLA ».
+    let resp = send(
+        &app,
+        request(
+            "DELETE",
+            &format!("/api/presets/{child_id}"),
+            serde_json::json!({}),
+            Some(&user),
+        ),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = json_body(resp).await;
+    assert_eq!(body["parent"]["name"], "Generic PLA");
+    let mut touched: Vec<&str> = body["projects"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["name"].as_str().unwrap())
+        .collect();
+    touched.sort();
+    assert_eq!(touched, ["A", "B"]);
+    let parent_id = body["parent"]["id"].as_str().unwrap().to_string();
+    for id in &projects[..2] {
+        let project = json_body(
+            send(
+                &app,
+                request(
+                    "GET",
+                    &format!("/api/projects/{id}"),
+                    serde_json::json!({}),
+                    Some(&user),
+                ),
+            )
+            .await,
+        )
+        .await;
+        assert_eq!(
+            project["active_presets"]["filaments"][0],
+            parent_id.as_str()
+        );
+    }
+    let gone = send(
+        &app,
+        request(
+            "GET",
+            &format!("/api/presets/{child_id}"),
+            serde_json::json!({}),
+            Some(&user),
+        ),
+    )
+    .await;
+    assert_eq!(gone.status(), StatusCode::NOT_FOUND);
+}
+
 /// FR-022 : cycle de vie d'un preset utilisateur (créer / renommer+valeurs /
 /// supprimer).
 #[tokio::test]

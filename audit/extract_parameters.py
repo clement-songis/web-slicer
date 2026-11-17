@@ -159,7 +159,11 @@ def extract_block_attrs(block: str, consts: dict) -> dict:
     attrs: dict = {}
 
     for name in STR_ATTRS:
-        m = re.search(rf"def->{name}\s*=\s*(.*?);\n", block, re.S)
+        # Jusqu'au premier « ; » hors littéral : une fin de ligne suivie d'un
+        # commentaire retiré (espaces) ou un « ; » dans une chaîne ne doivent
+        # pas faire déborder sur l'instruction suivante (sidetext pollués par
+        # le tooltip / full_label / ratio_over voisins).
+        m = re.search(rf'def->{name}\s*=\s*((?:[^;"]|"(?:[^"\\]|\\.)*")*);', block, re.S)
         if m:
             s = concat_strings(m.group(1))
             if s is not None:

@@ -75,6 +75,13 @@ impl ApiError {
         Self::new(StatusCode::CONFLICT, "conflict", message)
     }
 
+    /// 409 avec détails (ex. projets concernés).
+    pub fn conflict_with(message: impl Into<String>, details: serde_json::Value) -> Self {
+        let mut e = Self::conflict(message);
+        e.body.details = Some(details);
+        e
+    }
+
     /// Échec de conversion moteur d'un modèle (T125) : le maillage ne pourra pas
     /// être produit (fichier corrompu, format non décodable) — l'UI le distingue
     /// de « conversion en cours » (409) par ce 422.

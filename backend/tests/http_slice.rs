@@ -593,6 +593,77 @@ fn slice_req(project: &str, session: &str, body: Value) -> Request<Body> {
         .unwrap()
 }
 
+/// Scripts de post-traitement : non exécutés sur le serveur, conservés dans les
+/// réglages figés du job (donc le G-code et l'export), avertissement explicite.
+#[tokio::test]
+async fn post_process_scripts_are_kept_and_reported_not_run() {
+    let (_d, storage, app) = app().await;
+    let (project, owner, session) = create_project(
+        &storage,
+        &app,
+        "pp@test.local",
+        scene_one_object(),
+        json!({}),
+    )
+    .await;
+    let preset = storage
+        .presets()
+        .create_user_preset(
+            owner,
+            backend::domain::Preset {
+                id: backend::domain::PresetId::new(),
+                kind: PresetKind::Process,
+                name: "Process avec script".into(),
+                origin: PresetOrigin::User,
+                user_id: Some(owner),
+                vendor: None,
+                inherits: None,
+                instantiation: true,
+                setting_id: None,
+                filament_id: None,
+                compatible_printers: None,
+                values: json!({ "post_process": ["/usr/bin/python3 /tmp/fix.py"] }),
+            },
+        )
+        .await
+        .unwrap();
+    storage
+        .projects()
+        .update(
+            owner,
+            backend::domain::ProjectId(uuid::Uuid::parse_str(&project).unwrap()),
+            1,
+            scene_one_object(),
+            json!({ "process": preset.id.to_string() }),
+            None,
+        )
+        .await
+        .unwrap();
+    let resp = app
+        .clone()
+        .oneshot(slice_req(&project, &session, json!({ "plate_index": 0 })))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let body = body_json(resp).await;
+    let warning = body["warnings"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|w| w["key"] == "post_process")
+        .cloned()
+        .expect("avertissement post_process");
+    assert!(
+        warning["message"].as_str().unwrap().contains("fix.py"),
+        "{warning}"
+    );
+    let jobs = storage.jobs().list(owner).await.unwrap();
+    assert_eq!(
+        jobs[0].resolved_settings["post_process"],
+        json!(["/usr/bin/python3 /tmp/fix.py"])
+    );
+}
+
 #[tokio::test]
 async fn slices_a_plate_and_freezes_resolved_settings_with_warnings() {
     let (_d, storage, app) = app().await;
