@@ -191,24 +191,37 @@ fn assert_same_gcode(key: &str, actual: &[String], expected: &[String]) {
     );
 }
 
+/// libslic3r n'est pas déterministe sur ce modèle (variante qui perd quelques
+/// segments de remplissage d'interstices, ~1 tirage sur 12 seul, davantage sous
+/// charge ; le CLI Orca a le même comportement — cf. slicing::production_parity).
+/// Égalité exacte conservée avec la référence Orca (variante majoritaire), sur
+/// jusqu'à 3 tirages indépendants : une vraie divergence échoue aux 3.
+async fn harness_counterbore_like_orca(key: &str, extra: &[(&str, &str)], reference: &str) {
+    let expected = orca(reference);
+    let mut last = None;
+    for _ in 0..3 {
+        let Some(engine) = harness_counterbore(extra).await else {
+            return;
+        };
+        if engine == expected {
+            return;
+        }
+        last = Some(engine);
+    }
+    assert_same_gcode(key, &last.unwrap(), &expected);
+}
+
 #[tokio::test]
 async fn counterbore_scene_matches_orca_without_bridging() {
-    let Some(engine) = harness_counterbore(&[]).await else {
-        return;
-    };
-    assert_same_gcode("trou lamé (none)", &engine, &orca("none"));
+    harness_counterbore_like_orca("trou lamé (none)", &[], "none").await;
 }
 
 #[tokio::test]
 async fn counterbore_sacrificial_layer_matches_orca() {
-    let Some(engine) =
-        harness_counterbore(&[("counterbore_hole_bridging", "sacrificiallayer")]).await
-    else {
-        return;
-    };
-    assert_same_gcode(
+    harness_counterbore_like_orca(
         "trou lamé (sacrificiallayer)",
-        &engine,
-        &orca("sacrificiallayer"),
-    );
+        &[("counterbore_hole_bridging", "sacrificiallayer")],
+        "sacrificiallayer",
+    )
+    .await;
 }

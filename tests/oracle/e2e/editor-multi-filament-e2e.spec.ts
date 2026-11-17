@@ -3,27 +3,8 @@
 // aperçu (tour d'essuyage, légende par filament aux couleurs du projet,
 // changements d'outil) et G-code (couleurs du projet).
 import { expect, test, type Page } from '@playwright/test';
-import { importModel, uniqueEmail } from '../lib/app';
+import { bootstrap, importModel } from '../lib/app';
 
-// Imprimante multi-filament de référence (AMS, une buse) : les vecteurs par
-// filament du preset Voron de l'oracle ne sont pas tous étendus par le moteur
-// déployé (« filament_printable a 1 valeur(s) pour 2 filaments »).
-async function bootstrapX1C(page: Page): Promise<string> {
-	const res = await page.request.post('/api/_harness/bootstrap', {
-		data: {
-			email: uniqueEmail(),
-			password: 'harness-password-123',
-			printer: 'Bambu Lab X1 Carbon 0.4 nozzle',
-			filament: 'Bambu PLA Basic @BBL X1C',
-			process: '0.20mm Standard @BBL X1C'
-		}
-	});
-	expect(res.status(), (await res.text()).slice(0, 300)).toBe(200);
-	const { project_id } = (await res.json()) as { project_id: string };
-	await page.goto(`/projects/${project_id}`);
-	await expect(page.getByTestId('scene-canvas')).toBeVisible();
-	return project_id;
-}
 
 async function pickColour(page: Page, slot: number, hex: string) {
 	await page.getByTestId('filament-colour').nth(slot).evaluate((el, v) => {
@@ -35,7 +16,7 @@ async function pickColour(page: Page, slot: number, hex: string) {
 
 test('multi-filament : purge calculée, tranchage, aperçu par filament @F:editor.multi-filament-e2e', async ({ page }) => {
 	test.setTimeout(420_000);
-	const id = await bootstrapX1C(page);
+	const id = await bootstrap(page);
 	await importModel(page, 'cube20');
 	await importModel(page, 'cylinder');
 	await expect(page.getByTestId('import-status')).toHaveCount(0, { timeout: 60_000 });
@@ -76,6 +57,9 @@ test('multi-filament : purge calculée, tranchage, aperçu par filament @F:edito
 	await expect(entries.nth(0)).toHaveAttribute('data-color', /255.255.255/);
 	await expect(entries.nth(1)).toHaveAttribute('data-color', /\(0.0.0\)/);
 	await expect(page.getByTestId('preview-option-toolchange')).toContainText(/[1-9]\d*/);
+	// Une seule tête (Voron) : changements de filament, aucun changement d'extrudeur.
+	await expect(page.getByTestId('summary-filament-changes')).toHaveText(/[1-9]\d*/);
+	await expect(page.getByTestId('summary-extruder-changes')).toHaveCount(0);
 
 	// G-code : couleurs et purge du projet appliquées.
 	const project = (await (await page.request.get(`/api/projects/${id}`)).json()) as {

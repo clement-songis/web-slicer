@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	// Pourcentage (coPercent*) : saisie « 60 » ou « 60% », comme dans Orca.
-	import { FIELD_CLASS, percentText, type WidgetProps } from './types';
+	import { FIELD_CLASS, percentText, type WidgetProps, unitText } from './types';
 
 	let {
 		def,
@@ -27,6 +27,6 @@
 		class={FIELD_CLASS}
 	/>
 	<span class="text-xs whitespace-nowrap text-content-subtle"
-		>{def.sidetext ? $t(def.sidetext) : '%'}</span
+		>{unitText(def.sidetext) ? $t(unitText(def.sidetext)) : '%'}</span
 	>
 </span>

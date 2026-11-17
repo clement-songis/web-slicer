@@ -88,6 +88,13 @@ export function isWidgetFill(key: string, value: unknown): boolean {
 	return typeof value === 'string' && first !== undefined && value === first;
 }
 
+/** Une option diffère-t-elle d'une référence (preset enregistré, preset
+ *  système) ? Mêmes règles que `changedPresetValues` pour une seule clé. */
+export function settingChanged(key: string, reference: PresetValues, current: unknown): boolean {
+	if (reference[key] === undefined && isWidgetFill(key, current)) return false;
+	return !settingEqual(reference[key], current, isPercentKey(key));
+}
+
 export function hasPresetChanges(resolved: PresetValues, current: PresetValues): boolean {
 	return Object.keys(changedPresetValues(resolved, current)).length > 0;
 }

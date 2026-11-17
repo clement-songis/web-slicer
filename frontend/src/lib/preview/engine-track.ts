@@ -104,6 +104,8 @@ export interface EngineMeta {
 		flush_per_filament: Record<string, number>;
 		used_filaments_per_role: Record<string, { meters: number; grams: number }>;
 		total_filament_changes: number;
+		/** Changements d'extrudeur (changeur d'outils, ex. Prusa XL), compteur
+		 *  distinct des changements de filament comme dans Orca. */
 		total_extruder_changes: number;
 		total_travel_distance: number;
 		total_travel_moves: number;
@@ -433,6 +435,7 @@ export interface EngineSummaryView {
 	colorChangeTimes: { type: string; time: number; remaining: number }[];
 	travelDistance: number;
 	filamentChanges: number;
+	extruderChanges: number;
 }
 
 /** Construit la vue Résumé (mode 0 Normal / 1 Silencieux). */
@@ -484,6 +487,7 @@ export function summaryView(
 		customGcodes: s.custom_gcode_per_print_z ?? [],
 		colorChangeTimes: s.modes[mode]?.custom_gcode_times ?? [],
 		travelDistance: s.total_travel_distance ?? 0,
-		filamentChanges: s.total_filament_changes ?? 0
+		filamentChanges: s.total_filament_changes ?? 0,
+		extruderChanges: s.total_extruder_changes ?? 0
 	};
 }

@@ -203,10 +203,19 @@
 			<dd class="text-right whitespace-nowrap tabular-nums">
 				{meta?.layer_count || fallback.layerCount}
 			</dd>
-			<dt class="text-content-muted">Changements d’outil</dt>
-			<dd class="text-right whitespace-nowrap tabular-nums">
+			<dt class="text-content-muted">Changements de filament</dt>
+			<dd class="text-right whitespace-nowrap tabular-nums" data-testid="summary-filament-changes">
 				{view ? view.filamentChanges : fallback.toolchanges}
 			</dd>
+			{#if view && view.extruderChanges > 0}
+				<dt class="text-content-muted">Changements d’extrudeur</dt>
+				<dd
+					class="text-right whitespace-nowrap tabular-nums"
+					data-testid="summary-extruder-changes"
+				>
+					{view.extruderChanges}
+				</dd>
+			{/if}
 			{#if view && view.travelDistance > 0}
 				<dt class="text-content-muted">Distance de déplacement</dt>
 				<dd class="text-right whitespace-nowrap tabular-nums">

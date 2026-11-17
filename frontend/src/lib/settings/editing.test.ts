@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { defaultableKeys, orcaDefault, withOrcaDefaults } from './editing';
+import { defaultableKeys, orcaDefault, withOrcaDefaults, settingChanged } from './editing';
 
 import {
 	changedPresetValues,
@@ -119,5 +119,13 @@ describe('défauts Orca des clés absentes', () => {
 	});
 	it('chaque type a des clés couvertes', () => {
 		expect(defaultableKeys('process').length).toBeGreaterThan(200);
+	});
+});
+
+describe('settingChanged (marqueurs par option)', () => {
+	it('différence réelle, formatage numérique toléré, remplissage de widget ignoré', () => {
+		expect(settingChanged('wall_loops', { wall_loops: 2 }, '3')).toBe(true);
+		expect(settingChanged('wall_loops', { wall_loops: 2 }, '2')).toBe(false);
+		expect(settingChanged('wall_loops', {}, 0)).toBe(false);
 	});
 });

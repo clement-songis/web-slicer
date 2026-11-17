@@ -39,3 +39,18 @@ export function isOpenEnum(def: { guiType: string; enumValues: readonly string[]
 		def.enumValues.length === 0
 	);
 }
+
+/**
+ * Unité affichée à droite d'un champ. Le registre généré colle parfois
+ * l'infobulle à l'unité (12 clés, ex. top_shell_layers : « layersThis is the
+ * number… ») : on ne garde que l'unité (avant la première phrase).
+ */
+export function unitText(sidetext: string | null | undefined): string {
+	const s = (sidetext ?? '').trim();
+	if (s.length <= 12) return s;
+	// Unité connue en tête (ex. « mm/sperimeter_feed_rate », clé héritée collée).
+	const known = /^(mm\/s²|mm\/s|mm³\/s|mm³|mm|°C|%|layers?|s)(?=[a-z_A-Z])/.exec(s);
+	if (known) return known[1];
+	const m = /^(.*?)(?=[A-Z][a-z])/.exec(s);
+	return m && m[1].trim() ? m[1].trim() : '';
+}

@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	// Flottant (coFloat*) avec unité affichée (sidetext) et bornes du registre.
-	import { FIELD_CLASS, type WidgetProps } from './types';
+	import { FIELD_CLASS, unitText, type WidgetProps } from './types';
 
 	let { def, value = $bindable(), disabled = false, index }: WidgetProps<number> = $props();
 </script>
@@ -18,7 +18,7 @@
 		aria-label={$t(def.label)}
 		class={FIELD_CLASS}
 	/>
-	{#if def.sidetext}
-		<span class="text-xs whitespace-nowrap text-content-subtle">{$t(def.sidetext)}</span>
+	{#if unitText(def.sidetext)}
+		<span class="text-xs whitespace-nowrap text-content-subtle">{$t(unitText(def.sidetext))}</span>
 	{/if}
 </span>

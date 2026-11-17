@@ -38,6 +38,16 @@
 		saveAsError?: string | null;
 		/** Onglet ouvert à l'ouverture (titre de page Orca). */
 		initialPage?: string;
+		/** Valeurs enregistrées / système par type (marqueurs par option). */
+		savedByKind?: Partial<Record<PresetKind, Record<string, unknown> | null>>;
+		systemByKind?: Partial<Record<PresetKind, Record<string, unknown> | null>>;
+		/** Preset édité (nom, origine) : barre de gestion comme l'en-tête des
+		 *  onglets d'Orca (renommer / supprimer un preset utilisateur, comparer). */
+		preset?: { id: string; name: string; origin: string; inherits?: string } | null;
+		/** Renomme ; renvoie un message d'erreur ou null. */
+		onrename?: (name: string) => Promise<string | null>;
+		ondelete?: () => void;
+		oncompare?: () => void;
 	}
 
 	let {
@@ -53,8 +63,35 @@
 		saveHint,
 		saveAsName = $bindable(null),
 		saveAsError = null,
-		initialPage
+		initialPage,
+		savedByKind,
+		systemByKind,
+		preset = null,
+		onrename,
+		ondelete,
+		oncompare
 	}: Props = $props();
+
+	let renaming = $state<string | null>(null);
+	let renameError = $state<string | null>(null);
+	let confirmDelete = $state(false);
+	$effect(() => {
+		if (!open) {
+			renaming = null;
+			renameError = null;
+			confirmDelete = false;
+		}
+	});
+	async function commitRename() {
+		if (renaming === null || !onrename) return;
+		const name = renaming.trim();
+		if (!name || name === preset?.name) {
+			renaming = null;
+			return;
+		}
+		renameError = await onrename(name);
+		if (!renameError) renaming = null;
+	}
 
 	function onKeydown(event: KeyboardEvent) {
 		if (event.key === 'Escape') onClose();
@@ -86,11 +123,97 @@
 			tabindex="-1"
 			use:dialogFocus
 		>
-			<div class="flex items-center justify-between border-b border-border px-4 py-3">
-				<h2 class="ws-dialog-title">{title}</h2>
-				<button type="button" class="ws-btn ws-btn-secondary" onclick={onClose}>
-					{$t('Close')}
-				</button>
+			<div class="flex items-center justify-between gap-3 border-b border-border px-4 py-3">
+				<div class="flex min-w-0 flex-col">
+					<h2 class="ws-dialog-title">{title}</h2>
+					{#if preset}
+						<div
+							class="flex min-w-0 items-center gap-2 text-xs text-content-muted"
+							data-testid="preset-bar"
+						>
+							{#if renaming !== null}
+								<input
+									class="ws-field ws-field-sm w-64 {renameError ? 'border-danger' : ''}"
+									bind:value={renaming}
+									aria-label="Nouveau nom du preset"
+									aria-invalid={!!renameError}
+									data-testid="preset-rename-input"
+									onkeydown={(e) => {
+										if (e.key === 'Enter') void commitRename();
+										if (e.key === 'Escape') {
+											e.stopPropagation();
+											renaming = null;
+										}
+									}}
+								/>
+								<button type="button" class="ws-btn ws-btn-sm ws-btn-primary" onclick={commitRename}
+									>Renommer</button
+								>
+								{#if renameError}<span class="text-danger" role="alert">{renameError}</span>{/if}
+							{:else}
+								<span class="truncate font-medium text-content" data-testid="preset-name"
+									>{preset.name}</span
+								>
+								<span class="ws-badge h-4 px-1.5"
+									>{preset.origin === 'user' ? 'Utilisateur' : 'Système'}</span
+								>
+								{#if preset.inherits}
+									<span class="truncate text-content-subtle">hérite de {preset.inherits}</span>
+								{/if}
+							{/if}
+						</div>
+					{/if}
+				</div>
+				<div class="flex shrink-0 items-center gap-2">
+					{#if preset && oncompare}
+						<button
+							type="button"
+							class="ws-btn ws-btn-sm ws-btn-ghost"
+							data-testid="preset-compare"
+							onclick={oncompare}>Comparer…</button
+						>
+					{/if}
+					{#if preset?.origin === 'user' && onrename && renaming === null}
+						<button
+							type="button"
+							class="ws-btn ws-btn-sm ws-btn-ghost"
+							data-testid="preset-rename"
+							onclick={() => {
+								renaming = preset?.name ?? '';
+								renameError = null;
+							}}>Renommer</button
+						>
+					{/if}
+					{#if preset?.origin === 'user' && ondelete}
+						{#if confirmDelete}
+							<span class="text-xs text-content-muted">Supprimer « {preset.name} » ?</span>
+							<button
+								type="button"
+								class="ws-btn ws-btn-sm ws-btn-danger"
+								data-testid="preset-delete-confirm"
+								onclick={() => {
+									confirmDelete = false;
+									ondelete?.();
+								}}>Supprimer</button
+							>
+							<button
+								type="button"
+								class="ws-btn ws-btn-sm ws-btn-ghost"
+								onclick={() => (confirmDelete = false)}>Annuler</button
+							>
+						{:else}
+							<button
+								type="button"
+								class="ws-btn ws-btn-sm ws-btn-ghost text-danger hover:bg-danger-soft hover:text-danger-content"
+								data-testid="preset-delete"
+								onclick={() => (confirmDelete = true)}>Supprimer</button
+							>
+						{/if}
+					{/if}
+					<button type="button" class="ws-btn ws-btn-secondary" onclick={onClose}>
+						{$t('Close')}
+					</button>
+				</div>
 			</div>
 
 			<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
@@ -103,6 +226,8 @@
 					bind:values
 					{valuesByKind}
 					{initialPage}
+					{savedByKind}
+					{systemByKind}
 					loading={Object.keys(values).length === 0}
 				/>
 			</div>

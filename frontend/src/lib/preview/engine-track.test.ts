@@ -126,6 +126,10 @@ describe('engine-track', () => {
 		expect(v.firstLayer[0]).toBe(12.5);
 		expect(v.prepare[0]).toBe(5);
 		expect(summaryView(meta, {}, 1).roles[0].time).toBe(80);
+		// Compteurs distincts (Orca) : filament / extrudeur (changeur d'outils).
+		expect(v.extruderChanges).toBe(0);
+		meta.summary.total_extruder_changes = 104;
+		expect(summaryView(meta, {}).extruderChanges).toBe(104);
 	});
 });
 

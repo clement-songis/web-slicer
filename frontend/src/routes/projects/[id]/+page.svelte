@@ -132,6 +132,7 @@
 	import { PresetSettingsDialog } from '$lib/settings';
 	import PlateSettingsDialog from '$lib/settings/PlateSettingsDialog.svelte';
 	import {
+		changedPresetValues,
 		clonePresetValues,
 		hasPresetChanges,
 		presetValuesForSave,
@@ -272,10 +273,14 @@
 		updatePreset,
 		getPreset,
 		getResolvedPreset,
-		importPreset
+		importPreset,
+		deletePreset
 	} from '$lib/api/presets';
 	import { listPrinters, getPrinterCatalog, createPrinter, uploadSliced } from '$lib/api/printers';
 	import { friendlySliceError } from '$lib/editor/session';
+	import ComparePresetsDialog from '$lib/settings/ComparePresetsDialog.svelte';
+	import UnsavedPresetDialog from '$lib/settings/UnsavedPresetDialog.svelte';
+	import { diffPresets, transferChanges, type SettingDiff } from '$lib/settings/preset-tools';
 	import {
 		clampTowerPosition,
 		effectiveBrim,
@@ -1175,6 +1180,133 @@
 	function loadPresetsShared(): Promise<void> {
 		return presetsInFlight ?? loadPresets();
 	}
+	// — Gestion des presets (Phase 18) : valeurs système de référence, renommer /
+	//   supprimer un preset utilisateur, comparer, changement de preset avec des
+	//   modifications non enregistrées (Orca Tab / DiffPresetDialog /
+	//   UnsavedChangesDialog).
+	type Kind = 'process' | 'filament' | 'machine';
+	let systemValues = $state<Record<Kind, Record<string, unknown> | null>>({
+		process: null,
+		filament: null,
+		machine: null
+	});
+	$effect(() => {
+		const kind = settingsDialog;
+		if (!kind) return;
+		const preset = activePresetOf(kind);
+		const parent =
+			preset?.origin === 'user' && preset.inherits
+				? presetsOfKind(kind).find((p) => p.name === preset.inherits && p.origin !== 'user')
+				: undefined;
+		if (!parent) {
+			untrack(() => (systemValues[kind] = null));
+			return;
+		}
+		void getResolvedPreset(parent.id)
+			.then((r) => {
+				if (activePresetOf(kind)?.id === preset?.id) systemValues[kind] = r.values;
+			})
+			.catch(() => {});
+	});
+	function replacePresetList(kind: Kind, list: PresetSummary[]) {
+		if (kind === 'process') processPresets = list;
+		else if (kind === 'filament') filamentPresets = list;
+		else machinePresets = list;
+	}
+	async function renameActivePreset(kind: Kind, name: string): Promise<string | null> {
+		const preset = activePresetOf(kind);
+		if (!preset || preset.origin !== 'user') return 'seuls les presets utilisateur se renomment';
+		if (presetsOfKind(kind).some((p) => p.id !== preset.id && p.name === name))
+			return `un preset « ${name} » existe déjà`;
+		try {
+			await updatePreset(preset.id, { name });
+			replacePresetList(
+				kind,
+				presetsOfKind(kind).map((p) => (p.id === preset.id ? { ...p, name } : p))
+			);
+			saveMessage = `Preset renommé en « ${name} ».`;
+			return null;
+		} catch (e) {
+			return e instanceof ApiError ? e.message : 'renommage impossible';
+		}
+	}
+	async function deleteActivePreset(kind: Kind) {
+		const preset = activePresetOf(kind);
+		if (!preset || preset.origin !== 'user') return;
+		const list = presetsOfKind(kind);
+		const fallback =
+			list.find((p) => p.name === preset.inherits && p.id !== preset.id) ??
+			list.find((p) => p.id !== preset.id && p.origin !== 'user') ??
+			list.find((p) => p.id !== preset.id);
+		// Orca bascule d'abord sur le parent puis supprime ; ici le projet
+		// référence le preset (active_presets) : bascule + sauvegarde avant la
+		// suppression, sinon le backend refuse (« preset référencé par un projet »).
+		const select = (id: string) => {
+			if (kind === 'process') activePresets.process = id;
+			else if (kind === 'filament')
+				setFilamentSlot(clampFilamentSlot(activePresets, filamentSlot), id);
+			else activePresets.printer = id;
+		};
+		try {
+			if (fallback) {
+				select(fallback.id);
+				const saved = await save();
+				if (saved.status !== 'saved') {
+					select(preset.id);
+					saveMessage = `Suppression impossible : ${saved.status === 'error' ? saved.message : 'sauvegarde du projet impossible'}`;
+					return;
+				}
+			}
+			await deletePreset(preset.id);
+			replacePresetList(
+				kind,
+				list.filter((p) => p.id !== preset.id)
+			);
+			settingsDialog = null;
+			saveMessage = `Preset « ${preset.name} » supprimé${fallback ? `, « ${fallback.name} » sélectionné` : ''}.`;
+		} catch (e) {
+			saveMessage = e instanceof ApiError ? e.message : 'suppression impossible';
+		}
+	}
+	let compare = $state<{ kind: Kind; left: string | null; right: string | null } | null>(null);
+	function openCompare(kind: Kind) {
+		const preset = activePresetOf(kind);
+		const list = presetsOfKind(kind);
+		const parent = list.find((p) => p.name === preset?.inherits);
+		const other = parent ?? list.find((p) => p.id !== preset?.id);
+		compare = { kind, left: preset?.id ?? null, right: other?.id ?? preset?.id ?? null };
+	}
+	let pendingSwitch = $state<{
+		kind: Kind;
+		toName: string;
+		changes: SettingDiff[];
+		apply: () => void;
+	} | null>(null);
+	const pendingTransfer: Record<Kind, Record<string, unknown> | null> = {
+		process: null,
+		filament: null,
+		machine: null
+	};
+	// Remonte les sélecteurs après « Garder » (le <select> afficherait sinon le
+	// preset refusé).
+	let presetSelectSeq = $state(0);
+	function requestPresetSwitch(kind: Kind, id: string | null, apply: () => void) {
+		const current = activePresetOf(kind);
+		if (!id || id === current?.id) return;
+		const resolved = resolvedForKind(kind);
+		const draft = valuesForKind(kind);
+		if (editLoadedId[kind] !== current?.id || !hasPresetChanges(resolved, draft)) {
+			apply();
+			return;
+		}
+		pendingSwitch = {
+			kind,
+			toName: presetsOfKind(kind).find((p) => p.id === id)?.name ?? id,
+			changes: diffPresets(kind, resolved, draft),
+			apply
+		};
+	}
+
 	async function loadPresetsNow() {
 		try {
 			const [printers, catalog, machines] = await Promise.all([
@@ -1441,6 +1573,18 @@
 			const kept = clonePresetValues(Object.fromEntries(typed.map((key) => [key, draft[key]])));
 			editLoadedId[kind] = requestedId;
 			setValuesForKind(kind, resolved.values);
+			// « Transférer » (changement de preset avec modifications) : les
+			// différences du brouillon précédent sont posées sur le nouveau preset.
+			const transfer = pendingTransfer[kind];
+			if (transfer) {
+				pendingTransfer[kind] = null;
+				// Brouillon seulement : la base reste le preset choisi (options
+				// transférées affichées comme modifiées, à enregistrer ou annuler).
+				const next = transferChanges(transfer, valuesForKind(kind));
+				if (kind === 'process') processValues = next;
+				else if (kind === 'filament') filamentValues = next;
+				else machineValues = next;
+			}
 			if (typed.length) {
 				const next = valuesForKind(kind);
 				for (const key of typed) next[key] = kept[key];
@@ -5935,19 +6079,25 @@
 										/>
 									</label>
 									<div class="min-w-0 flex-1">
-										<PresetSelect
-											compact
-											presets={filamentPresets}
-											printer={machinePresets.find((m) => m.id === activePresets.printer) ?? null}
-											testid={slot === 0
-												? 'preset-select-filament'
-												: `preset-select-filament-${slot + 1}`}
-											modified={active && filamentModified}
-											bind:selectedId={
-												() => filamentAt(activePresets, slot), (id) => setFilamentSlot(slot, id)
-											}
-											label={filamentSlots > 1 ? `${$t('Filament')} ${slot + 1}` : $t('Filament')}
-										/>
+										{#key presetSelectSeq}
+											<PresetSelect
+												compact
+												presets={filamentPresets}
+												printer={machinePresets.find((m) => m.id === activePresets.printer) ?? null}
+												testid={slot === 0
+													? 'preset-select-filament'
+													: `preset-select-filament-${slot + 1}`}
+												modified={active && filamentModified}
+												bind:selectedId={
+													() => filamentAt(activePresets, slot),
+													(id) =>
+														slot === clampFilamentSlot(activePresets, filamentSlot)
+															? requestPresetSwitch('filament', id, () => setFilamentSlot(slot, id))
+															: setFilamentSlot(slot, id)
+												}
+												label={filamentSlots > 1 ? `${$t('Filament')} ${slot + 1}` : $t('Filament')}
+											/>
+										{/key}
 									</div>
 									<button
 										type="button"
@@ -6064,6 +6214,44 @@
 								{/if}
 							{/if}
 						</section>
+						<ComparePresetsDialog
+							open={compare !== null}
+							kind={compare?.kind ?? 'process'}
+							presets={compare ? presetsOfKind(compare.kind) : []}
+							leftId={compare?.left ?? null}
+							rightId={compare?.right ?? null}
+							onclose={() => (compare = null)}
+						/>
+						<UnsavedPresetDialog
+							open={pendingSwitch !== null}
+							kindLabel={pendingSwitch?.kind === 'filament'
+								? 'filament'
+								: pendingSwitch?.kind === 'machine'
+									? "d'imprimante"
+									: "d'impression"}
+							fromName={pendingSwitch ? (activePresetOf(pendingSwitch.kind)?.name ?? '') : ''}
+							toName={pendingSwitch?.toName ?? ''}
+							changes={pendingSwitch?.changes ?? []}
+							ontransfer={() => {
+								const p = pendingSwitch;
+								if (!p) return;
+								pendingTransfer[p.kind] = changedPresetValues(
+									resolvedForKind(p.kind),
+									valuesForKind(p.kind)
+								);
+								pendingSwitch = null;
+								p.apply();
+							}}
+							ondiscard={() => {
+								const p = pendingSwitch;
+								pendingSwitch = null;
+								p?.apply();
+							}}
+							oncancel={() => {
+								pendingSwitch = null;
+								presetSelectSeq++;
+							}}
+						/>
 						<FlushVolumesDialog
 							open={flushDialogOpen}
 							colours={filamentSlotColors}
@@ -6093,16 +6281,21 @@
 									>
 								</div>
 							</div>
-							<PresetSelect
-								compact
-								presets={processPresets}
-								searchable
-								printer={machinePresets.find((m) => m.id === activePresets.printer) ?? null}
-								testid="preset-select-print"
-								modified={processModified}
-								bind:selectedId={activePresets.process}
-								label={$t('Process')}
-							/>
+							{#key presetSelectSeq}
+								<PresetSelect
+									compact
+									presets={processPresets}
+									searchable
+									printer={machinePresets.find((m) => m.id === activePresets.printer) ?? null}
+									testid="preset-select-print"
+									modified={processModified}
+									bind:selectedId={
+										() => activePresets.process,
+										(id) => requestPresetSwitch('process', id, () => (activePresets.process = id))
+									}
+									label={$t('Process')}
+								/>
+							{/key}
 							<button
 								type="button"
 								class="ws-btn ws-btn-secondary self-end"
@@ -6128,6 +6321,16 @@
 								title="Réglages d'impression"
 								kind="process"
 								initialPage={settingsInitialPage}
+								savedByKind={{
+									process: processResolvedValues,
+									filament: filamentResolvedValues,
+									machine: machineResolvedValues
+								}}
+								systemByKind={systemValues}
+								preset={activePresetOf('process') ?? null}
+								onrename={(name) => renameActivePreset('process', name)}
+								ondelete={() => deleteActivePreset('process')}
+								oncompare={() => openCompare('process')}
 								bind:mode={settingsMode}
 								bind:values={processValues}
 								valuesByKind={{
@@ -6146,6 +6349,16 @@
 									? `Réglages du filament ${clampFilamentSlot(activePresets, filamentSlot) + 1}`
 									: 'Réglages du filament'}
 								kind="filament"
+								savedByKind={{
+									process: processResolvedValues,
+									filament: filamentResolvedValues,
+									machine: machineResolvedValues
+								}}
+								systemByKind={systemValues}
+								preset={activePresetOf('filament') ?? null}
+								onrename={(name) => renameActivePreset('filament', name)}
+								ondelete={() => deleteActivePreset('filament')}
+								oncompare={() => openCompare('filament')}
 								bind:mode={settingsMode}
 								bind:values={filamentValues}
 								valuesByKind={{
@@ -6162,6 +6375,16 @@
 								open={settingsDialog === 'machine'}
 								title="Paramètres de l'imprimante"
 								kind="machine"
+								savedByKind={{
+									process: processResolvedValues,
+									filament: filamentResolvedValues,
+									machine: machineResolvedValues
+								}}
+								systemByKind={systemValues}
+								preset={activePresetOf('machine') ?? null}
+								onrename={(name) => renameActivePreset('machine', name)}
+								ondelete={() => deleteActivePreset('machine')}
+								oncompare={() => openCompare('machine')}
 								bind:mode={settingsMode}
 								bind:values={machineValues}
 								valuesByKind={{

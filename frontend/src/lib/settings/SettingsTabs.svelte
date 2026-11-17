@@ -37,6 +37,9 @@
 		valuesByKind?: Record<PresetKind, Record<string, unknown>>;
 		/** Onglet ouvert à l'affichage (titre de page Orca, ex. « Multimaterial »). */
 		initialPage?: string;
+		/** Valeurs enregistrées / système par type (marqueurs et retours par option). */
+		savedByKind?: Partial<Record<PresetKind, Record<string, unknown> | null>>;
+		systemByKind?: Partial<Record<PresetKind, Record<string, unknown> | null>>;
 	}
 
 	type LinkedSection = UiSection & { kind: PresetKind };
@@ -48,7 +51,9 @@
 		values = $bindable({}),
 		loading = false,
 		valuesByKind,
-		initialPage
+		initialPage,
+		savedByKind,
+		systemByKind
 	}: Props = $props();
 
 	let query = $state('');
@@ -221,9 +226,19 @@
 					{#each section.options as option, oi (typeof option === 'string' ? option : `dyn:${oi}`)}
 						{#if typeof option === 'string' && PARAMS[option]}
 							{#if valuesByKind}
-								<OptionLine def={PARAMS[option]} bind:value={valuesByKind[section.kind][option]} />
+								<OptionLine
+									def={PARAMS[option]}
+									bind:value={valuesByKind[section.kind][option]}
+									saved={savedByKind?.[section.kind] ?? null}
+									system={systemByKind?.[section.kind] ?? null}
+								/>
 							{:else}
-								<OptionLine def={PARAMS[option]} bind:value={values[option]} />
+								<OptionLine
+									def={PARAMS[option]}
+									bind:value={values[option]}
+									saved={savedByKind?.[kind] ?? null}
+									system={systemByKind?.[kind] ?? null}
+								/>
 							{/if}
 						{/if}
 					{/each}
