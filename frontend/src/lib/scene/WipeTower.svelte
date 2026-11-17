@@ -128,6 +128,7 @@
 				data-testid="wipe-tower-handle"
 				data-grab={grabPoint}
 				data-dragging={drag ? 'true' : undefined}
+				data-hover={hover ? 'true' : undefined}
 				>Tour d'essuyage{drag ? ` · X ${px.toFixed(0)} Y ${py.toFixed(0)}` : ''}</span
 			>
 		</HTML>

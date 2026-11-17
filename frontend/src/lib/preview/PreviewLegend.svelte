@@ -85,7 +85,11 @@
 	{:else if legend.kind === 'list'}
 		<div class="flex flex-wrap gap-1.5" data-testid="legend-list">
 			{#each legend.entries as entry (entry.label)}
-				<span class="ws-badge gap-1.5 text-xs">
+				<span
+					class="ws-badge gap-1.5 text-xs"
+					data-testid="legend-entry"
+					data-color={css(entry.color)}
+				>
 					<span
 						class="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
 						style:background-color={css(entry.color)}

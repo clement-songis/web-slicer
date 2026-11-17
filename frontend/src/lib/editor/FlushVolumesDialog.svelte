@@ -12,6 +12,8 @@
 		colours: string[];
 		matrix?: number[];
 		multiplier?: number;
+		/** Multiplicateur effectif sans surcharge projet (preset, défaut Orca 0,3). */
+		defaultMultiplier?: number;
 		onclose: () => void;
 		onapply: (matrix: number[], multiplier: number) => void;
 		/** Calcul moteur depuis les couleurs (null = jamais disponible). */
@@ -25,6 +27,7 @@
 		colours,
 		matrix,
 		multiplier = 1,
+		defaultMultiplier = 0.3,
 		onclose,
 		onapply,
 		compute = null,
@@ -171,8 +174,8 @@
 				class="ws-btn ws-btn-sm ws-btn-ghost"
 				onclick={() => {
 					draft = resizeFlushMatrix(undefined, n);
-					factor = 1;
-				}}>Valeurs par défaut ({DEFAULT_FLUSH} mm³)</button
+					factor = defaultMultiplier;
+				}}>Valeurs par défaut ({DEFAULT_FLUSH} mm³ × {defaultMultiplier})</button
 			>
 		</div>
 		{#if computeError}

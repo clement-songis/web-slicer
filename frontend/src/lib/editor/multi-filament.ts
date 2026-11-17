@@ -20,6 +20,8 @@ export interface ProjectFilamentConfig {
 
 /** Volume de purge par défaut d'Orca (PrintConfig : 280 mm³ hors diagonale). */
 export const DEFAULT_FLUSH = 280;
+/** Multiplicateur par défaut d'Orca (PrintConfig flush_multiplier = {0.3}). */
+export const DEFAULT_FLUSH_MULTIPLIER = 0.3;
 
 const HEX = /^#[0-9a-f]{6}$/i;
 
@@ -56,8 +58,9 @@ export function compactProjectConfig(cfg: ProjectFilamentConfig): ProjectFilamen
 		out.filament_colour = colours;
 	}
 	if (cfg.flush_volumes_matrix?.length) out.flush_volumes_matrix = [...cfg.flush_volumes_matrix];
-	if (cfg.flush_multiplier !== undefined && cfg.flush_multiplier !== 1)
-		out.flush_multiplier = cfg.flush_multiplier;
+	// Choix explicite conservé tel quel (même 1 : le défaut effectif vient du
+	// preset, 0,3 chez Orca, et ne doit pas être réappliqué en silence).
+	if (cfg.flush_multiplier !== undefined) out.flush_multiplier = cfg.flush_multiplier;
 	if (cfg.wipe_tower_x?.length && cfg.wipe_tower_y?.length) {
 		out.wipe_tower_x = [...cfg.wipe_tower_x];
 		out.wipe_tower_y = [...cfg.wipe_tower_y];

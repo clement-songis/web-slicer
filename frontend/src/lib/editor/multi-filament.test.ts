@@ -72,4 +72,8 @@ describe('configuration multi-filament du projet', () => {
 			wipe_tower_y: [4]
 		});
 	});
+	it('multiplicateur explicite conservé, même à 1 (défaut Orca 0,3)', () => {
+		expect(compactProjectConfig({ flush_multiplier: 1 })).toEqual({ flush_multiplier: 1 });
+		expect(compactProjectConfig({})).toBeNull();
+	});
 });

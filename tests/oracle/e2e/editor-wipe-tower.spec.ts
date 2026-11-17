@@ -29,9 +29,25 @@ test('tour d essuyage : affichée, déplaçable, persistée @F:editor.wipe-tower
 
 	// Glisser sur le plateau (ancre écran de la tour).
 	const handle = page.getByTestId('wipe-tower-handle');
+	// Point de saisie stable : la caméra amortie (OrbitControls) et le
+	// redimensionnement de la colonne peuvent encore le déplacer juste après la
+	// saisie de X ; on attend deux lectures identiques.
+	const grab = async () => (await handle.getAttribute('data-grab')) ?? '';
 	await expect(handle).toHaveAttribute('data-grab', /^\d+,\d+$/);
-	const [cx, cy] = ((await handle.getAttribute('data-grab')) ?? '0,0').split(',').map(Number);
-	await page.mouse.move(cx, cy);
+	let last = '';
+	await expect
+		.poll(async () => {
+			const now = await grab();
+			const stable = now === last;
+			last = now;
+			return stable;
+		}, { intervals: [250] })
+		.toBe(true);
+	const [cx, cy] = last.split(',').map(Number);
+	// Survol confirmé par la tour elle-même avant d'appuyer (raycast threlte).
+	await page.mouse.move(cx - 2, cy);
+	await page.mouse.move(cx, cy, { steps: 3 });
+	await expect(handle).toHaveAttribute('data-hover', 'true');
 	await page.mouse.down();
 	await expect(handle).toHaveAttribute('data-dragging', 'true');
 	await page.mouse.move(cx + 60, cy, { steps: 8 });

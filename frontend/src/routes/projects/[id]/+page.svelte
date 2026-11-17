@@ -293,6 +293,7 @@
 		setSlotColour,
 		setTowerPosition,
 		towerPosition,
+		DEFAULT_FLUSH_MULTIPLIER,
 		type ProjectFilamentConfig
 	} from '$lib/editor/multi-filament';
 	import { dialogFocus } from '$lib/ui/dialog-focus';
@@ -602,6 +603,19 @@
 	// config projet, pas preset (lib/editor/multi-filament).
 	let projectFilament = $state<ProjectFilamentConfig>({});
 	let flushDialogOpen = $state(false);
+	// Multiplicateur de purge effectif hors surcharge projet (config résolue ;
+	// défaut Orca 0,3) : valeur initiale du dialogue, pas 1.
+	const presetFlushMultiplier = $derived.by(() => {
+		for (const v of [
+			processValues.flush_multiplier,
+			machineValues.flush_multiplier,
+			filamentValues.flush_multiplier
+		]) {
+			const n = Number(Array.isArray(v) ? v[0] : v);
+			if (v !== undefined && Number.isFinite(n) && n > 0) return n;
+		}
+		return DEFAULT_FLUSH_MULTIPLIER;
+	});
 	// Extrudeur effectif de chaque objet (teinte de la scène en multi-filament ;
 	// « auto » = 1, comme Orca).
 	const sceneObjectExtruders = $derived.by(() => {
@@ -6054,7 +6068,8 @@
 							open={flushDialogOpen}
 							colours={filamentSlotColors}
 							matrix={projectFilament.flush_volumes_matrix}
-							multiplier={projectFilament.flush_multiplier ?? 1}
+							multiplier={projectFilament.flush_multiplier ?? presetFlushMultiplier}
+							defaultMultiplier={presetFlushMultiplier}
 							onclose={() => (flushDialogOpen = false)}
 							compute={async (colours, multiplier) =>
 								(await computeFlushVolumes(colours, multiplier, data.project.id)).matrix}
