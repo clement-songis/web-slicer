@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { SceneNode } from './objects.svelte';
-import { objectDiff, SceneHistory, takeSnapshot, type SnapshotSource } from './scene-history';
+import {
+	describeChange,
+	objectDiff,
+	SceneHistory,
+	takeSnapshot,
+	type SnapshotSource
+} from './scene-history';
 
 const node = (id: string, name = id): SceneNode => ({
 	id,
@@ -84,5 +90,29 @@ describe('objectDiff', () => {
 		const b = takeSnapshot(src(['n1', 'n2']));
 		expect(objectDiff(a, b)).toEqual({ added: ['n2'], removed: [] });
 		expect(objectDiff(b, a)).toEqual({ added: [], removed: ['n2'] });
+	});
+});
+
+describe('liste d’historique (étapes nommées)', () => {
+	it('libellés : ajout, déplacement, suppression, renommage, réglages', () => {
+		const a = takeSnapshot(src(['n1']));
+		expect(describeChange(a, takeSnapshot(src(['n1', 'n2'])))).toBe('Ajouter « n2 »');
+		expect(describeChange(a, takeSnapshot(src(['n1'], 5)))).toBe('Déplacer « n1 »');
+		expect(describeChange(takeSnapshot(src(['n1', 'n2'])), a)).toBe('Supprimer « n2 »');
+		const renamed = src(['n1']);
+		renamed.nodes[0].name = 'cube';
+		expect(describeChange(a, takeSnapshot(renamed))).toBe('Renommer « n1 » en « cube »');
+		const tuned = src(['n1']);
+		tuned.nodes[0].settings = { wall_loops: 4 };
+		expect(describeChange(a, takeSnapshot(tuned))).toBe('Réglages de « n1 »');
+	});
+	it('piles undo / redo dans l’ordre des raccourcis', () => {
+		const h = new SceneHistory();
+		h.reset(takeSnapshot(src(['n1'])));
+		h.record(takeSnapshot(src(['n1'], 10)));
+		h.record(takeSnapshot(src(['n1', 'n2'], 10)));
+		expect(h.entries()).toEqual({ undo: ['Ajouter « n2 »', 'Déplacer « n1 »'], redo: [] });
+		h.undo();
+		expect(h.entries()).toEqual({ undo: ['Déplacer « n1 »'], redo: ['Ajouter « n2 »'] });
 	});
 });

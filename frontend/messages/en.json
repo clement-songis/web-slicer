@@ -219,6 +219,7 @@
 	"ui_multiple": "Multiple",
 	"ui_travel": "Travel",
 	"ui_pressure_advance_pattern": "Pressure advance pattern",
+	"ui_pressure_advance_history": "Pressure advance history",
 	"ui_input_shaping_frequency": "Input Shaping Frequency",
 	"ui_input_shaping_damping": "Input Shaping Damping",
 	"ui_cornering": "Cornering",

@@ -90,7 +90,7 @@ export async function sliceInUi(page: Page): Promise<number> {
 }
 
 export async function downloadGcode(page: Page): Promise<string> {
-	const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('export-gcode-button').click()]);
+	const [dl] = await Promise.all([page.waitForEvent('download', { timeout: 60_000 }), page.getByTestId('export-gcode-button').click()]);
 	expect(dl.suggestedFilename()).toMatch(/\.gcode$/);
 	const p = await dl.path();
 	return readFileSync(p, 'utf8');

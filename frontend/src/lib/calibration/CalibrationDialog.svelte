@@ -29,6 +29,7 @@
 	let paStart = $state(DEFAULTS.pressure_advance.start);
 	let paEnd = $state(DEFAULTS.pressure_advance.end);
 	let paStep = $state(DEFAULTS.pressure_advance.step);
+	let paMethod = $state<'tower' | 'line'>('tower');
 
 	const isTemp = $derived(kind === 'temperature');
 	const invalid = $derived(
@@ -47,7 +48,11 @@
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
 		if (invalid || busy) return;
-		onconfirm(isTemp ? { start: tStart, end: tEnd } : { start: paStart, end: paEnd, step: paStep });
+		onconfirm(
+			isTemp
+				? { start: tStart, end: tEnd }
+				: { start: paStart, end: paEnd, step: paStep, method: paMethod }
+		);
 	}
 
 	const FIELD = 'h-9 rounded-md border border-border-strong bg-surface-raised px-2';
@@ -115,6 +120,20 @@
 						</label>
 					</div>
 				{:else}
+					<!-- Méthodes d'Orca construites par le serveur : tour, lignes (le
+					     motif reste dans « Pressure advance pattern »). -->
+					<div class="ws-seg self-start" role="group" aria-label="Méthode">
+						{#each [['tower', 'Tour'], ['line', 'Lignes']] as const as [m, label] (m)}
+							<button
+								type="button"
+								class="ws-seg-item {paMethod === m ? 'ws-seg-on' : ''}"
+								aria-pressed={paMethod === m}
+								data-testid={`calib-pa-method-${m}`}
+								disabled={busy}
+								onclick={() => (paMethod = m)}>{label}</button
+							>
+						{/each}
+					</div>
 					<div class="grid grid-cols-3 gap-3">
 						<label class="flex flex-col gap-1 text-sm">
 							<span class="text-content-muted">PA de départ</span>

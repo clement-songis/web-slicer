@@ -78,6 +78,58 @@ export function objectDiff(
 	return { added: [...b].filter((id) => !a.has(id)), removed: [...a].filter((id) => !b.has(id)) };
 }
 
+const same3 = (a: readonly number[], b: readonly number[]) =>
+	a.every((v, i) => Math.abs(v - b[i]) < 1e-6);
+
+/** Libellé d'une étape (passage de `prev` à `next`), comme les noms d'actions
+ *  de l'historique d'annulation d'Orca (« Move Object », « Delete Object »…). */
+export function describeChange(prev: SceneSnapshot, next: SceneSnapshot): string {
+	const nodes = new Map([...prev.nodes, ...next.nodes].map((n) => [n.id, n]));
+	const name = (id: string) => `« ${nodes.get(id)?.name ?? 'objet'} »`;
+	const many = (verb: string, ids: string[]) =>
+		ids.length === 1 ? `${verb} ${name(ids[0])}` : `${verb} ${ids.length} objets`;
+	const { added, removed } = objectDiff(prev, next);
+	if (added.length && !removed.length) return many('Ajouter', added);
+	if (removed.length && !added.length) return many('Supprimer', removed);
+	if (added.length && removed.length) return 'Remplacer des objets';
+	const moved: string[] = [];
+	const rotated: string[] = [];
+	const scaled: string[] = [];
+	for (const [id, t] of Object.entries(next.transforms)) {
+		const p = prev.transforms[id];
+		if (!p) continue;
+		if (!same3(p.position, t.position)) moved.push(id);
+		if (!same3(p.rotation, t.rotation)) rotated.push(id);
+		if (!same3(p.scale, t.scale)) scaled.push(id);
+	}
+	if (scaled.length) return many('Mettre à l’échelle', scaled);
+	if (rotated.length) return many('Pivoter', rotated);
+	if (moved.length) return many('Déplacer', moved);
+	const volumeIds = new Set([...Object.keys(prev.volumes), ...Object.keys(next.volumes)]);
+	const volumes = [...volumeIds].filter(
+		(id) => JSON.stringify(prev.volumes[id] ?? []) !== JSON.stringify(next.volumes[id] ?? [])
+	);
+	if (volumes.length) return many('Pièces et modificateurs de', volumes);
+	const prevNodes = new Map(prev.nodes.map((n) => [n.id, n]));
+	for (const n of next.nodes) {
+		const p = prevNodes.get(n.id);
+		if (!p) return 'Regrouper';
+		if (p.name !== n.name) return `Renommer « ${p.name} » en « ${n.name} »`;
+		if (p.extruder !== n.extruder) return `Extrudeur de « ${n.name} »`;
+		if (JSON.stringify(p.settings) !== JSON.stringify(n.settings))
+			return `Réglages de « ${n.name} »`;
+		if (p.hidden !== n.hidden) return `${n.hidden ? 'Masquer' : 'Afficher'} « ${n.name} »`;
+		if (p.locked !== n.locked) return `${n.locked ? 'Verrouiller' : 'Déverrouiller'} « ${n.name} »`;
+		if (p.printable !== n.printable) return `Imprimable : « ${n.name} »`;
+		if (p.parentId !== n.parentId) return 'Regrouper';
+	}
+	if (prev.nodes.length !== next.nodes.length) return 'Regrouper';
+	if (prev.nodes.map((n) => n.id).join() !== next.nodes.map((n) => n.id).join())
+		return 'Ordre des objets';
+	if (JSON.stringify(prev.plates) !== JSON.stringify(next.plates)) return 'Plateaux';
+	return 'Modification';
+}
+
 /**
  * Historique de scène : `record` ignore les états équivalents ; `suspend` sert
  * pendant une restauration (les changements qu'elle provoque ne sont pas
@@ -115,6 +167,25 @@ export class SceneHistory {
 		this.history.push(s);
 		this.lastKey = key;
 		return true;
+	}
+
+	/**
+	 * Étapes nommées (liste d'historique d'Orca) : `undo[0]` = étape annulée par
+	 * le prochain Ctrl+Z, `redo[0]` = étape rétablie par le prochain Ctrl+Y.
+	 */
+	entries(): { undo: string[]; redo: string[] } {
+		if (!this.history) return { undo: [], redo: [] };
+		const { past, present, future } = this.history.stacks;
+		const chain = [...past, present];
+		const undo: string[] = [];
+		for (let i = chain.length - 1; i > 0; i--) undo.push(describeChange(chain[i - 1], chain[i]));
+		const redo: string[] = [];
+		let prev = present;
+		for (const next of future) {
+			redo.push(describeChange(prev, next));
+			prev = next;
+		}
+		return { undo, redo };
 	}
 
 	undo(): SceneSnapshot | undefined {

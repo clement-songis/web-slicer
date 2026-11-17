@@ -107,8 +107,16 @@ test('aperçu : curseur de couches et légende des rôles d’extrusion @F:core.
 	await bootstrap(page);
 	await importModel(page, MODEL);
 	await sliceInUi(page);
+	// sliceInUi rend la main dès la méta d'aperçu (data-layer-count) : le premier
+	// rendu WebGL de l'aperçu (compilation des shaders, envoi des tampons ; GL
+	// logiciel en headless) occupe alors le thread principal plusieurs secondes
+	// (4,7 s et 9,5 s mesurées avec 1 worker, > 15 s sous 3 workers + cargo), et
+	// fill() dépassait son actionTimeout de 15 s sans même pouvoir tester la
+	// visibilité. Attendre la géométrie puis une image rendue, délai large.
+	await expect(page.getByTestId('preview-canvas')).toHaveAttribute('data-visible-segments', /^[1-9]\d*$/, { timeout: 60_000 });
+	await page.waitForFunction(() => new Promise((r) => requestAnimationFrame(() => r(true))), null, { timeout: 60_000 });
 	const slider = page.getByTestId('layer-slider');
-	await slider.fill('1');
+	await slider.fill('1', { timeout: 60_000 });
 	await expect(slider).toHaveAttribute('data-current-layer', '1');
 	const roles = await page.getByTestId('legend-item').evaluateAll((els) => els.map((e) => e.getAttribute('data-role')));
 	for (const r of extrusionRoles(ref)) expect(roles, `rôle « ${r} » absent de la légende`).toContain(r);

@@ -183,3 +183,13 @@ describe('classifySaveError', () => {
 		expect(classifySaveError(new Error('réseau'))).toBe('error');
 	});
 });
+
+describe('surcharges de calibration du serveur', () => {
+	test('parseScene conserve scene.calibrationOverrides (copie)', () => {
+		const raw = { plates: [], objects: [], calibrationOverrides: { spiral_mode: true } };
+		const parsed = parseScene(raw);
+		expect(parsed.calibrationOverrides).toEqual({ spiral_mode: true });
+		expect(parsed.calibrationOverrides).not.toBe(raw.calibrationOverrides);
+		expect(parseScene({ calibrationOverrides: [1] }).calibrationOverrides).toBeUndefined();
+	});
+});

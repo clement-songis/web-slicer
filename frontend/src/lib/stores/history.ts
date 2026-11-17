@@ -29,6 +29,11 @@ export class History<T> {
 		return this.future.length > 0;
 	}
 
+	/** Piles (copies) : passé (plus ancien d'abord), présent, futur (plus proche d'abord). */
+	get stacks(): { past: T[]; present: T; future: T[] } {
+		return { past: [...this.past], present: this.present, future: [...this.future] };
+	}
+
 	/** Nombre d'annulations et de rétablissements disponibles. */
 	get depth(): { undo: number; redo: number } {
 		return { undo: this.past.length, redo: this.future.length };

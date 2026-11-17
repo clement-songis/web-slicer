@@ -427,7 +427,7 @@ async fn object_and_plate_settings_survive_export_then_import() {
     let imported: serde_json::Value = serde_json::from_slice(&body).unwrap();
     let objects = imported["scene"]["objects"].as_array().unwrap();
     assert_eq!(objects.len(), 1);
-    assert_eq!(objects[0]["settings"]["wall_loops"], "5");
+    assert_eq!(objects[0]["settings"]["wall_loops"], 5);
     // Le fichier porte extruder = 2 (vérifié plus haut) ; à la lecture, Orca
     // (load_bbs_3mf, bbs_3mf.cpp ~2228) ramène à 1 tout extrudeur au-delà du
     // nombre de filaments du projet (ici un seul) : même résultat qu'Orca.
@@ -510,10 +510,10 @@ async fn layer_config_ranges_survive_export_then_import() {
     assert_eq!(ranges.len(), 2, "{imported}");
     assert_eq!(ranges[0]["min"], 0.0);
     assert_eq!(ranges[0]["max"], 2.0);
-    assert_eq!(ranges[0]["settings"]["layer_height"], "0.12");
+    assert_eq!(ranges[0]["settings"]["layer_height"], 0.12);
     assert_eq!(ranges[1]["min"], 2.0);
     assert_eq!(ranges[1]["max"], 4.5);
-    assert_eq!(ranges[1]["settings"]["wall_loops"], "4");
+    assert_eq!(ranges[1]["settings"]["wall_loops"], 4);
 }
 
 /// `meshName` (volume du maillage propre, Orca `<nom>_1` après un split) :

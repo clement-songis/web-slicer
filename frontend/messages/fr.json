@@ -219,6 +219,7 @@
 	"ui_multiple": "Multiple",
 	"ui_travel": "Déplacement",
 	"ui_pressure_advance_pattern": "Pressure advance (motif)",
+	"ui_pressure_advance_history": "Historique Pressure advance",
 	"ui_input_shaping_frequency": "Input shaping : fréquence",
 	"ui_input_shaping_damping": "Input shaping : amortissement",
 	"ui_cornering": "Virages (jerk / junction deviation)",

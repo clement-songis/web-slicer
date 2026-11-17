@@ -147,28 +147,13 @@
 	import EngineCalibrationDialog from '$lib/calibration/EngineCalibrationDialog.svelte';
 	import FlowRateDialog from '$lib/calibration/FlowRateDialog.svelte';
 	import PresetBundleDialog, { type BundlePresetRef } from '$lib/presets/PresetBundleDialog.svelte';
-	import { createFlowRateProject } from '$lib/calibration/flowrate-browser';
 	import type { FlowPattern } from '$lib/calibration/flowrate';
+	import { type EngineCalibKind, type RangeParams } from '$lib/calibration/engine-calib';
 	import {
-		engineCalibContext,
-		planEngineCalibration,
-		toCalibrationPlan,
-		type EngineCalibKind,
-		type RangeParams
-	} from '$lib/calibration/engine-calib';
-	import {
-		planPressureAdvanceTower,
-		planTemperatureTower,
 		type CalibrationKind,
 		type PressureAdvanceParams,
 		type TemperatureParams
 	} from '$lib/calibration/calibration';
-	import {
-		createCalibrationProject,
-		pressureAdvanceTowerCuts,
-		temperatureTowerCuts
-	} from '$lib/calibration/create';
-	import { browserCalibrationDeps, calibrationContext } from '$lib/calibration/browser';
 	import { createLatestLoader } from '$lib/settings/latest-load';
 	import { PresetSelect } from '$lib/presets';
 	import OwnedPrinterPicker from '$lib/printers/OwnedPrinterPicker.svelte';
@@ -274,11 +259,22 @@
 		getPreset,
 		getResolvedPreset,
 		importPreset,
-		deletePreset
+		deletePreset,
+		blockingProjects
 	} from '$lib/api/presets';
 	import { listPrinters, getPrinterCatalog, createPrinter, uploadSliced } from '$lib/api/printers';
 	import { friendlySliceError } from '$lib/editor/session';
 	import ComparePresetsDialog from '$lib/settings/ComparePresetsDialog.svelte';
+	import UndoHistory from '$lib/scene/UndoHistory.svelte';
+	import CreateFilamentDialog from '$lib/presets/CreateFilamentDialog.svelte';
+	import PaHistoryDialog from '$lib/calibration/PaHistoryDialog.svelte';
+	import {
+		createServerCalibration,
+		engineRequest,
+		flowRequest,
+		pressureAdvanceRequest,
+		temperatureRequest
+	} from '$lib/calibration/server';
 	import UnsavedPresetDialog from '$lib/settings/UnsavedPresetDialog.svelte';
 	import { diffPresets, transferChanges, type SettingDiff } from '$lib/settings/preset-tools';
 	import {
@@ -608,6 +604,23 @@
 	// config projet, pas preset (lib/editor/multi-filament).
 	let projectFilament = $state<ProjectFilamentConfig>({});
 	let flushDialogOpen = $state(false);
+	let showCreateFilament = $state(false);
+	let showPaHistory = $state(false);
+	// Valeur K de l'historique PA posée dans le filament actif (brouillon,
+	// notée comme une saisie pour survivre à un rechargement de la base).
+	function applyPressureAdvance(k: number) {
+		filamentValues.enable_pressure_advance = [true];
+		filamentValues.pressure_advance = [k];
+		for (const key of ['enable_pressure_advance', 'pressure_advance']) {
+			editTouched.filament.set(key, ++editTouchSeq);
+			const id = activePresetOf('filament')?.id;
+			if (id) editTouchedPreset.filament.set(key, id);
+		}
+		showPaHistory = false;
+		configTab = 'settings';
+		openSettingsDialog('filament', 'Filament');
+		saveMessage = `Pressure advance K = ${k} posé dans le filament : enregistrez ses réglages.`;
+	}
 	// Multiplicateur de purge effectif hors surcharge projet (config résolue ;
 	// défaut Orca 0,3) : valeur initiale du dialogue, pas 1.
 	const presetFlushMultiplier = $derived.by(() => {
@@ -1086,6 +1099,7 @@
 		// servent à retrouver le plateau d'origine ; l'arbre régénère les ids vivants.
 		const saved = parseScene(data.project.scene);
 		sceneCalibration = saved.calibration ?? null;
+		sceneCalibrationOverrides = saved.calibrationOverrides ?? null;
 		projectFilament = parseProjectConfig(saved.projectConfig);
 		const plateByOldId: Record<string, string> = {};
 		for (const p of saved.plates.plates ?? []) {
@@ -1209,6 +1223,7 @@
 			.catch(() => {});
 	});
 	function replacePresetList(kind: Kind, list: PresetSummary[]) {
+		presetListSeq++;
 		if (kind === 'process') processPresets = list;
 		else if (kind === 'filament') filamentPresets = list;
 		else machinePresets = list;
@@ -1257,17 +1272,36 @@
 					return;
 				}
 			}
-			await deletePreset(preset.id);
+			const result = await deletePreset(preset.id);
 			replacePresetList(
 				kind,
 				list.filter((p) => p.id !== preset.id)
 			);
 			settingsDialog = null;
 			saveMessage = `Preset « ${preset.name} » supprimé${fallback ? `, « ${fallback.name} » sélectionné` : ''}.`;
+			// Autres projets qui l'utilisaient : basculés sur le parent par le serveur.
+			presetDeleteReport = result?.projects.length
+				? {
+						title: `« ${preset.name} » supprimé : ${result.projects.length} autre(s) projet(s) passé(s) sur « ${result.parent.name} »`,
+						projects: result.projects
+					}
+				: null;
 		} catch (e) {
+			const blocking = e instanceof ApiError && e.status === 409 ? blockingProjects(e.details) : [];
+			if (blocking.length) {
+				// Le projet ouvert reste sur le preset de repli (déjà sauvegardé).
+				presetDeleteReport = {
+					title: `« ${preset.name} » n'a pas de preset parent et reste utilisé par ${blocking.length} projet(s) : choisissez un autre preset dans ces projets avant de le supprimer`,
+					projects: blocking
+				};
+			}
 			saveMessage = e instanceof ApiError ? e.message : 'suppression impossible';
 		}
 	}
+	let presetDeleteReport = $state<{
+		title: string;
+		projects: { id: string; name: string }[];
+	} | null>(null);
 	let compare = $state<{ kind: Kind; left: string | null; right: string | null } | null>(null);
 	function openCompare(kind: Kind) {
 		const preset = activePresetOf(kind);
@@ -1290,9 +1324,22 @@
 	// Remonte les sélecteurs après « Garder » (le <select> afficherait sinon le
 	// preset refusé).
 	let presetSelectSeq = $state(0);
-	function requestPresetSwitch(kind: Kind, id: string | null, apply: () => void) {
+	// Changement de preset en attente du chargement de la base (exposé pour
+	// les tests et l'accessibilité : aria-busy sur la barre supérieure).
+	let presetSwitchPending = $state<Kind | null>(null);
+	async function requestPresetSwitch(kind: Kind, id: string | null, apply: () => void) {
 		const current = activePresetOf(kind);
 		if (!id || id === current?.id) return;
+		// Base `/resolved` du preset courant encore en chargement (ex. juste après
+		// « Enregistrer » ou un renommage) : l'attendre, sinon le brouillon saisi
+		// pendant ce temps serait jugé « non chargé » et perdu sans confirmation.
+		presetSwitchPending = kind;
+		try {
+			await editLoads.pending(kind);
+		} finally {
+			presetSwitchPending = null;
+		}
+		if (activePresetOf(kind)?.id !== current?.id) return;
 		const resolved = resolvedForKind(kind);
 		const draft = valuesForKind(kind);
 		if (editLoadedId[kind] !== current?.id || !hasPresetChanges(resolved, draft)) {
@@ -1307,13 +1354,18 @@
 		};
 	}
 
-	async function loadPresetsNow() {
+	// Modifications locales des listes (renommer / supprimer) : une liste
+	// demandée avant elles est périmée à son arrivée et ne doit pas les écraser.
+	let presetListSeq = 0;
+	async function loadPresetsNow(): Promise<void> {
+		const seqAtStart = presetListSeq;
 		try {
 			const [printers, catalog, machines] = await Promise.all([
 				listPrinters(),
 				getPrinterCatalog(),
 				listPresets('machine')
 			]);
+			if (seqAtStart !== presetListSeq) return loadPresetsNow();
 			ownedPrinters = printers;
 			printerCatalog = catalog;
 			// Restriction (Phase 14) : le sélecteur ne montre que les presets machine
@@ -1325,6 +1377,7 @@
 				listPresets('filament', printerName ?? undefined),
 				listPresets('process', printerName ?? undefined)
 			]);
+			if (seqAtStart !== presetListSeq) return loadPresetsNow();
 			filamentPresets = filaments;
 			processPresets = processes;
 		} catch (e) {
@@ -1518,10 +1571,21 @@
 		filament: new Map(),
 		machine: new Map()
 	};
+	// Preset affiché au moment de chaque saisie (par portée et clé).
+	const editTouchedPreset: Record<'process' | 'filament' | 'machine', Map<string, string>> = {
+		process: new Map(),
+		filament: new Map(),
+		machine: new Map()
+	};
 	function recordSettingEdit(e: Event) {
 		const kind = settingsDialog;
 		const key = (e.target as Element | null)?.closest?.('[data-param]')?.getAttribute('data-param');
-		if (kind && key) editTouched[kind].set(key, ++editTouchSeq);
+		if (kind && key) {
+			editTouched[kind].set(key, ++editTouchSeq);
+			const presetId = activePresetOf(kind)?.id;
+			if (presetId) editTouchedPreset[kind].set(key, presetId);
+			else editTouchedPreset[kind].delete(key);
+		}
 	}
 
 	function loadEditedValues(kind: 'process' | 'filament' | 'machine', force = false) {
@@ -1564,12 +1628,21 @@
 			)
 				return;
 			const draft = valuesForKind(kind);
+			// Aussi les saisies faites sur CE preset avant le départ de la requête
+			// (une requête plus ancienne, annulée par celle-ci, n'a pas pu les
+			// réappliquer : ex. rechargement forcé après « Enregistrer » doublé par
+			// le rechargement dû au changement de preset).
 			const typed = [...editTouched[kind]]
 				.filter(
-					([key, seq]) => key in draft && (seq > touchSeqAtStart || editLoadedId[kind] === null)
+					([key, seq]) =>
+						key in draft &&
+						(seq > touchSeqAtStart ||
+							editLoadedId[kind] === null ||
+							editTouchedPreset[kind].get(key) === requestedId)
 				)
 				.map(([key]) => key);
 			editTouched[kind].clear();
+			editTouchedPreset[kind].clear();
 			const kept = clonePresetValues(Object.fromEntries(typed.map((key) => [key, draft[key]])));
 			editLoadedId[kind] = requestedId;
 			setValuesForKind(kind, resolved.values);
@@ -2170,7 +2243,7 @@
 		if (busy) return;
 		historyTimer = setTimeout(() => {
 			for (const o of sceneObjects) meshCache.set(o.id, o.mesh);
-			sceneHistory.record(snap);
+			if (sceneHistory.record(snap)) historyVersion++;
 		}, 400);
 	});
 
@@ -2241,17 +2314,37 @@
 		// Outil de peinture actif : Ctrl+Z annule le dernier trait (une entrée
 		// par appui, comme l'instantané de GLGizmoPainterBase).
 		if (paintChannel && restorePaint(paintUndo, paintRedo)) return;
-		clearTimeout(historyTimer);
-		if (historyRestores === 0) sceneHistory.record(currentSnapshot());
-		const snap = sceneHistory.undo();
-		if (snap) applySnapshot(snap);
+		undoSteps(1);
 	}
 
 	function redoScene() {
 		if (paintChannel && restorePaint(paintRedo, paintUndo)) return;
+		redoSteps(1);
+	}
+
+	// Liste d'historique (Orca) : plusieurs étapes d'un coup, un seul rendu.
+	let historyVersion = $state(0);
+	function undoSteps(steps: number) {
 		clearTimeout(historyTimer);
-		const snap = sceneHistory.redo();
+		if (historyRestores === 0) sceneHistory.record(currentSnapshot());
+		let snap: SceneSnapshot | undefined;
+		for (let i = 0; i < steps; i++) snap = sceneHistory.undo() ?? snap;
 		if (snap) applySnapshot(snap);
+		historyVersion++;
+	}
+	function redoSteps(steps: number) {
+		clearTimeout(historyTimer);
+		let snap: SceneSnapshot | undefined;
+		for (let i = 0; i < steps; i++) snap = sceneHistory.redo() ?? snap;
+		if (snap) applySnapshot(snap);
+		historyVersion++;
+	}
+	// Étapes affichées : l'état non encore enregistré (debounce de 400 ms)
+	// compte comme une étape, comme au moment d'un Ctrl+Z.
+	function flushHistory() {
+		if (historyRestores > 0 || gizmoDragging) return;
+		clearTimeout(historyTimer);
+		if (sceneHistory.record(currentSnapshot())) historyVersion++;
 	}
 
 	let showCalibration = $state(false);
@@ -2278,16 +2371,18 @@
 				calibError = 'Sélectionnez d’abord une imprimante, un filament et un traitement.';
 				return;
 			}
-			const ctx = await calibrationContext(printer.id);
-			const temp = calibKind === 'temperature' ? (params as TemperatureParams) : null;
-			const pa = calibKind === 'pressure_advance' ? (params as PressureAdvanceParams) : null;
-			const plan = temp ? planTemperatureTower(temp, ctx) : planPressureAdvanceTower(pa!, ctx);
-			const taken = [...machinePresets, ...processPresets, ...filamentPresets].map((p) => p.name);
-			const id = await createCalibrationProject(
-				plan,
-				{ printer, process, filament },
-				browserCalibrationDeps(taken, ctx.bedCenter),
-				(z) => (temp ? temperatureTowerCuts(temp, z) : pressureAdvanceTowerCuts(pa!, z))
+			// Construite côté serveur (lot 14, portage des Plater::calib_* d'Orca).
+			const request =
+				calibKind === 'temperature'
+					? temperatureRequest(params as TemperatureParams)
+					: pressureAdvanceRequest(
+							params as PressureAdvanceParams,
+							(params as PressureAdvanceParams).method ?? 'tower'
+						);
+			const id = await createServerCalibration(
+				request,
+				serializeActivePresets(activePresets),
+				calibKind === 'temperature' ? 'Calibration température' : 'Calibration PA'
 			);
 			showCalibration = false;
 			// Navigation complète : même route projet, SvelteKit réutiliserait ce
@@ -2309,6 +2404,8 @@
 	let engineCalibError = $state<string | null>(null);
 	// `scene.calibration` du projet ouvert, conservé à la sauvegarde.
 	let sceneCalibration: Record<string, unknown> | null = null;
+	// `scene.calibrationOverrides` (surcharges posées par le serveur), conservé aussi.
+	let sceneCalibrationOverrides: Record<string, unknown> | null = null;
 
 	// Calibration du débit (FlowRateCalibrationDialog, Plater::calib_flowrate) :
 	// choix du type et du motif, puis création du projet dérivé.
@@ -2338,11 +2435,11 @@
 				flowCalibError = 'Sélectionnez une imprimante, un filament et un traitement.';
 				return;
 			}
-			const taken = [...machinePresets, ...processPresets, ...filamentPresets].map((x) => x.name);
-			const id = await createFlowRateProject(pass, { printer, process, filament }, taken, {
-				linear,
-				pattern
-			});
+			const id = await createServerCalibration(
+				flowRequest(pass, linear, pattern),
+				serializeActivePresets(activePresets),
+				`Calibration du débit (passe ${pass})`
+			);
 			flowCalibOpen = false;
 			window.location.assign(resolve('/projects/[id]', { id }));
 		} catch (e) {
@@ -2370,26 +2467,12 @@
 				engineCalibError = 'Sélectionnez d’abord une imprimante, un filament et un traitement.';
 				return;
 			}
-			const [printerValues, filamentValuesResolved, base] = await Promise.all([
-				getResolvedPreset(printer.id),
-				getResolvedPreset(filament.id),
-				calibrationContext(printer.id)
-			]);
-			const planned = planEngineCalibration(
-				engineCalibKind,
-				params,
-				engineCalibContext(
-					printerValues.values as Record<string, unknown>,
-					filamentValuesResolved.values as Record<string, unknown>
-				)
-			);
-			const { plan, cuts } = toCalibrationPlan(planned);
-			const taken = [...machinePresets, ...processPresets, ...filamentPresets].map((x) => x.name);
-			const id = await createCalibrationProject(
-				plan,
-				{ printer, process, filament },
-				browserCalibrationDeps(taken, base.bedCenter),
-				cuts
+			// Les 7 calibrations « mode moteur » (rétraction, VFA, débit max, motif
+			// PA, input shaping, virages) sont construites par le serveur (lot 14).
+			const id = await createServerCalibration(
+				engineRequest(engineCalibKind, params),
+				serializeActivePresets(activePresets),
+				`Calibration ${engineCalibKind}`
 			);
 			engineCalibOpen = false;
 			window.location.assign(resolve('/projects/[id]', { id }));
@@ -5198,6 +5281,9 @@
 				flowCalibError = null;
 				flowCalibOpen = true;
 				break;
+			case 'calib.paHistory':
+				showPaHistory = true;
+				break;
 			case 'calib.guide':
 				window.open(
 					'https://www.orcaslicer.com/wiki/calibration_guide',
@@ -5472,6 +5558,8 @@
 			sceneCalibration,
 			compactProjectConfig(projectFilament) as Record<string, unknown> | null
 		);
+		if (sceneCalibrationOverrides)
+			scene.calibrationOverrides = structuredClone(sceneCalibrationOverrides);
 		return scene;
 	}
 
@@ -5583,6 +5671,8 @@
 	<header
 		class="flex items-center justify-between gap-3 border-b border-border px-2 py-2 2xl:px-4"
 		data-testid="editor-topbar"
+		data-preset-switch-pending={presetSwitchPending ?? undefined}
+		aria-busy={presetSwitchPending ? 'true' : undefined}
 	>
 		<h1 class="ws-sr-only">{projectName || data.project.name} — éditeur web-slicer</h1>
 		<div class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden 2xl:gap-4">
@@ -5887,6 +5977,59 @@
 		onclose={() => (filamentMenu = { ...filamentMenu, open: false })}
 	/>
 
+	<!-- Suppression d'un preset utilisé par d'autres projets (lot 13). -->
+	{#if presetDeleteReport}
+		<div
+			class="ws-floating fixed bottom-4 left-4 z-40 flex max-w-md flex-col gap-2 p-3 text-sm"
+			role="status"
+			data-testid="preset-delete-report"
+		>
+			<div class="flex items-start gap-2">
+				<p class="flex-1 font-medium">{presetDeleteReport.title}</p>
+				<button
+					type="button"
+					class="ws-icon-btn ws-icon-btn-xs"
+					aria-label="Fermer"
+					onclick={() => (presetDeleteReport = null)}
+					><IconX class="h-3.5 w-3.5" aria-hidden="true" /></button
+				>
+			</div>
+			<ul class="flex flex-col gap-0.5">
+				{#each presetDeleteReport.projects as p (p.id)}
+					<li data-testid="preset-delete-project">
+						<a class="text-primary hover:underline" href={resolve('/projects/[id]', { id: p.id })}
+							>{p.name}</a
+						>
+					</li>
+				{/each}
+			</ul>
+		</div>
+	{/if}
+
+	<!-- Historique PA (menu Calibration) : hors de la colonne, toujours monté. -->
+	<PaHistoryDialog
+		open={showPaHistory}
+		printer={activePresetOf('machine')?.name ?? 'Imprimante'}
+		nozzle={String(
+			Array.isArray(machineValues.nozzle_diameter)
+				? machineValues.nozzle_diameter[0]
+				: (machineValues.nozzle_diameter ?? '0.4')
+		)}
+		filament={activePresetOf('filament')?.name ?? 'Filament'}
+		filamentId={((v) => (Array.isArray(v) ? (v[0] ?? null) : typeof v === 'string' ? v : null))(
+			filamentValues.filament_id ?? null
+		)}
+		currentK={((v) => (Number.isFinite(v) ? v : null))(
+			Number(
+				Array.isArray(filamentValues.pressure_advance)
+					? filamentValues.pressure_advance[0]
+					: filamentValues.pressure_advance
+			)
+		)}
+		onclose={() => (showPaHistory = false)}
+		onapply={applyPressureAdvance}
+	/>
+
 	{#if pendingDraft}
 		<div
 			class="flex items-center justify-between gap-4 bg-warning-soft px-6 py-2 text-sm text-warning-content"
@@ -6023,6 +6166,25 @@
 						<section class="flex flex-col gap-2" data-testid="filament-slots">
 							<div class="flex items-center justify-between gap-2">
 								<span class="ws-section-title">{$t('Filament')}</span>
+								<button
+									type="button"
+									class="ws-btn ws-btn-sm ws-btn-ghost ml-auto"
+									data-testid="create-filament"
+									title="Créer un filament personnalisé"
+									onclick={() => (showCreateFilament = true)}>Créer…</button
+								>
+								<CreateFilamentDialog
+									open={showCreateFilament}
+									presets={filamentPresets}
+									baseId={filamentAt(activePresets, clampFilamentSlot(activePresets, filamentSlot))}
+									onclose={() => (showCreateFilament = false)}
+									oncreated={async (created) => {
+										const slot = clampFilamentSlot(activePresets, filamentSlot);
+										await loadPresets();
+										setFilamentSlot(slot, created.id);
+										saveMessage = `Filament « ${created.name} » créé et sélectionné.`;
+									}}
+								/>
 								<button
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-secondary"
@@ -6349,6 +6511,7 @@
 									? `Réglages du filament ${clampFilamentSlot(activePresets, filamentSlot) + 1}`
 									: 'Réglages du filament'}
 								kind="filament"
+								initialPage={settingsInitialPage}
 								savedByKind={{
 									process: processResolvedValues,
 									filament: filamentResolvedValues,
@@ -6648,8 +6811,17 @@
 					/>
 				{/await}
 
-				<!-- Barre d'outils de plateau (T106) : horizontale, en haut au centre. -->
-				<div class="absolute top-3 left-1/2 z-10 -translate-x-1/2">
+				<!-- Barre d'outils de plateau (T106) : horizontale, en haut au centre,
+				     précédée d'Annuler / Rétablir avec la liste des étapes (Orca) — le coin
+				     de la vue reste libre pour le clic droit sur le plateau. -->
+				<div class="absolute top-3 left-1/2 z-10 flex -translate-x-1/2 items-start gap-2">
+					<UndoHistory
+						entries={() => sceneHistory.entries()}
+						version={historyVersion}
+						onflush={flushHistory}
+						onundo={undoSteps}
+						onredo={redoSteps}
+					/>
 					<PlateToolbar
 						active={plateToolActive}
 						hasSelection={selId !== null}
@@ -6856,6 +7028,19 @@
 					data-testid="preview-view"
 					data-layer-count={previewMeta?.layer_count}
 				>
+					<!-- Avertissements du tranchage (ex. scripts de post-traitement jamais
+					     exécutés sur le serveur) : restent visibles avec l'aperçu. -->
+					{#if session.phase !== 'slicing' && session.warnings.length}
+						<div
+							class="flex flex-col gap-1 border-b border-warning/40 bg-warning-soft px-4 py-2 text-sm text-warning-content"
+							role="status"
+							data-testid="slice-warnings"
+						>
+							{#each session.warnings as w (w.key)}
+								<p data-key={w.key}>⚠ {w.message}</p>
+							{/each}
+						</div>
+					{/if}
 					{#if session.phase === 'slicing'}
 						<div
 							class="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-content-muted"

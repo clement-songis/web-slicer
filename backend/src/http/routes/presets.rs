@@ -808,7 +808,7 @@ pub(crate) fn config_to_json(config: &engine::api::DynamicPrintConfig) -> Map<St
         .collect()
 }
 
-fn config_value_to_json(value: &ConfigValue) -> Value {
+pub(crate) fn config_value_to_json(value: &ConfigValue) -> Value {
     match value {
         ConfigValue::Bool(b) => Value::Bool(*b),
         ConfigValue::Int(i) => Value::from(*i),

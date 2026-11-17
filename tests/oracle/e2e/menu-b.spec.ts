@@ -4,7 +4,13 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { expect, test, type Page } from "@playwright/test";
-import { REPO, bootstrap, importModel } from "../lib/app";
+import {
+  REPO,
+  bootstrap,
+  downloadGcode,
+  importModel,
+  sliceInUi,
+} from "../lib/app";
 
 const GCODE = join(REPO, "engine/tests/fixtures/cube_bbl.gcode");
 const FILE = /^(file|fichier)$/i;
@@ -225,43 +231,105 @@ async function newProject(page: Page, sourceId: string) {
   return { id, project };
 }
 
-async function derivedPresetsText(page: Page, active: Record<string, unknown>) {
-  const ids = JSON.stringify(active).match(/[0-9a-f-]{36}/g) ?? [];
-  const values = [];
-  for (const id of ids)
-    values.push(await (await page.request.get("/api/presets/" + id)).json());
-  return JSON.stringify(values);
+/** Couches du G-code (marqueur Orca « ;Z: » ou « ; Z_HEIGHT: ») : z et lignes. */
+function gcodeLayers(gcode: string): { z: number; lines: string[] }[] {
+  const layers: { z: number; lines: string[] }[] = [];
+  for (const line of gcode.split("\n")) {
+    const m = /^;\s*Z(?:_HEIGHT)?:\s*([\d.]+)/.exec(line);
+    if (m) layers.push({ z: Number(m[1]), lines: [] });
+    else layers.at(-1)?.lines.push(line);
+  }
+  return layers;
 }
 
-test("Calibration › Temperature : projet tour 230→190, consignes M104 dans le preset dérivé @F:menu.temperature @F:menu.temperature-2", async ({
+/** Projet de calibration construit par le serveur → tranché dans l'interface → G-code. */
+async function sliceCalibration(page: Page, source: string) {
+  const { project } = await newProject(page, source);
+  expect(project.scene.objects).toHaveLength(1);
+  await expect(page.getByTestId("object-row")).toHaveCount(1, {
+    timeout: 180_000,
+  });
+  await ready(page);
+  await sliceInUi(page);
+  return { project, gcode: await downloadGcode(page) };
+}
+
+// Calib_Temp_Tower (GCode::change_layer → interpolate_value_across_layers,
+// pas de 5 °C) : une consigne M104 par couche, 9 paliers 230 → 190 de même
+// nombre de couches (blocs de la tour).
+test("Calibration › Temperature : tour 230→190 tranchée, paliers M104 par bloc @F:menu.temperature @F:menu.temperature-2", async ({
   page,
 }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(420_000);
   const source = await bootstrap(page);
   await calib(page, "Temperature");
   const dialog = page.getByTestId("calib-dialog");
   await dialog.getByTestId("calib-start").fill("230");
   await dialog.getByTestId("calib-end").fill("190");
   await dialog.getByTestId("calib-confirm").click();
-  const { project } = await newProject(page, source);
-  expect(project.scene.objects).toHaveLength(1);
-  const text = await derivedPresetsText(page, project.active_presets);
-  expect(text).toContain("M104 S230");
-  expect(text).toMatch(/Calibration température/);
+  const { project, gcode } = await sliceCalibration(page, source);
+  expect(project.scene.calibration?.mode).toBe("temp_tower");
+  expect(gcode).not.toMatch(/^M104 S\{/m);
+  // Température de chaque couche : dernière consigne M104 vue jusque-là.
+  const perLayer: number[] = [];
+  let current = NaN;
+  for (const layer of gcodeLayers(gcode)) {
+    for (const l of layer.lines) {
+      const m = /^M104 S(\d+)/.exec(l);
+      if (m) current = Number(m[1]);
+    }
+    perLayer.push(current);
+  }
+  expect(perLayer.length).toBeGreaterThan(20);
+  for (let i = 1; i < perLayer.length; i++)
+    expect(perLayer[i], "couche " + i).toBeLessThanOrEqual(perLayer[i - 1]);
+  const blocks = [...new Set(perLayer)];
+  expect(blocks).toEqual([230, 225, 220, 215, 210, 205, 200, 195, 190]);
+  // Blocs de même hauteur (± 2 couches, arrondis de l'interpolation).
+  const counts = blocks.map((t) => perLayer.filter((v) => v === t).length);
+  const mean = perLayer.length / blocks.length;
+  for (const [i, c] of counts.entries())
+    expect(Math.abs(c - mean), `bloc ${blocks[i]} °C : ${c} couches (${counts})`).toBeLessThanOrEqual(2);
 });
 
-test("Calibration › Pressure advance : tour avec PA par mm dans le preset dérivé @F:menu.pressure-advance @F:menu.pressure-advance-2", async ({
+// Calib_PA_Tower (GCode::change_layer) : SET_PRESSURE_ADVANCE (Klipper) ou
+// M900 K à chaque couche, PA = start + int(z) × step (défauts 0 → 0.1, 0.002/mm).
+test("Calibration › Pressure advance : tour tranchée, PA = start + int(z) × pas à chaque couche @F:menu.pressure-advance @F:menu.pressure-advance-2", async ({
   page,
 }) => {
-  test.setTimeout(300_000);
+  test.setTimeout(420_000);
   const source = await bootstrap(page);
   await calib(page, "Pressure advance");
   await page.getByTestId("calib-confirm").click();
-  const { project } = await newProject(page, source);
-  expect(project.scene.objects).toHaveLength(1);
-  const text = await derivedPresetsText(page, project.active_presets);
-  expect(text).toContain("int(layer_z)");
-  expect(text).toMatch(/Calibration PA/);
+  const { project, gcode } = await sliceCalibration(page, source);
+  const params = project.scene.calibration as {
+    mode: string;
+    start: number;
+    end: number;
+    step: number;
+  };
+  expect(params.mode).toBe("pa_tower");
+  expect([params.start, params.end, params.step]).toEqual([0, 0.1, 0.002]);
+  const PA = /^(?:SET_PRESSURE_ADVANCE ADVANCE=|M900 K)([\d.]+)/;
+  const layers = gcodeLayers(gcode).filter((l) => l.z > 0);
+  expect(layers.length).toBeGreaterThan(100);
+  const seen: number[] = [];
+  for (const layer of layers) {
+    const values = layer.lines
+      .map((l) => PA.exec(l))
+      .filter((m) => m !== null)
+      .map((m) => Number(m[1]));
+    expect(values.length, `couche z=${layer.z} : un réglage PA`).toBeGreaterThanOrEqual(1);
+    const pa = values[0];
+    // static_cast<int>(print_z) : tolérance d'un pas pour z flottant ≈ entier.
+    const expected = params.start + Math.floor(layer.z + 1e-6) * params.step;
+    expect(Math.abs(pa - expected), `z=${layer.z} PA=${pa}`).toBeLessThanOrEqual(params.step + 1e-6);
+    seen.push(pa);
+  }
+  const paliers = [...new Set(seen.map((v) => Math.round(v * 1e4)))];
+  expect(paliers.length).toBeGreaterThanOrEqual(40);
+  expect(Math.min(...seen)).toBeCloseTo(params.start, 4);
+  expect(Math.max(...seen)).toBeGreaterThan(params.end - 3 * params.step);
 });
 
 const ENGINE: {

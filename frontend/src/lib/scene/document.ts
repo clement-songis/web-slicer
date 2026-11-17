@@ -67,6 +67,9 @@ export interface SceneDocument {
 	knownModels?: KnownModels;
 	/** Mode calibration moteur (posé par le menu Calibration, lu par le backend). */
 	calibration?: Record<string, unknown>;
+	/** Surcharges de presets posées par le serveur pour un projet de calibration
+	 *  (POST /api/projects/{id}/calibration), appliquées au tranchage. */
+	calibrationOverrides?: Record<string, unknown>;
 	/** Config projet multi-filament (clés Orca : filament_colour,
 	 *  flush_volumes_matrix, flush_multiplier), cf. lib/editor/multi-filament. */
 	projectConfig?: Record<string, unknown>;
@@ -184,6 +187,9 @@ export function parseScene(raw: unknown): SceneDocument {
 	}
 	if (doc.calibration && typeof doc.calibration === 'object' && !Array.isArray(doc.calibration))
 		parsed.calibration = { ...doc.calibration };
+	const overrides = doc.calibrationOverrides;
+	if (overrides && typeof overrides === 'object' && !Array.isArray(overrides))
+		parsed.calibrationOverrides = structuredClone(overrides);
 	return parsed;
 }
 

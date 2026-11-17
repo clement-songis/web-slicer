@@ -319,9 +319,10 @@ async fn temperature_tower_project_is_built_like_orca() {
     assert_eq!(body["overrides"]["nozzle_temperature"], json!([230]));
     let objects = body["scene"]["objects"].as_array().unwrap();
     assert_eq!(objects.len(), 1);
-    assert!(
-        objects[0]["settings"]["layer_height"] == "0.2"
-            || objects[0]["settings"]["layer_height"] == 0.2,
+    // Réglages d'objet typés selon le schéma des options (nombre, pas « 0.2 »).
+    assert_eq!(
+        objects[0]["settings"]["layer_height"],
+        json!(0.2),
         "{}",
         objects[0]["settings"]
     );
@@ -407,4 +408,70 @@ async fn temperature_tower_project_is_built_like_orca() {
     )
     .await;
     assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+/// Projet de calibration du débit (passe 1) : `print_flow_ratio` de chaque
+/// objet (« flowrate_m5 » … lu dans les métadonnées du 3MF d'Orca) rendu en
+/// nombre selon le schéma des options (BACKEND.md §6), pas en chaîne « 0.95 ».
+#[tokio::test]
+async fn flow_pass1_object_settings_are_typed() {
+    if !backend::engine::worker_binary().exists() {
+        eprintln!("engine-worker absent — ignoré");
+        return;
+    }
+    let (_d, app) = app().await;
+    let user = register(&app, "calib-flow@test.local").await;
+    let project = json_body(
+        send(
+            &app,
+            request(
+                "POST",
+                "/api/projects",
+                json!({ "name": "Débit" }),
+                Some(&user),
+            ),
+        )
+        .await,
+    )
+    .await;
+    let id = project["id"].as_str().unwrap();
+    let resp = send(
+        &app,
+        request(
+            "POST",
+            &format!("/api/projects/{id}/calibration"),
+            json!({ "kind": "flow_pass1" }),
+            Some(&user),
+        ),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let body = json_body(resp).await;
+    let objects = body["scene"]["objects"].as_array().unwrap();
+    assert!(objects.len() >= 9, "{}", objects.len());
+    let mut ratios: Vec<f64> = objects
+        .iter()
+        .map(|o| {
+            let v = &o["settings"]["print_flow_ratio"];
+            v.as_f64()
+                .unwrap_or_else(|| panic!("print_flow_ratio non numérique : {v}"))
+        })
+        .collect();
+    ratios.sort_by(f64::total_cmp);
+    ratios.dedup_by(|a, b| (*a - *b).abs() < 1e-6);
+    assert!(ratios.len() >= 9, "{ratios:?}");
+    assert!(ratios.iter().all(|r| (0.7..=1.3).contains(r)), "{ratios:?}");
+    for o in objects {
+        for (key, value) in o["settings"].as_object().unwrap() {
+            if let Some(def) = engine::params::get(key) {
+                use engine::params::ParamKind as K;
+                if matches!(def.kind, K::Float | K::Int | K::Percent) {
+                    assert!(value.is_number(), "{key} = {value}");
+                }
+                if def.kind == K::Bool {
+                    assert!(value.is_boolean(), "{key} = {value}");
+                }
+            }
+        }
+    }
 }

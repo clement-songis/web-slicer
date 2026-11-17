@@ -191,10 +191,8 @@ async fn imports_geometry_objects_plates_config_and_converts_each_object() {
         plates[1]["objectIds"][0],
         project["scene"]["objects"][1]["id"]
     );
-    assert_eq!(
-        project["scene"]["objects"][0]["settings"]["wall_loops"],
-        "7"
-    );
+    // Réglages d'objet typés selon le schéma des options (int → nombre).
+    assert_eq!(project["scene"]["objects"][0]["settings"]["wall_loops"], 7);
     assert_eq!(project["scene"]["objects"][1]["layerProfile"][2], 0.5);
     assert_eq!(project["scene"]["objects"][1]["extruder"], 2);
 

@@ -21,6 +21,7 @@
 	import { createPreset, getPreset, updatePreset } from '$lib/api/presets';
 	import type { PresetSummary, PrinterCatalogModel, PrinterResponse } from '$lib/api/types';
 	import PrinterCatalog from '$lib/printers/PrinterCatalog.svelte';
+	import CreatePrinterDialog from '$lib/presets/CreatePrinterDialog.svelte';
 	import { PresetSettingsDialog } from '$lib/settings';
 	import type { DisplayMode } from '$lib/settings/filter';
 	import { subscribeEvents } from '$lib/queue/events';
@@ -46,6 +47,7 @@
 
 	let printers = $state<PrinterResponse[]>([]);
 	const machines = $derived(data.machines as PresetSummary[]);
+	let showCreatePrinter = $state(false);
 
 	let statuses = $state<StatusMap>({});
 	let error = $state<string | null>(null);
@@ -264,6 +266,24 @@
 			>
 				<IconPlus class="h-4 w-4" aria-hidden="true" /> Ajouter des imprimantes
 			</button>
+			<button
+				type="button"
+				class="ws-btn ws-btn-secondary self-start"
+				data-testid="printer-create-custom"
+				onclick={() => (showCreatePrinter = true)}
+			>
+				Imprimante personnalisée…
+			</button>
+			<CreatePrinterDialog
+				open={showCreatePrinter}
+				catalog={data.catalog}
+				existing={machines.map((m) => m.name)}
+				onclose={() => (showCreatePrinter = false)}
+				oncreated={(printer) => {
+					printers = [...printers, printer];
+					void reload();
+				}}
+			/>
 
 			<!-- Déclaration manuelle (connexion Moonraker facultative) -->
 			<section

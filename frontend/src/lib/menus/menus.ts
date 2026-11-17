@@ -127,6 +127,8 @@ const calibrationMenu: Menu = {
 		{ label: 'Max flowrate', action: 'calib.maxVolumetricSpeed' },
 		{ label: 'Pressure advance', action: 'calib.pressureAdvance' },
 		{ label: 'Pressure advance pattern', action: 'calib.paPattern' },
+		// Historique des valeurs K (Orca : historique de calibration PA).
+		{ label: 'Pressure advance history', action: 'calib.paHistory' },
 		{ label: 'Flow ratio', action: 'calib.flowRate' },
 		// Calibrations « mode moteur » (calib_params transmis au moteur).
 		// « Retraction test » : libellé conservé tant que le spec gelé

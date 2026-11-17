@@ -238,11 +238,35 @@ fn extruder_of(settings: &Map<String, Value>) -> Option<u64> {
         .filter(|e| *e > 0)
 }
 
+/// Réglages d'objet / volume / plage de couches pour la scène : sans
+/// `extruder` (porté à part) et typés selon le registre des options.
 fn without_extruder(settings: &Map<String, Value>) -> Map<String, Value> {
+    typed_settings(settings)
+        .into_iter()
+        .filter(|(k, _)| k.as_str() != "extruder")
+        .collect()
+}
+
+/// Valeurs texte Orca (`model_settings.config` : `print_flow_ratio = "0.8"`)
+/// typées selon le schéma des options (`engine::params`), au format JSON des
+/// presets et de l'éditeur : float/int/pourcentage → nombre, bool → booléen,
+/// vecteurs → tableaux, float-ou-pourcentage avec `%` → chaîne « 50% ».
+/// Clés inconnues du registre ou valeurs illisibles : conservées telles quelles
+/// (le tranchage les relit par `resolve_preset_chain`, tolérant aux deux formes).
+pub(crate) fn typed_settings(settings: &Map<String, Value>) -> Map<String, Value> {
     settings
         .iter()
-        .filter(|(k, _)| k.as_str() != "extruder")
-        .map(|(k, v)| (k.clone(), v.clone()))
+        .map(|(key, value)| {
+            let typed = match (value, engine::params::get(key)) {
+                (Value::String(text), Some(def)) => {
+                    engine::params::orca_values::parse_orca_value(def, text)
+                        .map(|parsed| crate::http::routes::presets::config_value_to_json(&parsed))
+                        .unwrap_or_else(|| value.clone())
+                }
+                _ => value.clone(),
+            };
+            (key.clone(), typed)
+        })
         .collect()
 }
 
@@ -348,7 +372,9 @@ fn convert_view(view: ProjectView) -> ImportResult<ImportedProject> {
                 Some(serde_json::json!({
                     "min": r.get("min")?.as_f64()?,
                     "max": r.get("max")?.as_f64()?,
-                    "settings": r.get("config").cloned().unwrap_or_else(|| Value::Object(Map::new())),
+                    "settings": Value::Object(
+                        r.get("config").and_then(Value::as_object).map(typed_settings).unwrap_or_default(),
+                    ),
                 }))
             })
             .collect();
@@ -532,10 +558,8 @@ mod tests {
         assert_eq!(project.objects.len(), 2);
         let right = &project.objects[1];
         assert_eq!(right.name, "Droite");
-        assert_eq!(
-            right.settings.get("wall_loops"),
-            Some(&Value::String("5".into()))
-        );
+        // Typé selon le registre (int → nombre), comme les presets.
+        assert_eq!(right.settings.get("wall_loops"), Some(&Value::from(5)));
         assert_eq!(right.extruder, 2);
         assert_eq!(right.layer_profile, vec![0.0, 0.2, 0.5, 0.12, 1.0, 0.28]);
         // La métadonnée `name` de la `<part>` n'est pas un réglage d'objet.
@@ -577,6 +601,45 @@ mod tests {
             text("2,1")
         );
         assert_eq!(second.settings.get("spiral_mode").cloned(), text("1"));
+    }
+
+    /// Réglages texte d'Orca typés selon le schéma des options (BACKEND.md §6 :
+    /// `print_flow_ratio = "0.8"` du projet de calibration du débit → 0.8).
+    #[test]
+    fn object_settings_are_typed_from_the_registry() {
+        let raw: Map<String, Value> = serde_json::from_value(serde_json::json!({
+            "print_flow_ratio": "0.8",
+            "wall_loops": "5",
+            "enable_support": "1",
+            "sparse_infill_density": "15%",
+            "outer_wall_line_width": "0.45",
+            "inner_wall_line_width": "105%",
+            "sparse_infill_pattern": "gyroid",
+            "layer_height": 0.2,
+            "cle_inconnue": "0.5",
+            "wall_loops_illisible": "x",
+            "extruder": "2",
+        }))
+        .unwrap();
+        let typed = without_extruder(&raw);
+        assert_eq!(typed["print_flow_ratio"], serde_json::json!(0.8));
+        assert_eq!(typed["wall_loops"], serde_json::json!(5));
+        assert_eq!(typed["enable_support"], serde_json::json!(true));
+        assert_eq!(typed["sparse_infill_density"], serde_json::json!(15.0));
+        assert_eq!(typed["outer_wall_line_width"], serde_json::json!(0.45));
+        assert_eq!(typed["inner_wall_line_width"], serde_json::json!("105%"));
+        assert_eq!(typed["sparse_infill_pattern"], serde_json::json!("gyroid"));
+        assert_eq!(typed["layer_height"], serde_json::json!(0.2));
+        assert_eq!(typed["cle_inconnue"], serde_json::json!("0.5"));
+        assert_eq!(typed["wall_loops_illisible"], serde_json::json!("x"));
+        assert!(!typed.contains_key("extruder"));
+        // Valeur illisible pour une clé connue : gardée telle quelle.
+        let bad: Map<String, Value> =
+            serde_json::from_value(serde_json::json!({ "wall_loops": "beaucoup" })).unwrap();
+        assert_eq!(
+            typed_settings(&bad)["wall_loops"],
+            serde_json::json!("beaucoup")
+        );
     }
 
     #[test]
