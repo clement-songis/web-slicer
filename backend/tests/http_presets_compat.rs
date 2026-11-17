@@ -116,3 +116,66 @@ async fn process_compatibility_matches_orca() {
     let unknown = process_names(&app, &cookie, "Imprimante inconnue").await;
     assert!(unknown.len() > 500, "{}", unknown.len());
 }
+
+/// Imprimante personnalisée créée depuis un modèle du catalogue (preset machine
+/// utilisateur héritant d'un preset système) : comme Orca
+/// (`is_compatible_with_parent_printer`), elle reçoit les process et filaments
+/// compatibles avec son parent.
+#[tokio::test]
+async fn user_printer_inherits_parent_compatibility() {
+    let Some((_d, app)) = app_with_real_profiles().await else {
+        return;
+    };
+    let (_, cookie, _) = call(
+        &app,
+        "POST",
+        "/api/auth/register",
+        serde_json::json!({ "email": "atelier@test.local", "password": "motdepasse-solide-42" }),
+        None,
+    )
+    .await;
+    let cookie = cookie.expect("session");
+    let parent = "Voron 2.4 350 0.4 nozzle";
+    let (status, _, created) = call(
+        &app,
+        "POST",
+        "/api/presets",
+        serde_json::json!({ "kind": "machine", "name": "Atelier Compat 0.4 nozzle", "inherits": parent,
+                            "values": { "printable_height": 200 } }),
+        Some(&cookie),
+    )
+    .await;
+    assert!(status.is_success(), "{status} {created}");
+    for kind in ["process", "filament"] {
+        let names = |printer: &str| {
+            let uri = format!(
+                "/api/presets?kind={kind}&printer={}",
+                printer.replace(' ', "%20")
+            );
+            let app = app.clone();
+            let cookie = cookie.clone();
+            async move {
+                let (status, _, list) =
+                    call(&app, "GET", &uri, serde_json::json!({}), Some(&cookie)).await;
+                assert_eq!(status, StatusCode::OK);
+                let mut v: Vec<String> = list
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .map(|p| p["name"].as_str().unwrap().to_string())
+                    .collect();
+                v.sort();
+                v
+            }
+        };
+        let custom = names("Atelier Compat 0.4 nozzle").await;
+        let base = names(parent).await;
+        eprintln!(
+            "{kind} : personnalisée {} / parent {}",
+            custom.len(),
+            base.len()
+        );
+        assert!(!custom.is_empty(), "{kind} : aucun preset compatible");
+        assert_eq!(custom, base, "{kind} : même compatibilité que le parent");
+    }
+}

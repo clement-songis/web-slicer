@@ -132,8 +132,12 @@ async fn active_printer(
         ApiError::internal()
     })?;
     fill_registry_defaults(&mut config);
+    // Parent direct (Orca : Preset::inherits() de l'imprimante utilisateur,
+    // is_compatible_with_parent_printer). `load_chain` renvoie la chaîne de la
+    // racine vers la feuille : le parent est l'avant-dernier élément (et non
+    // chain[1], qui désignait un ancêtre abstrait, ex. fdm_klipper_common).
     let user_parent = (machine.origin == PresetOrigin::User)
-        .then(|| chain.get(1).map(|p| p.name.clone()))
+        .then(|| chain.iter().rev().nth(1).map(|p| p.name.clone()))
         .flatten();
     let mut values = config_to_json(&config);
     // Clés hors registre (ex. `printer_notes`, base des conditions Prusa) :
