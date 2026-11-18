@@ -2,7 +2,8 @@
 // Plater.cpp:3640, 9544 ; Tab.cpp:1850) : après un changement de couleur
 // (« color change ») ou de couleur/filament (« all »), seules les lignes et
 // colonnes du slot changé sont recalculées ; les autres valeurs, éventuellement
-// saisies à la main, sont conservées.
+// saisies à la main, sont conservées. Jamais déclenché par une saisie manuelle
+// ni par « Appliquer » du dialogue ; le multiplicateur n'est jamais modifié.
 import type { AutoFlush } from '$lib/settings/preferences';
 
 export interface FlushSnapshot {
@@ -47,4 +48,38 @@ export function mergeFlushSlots(
 		for (let c = 0; c < n; c++)
 			out.push(set.has(r) || set.has(c) ? computed[r * n + c] : current[r * n + c]);
 	return out;
+}
+
+/** Volumes de purge du projet (surcharges ; absents = preset). */
+export interface FlushState {
+	matrix?: readonly number[];
+	multiplier?: number;
+}
+
+function sameFlush(a: FlushState, b: FlushState): boolean {
+	if ((a.multiplier ?? null) !== (b.multiplier ?? null)) return false;
+	const x = a.matrix ?? null;
+	const y = b.matrix ?? null;
+	if (x === y) return true;
+	if (!x || !y || x.length !== y.length) return false;
+	return x.every((v, i) => v === y[i]);
+}
+
+/**
+ * Matrice à poser à l'issue d'un recalcul automatique lancé dans l'état
+ * `started` ; `now` = état à la réception. null = ne rien changer : volumes ou
+ * multiplicateur saisis entre-temps (la saisie manuelle prime, comme dans Orca
+ * où le calcul est synchrone) ou réponse inexploitable. Le multiplicateur
+ * n'est jamais touché par le recalcul.
+ */
+export function autoFlushResult(
+	started: FlushState,
+	now: FlushState,
+	computed: readonly number[],
+	n: number,
+	slots: readonly number[]
+): number[] | null {
+	if (!slots.length || !sameFlush(started, now)) return null;
+	const merged = mergeFlushSlots(now.matrix, computed, n, slots);
+	return merged.length === n * n ? merged.map((v) => Math.round(v)) : null;
 }

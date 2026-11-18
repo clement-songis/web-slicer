@@ -777,6 +777,9 @@ pub struct PrinterResponse {
     pub has_host_password: bool,
     #[ts(optional)]
     pub host_port: Option<String>,
+    /// Flashforge : numéro de série (host_options.serial_number).
+    #[ts(optional)]
+    pub host_serial_number: Option<String>,
 }
 
 impl From<Printer> for PrinterResponse {
@@ -798,6 +801,7 @@ impl From<Printer> for PrinterResponse {
             host_user: opt("user"),
             has_host_password: opt("password").is_some(),
             host_port: opt("port"),
+            host_serial_number: opt("serial_number"),
         }
     }
 }
@@ -833,6 +837,11 @@ pub struct SavePrinterRequest {
     #[serde(default)]
     #[ts(optional)]
     pub host_port: Option<String>,
+    /// Flashforge : numéro de série (flashforge_serial_number d'Orca), stocké
+    /// dans host_options.serial_number ; absent = conservé, vide = retiré.
+    #[serde(default)]
+    #[ts(optional)]
+    pub host_serial_number: Option<String>,
 }
 
 // --- Catalogue de sélection d'imprimante (wizard/onboarding, Phase 14) --------

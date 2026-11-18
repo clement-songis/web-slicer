@@ -2,6 +2,7 @@
 	// Volumes de purge du projet (Orca : « Flushing volumes », config projet) :
 	// matrice départ → arrivée par paire de filaments, en-têtes aux couleurs des
 	// slots, multiplicateur global. Brouillon local appliqué par « Appliquer ».
+	import { untrack } from 'svelte';
 	import Dialog from '$lib/ui/Dialog.svelte';
 	import { swatchStyle } from '$lib/ui/color';
 	import { DEFAULT_FLUSH, resizeFlushMatrix } from './multi-filament';
@@ -62,12 +63,15 @@
 	const n = $derived(colours.length);
 	let draft = $state<number[]>([]);
 	let factor = $state(1);
-	// Brouillon réinitialisé à chaque ouverture.
+	// Brouillon réinitialisé à chaque ouverture seulement : un recalcul
+	// automatique reçu pendant la saisie (props modifiées) n'écrase ni les
+	// volumes saisis ni le multiplicateur ; « Appliquer » pose le brouillon.
 	$effect(() => {
-		if (open) {
+		if (!open) return;
+		untrack(() => {
 			draft = resizeFlushMatrix(matrix, colours.length);
 			factor = multiplier;
-		}
+		});
 	});
 
 	const at = (r: number, c: number) => draft[r * n + c] ?? 0;

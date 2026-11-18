@@ -44,7 +44,7 @@
 		withUnitItems,
 		type UnitSource
 	} from '$lib/editor/units';
-	import { changedSlots, mergeFlushSlots, type FlushSnapshot } from '$lib/editor/auto-flush';
+	import { autoFlushResult, changedSlots, type FlushSnapshot } from '$lib/editor/auto-flush';
 	import { detachPreset } from '$lib/api/presets';
 	// Lot 21 : brouillon au tranchage, peinture conservée, températures, buses.
 	import { buildSliceDraft } from '$lib/editor/slice-draft';
@@ -2005,24 +2005,29 @@
 		if (slots.length) void autoRecalcFlush(slots, next.colours.length);
 	});
 	async function autoRecalcFlush(slots: number[], n: number) {
+		// État au déclenchement : une saisie (dialogue appliqué) reçue avant la
+		// réponse l'emporte ; le multiplicateur n'est jamais modifié ici.
+		const started = {
+			matrix: projectFilament.flush_volumes_matrix,
+			multiplier: projectFilament.flush_multiplier
+		};
 		if (!(await flushVolumesAvailable().catch(() => false))) return;
 		try {
-			const multiplier = projectFilament.flush_multiplier ?? presetFlushMultiplier;
-			const { matrix } = await computeFlushVolumes(
-				[...filamentSlotColors],
-				multiplier,
-				data.project.id
-			);
+			// Matrice brute (sans multiplicateur, appliqué au tranchage), comme Orca.
+			const { matrix } = await computeFlushVolumes([...filamentSlotColors], 1, data.project.id);
 			if (filamentSlotColors.length !== n) return;
-			projectFilament = {
-				...projectFilament,
-				flush_volumes_matrix: mergeFlushSlots(
-					projectFilament.flush_volumes_matrix,
-					matrix,
-					n,
-					slots
-				)
-			};
+			const merged = autoFlushResult(
+				started,
+				{
+					matrix: projectFilament.flush_volumes_matrix,
+					multiplier: projectFilament.flush_multiplier
+				},
+				matrix,
+				n,
+				slots
+			);
+			if (!merged) return;
+			projectFilament = { ...projectFilament, flush_volumes_matrix: merged };
 			saveMessage = `Volumes de purge recalculés (filament ${slots.map((s) => s + 1).join(', ')}).`;
 		} catch {
 			// Calcul indisponible : les volumes saisis restent en place.

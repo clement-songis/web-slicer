@@ -8,4 +8,8 @@ export type PrinterResponse = { id: string, name: string, moonraker_url?: string
 /**
  * Type d'hôte d'impression (moonraker, octoprint, prusalink, …).
  */
-host_type: string, host_auth?: string, host_user?: string, has_host_password: boolean, host_port?: string, };
+host_type: string, host_auth?: string, host_user?: string, has_host_password: boolean, host_port?: string, 
+/**
+ * Flashforge : numéro de série (host_options.serial_number).
+ */
+host_serial_number?: string, };

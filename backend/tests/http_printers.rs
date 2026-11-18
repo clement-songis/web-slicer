@@ -893,3 +893,77 @@ async fn prusalink_host_through_the_api() {
     .await;
     assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
 }
+
+/// Flashforge : le numéro de série saisi est enregistré (host_options.serial_number,
+/// lu par l'adaptateur), renvoyé au formulaire, conservé si absent, retiré si vide.
+#[tokio::test]
+async fn flashforge_serial_number_is_saved_in_host_options() {
+    let h = harness().await;
+    let session = register(&h.app, "ff@test.local").await;
+    let owner = user_id(&h.storage, "ff@test.local").await;
+    let preset = seed_machine_preset(&h.storage, owner).await;
+    let resp = send(
+        &h.app,
+        "POST",
+        "/api/printers",
+        &session,
+        json!({
+            "name": "AD5M", "moonraker_url": "192.168.1.70", "api_key": "CODE",
+            "machine_preset_id": preset, "host_type": "flashforge", "host_serial_number": " SN-42 "
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let body = json_body(resp).await;
+    assert_eq!(body["host_type"], "flashforge");
+    assert_eq!(body["host_serial_number"], "SN-42");
+    let id = body["id"].as_str().unwrap().to_string();
+    let pid = PrinterId(uuid::Uuid::parse_str(&id).unwrap());
+    let stored = h.storage.printers().get(owner, pid).await.unwrap();
+    assert_eq!(stored.host_options["serial_number"], "SN-42");
+
+    // Mise à jour sans le champ : conservé.
+    let resp = send(
+        &h.app,
+        "PUT",
+        &format!("/api/printers/{id}"),
+        &session,
+        json!({
+            "name": "AD5M bis", "moonraker_url": "192.168.1.70", "machine_preset_id": preset
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert_eq!(json_body(resp).await["host_serial_number"], "SN-42");
+
+    // Nouveau numéro, puis vide : remplacé, puis retiré.
+    let resp = send(
+        &h.app,
+        "PUT",
+        &format!("/api/printers/{id}"),
+        &session,
+        json!({
+            "name": "AD5M", "moonraker_url": "192.168.1.70", "machine_preset_id": preset,
+            "host_serial_number": "SN-43"
+        }),
+    )
+    .await;
+    assert_eq!(json_body(resp).await["host_serial_number"], "SN-43");
+    let resp = send(
+        &h.app,
+        "PUT",
+        &format!("/api/printers/{id}"),
+        &session,
+        json!({
+            "name": "AD5M", "moonraker_url": "192.168.1.70", "machine_preset_id": preset,
+            "host_serial_number": ""
+        }),
+    )
+    .await;
+    assert!(json_body(resp)
+        .await
+        .get("host_serial_number")
+        .is_none_or(Value::is_null));
+    let stored = h.storage.printers().get(owner, pid).await.unwrap();
+    assert!(stored.host_options.get("serial_number").is_none());
+}

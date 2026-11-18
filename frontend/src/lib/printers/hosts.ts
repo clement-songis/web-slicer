@@ -226,8 +226,7 @@ export function hostFormOf(p: PrinterResponse): HostForm {
 		user: p.host_user ?? '',
 		password: '',
 		slug: p.host_port ?? '',
-		// Non renvoyé par le serveur (PrinterResponse) : vide = conservé.
-		serial: ''
+		serial: p.host_serial_number ?? ''
 	};
 }
 
@@ -326,7 +325,8 @@ export function hostRequest(
 	| 'host_user'
 	| 'host_password'
 	| 'host_port'
-> & { host_serial_number?: string } {
+	| 'host_serial_number'
+> {
 	const meta = hostMeta(f.type);
 	const userAuth = meta.authChoice && f.auth === 'user';
 	return {
@@ -337,7 +337,7 @@ export function hostRequest(
 		host_user: userAuth ? f.user.trim() : '',
 		...(userAuth && f.password ? { host_password: f.password } : {}),
 		host_port: meta.printerSlug ? f.slug.trim() : '',
-		// Flashforge : lu par le serveur dans host_options.serial_number.
+		// Flashforge : enregistré dans host_options.serial_number (vide = conservé).
 		...(meta.serialNumber && f.serial.trim() ? { host_serial_number: f.serial.trim() } : {})
 	};
 }

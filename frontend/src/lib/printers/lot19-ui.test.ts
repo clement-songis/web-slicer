@@ -6,6 +6,7 @@ import {
 	hostCapabilities,
 	hostFormError,
 	hostMeta,
+	hostFormOf,
 	hostPrinterValue,
 	hostRequest
 } from './hosts';
@@ -44,6 +45,19 @@ describe('hôtes lot 19 : Obico, Creality Print, Flashforge', () => {
 			host_port: ''
 		});
 		expect(hostRequest({ ...f, apiKey: '' }).host_serial_number).toBeUndefined();
+		// Numéro enregistré renvoyé par le serveur : formulaire pré-rempli.
+		const saved = {
+			id: 'p',
+			name: 'AD5M',
+			moonraker_url: 'http://192.168.1.70',
+			has_api_key: true,
+			machine_preset_id: 'm',
+			host_type: 'flashforge',
+			has_host_password: false,
+			host_serial_number: 'SN123'
+		};
+		expect(hostFormOf(saved).serial).toBe('SN123');
+		expect(hostRequest(hostFormOf(saved)).host_serial_number).toBe('SN123');
 		const base = { moonraker_url: 'http://x', host_type: 'flashforge', has_host_password: false };
 		expect(credentialSummary({ ...base, has_api_key: true })).toEqual([
 			{ text: "Code d'accès enregistré" }

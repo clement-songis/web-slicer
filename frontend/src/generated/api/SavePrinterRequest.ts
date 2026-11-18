@@ -21,4 +21,9 @@ host_password?: string,
 /**
  * Repetier : slug de l'imprimante sur le serveur (printhost_port).
  */
-host_port?: string, };
+host_port?: string, 
+/**
+ * Flashforge : numéro de série (flashforge_serial_number d'Orca), stocké
+ * dans host_options.serial_number ; absent = conservé, vide = retiré.
+ */
+host_serial_number?: string, };

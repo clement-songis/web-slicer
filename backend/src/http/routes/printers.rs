@@ -86,6 +86,11 @@ fn host_from_body(
     set(&mut options, "auth", &body.host_auth);
     set(&mut options, "user", &body.host_user);
     set(&mut options, "port", &body.host_port);
+    let serial = body
+        .host_serial_number
+        .as_ref()
+        .map(|s| s.trim().to_string());
+    set(&mut options, "serial_number", &serial);
     let password = body.host_password.as_ref().map(|p| {
         if p.is_empty() {
             String::new()
