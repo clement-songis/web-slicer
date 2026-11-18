@@ -30,6 +30,7 @@
 	import { BufferAttribute, BufferGeometry, DoubleSide } from 'three';
 	import { flattenPlanes, flattenRotation, type FlattenPlane } from './gizmos/flatten';
 	import type { SceneVolume } from './volumes';
+	import type { PaintOverlay } from './gizmos/painting/paint-overlay';
 	import { sceneColors } from './scene-colors';
 
 	interface Props {
@@ -58,6 +59,8 @@
 		/** Multi-filament : couleur par extrudeur et extrudeur effectif par objet. */
 		extruderColors?: readonly string[] | null;
 		objectExtruders?: Record<string, number> | null;
+		/** Peinture visible par objet (supports/couture/fuzzy/MMU) ; absent = rien. */
+		paintOverlays?: Record<string, PaintOverlay | null> | null;
 		/** Tour d'essuyage estimée (coin min, taille, bordure) ; null = masquée. */
 		wipeTower?: {
 			x: number;
@@ -122,6 +125,7 @@
 		printOrder = null,
 		extruderColors = null,
 		objectExtruders = null,
+		paintOverlays = null,
 		wipeTower = null,
 		onmovewipetower,
 		selectedVolumeId = null,
@@ -463,6 +467,7 @@
 	<ModelObject
 		{extruderColors}
 		extruder={objectExtruders?.[obj.id] ?? 1}
+		paintOverlay={paintOverlays?.[obj.id] ?? null}
 		mesh={obj.mesh}
 		position={obj.position}
 		rotation={obj.rotation}

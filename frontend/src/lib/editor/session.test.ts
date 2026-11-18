@@ -2,7 +2,15 @@
 // bascule vers l'aperçu, isolation et gel des erreurs.
 import { describe, expect, it } from 'vitest';
 import type { ServerEvent } from '../api/types';
-import { applyJobEvent, prepareSession, resetSession, sliceFailed, startSlicing } from './session';
+import {
+	applyJobEvent,
+	engineWarnings,
+	friendlySliceError,
+	prepareSession,
+	resetSession,
+	sliceFailed,
+	startSlicing
+} from './session';
 
 const updated = (
 	id: string,
@@ -89,5 +97,23 @@ describe('slice session', () => {
 		expect(sliceFailed('boom').phase).toBe('error');
 		expect(sliceFailed('boom').error).toBe('boom');
 		expect(resetSession().phase).toBe('prepare');
+	});
+});
+
+describe('échec moteur générique : avertissements du moteur remontés', () => {
+	const raw =
+		'worker sorti en code 1 — stderr :  — stdout : P 0.05 Slicing mesh\nP 0.5 Checking support necessity\nP -0.01 It seems object big600k.stl has floating regions. Please re-orient the object or enable support generation.\nP 0.7 Generating skirt & brim\nE engine_crashed Errors\n';
+	it('« Errors » seul devient explicite', () => {
+		expect(engineWarnings(raw)).toEqual([
+			'« big600k.stl » a des zones flottantes (rien en dessous) : réorientez-le, posez-le sur le plateau ou activez les supports.'
+		]);
+		expect(friendlySliceError(raw)).toMatch(
+			/^Le moteur a échoué \(Errors\)\. « big600k\.stl » a des zones flottantes/
+		);
+	});
+	it('message déjà précis inchangé', () => {
+		expect(friendlySliceError('E invalid_config Hauteur de couche trop grande')).toBe(
+			'Hauteur de couche trop grande'
+		);
 	});
 });

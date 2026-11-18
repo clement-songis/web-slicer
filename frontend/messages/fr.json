@@ -88,6 +88,7 @@
 	"calib_guide": "Guide de calibration",
 	"ctx_set_instances": "Définir le nombre d’instances…",
 	"ctx_scale_to_build_volume": "Ajuster au volume d’impression",
+	"ctx_mirror": "Miroir",
 	"ctx_mirror_x": "Selon l’axe X",
 	"ctx_mirror_y": "Selon l’axe Y",
 	"ctx_mirror_z": "Selon l’axe Z",

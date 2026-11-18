@@ -15,6 +15,9 @@
 		error?: string | null;
 		onclose: () => void;
 		onexport: () => void;
+		/** Importe des profils / un lot Orca (.json, .zip) : même action que
+		 *  Fichier › Importer › Importer des configurations. */
+		onimport?: () => void;
 	}
 	let {
 		open,
@@ -23,7 +26,8 @@
 		busy = false,
 		error = null,
 		onclose,
-		onexport
+		onexport,
+		onimport
 	}: Props = $props();
 	const labels = { machine: 'Imprimante', process: 'Impression', filament: 'Filament' };
 </script>
@@ -66,12 +70,21 @@
 				<button type="button" class="ws-btn ws-btn-secondary" disabled={busy} onclick={onclose}
 					>Fermer</button
 				>
+				{#if onimport}
+					<button
+						type="button"
+						data-testid="import-preset-bundle"
+						class="ws-btn ws-btn-secondary"
+						disabled={busy}
+						onclick={onimport}>Importer…</button
+					>
+				{/if}
 				<button
 					type="button"
 					data-testid="export-preset-bundle"
 					class="ws-btn ws-btn-primary"
 					disabled={busy || presets.length === 0}
-					onclick={onexport}>{busy ? 'Export…' : 'Export Presets'}</button
+					onclick={onexport}>{busy ? 'Export…' : 'Exporter les préréglages'}</button
 				>
 			</div>
 		</div>

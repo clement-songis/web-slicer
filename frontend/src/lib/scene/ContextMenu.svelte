@@ -112,11 +112,16 @@
 			{:else}
 				<button
 					type="button"
-					class="ws-menu-item"
+					class="ws-menu-item {item.hint ? 'flex items-baseline justify-between gap-3' : ''}"
 					role="menuitem"
 					onclick={() => pick(item.action)}
 				>
-					{$t(item.label)}
+					{#if item.hint}
+						<span>{$t(item.label)}</span>
+						<span class="text-xs text-content-subtle">{$t(item.hint)}</span>
+					{:else}
+						{$t(item.label)}
+					{/if}
 				</button>
 			{/if}
 		{/each}

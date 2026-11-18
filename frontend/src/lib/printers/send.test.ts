@@ -7,7 +7,9 @@ import {
 	sendChoices,
 	sendErrorMessage,
 	sendSuccessMessage,
-	sendTargets
+	sendTargets,
+	connectionHint,
+	isBambuPrinter
 } from './send';
 
 const printer = (id: string, url: string | null) =>
@@ -88,5 +90,19 @@ describe('sendErrorMessage', () => {
 			/tranchez à nouveau/
 		);
 		expect(sendErrorMessage(new TypeError('Failed to fetch'))).toMatch(/web-slicer injoignable/);
+	});
+});
+
+describe('connectionHint', () => {
+	it('signale le réseau Bambu non pris en charge (nom ou preset)', () => {
+		expect(isBambuPrinter({ name: 'Bambu Lab P1S' })).toBe(true);
+		expect(isBambuPrinter({ name: 'Atelier', machine_preset_id: 'Bambu Lab H2D 0.4 nozzle' })).toBe(
+			true
+		);
+		expect(connectionHint({ name: 'Bambu Lab P1S' })).toMatch(/réseau Bambu.*exportez le G-code/);
+	});
+	it('rien pour une imprimante Klipper ou Prusa', () => {
+		expect(isBambuPrinter({ name: 'Voron 2.4 350' })).toBe(false);
+		expect(connectionHint({ name: 'Prusa MK4' })).toBeNull();
 	});
 });

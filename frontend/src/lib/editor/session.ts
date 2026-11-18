@@ -114,6 +114,39 @@ function errorMessage(error: unknown, status: string): string {
  * objet par objet.
  */
 export function friendlySliceError(raw: string): string {
+	const detailed = withEngineWarnings(raw, friendlySliceErrorCore(raw));
+	return detailed;
+}
+
+/**
+ * Avertissements émis par le moteur avant l'échec (« P -0.01 <texte> », Orca
+ * `print->set_status(-1, …)`), ex. zones flottantes : quand l'erreur finale est
+ * générique (« Errors »), ce sont eux qui expliquent l'échec.
+ */
+export function engineWarnings(raw: string): string[] {
+	const out: string[] = [];
+	for (const m of raw.matchAll(
+		/(?:^|\s)P\s+-0\.01\s+([\s\S]+?)(?=\s+P\s+-?\d|\s+E\s+[a-z_]+\s|$)/g
+	)) {
+		const text = m[1].trim();
+		const floating = /^It seems object (.+?) has floating regions/i.exec(text);
+		out.push(
+			floating
+				? `« ${floating[1]} » a des zones flottantes (rien en dessous) : réorientez-le, posez-le sur le plateau ou activez les supports.`
+				: text
+		);
+	}
+	return [...new Set(out)];
+}
+
+function withEngineWarnings(raw: string, msg: string): string {
+	if (msg !== '' && !/^errors?\.?$/i.test(msg)) return msg;
+	const warnings = engineWarnings(raw);
+	if (warnings.length === 0) return msg;
+	return `Le moteur a échoué (${msg || 'erreur'}). ${warnings.join(' ')}`;
+}
+
+function friendlySliceErrorCore(raw: string): string {
 	let msg = raw.trim();
 	const invalid = /configuration invalide\s*:\s*([\s\S]*)$/i.exec(msg);
 	if (invalid) msg = invalid[1].trim();

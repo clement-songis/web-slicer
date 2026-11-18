@@ -128,10 +128,11 @@ export const OBJECT_CONTEXT_ITEMS: ObjectMenuEntry[] = [
 	{ label: 'Center', action: 'object.center' },
 	{ label: 'Drop', action: 'object.drop' },
 	{ label: 'Scale to build volume', action: 'object.scaleToBed' },
-	// Sous-menu Mirror d'Orca (`append_menu_items_mirror`), aplati.
-	{ label: 'Along X axis', action: 'object.mirrorX' },
-	{ label: 'Along Y axis', action: 'object.mirrorY' },
-	{ label: 'Along Z axis', action: 'object.mirrorZ' },
+	// Sous-menu Mirror d'Orca (`append_menu_items_mirror`), aplati : le rôle
+	// « Miroir » est rappelé en second (sinon « Selon l'axe X » est sibyllin).
+	{ label: 'Along X axis', action: 'object.mirrorX', hint: 'Mirror' },
+	{ label: 'Along Y axis', action: 'object.mirrorY', hint: 'Mirror' },
+	{ label: 'Along Z axis', action: 'object.mirrorZ', hint: 'Mirror' },
 	'separator',
 	{ label: 'Add part', action: 'object.addPart' },
 	{ label: 'Add negative volume', action: 'object.addNegativeVolume' },

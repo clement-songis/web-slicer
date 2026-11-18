@@ -99,6 +99,36 @@ export function resizeFlushMatrix(flat: readonly number[] | undefined, n: number
 	return out;
 }
 
+/** Palette des filaments ajoutés (Orca Plater::get_next_color_for_filament). */
+export const NEW_FILAMENT_COLOURS = [
+	'#00c1ae',
+	'#f4e2c1',
+	'#ed1c24',
+	'#00ff7f',
+	'#f26722',
+	'#ffeb31',
+	'#7841ce',
+	'#115877',
+	'#ed1e79',
+	'#2ebdef',
+	'#345b2f',
+	'#800080',
+	'#fa8173',
+	'#800000',
+	'#f7b763',
+	'#a4c41e'
+] as const;
+
+/**
+ * Couleur d'un filament ajouté au slot `slot` (0-based) : Orca prend la couleur
+ * suivante de sa palette à chaque ajout (Sidebar::add_filament), le nouveau slot
+ * se distingue donc d'emblée des autres (peinture, aperçu par filament).
+ */
+export function nextFilamentColour(slot: number): string {
+	const i = Math.max(0, Math.trunc(slot) - 1) % NEW_FILAMENT_COLOURS.length;
+	return NEW_FILAMENT_COLOURS[i];
+}
+
 /** Ajout d'un slot : matrice agrandie (le reste est inchangé). */
 export function afterSlotAdded(cfg: ProjectFilamentConfig, count: number): ProjectFilamentConfig {
 	if (!cfg.flush_volumes_matrix) return cfg;

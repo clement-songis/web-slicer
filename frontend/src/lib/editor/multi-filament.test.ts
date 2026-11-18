@@ -5,6 +5,8 @@ import {
 	compactProjectConfig,
 	effectiveColours,
 	maxFlush,
+	NEW_FILAMENT_COLOURS,
+	nextFilamentColour,
 	parseProjectConfig,
 	resizeFlushMatrix,
 	setSlotColour,
@@ -75,5 +77,18 @@ describe('configuration multi-filament du projet', () => {
 	it('multiplicateur explicite conservé, même à 1 (défaut Orca 0,3)', () => {
 		expect(compactProjectConfig({ flush_multiplier: 1 })).toEqual({ flush_multiplier: 1 });
 		expect(compactProjectConfig({})).toBeNull();
+	});
+});
+
+describe('couleur des filaments ajoutés (palette Orca)', () => {
+	it('slot 2, 3… : couleurs successives de la palette, distinctes du premier filament', () => {
+		expect(nextFilamentColour(1)).toBe('#00c1ae');
+		expect(nextFilamentColour(2)).toBe('#f4e2c1');
+		expect(nextFilamentColour(1 + NEW_FILAMENT_COLOURS.length)).toBe('#00c1ae');
+	});
+	it('posée sur le nouveau slot sans toucher aux autres', () => {
+		const cfg = setSlotColour(afterSlotAdded({}, 2), 1, nextFilamentColour(1));
+		expect(cfg.filament_colour).toEqual(['', '#00c1ae']);
+		expect(compactProjectConfig(afterSlotRemoved(cfg, 1))).toBeNull();
 	});
 });

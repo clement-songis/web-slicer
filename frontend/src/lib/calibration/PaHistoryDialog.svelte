@@ -29,6 +29,8 @@
 		currentK: number | null;
 		onclose: () => void;
 		onapply: (k: number) => void;
+		/** Mesure d'un projet de calibration : K et méthode préremplis à l'ouverture. */
+		suggestion?: { k: number; method: PaMethod } | null;
 	}
 	let {
 		open,
@@ -38,7 +40,8 @@
 		filamentId = null,
 		currentK,
 		onclose,
-		onapply
+		onapply,
+		suggestion = null
 	}: Props = $props();
 
 	let rows = $state<PaRecord[]>([]);
@@ -75,7 +78,8 @@
 	$effect(() => {
 		if (!open) return;
 		untrack(() => {
-			kDraft = currentK !== null ? String(currentK) : '';
+			kDraft = suggestion ? String(suggestion.k) : currentK !== null ? String(currentK) : '';
+			if (suggestion) method = suggestion.method;
 			note = '';
 			editing = null;
 			error = null;

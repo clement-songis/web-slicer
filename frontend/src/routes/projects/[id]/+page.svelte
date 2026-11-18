@@ -274,6 +274,13 @@
 	} from '$lib/api/scene';
 	import { meshOpErrorMessage, placeSourcePart, worldMatrix } from '$lib/scene/tools/mesh-ops';
 	import { EnginePaintClient, paintWsUrl } from '$lib/scene/gizmos/painting/engine-paint';
+	import { BLOCKER, ENFORCER } from '$lib/scene/gizmos/painting/facets';
+	import {
+		PAINT_BLOCKER_COLOUR,
+		PAINT_ENFORCER_COLOUR,
+		paintOverlayGeometry,
+		type PaintOverlay
+	} from '$lib/scene/gizmos/painting/paint-overlay';
 	import { StrokeRecorder } from '$lib/scene/gizmos/painting/stroke';
 	import type { CutPlane } from '$lib/scene/tools/cut';
 	import type { BooleanOp } from '$lib/scene/tools/BooleanTool.svelte';
@@ -310,6 +317,9 @@
 	import UndoHistory from '$lib/scene/UndoHistory.svelte';
 	import CreateFilamentDialog from '$lib/presets/CreateFilamentDialog.svelte';
 	import PaHistoryDialog from '$lib/calibration/PaHistoryDialog.svelte';
+	import CalibrationResultCard from '$lib/calibration/CalibrationResultCard.svelte';
+	import { calibrationReading, type CalibrationReading } from '$lib/calibration/calibration-result';
+	import type { PaMethod } from '$lib/calibration/pa-history';
 	import {
 		createServerCalibration,
 		engineRequest,
@@ -348,6 +358,7 @@
 	import { computeFlushVolumes, flushVolumesAvailable } from '$lib/api/flush';
 	import {
 		afterSlotAdded,
+		nextFilamentColour,
 		afterSlotRemoved,
 		compactProjectConfig,
 		effectiveColours,
@@ -412,6 +423,7 @@
 	import type { DisplayMode } from '$lib/settings/filter';
 	import {
 		addFilamentSlot,
+		importedFilamentSlots,
 		canRemoveFilamentSlot,
 		clampExtruder,
 		clampFilamentSlot,
@@ -668,6 +680,18 @@
 	let flushDialogOpen = $state(false);
 	let showCreateFilament = $state(false);
 	let showPaHistory = $state(false);
+	// Projet de calibration : lecture du résultat (carte) et K proposé à l'historique.
+	let calibReading = $state<CalibrationReading | null>(null);
+	let paSuggestion = $state<{ k: number; method: PaMethod } | null>(null);
+	function applyCalibTemperature(t: number) {
+		filamentValues.nozzle_temperature = [t];
+		editTouched.filament.set('nozzle_temperature', ++editTouchSeq);
+		const id = activePresetOf('filament')?.id;
+		if (id) editTouchedPreset.filament.set('nozzle_temperature', id);
+		configTab = 'settings';
+		openSettingsDialog('filament', 'Filament');
+		saveMessage = `Température ${t} °C posée dans le filament : enregistrez ses réglages.`;
+	}
 	// Valeur K de l'historique PA posée dans le filament actif (brouillon,
 	// notée comme une saisie pour survivre à un rechargement de la base).
 	function applyPressureAdvance(k: number) {
@@ -730,6 +754,27 @@
 			void loadPresets();
 		}
 	});
+	// Projet 3MF ouvert (Orca load_project) : un slot par filament du fichier,
+	// presets lus dans `filament_settings_id` du process importé (lib/editor/presets).
+	async function completeImportedFilaments() {
+		const count = projectFilament.filament_colour?.length ?? 0;
+		if (count <= activePresets.filaments.length || !activePresets.process) return;
+		let names: unknown[] = [];
+		try {
+			const v = (await getResolvedPreset(activePresets.process)).values as Record<string, unknown>;
+			if (Array.isArray(v.filament_settings_id)) names = v.filament_settings_id;
+		} catch {
+			// Process illisible : slots complétés avec le filament courant.
+		}
+		const next = importedFilamentSlots(
+			activePresets,
+			count,
+			names,
+			filamentPresets,
+			filamentPresets[0]?.id ?? null
+		);
+		if (next) activePresets = next;
+	}
 	// Choix du preset d'un slot (sélecteur du slot) : le slot devient actif.
 	function setFilamentSlot(slot: number, id: string | null) {
 		if (id === null || id === filamentAt(activePresets, slot)) return;
@@ -743,7 +788,12 @@
 		if (next === activePresets) return;
 		activePresets = next;
 		filamentSlot = next.filaments.length - 1;
-		projectFilament = afterSlotAdded(projectFilament, next.filaments.length);
+		// Couleur suivante de la palette d'Orca : le nouveau slot se distingue des autres.
+		projectFilament = setSlotColour(
+			afterSlotAdded(projectFilament, next.filaments.length),
+			next.filaments.length - 1,
+			nextFilamentColour(next.filaments.length - 1)
+		);
 	}
 	// Retire un slot : les objets qui l'utilisaient repassent en auto, ceux des
 	// slots suivants sont renumérotés pour garder leur filament.
@@ -1090,6 +1140,7 @@
 			await loadPresetsShared();
 			await loadEditedValues('machine');
 			await loadProjectModels();
+			await completeImportedFilaments();
 		})();
 		// Référence de l'indicateur « non enregistré » : prise après restauration.
 		void editorReady.then(() => {
@@ -1161,6 +1212,7 @@
 		// servent à retrouver le plateau d'origine ; l'arbre régénère les ids vivants.
 		const saved = parseScene(data.project.scene);
 		sceneCalibration = saved.calibration ?? null;
+		calibReading = calibrationReading(sceneCalibration);
 		sceneCalibrationOverrides = saved.calibrationOverrides ?? null;
 		projectFilament = parseProjectConfig(saved.projectConfig);
 		const plateByOldId: Record<string, string> = {};
@@ -2960,6 +3012,34 @@
 		return serialized ? Object.keys(serialized).length : 0;
 	}
 	const activePaintedCount = $derived(paintedCount(selId, paintChannel));
+	// Peinture visible dans la vue 3D (Orca TriangleSelectorGUI) : canal de l'outil
+	// ouvert sur l'objet sélectionné ; segmentation MMU de tous les objets en
+	// multi-filament (couleur du filament peint).
+	const scenePaintOverlays = $derived.by(() => {
+		const out: Record<string, PaintOverlay | null> = {};
+		let any = false;
+		for (const o of sceneObjects) {
+			const doc = paintings[o.id]?.serialize();
+			if (!doc) continue;
+			const channel: PaintChannel | null =
+				paintChannel && o.id === selId ? paintChannel : filamentSlots > 1 && doc.mmu ? 'mmu' : null;
+			if (!channel || !doc[channel]) continue;
+			const overlay = paintOverlayGeometry(o.mesh, doc[channel], (s) =>
+				channel === 'mmu'
+					? (filamentSlotColors[s - 1] ?? null)
+					: s === ENFORCER
+						? PAINT_ENFORCER_COLOUR
+						: s === BLOCKER
+							? PAINT_BLOCKER_COLOUR
+							: null
+			);
+			if (overlay) {
+				out[o.id] = overlay;
+				any = true;
+			}
+		}
+		return any ? out : null;
+	});
 
 	// Canal moteur (worker persistant, WebSocket) : peinture TriangleSelector.
 	let enginePaint: EnginePaintClient | null = null;
@@ -6215,7 +6295,10 @@
 		aria-busy={presetSwitchPending ? 'true' : undefined}
 	>
 		<h1 class="ws-sr-only">{projectName || data.project.name} — éditeur web-slicer</h1>
-		<div class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden 2xl:gap-4">
+		<!-- overflow-x-clip (et non overflow-hidden) : la barre reste coupée en largeur
+		     sur écran étroit, mais les menus déroulants (Fichier, Édition…) débordent
+		     vers le bas ; overflow-hidden les rendait invisibles. -->
+		<div class="flex min-w-0 flex-1 items-center gap-2 overflow-x-clip 2xl:gap-4">
 			<a
 				href={resolve('/library')}
 				class="text-sm text-primary hover:underline"
@@ -6487,6 +6570,10 @@
 		projectName={data.project.name}
 		presets={presetBundleItems}
 		onclose={() => (showPresetBundle = false)}
+		onimport={() => {
+			showPresetBundle = false;
+			configFileInput?.click();
+		}}
 		onexport={() => {
 			void exportPresetBundle();
 			showPresetBundle = false;
@@ -6633,8 +6720,12 @@
 					: filamentValues.pressure_advance
 			)
 		)}
-		onclose={() => (showPaHistory = false)}
+		onclose={() => {
+			showPaHistory = false;
+			paSuggestion = null;
+		}}
 		onapply={applyPressureAdvance}
+		suggestion={paSuggestion}
 	/>
 
 	{#if pendingDraft}
@@ -6729,6 +6820,21 @@
 							ontoggletype={coloration === 'type' ? toggleType : undefined}
 						/>
 					</section>
+				{/if}
+				{#if calibReading}
+					<CalibrationResultCard
+						reading={calibReading}
+						onapplyk={applyPressureAdvance}
+						onrecordk={(k) => {
+							const mode = sceneCalibration?.mode;
+							paSuggestion = {
+								k,
+								method: mode === 'pa_tower' || mode === 'pa_pattern' ? mode : 'pa_line'
+							};
+							showPaHistory = true;
+						}}
+						onapplytemp={applyCalibTemperature}
+					/>
 				{/if}
 				{#if configTab === 'objects'}
 					<PlateBar
@@ -7419,6 +7525,7 @@
 						labels={objectLabels}
 						printOrder={scenePrintOrder}
 						extruderColors={filamentSlots > 1 ? filamentSlotColors : null}
+						paintOverlays={scenePaintOverlays}
 						objectExtruders={sceneObjectExtruders}
 						wipeTower={layout.tab === 'prepare' ? sceneWipeTower : null}
 						onmovewipetower={moveWipeTower}
@@ -7585,6 +7692,7 @@
 								bind:tool={paintTool}
 								bind:radius={paintRadius}
 								bind:state={paintState}
+								filamentColours={filamentSlotColors}
 							/>
 							<div class="mt-3 flex items-center justify-between text-xs text-content-subtle">
 								<span>{activePaintedCount} triangle(s) peint(s)</span>
@@ -8004,7 +8112,13 @@
 						</div>
 					{:else}
 						<div class="flex flex-1 items-center justify-center p-6 text-content-subtle">
-							<p>Aperçu G-code : tranchez la scène pour l'afficher.</p>
+							<!-- Tranchage terminé mais trajectoires encore en chargement : ne pas
+							     inviter à trancher (message trompeur pendant 1 à 15 s en multi-filament). -->
+							{#if session.phase === 'preview' && session.gcodeId}
+								<p role="status" data-testid="preview-loading">Chargement de l'aperçu…</p>
+							{:else}
+								<p>Aperçu G-code : tranchez la scène pour l'afficher.</p>
+							{/if}
 						</div>
 					{/if}
 				</div>

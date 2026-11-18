@@ -109,6 +109,36 @@ export function addFilamentSlot(a: ActivePresets, fallback: string | null = null
 	return { ...a, filaments: [...a.filaments, id] };
 }
 
+/**
+ * Slots filament d'un projet 3MF ouvert (Orca load_project : un slot par
+ * entrée de `filament_settings_id`). Le backend ne fixe que le process importé
+ * (« configuration 3MF ») ; les couleurs du projet (`scene.projectConfig`)
+ * donnent le nombre de filaments et `filament_settings_id` du process importé
+ * leurs presets, retrouvés par nom (sinon : dernier filament, puis `fallback`).
+ * Les slots existants sont conservés. `null` = rien à compléter.
+ */
+export function importedFilamentSlots(
+	a: ActivePresets,
+	colourCount: number,
+	names: readonly unknown[],
+	presets: readonly { id: string; name: string }[],
+	fallback: string | null = null
+): ActivePresets | null {
+	if (!(colourCount > a.filaments.length)) return null;
+	const byName = new Map(presets.map((p) => [p.name, p.id]));
+	const named = (i: number) => {
+		const n = names[i];
+		return typeof n === 'string' ? (byName.get(n) ?? null) : null;
+	};
+	const filaments = [...a.filaments];
+	for (let i = filaments.length; i < colourCount; i++) {
+		const id = named(i) ?? filaments[filaments.length - 1] ?? named(0) ?? fallback;
+		if (!id) return filaments.length > a.filaments.length ? { ...a, filaments } : null;
+		filaments.push(id);
+	}
+	return { ...a, filaments };
+}
+
 /** Un slot peut être retiré s'il en reste au moins un autre. */
 export function canRemoveFilamentSlot(a: ActivePresets, slot: number): boolean {
 	return a.filaments.length > 1 && slot >= 0 && slot < a.filaments.length;

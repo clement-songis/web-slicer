@@ -13,16 +13,29 @@
 		radius?: number;
 		/** État peint appliqué au clic (ENFORCER, BLOCKER, ou index d'extrudeur MMU). */
 		state?: number;
+		/** Couleurs des filaments (slot i ↔ extrudeur i + 1) : pastilles du canal
+		 *  multi-matériaux (Orca GLGizmoMmuSegmentation : un bouton coloré par filament). */
+		filamentColours?: readonly string[];
 	}
 
 	let {
 		channel = $bindable('supports'),
 		tool = $bindable('brush'),
 		radius = $bindable(2),
-		state = $bindable(ENFORCER)
+		state = $bindable(ENFORCER),
+		filamentColours = []
 	}: Props = $props();
 
 	const tools: PaintTool[] = ['brush', 'sphere', 'fill'];
+
+	// Chiffre lisible sur la pastille (clair sur foncé, foncé sur clair).
+	function contrastText(hex: string): string {
+		const m = /^#?([0-9a-f]{6})$/i.exec(hex ?? '');
+		if (!m) return 'inherit';
+		const n = parseInt(m[1], 16);
+		const lum = 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255);
+		return lum > 150 ? '#111827' : '#ffffff';
+	}
 	const MIN_RADIUS = 0.2;
 	const MAX_RADIUS = 20;
 
@@ -77,6 +90,29 @@
 					: ''}"
 				onclick={() => (state = BLOCKER)}>Bloquer</button
 			>
+		</div>
+	{:else if filamentColours.length > 0}
+		<div class="flex items-center gap-2">
+			<span class="w-16 text-content-muted">Filament</span>
+			<div class="flex flex-wrap gap-1" role="radiogroup" aria-label="Filament peint">
+				{#each filamentColours as colour, i (i)}
+					<button
+						type="button"
+						role="radio"
+						aria-checked={state === i + 1}
+						aria-label={`Filament ${i + 1}`}
+						title={`Filament ${i + 1}`}
+						class="flex size-7 items-center justify-center rounded border text-xs font-semibold {state ===
+						i + 1
+							? 'border-accent ring-2 ring-accent'
+							: 'border-border-strong'}"
+						style:background-color={colour || undefined}
+						style:color={contrastText(colour)}
+						data-testid={`paint-filament-${i + 1}`}
+						onclick={() => (state = i + 1)}>{i + 1}</button
+					>
+				{/each}
+			</div>
 		</div>
 	{:else}
 		<label class="flex items-center gap-2">

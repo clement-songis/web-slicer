@@ -4,6 +4,7 @@
 	// `Scene.svelte` de préparation, réutilisé par le workspace éditeur.
 	import { Canvas, T } from '@threlte/core';
 	import CameraControls from '$lib/scene/CameraControls.svelte';
+	import Bed from '$lib/scene/Bed.svelte';
 	import { frameBed, frameBox, type BedShape } from '$lib/scene';
 	import PreviewLines from './PreviewLines.svelte';
 	import PreviewPoints from './PreviewPoints.svelte';
@@ -56,6 +57,7 @@
 	class="h-full w-full"
 	data-testid="preview-scene"
 	data-preview-ready={compiled?.mode === renderMode ? 'true' : 'false'}
+	data-preview-bed={`${bed.width}x${bed.depth}`}
 	data-preview-compile-ms={compiled?.ms}
 	data-preview-compile-timeout={compiled?.timedOut ? 'true' : undefined}
 >
@@ -72,6 +74,8 @@
 				<CameraControls target={pose.target} />
 			</T.PerspectiveCamera>
 		{/key}
+		<!-- Plateau sous les parcours (Orca GCodeViewer : le lit reste affiché en aperçu). -->
+		<Bed {bed} />
 		{#if renderMode === 'volumes'}
 			<!-- Éclairage des volumes : ambiant + lumière principale + contre-jour doux. -->
 			<T.AmbientLight intensity={0.85} />

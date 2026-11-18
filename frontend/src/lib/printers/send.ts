@@ -44,6 +44,28 @@ export function normalizeMoonrakerUrl(raw: string): string | null {
 	}
 }
 
+/**
+ * Imprimante Bambu Lab (nom ou preset machine) : le réseau Bambu (MQTT/FTP,
+ * module propriétaire) est exclu (exclusions.md), l'envoi direct n'existe pas.
+ */
+export function isBambuPrinter(
+	p: Pick<PrinterResponse, 'name'> & { machine_preset_id?: string | null }
+): boolean {
+	return /bambu\s*lab|@BBL\b/i.test(`${p.name ?? ''} ${p.machine_preset_id ?? ''}`);
+}
+
+/**
+ * Aide affichée quand l'imprimante choisie n'a pas encore d'adresse : ce
+ * qu'il faut saisir, et l'alternative quand l'envoi direct est impossible.
+ */
+export function connectionHint(
+	p: Pick<PrinterResponse, 'name'> & { machine_preset_id?: string | null }
+): string | null {
+	if (isBambuPrinter(p))
+		return "Les imprimantes Bambu Lab utilisent le réseau Bambu, non pris en charge : exportez le G-code (carte SD) ou renseignez l'adresse d'un hôte compatible (Moonraker, OctoPrint…).";
+	return null;
+}
+
 /** Libellé de succès : fichier déposé, impression démarrée ou non. */
 export function sendSuccessMessage(
 	printerName: string,

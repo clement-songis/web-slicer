@@ -88,6 +88,7 @@
 	"calib_guide": "Calibration Guide",
 	"ctx_set_instances": "Set number of instances…",
 	"ctx_scale_to_build_volume": "Scale to build volume",
+	"ctx_mirror": "Mirror",
 	"ctx_mirror_x": "Along X axis",
 	"ctx_mirror_y": "Along Y axis",
 	"ctx_mirror_z": "Along Z axis",

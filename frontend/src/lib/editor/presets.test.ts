@@ -16,7 +16,8 @@ import {
 	serializeActivePresets,
 	setFilament,
 	setPrinter,
-	setProcess
+	setProcess,
+	importedFilamentSlots
 } from './presets';
 import type { ActivePresets } from './presets';
 
@@ -150,5 +151,37 @@ describe('multi-filament (slots)', () => {
 		const back = parseActivePresets(JSON.parse(JSON.stringify(blob)));
 		expect(back).toEqual(a);
 		expect(primaryFilament(back)).toBe('b');
+	});
+});
+
+describe('importedFilamentSlots (projet 3MF ouvert)', () => {
+	const presets = [
+		{ id: 'pla', name: 'Bambu PLA Basic @BBL H2D' },
+		{ id: 'petg', name: 'Bambu PETG HF @BBL H2D' }
+	];
+	test('un slot par couleur du projet, presets retrouvés par nom', () => {
+		const a = { printer: 'm', process: 'p', filaments: [] };
+		const out = importedFilamentSlots(
+			a,
+			2,
+			['Bambu PETG HF @BBL H2D', 'Bambu PLA Basic @BBL H2D'],
+			presets,
+			'pla'
+		);
+		expect(out?.filaments).toEqual(['petg', 'pla']);
+	});
+	test('garde les slots existants et complète avec le dernier filament si le nom est inconnu', () => {
+		const a = { printer: 'm', process: 'p', filaments: ['pla'] };
+		expect(
+			importedFilamentSlots(a, 3, ['x', 'Inconnu', 'Bambu PETG HF @BBL H2D'], presets)?.filaments
+		).toEqual(['pla', 'pla', 'petg']);
+	});
+	test('rien à faire quand les slots couvrent déjà les couleurs ou sans aucune source', () => {
+		expect(
+			importedFilamentSlots({ printer: null, process: null, filaments: ['a', 'b'] }, 2, [], presets)
+		).toBeNull();
+		expect(
+			importedFilamentSlots({ printer: null, process: null, filaments: [] }, 2, [], [])
+		).toBeNull();
 	});
 });

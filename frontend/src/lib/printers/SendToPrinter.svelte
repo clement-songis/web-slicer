@@ -18,6 +18,7 @@
 	import {
 		normalizeMoonrakerUrl,
 		printerOptionLabel,
+		connectionHint,
 		sendChoices,
 		sendErrorMessage,
 		sendSuccessMessage
@@ -386,7 +387,11 @@
 						</label>
 						<div class="flex flex-col items-end gap-1">
 							<span class="w-full text-xs text-content-subtle"
-								>Enregistrée dans l'imprimante à l'envoi, réutilisée ensuite.</span
+								>Enregistrée dans l'imprimante à l'envoi, réutilisée ensuite. Autre type de
+								connexion (OctoPrint, PrusaLink…) :
+								<a class="underline" href={resolve('/printers')} data-testid="send-host-settings"
+									>page Imprimantes</a
+								>.</span
 							>
 							<button
 								type="submit"
@@ -397,6 +402,11 @@
 								{savingUrl ? 'Enregistrement…' : "Enregistrer l'URL"}
 							</button>
 						</div>
+						{#if selected && connectionHint(selected)}
+							<p class="text-xs text-warning-text" data-testid="send-connection-hint">
+								{connectionHint(selected)}
+							</p>
+						{/if}
 						{#if urlError}
 							<p class="text-xs text-danger" role="alert" data-testid="send-url-error">
 								{urlError}

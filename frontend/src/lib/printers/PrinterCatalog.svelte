@@ -203,7 +203,10 @@
 								title={model.model}>{model.model}</span
 							>
 							{#if model.variants.length > 1}
-								<span class="text-2xs text-content-subtle">{model.variants.length} buses</span>
+								<!-- Variantes = diamètres de buse proposés (et non nombre de buses physiques). -->
+								<span class="text-2xs text-content-subtle" data-testid="catalog-nozzle-count"
+									>{model.variants.length} diamètres de buse</span
+								>
 							{/if}
 						</button>
 					{/each}

@@ -11,7 +11,8 @@ import {
 	PLATER_SHORTCUTS,
 	OBJECTS_LIST_SHORTCUTS,
 	GIZMO_SHORTCUTS,
-	PLATE_CONTEXT_ITEMS
+	PLATE_CONTEXT_ITEMS,
+	OBJECT_CONTEXT_ITEMS
 } from './menus';
 
 const ANNEXE = readFileSync(
@@ -138,5 +139,23 @@ describe('couverture menus.ts ↔ Annexe B', () => {
 		const covered = new Set(GIZMO_SHORTCUTS.map((s) => s.keys));
 		const missing = shortcutKeys('Gizmo').filter((k) => !covered.has(k));
 		expect(missing).toEqual([]);
+	});
+});
+
+describe('menu objet : rôle des entrées aplaties', () => {
+	test('« Selon l’axe X/Y/Z » rappelle « Miroir » (sous-menu Mirror d’Orca aplati)', () => {
+		const mirror = OBJECT_CONTEXT_ITEMS.filter(
+			(i) => i !== 'separator' && /^object\.mirror[XYZ]$/.test(i.action)
+		);
+		expect(mirror).toHaveLength(3);
+		for (const i of mirror) expect(i !== 'separator' && i.hint).toBe('Mirror');
+		const en = JSON.parse(
+			readFileSync(resolve(import.meta.dirname, '../../../messages/en.json'), 'utf8')
+		);
+		const fr = JSON.parse(
+			readFileSync(resolve(import.meta.dirname, '../../../messages/fr.json'), 'utf8')
+		);
+		const key = Object.keys(en).find((k) => en[k] === 'Mirror');
+		expect(key && fr[key]).toBe('Miroir');
 	});
 });

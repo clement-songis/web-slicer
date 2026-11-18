@@ -10,6 +10,7 @@
 	import type { Transform } from './transform';
 	import type { SceneVolume } from './volumes';
 	import Viewport from './Viewport.svelte';
+	import type { PaintOverlay } from './gizmos/painting/paint-overlay';
 	import { overhangIndices } from './overhang';
 	import {
 		pointInBox,
@@ -43,6 +44,8 @@
 		printOrder?: Record<string, number> | null;
 		extruderColors?: readonly string[] | null;
 		objectExtruders?: Record<string, number> | null;
+		/** Peinture visible par objet (supports/couture/fuzzy/MMU). */
+		paintOverlays?: Record<string, PaintOverlay | null> | null;
 		wipeTower?: {
 			x: number;
 			y: number;
@@ -92,6 +95,7 @@
 		printOrder = null,
 		extruderColors = null,
 		objectExtruders = null,
+		paintOverlays = null,
 		wipeTower = null,
 		onmovewipetower,
 		selectedVolumeId = null,
@@ -238,6 +242,7 @@
 			{printOrder}
 			{extruderColors}
 			{objectExtruders}
+			{paintOverlays}
 			{wipeTower}
 			{onmovewipetower}
 			{selectedVolumeId}

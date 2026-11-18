@@ -10,6 +10,7 @@
 	import { overhangIndices } from './overhang';
 	import { sceneColors } from './scene-colors';
 	import type { SectionPlane } from './screen-select';
+	import type { PaintOverlay } from './gizmos/painting/paint-overlay';
 
 	interface Props {
 		mesh: SceneMesh;
@@ -46,6 +47,8 @@
 		extruderColors?: readonly string[] | null;
 		/** Extrudeur effectif de l'objet (1-based). */
 		extruder?: number;
+		/** Peinture visible (supports/couture/fuzzy/MMU), repère du maillage. */
+		paintOverlay?: PaintOverlay | null;
 	}
 
 	// Couleurs par rôle, proches du rendu Orca (GLVolume) : pièce opaque,
@@ -76,8 +79,23 @@
 		clipPlane = null,
 		paintstroke = false,
 		extruderColors = null,
-		extruder = 1
+		extruder = 1,
+		paintOverlay = null
 	}: Props = $props();
+
+	// Peinture : triangles feuilles à couleur par sommet, posés sur la surface.
+	const paintGeometry = $derived.by(() => {
+		if (!paintOverlay) return null;
+		const g = new THREE.BufferGeometry();
+		g.setAttribute('position', new THREE.BufferAttribute(paintOverlay.positions, 3));
+		g.setAttribute('color', new THREE.BufferAttribute(paintOverlay.colors, 3));
+		g.computeVertexNormals();
+		return g;
+	});
+	$effect(() => {
+		const g = paintGeometry;
+		return () => g?.dispose();
+	});
 
 	const tint = $derived(
 		extruderColors ? (extruderColors[Math.max(1, extruder) - 1] ?? null) : null
@@ -264,6 +282,18 @@
 				opacity={0.6}
 				polygonOffset
 				polygonOffsetFactor={-1}
+			/>
+		</T.Mesh>
+	{/if}
+	{#if paintGeometry}
+		<!-- Peinture (Orca TriangleSelectorGUI) : non pickable, le trait vise l'objet. -->
+		<T.Mesh geometry={paintGeometry} renderOrder={3} raycast={() => {}}>
+			<T.MeshLambertMaterial
+				vertexColors
+				polygonOffset
+				polygonOffsetFactor={-2}
+				polygonOffsetUnits={-2}
+				{clippingPlanes}
 			/>
 		</T.Mesh>
 	{/if}
