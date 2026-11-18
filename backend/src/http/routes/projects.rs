@@ -269,8 +269,21 @@ pub(crate) async fn import_3mf_contents(
     // couleurs des filaments, matrice et multiplicateur de purge.
     let project_config = imported_project_config(&imported.config);
     if !imported.config.is_empty() {
+        // Presets filament / imprimante du projet (lot 25, audit J2-a/J2-h),
+        // avant le process qui consomme la configuration.
+        let (printer, filaments) =
+            import_project_presets(state, user_id, project_name, &imported.config).await?;
         let preset = create_imported_preset(state, user_id, project_name, imported.config).await?;
         active_presets = json!({ "process": preset.id.to_string() });
+        if let Some(printer) = printer {
+            active_presets["printer"] = json!(printer.to_string());
+        }
+        if !filaments.is_empty() {
+            active_presets["filaments"] = json!(filaments
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>());
+        }
     }
 
     let mut models: Vec<(crate::domain::Model, engine::api::TriangleMesh)> =
@@ -493,6 +506,388 @@ fn imported_scene_object(
         document["meshName"] = mesh_name.clone().into();
     }
     document
+}
+
+/// `Preset::filament_options()` d'Orca 2.4.1 (libslic3r/Preset.cpp,
+/// `s_Preset_filament_options`, 127 clés, `filament_colour` commenté
+/// dans Orca : option projet). Sert à répartir la configuration aplatie d'un 3MF
+/// en presets filament comme `PresetBundle::load_config_file_config`.
+const ORCA_FILAMENT_OPTIONS: [&str; 127] = [
+    "default_filament_colour",
+    "required_nozzle_HRC",
+    "filament_diameter",
+    "pellet_flow_coefficient",
+    "volumetric_speed_coefficients",
+    "filament_type",
+    "filament_soluble",
+    "filament_is_support",
+    "filament_printable",
+    "filament_max_volumetric_speed",
+    "filament_adaptive_volumetric_speed",
+    "filament_flow_ratio",
+    "filament_density",
+    "filament_adhesiveness_category",
+    "filament_cost",
+    "filament_minimal_purge_on_wipe_tower",
+    "filament_tower_interface_pre_extrusion_dist",
+    "filament_tower_interface_pre_extrusion_length",
+    "filament_tower_ironing_area",
+    "filament_tower_interface_purge_volume",
+    "filament_tower_interface_print_temp",
+    "nozzle_temperature",
+    "nozzle_temperature_initial_layer",
+    "cool_plate_temp",
+    "textured_cool_plate_temp",
+    "eng_plate_temp",
+    "hot_plate_temp",
+    "textured_plate_temp",
+    "cool_plate_temp_initial_layer",
+    "textured_cool_plate_temp_initial_layer",
+    "eng_plate_temp_initial_layer",
+    "hot_plate_temp_initial_layer",
+    "textured_plate_temp_initial_layer",
+    "supertack_plate_temp_initial_layer",
+    "supertack_plate_temp",
+    "bed_type",
+    "temperature_vitrification",
+    "reduce_fan_stop_start_freq",
+    "dont_slow_down_outer_wall",
+    "slow_down_for_layer_cooling",
+    "fan_min_speed",
+    "fan_max_speed",
+    "enable_overhang_bridge_fan",
+    "overhang_fan_speed",
+    "overhang_fan_threshold",
+    "close_fan_the_first_x_layers",
+    "close_additional_fan_first_x_layers",
+    "first_x_layer_fan_speed",
+    "full_fan_speed_layer",
+    "additional_fan_full_speed_layer",
+    "fan_cooling_layer_time",
+    "slow_down_layer_time",
+    "slow_down_min_speed",
+    "filament_start_gcode",
+    "filament_end_gcode",
+    "filament_change_extrusion_role_gcode",
+    "activate_air_filtration",
+    "activate_air_filtration_during_print",
+    "activate_air_filtration_on_completion",
+    "during_print_exhaust_fan_speed",
+    "complete_print_exhaust_fan_speed",
+    "filament_retraction_length",
+    "filament_z_hop",
+    "filament_z_hop_types",
+    "filament_retract_lift_above",
+    "filament_retract_lift_below",
+    "filament_retract_lift_enforce",
+    "filament_retraction_speed",
+    "filament_deretraction_speed",
+    "filament_retract_restart_extra",
+    "filament_retraction_minimum_travel",
+    "filament_retract_when_changing_layer",
+    "filament_wipe",
+    "filament_retract_before_wipe",
+    "filament_vendor",
+    "compatible_prints",
+    "compatible_prints_condition",
+    "compatible_printers",
+    "compatible_printers_condition",
+    "inherits",
+    "filament_wipe_distance",
+    "additional_cooling_fan_speed",
+    "nozzle_temperature_range_low",
+    "nozzle_temperature_range_high",
+    "filament_extruder_variant",
+    "enable_pressure_advance",
+    "pressure_advance",
+    "adaptive_pressure_advance",
+    "adaptive_pressure_advance_model",
+    "adaptive_pressure_advance_overhangs",
+    "adaptive_pressure_advance_bridges",
+    "chamber_temperature",
+    "filament_shrink",
+    "filament_shrinkage_compensation_z",
+    "support_material_interface_fan_speed",
+    "internal_bridge_fan_speed",
+    "filament_notes",
+    "ironing_fan_speed",
+    "filament_ironing_flow",
+    "filament_ironing_spacing",
+    "filament_ironing_inset",
+    "filament_ironing_speed",
+    "filament_loading_speed",
+    "filament_loading_speed_start",
+    "filament_unloading_speed",
+    "filament_unloading_speed_start",
+    "filament_toolchange_delay",
+    "filament_cooling_moves",
+    "filament_stamping_loading_speed",
+    "filament_stamping_distance",
+    "filament_cooling_initial_speed",
+    "filament_cooling_final_speed",
+    "filament_ramming_parameters",
+    "filament_multitool_ramming",
+    "filament_multitool_ramming_volume",
+    "filament_multitool_ramming_flow",
+    "activate_chamber_temp_control",
+    "chamber_minimal_temperature",
+    "filament_long_retractions_when_cut",
+    "filament_retraction_distances_when_cut",
+    "idle_temperature",
+    "filament_change_length",
+    "filament_flush_volumetric_speed",
+    "filament_flush_temp",
+    "filament_cooling_before_tower",
+    "long_retractions_when_ec",
+    "retraction_distances_when_ec",
+];
+
+/// Texte d'une valeur scalaire brute de 3MF (chaîne telle quelle, sinon JSON).
+fn raw_text(value: Option<&Value>) -> Option<String> {
+    match value? {
+        Value::String(s) => Some(s.clone()),
+        other => Some(other.to_string()),
+    }
+}
+
+/// Éléments d'un vecteur brut de 3MF (tableau JSON ou chaîne « a;b »).
+fn raw_items(value: Option<&Value>) -> Vec<String> {
+    match value {
+        Some(Value::Array(items)) => items
+            .iter()
+            .map(|v| {
+                v.as_str()
+                    .map(str::to_owned)
+                    .unwrap_or_else(|| v.to_string())
+            })
+            .collect(),
+        Some(Value::String(s)) if !s.is_empty() => s
+            .split(';')
+            .map(|p| p.trim_matches('"').to_string())
+            .collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// Presets filament et imprimante du projet 3MF, comme Orca
+/// (`PresetBundle::load_config_file_config` → `load_external_preset`) :
+/// - imprimante : preset machine visible nommé `printer_settings_id` (sinon
+///   dernier `inherits_group`), retenu si le compte possède ce modèle
+///   d'imprimante (garde de possession du tranchage) — les valeurs machine du
+///   3MF restent portées par le preset importé (process aplati) ;
+/// - filaments (un par `filament_colour`) : preset visible nommé
+///   `filament_settings_id[i]` s'il n'est pas modifié dans le projet
+///   (`different_settings_to_system[1 + i]` vide, comme Orca qui sélectionne
+///   alors le preset système), sinon preset utilisateur « <nom> (<projet>) »
+///   avec les valeurs du filament i (options `Preset::filament_options()`,
+///   vecteurs répartis par filament comme Orca).
+async fn import_project_presets(
+    state: &AppState,
+    user_id: UserId,
+    project_name: &str,
+    config: &Map<String, Value>,
+) -> ApiResult<(Option<PresetId>, Vec<PresetId>)> {
+    let different = raw_items(config.get("different_settings_to_system"));
+    let inherits = raw_items(config.get("inherits_group"));
+    let colours = raw_items(config.get("filament_colour"));
+    let machine_conditions = raw_items(config.get("compatible_machine_expression_group"));
+    let process_conditions = raw_items(config.get("compatible_process_expression_group"));
+    let count = colours.len();
+
+    // Imprimante.
+    let machines = state
+        .storage
+        .presets()
+        .list_by_kind(PresetKind::Machine, user_id)
+        .await?;
+    let printer_name = raw_text(config.get("printer_settings_id")).filter(|n| !n.is_empty());
+    let candidates = [
+        printer_name,
+        inherits.last().cloned().filter(|n| !n.is_empty()),
+    ];
+    let printer = candidates.iter().flatten().find_map(|name| {
+        machines
+            .iter()
+            .filter(|p| &p.name == name && p.instantiation)
+            // Preset utilisateur du même nom prioritaire (comme Orca).
+            .max_by_key(|p| p.origin == PresetOrigin::User)
+    });
+    let printer = match printer {
+        Some(preset) => {
+            let owned = state.storage.printers().list(user_id).await?;
+            let model = super::slice::machine_model(&machines, preset);
+            let owns = owned.iter().any(|o| {
+                machines
+                    .iter()
+                    .find(|p| p.id == o.machine_preset_id)
+                    .is_some_and(|p| super::slice::machine_model(&machines, p) == model)
+            });
+            owns.then_some(preset.id)
+        }
+        None => None,
+    };
+
+    // Filaments.
+    if count == 0 {
+        return Ok((printer, Vec::new()));
+    }
+    let visible = state
+        .storage
+        .presets()
+        .list_by_kind(PresetKind::Filament, user_id)
+        .await?;
+    let names = raw_items(config.get("filament_settings_id"));
+    let ids = raw_items(config.get("filament_ids"));
+    let self_index: Vec<usize> = raw_items(config.get("filament_self_index"))
+        .iter()
+        .filter_map(|v| v.trim().parse().ok())
+        .collect();
+    let mut filaments = Vec::with_capacity(count);
+    for index in 0..count {
+        let name = names.get(index).cloned().unwrap_or_default();
+        let existing = visible
+            .iter()
+            .filter(|p| !name.is_empty() && p.name == name && p.instantiation)
+            .max_by_key(|p| p.origin == PresetOrigin::User);
+        let modified = different
+            .get(1 + index)
+            .is_some_and(|keys| !keys.trim().is_empty());
+        if let (Some(preset), false) = (existing, modified) {
+            filaments.push(preset.id);
+            continue;
+        }
+        // Valeurs du filament `index` (load_config_file_config : scalaires
+        // copiés, vecteurs → élément i ; vecteurs par variante d'extrudeur
+        // → éléments dont filament_self_index vaut i + 1).
+        let mut values = Map::new();
+        for key in ORCA_FILAMENT_OPTIONS {
+            // Clés propres au preset : jamais reprises des valeurs brutes du
+            // projet (Orca les tire des vecteurs *_group, ci-dessous).
+            if matches!(
+                key,
+                "inherits"
+                    | "compatible_printers"
+                    | "compatible_prints"
+                    | "compatible_printers_condition"
+                    | "compatible_prints_condition"
+            ) {
+                continue;
+            }
+            let Some(value) = config.get(key) else {
+                continue;
+            };
+            let picked = match value {
+                Value::Array(items) if items.len() == count => {
+                    Value::Array(vec![items[index].clone()])
+                }
+                Value::Array(items) if self_index.len() == items.len() && items.len() > count => {
+                    Value::Array(
+                        items
+                            .iter()
+                            .zip(&self_index)
+                            .filter(|(_, owner)| **owner == index + 1)
+                            .map(|(item, _)| item.clone())
+                            .collect(),
+                    )
+                }
+                other => other.clone(),
+            };
+            values.insert(key.to_string(), picked);
+        }
+        if let Some(colour) = colours.get(index) {
+            values.insert("filament_colour".into(), json!([colour]));
+        }
+        // load_config_file_config : compatible_printers_condition =
+        // compatible_machine_expression_group[i + 1] (entrée 0 = process),
+        // compatible_prints_condition = compatible_process_expression_group[i].
+        values.insert(
+            "compatible_printers_condition".into(),
+            json!(machine_conditions
+                .get(1 + index)
+                .cloned()
+                .unwrap_or_default()),
+        );
+        values.insert(
+            "compatible_prints_condition".into(),
+            json!(process_conditions.get(index).cloned().unwrap_or_default()),
+        );
+        let parent = inherits
+            .get(1 + index)
+            .filter(|n| !n.is_empty())
+            .cloned()
+            .or_else(|| existing.map(|p| p.name.clone()));
+        let base = if name.is_empty() {
+            format!("Filament {} ({project_name})", index + 1)
+        } else {
+            format!("{name} ({project_name})")
+        };
+        let preset = create_user_preset_from_raw(
+            state,
+            user_id,
+            PresetKind::Filament,
+            &base,
+            parent,
+            ids.get(index).filter(|id| !id.is_empty()).cloned(),
+            values,
+        )
+        .await?;
+        filaments.push(preset.id);
+    }
+    Ok((printer, filaments))
+}
+
+/// Preset utilisateur à partir de valeurs brutes Orca (clés hors registre
+/// filtrées comme pour le process importé), nom rendu unique par suffixe.
+async fn create_user_preset_from_raw(
+    state: &AppState,
+    user_id: UserId,
+    kind: PresetKind,
+    base: &str,
+    inherits: Option<String>,
+    filament_id: Option<String>,
+    raw: Map<String, Value>,
+) -> ApiResult<Preset> {
+    let resolved = engine::presets::resolve_preset_chain(&[engine::api::RawPreset {
+        name: base.into(),
+        inherits: None,
+        values: raw.clone(),
+    }])
+    .map_err(|e| {
+        tracing::warn!(error = %e, "preset 3MF non résolu");
+        ApiError::validation("configuration 3MF illisible", json!({}))
+    })?;
+    let values: Map<String, Value> = raw
+        .into_iter()
+        .filter(|(key, _)| resolved.0.contains_key(key))
+        .collect();
+    let existing = state.storage.presets().list_by_kind(kind, user_id).await?;
+    let mut name = base.to_string();
+    let mut suffix = 2;
+    while existing.iter().any(|preset| preset.name == name) {
+        name = format!("{base} {suffix}");
+        suffix += 1;
+    }
+    Ok(state
+        .storage
+        .presets()
+        .create_user_preset(
+            user_id,
+            Preset {
+                id: PresetId::new(),
+                kind,
+                name,
+                origin: PresetOrigin::User,
+                user_id: Some(user_id),
+                vendor: None,
+                inherits,
+                instantiation: true,
+                setting_id: None,
+                filament_id,
+                compatible_printers: None,
+                values: Value::Object(values),
+            },
+        )
+        .await?)
 }
 
 /// Conserve la configuration embarquée dans un preset utilisateur autonome.

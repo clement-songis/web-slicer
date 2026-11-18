@@ -116,11 +116,15 @@ fn one_triangle_wsmh() -> Vec<u8> {
 }
 
 async fn get_mesh(app: &Router, cookie: &str, model: &str) -> Response {
+    get_mesh_query(app, cookie, model, "").await
+}
+
+async fn get_mesh_query(app: &Router, cookie: &str, model: &str, query: &str) -> Response {
     app.clone()
         .oneshot(
             Request::builder()
                 .method("GET")
-                .uri(format!("/api/models/{model}/mesh"))
+                .uri(format!("/api/models/{model}/mesh{query}"))
                 .header(header::COOKIE, cookie)
                 .body(Body::empty())
                 .unwrap(),
@@ -162,8 +166,68 @@ async fn pending_conversion_is_conflict() {
     // Modèle créé sans mesh ni erreur : conversion en cours.
     let model_id = create_model(&storage, user, ModelFormat::Step).await;
 
-    let resp = get_mesh(&app, &cookie, &model_id.to_string()).await;
+    // Sans attente : 409 immédiat.
+    let resp = get_mesh_query(&app, &cookie, &model_id.to_string(), "?wait=0").await;
     assert_eq!(resp.status(), StatusCode::CONFLICT);
+    // Attente bornée écoulée sans fin de conversion : 409.
+    let started = std::time::Instant::now();
+    let resp = get_mesh_query(&app, &cookie, &model_id.to_string(), "?wait=1").await;
+    assert_eq!(resp.status(), StatusCode::CONFLICT);
+    assert!(started.elapsed() >= std::time::Duration::from_millis(900));
+}
+
+/// Lot 25 (audit J1-e) : le maillage demandé juste après l'import (conversion
+/// en cours) n'est plus un 409 — la requête attend la fin de la conversion et
+/// répond 200 avec le WSMh.
+#[tokio::test]
+async fn mesh_request_waits_for_the_running_conversion() {
+    let (_d, storage, files, app) = harness().await;
+    let (cookie, user) = register(&app, &storage, "boss@test.local").await;
+    let model_id = create_model(&storage, user, ModelFormat::Step).await;
+    let wsmh = one_triangle_wsmh();
+    let seeded = {
+        let (storage, files, wsmh) = (storage.clone(), files.clone(), wsmh.clone());
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+            let path = files.write_mesh(user, model_id, &wsmh).await.unwrap();
+            storage
+                .models()
+                .set_mesh(user, model_id, &path.to_string_lossy(), 1)
+                .await
+                .unwrap();
+        })
+    };
+    let started = std::time::Instant::now();
+    let resp = get_mesh(&app, &cookie, &model_id.to_string()).await;
+    seeded.await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    assert!(started.elapsed() < std::time::Duration::from_secs(10));
+    let bytes = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+    assert_eq!(bytes.as_ref(), wsmh.as_slice());
+}
+
+/// Échec de conversion pendant l'attente : 422 sans attendre le délai.
+#[tokio::test]
+async fn mesh_request_reports_a_failure_during_the_wait() {
+    let (_d, storage, _files, app) = harness().await;
+    let (cookie, user) = register(&app, &storage, "boss@test.local").await;
+    let model_id = create_model(&storage, user, ModelFormat::Step).await;
+    let failed = {
+        let storage = storage.clone();
+        tokio::spawn(async move {
+            tokio::time::sleep(std::time::Duration::from_millis(300)).await;
+            storage
+                .models()
+                .mark_conversion_failed(user, model_id, "fichier illisible")
+                .await
+                .unwrap();
+        })
+    };
+    let started = std::time::Instant::now();
+    let resp = get_mesh(&app, &cookie, &model_id.to_string()).await;
+    failed.await.unwrap();
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(started.elapsed() < std::time::Duration::from_secs(10));
 }
 
 #[tokio::test]

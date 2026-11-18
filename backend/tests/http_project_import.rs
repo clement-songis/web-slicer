@@ -299,6 +299,64 @@ async fn imports_real_orca_project_with_external_component() {
     assert!(converted, "le composant externe doit produire un maillage");
 }
 
+/// Lot 25 (audit J2-a/J2-h) : comme Orca (load_config_file_config), l'import
+/// d'un projet 3MF pose aussi les presets FILAMENT du projet (un par couleur,
+/// valeurs du filament i réparties depuis la config aplatie), pas seulement le
+/// process. Imprimante : retenue seulement si le compte possède ce modèle
+/// (garde de possession) — ici aucune imprimante déclarée → non posée.
+#[tokio::test]
+async fn importing_a_project_sets_its_filament_presets() {
+    let (_dir, app) = app().await;
+    let cookie = register(&app).await;
+    let archive = include_bytes!("../../engine/tests/fixtures/multi_filament/mmu_painted.3mf");
+    let response = import_project(&app, &cookie, "mmu_painted.3mf", archive).await;
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let project = json_body(response).await;
+    let active = &project["active_presets"];
+    assert!(active["process"].is_string());
+    assert!(
+        active.get("printer").is_none(),
+        "imprimante non possédée : non posée"
+    );
+    let filaments = active["filaments"].as_array().expect("filaments posés");
+    assert_eq!(filaments.len(), 2, "un preset par filament du projet");
+    let mut colours = Vec::new();
+    for id in filaments {
+        let preset = get_json(
+            &app,
+            &cookie,
+            &format!("/api/presets/{}", id.as_str().unwrap()),
+        )
+        .await;
+        assert_eq!(preset["kind"], "filament");
+        let resolved = get_json(
+            &app,
+            &cookie,
+            &format!("/api/presets/{}/resolved", id.as_str().unwrap()),
+        )
+        .await;
+        let values = &resolved["values"];
+        // Une valeur par filament (vecteurs répartis), pas le vecteur du projet.
+        assert_eq!(
+            values["filament_colour"].as_array().map(Vec::len),
+            Some(1),
+            "{values}"
+        );
+        assert_eq!(
+            values["nozzle_temperature"].as_array().map(Vec::len),
+            Some(1),
+            "{values}"
+        );
+        colours.push(
+            values["filament_colour"][0]
+                .as_str()
+                .unwrap()
+                .to_uppercase(),
+        );
+    }
+    assert_eq!(colours, vec!["#F2754E", "#FF0000"]);
+}
+
 #[tokio::test]
 async fn rejects_zip_without_model_without_creating_a_project() {
     let (_dir, app) = app().await;

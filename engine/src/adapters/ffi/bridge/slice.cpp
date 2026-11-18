@@ -6,6 +6,7 @@
 #include "engine/src/adapters/ffi/bridge/model.hpp"
 #include "engine/src/adapters/ffi/bridge.rs.h"
 
+#include "libslic3r/Exception.hpp"
 #include "libslic3r/Model.hpp"
 #include "libslic3r/Print.hpp"
 #include "libslic3r/calib.hpp"
@@ -926,11 +927,28 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
         }
     }
 
-    print.process();
-
+    // Erreurs de tranchage « par objet » d'Orca (Slic3r::SlicingErrors, ex.
+    // GCode::collect_layers_to_print : « One object has an empty first layer
+    // and can't be printed… » pour un objet posé sur un point) : le CLI comme
+    // la GUI refusent le tranchage (BackgroundSlicingProcess : erreur non
+    // critique, message de CHAQUE SlicingError affiché) ; l'exception elle-même
+    // ne porte que « Errors ». Le message d'Orca est restitué tel quel.
     Slic3r::GCodeProcessorResult result;
     const std::string out = std::string(work_dir) + "/plate_1.gcode";
-    const std::string exported = print.export_gcode(out, &result, nullptr);
+    std::string exported;
+    try {
+        print.process();
+        exported = print.export_gcode(out, &result, nullptr);
+    } catch (const Slic3r::SlicingErrors &errors) {
+        std::string message;
+        for (const Slic3r::SlicingError &error : errors.errors_)
+            if (message.find(error.what()) == std::string::npos)
+                message += (message.empty() ? "" : "\n") + std::string(error.what());
+        throw std::runtime_error("tranchage impossible : " +
+                                 (message.empty() ? std::string(errors.what()) : message));
+    } catch (const Slic3r::SlicingError &error) {
+        throw std::runtime_error("tranchage impossible : " + std::string(error.what()));
+    }
     restore_export_metadata(exported.empty() ? out : exported, overrides, std::string(config_json));
 
     RawSliceResult raw;

@@ -109,6 +109,10 @@ pub fn run_in_worker(request_path: &Path) -> EngineResult<SliceResult> {
             || message.starts_with("rien à trancher")
         {
             EngineErrorCode::InvalidConfig
+        } else if message.starts_with("tranchage impossible") {
+            // Slic3r::SlicingError(s) d'Orca (objet non imprimable tel quel) :
+            // refus du modèle, pas un plantage du moteur.
+            EngineErrorCode::InvalidModel
         } else {
             EngineErrorCode::EngineCrashed
         };

@@ -281,3 +281,51 @@ fn load_model_rejects_unsupported_format() {
     assert!(!out.status.success(), "format non supporté → code ≠ 0");
     assert!(result_path(&out.stdout).is_none(), "aucune ligne R");
 }
+
+/// Lot 25 : plafond mémoire du worker (RLIMIT_DATA, `ENGINE_WORKER_MAX_MEMORY_MB`).
+/// Une archive 3MF « zip bomb » (fixture zip_bomb.3mf, 4 Mo → 1,46 Go de XML,
+/// 43 M sommets ; générée par fixtures/gen_zip_bomb.mjs) décompressée par
+/// libslic3r fait échouer le worker (ligne `E`, code ≠ 0) au lieu d'épuiser la
+/// RAM de l'hôte ; un modèle normal passe sous le même plafond.
+#[cfg(target_os = "linux")]
+#[test]
+fn memory_cap_contains_a_3mf_zip_bomb() {
+    const CAP_MB: u64 = 1024;
+    let ok = Command::new(worker_binary())
+        .env("ENGINE_WORKER_MAX_MEMORY_MB", CAP_MB.to_string())
+        .arg("load-model")
+        .arg(common::fixture("cube20.stl"))
+        .arg("stl")
+        .output()
+        .expect("lancement de engine-worker");
+    assert!(
+        ok.status.success(),
+        "un modèle normal passe sous le plafond"
+    );
+    if let Some(path) = result_path(&ok.stdout) {
+        let _ = std::fs::remove_file(path);
+    }
+
+    let out_dir = tempfile::tempdir().unwrap();
+    let started = std::time::Instant::now();
+    let out = Command::new(worker_binary())
+        .env("ENGINE_WORKER_MAX_MEMORY_MB", CAP_MB.to_string())
+        .arg("read-project-3mf")
+        .arg(common::fixture("zip_bomb.3mf"))
+        .arg(out_dir.path().join("view.json"))
+        .output()
+        .expect("lancement de engine-worker");
+    assert!(!out.status.success(), "la zip bomb doit être refusée");
+    assert!(result_path(&out.stdout).is_none(), "aucune ligne R");
+    assert!(started.elapsed() < std::time::Duration::from_secs(240));
+    // Pic résident des enfants terminés (ru_maxrss, Kio) borné par le plafond.
+    let mut usage = std::mem::MaybeUninit::<nix::libc::rusage>::zeroed();
+    // SAFETY : getrusage remplit la structure fournie.
+    unsafe { nix::libc::getrusage(nix::libc::RUSAGE_CHILDREN, usage.as_mut_ptr()) };
+    let max_rss_mb = unsafe { usage.assume_init() }.ru_maxrss as u64 / 1024;
+    eprintln!("pic résident des workers : {max_rss_mb} Mio");
+    assert!(
+        max_rss_mb < CAP_MB,
+        "pic résident {max_rss_mb} Mio ≥ plafond {CAP_MB} Mio"
+    );
+}

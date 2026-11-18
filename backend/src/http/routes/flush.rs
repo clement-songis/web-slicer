@@ -50,8 +50,8 @@ pub async fn flush_volumes(
     Json(body): Json<FlushVolumesRequest>,
 ) -> ApiResult<Json<FlushVolumesResponse>> {
     let invalid = |m: &str| ApiError::validation(m, serde_json::json!({}));
-    if body.colours.is_empty() || body.colours.len() > 64 {
-        return Err(invalid("1 à 64 couleurs attendues"));
+    if body.colours.len() > 64 {
+        return Err(invalid("64 couleurs au plus"));
     }
     let hex = |c: &str| {
         let h = c.strip_prefix('#').unwrap_or(c);
@@ -66,6 +66,15 @@ pub async fn flush_volumes(
     let multiplier = body.multiplier.unwrap_or(1.0);
     if !(multiplier.is_finite() && multiplier > 0.0) {
         return Err(invalid("multiplicateur invalide"));
+    }
+    // Aucun filament : matrice 0 × 0 (réponse valide, sans worker). L'interface
+    // sonde la disponibilité de la route par une liste vide à chaque session :
+    // un 422 ici apparaissait comme une erreur en console (audit J2-i).
+    if body.colours.is_empty() {
+        return Ok(Json(FlushVolumesResponse {
+            matrix: Vec::new(),
+            multiplier,
+        }));
     }
     let config = match body.project_id.as_deref() {
         None => None,

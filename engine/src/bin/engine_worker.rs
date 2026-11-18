@@ -223,7 +223,68 @@ fn exit_with_parent() {
     }
 }
 
+/// Plafond mémoire du worker (lot 25) : variable `ENGINE_WORKER_MAX_MEMORY_MB`
+/// (Mio ; 0 = aucun plafond), défaut = quart de la mémoire physique, borné à
+/// [3 Gio, 8 Gio] (le worker réserve déjà ~530 Mio de projections inscriptibles
+/// au démarrage, TBB/OpenVDB compris, pour ~50 Mio résidents).
+const ENV_MAX_MEMORY_MB: &str = "ENGINE_WORKER_MAX_MEMORY_MB";
+
+/// Plafond en octets retenu pour ce worker (None = illimité).
+fn memory_limit_bytes() -> Option<u64> {
+    const MIB: u64 = 1024 * 1024;
+    if let Ok(raw) = std::env::var(ENV_MAX_MEMORY_MB) {
+        if let Ok(mb) = raw.trim().parse::<u64>() {
+            return (mb > 0).then_some(mb.saturating_mul(MIB));
+        }
+    }
+    #[cfg(unix)]
+    {
+        // SAFETY : sysconf est sans effet de bord.
+        let pages = unsafe { nix::libc::sysconf(nix::libc::_SC_PHYS_PAGES) };
+        let page = unsafe { nix::libc::sysconf(nix::libc::_SC_PAGESIZE) };
+        if pages > 0 && page > 0 {
+            let quarter = (pages as u64).saturating_mul(page as u64) / 4;
+            return Some(quarter.clamp(3 * 1024 * MIB, 8 * 1024 * MIB));
+        }
+    }
+    Some(8 * 1024 * MIB)
+}
+
+/// Plafonne la mémoire du worker : une entrée hostile (3MF « zip bomb »
+/// décompressé par libslic3r, maillage démesuré) fait échouer CE process
+/// (allocation refusée → erreur ou abandon, contenus par le parent) au lieu
+/// d'épuiser la RAM de l'hôte. RLIMIT_DATA plutôt que RLIMIT_AS : depuis
+/// Linux 4.7 il compte les projections privées inscriptibles (tas, mmap
+/// anonymes, piles des threads) mais pas les réservations d'espace d'adressage
+/// sans accès (arènes glibc, réserves TBB), qui gonflent la mémoire virtuelle
+/// sans consommer de RAM et feraient échouer un RLIMIT_AS raisonnable.
+fn limit_memory() {
+    #[cfg(unix)]
+    if let Some(bytes) = memory_limit_bytes() {
+        let mut current = nix::libc::rlimit {
+            rlim_cur: nix::libc::RLIM_INFINITY,
+            rlim_max: nix::libc::RLIM_INFINITY,
+        };
+        // SAFETY : appel système sur une structure locale valide.
+        unsafe { nix::libc::getrlimit(nix::libc::RLIMIT_DATA, &mut current) };
+        // Jamais au-dessus d'un plafond déjà imposé par le parent.
+        let wanted = (bytes as nix::libc::rlim_t).min(current.rlim_max);
+        let limit = nix::libc::rlimit {
+            rlim_cur: wanted,
+            rlim_max: current.rlim_max,
+        };
+        // SAFETY : appel système sur une structure locale valide.
+        if unsafe { nix::libc::setrlimit(nix::libc::RLIMIT_DATA, &limit) } != 0 {
+            eprintln!(
+                "plafond mémoire du worker non appliqué : {}",
+                std::io::Error::last_os_error()
+            );
+        }
+    }
+}
+
 fn main() {
+    limit_memory();
     exit_with_parent();
     let args = effective_args();
     match args.get(1).map(String::as_str) {

@@ -292,19 +292,32 @@ async fn flush_volumes_from_colours() {
     assert_eq!((matrix[0], matrix[3]), (0.0, 0.0));
     assert!(matrix[1] > 0.0 && matrix[2] > 0.0, "{body}");
     assert_eq!(body["multiplier"], 1.5);
-    // Couleur invalide / liste vide → 422 (l'interface sonde la route ainsi).
-    for colours in [serde_json::json!(["rouge"]), serde_json::json!([])] {
-        let resp = app
-            .clone()
-            .oneshot(post(
-                "/api/flush-volumes",
-                &user,
-                serde_json::json!({ "colours": colours }),
-            ))
-            .await
-            .unwrap();
-        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
-    }
+    // Couleur invalide → 422.
+    let resp = app
+        .clone()
+        .oneshot(post(
+            "/api/flush-volumes",
+            &user,
+            serde_json::json!({ "colours": ["rouge"] }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Liste vide (sonde de disponibilité de l'interface, lot 25) → 200,
+    // matrice 0 × 0 : plus d'erreur en console à chaque session.
+    let resp = app
+        .clone()
+        .oneshot(post(
+            "/api/flush-volumes",
+            &user,
+            serde_json::json!({ "colours": [] }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = json_body(resp).await;
+    assert_eq!(body["matrix"], serde_json::json!([]));
+    assert_eq!(body["multiplier"], 1.0);
 }
 
 /// « Remplir le plateau » (FillBedJob d'Orca) : copies de l'objet ciblé

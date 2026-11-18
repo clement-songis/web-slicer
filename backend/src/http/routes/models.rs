@@ -14,7 +14,7 @@
 
 use std::path::Path as FsPath;
 
-use axum::extract::{Multipart, Path, State};
+use axum::extract::{Multipart, Path, Query, State};
 use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -245,21 +245,64 @@ fn parse_model_id(raw: &str) -> ApiResult<ModelId> {
 /// conversion terminée (200). Tant qu'elle est en cours → **409** ; si elle a
 /// échoué (`conversion_error`) → **422**. Plus de parseur STL serveur ni
 /// d'aperçu client.
+/// Attente maximale par défaut de `GET /api/models/{id}/mesh` pendant la
+/// conversion (s) ; `?wait=<s>` la règle (0 = réponse immédiate), bornée.
+pub const MESH_WAIT_DEFAULT_SECS: u64 = 30;
+const MESH_WAIT_MAX_SECS: u64 = 120;
+
+#[derive(Debug, Default, serde::Deserialize)]
+pub struct MeshQuery {
+    /// Secondes d'attente de la fin de conversion avant de répondre 409.
+    pub wait: Option<u64>,
+}
+
+/// `GET /api/models/{id}/mesh` — maillage converti (WSMh). Pendant la
+/// conversion asynchrone (import : 1 à quelques secondes), la requête ATTEND
+/// sa fin (au plus `wait` s, défaut 30) au lieu de répondre 409 tout de suite :
+/// l'éditeur demande le maillage juste après l'import et chaque import
+/// produisait un 409 en console (audit J1-e). Au-delà du délai : 409
+/// « conversion en cours » (inchangé) ; échec de conversion : 422.
 pub async fn mesh(
     CurrentUser(user): CurrentUser,
     State(state): State<AppState>,
     Path(id): Path<String>,
+    Query(query): Query<MeshQuery>,
 ) -> ApiResult<Response> {
     let id = parse_model_id(&id)?;
-    let model = state.storage.models().get(user.id, id).await?; // 404 si autre compte
-
-    let Some(mesh_path) = model.mesh_path.as_deref() else {
-        return Err(if model.conversion_error.is_some() {
-            ApiError::conversion_failed("échec de la conversion du modèle par le moteur")
-        } else {
-            ApiError::conflict("conversion en cours (voir l'événement model.converted)")
-        });
+    let wait = std::time::Duration::from_secs(
+        query
+            .wait
+            .unwrap_or(MESH_WAIT_DEFAULT_SECS)
+            .min(MESH_WAIT_MAX_SECS),
+    );
+    let deadline = tokio::time::Instant::now() + wait;
+    let mut events = state.events.subscribe(user.id);
+    let model = loop {
+        let model = state.storage.models().get(user.id, id).await?; // 404 si autre compte
+        if model.mesh_path.is_some() {
+            break model;
+        }
+        if model.conversion_error.is_some() {
+            return Err(ApiError::conversion_failed(
+                "échec de la conversion du modèle par le moteur",
+            ));
+        }
+        let now = tokio::time::Instant::now();
+        if now >= deadline {
+            return Err(ApiError::conflict(
+                "conversion en cours (voir l'événement model.converted)",
+            ));
+        }
+        // Réveil sur tout événement du compte (model.converted…) ou, au plus
+        // tard, toutes les 250 ms (échec de conversion : pas d'événement dédié).
+        let tick = (deadline - now).min(std::time::Duration::from_millis(250));
+        if let Ok(Err(tokio::sync::broadcast::error::RecvError::Closed)) =
+            tokio::time::timeout(tick, events.recv()).await
+        {
+            tokio::time::sleep(tick).await;
+        }
     };
+    let mesh_path = model.mesh_path.as_deref().expect("maillage prêt");
 
     let bytes = state
         .files

@@ -410,13 +410,21 @@ struct PreviewState {
     width: f32,
     height: f32,
     relative_e: bool,
+    /// Couche courante = couche implicite d'avant le premier changement.
+    implicit_layer: bool,
 }
 
 /// Reconstruit le modèle couches → segments d'un G-code (R6).
 pub fn parse_preview(gcode: &str) -> PreviewModel {
     let mut st = PreviewState::default();
-    // Couche implicite 0 : accueille les mouvements avant le premier changement.
+    // Couche implicite 0 : accueille les mouvements avant le premier changement
+    // (G-code de démarrage : ligne de purge…). Comme le GCodeProcessor d'Orca
+    // (couche d'un mouvement = max(1, m_layer_id) − 1), ces mouvements sont
+    // rattachés à la PREMIÈRE couche marquée : le premier `;LAYER_CHANGE`
+    // ne crée pas de couche, il donne sa hauteur à la couche implicite. Sans
+    // marqueur (G-code générique), la couche implicite reste seule.
     let mut layers = vec![PreviewLayer::default()];
+    st.implicit_layer = true;
 
     for line in gcode.lines() {
         let (code, comment) = match line.split_once(';') {
@@ -447,7 +455,14 @@ fn apply_comment(comment: &str, st: &mut PreviewState, layers: &mut Vec<PreviewL
     {
         st.kind = kind_id(v.trim());
     } else if comment == "LAYER_CHANGE" || comment == "CHANGE_LAYER" {
-        layers.push(PreviewLayer::default());
+        if st.implicit_layer {
+            // Première couche marquée : elle absorbe la couche implicite ; sa
+            // hauteur sera celle du `;Z:` qui suit (pas celle de la purge).
+            st.implicit_layer = false;
+            layers.last_mut().unwrap().z = 0.0;
+        } else {
+            layers.push(PreviewLayer::default());
+        }
     } else if let Some(v) = comment.strip_prefix("Z:") {
         if let Ok(z) = v.trim().parse::<f32>() {
             layers.last_mut().unwrap().z = z;
@@ -730,6 +745,25 @@ G1 X0 Y0 E2.0 F1800
         assert_eq!(l1.z, 0.4);
         assert_eq!(l1.segments.len(), 1);
         assert_eq!(l1.segments[0].extruder, 1);
+    }
+
+    /// Lot 25 (audit J1-c) : extrusions du G-code de démarrage (purge P1S à
+    /// Z 10) avant le premier `;LAYER_CHANGE` → rattachées à la première couche
+    /// comme le GCodeProcessor d'Orca (max(1, m_layer_id) − 1) : N couches et
+    /// non N + 1, première couche à 0,2 mm et non 10 mm.
+    #[test]
+    fn start_gcode_extrusions_belong_to_the_first_layer() {
+        let gcode = format!(
+            "M83\nG1 Z10 F1200\nG1 X5 Y0 E2 F300\nG1 X10 Y0 E2\nG92 E0\nM82\n{PREVIEW_GCODE}"
+        );
+        let model = parse_preview(&gcode);
+        assert_eq!(model.layer_count(), 2, "pas de couche fantôme");
+        assert_eq!(model.layers[0].z, 0.2);
+        assert_eq!(model.layers[1].z, 0.4);
+        // 2 segments de purge + 3 extrusions de la couche 1.
+        assert_eq!(model.layers[0].segments.len(), 5);
+        assert_eq!(model.layers[0].segments[0].end, [5.0, 0.0, 10.0]);
+        assert_eq!(model.summary().layer_z, vec![0.2, 0.4]);
     }
 
     #[test]

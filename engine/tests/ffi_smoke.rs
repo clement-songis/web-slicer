@@ -439,6 +439,43 @@ fn arrange_respects_excluded_regions() {
     }
 }
 
+/// Lot 25 (audit J4-a) : plateau Bambu à zone exclue (P1S, bed_exclude_area
+/// 0,0 18,0 18,28 0,28 sur 256 × 256) — comme ArrangeJob d'Orca (zones
+/// virtuelles gonflées, do_final_align conservé), la pile est recentrée et
+/// non laissée dans le coin avant gauche ; aucune pièce dans la zone exclue.
+#[test]
+fn arrange_centres_the_pile_on_a_bed_with_an_excluded_area() {
+    use engine::api::ArrangeParams;
+    let mut model = cube_scene(3);
+    let bed = engine::api::BuildVolume {
+        bed_shape: vec![[0.0, 0.0], [256.0, 0.0], [256.0, 256.0], [0.0, 256.0]],
+        max_height: 250.0,
+        excluded: vec![vec![[0.0, 0.0], [18.0, 0.0], [18.0, 28.0], [0.0, 28.0]]],
+    };
+    engine::adapters::ffi::arrange(&mut model, &bed, &ArrangeParams::default()).expect("arrange");
+    let boxes = world_boxes(&model);
+    let boxes = boxes.get(&0).unwrap();
+    assert_eq!(boxes.len(), 3);
+    assert_no_box_collisions(boxes);
+    let (mut lo, mut hi) = ([f64::MAX; 2], [f64::MIN; 2]);
+    for (l, h) in boxes {
+        assert!(
+            l[0] >= 18.0 - 1e-3 || l[1] >= 28.0 - 1e-3,
+            "objet dans la zone exclue : {l:?} {h:?}"
+        );
+        for a in 0..2 {
+            lo[a] = lo[a].min(l[a]);
+            hi[a] = hi[a].max(h[a]);
+        }
+    }
+    let center = [(lo[0] + hi[0]) / 2.0, (lo[1] + hi[1]) / 2.0];
+    eprintln!("centre de la pile (zone exclue) : {center:?}");
+    assert!(
+        (center[0] - 128.0).abs() < 5.0 && (center[1] - 128.0).abs() < 5.0,
+        "pile non centrée : {center:?}"
+    );
+}
+
 #[test]
 fn arrange_is_independent_per_plate_and_preserves_indices() {
     use engine::api::ArrangeParams;
@@ -513,6 +550,54 @@ fn slice_normalizes_spiral_mode_like_the_cli() {
             .split(',')
             .all(|v| v == "0"),
         "pas de rétraction au changement de couche"
+    );
+}
+
+/// Lot 25 (audit J7-a) : objet posé sur un point (cône pointe en bas,
+/// fixture cone_down.stl) → première couche vide. Le CLI Orca 2.4.1 refuse
+/// aussi (« Errors », SlicingErrors de GCode::collect_layers_to_print) et la
+/// GUI affiche le message de chaque SlicingError : le moteur refuse de même,
+/// avec le message d'Orca et non le générique « Errors », sans plantage.
+#[test]
+fn object_with_an_empty_first_layer_is_refused_with_orca_message() {
+    use engine::api::{CancelToken, ConfigValue, EngineErrorCode, SliceRequest};
+    let (project, mut config) =
+        engine::adapters::ffi::read_project_3mf(&common::fixture("orca_project.3mf"))
+            .expect("lecture du projet 3MF");
+    // Même contournement que slice_normalizes_spiral_mode_like_the_cli : la
+    // validation « E relative » (G92 E0 requis avec Marlin) n'est pas l'objet.
+    config
+        .set("use_relative_e_distances", ConfigValue::Bool(false))
+        .unwrap();
+    let anchor = project.objects[0].instances[0].matrix.w_axis;
+    let mut model = engine::adapters::ffi::load_model(&common::fixture("cone_down.stl")).unwrap();
+    let min_z = model.objects[0].volumes[0]
+        .mesh
+        .vertices
+        .iter()
+        .map(|v| v[2] as f64)
+        .fold(f64::INFINITY, f64::min);
+    for instance in &mut model.objects[0].instances {
+        instance.matrix =
+            glam::DMat4::from_translation(glam::DVec3::new(anchor.x, anchor.y, -min_z));
+    }
+    let work = tempfile::tempdir().unwrap();
+    let req = SliceRequest {
+        allow_mixed_temperatures: false,
+        model,
+        config,
+        plate_index: 0,
+        work_dir: work.path().to_path_buf(),
+        calib: None,
+    };
+    let err = engine::adapters::ffi::slice(req, Box::new(|_, _| {}), CancelToken::new())
+        .expect_err("Orca refuse ce tranchage");
+    eprintln!("{err}");
+    assert_eq!(err.code, EngineErrorCode::InvalidModel, "{err}");
+    assert!(
+        err.message.contains("empty first layer"),
+        "message d'Orca attendu : {}",
+        err.message
     );
 }
 

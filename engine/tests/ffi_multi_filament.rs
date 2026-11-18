@@ -302,6 +302,65 @@ fn mmu_painted_cube_matches_orca() {
     assert_same("mmu_painted", &ours, &orca);
 }
 
+/// Lot 25 (audit J2-e) : même scène sur une Bambu Lab P1S (presets BBL, 2
+/// filaments, cube peint moitié haute en filament 2 ; .work/staging/
+/// parity-audit/lot25/p1s_ref.py) : Orca compte les filaments peints
+/// (ModelVolume::get_extruders) et garde la tour d'essuyage
+/// (enable_prime_tower = 1) ; le moteur la coupait (normalize_fdm_2 voyait un
+/// seul filament utilisé).
+#[test]
+fn p1s_painted_cube_keeps_the_prime_tower_like_orca() {
+    let (_, ours) = slice_3mf("p1s_painted.3mf");
+    let orca = normalize(&std::fs::read_to_string(fixture("p1s_painted.orca.gcode")).unwrap());
+    assert!(
+        orca.iter().any(|l| l == "; enable_prime_tower = 1"),
+        "référence : tour d'Orca"
+    );
+    assert!(
+        ours.iter().any(|l| l == "; enable_prime_tower = 1"),
+        "tour d'essuyage coupée par le moteur"
+    );
+    assert_eq!(
+        tool_changes(&ours),
+        tool_changes(&orca),
+        "changements d'outil"
+    );
+    assert_same("p1s_painted", &ours, &orca);
+}
+
+/// Lot 25 : même scène que ci-dessus, config telle que la produit le backend
+/// (presets résolus : `adaptive_pressure_advance_overhangs` absent). Avant le
+/// correctif (horodatage de la peinture, project.cpp) le cache de
+/// ModelVolume::get_extruders était lu périmé dans cette disposition mémoire
+/// (reproductible à chaque tirage) et la tour d'essuyage disparaissait.
+#[test]
+fn painted_cube_keeps_the_prime_tower_whatever_the_config_layout() {
+    let (model, mut config) =
+        engine::adapters::ffi::read_project_3mf(&fixture("p1s_painted.3mf")).expect("3MF");
+    for drop in [None, Some("adaptive_pressure_advance_overhangs")] {
+        if let Some(key) = drop {
+            config.0.remove(key);
+        }
+        let work = tempfile::tempdir().unwrap();
+        let req = SliceRequest {
+            allow_mixed_temperatures: false,
+            model: model.clone(),
+            config: config.clone(),
+            plate_index: 0,
+            work_dir: work.path().to_path_buf(),
+            calib: None,
+        };
+        let progress: ProgressSink = Box::new(|_, _| {});
+        let result =
+            engine::adapters::ffi::slice(req, progress, CancelToken::new()).expect("tranchage");
+        let text = std::fs::read_to_string(result.gcode_path).unwrap();
+        assert!(
+            text.lines().any(|l| l == "; enable_prime_tower = 1"),
+            "tour d'essuyage coupée (clé retirée : {drop:?})"
+        );
+    }
+}
+
 /// Purge dans les objets (`flush_into_objects`) : le moteur tranchait en
 /// plantant (worker tué par signal) là où Orca produit un G-code.
 #[test]

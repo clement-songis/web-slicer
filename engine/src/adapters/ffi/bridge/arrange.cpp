@@ -68,9 +68,6 @@ rust::Vec<RawObject> arrange_raw(const rust::Vec<RawObject> &objects,
     // Le bridge n'a pas de progression à remonter : ne pas polluer stdout du
     // worker avec le callback par défaut d'Orca.
     params.progressind = [](unsigned, std::string) {};
-    // Arrangement UI : l'alignement final d'Orca ne déplace pas les obstacles
-    // préchargés et peut ainsi réintroduire un chevauchement ; conserver les
-    // positions effectivement validées par le nester.
     // Mode CLI (OrcaSlicer.cpp, branche `need_arrange`) : `arrange_cfg =
     // ArrangeParams()` garde `do_final_align = true` ; finalAlign (nfpplacer)
     // cherche alors, dans le NFP des zones exclues, la position de la pile la
@@ -79,9 +76,14 @@ rust::Vec<RawObject> arrange_raw(const rust::Vec<RawObject> &objects,
     // GUI Orca (ArrangeJob.cpp:777, ArrangeParams() : do_final_align = true,
     // align_center = best_object_pos = 0,5×0,5) : la pile est recentrée sur le
     // plateau. Sans recentrage, le nester laisse les objets dans le coin où il
-    // les a empilés (F9 : « coin arrière droit »). Exception conservée : en
-    // mode UI avec zones exclues, l'alignement peut recouvrir un obstacle
-    // (cf. ci-dessus) — ajusté après lecture des zones.
+    // les a empilés (F9 : « coin arrière droit »). Avec zones exclues (Bambu :
+    // bed_exclude_area), la GUI garde aussi l'alignement (seul FillBedJob le
+    // coupe) : les zones y sont des objets virtuels gonflés, exactement comme
+    // dans le CLI (PartPlateList::preprocess_exclude_areas, appelé par
+    // ArrangeJob::prepare sur m_unselected puis sur params.excluded_regions
+    // avec scale_(1)) — finalAlign cherche alors la position de la pile la
+    // plus proche du centre hors des zones (lot 25 : la pile restait dans le
+    // coin avant gauche d'une P1S).
     params.do_final_align = true;
     // Comme le CLI Orca (`arrange_cfg.allow_rotations`) : rotation de la boîte
     // englobante minimale de l'enveloppe convexe, puis essais à 45° près.
@@ -92,24 +94,25 @@ rust::Vec<RawObject> arrange_raw(const rust::Vec<RawObject> &objects,
         if (points.size() < 3)
             throw std::runtime_error("zone d'exclusion invalide");
         Slic3r::arrangement::ArrangePolygon excluded;
-        excluded.poly = Slic3r::ExPolygon(std::move(points));
+        // PartPlate::m_exclude_bounding_box : Orca arrange contre la boîte
+        // englobante de chaque zone (identique pour les zones rectangulaires
+        // des Bambu, ex. P1S 0,0 18,0 18,28 0,28).
+        excluded.poly = Slic3r::ExPolygon(Slic3r::BoundingBox(points).polygon());
         excluded.bed_idx = 0;
-        if (orca_cli_mode) {
-            // PartPlateList::preprocess_exclude_areas : objet virtuel, hauteur
-            // 1 ; gonflé de 1 mm, aussi bien dans `unselected`
-            // (update_unselected_items_inflation, exclusion_gap = 1 hors
-            // impression séquentielle) que dans `arrange_cfg.excluded_regions`
-            // (preprocess_exclude_areas(…, scale_(1))).
-            excluded.is_virt_object = true;
-            excluded.height = 1;
-            excluded.name = "ExcludedRegion" + std::to_string(excluded_regions.size());
-            excluded.inflation = Slic3r::scaled(1.0);
-        }
+        // PartPlateList::preprocess_exclude_areas (CLI et GUI ArrangeJob) :
+        // objet virtuel, hauteur 1 ; gonflé de 1 mm, aussi bien dans
+        // `unselected` (update_unselected_items_inflation, exclusion_gap = 1
+        // hors impression séquentielle) que dans `excluded_regions`
+        // (preprocess_exclude_areas(…, scale_(1))).
+        excluded.is_virt_object = true;
+        excluded.height = 1;
+        excluded.name = "ExcludedRegion" + std::to_string(excluded_regions.size());
+        excluded.inflation = Slic3r::scaled(1.0);
         excluded_regions.emplace_back(std::move(excluded));
     }
-
-    if (!orca_cli_mode && !excluded_regions.empty())
-        params.do_final_align = false;
+    // `orca_cli_mode` ne change plus la prise en compte des zones exclues
+    // (identique CLI / GUI) ; conservé dans le protocole.
+    (void)orca_cli_mode;
 
     Slic3r::Model model;
     raw_into_model(objects, model);

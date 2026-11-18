@@ -152,6 +152,18 @@ void raw_into_model(const rust::Vec<RawObject> &objects, Slic3r::Model &model)
                     facets.set_triangle_from_string(triangle, state);
                     last = triangle;
                 }
+                // Horodatage propre à cette peinture (lot 25, tour d'essuyage
+                // coupée sur un objet peint seul) : set_triangle_from_string ne
+                // touche pas le timestamp, resté à 1 comme pour TOUT volume non
+                // peint. Or ModelVolume::get_extruders met en cache les
+                // filaments peints sous `mmuseg_ts`, membre NON initialisé
+                // par les constructeurs de ModelVolume (Orca 2.4.1) : la copie
+                // faite par Print::apply héritait d'une valeur de tas égale à 1
+                // (ancien volume) → cache vide, un seul filament compté,
+                // normalize_fdm_2 coupait la tour. Dans la GUI d'Orca, peindre
+                // passe par FacetsAnnotation::set() qui touche l'horodatage.
+                if (!entries.empty())
+                    facets.touch();
             }
         }
         for (const RawInstance &raw_instance : raw_object.instances) {
