@@ -53,6 +53,12 @@ pub struct CutRequest {
     #[serde(default)]
     #[ts(optional)]
     pub keep_lower: Option<bool>,
+    /// « Garder la peinture » (keep_painting d'Orca, ModelObjectCutAttribute::
+    /// KeepPaint) : peinture actuelle du modèle par canal (`supports`, `seam`,
+    /// `mmu`, `fuzzy` → triangle → chaîne 3MF), reportée sur chaque pièce.
+    #[serde(default)]
+    #[ts(optional, type = "Record<string, Record<number, string>>")]
+    pub keep_painting: Option<std::collections::BTreeMap<String, engine::api::paint::PaintFacets>>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, TS)]
@@ -114,6 +120,10 @@ pub struct MeshOpPartResponse {
     pub triangles: u32,
     pub volume_mm3: f64,
     pub watertight: bool,
+    /// Peinture reportée sur la pièce (coupe avec `keep_painting`).
+    #[ts(optional, type = "Record<string, Record<number, string>>")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub paint: Option<std::collections::BTreeMap<String, engine::api::paint::PaintFacets>>,
 }
 
 /// Réponse commune de split / cut / boolean (201).
@@ -496,9 +506,46 @@ pub async fn cut(
         indices: vec![[0, 0, 0]],
     }])
     .map_err(|e| ApiError::validation(e.to_string(), serde_json::json!({})))?;
+    if let Some(bad) = req
+        .keep_painting
+        .iter()
+        .flat_map(|c| c.keys())
+        .find(|k| !engine::api::paint::PAINT_CHANNEL_KEYS.contains(&k.as_str()))
+    {
+        return Err(ApiError::validation(
+            "canal de peinture inconnu (supports, seam, mmu, fuzzy)",
+            serde_json::json!({ "channel": bad }),
+        ));
+    }
     let mesh = centered(load_mesh(&state, &source).await?);
-    let parts = run_mesh_op(&op, &[mesh]).await.map_err(worker_api_error)?;
-    persist_parts(&state, user.id, project_id, &source.filename, parts).await
+    let parts = run_mesh_op(&op, std::slice::from_ref(&mesh))
+        .await
+        .map_err(worker_api_error)?;
+    // Orca (CutUtils.cpp:336) : peinture sauvegardée dans le repère de coupe
+    // puis remappée sur chaque pièce ; les pièces sortent du worker dans le
+    // repère du maillage centré.
+    let mut paints = Vec::with_capacity(parts.len());
+    if let Some(channels) = req
+        .keep_painting
+        .filter(|c| c.values().any(|f| !f.is_empty()))
+    {
+        for part in &parts {
+            paints.push(Some(
+                super::scene::remap_paint_via_worker(
+                    mesh.clone(),
+                    part.mesh.clone(),
+                    channels.clone(),
+                )
+                .await?,
+            ));
+        }
+    }
+    let (status, Json(mut response)) =
+        persist_parts(&state, user.id, project_id, &source.filename, parts).await?;
+    for (part, paint) in response.parts.iter_mut().zip(paints) {
+        part.paint = paint;
+    }
+    Ok((status, Json(response)))
 }
 
 /// `POST /api/projects/{id}/boolean` — booléen mcut (outil Mesh Boolean)
@@ -785,6 +832,7 @@ async fn persist_part(
         triangles,
         volume_mm3: signed_volume(&part.mesh),
         watertight: analysis.watertight(),
+        paint: None,
     })
 }
 

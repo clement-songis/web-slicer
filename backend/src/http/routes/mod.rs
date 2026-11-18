@@ -15,6 +15,7 @@ pub mod jobs;
 pub mod mesh_ops;
 pub mod models;
 pub mod paint;
+pub mod preferences;
 pub mod presets;
 pub mod preview;
 pub mod printers;
@@ -48,6 +49,10 @@ where
         .route("/api/auth/login", post(auth::login))
         .route("/api/auth/logout", post(auth::logout))
         .route("/api/auth/me", get(auth::me).delete(auth::delete_me))
+        .route(
+            "/api/me/preferences",
+            get(preferences::get).put(preferences::put),
+        )
         .route(
             "/api/admin/instance",
             get(admin::get_instance).patch(admin::patch_instance),

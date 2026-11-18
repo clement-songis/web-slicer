@@ -703,6 +703,16 @@ pub async fn remap_paint(
         ApiError::conflict("aucun maillage précédent (simplifier ou réparer d'abord)")
     })?;
     let source = decode_display_mesh(&bytes)?;
+    let channels = remap_paint_via_worker(source, target, req.channels).await?;
+    Ok(Json(RemapPaintHttpResponse { channels }))
+}
+
+/// Remappage de peinture (« Garder la peinture ») dans engine-worker.
+pub(crate) async fn remap_paint_via_worker(
+    source: TriangleMesh,
+    target: TriangleMesh,
+    channels: std::collections::BTreeMap<String, engine::api::paint::PaintFacets>,
+) -> ApiResult<std::collections::BTreeMap<String, engine::api::paint::PaintFacets>> {
     let dir = crate::workdir::tempdir().map_err(|e| {
         tracing::error!(error = %e, "répertoire de travail");
         ApiError::internal()
@@ -711,7 +721,7 @@ pub async fn remap_paint(
     let request = engine::api::paint::RemapPaintRequest {
         source,
         target,
-        channels: req.channels,
+        channels,
     };
     std::fs::write(
         &request_path,
@@ -745,9 +755,7 @@ pub async fn remap_paint(
         .ok_or_else(ApiError::internal)?;
     let response: engine::api::paint::RemapPaintResponse =
         serde_json::from_str(payload).map_err(|_| ApiError::internal())?;
-    Ok(Json(RemapPaintHttpResponse {
-        channels: response.channels,
-    }))
+    Ok(response.channels)
 }
 
 /// WSMh (maillage d'affichage) → TriangleMesh.

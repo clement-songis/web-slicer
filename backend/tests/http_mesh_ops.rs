@@ -626,3 +626,109 @@ async fn mesh_ops_are_isolated_between_accounts() {
     .await;
     assert_eq!(status, StatusCode::NOT_FOUND);
 }
+
+/// « Garder la peinture » (keep_painting d'Orca) : coupe avec KeepPaint —
+/// peinture reportée sur chaque pièce, section neuve non peinte ; puis
+/// remappage après réparation (POST …/remap-paint), 409 sans maillage
+/// précédent, 422 canal inconnu.
+#[tokio::test]
+async fn keep_painting_follows_cut_and_repair() {
+    let Some(ctx) = setup(&cubes_stl(&[([0.0, 0.0, 0.0], 20.0)])).await else {
+        return;
+    };
+    let all: serde_json::Map<String, serde_json::Value> = (0..12)
+        .map(|t| (t.to_string(), serde_json::json!("4")))
+        .collect();
+    let paint = serde_json::json!({ "supports": all });
+
+    // Remappage sans maillage précédent : 409.
+    let remap_uri = format!("/api/models/{}/remap-paint", ctx.model);
+    let (status, body) = send(
+        &ctx.app,
+        post(
+            &remap_uri,
+            &ctx.user,
+            serde_json::json!({ "channels": paint.clone() }),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT, "{body}");
+
+    // Coupe avec peinture : chaque pièce porte une peinture partielle.
+    let uri = format!("/api/models/{}/cut", ctx.model);
+    let (status, body) = send(
+        &ctx.app,
+        post(
+            &uri,
+            &ctx.user,
+            serde_json::json!({
+                "plane": { "point": [0, 0, 2.5], "normal": [0, 0, 1] },
+                "keep_painting": paint.clone()
+            }),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    for part in body["parts"].as_array().unwrap() {
+        let painted = part["paint"]["supports"]
+            .as_object()
+            .expect("peinture reportée");
+        let triangles = part["triangles"].as_u64().unwrap() as usize;
+        assert!(!painted.is_empty(), "{part}");
+        assert!(
+            painted.len() < triangles,
+            "section de coupe non peinte : {part}"
+        );
+    }
+    // Sans keep_painting : pas de champ paint.
+    let (_, body) = send(
+        &ctx.app,
+        post(
+            &uri,
+            &ctx.user,
+            serde_json::json!({ "plane": { "point": [0, 0, 2.5], "normal": [0, 0, 1] } }),
+        ),
+    )
+    .await;
+    assert!(body["parts"][0].get("paint").is_none(), "{body}");
+    // Canal inconnu : 422.
+    let (status, _) = send(
+        &ctx.app,
+        post(
+            &uri,
+            &ctx.user,
+            serde_json::json!({ "plane": { "point": [0, 0, 2.5], "normal": [0, 0, 1] },
+                                "keep_painting": { "colors": {} } }),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY);
+
+    // Réparation (garde le maillage précédent) puis remappage : même cube,
+    // peinture intégralement conservée.
+    let (status, body) = send(
+        &ctx.app,
+        post(
+            &format!("/api/models/{}/repair", ctx.model),
+            &ctx.user,
+            serde_json::json!({}),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    let (status, body) = send(
+        &ctx.app,
+        post(
+            &remap_uri,
+            &ctx.user,
+            serde_json::json!({ "channels": paint }),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{body}");
+    assert_eq!(
+        body["channels"]["supports"].as_object().unwrap().len(),
+        12,
+        "{body}"
+    );
+}

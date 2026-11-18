@@ -28,6 +28,44 @@ pub async fn run_all(s: &dyn Storage) {
     referenced_user_preset_deletion_is_rejected(s).await;
     printer_preset_references_are_isolated(s).await;
     account_deletion_cascades(s).await;
+    user_preferences_are_per_account_and_cascade(s).await;
+}
+
+/// Préférences par compte : `{}` par défaut, upsert, isolation, cascade.
+async fn user_preferences_are_per_account_and_cascade(s: &dyn Storage) {
+    let a = make_user(s).await;
+    let b = make_user(s).await;
+    assert_eq!(
+        s.users().get_preferences(a.id).await.unwrap(),
+        serde_json::json!({})
+    );
+    let prefs = serde_json::json!({ "zoom_to_mouse": true, "camera": { "style": "free" } });
+    s.users()
+        .set_preferences(a.id, prefs.clone())
+        .await
+        .unwrap();
+    s.users()
+        .set_preferences(a.id, serde_json::json!({ "zoom_to_mouse": false }))
+        .await
+        .unwrap();
+    assert_eq!(
+        s.users().get_preferences(a.id).await.unwrap(),
+        serde_json::json!({ "zoom_to_mouse": false }),
+        "remplacement (upsert)"
+    );
+    assert_eq!(
+        s.users().get_preferences(b.id).await.unwrap(),
+        serde_json::json!({})
+    );
+    s.users().delete(a.id).await.unwrap();
+    assert!(matches!(
+        s.users().set_preferences(a.id, prefs).await,
+        Err(backend::domain::StorageError::NotFound)
+    ));
+    assert_eq!(
+        s.users().get_preferences(a.id).await.unwrap(),
+        serde_json::json!({})
+    );
 }
 
 // --- Helpers -----------------------------------------------------------------

@@ -245,6 +245,37 @@ impl UserRepo for SqliteUserRepo {
         Ok(())
     }
 
+    async fn get_preferences(&self, id: UserId) -> StorageResult<serde_json::Value> {
+        let row = sqlx::query("SELECT prefs_json FROM user_preferences WHERE user_id = ?")
+            .bind(id_str(id))
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(map_sqlx)?;
+        Ok(match row {
+            Some(row) => {
+                let text: String = row.get("prefs_json");
+                serde_json::from_str(&text).unwrap_or_else(|_| serde_json::json!({}))
+            }
+            None => serde_json::json!({}),
+        })
+    }
+
+    async fn set_preferences(&self, id: UserId, prefs: serde_json::Value) -> StorageResult<()> {
+        self.get(id).await?; // NotFound si le compte n'existe pas
+        sqlx::query(
+            "INSERT INTO user_preferences (user_id, prefs_json, updated_at) VALUES (?, ?, ?) \
+             ON CONFLICT(user_id) DO UPDATE SET prefs_json = excluded.prefs_json, \
+             updated_at = excluded.updated_at",
+        )
+        .bind(id_str(id))
+        .bind(json_text(&prefs))
+        .bind(now())
+        .execute(&self.pool)
+        .await
+        .map_err(map_sqlx)?;
+        Ok(())
+    }
+
     async fn delete(&self, id: UserId) -> StorageResult<()> {
         let n = sqlx::query("DELETE FROM users WHERE id = ?")
             .bind(id_str(id))

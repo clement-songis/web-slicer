@@ -6,4 +6,10 @@ import type { CutPlaneDto } from "./CutPlaneDto";
  * modèle (normale quelconque ; `[0,0,1]` = coupe horizontale), moitiés à
  * conserver (défaut : les deux). `upper` = côté de la normale.
  */
-export type CutRequest = { plane: CutPlaneDto, keep_upper?: boolean, keep_lower?: boolean, };
+export type CutRequest = { plane: CutPlaneDto, keep_upper?: boolean, keep_lower?: boolean, 
+/**
+ * « Garder la peinture » (keep_painting d'Orca, ModelObjectCutAttribute::
+ * KeepPaint) : peinture actuelle du modèle par canal (`supports`, `seam`,
+ * `mmu`, `fuzzy` → triangle → chaîne 3MF), reportée sur chaque pièce.
+ */
+keep_painting?: Record<string, Record<number, string>>, };

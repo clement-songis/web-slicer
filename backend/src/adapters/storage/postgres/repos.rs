@@ -250,6 +250,33 @@ impl UserRepo for PgUserRepo {
         Ok(())
     }
 
+    async fn get_preferences(&self, id: UserId) -> StorageResult<serde_json::Value> {
+        let row = sqlx::query("SELECT prefs_json FROM user_preferences WHERE user_id = $1")
+            .bind(uid(id))
+            .fetch_optional(&self.pool)
+            .await
+            .map_err(map_pg)?;
+        Ok(row
+            .map(|r| r.get::<serde_json::Value, _>("prefs_json"))
+            .unwrap_or_else(|| serde_json::json!({})))
+    }
+
+    async fn set_preferences(&self, id: UserId, prefs: serde_json::Value) -> StorageResult<()> {
+        self.get(id).await?; // NotFound si le compte n'existe pas
+        sqlx::query(
+            "INSERT INTO user_preferences (user_id, prefs_json, updated_at) VALUES ($1, $2, $3) \
+             ON CONFLICT (user_id) DO UPDATE SET prefs_json = EXCLUDED.prefs_json, \
+             updated_at = EXCLUDED.updated_at",
+        )
+        .bind(uid(id))
+        .bind(prefs)
+        .bind(now())
+        .execute(&self.pool)
+        .await
+        .map_err(map_pg)?;
+        Ok(())
+    }
+
     async fn delete(&self, id: UserId) -> StorageResult<()> {
         let n = sqlx::query("DELETE FROM users WHERE id = $1")
             .bind(uid(id))

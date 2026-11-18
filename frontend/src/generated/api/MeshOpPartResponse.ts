@@ -12,4 +12,8 @@ label: string,
 /**
  * Centre de la boîte de la pièce (repère : voir l'en-tête du module).
  */
-center: [number, number, number], triangles: number, volume_mm3: number, watertight: boolean, };
+center: [number, number, number], triangles: number, volume_mm3: number, watertight: boolean, 
+/**
+ * Peinture reportée sur la pièce (coupe avec `keep_painting`).
+ */
+paint?: Record<string, Record<number, string>>, };

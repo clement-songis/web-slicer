@@ -55,6 +55,11 @@ pub trait UserRepo: Send + Sync {
     /// Supprime le compte **et cascade** (projets, modèles, presets user,
     /// imprimantes, jobs, gcodes). La purge filesystem est orchestrée à part.
     async fn delete(&self, id: UserId) -> StorageResult<()>;
+    /// Préférences de l'interface du compte (`{}` si jamais enregistrées).
+    async fn get_preferences(&self, id: UserId) -> StorageResult<serde_json::Value>;
+    /// Remplace les préférences du compte (upsert). `NotFound` si le compte
+    /// n'existe pas.
+    async fn set_preferences(&self, id: UserId, prefs: serde_json::Value) -> StorageResult<()>;
 }
 
 #[derive(Debug, Clone)]
