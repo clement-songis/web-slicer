@@ -286,7 +286,13 @@
 	import FlushVolumesDialog from '$lib/editor/FlushVolumesDialog.svelte';
 	import ObjColorDialog from '$lib/editor/ObjColorDialog.svelte';
 	import StepMeshDialog from '$lib/editor/StepMeshDialog.svelte';
-	import { isStep } from '$lib/editor/step-mesh';
+	import {
+		isStep,
+		loadStepPrefs,
+		remeshStep,
+		sameStepOptions,
+		STEP_DEFAULTS
+	} from '$lib/editor/step-mesh';
 	import AuxiliariesPanel from '$lib/editor/AuxiliariesPanel.svelte';
 	import { objColors } from '$lib/api/auxiliaries';
 	import {
@@ -1837,6 +1843,16 @@
 			if (!item || item.status === 'failed') return;
 			const obj = sceneObjects.find((o) => o.id === objectId);
 			if (item.status === 'ready' && obj) {
+				// « Ne plus afficher » (Orca enable_step_mesh_setting) : les réglages
+				// mémorisés s'appliquent sans dialogue s'ils diffèrent des défauts.
+				const prefs = loadStepPrefs();
+				if (!prefs.ask) {
+					if (!sameStepOptions(prefs.options, STEP_DEFAULTS)) {
+						await remeshStep(modelId, prefs.options).catch(() => null);
+						await reloadStepMesh(modelId).catch(() => {});
+					}
+					return;
+				}
 				if (stepMeshPending) return; // un dialogue à la fois
 				stepMeshPending = { objectId, modelId, filename, triangles: obj.mesh.indices.length / 3 };
 				return;

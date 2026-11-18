@@ -4,7 +4,9 @@
 	// serveur Repetier. Seuls les champs utiles au type choisi sont affichés.
 	import { getHostPrinters } from '$lib/api/printers';
 	import { ApiError } from '$lib/api/client';
-	import { HOST_TYPES, hostMeta, type HostForm } from './hosts';
+	import { HOST_GROUPS, hostCapabilities, hostMeta, type HostForm } from './hosts';
+	import IconCheck from '~icons/lucide/check';
+	import IconMinus from '~icons/lucide/minus';
 
 	interface Props {
 		form: HostForm;
@@ -26,6 +28,7 @@
 	}: Props = $props();
 
 	const meta = $derived(hostMeta(form.type));
+	const capabilities = $derived(hostCapabilities(form.type));
 	let slugs = $state<string[] | null>(null);
 	let slugError = $state<string | null>(null);
 	let loadingSlugs = $state(false);
@@ -59,11 +62,34 @@
 			data-testid="host-type"
 			onchange={() => (slugs = null)}
 		>
-			{#each HOST_TYPES as h (h.id)}
-				<option value={h.id}>{h.label}</option>
+			{#each HOST_GROUPS as g (g.label)}
+				<optgroup label={g.label}>
+					{#each g.hosts as h (h.id)}
+						<option value={h.id}>{h.label}</option>
+					{/each}
+				</optgroup>
 			{/each}
 		</select>
 	</label>
+	<!-- Fiche du type choisi : ce que l'hôte permet, d'un coup d'œil (Orca ne le dit
+	     qu'à l'usage, par des boutons grisés). -->
+	<ul class="flex flex-wrap gap-x-3 gap-y-1 text-xs" data-testid="host-capabilities">
+		{#each capabilities as c (c.id)}
+			<li
+				class="inline-flex items-center gap-1 {c.ok
+					? 'text-content-muted'
+					: 'text-content-subtle line-through decoration-content-subtle/60'}"
+				data-capability={c.id}
+				data-ok={c.ok}
+			>
+				{#if c.ok}<IconCheck
+						class="h-3.5 w-3.5 text-success-text"
+						aria-hidden="true"
+					/>{:else}<IconMinus class="h-3.5 w-3.5" aria-hidden="true" />{/if}
+				<span><span class="sr-only">{c.ok ? 'Oui : ' : 'Non : '}</span>{c.label}</span>
+			</li>
+		{/each}
+	</ul>
 	<label class="flex flex-col gap-1 text-sm">
 		<span class="text-content-muted">Adresse{form.type === 'moonraker' ? ' (facultatif)' : ''}</span
 		>
@@ -105,7 +131,8 @@
 					type="password"
 					bind:value={form.password}
 					autocomplete="new-password"
-					placeholder={hasPassword ? 'Enregistré — laisser vide pour le garder' : ''}
+					placeholder={hasPassword ? '•••••• Enregistré' : ''}
+					title={hasPassword ? 'Laisser vide pour garder le mot de passe enregistré' : undefined}
 					data-testid="host-password"
 				/>
 			</label>
@@ -150,10 +177,10 @@
 			{#if slugError}<span class="text-xs text-danger-text" role="alert">{slugError}</span>{/if}
 		</div>
 	{/if}
+	<p class="text-xs text-content-subtle" data-testid="host-help">{meta.help}</p>
 	{#if form.type !== 'moonraker'}
-		<p class="text-xs text-content-subtle" data-testid="host-limits">
-			Envoi des fichiers et lancement de l'impression. Le suivi en direct et les commandes (pause,
-			reprise, fichiers) restent réservés à Moonraker.
+		<p class="sr-only" data-testid="host-limits">
+			Le suivi en direct et les commandes (pause, reprise, fichiers) restent réservés à Moonraker.
 		</p>
 	{/if}
 </div>

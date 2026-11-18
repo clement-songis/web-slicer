@@ -64,3 +64,115 @@ export function formatTriangles(n: number): string {
 
 export const remeshStep = (modelId: string, options: StepMeshOptions) =>
 	api.post<StepMeshResult>(`/models/${modelId}/step-mesh`, normalizeStepOptions(options));
+
+/** Préréglages de qualité (raccourcis vers les curseurs d'Orca ; « Fin » = défauts d'Orca). */
+export const STEP_PRESETS: readonly {
+	id: 'fine' | 'balanced' | 'light';
+	label: string;
+	hint: string;
+	linear_deflection: number;
+	angle_deflection: number;
+}[] = [
+	{
+		id: 'fine',
+		label: 'Fin',
+		hint: 'défaut d’Orca',
+		linear_deflection: 0.003,
+		angle_deflection: 0.5
+	},
+	{
+		id: 'balanced',
+		label: 'Équilibré',
+		hint: 'courbes lisses',
+		linear_deflection: 0.01,
+		angle_deflection: 0.5
+	},
+	{
+		id: 'light',
+		label: 'Léger',
+		hint: 'peu de triangles',
+		linear_deflection: 0.05,
+		angle_deflection: 1
+	}
+];
+
+/** Préréglage correspondant aux déflexions (null = personnalisé). */
+export function presetOf(o: Pick<StepMeshOptions, 'linear_deflection' | 'angle_deflection'>) {
+	const n = normalizeStepOptions(o);
+	return (
+		STEP_PRESETS.find(
+			(p) =>
+				p.linear_deflection === n.linear_deflection && p.angle_deflection === n.angle_deflection
+		)?.id ?? null
+	);
+}
+
+/** Écart de triangles lisible : « +120 % », « −35 % », « = » (null si inconnu). */
+export function triangleDelta(before: number | null | undefined, after: number | null | undefined) {
+	if (!before || after == null) return null;
+	const pct = Math.round(((after - before) / before) * 100);
+	if (pct === 0) return '=';
+	return `${pct > 0 ? '+' : '−'}${Math.abs(pct)} %`;
+}
+
+/** Saisie numérique d'une déflexion (virgule acceptée) ; message d'Orca hors bornes. */
+export function parseDeflection(
+	raw: string,
+	kind: 'linear' | 'angle'
+): { value: number } | { error: string } {
+	const v = Number(raw.trim().replace(',', '.'));
+	const r = kind === 'linear' ? LINEAR_RANGE : ANGLE_RANGE;
+	if (!raw.trim() || !Number.isFinite(v) || v < r.min || v > r.max)
+		return {
+			error:
+				kind === 'linear'
+					? 'Valeur attendue entre 0,001 et 0,1 mm.'
+					: 'Valeur attendue entre 0,01 et 1 rad.'
+		};
+	return { value: v };
+}
+
+/**
+ * Préférences mémorisées (Orca app_config : linear_defletion, angle_defletion,
+ * is_split_compound, enable_step_mesh_setting) : réglages du dernier import et
+ * « ne plus afficher ». Stockage local du navigateur.
+ */
+export interface StepMeshPrefs {
+	options: StepMeshOptions;
+	/** Proposer le dialogue après chaque import STEP. */
+	ask: boolean;
+}
+export const STEP_PREFS_KEY = 'web-slicer.step-mesh';
+
+type KV = Pick<Storage, 'getItem' | 'setItem'>;
+const store = (): KV | null => {
+	try {
+		return typeof localStorage === 'undefined' ? null : localStorage;
+	} catch {
+		return null;
+	}
+};
+
+export function loadStepPrefs(kv: KV | null = store()): StepMeshPrefs {
+	try {
+		const raw = kv?.getItem(STEP_PREFS_KEY);
+		if (raw) {
+			const v = JSON.parse(raw) as Partial<StepMeshPrefs>;
+			return { options: normalizeStepOptions(v.options ?? {}), ask: v.ask !== false };
+		}
+	} catch {
+		/* préférences illisibles : défauts */
+	}
+	return { options: { ...STEP_DEFAULTS }, ask: true };
+}
+
+export function saveStepPrefs(p: StepMeshPrefs, kv: KV | null = store()): void {
+	try {
+		kv?.setItem(
+			STEP_PREFS_KEY,
+			JSON.stringify({ options: normalizeStepOptions(p.options), ask: p.ask })
+		);
+	} catch {
+		/* stockage indisponible : sans effet */
+	}
+}

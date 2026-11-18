@@ -46,10 +46,15 @@
 		hostFormError,
 		hostFormOf,
 		hostMeta,
+		credentialSummary,
 		hostRequest,
-		testMessage,
-		type HostForm
+		testFailure,
+		testOutcome,
+		type HostForm,
+		type TestOutcome
 	} from '$lib/printers/hosts';
+	import IconOk from '~icons/lucide/circle-check';
+	import IconFail from '~icons/lucide/circle-alert';
 	import IconPlus from '~icons/lucide/plus';
 	import IconChevron from '~icons/lucide/chevron-right';
 	import IconRefresh from '~icons/lucide/refresh-cw';
@@ -63,7 +68,7 @@
 
 	let statuses = $state<StatusMap>({});
 	let error = $state<string | null>(null);
-	let testResult = $state<Record<string, string>>({});
+	let testResult = $state<Record<string, TestOutcome>>({});
 	let busy = $state<Record<string, boolean>>({});
 
 	// Formulaire de déclaration.
@@ -74,7 +79,7 @@
 	// Connexion d'une imprimante déclarée (Orca : PhysicalPrinterDialog).
 	let connecting = $state<PrinterResponse | null>(null);
 	let connectForm = $state<HostForm>(emptyHostForm());
-	let connectMessage = $state<string | null>(null);
+	let connectMessage = $state<TestOutcome | null>(null);
 	let connectError = $state<string | null>(null);
 	let connectBusy = $state(false);
 	const connectFormError = $derived(hostFormError(connectForm));
@@ -122,10 +127,14 @@
 		if (id && connecting) {
 			try {
 				const r = await testPrinter(id);
-				connectMessage = testMessage(connecting.host_type, r);
+				connectMessage = testOutcome(connecting.host_type, r);
 				testResult = { ...testResult, [id]: connectMessage };
 			} catch (e) {
-				connectError = e instanceof ApiError ? e.message : 'Échec de connexion';
+				connectMessage = testFailure(
+					connecting.host_type,
+					e instanceof ApiError ? e.message : null
+				);
+				testResult = { ...testResult, [id]: connectMessage };
 			}
 		}
 		connectBusy = false;
@@ -255,13 +264,16 @@
 	async function runTest(id: string) {
 		busy = { ...busy, [id]: true };
 		error = null;
+		const type = printers.find((p) => p.id === id)?.host_type ?? 'moonraker';
 		try {
 			const result = await testPrinter(id);
-			const type = printers.find((p) => p.id === id)?.host_type ?? 'moonraker';
-			testResult = { ...testResult, [id]: testMessage(type, result) };
+			testResult = { ...testResult, [id]: testOutcome(type, result) };
 		} catch (e) {
-			testResult = { ...testResult, [id]: 'Échec de connexion' };
-			fail(e, 'Test impossible');
+			// Cause affichée sur la carte (clé refusée, hôte injoignable…), pas en tête de page.
+			testResult = {
+				...testResult,
+				[id]: testFailure(type, e instanceof ApiError ? e.message : null)
+			};
 		} finally {
 			busy = { ...busy, [id]: false };
 		}
@@ -463,6 +475,17 @@
 										{/if}
 										<span class="truncate">{printer.moonraker_url ?? 'Non connectée'}</span>
 									</span>
+									{#if credentialSummary(printer).length}
+										<span class="mt-1 flex flex-wrap gap-1.5" data-testid="printer-credentials">
+											{#each credentialSummary(printer) as c (c.text)}
+												<span
+													class="rounded px-1.5 py-0.5 text-2xs {c.missing
+														? 'bg-warning-soft text-warning-text'
+														: 'bg-surface-sunken text-content-muted'}">{c.text}</span
+												>
+											{/each}
+										</span>
+									{/if}
 								</div>
 								{#if st}
 									<span
@@ -493,7 +516,21 @@
 							{/if}
 
 							{#if testResult[printer.id]}
-								<p class="text-xs text-content-muted" role="status">{testResult[printer.id]}</p>
+								{@const t = testResult[printer.id]}
+								<p
+									class="flex items-center gap-1.5 text-xs {t.ok
+										? 'text-success-text'
+										: 'text-danger-text'}"
+									role="status"
+									data-testid="printer-test-result"
+									data-ok={t.ok}
+								>
+									{#if t.ok}<IconOk
+											class="h-3.5 w-3.5 shrink-0"
+											aria-hidden="true"
+										/>{:else}<IconFail class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{/if}
+									<span class="min-w-0 break-words">{t.message}</span>
+								</p>
 							{/if}
 
 							<div class="flex flex-wrap gap-2">
@@ -518,10 +555,11 @@
 									<button
 										type="button"
 										class="ws-btn ws-btn-sm ws-btn-secondary"
+										data-testid="printer-test"
 										disabled={busy[printer.id]}
 										onclick={() => runTest(printer.id)}
 									>
-										Tester
+										{busy[printer.id] ? 'Test…' : 'Tester'}
 									</button>
 									{#if hasLiveControls(printer)}
 										<button
@@ -637,8 +675,19 @@
 					{connectError}
 				</p>
 			{:else if connectMessage}
-				<p class="text-xs text-success-text" role="status" data-testid="connection-result">
-					{connectMessage}
+				<p
+					class="flex items-center gap-1.5 rounded-md px-3 py-2 text-xs {connectMessage.ok
+						? 'bg-success-soft text-success-content'
+						: 'bg-danger-soft text-danger-content'}"
+					role="status"
+					data-testid="connection-result"
+					data-ok={connectMessage.ok}
+				>
+					{#if connectMessage.ok}<IconOk
+							class="h-4 w-4 shrink-0"
+							aria-hidden="true"
+						/>{:else}<IconFail class="h-4 w-4 shrink-0" aria-hidden="true" />{/if}
+					<span class="min-w-0 break-words">{connectMessage.message}</span>
 				</p>
 			{/if}
 		</div>

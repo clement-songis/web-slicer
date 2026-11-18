@@ -29,6 +29,8 @@ export interface HostMeta {
 	printerSlug: boolean;
 	/** Destinations proposées à l'envoi (stockages PrusaLink, groupes Repetier). */
 	storages: boolean;
+	/** Où trouver l'adresse et les identifiants (aide sous le formulaire). */
+	help: string;
 }
 
 export const HOST_TYPES: readonly HostMeta[] = [
@@ -39,7 +41,8 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		secret: 'Clé API (facultatif)',
 		authChoice: false,
 		printerSlug: false,
-		storages: false
+		storages: false,
+		help: "Adresse de Moonraker (port 7125 par défaut). Clé API seulement si l'autorisation est activée dans moonraker.conf."
 	},
 	{
 		id: 'octoprint',
@@ -48,7 +51,8 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		secret: 'Clé API',
 		authChoice: false,
 		printerSlug: false,
-		storages: false
+		storages: false,
+		help: "Clé API : OctoPrint → Paramètres → API (clé globale ou clé d'application)."
 	},
 	{
 		id: 'prusalink',
@@ -57,7 +61,8 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		secret: 'Clé API',
 		authChoice: true,
 		printerSlug: false,
-		storages: true
+		storages: true,
+		help: "Sur l'imprimante : Réglages → Réseau → PrusaLink. Utilisateur « maker » et mot de passe affiché, ou clé API (anciens firmwares)."
 	},
 	{
 		id: 'prusaconnect',
@@ -66,7 +71,8 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		secret: 'Clé API',
 		authChoice: true,
 		printerSlug: false,
-		storages: true
+		storages: true,
+		help: "Clé API de l'imprimante, dans Prusa Connect → Imprimante → Réglages."
 	},
 	{
 		id: 'duet',
@@ -75,7 +81,8 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		secret: 'Mot de passe (facultatif)',
 		authChoice: false,
 		printerSlug: false,
-		storages: false
+		storages: false,
+		help: "Mot de passe défini par M551 (laisser vide s'il n'y en a pas). RepRapFirmware autonome ou DSF."
 	},
 	{
 		id: 'repetier',
@@ -84,7 +91,8 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		secret: 'Clé API',
 		authChoice: false,
 		printerSlug: true,
-		storages: true
+		storages: true,
+		help: "Clé API : Repetier-Server → Paramètres globaux → Connectivité. Choisissez ensuite l'imprimante du serveur."
 	},
 	{
 		id: 'astrobox',
@@ -93,7 +101,8 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		secret: 'Clé API',
 		authChoice: false,
 		printerSlug: false,
-		storages: false
+		storages: false,
+		help: 'Clé API : AstroBox → Paramètres → Avancé.'
 	},
 	{
 		id: 'mks',
@@ -102,7 +111,8 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		secret: null,
 		authChoice: false,
 		printerSlug: false,
-		storages: false
+		storages: false,
+		help: 'Module WiFi MKS : adresse IP seule ; le lancement passe par la console TCP (port 8080).'
 	},
 	{
 		id: 'flashair',
@@ -111,7 +121,8 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		secret: null,
 		authChoice: false,
 		printerSlug: false,
-		storages: false
+		storages: false,
+		help: 'Carte FlashAir configurée avec UPLOAD=1 ; dépôt du fichier seulement, sans lancement.'
 	},
 	{
 		id: 'esp3d',
@@ -120,7 +131,8 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		secret: null,
 		authChoice: false,
 		printerSlug: false,
-		storages: false
+		storages: false,
+		help: 'Carte ESP3D : adresse IP seule ; les noms de fichiers sont raccourcis au format 8.3.'
 	}
 ];
 
@@ -228,5 +240,110 @@ export function testMessage(
 			? `Connecté (Klipper ${r.klippy_state}, Moonraker ${r.moonraker_version})`
 			: `Injoignable (${r.klippy_state})`;
 	if (!r.connected) return `${meta.label} injoignable`;
-	return `Connecté à ${r.klippy_state || meta.label}${r.moonraker_version ? ` ${r.moonraker_version}` : ''}`;
+	const name = r.klippy_state || meta.label;
+	const version = r.moonraker_version?.trim() ?? '';
+	// « OctoPrint 1.10.2 » / « PrusaLink 2.1.2 » : la version porte déjà le nom.
+	if (version && version.toLowerCase().startsWith(name.split(' ')[0].toLowerCase()))
+		return `Connecté à ${version}`;
+	return `Connecté à ${name}${version ? ` ${version}` : ''}`;
+}
+
+/** Résultat de test affichable : succès ou échec, avec la cause. */
+export interface TestOutcome {
+	ok: boolean;
+	message: string;
+}
+
+export function testOutcome(
+	type: string,
+	r: { connected: boolean; klippy_state: string; moonraker_version: string }
+): TestOutcome {
+	return { ok: r.connected, message: testMessage(type, r) };
+}
+
+/** Échec de test : cause renvoyée par le serveur (clé refusée, hôte injoignable…). */
+export function testFailure(type: string, cause: string | null | undefined): TestOutcome {
+	const label = hostMeta(type).label;
+	const why = (cause ?? '').trim();
+	if (!why) return { ok: false, message: `Échec de connexion à ${label}` };
+	// 401/403 : identifiants refusés, dit en clair (la réponse brute suit).
+	const denied = /HTTP (401|403)\b/.exec(why);
+	if (denied)
+		return {
+			ok: false,
+			message: `Échec — identifiants refusés par ${label} (HTTP ${denied[1]}). Vérifiez la clé ou le mot de passe.`
+		};
+	return { ok: false, message: `Échec — ${why}` };
+}
+
+/** Ce que permet un hôte (affiché sous le choix du type, comme une fiche). */
+export interface HostCapability {
+	id: 'upload' | 'start' | 'storage' | 'live';
+	label: string;
+	ok: boolean;
+}
+
+export function hostCapabilities(type: string): HostCapability[] {
+	const meta = hostMeta(type);
+	return [
+		{ id: 'upload', label: 'Envoi du G-code', ok: true },
+		// FlashAir : dépôt seul (Orca : pas de post-action).
+		{ id: 'start', label: "Lancement de l'impression", ok: meta.id !== 'flashair' },
+		{
+			id: 'storage',
+			label: meta.id === 'repetier' ? 'Choix du groupe' : 'Choix du stockage',
+			ok: meta.storages
+		},
+		{ id: 'live', label: 'Suivi en direct, pause, fichiers', ok: meta.id === 'moonraker' }
+	];
+}
+
+/** Types d'hôte regroupés pour le sélecteur (contrôle complet / envoi seul). */
+export const HOST_GROUPS: readonly { label: string; hosts: readonly HostMeta[] }[] = [
+	{ label: 'Suivi et contrôle complets', hosts: HOST_TYPES.filter((h) => h.id === 'moonraker') },
+	{ label: 'Envoi et lancement', hosts: HOST_TYPES.filter((h) => h.id !== 'moonraker') }
+];
+
+/** Résumé des identifiants enregistrés (jamais le secret lui-même). */
+export interface CredentialChip {
+	text: string;
+	/** Identifiant attendu mais absent. */
+	missing?: boolean;
+}
+
+export function credentialSummary(
+	p: Pick<
+		PrinterResponse,
+		| 'host_type'
+		| 'moonraker_url'
+		| 'has_api_key'
+		| 'host_auth'
+		| 'host_user'
+		| 'has_host_password'
+		| 'host_port'
+	>
+): CredentialChip[] {
+	if (!p.moonraker_url?.trim()) return [];
+	const meta = hostMeta(p.host_type);
+	const chips: CredentialChip[] = [];
+	if (meta.authChoice && p.host_auth === 'user') {
+		chips.push({ text: `Utilisateur « ${p.host_user ?? ''} »`, missing: !p.host_user });
+		chips.push(
+			p.has_host_password
+				? { text: 'Mot de passe enregistré' }
+				: { text: 'Sans mot de passe', missing: true }
+		);
+	} else if (meta.secret) {
+		const optional = /facultatif/i.test(meta.secret);
+		const noun = meta.id === 'duet' ? 'Mot de passe' : 'Clé API';
+		if (p.has_api_key) chips.push({ text: `${noun} enregistré${noun === 'Clé API' ? 'e' : ''}` });
+		else if (!optional) chips.push({ text: `${noun} manquante`, missing: true });
+	}
+	if (meta.printerSlug)
+		chips.push(
+			p.host_port
+				? { text: `Imprimante « ${p.host_port} »` }
+				: { text: 'Imprimante du serveur à choisir', missing: true }
+		);
+	return chips;
 }

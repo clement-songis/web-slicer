@@ -5,8 +5,9 @@
 	// Autonome : la page ne fournit que l'identifiant du G-code courant.
 	import IconSend from '~icons/lucide/send';
 	import { resolve } from '$app/paths';
-	import { hostMeta } from './hosts';
+	import { hasLiveControls, hostMeta } from './hosts';
 	import {
+		getHostPrinters,
 		getPrinterStorages,
 		listPrinters,
 		updatePrinter,
@@ -66,13 +67,15 @@
 	let storagesFor = '';
 	$effect(() => {
 		const p = selected;
-		const key = p && p.moonraker_url && hostMeta(p.host_type).storages ? p.id : '';
+		// Groupes Repetier : propres à l'imprimante du serveur (host_port).
+		const key =
+			p && p.moonraker_url && hostMeta(p.host_type).storages ? `${p.id}:${p.host_port ?? ''}` : '';
 		if (key === storagesFor) return;
 		storagesFor = key;
 		storages = null;
 		storage = '';
 		if (!key) return;
-		void getPrinterStorages(key)
+		void getPrinterStorages(p!.id)
 			.then((s) => {
 				if (storagesFor !== key) return;
 				storages = s;
@@ -82,6 +85,50 @@
 				if (storagesFor === key) storages = { kind: 'none', items: [] };
 			});
 	});
+	// Imprimante du serveur Repetier (Orca : printhost_port), choisie ici sans
+	// repasser par la page Imprimantes ; enregistrée dans l'imprimante au choix.
+	const meta = $derived(hostMeta(selected?.host_type));
+	let hostPrinters = $state<string[] | null>(null);
+	let hostPrintersError = $state<string | null>(null);
+	let hostPrintersFor = '';
+	let savingSlug = $state(false);
+	$effect(() => {
+		const p = selected;
+		const key = p && p.moonraker_url && hostMeta(p.host_type).printerSlug ? p.id : '';
+		if (key === hostPrintersFor) return;
+		hostPrintersFor = key;
+		hostPrinters = null;
+		hostPrintersError = null;
+		if (!key) return;
+		void getHostPrinters(key)
+			.then((list) => {
+				if (hostPrintersFor === key) hostPrinters = list;
+			})
+			.catch((e) => {
+				if (hostPrintersFor === key)
+					hostPrintersError = sendErrorMessage(e, p?.name) || 'Liste indisponible.';
+			});
+	});
+	async function chooseHostPrinter(slug: string) {
+		const p = selected;
+		if (!p || slug === (p.host_port ?? '')) return;
+		savingSlug = true;
+		error = null;
+		try {
+			const saved = await updatePrinter(p.id, {
+				name: p.name,
+				machine_preset_id: p.machine_preset_id,
+				moonraker_url: p.moonraker_url,
+				host_port: slug
+			});
+			targets = targets.map((t) => (t.id === saved.id ? saved : t));
+		} catch (e) {
+			error = sendErrorMessage(e, p.name);
+		} finally {
+			savingSlug = false;
+		}
+	}
+
 	let urlDraft = $state('');
 	let savingUrl = $state(false);
 	let urlError = $state<string | null>(null);
@@ -259,6 +306,45 @@
 						{/each}
 					</select>
 				</label>
+				{#if selected && !needsUrl}
+					<p class="-mt-2 text-xs text-content-subtle" data-testid="send-host-info">
+						{meta.label} · {hasLiveControls(selected)
+							? 'suivi de l’impression dans l’onglet Appareil'
+							: meta.id === 'flashair'
+								? 'dépôt du fichier seulement'
+								: 'envoi et lancement, sans suivi en direct'}
+					</p>
+				{/if}
+				{#if selected && !needsUrl && meta.printerSlug}
+					<label class="flex flex-col gap-1 text-sm">
+						<span class="text-content-muted">Imprimante du serveur Repetier</span>
+						{#if hostPrinters?.length}
+							<select
+								class="ws-field"
+								value={selected.host_port ?? ''}
+								data-testid="send-host-printer"
+								disabled={sending || savingSlug}
+								onchange={(e) => chooseHostPrinter((e.currentTarget as HTMLSelectElement).value)}
+							>
+								{#if !selected.host_port}<option value="" disabled>Choisir…</option>{/if}
+								{#each hostPrinters as slug (slug)}
+									<option value={slug}>{slug}</option>
+								{/each}
+								{#if selected.host_port && !hostPrinters.includes(selected.host_port)}
+									<option value={selected.host_port}>{selected.host_port} (introuvable)</option>
+								{/if}
+							</select>
+						{:else if hostPrintersError}
+							<span
+								class="text-xs text-danger-text"
+								role="alert"
+								data-testid="send-host-printer-error">{hostPrintersError}</span
+							>
+						{:else}
+							<span class="text-xs text-content-subtle">Recherche des imprimantes…</span>
+						{/if}
+					</label>
+				{/if}
 				{#if needsUrl}
 					<!-- novalidate : « 192.168.1.20:7125 » (sans schéma) est accepté et
 					     normalisé par normalizeMoonrakerUrl. -->
@@ -271,12 +357,16 @@
 						}}
 					>
 						<label class="flex flex-col gap-1">
-							<span class="text-content-muted">URL Moonraker de {selected?.name}</span>
+							<span class="text-content-muted"
+								>{meta.id === 'moonraker' ? 'URL Moonraker' : `Adresse ${meta.label}`} de {selected?.name}</span
+							>
 							<input
 								type="url"
 								inputmode="url"
 								class="ws-field"
-								placeholder="http://192.168.1.20:7125"
+								placeholder={meta.id === 'moonraker'
+									? 'http://192.168.1.20:7125'
+									: meta.placeholder}
 								bind:value={urlDraft}
 								disabled={savingUrl}
 								data-testid="send-moonraker-url"
@@ -301,6 +391,11 @@
 							</p>
 						{/if}
 					</form>
+				{/if}
+				{#if !needsUrl && meta.storages && storages === null && selected?.moonraker_url}
+					<p class="text-xs text-content-subtle" data-testid="send-storage-loading">
+						Lecture des {meta.id === 'repetier' ? 'groupes' : 'stockages'}…
+					</p>
 				{/if}
 				{#if storages && storages.items.length > 0}
 					<label class="flex flex-col gap-1 text-sm">
@@ -372,6 +467,8 @@
 						(scope === 'plate' && !gcodeId) ||
 						sending ||
 						savingUrl ||
+						savingSlug ||
+						(meta.printerSlug && !selected?.host_port && !needsUrl) ||
 						loading}
 					onclick={send}
 				>
