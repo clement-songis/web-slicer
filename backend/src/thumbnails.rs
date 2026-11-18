@@ -76,7 +76,7 @@ fn config_text(config: &DynamicPrintConfig, key: &str) -> String {
     }
 }
 
-fn parse_colour(hex: &str) -> [f64; 3] {
+pub(crate) fn parse_colour(hex: &str) -> [f64; 3] {
     let hex = hex.trim().trim_start_matches('#');
     let channel = |i: usize| {
         hex.get(i..i + 2)

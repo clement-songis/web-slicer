@@ -8,7 +8,7 @@
 use std::path::Path;
 use std::time::Duration;
 
-use engine::api::split::{MeshOp, MeshOpRequest, MeshOpResponse};
+use engine::api::split::{CutVolumeMeta, MeshOp, MeshOpRequest, MeshOpResponse};
 use engine::api::TriangleMesh;
 
 use super::scene::{read_worker_mesh, result_json, write_json_bounded, SceneWorkerError};
@@ -21,6 +21,8 @@ pub struct MeshOpOutputPart {
     pub mesh: TriangleMesh,
     /// WSMh tel qu'écrit par le worker (servi tel quel par `/mesh`).
     pub display_bytes: Vec<u8>,
+    /// Découpe complète : volume additionnel de l'objet `label`.
+    pub volume: Option<CutVolumeMeta>,
 }
 
 /// Opération via le binaire résolu par l'environnement de production.
@@ -76,6 +78,7 @@ pub async fn run_mesh_op_at(
             label: part.label,
             mesh,
             display_bytes,
+            volume: part.volume,
         });
     }
     Ok(parts)
@@ -100,6 +103,7 @@ mod tests {
                     plane: CutPlane::horizontal(0.5),
                     keep_upper: false,
                     keep_lower: false,
+                    options: Default::default(),
                 },
                 vec![mesh.clone()],
             ),

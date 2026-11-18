@@ -65,6 +65,10 @@ pub struct ModelVolume {
     /// Surcharges `ModelVolume.config` (réglages d'un modificateur, FR-015).
     #[serde(default)]
     pub settings: DynamicPrintConfig,
+    /// Relief ré-éditable (`text_configuration` / `emboss_shape` d'Orca),
+    /// JSON web-slicer `{ type: "text" | "svg", … }` ; `None` = volume ordinaire.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub emboss: Option<serde_json::Value>,
 }
 
 /// Canal de peinture d'un volume (miroir des `FacetsAnnotation` de `ModelVolume`).
@@ -225,6 +229,7 @@ impl Model {
                 extruder: None,
                 paint: VolumePaint::default(),
                 settings: DynamicPrintConfig::new(),
+                emboss: None,
             }],
             instances: vec![ModelInstance {
                 matrix: DMat4::IDENTITY,

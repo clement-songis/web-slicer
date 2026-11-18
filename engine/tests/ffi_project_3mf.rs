@@ -103,6 +103,7 @@ fn plate_name_and_settings_are_written() {
         ProjectPlate {
             name: "Cubes".into(),
             settings,
+            ..ProjectPlate::default()
         },
         ProjectPlate::default(),
     ];

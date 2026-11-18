@@ -31,6 +31,9 @@ pub(crate) mod ffi {
         paint_state: Vec<String>,
         /// Surcharges `ModelVolume.config` (clé → valeur Orca), ex. modificateur.
         config_json: String,
+        /// Paramètres de relief ré-éditables (`text_configuration` /
+        /// `emboss_shape` d'Orca) en JSON ; vide = volume ordinaire.
+        emboss_json: String,
     }
 
     /// Instance d'un objet sur le plateau.
@@ -88,6 +91,9 @@ pub(crate) mod ffi {
         name: String,
         config_json: String,
         obj_inst: Vec<u32>,
+        /// Vignette du plateau (PNG RGB/RGBA) ; vide = pas de vignette.
+        /// Écrite par store_bbs_3mf en Metadata/plate_<n>.png (+ _small).
+        thumbnail_png: Vec<u8>,
     }
 
     /// Plateau d'un .gcode.3mf : G-code tranché (vide = non tranché) et
@@ -184,6 +190,74 @@ pub(crate) mod ffi {
         lower: RawMesh,
         upper_facets: u32,
         lower_facets: u32,
+    }
+
+    /// Connecteur de coupe (`CutConnector` d'Orca) dans le repère de coupe.
+    /// kind : 0 = Plug, 1 = Dowel, 2 = Snap ; style : 0 = Prism, 1 = Frustum ;
+    /// shape : 0 = Triangle, 1 = Square, 2 = Hexagon, 3 = Circle.
+    #[derive(Debug, Clone)]
+    struct RawCutConnector {
+        pos: [f64; 3],
+        radius: f32,
+        height: f32,
+        radius_tolerance: f32,
+        height_tolerance: f32,
+        /// Rotation autour de l'axe du connecteur (radians).
+        z_angle: f32,
+        kind: u8,
+        style: u8,
+        shape: u8,
+    }
+
+    /// Découpe complète (`Slic3r::Cut`, GLGizmoCut3D::perform_cut).
+    #[derive(Debug, Clone)]
+    struct RawCutRequest {
+        point: [f64; 3],
+        normal: [f64; 3],
+        /// Rotation du plan (radians, `Geometry::rotation_transform`) si
+        /// `has_rotation`, sinon déduite de `normal`.
+        has_rotation: bool,
+        rotation: [f64; 3],
+        /// Matrice d'instance 4×4 colonne-major (translation ignorée).
+        instance: [f64; 16],
+        keep_upper: bool,
+        keep_lower: bool,
+        keep_as_parts: bool,
+        place_on_cut_upper: bool,
+        place_on_cut_lower: bool,
+        flip_upper: bool,
+        flip_lower: bool,
+        connectors: Vec<RawCutConnector>,
+        snap_space_proportion: f32,
+        snap_bulge_proportion: f32,
+        groove: bool,
+        groove_depth: f32,
+        groove_width: f32,
+        /// Radians.
+        groove_flaps_angle: f32,
+        groove_angle: f32,
+        groove_depth_tolerance: f32,
+        groove_width_tolerance: f32,
+        groove_count: i32,
+        groove_gap: f32,
+    }
+
+    /// Volume d'un objet issu de la coupe (maillage dans le repère de coupe,
+    /// matrices de volume et d'instance cuites).
+    #[derive(Debug)]
+    struct RawCutVolume {
+        mesh: RawMesh,
+        name: String,
+        /// ModelVolumeType : 0=part, 1=negative, 2=modifier, 3=blocker, 4=enforcer.
+        role: u8,
+        /// `cut_info.is_connector`.
+        connector: bool,
+    }
+
+    #[derive(Debug)]
+    struct RawCutObject {
+        name: String,
+        volumes: Vec<RawCutVolume>,
     }
 
     /// `Calib_Params` d'Orca (sous-ensemble) : mode = valeur de `CalibMode`
@@ -447,6 +521,10 @@ pub(crate) mod ffi {
 
         /// Coupe plane (`cut_mesh` avec bouchage, repère du plan comme `Cut`).
         fn cut_mesh_raw(mesh: &RawMesh, plane: &RawCutPlane) -> Result<RawCutResult>;
+
+        /// Découpe complète d'Orca (`Cut::perform_with_plane` /
+        /// `perform_with_groove`, connecteurs, placer sur la coupe, retourner).
+        fn cut_object_raw(mesh: &RawMesh, request: &RawCutRequest) -> Result<Vec<RawCutObject>>;
 
         /// Booléen mcut (`MeshBoolean::mcut::make_boolean`) : 0 = UNION,
         /// 1 = A_NOT_B, 2 = INTERSECTION.

@@ -70,6 +70,7 @@ pub fn read_project_3mf_import(path: &Path) -> EngineResult<serde_json::Value> {
                         "vertices": v.mesh.vertices,
                         "indices": v.mesh.indices,
                         "paint": paint,
+                        "emboss": if v.emboss_json.trim().is_empty() { Value::Null } else { serde_json::from_str::<Value>(&v.emboss_json).unwrap_or(Value::Null) },
                     })
                 })
                 .collect();
@@ -146,15 +147,22 @@ pub fn write_project_3mf_with_auxiliaries(
                     }
                 }
             }
-            let (name, config_json) = plates.get(plate).map_or_else(
-                || (String::new(), String::new()),
-                |p| (p.name.clone(), config_to_orca_json(&p.settings)),
+            let (name, config_json, thumbnail_png) = plates.get(plate).map_or_else(
+                || (String::new(), String::new(), Vec::new()),
+                |p| {
+                    (
+                        p.name.clone(),
+                        config_to_orca_json(&p.settings),
+                        p.thumbnail_png.clone(),
+                    )
+                },
             );
             ffi::RawProjectPlate {
                 plate_index: plate as u32,
                 name,
                 config_json,
                 obj_inst,
+                thumbnail_png,
             }
         })
         .collect();

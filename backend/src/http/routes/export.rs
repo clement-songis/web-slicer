@@ -62,7 +62,8 @@ pub async fn export_3mf(
     let groups = preset_groups(&state, user.id, &project.active_presets).await?;
     apply_full_config_groups(&mut config, &groups);
 
-    let plates = scene_project_plates(&project.scene);
+    let mut plates = scene_project_plates(&project.scene);
+    attach_plate_thumbnails(&state, user.id, project_id, &model, &config, &mut plates).await;
     // Écrit par libslic3r (store_bbs_3mf) comme « Save project » d'Orca.
     // Fichiers auxiliaires du projet (Auxiliaries/), comme « Save project » d'Orca.
     let aux_dir = state.files.auxiliaries_dir(user.id, project.id);
@@ -468,6 +469,106 @@ fn plate_settings_config(plate: &Value) -> engine::api::DynamicPrintConfig {
     settings
 }
 
+/// Vignette de chaque plateau (Orca : Metadata/plate_<n>.png + _small, une par
+/// plateau) : capture envoyée par l'interface
+/// (`PUT /api/projects/{id}/plates/{n}/thumbnail`) sinon rendu serveur 512 × 512.
+async fn attach_plate_thumbnails(
+    state: &AppState,
+    user: crate::domain::UserId,
+    project: ProjectId,
+    model: &engine::api::Model,
+    config: &engine::api::DynamicPrintConfig,
+    plates: &mut Vec<engine::threemf::ProjectPlate>,
+) {
+    let count = model
+        .objects
+        .iter()
+        .flat_map(|o| o.instances.iter().map(|i| i.plate_index as usize + 1))
+        .chain(std::iter::once(plates.len()))
+        .max()
+        .unwrap_or(0)
+        .max(1);
+    plates.resize_with(count.max(plates.len()), Default::default);
+    let colour = match config.get("filament_colour") {
+        Some(engine::api::ConfigValue::Strings(values)) => values.first().cloned(),
+        Some(engine::api::ConfigValue::String(value)) => {
+            value.split(';').next().map(str::to_string)
+        }
+        _ => None,
+    };
+    for (index, plate) in plates.iter_mut().enumerate() {
+        let path = state
+            .files
+            .plate_thumbnail_path(user, project.0, index as u32);
+        if let Ok(bytes) = tokio::fs::read(&path).await {
+            if crate::thumbnail::check_png(&bytes).is_ok() {
+                plate.thumbnail_png = bytes;
+                continue;
+            }
+        }
+        let (model, colour) = (model.clone(), colour.clone());
+        if let Ok(Some(png)) = tokio::task::spawn_blocking(move || {
+            crate::thumbnail::render_plate(&model, index as u32, colour.as_deref())
+        })
+        .await
+        {
+            plate.thumbnail_png = png;
+        }
+    }
+}
+
+/// `PUT /api/projects/{id}/plates/{index}/thumbnail` — capture de la vue 3D
+/// envoyée par l'interface (corps = PNG brut, 8 bits RGB/RGBA, carré conseillé,
+/// ramené à 512 × 512 à l'export) pour le plateau `index` (0-based) ; 204.
+pub async fn put_plate_thumbnail(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path((project_raw, plate)): Path<(String, u32)>,
+    body: axum::body::Bytes,
+) -> ApiResult<StatusCode> {
+    let project_id = parse_project_id(&project_raw)?;
+    state.storage.projects().get(user.id, project_id).await?;
+    if plate >= 64 {
+        return Err(ApiError::validation(
+            "plateau hors plage (0–63)",
+            serde_json::json!({ "plate": plate }),
+        ));
+    }
+    crate::thumbnail::check_png(&body).map_err(|reason| {
+        ApiError::validation(
+            format!("vignette invalide : {reason}"),
+            serde_json::json!({ "plate": plate }),
+        )
+    })?;
+    state
+        .files
+        .write_plate_thumbnail(user.id, project_id.0, plate, &body)
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "écriture de la vignette de plateau");
+            ApiError::internal()
+        })?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `DELETE /api/projects/{id}/plates/{index}/thumbnail` — retour au rendu
+/// serveur ; 204 (même si aucune capture n'était enregistrée).
+pub async fn delete_plate_thumbnail(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path((project_raw, plate)): Path<(String, u32)>,
+) -> ApiResult<StatusCode> {
+    let project_id = parse_project_id(&project_raw)?;
+    state.storage.projects().get(user.id, project_id).await?;
+    let _ = tokio::fs::remove_file(
+        state
+            .files
+            .plate_thumbnail_path(user.id, project_id.0, plate),
+    )
+    .await;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 /// Plateaux du document de scène au format d'export : nom, type de plaque
 /// (`curr_bed_type`) et réglages par plateau optionnels `plate.settings`
 /// restreints à `engine::threemf::PLATE_SETTING_KEYS` (seules clés qu'Orca
@@ -490,6 +591,7 @@ fn scene_project_plates(scene: &Value) -> Vec<engine::threemf::ProjectPlate> {
                 .and_then(Value::as_str)
                 .map_or_else(|| format!("Plateau {}", index + 1), str::to_string),
             settings: plate_settings_config(plate),
+            thumbnail_png: Vec::new(),
         })
         .collect()
 }
@@ -519,6 +621,8 @@ struct SceneObjectSpec {
     /// Nom du volume du maillage propre (`meshName`, Orca `<nom>_1` après un
     /// split) : écrit dans `Metadata/model_settings.config` par le writer 3MF.
     mesh_name: Option<String>,
+    /// Relief ré-éditable de l'objet (`emboss`, texte ou SVG créé seul).
+    emboss: Option<Value>,
 }
 
 /// Assemble le `Model` moteur depuis le document de scène et les maillages
@@ -575,6 +679,7 @@ pub(crate) async fn build_project_model_selected(
                 mesh_volumes: Vec::new(),
                 layer_config_ranges: Vec::new(),
                 mesh_name: None,
+                emboss: None,
             })
             .collect()
     });
@@ -622,6 +727,7 @@ pub(crate) async fn build_project_model_selected(
             .find(|v| v.role == engine::api::VolumeRole::ModelPart)
         {
             volume.paint = spec.paint;
+            volume.emboss = spec.emboss;
             if let Some(name) = spec.mesh_name {
                 volume.name = name;
             }
@@ -764,6 +870,7 @@ fn scene_object_specs(scene: &Value, requested_plate: Option<u32>) -> Option<Vec
                     volumes: crate::slicing::scene_object_volumes(object),
                     mesh_volumes: crate::slicing::scene_object_mesh_volumes(object),
                     layer_config_ranges: crate::slicing::scene_object_layer_ranges(object),
+                    emboss: crate::slicing::scene_emboss(object),
                     mesh_name: object
                         .get("meshName")
                         .and_then(Value::as_str)

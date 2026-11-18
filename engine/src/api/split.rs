@@ -10,6 +10,7 @@
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
+use ts_rs::TS;
 
 use super::TriangleMesh;
 
@@ -57,6 +58,255 @@ impl CutPlane {
             .map(|i| (f64::from(p[i]) - self.point[i]) * self.normal[i])
             .sum::<f64>()
             / self.normal_length()
+    }
+}
+
+/// Type de connecteur (`CutConnectorType` : tenon, goujon, clip).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
+pub enum CutConnectorType {
+    #[default]
+    Plug,
+    Dowel,
+    Snap,
+}
+
+/// Style (`CutConnectorStyle` : prisme ou tronc de cône).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
+pub enum CutConnectorStyle {
+    #[default]
+    Prism,
+    Frustum,
+}
+
+/// Forme (`CutConnectorShape`).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
+pub enum CutConnectorShape {
+    Triangle,
+    Square,
+    Hexagon,
+    #[default]
+    Circle,
+}
+
+fn default_connector_size() -> f32 {
+    2.5
+}
+fn default_connector_depth() -> f32 {
+    3.0
+}
+fn default_depth_tolerance() -> f32 {
+    0.1
+}
+
+/// Connecteur du gizmo Cut (`GLGizmoCut3D::add_connector`) ; défauts = ceux
+/// du gizmo (`m_connector_size` 2,5, `m_connector_depth_ratio` 3,
+/// `m_connector_size_tolerance` 0, `m_connector_depth_ratio_tolerance` 0,1).
+/// `pos` : point du plan de coupe, même repère que le plan.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct CutConnector {
+    pub pos: [f64; 3],
+    #[serde(default, rename = "type")]
+    #[ts(as = "Option<CutConnectorType>", optional)]
+    pub kind: CutConnectorType,
+    #[serde(default)]
+    #[ts(as = "Option<CutConnectorStyle>", optional)]
+    pub style: CutConnectorStyle,
+    #[serde(default)]
+    #[ts(as = "Option<CutConnectorShape>", optional)]
+    pub shape: CutConnectorShape,
+    /// Diamètre (mm) ; rayon Orca = size / 2.
+    #[serde(default = "default_connector_size")]
+    #[ts(as = "Option<f32>", optional)]
+    pub size_mm: f32,
+    /// Profondeur (mm, `CutConnector::height`).
+    #[serde(default = "default_connector_depth")]
+    #[ts(as = "Option<f32>", optional)]
+    pub depth_mm: f32,
+    /// Tolérance de diamètre (mm) ; Orca `radius_tolerance` = moitié.
+    #[serde(default)]
+    #[ts(as = "Option<f32>", optional)]
+    pub size_tolerance_mm: f32,
+    #[serde(default = "default_depth_tolerance")]
+    #[ts(as = "Option<f32>", optional)]
+    pub depth_tolerance_mm: f32,
+    /// Rotation autour de l'axe du connecteur (degrés, 0–180 dans Orca).
+    #[serde(default)]
+    #[ts(as = "Option<f32>", optional)]
+    pub rotation_deg: f32,
+}
+
+fn default_flaps_angle() -> f32 {
+    60.0
+}
+fn default_groove_count() -> i32 {
+    1
+}
+fn default_groove_gap() -> f32 {
+    10.0
+}
+
+/// Queue d'aronde (`CutMode::cutTongueAndGroove`, `Cut::Groove`) ; défauts du
+/// gizmo : largeur 4 × profondeur, angle des flancs 60°, angle 0°, tolérances
+/// 0,1 mm, 1 queue, écart 10 mm.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct CutGroove {
+    pub depth_mm: f32,
+    #[serde(default)]
+    #[ts(optional)]
+    pub width_mm: Option<f32>,
+    #[serde(default = "default_flaps_angle")]
+    #[ts(as = "Option<f32>", optional)]
+    pub flaps_angle_deg: f32,
+    #[serde(default)]
+    #[ts(as = "Option<f32>", optional)]
+    pub angle_deg: f32,
+    #[serde(default = "default_depth_tolerance")]
+    #[ts(as = "Option<f32>", optional)]
+    pub depth_tolerance_mm: f32,
+    #[serde(default = "default_depth_tolerance")]
+    #[ts(as = "Option<f32>", optional)]
+    pub width_tolerance_mm: f32,
+    #[serde(default = "default_groove_count")]
+    #[ts(as = "Option<i32>", optional)]
+    pub count: i32,
+    #[serde(default = "default_groove_gap")]
+    #[ts(as = "Option<f32>", optional)]
+    pub gap_mm: f32,
+}
+
+impl CutGroove {
+    pub fn width(&self) -> f32 {
+        self.width_mm.unwrap_or(4.0 * self.depth_mm)
+    }
+}
+
+/// Options de la découpe complète d'Orca (toutes facultatives : absentes =
+/// coupe plane simple, comportement historique).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct CutOptions {
+    /// Rotation du plan (degrés, X puis Y puis Z : `Geometry::rotation_transform`) ;
+    /// prioritaire sur la normale (normale = R·Z). Oriente aussi les connecteurs
+    /// et la queue d'aronde (axe X du plan).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rotation_deg: Option<[f64; 3]>,
+    /// Matrice d'instance 4×4 colonne-major (rotation/échelle de l'objet,
+    /// translation ignorée) : le plan est alors dans le repère monde centré sur
+    /// l'objet, comme le gizmo d'Orca, et les pièces sortent sans rotation.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub instance_matrix: Option<[f64; 16]>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub connectors: Vec<CutConnector>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub groove: Option<CutGroove>,
+    #[serde(default)]
+    pub keep_as_parts: bool,
+    #[serde(default)]
+    pub place_on_cut_upper: bool,
+    #[serde(default)]
+    pub place_on_cut_lower: bool,
+    #[serde(default)]
+    pub flip_upper: bool,
+    #[serde(default)]
+    pub flip_lower: bool,
+}
+
+impl CutOptions {
+    /// Coupe historique (`cut_mesh` seul) : aucune option Orca demandée.
+    pub fn is_plain(&self) -> bool {
+        *self == CutOptions::default()
+    }
+
+    /// Normale R·Z de la rotation (degrés, convention Orca Rz·Ry·Rx).
+    pub fn rotation_normal(rotation_deg: [f64; 3]) -> [f64; 3] {
+        let [x, y, z] = rotation_deg.map(f64::to_radians);
+        let r = glam::DQuat::from_rotation_z(z)
+            * glam::DQuat::from_rotation_y(y)
+            * glam::DQuat::from_rotation_x(x);
+        (r * glam::DVec3::Z).to_array()
+    }
+
+    pub fn validate(&self) -> Result<(), MeshOpError> {
+        let bad = |m: &str| Err(MeshOpError::InvalidCut(m.into()));
+        let finite = |v: f32| v.is_finite();
+        if self
+            .rotation_deg
+            .is_some_and(|r| r.iter().any(|v| !v.is_finite()))
+        {
+            return bad("rotation non finie");
+        }
+        if let Some(m) = self.instance_matrix {
+            if m.iter().any(|v| !v.is_finite())
+                || glam::DMat4::from_cols_array(&m).determinant().abs() < 1e-12
+            {
+                return bad("matrice d'instance invalide");
+            }
+        }
+        if self.groove.is_some() && !self.connectors.is_empty() {
+            return bad("connecteurs et queue d'aronde sont exclusifs (Orca)");
+        }
+        if self.connectors.len() > 200 {
+            return bad("trop de connecteurs (200 max)");
+        }
+        for c in &self.connectors {
+            if c.pos.iter().any(|v| !v.is_finite())
+                || ![
+                    c.size_mm,
+                    c.depth_mm,
+                    c.size_tolerance_mm,
+                    c.depth_tolerance_mm,
+                    c.rotation_deg,
+                ]
+                .into_iter()
+                .all(finite)
+            {
+                return bad("connecteur : valeur non finie");
+            }
+            if !(c.size_mm > 0.0 && c.size_mm <= 200.0 && c.depth_mm > 0.0 && c.depth_mm <= 200.0) {
+                return bad("connecteur : taille ou profondeur hors plage (0–200 mm)");
+            }
+            if !(0.0..=10.0).contains(&c.size_tolerance_mm)
+                || !(0.0..=10.0).contains(&c.depth_tolerance_mm)
+            {
+                return bad("connecteur : tolérance hors plage (0–10 mm)");
+            }
+        }
+        if let Some(g) = &self.groove {
+            let values = [
+                g.depth_mm,
+                g.width(),
+                g.flaps_angle_deg,
+                g.angle_deg,
+                g.depth_tolerance_mm,
+                g.width_tolerance_mm,
+                g.gap_mm,
+            ];
+            if !values.into_iter().all(finite) {
+                return bad("queue d'aronde : valeur non finie");
+            }
+            if !(g.depth_mm > 0.0 && g.depth_mm <= 200.0 && g.width() > 0.0 && g.width() <= 500.0) {
+                return bad("queue d'aronde : profondeur ou largeur hors plage");
+            }
+            if !(g.flaps_angle_deg > 0.0 && g.flaps_angle_deg < 90.0) || g.angle_deg.abs() >= 90.0 {
+                return bad("queue d'aronde : angles hors plage");
+            }
+            if !(0.0..=10.0).contains(&g.depth_tolerance_mm)
+                || !(0.0..=10.0).contains(&g.width_tolerance_mm)
+            {
+                return bad("queue d'aronde : tolérance hors plage (0–10 mm)");
+            }
+            if !(1..=20).contains(&g.count) || !(0.0..=500.0).contains(&g.gap_mm) {
+                return bad("queue d'aronde : nombre (1–20) ou écart hors plage");
+            }
+        }
+        Ok(())
     }
 }
 
@@ -128,6 +378,9 @@ pub fn primitive_side_for_bed(bed_size_x: f64, bed_size_y: f64) -> f64 {
 }
 
 /// Opération demandée au worker (`engine-worker mesh-op <request.json>`).
+// Requête ponctuelle sérialisée en JSON pour le worker : la taille de la
+// variante `Cut` (options de découpe complète) est sans effet mesurable.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum MeshOp {
@@ -135,11 +388,14 @@ pub enum MeshOp {
     /// orientation corrigée si volume négatif). Sert à « split to objects » et
     /// « split to parts » (seul le regroupement côté scène diffère).
     Split,
-    /// Coupe plane (`cut_mesh` avec bouchage des sections).
+    /// Coupe plane (`cut_mesh` avec bouchage des sections) ; avec `options`
+    /// non vides : découpe complète d'Orca (`Slic3r::Cut`).
     Cut {
         plane: CutPlane,
         keep_upper: bool,
         keep_lower: bool,
+        #[serde(default, skip_serializing_if = "CutOptions::is_plain")]
+        options: CutOptions,
     },
     /// Booléen mcut entre `meshes[0]` (source A) et `meshes[1]` (outil B),
     /// exprimés dans un repère commun.
@@ -187,6 +443,29 @@ pub struct MeshOpPart {
     pub mesh_path: PathBuf,
     pub triangles: u32,
     pub vertices: u32,
+    /// Découpe complète : volume additionnel (connecteur, 2e pièce…) de
+    /// l'objet `label` ; absent pour le corps principal de chaque objet.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub volume: Option<CutVolumeMeta>,
+}
+
+/// Volume additionnel d'un objet issu de la découpe complète.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct CutVolumeMeta {
+    /// Nom Orca du volume (`Connector-1`, `object_B`…).
+    pub name: String,
+    /// `part` | `negative` | `modifier` | `blocker` | `enforcer`.
+    pub role: String,
+    /// `cut_info.is_connector`.
+    pub connector: bool,
+}
+
+/// Pièce produite par le moteur avant écriture (corps ou volume additionnel).
+#[derive(Debug, Clone)]
+pub struct MeshOpPiece {
+    pub label: String,
+    pub mesh: TriangleMesh,
+    pub volume: Option<CutVolumeMeta>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -209,6 +488,8 @@ pub enum MeshOpError {
     InvalidText(String),
     #[error("primitive invalide : {0}")]
     InvalidPrimitive(String),
+    #[error("découpe invalide : {0}")]
+    InvalidCut(String),
 }
 
 impl MeshOp {
@@ -304,10 +585,17 @@ impl MeshOp {
             plane,
             keep_upper,
             keep_lower,
+            options,
         } = self
         {
-            plane.validate()?;
-            if !keep_upper && !keep_lower {
+            options.validate()?;
+            if options.rotation_deg.is_none() {
+                plane.validate()?;
+            } else if plane.point.iter().any(|v| !v.is_finite()) {
+                return Err(MeshOpError::InvalidPlane("coordonnées non finies".into()));
+            }
+            // Orca force les deux moitiés quand il y a des connecteurs.
+            if !keep_upper && !keep_lower && options.connectors.is_empty() {
                 return Err(MeshOpError::NothingKept);
             }
         }
@@ -462,6 +750,7 @@ mod tests {
             plane,
             keep_upper,
             keep_lower,
+            options: CutOptions::default(),
         };
         assert!(cut(CutPlane::horizontal(5.0), true, true)
             .validate(m)
@@ -539,6 +828,79 @@ mod tests {
             normal: [0.0, 0.0, 2.0],
         };
         assert!((p.signed_distance([1.0, 1.0, 7.0]) - 2.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn cut_options_parse_with_orca_defaults_and_validate() {
+        let op: MeshOp = serde_json::from_value(serde_json::json!({
+            "kind": "cut",
+            "plane": { "point": [0, 0, 1], "normal": [0, 0, 1] },
+            "keep_upper": true, "keep_lower": true,
+            "options": { "connectors": [{ "pos": [1, 2, 1], "type": "dowel", "shape": "hexagon" }] }
+        }))
+        .unwrap();
+        let MeshOp::Cut { options, .. } = &op else {
+            panic!("cut attendu")
+        };
+        let c = options.connectors[0];
+        assert_eq!(c.kind, CutConnectorType::Dowel);
+        assert_eq!(c.style, CutConnectorStyle::Prism);
+        assert_eq!(c.shape, CutConnectorShape::Hexagon);
+        assert_eq!((c.size_mm, c.depth_mm), (2.5, 3.0));
+        assert_eq!((c.size_tolerance_mm, c.depth_tolerance_mm), (0.0, 0.1));
+        let source = cube([0.0; 3], 10.0);
+        assert!(op.validate(std::slice::from_ref(&source)).is_ok());
+        // Sans option : forme sérialisée historique (pas de champ options).
+        let plain = MeshOp::Cut {
+            plane: CutPlane::horizontal(1.0),
+            keep_upper: true,
+            keep_lower: true,
+            options: CutOptions::default(),
+        };
+        assert!(serde_json::to_value(&plain)
+            .unwrap()
+            .get("options")
+            .is_none());
+
+        let groove: CutGroove =
+            serde_json::from_value(serde_json::json!({ "depth_mm": 2 })).unwrap();
+        assert_eq!(groove.width(), 8.0);
+        assert_eq!(
+            (groove.flaps_angle_deg, groove.count, groove.gap_mm),
+            (60.0, 1, 10.0)
+        );
+        let both = CutOptions {
+            connectors: vec![c],
+            groove: Some(groove),
+            ..CutOptions::default()
+        };
+        assert!(matches!(both.validate(), Err(MeshOpError::InvalidCut(_))));
+        let mut big = c;
+        big.size_mm = 0.0;
+        let bad = CutOptions {
+            connectors: vec![big],
+            ..CutOptions::default()
+        };
+        assert!(matches!(bad.validate(), Err(MeshOpError::InvalidCut(_))));
+        let mut steep = groove;
+        steep.flaps_angle_deg = 90.0;
+        let bad = CutOptions {
+            groove: Some(steep),
+            ..CutOptions::default()
+        };
+        assert!(matches!(bad.validate(), Err(MeshOpError::InvalidCut(_))));
+    }
+
+    #[test]
+    fn rotation_normal_follows_orca_convention() {
+        let n = CutOptions::rotation_normal([0.0, 0.0, 0.0]);
+        assert!((n[2] - 1.0).abs() < 1e-12);
+        // Rotation de 90° autour de X : Z → −Y.
+        let n = CutOptions::rotation_normal([90.0, 0.0, 0.0]);
+        assert!((n[1] + 1.0).abs() < 1e-12 && n[2].abs() < 1e-12);
+        // Rz·Ry·Rx : 90° autour de Y puis 90° autour de Z → Z → X → Y.
+        let n = CutOptions::rotation_normal([0.0, 90.0, 90.0]);
+        assert!((n[1] - 1.0).abs() < 1e-12, "{n:?}");
     }
 
     #[test]

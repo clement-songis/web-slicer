@@ -51,6 +51,7 @@ fn volume(mesh: TriangleMesh, matrix: DMat4, role: VolumeRole) -> ModelVolume {
         extruder: None,
         paint: VolumePaint::default(),
         settings: DynamicPrintConfig::new(),
+        emboss: None,
     }
 }
 

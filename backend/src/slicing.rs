@@ -672,6 +672,7 @@ pub(crate) fn scene_object_volumes(object: &Value) -> Vec<engine::api::ModelVolu
                     .map(|e| e as u16),
                 paint: engine::api::VolumePaint::default(),
                 settings: scene_object_settings(volume),
+                emboss: None,
             })
         })
         .collect()
@@ -777,10 +778,20 @@ pub(crate) fn scene_object_mesh_volumes(object: &Value) -> Vec<MeshVolumeRef> {
                         .map(|e| e as u16),
                     paint: engine::api::VolumePaint::default(),
                     settings: scene_object_settings(volume),
+                    emboss: scene_emboss(volume),
                 },
             })
         })
         .collect()
+}
+
+/// Relief ré-éditable d'un objet ou volume de scène (`emboss`, lot 26) :
+/// objet JSON `{ type: "text" | "svg", … }` (cf. réponse de `/emboss`),
+/// écrit dans le 3MF comme `TextConfiguration` / `EmbossShape` d'Orca.
+pub(crate) fn scene_emboss(node: &Value) -> Option<Value> {
+    node.get("emboss")
+        .filter(|e| matches!(e.get("type").and_then(Value::as_str), Some("text" | "svg")))
+        .cloned()
 }
 
 /// Pavé fermé (12 triangles, normales sortantes) de taille `size` centré en `center`.

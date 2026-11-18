@@ -129,6 +129,12 @@ where
         .route("/api/projects/{id}/orient", post(scene::orient))
         .route("/api/projects/{id}/slice", post(slice::slice))
         .route("/api/projects/{id}/export/3mf", get(export::export_3mf))
+        .route(
+            "/api/projects/{id}/plates/{index}/thumbnail",
+            axum::routing::put(export::put_plate_thumbnail)
+                .delete(export::delete_plate_thumbnail)
+                .layer(DefaultBodyLimit::max(8 * 1024 * 1024)),
+        )
         .route("/api/projects/{id}/export/drc", post(export::export_drc))
         .route("/api/projects/{id}/export/stl", post(export::export_stl))
         .route("/api/flush-volumes", post(flush::flush_volumes))

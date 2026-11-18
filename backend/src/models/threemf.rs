@@ -23,6 +23,8 @@ pub struct ImportedObject {
     pub instance_index: usize,
     /// Peinture du maillage pièce, au format scène (`canal → { triangle → hex }`).
     pub painting: Map<String, Value>,
+    /// Relief ré-éditable du maillage pièce (scène : `emboss` de l'objet).
+    pub emboss: Option<Value>,
     /// Volumes non pièce (négatif, modificateur, bloqueur/forceur) au format
     /// scène (`scene/volumes.ts`) : pavé englobant dans le repère recentré.
     pub volumes: Vec<Value>,
@@ -42,11 +44,15 @@ pub struct ImportedObject {
 #[derive(Debug, Clone)]
 pub struct ImportedPart {
     pub name: String,
+    /// Rôle de scène (`part`, `negative`, `modifier`, `blocker`, `enforcer`).
+    pub role: String,
     pub mesh: TriangleMesh,
     /// Centre de la pièce moins centre du maillage principal (repère recentré).
     pub offset: [f64; 3],
     pub extruder: u64,
     pub settings: Map<String, Value>,
+    /// Relief ré-éditable de la pièce (scène : `emboss` du volume maillé).
+    pub emboss: Option<Value>,
 }
 
 #[derive(Debug, Clone)]
@@ -136,6 +142,9 @@ struct ViewVolume {
     indices: Vec<u32>,
     #[serde(default)]
     paint: Vec<(String, u32, String)>,
+    /// Relief ré-éditable (`text_configuration` / `emboss_shape` d'Orca).
+    #[serde(default)]
+    emboss: Option<Value>,
 }
 
 #[derive(serde::Deserialize)]
@@ -335,8 +344,14 @@ fn convert_view(view: ProjectView) -> ImportResult<ImportedProject> {
             };
             let middle: [f64; 3] =
                 std::array::from_fn(|a| round4((min[a] + max[a]) as f64 / 2.0 - center[a]));
-            if volume.role == "part" {
+            // Volume non pièce au maillage quelconque (ex. connecteur de coupe
+            // négatif, Orca CutUtils) : conservé maillé comme Orca ; seuls les
+            // pavés (8 sommets, 12 facettes, volumes « box » de la scène)
+            // restent des volumes paramétriques.
+            let is_box = vmesh.indices.len() == 12 && vmesh.vertices.len() == 8;
+            if volume.role == "part" || !is_box {
                 parts_out.push(ImportedPart {
+                    role: volume.role.clone(),
                     name: if volume.name.trim().is_empty() {
                         format!("Pièce {}", parts_out.len() + 2)
                     } else {
@@ -346,6 +361,7 @@ fn convert_view(view: ProjectView) -> ImportResult<ImportedProject> {
                     offset: middle,
                     extruder: volume.extruder,
                     settings: without_extruder(&volume.settings),
+                    emboss: volume.emboss.clone().filter(|e| !e.is_null()),
                 });
                 continue;
             }
@@ -393,6 +409,7 @@ fn convert_view(view: ProjectView) -> ImportResult<ImportedProject> {
                 source_id: source_id.clone(),
                 instance_index,
                 painting: painting.clone(),
+                emboss: first.emboss.clone().filter(|e| !e.is_null()),
                 volumes: volumes.clone(),
                 parts: parts_out.clone(),
                 layer_ranges: layer_ranges.clone(),
@@ -539,10 +556,12 @@ mod tests {
             ProjectPlate {
                 name: "Premier".into(),
                 settings: DynamicPrintConfig::new(),
+                ..ProjectPlate::default()
             },
             ProjectPlate {
                 name: "Second".into(),
                 settings: second,
+                ..ProjectPlate::default()
             },
         ];
         (model, plates)

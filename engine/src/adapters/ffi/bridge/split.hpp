@@ -12,9 +12,12 @@ namespace webslicer {
 struct RawMesh;
 struct RawCutPlane;
 struct RawCutResult;
+struct RawCutRequest;
+struct RawCutObject;
 
 rust::Vec<RawMesh> split_mesh_raw(const RawMesh &mesh);
 RawCutResult cut_mesh_raw(const RawMesh &mesh, const RawCutPlane &plane);
+rust::Vec<RawCutObject> cut_object_raw(const RawMesh &mesh, const RawCutRequest &request);
 RawMesh boolean_mesh_raw(const RawMesh &a, const RawMesh &b, uint8_t op);
 RawMesh smooth_mesh_raw(const RawMesh &mesh);
 RawMesh emboss_text_raw(rust::Str font_path, rust::Str text, float size_mm, float depth_mm,

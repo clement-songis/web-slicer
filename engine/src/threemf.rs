@@ -34,4 +34,8 @@ pub const PLATE_SETTING_KEYS: &[&str] = &[
 pub struct ProjectPlate {
     pub name: String,
     pub settings: DynamicPrintConfig,
+    /// Vignette PNG du plateau (Orca : `PartPlate::thumbnail_data`, rendue à
+    /// 512 × 512) ; vide = aucune. Transmise au worker avec le plateau.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub thumbnail_png: Vec<u8>,
 }

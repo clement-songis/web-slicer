@@ -10,6 +10,9 @@
 #include "engine/src/adapters/ffi/bridge.rs.h"
 
 #include "libslic3r/ClipperUtils.hpp"
+#include "libslic3r/CutUtils.hpp"
+#include "libslic3r/Geometry.hpp"
+#include "libslic3r/Model.hpp"
 #include "libslic3r/Emboss.hpp"
 #include "libslic3r/NSVGUtils.hpp"
 #include "libslic3r/MeshBoolean.hpp"
@@ -133,6 +136,214 @@ RawCutResult cut_mesh_raw(const RawMesh &raw, const RawCutPlane &plane)
     result.upper = finish(upper_its, plane.keep_upper);
     result.lower = finish(lower_its, plane.keep_lower);
     return result;
+}
+
+// ---------------------------------------------------------------------------
+// Découpe complète d'Orca (GLGizmoCut3D::perform_cut → Slic3r::Cut, CutUtils.cpp).
+// Le gizmo (GUI) n'est pas lié : ses trois fonctions qui préparent le modèle
+// avant Cut sont recopiées ici à l'identique — get_connector_mesh,
+// apply_cut_connectors et apply_connectors_in_model (GLGizmoCut.cpp:4007,
+// 4041, 3419) — ainsi que le calcul des attributs de perform_cut (:3557).
+// Tout le reste (coupe des volumes, connecteurs, tolérances, goujons, queue
+// d'aronde, placer sur la coupe / retourner) est le code de libslic3r.
+namespace {
+
+indexed_triangle_set cut_connector_mesh(const Slic3r::CutConnectorAttributes &attribs,
+                                        float snap_space_proportion, float snap_bulge_proportion)
+{
+    using namespace Slic3r;
+    int sectorCount{1};
+    switch (CutConnectorShape(attribs.shape)) {
+    case CutConnectorShape::Triangle: sectorCount = 3; break;
+    case CutConnectorShape::Square: sectorCount = 4; break;
+    case CutConnectorShape::Circle: sectorCount = 360; break;
+    case CutConnectorShape::Hexagon: sectorCount = 6; break;
+    default: break;
+    }
+    if (attribs.type == CutConnectorType::Snap)
+        return its_make_snap(1.0, 1.0, snap_space_proportion, snap_bulge_proportion);
+    if (attribs.style == CutConnectorStyle::Prism)
+        return its_make_cylinder(1.0, 1.0, (2 * PI / sectorCount));
+    if (attribs.type == CutConnectorType::Plug)
+        return its_make_frustum(1.0, 1.0, (2 * PI / sectorCount));
+    return its_make_frustum_dowel(1.0, 1.0, sectorCount);
+}
+
+// GLGizmoCut3D::apply_cut_connectors (nom traduit « Connector » d'Orca).
+void apply_cut_connectors(Slic3r::ModelObject *mo, const std::string &connector_name,
+                          float snap_space_proportion, float snap_bulge_proportion)
+{
+    using namespace Slic3r;
+    using namespace Slic3r::Geometry;
+    if (mo->cut_connectors.empty())
+        return;
+    size_t connector_id = mo->cut_id.connectors_cnt();
+    for (const CutConnector &connector : mo->cut_connectors) {
+        TriangleMesh mesh = TriangleMesh(
+            cut_connector_mesh(connector.attribs, snap_space_proportion, snap_bulge_proportion));
+        ModelVolume *new_volume = mo->add_volume(std::move(mesh), ModelVolumeType::NEGATIVE_VOLUME);
+        new_volume->set_transformation(translation_transform(connector.pos) * connector.rotation_m *
+                                       rotation_transform(-connector.z_angle * Vec3d::UnitZ()) *
+                                       scale_transform(Vec3f(connector.radius, connector.radius, connector.height).cast<double>()));
+        new_volume->cut_info = {connector.attribs.type, connector.radius_tolerance, connector.height_tolerance};
+        new_volume->name = connector_name + "-" + std::to_string(++connector_id);
+    }
+    mo->cut_id.increase_connectors_cnt(mo->cut_connectors.size());
+    mo->cut_connectors.clear();
+}
+
+uint8_t volume_role_code(Slic3r::ModelVolumeType type)
+{
+    switch (type) {
+    case Slic3r::ModelVolumeType::NEGATIVE_VOLUME: return 1;
+    case Slic3r::ModelVolumeType::PARAMETER_MODIFIER: return 2;
+    case Slic3r::ModelVolumeType::SUPPORT_BLOCKER: return 3;
+    case Slic3r::ModelVolumeType::SUPPORT_ENFORCER: return 4;
+    default: return 0;
+    }
+}
+
+} // namespace
+
+rust::Vec<RawCutObject> cut_object_raw(const RawMesh &raw, const RawCutRequest &req)
+{
+    using namespace Slic3r;
+    using namespace Slic3r::Geometry;
+
+    const Vec3d point(req.point[0], req.point[1], req.point[2]);
+    if (!point.allFinite())
+        throw std::runtime_error("plan de coupe invalide");
+
+    // m_rotation_m du gizmo : rotation du plan (normale = R·Z).
+    Transform3d rotation_m = Transform3d::Identity();
+    if (req.has_rotation) {
+        rotation_m = rotation_transform(Vec3d(req.rotation[0], req.rotation[1], req.rotation[2]));
+    } else {
+        Vec3d normal(req.normal[0], req.normal[1], req.normal[2]);
+        if (!normal.allFinite() || normal.norm() < 1e-9)
+            throw std::runtime_error("plan de coupe invalide");
+        normal.normalize();
+        rotation_m.rotate(Eigen::Quaterniond::FromTwoVectors(Vec3d::UnitZ(), normal));
+    }
+    const Vec3d cut_normal = (rotation_m.linear() * Vec3d::UnitZ()).normalized();
+
+    // Objet à un volume et une instance ; la matrice d'instance (sans
+    // translation) est appliquée par Cut comme dans Orca.
+    Model model;
+    ModelObject *mo = model.add_object();
+    mo->name = "object";
+    ModelVolume *source = mo->add_volume(TriangleMesh(raw_to_its(raw)));
+    source->name = "object";
+    ModelInstance *instance = mo->add_instance();
+    Transform3d instance_m = Transform3d::Identity();
+    for (int c = 0; c < 4; ++c)
+        for (int r = 0; r < 4; ++r)
+            instance_m.matrix()(r, c) = req.instance[c * 4 + r];
+    if (!instance_m.matrix().allFinite() || std::abs(instance_m.linear().determinant()) < 1e-12)
+        throw std::runtime_error("matrice d'instance invalide");
+    instance_m.translation() = Vec3d::Zero();
+    instance->set_transformation(Transformation(instance_m));
+
+    // Le plan doit traverser l'objet (Orca : bouton « Couper » désactivé sinon).
+    {
+        TriangleMesh world = source->mesh();
+        world.transform(instance_m * source->get_matrix(), true);
+        bool above = false, below = false;
+        for (const stl_vertex &v : world.its.vertices) {
+            const double d = (v.cast<double>() - point).dot(cut_normal);
+            above |= d > 0.;
+            below |= d < 0.;
+        }
+        if (!above || !below)
+            throw std::runtime_error("le plan de coupe ne traverse pas l'objet");
+    }
+
+    const bool groove = req.groove;
+    const bool has_connectors = !req.connectors.empty();
+    if (groove && has_connectors)
+        throw std::runtime_error("connecteurs incompatibles avec la queue d'aronde");
+
+    // GLGizmoCut3D::apply_connectors_in_model (mode manuel).
+    int dowels_count = 0;
+    for (const RawCutConnector &rc : req.connectors) {
+        CutConnectorAttributes attribs(CutConnectorType(rc.kind), CutConnectorStyle(rc.style),
+                                       CutConnectorShape(rc.shape));
+        CutConnector connector(Vec3d(rc.pos[0], rc.pos[1], rc.pos[2]), rotation_m, rc.radius, rc.height,
+                               rc.radius_tolerance, rc.height_tolerance, rc.z_angle, attribs);
+        if (connector.attribs.type == CutConnectorType::Dowel) {
+            if (connector.attribs.style == CutConnectorStyle::Prism)
+                connector.height *= 2;
+            dowels_count++;
+        } else {
+            connector.pos += cut_normal * 0.5 * double(connector.height);
+        }
+        mo->cut_connectors.push_back(connector);
+    }
+    apply_cut_connectors(mo, "Connector", req.snap_space_proportion, req.snap_bulge_proportion);
+
+    // Attributs de GLGizmoCut3D::perform_cut (KeepPaint : peinture remappée
+    // côté backend, même résultat que restore_painting).
+    ModelObjectCutAttributes attributes =
+        only_if(has_connectors ? true : req.keep_upper, ModelObjectCutAttribute::KeepUpper) |
+        only_if(has_connectors ? true : req.keep_lower, ModelObjectCutAttribute::KeepLower) |
+        only_if(has_connectors ? false : req.keep_as_parts, ModelObjectCutAttribute::KeepAsParts) |
+        only_if(req.place_on_cut_upper, ModelObjectCutAttribute::PlaceOnCutUpper) |
+        only_if(req.place_on_cut_lower, ModelObjectCutAttribute::PlaceOnCutLower) |
+        only_if(req.flip_upper, ModelObjectCutAttribute::FlipUpper) |
+        only_if(req.flip_lower, ModelObjectCutAttribute::FlipLower) |
+        only_if(dowels_count > 0, ModelObjectCutAttribute::CreateDowels) |
+        only_if(!has_connectors && !groove && mo->cut_id.id().invalid(), ModelObjectCutAttribute::InvalidateCutInfo);
+
+    // GLGizmoCut3D::get_cut_matrix : translation(centre du plan) · rotation.
+    const Transform3d cut_matrix = translation_transform(point) * rotation_m;
+    Cut cut(mo, 0, cut_matrix, attributes);
+
+    ModelObjectPtrs result;
+    if (groove) {
+        Cut::Groove g;
+        g.depth = g.depth_init = req.groove_depth;
+        g.width = g.width_init = req.groove_width;
+        g.flaps_angle = g.flaps_angle_init = req.groove_flaps_angle;
+        g.angle = g.angle_init = req.groove_angle;
+        g.depth_tolerance = req.groove_depth_tolerance;
+        g.width_tolerance = req.groove_width_tolerance;
+        // m_radius = rayon de la boîte de l'instance (GLGizmoCut3D::update_bb).
+        TriangleMesh world = source->mesh();
+        world.transform(instance_m * source->get_matrix(), true);
+        const float radius = float(world.bounding_box().radius());
+        result = cut.perform_with_groove(g, rotation_m, req.groove_count, req.groove_gap, radius);
+    } else {
+        result = cut.perform_with_plane();
+    }
+    if (result.empty())
+        throw std::runtime_error("la coupe n'a produit aucune pièce");
+
+    rust::Vec<RawCutObject> out;
+    for (const ModelObject *object : result) {
+        if (object->volumes.empty() || object->instances.empty())
+            continue;
+        // Rotation d'instance posée par Cut::post_process (placer sur la coupe /
+        // retourner) cuite dans les maillages : repère de coupe, instance nulle.
+        const Transform3d inst = object->instances[0]->get_transformation().get_matrix_no_offset();
+        RawCutObject obj;
+        obj.name = rust::String(object->name);
+        for (const ModelVolume *volume : object->volumes) {
+            TriangleMesh mesh = volume->mesh();
+            mesh.transform(inst * volume->get_matrix(), true);
+            Slic3r::its_compactify_vertices(mesh.its, /*shrink_to_fit=*/true);
+            if (mesh.its.indices.empty())
+                continue;
+            RawCutVolume v;
+            v.mesh = its_to_raw_mesh(mesh.its);
+            v.name = rust::String(volume->name);
+            v.role = volume_role_code(volume->type());
+            v.connector = volume->cut_info.is_connector;
+            obj.volumes.push_back(std::move(v));
+        }
+        if (!obj.volumes.empty())
+            out.push_back(std::move(obj));
+    }
+    return out;
 }
 
 RawMesh boolean_mesh_raw(const RawMesh &a, const RawMesh &b, uint8_t op)

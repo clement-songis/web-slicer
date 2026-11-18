@@ -347,7 +347,7 @@ pub(crate) async fn import_3mf_contents(
                 .unwrap_or_else(|| vec![0.0; 3]);
             let mut volume = json!({
                 "id": Uuid::new_v4().to_string(),
-                "type": "part",
+                "type": part.role,
                 "name": part.name,
                 "shape": "mesh",
                 "modelId": part_model.id.to_string(),
@@ -357,6 +357,9 @@ pub(crate) async fn import_3mf_contents(
             });
             if part.extruder > 0 {
                 volume["extruder"] = part.extruder.into();
+            }
+            if let Some(emboss) = &part.emboss {
+                volume["emboss"] = super::mesh_ops::emboss_with_font_id(emboss.clone());
             }
             mesh_volumes.push(volume);
             models.push((part_model, part.mesh.clone()));
@@ -505,6 +508,9 @@ fn imported_scene_object(
     });
     if let Some(mesh_name) = &object.mesh_name {
         document["meshName"] = mesh_name.clone().into();
+    }
+    if let Some(emboss) = &object.emboss {
+        document["emboss"] = super::mesh_ops::emboss_with_font_id(emboss.clone());
     }
     document
 }

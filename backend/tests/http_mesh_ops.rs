@@ -416,6 +416,148 @@ async fn smooth_subdivides_cube_into_closed_mesh() {
     assert_eq!(resp.status(), StatusCode::OK);
 }
 
+/// Lot 26 : découpe complète d'Orca (connecteurs, goujon, plan incliné,
+/// options invalides) par la même route, rétrocompatible.
+#[tokio::test]
+async fn full_cut_with_connectors_returns_objects_with_volumes() {
+    let Some(ctx) = setup(&cubes_stl(&[([0.0, 0.0, 0.0], 20.0)])).await else {
+        return;
+    };
+    let uri = format!("/api/models/{}/cut", ctx.model);
+    let (status, body) = send(
+        &ctx.app,
+        post(
+            &uri,
+            &ctx.user,
+            serde_json::json!({
+                "plane": { "point": [0, 0, 0] },
+                "rotation_deg": [0, 0, 0],
+                "connectors": [
+                    { "pos": [-5, 0, 0], "type": "plug", "size_mm": 5, "depth_mm": 4 },
+                    { "pos": [5, 0, 0], "type": "dowel", "shape": "square" }
+                ]
+            }),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    let parts = body["parts"].as_array().unwrap();
+    let labels: Vec<_> = parts.iter().map(|p| p["label"].as_str().unwrap()).collect();
+    assert_eq!(labels, ["upper", "lower", "dowel_1"], "{body}");
+    let upper = &parts[0];
+    let volumes = upper["volumes"].as_array().unwrap();
+    // Trou du tenon + trou du goujon dans la moitié haute.
+    assert_eq!(volumes.len(), 2, "{upper}");
+    assert!(volumes
+        .iter()
+        .all(|v| v["type"] == "negative" && v["connector"] == true));
+    let plug_hole = volumes.iter().find(|v| v["name"] == "Connector-1").unwrap();
+    // Décalage = centre du volume − centre du corps (corps : z ∈ [0, 10]).
+    assert!(
+        approx(plug_hole["offset"][0].as_f64().unwrap(), -5.0, 1e-3),
+        "{plug_hole}"
+    );
+    assert!(plug_hole["model"]["filename"]
+        .as_str()
+        .unwrap()
+        .ends_with("_A_Connector-1.stl"));
+    let lower_volumes = parts[1]["volumes"].as_array().unwrap();
+    assert!(
+        lower_volumes.iter().any(|v| v["type"] == "part"),
+        "tenon : {}",
+        parts[1]
+    );
+    assert!(parts[2].get("volumes").is_none());
+    // Chaque volume est un modèle servi par /mesh.
+    let id = plug_hole["model"]["id"].as_str().unwrap();
+    let resp = ctx
+        .app
+        .clone()
+        .oneshot(get(&format!("/api/models/{id}/mesh"), &ctx.user))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // Plan incliné sans normale : volumes égaux par symétrie.
+    let (status, body) = send(
+        &ctx.app,
+        post(
+            &uri,
+            &ctx.user,
+            serde_json::json!({ "plane": { "point": [0, 0, 0] }, "rotation_deg": [30, 0, 0] }),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    for part in body["parts"].as_array().unwrap() {
+        assert!(
+            approx(part["volume_mm3"].as_f64().unwrap(), 4000.0, 0.1),
+            "{part}"
+        );
+    }
+
+    // Erreurs : ni normale ni rotation, normale contraire à la rotation,
+    // connecteurs + queue d'aronde, matrice d'instance tronquée.
+    for bad in [
+        serde_json::json!({ "plane": { "point": [0, 0, 0] } }),
+        serde_json::json!({ "plane": { "point": [0, 0, 0], "normal": [1, 0, 0] }, "rotation_deg": [0, 0, 0] }),
+        serde_json::json!({
+            "plane": { "point": [0, 0, 0], "normal": [0, 0, 1] },
+            "connectors": [{ "pos": [0, 0, 0] }],
+            "groove": { "depth_mm": 2 }
+        }),
+        serde_json::json!({ "plane": { "point": [0, 0, 0], "normal": [0, 0, 1] }, "instance_matrix": [1, 0, 0] }),
+    ] {
+        let (status, body) = send(&ctx.app, post(&uri, &ctx.user, bad.clone())).await;
+        assert_eq!(status, StatusCode::UNPROCESSABLE_ENTITY, "{bad} → {body}");
+    }
+}
+
+/// Lot 26 : texte / SVG en relief ré-éditables — la réponse porte les
+/// paramètres à conserver dans la scène (`emboss`).
+#[tokio::test]
+async fn emboss_responses_carry_reeditable_parameters() {
+    let Some(ctx) = setup(&cubes_stl(&[([0.0, 0.0, 0.0], 20.0)])).await else {
+        return;
+    };
+    let svg = r#"<svg xmlns="http://www.w3.org/2000/svg"><rect width="10" height="5"/></svg>"#;
+    let (status, body) = send(
+        &ctx.app,
+        post(
+            &format!("/api/projects/{}/emboss-svg", ctx.project),
+            &ctx.user,
+            serde_json::json!({ "svg": svg, "width_mm": 20, "depth_mm": 1.5, "file_name": "rect.svg" }),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    let emboss = &body["parts"][0]["emboss"];
+    assert_eq!(emboss["type"], "svg", "{body}");
+    assert_eq!(emboss["svg"], svg);
+    assert_eq!(emboss["file_name"], "rect.svg");
+    assert_eq!(emboss["depth_mm"], 1.5);
+
+    let (status, body) = send(
+        &ctx.app,
+        post(
+            &format!("/api/projects/{}/emboss", ctx.project),
+            &ctx.user,
+            serde_json::json!({ "text": "Web", "font": "noto-sans", "size_mm": 10, "depth_mm": 2 }),
+        ),
+    )
+    .await;
+    if status == StatusCode::UNPROCESSABLE_ENTITY && body.to_string().contains("police") {
+        return; // police d'Orca absente de cet environnement
+    }
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    let emboss = &body["parts"][0]["emboss"];
+    assert_eq!(emboss["type"], "text", "{body}");
+    assert_eq!(emboss["text"], "Web");
+    assert_eq!(emboss["font"], "noto-sans");
+    assert_eq!(emboss["font_file"], "NotoSansKR-Regular.ttf");
+    assert_eq!(emboss["size_mm"], 10.0);
+}
+
 #[tokio::test]
 async fn horizontal_cut_produces_two_closed_halves() {
     let Some(ctx) = setup(&cubes_stl(&[([0.0, 0.0, 0.0], 20.0)])).await else {

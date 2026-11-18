@@ -22,8 +22,8 @@ use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::Json;
 use engine::api::split::{
-    bbox_center, encode_binary_stl, primitive_side_for_bed, signed_volume, BooleanOp, CutPlane,
-    MeshOp, PrimitiveShape,
+    bbox_center, encode_binary_stl, primitive_side_for_bed, signed_volume, BooleanOp, CutConnector,
+    CutGroove, CutOptions, CutPlane, MeshOp, PrimitiveShape,
 };
 use engine::api::TriangleMesh;
 use serde::{Deserialize, Serialize};
@@ -42,6 +42,13 @@ use crate::scene::analyze_mesh;
 /// Corps de `POST /api/models/{id}/cut` : plan dans le repère recentré du
 /// modèle (normale quelconque ; `[0,0,1]` = coupe horizontale), moitiés à
 /// conserver (défaut : les deux). `upper` = côté de la normale.
+///
+/// Lot 26 — découpe complète d'Orca (GLGizmoCut3D → `Slic3r::Cut`), champs
+/// facultatifs (absents = coupe plane historique) : `rotation_deg` (plan
+/// incliné, prioritaire sur `plane.normal`), `connectors` (tenon / goujon /
+/// clip), `groove` (queue d'aronde, exclusive des connecteurs),
+/// `keep_as_parts`, `place_on_cut_upper/lower`, `flip_upper/lower`,
+/// `instance_matrix` (repère monde centré sur l'objet, pièces sans rotation).
 #[derive(Debug, Clone, Deserialize, TS)]
 #[serde(deny_unknown_fields)]
 #[ts(export)]
@@ -59,6 +66,43 @@ pub struct CutRequest {
     #[serde(default)]
     #[ts(optional, type = "Record<string, Record<number, string>>")]
     pub keep_painting: Option<std::collections::BTreeMap<String, engine::api::paint::PaintFacets>>,
+    /// Rotation du plan en degrés (X, Y, Z appliquées dans cet ordre, comme
+    /// `Geometry::rotation_transform` d'Orca) : normale = R·Z ; l'axe X du plan
+    /// oriente la queue d'aronde.
+    #[serde(default)]
+    #[ts(optional)]
+    pub rotation_deg: Option<[f64; 3]>,
+    /// Matrice monde 4×4 colonne-major de l'objet (rotation/échelle ; la
+    /// translation est ignorée) : plan et connecteurs sont alors exprimés dans
+    /// le repère monde centré sur la position de l'objet et la rotation est
+    /// cuite dans les pièces (rotation nulle, échelle 1 à la pose), comme Orca.
+    #[serde(default)]
+    #[ts(optional)]
+    pub instance_matrix: Option<Vec<f64>>,
+    /// Connecteurs (Orca force alors les deux moitiés, sans « pièces »).
+    #[serde(default)]
+    #[ts(optional)]
+    pub connectors: Option<Vec<CutConnector>>,
+    /// Queue d'aronde (`CutMode::cutTongueAndGroove`).
+    #[serde(default)]
+    #[ts(optional)]
+    pub groove: Option<CutGroove>,
+    /// « Garder comme pièces » : un seul objet, deux volumes (_A, _B).
+    #[serde(default)]
+    #[ts(optional)]
+    pub keep_as_parts: Option<bool>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub place_on_cut_upper: Option<bool>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub place_on_cut_lower: Option<bool>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub flip_upper: Option<bool>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub flip_lower: Option<bool>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, TS)]
@@ -66,7 +110,62 @@ pub struct CutRequest {
 #[ts(export)]
 pub struct CutPlaneDto {
     pub point: [f64; 3],
-    pub normal: [f64; 3],
+    /// Facultative si `rotation_deg` est fourni (sinon obligatoire).
+    #[serde(default)]
+    #[ts(optional)]
+    pub normal: Option<[f64; 3]>,
+}
+
+impl CutRequest {
+    /// Options moteur ; erreurs de forme → 422.
+    fn options(&self) -> ApiResult<CutOptions> {
+        let instance_matrix = match &self.instance_matrix {
+            None => None,
+            Some(values) => Some(<[f64; 16]>::try_from(values.as_slice()).map_err(|_| {
+                ApiError::validation(
+                    "instance_matrix : 16 valeurs attendues",
+                    serde_json::json!({ "field": "instance_matrix" }),
+                )
+            })?),
+        };
+        Ok(CutOptions {
+            rotation_deg: self.rotation_deg,
+            instance_matrix,
+            connectors: self.connectors.clone().unwrap_or_default(),
+            groove: self.groove,
+            keep_as_parts: self.keep_as_parts.unwrap_or(false),
+            place_on_cut_upper: self.place_on_cut_upper.unwrap_or(false),
+            place_on_cut_lower: self.place_on_cut_lower.unwrap_or(false),
+            flip_upper: self.flip_upper.unwrap_or(false),
+            flip_lower: self.flip_lower.unwrap_or(false),
+        })
+    }
+
+    /// Normale effective : celle de la rotation si fournie (une normale
+    /// explicite doit alors concorder, à 0,1° près), sinon `plane.normal`.
+    fn normal(&self) -> ApiResult<[f64; 3]> {
+        let invalid = |message: &str| {
+            ApiError::validation(
+                message.to_string(),
+                serde_json::json!({ "field": "plane.normal" }),
+            )
+        };
+        match (self.rotation_deg, self.plane.normal) {
+            (None, None) => Err(invalid("plane.normal ou rotation_deg est requis")),
+            (None, Some(normal)) => Ok(normal),
+            (Some(rotation), given) => {
+                let normal = CutOptions::rotation_normal(rotation);
+                if let Some(given) = given {
+                    let len = given.iter().map(|v| v * v).sum::<f64>().sqrt();
+                    let dot = (0..3).map(|i| normal[i] * given[i]).sum::<f64>() / len;
+                    if !(len > 1e-9 && dot >= 0.1f64.to_radians().cos()) {
+                        return Err(invalid("plane.normal ne correspond pas à rotation_deg"));
+                    }
+                }
+                Ok(normal)
+            }
+        }
+    }
 }
 
 /// Opérande booléen : modèle du projet + matrice monde colonne-major.
@@ -124,6 +223,43 @@ pub struct MeshOpPartResponse {
     #[ts(optional, type = "Record<string, Record<number, string>>")]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub paint: Option<std::collections::BTreeMap<String, engine::api::paint::PaintFacets>>,
+    /// Texte / SVG en relief (lot 26) : paramètres ré-éditables à recopier tels
+    /// quels dans l'objet ou le volume de scène (`emboss`) ; écrits dans le 3MF
+    /// comme `TextConfiguration` / `EmbossShape` d'Orca et relus à l'import.
+    /// Texte : `{ type: "text", text, font, font_file, style_name, size_mm,
+    /// depth_mm, boldness_mm? }` ; SVG : `{ type: "svg", svg, file_name,
+    /// width_mm, depth_mm }`. Ré-éditer = rappeler `/emboss` (ou `/emboss-svg`)
+    /// avec ces paramètres modifiés et remplacer le maillage.
+    #[ts(optional, type = "Record<string, unknown>")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub emboss: Option<serde_json::Value>,
+    /// Découpe complète : volumes additionnels de l'objet (connecteurs
+    /// négatifs, tenon en pièce, 2e pièce de « garder comme pièces »). À poser
+    /// comme volumes maillés de la scène : `{ shape: "mesh", modelId, type,
+    /// name, offset, rotation: [0,0,0] }`.
+    #[ts(optional)]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub volumes: Option<Vec<MeshOpVolumeResponse>>,
+}
+
+/// Volume additionnel d'un objet coupé (nouveau modèle du projet).
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct MeshOpVolumeResponse {
+    pub model: ModelResponse,
+    /// Nom Orca (`Connector-1`, `cube_B`…).
+    pub name: String,
+    /// `part` | `negative` | `modifier` | `blocker` | `enforcer` (scène).
+    #[serde(rename = "type")]
+    #[ts(rename = "type")]
+    pub role: String,
+    /// Volume issu d'un connecteur (`cut_info.is_connector`).
+    pub connector: bool,
+    /// Centre de la boîte du volume moins celui du corps (repère recentré de
+    /// l'objet, = `offset` du volume de scène).
+    pub offset: [f64; 3],
+    pub triangles: u32,
+    pub volume_mm3: f64,
 }
 
 /// Réponse commune de split / cut / boolean (201).
@@ -157,6 +293,11 @@ pub struct EmbossSvgRequest {
     pub svg: String,
     pub width_mm: f32,
     pub depth_mm: f32,
+    /// Nom du fichier SVG d'origine (Orca : `SvgFile::path`, seul le nom est
+    /// écrit dans le 3MF ; le SVG est empaqueté sous `3D/<nom>.svg`).
+    #[serde(default)]
+    #[ts(optional)]
+    pub file_name: Option<String>,
 }
 
 /// Corps de `POST /api/projects/{id}/primitive` : forme du menu « Add »
@@ -291,14 +432,48 @@ pub async fn emboss(
         .map(|c| if c.is_alphanumeric() { c } else { '_' })
         .take(32)
         .collect();
-    persist_parts(
+    let (status, Json(mut response)) = persist_parts(
         &state,
         user.id,
         project_id,
         &format!("Texte {stem}.stl"),
         parts,
     )
-    .await
+    .await?;
+    let (label, file) = EMBOSS_FONTS
+        .iter()
+        .find(|(id, _, _)| *id == req.font)
+        .map(|(_, label, file)| (*label, *file))
+        .unwrap_or_default();
+    let config = serde_json::json!({
+        "type": "text",
+        "text": req.text,
+        "font": req.font,
+        "font_file": file,
+        "style_name": label,
+        "size_mm": req.size_mm,
+        "depth_mm": req.depth_mm,
+        "boldness_mm": req.boldness_mm,
+    });
+    for part in &mut response.parts {
+        part.emboss = Some(config.clone());
+    }
+    Ok((status, Json(response)))
+}
+
+/// Relief relu d'un 3MF : rattache l'identifiant de police web-slicer
+/// (`font`) quand le fichier de police d'Orca (`font_file`) est connu.
+pub(crate) fn emboss_with_font_id(mut emboss: serde_json::Value) -> serde_json::Value {
+    let file = emboss
+        .get("font_file")
+        .and_then(serde_json::Value::as_str)
+        .map(str::to_string);
+    if let (Some(file), Some(object)) = (file, emboss.as_object_mut()) {
+        if let Some((id, _, _)) = EMBOSS_FONTS.iter().find(|(_, _, f)| *f == file) {
+            object.insert("font".into(), (*id).into());
+        }
+    }
+    emboss
 }
 
 /// `POST /api/projects/{id}/emboss-svg` — modèle « forme SVG » en relief
@@ -312,14 +487,33 @@ pub async fn emboss_svg(
     let project_id = parse_project_id(&project_raw)?;
     state.storage.projects().get(user.id, project_id).await?;
     let op = MeshOp::EmbossSvg {
-        svg: req.svg,
+        svg: req.svg.clone(),
         width_mm: req.width_mm,
         depth_mm: req.depth_mm,
     };
     op.validate(&[])
         .map_err(|e| ApiError::validation(e.to_string(), serde_json::json!({})))?;
     let parts = run_mesh_op(&op, &[]).await.map_err(worker_api_error)?;
-    persist_parts(&state, user.id, project_id, "Forme SVG.stl", parts).await
+    let (status, Json(mut response)) =
+        persist_parts(&state, user.id, project_id, "Forme SVG.stl", parts).await?;
+    let file_name = req
+        .file_name
+        .as_deref()
+        .map(str::trim)
+        .filter(|n| !n.is_empty())
+        .unwrap_or("shape.svg")
+        .to_string();
+    let config = serde_json::json!({
+        "type": "svg",
+        "svg": req.svg,
+        "file_name": file_name,
+        "width_mm": req.width_mm,
+        "depth_mm": req.depth_mm,
+    });
+    for part in &mut response.parts {
+        part.emboss = Some(config.clone());
+    }
+    Ok((status, Json(response)))
 }
 
 /// `POST /api/projects/{id}/primitive` — primitive d'Orca (`create_mesh`,
@@ -489,10 +683,11 @@ pub async fn cut(
     let op = MeshOp::Cut {
         plane: CutPlane {
             point: req.plane.point,
-            normal: req.plane.normal,
+            normal: req.normal()?,
         },
         keep_upper: req.keep_upper.unwrap_or(true),
         keep_lower: req.keep_lower.unwrap_or(true),
+        options: req.options()?,
     };
     let source = state
         .storage
@@ -529,7 +724,7 @@ pub async fn cut(
         .keep_painting
         .filter(|c| c.values().any(|f| !f.is_empty()))
     {
-        for part in &parts {
+        for part in parts.iter().filter(|p| p.volume.is_none()) {
             paints.push(Some(
                 super::scene::remap_paint_via_worker(
                     mesh.clone(),
@@ -720,8 +915,29 @@ fn part_filename(source: &str, label: &str) -> String {
     format!("{stem}{}.stl", part_suffix(label))
 }
 
+/// Fichier d'un volume additionnel : `<pièce>_<nom Orca>.stl` (caractères
+/// hors [A-Za-z0-9-_] remplacés par « _ »).
+fn volume_filename(source: &str, label: &str, name: &str) -> String {
+    let base = part_filename(source, label);
+    let stem = base.trim_end_matches(".stl");
+    let clean: String = name
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
+        .take(64)
+        .collect();
+    format!("{stem}_{clean}.stl")
+}
+
 /// Crée un modèle par pièce ; en cas d'échec, tout ce qui a été créé par
-/// cet appel est supprimé (pas de modèle orphelin à moitié écrit).
+/// cet appel est supprimé (pas de modèle orphelin à moitié écrit). Les
+/// volumes additionnels (découpe complète) suivent leur corps dans `parts` et
+/// sont rattachés à sa réponse.
 async fn persist_parts(
     state: &AppState,
     user: UserId,
@@ -730,27 +946,57 @@ async fn persist_parts(
     parts: Vec<MeshOpOutputPart>,
 ) -> ApiResult<(StatusCode, Json<MeshOpResponse>)> {
     let mut created: Vec<(ModelId, Vec<std::path::PathBuf>)> = Vec::new();
-    let mut responses = Vec::with_capacity(parts.len());
+    let mut responses: Vec<MeshOpPartResponse> = Vec::with_capacity(parts.len());
+    let mut bodies: Vec<TriangleMesh> = Vec::new();
+    let mut models: Vec<String> = Vec::new();
     for part in parts {
-        match persist_part(state, user, project, source_filename, &part, &mut created).await {
-            Ok(response) => responses.push(response),
-            Err(error) => {
-                for (id, paths) in created {
-                    let _ = state.storage.models().delete(user, id).await;
-                    for path in paths {
-                        let _ = tokio::fs::remove_file(path).await;
-                    }
-                }
-                return Err(error);
+        let result = persist_part(state, user, project, source_filename, &part, &mut created).await;
+        let outcome = match (result, &part.volume) {
+            (Ok(response), None) => {
+                bodies.push(part.mesh.clone());
+                models.push(response.model.id.clone());
+                responses.push(response);
+                Ok(())
             }
+            (Ok(response), Some(meta)) => match (responses.last_mut(), bodies.last()) {
+                (Some(owner), Some(body)) if owner.label == part.label => {
+                    let (c, b) = (bbox_center(&part.mesh), bbox_center(body));
+                    models.push(response.model.id.clone());
+                    owner
+                        .volumes
+                        .get_or_insert_with(Vec::new)
+                        .push(MeshOpVolumeResponse {
+                            model: response.model,
+                            name: meta.name.clone(),
+                            role: meta.role.clone(),
+                            connector: meta.connector,
+                            offset: std::array::from_fn(|i| c[i] - b[i]),
+                            triangles: response.triangles,
+                            volume_mm3: response.volume_mm3,
+                        });
+                    Ok(())
+                }
+                _ => {
+                    tracing::error!(label = %part.label, "volume de découpe sans corps");
+                    Err(ApiError::internal())
+                }
+            },
+            (Err(error), _) => Err(error),
+        };
+        if let Err(error) = outcome {
+            for (id, paths) in created {
+                let _ = state.storage.models().delete(user, id).await;
+                for path in paths {
+                    let _ = tokio::fs::remove_file(path).await;
+                }
+            }
+            return Err(error);
         }
     }
-    for response in &responses {
-        state.events.publish_model_converted(
-            user,
-            &response.model.id,
-            &format!("/api/models/{}/mesh", response.model.id),
-        );
+    for id in &models {
+        state
+            .events
+            .publish_model_converted(user, id, &format!("/api/models/{id}/mesh"));
     }
     Ok((
         StatusCode::CREATED,
@@ -786,7 +1032,10 @@ async fn persist_part(
             user,
             NewModel {
                 project_id: Some(project),
-                filename: part_filename(source_filename, &part.label),
+                filename: match &part.volume {
+                    Some(meta) => volume_filename(source_filename, &part.label, &meta.name),
+                    None => part_filename(source_filename, &part.label),
+                },
                 format: ModelFormat::Stl,
                 file_path: file_path.to_string_lossy().into_owned(),
                 mesh_path: None,
@@ -833,6 +1082,8 @@ async fn persist_part(
         volume_mm3: signed_volume(&part.mesh),
         watertight: analysis.watertight(),
         paint: None,
+        emboss: None,
+        volumes: None,
     })
 }
 
@@ -846,6 +1097,15 @@ mod tests {
         assert_eq!(part_filename("bracket.stl", "lower"), "bracket_B.stl");
         assert_eq!(part_filename("two.3mf", "part_2"), "two_2.stl");
         assert_eq!(part_filename("", "result"), "model_boolean.stl");
+        assert_eq!(
+            volume_filename("bracket.stl", "upper", "Connector-1"),
+            "bracket_A_Connector-1.stl"
+        );
+        assert_eq!(
+            part_filename("bracket.stl", "dowel_1"),
+            "bracket_dowel_1.stl"
+        );
+        assert_eq!(volume_filename("b.stl", "parts", "b é"), "b_parts_b__.stl");
     }
 
     #[test]

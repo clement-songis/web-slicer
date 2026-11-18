@@ -4,4 +4,9 @@
  * Corps de `POST /api/projects/{id}/emboss-svg` : forme SVG en relief (outil
  * SVG d'Orca), mise à l'échelle à `width_mm` et extrudée de `depth_mm`.
  */
-export type EmbossSvgRequest = { svg: string, width_mm: number, depth_mm: number, };
+export type EmbossSvgRequest = { svg: string, width_mm: number, depth_mm: number, 
+/**
+ * Nom du fichier SVG d'origine (Orca : `SvgFile::path`, seul le nom est
+ * écrit dans le 3MF ; le SVG est empaqueté sous `3D/<nom>.svg`).
+ */
+file_name?: string, };

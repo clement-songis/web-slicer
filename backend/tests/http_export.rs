@@ -198,6 +198,229 @@ async fn exports_a_valid_3mf_project() {
     assert_eq!(model_xml.matches("<triangle ").count(), 1);
 }
 
+/// Lot 26 : relief ré-éditable (`emboss`) de l'objet et d'un volume maillé
+/// négatif (connecteur de coupe) conservés par l'aller-retour export → import.
+#[tokio::test]
+async fn emboss_and_negative_mesh_volume_survive_export_then_import() {
+    let h = harness().await;
+    let session = register(&h.app, "emboss-rt@test.local").await;
+    let owner = user_id(&h.storage, "emboss-rt@test.local").await;
+    let project = seed_project(&h, owner).await;
+    let model_id = h.storage.models().list(owner, Some(project)).await.unwrap()[0]
+        .id
+        .to_string();
+    // Tétraèdre (4 facettes) : volume négatif non pavé.
+    let tetra = "solid t
+facet normal 0 0 -1
+ outer loop
+  vertex 0 0 0
+  vertex 0 1 0
+  vertex 1 0 0
+ endloop
+endfacet
+facet normal 0 -1 0
+ outer loop
+  vertex 0 0 0
+  vertex 1 0 0
+  vertex 0 0 1
+ endloop
+endfacet
+facet normal -1 0 0
+ outer loop
+  vertex 0 0 0
+  vertex 0 0 1
+  vertex 0 1 0
+ endloop
+endfacet
+facet normal 1 1 1
+ outer loop
+  vertex 1 0 0
+  vertex 0 1 0
+  vertex 0 0 1
+ endloop
+endfacet
+endsolid t
+";
+    let path = h
+        .files
+        .write_model(
+            owner,
+            backend::domain::ModelId::new(),
+            "stl",
+            tetra.as_bytes(),
+        )
+        .await
+        .unwrap();
+    let hole = h
+        .storage
+        .models()
+        .create(
+            owner,
+            NewModel {
+                project_id: Some(project),
+                filename: "hole.stl".into(),
+                format: ModelFormat::Stl,
+                file_path: path.to_string_lossy().into_owned(),
+                mesh_path: None,
+                size_bytes: tetra.len() as i64,
+                triangle_count: 4,
+                repair_report: None,
+            },
+        )
+        .await
+        .unwrap();
+    let current = h.storage.projects().get(owner, project).await.unwrap();
+    let scene = json!({
+        "objects": [{
+            "id": "o1",
+            "modelId": model_id,
+            "emboss": { "type": "text", "text": "Salut", "font": "noto-sans",
+                        "font_file": "NotoSansKR-Regular.ttf", "style_name": "Noto Sans",
+                        "size_mm": 8.0, "depth_mm": 1.0 },
+            "volumes": [{ "id": "v1", "type": "negative", "name": "Connector-1", "shape": "mesh",
+                          "modelId": hole.id.to_string(), "offset": [0.2, 0.0, 0.0],
+                          "rotation": [0, 0, 0],
+                          "emboss": { "type": "svg", "svg": "<svg xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"4\" height=\"2\"/></svg>",
+                                      "file_name": "rect.svg", "depth_mm": 0.5 } }],
+            "transform": {"position": [20.0, 30.0, 0.0], "rotation": [0.0, 0.0, 0.0],
+                          "scale": [1.0, 1.0, 1.0]}
+        }],
+        "plates": {"activeId": "p1", "plates": [{"id": "p1", "name": "A", "objectIds": ["o1"]}]}
+    });
+    h.storage
+        .projects()
+        .update(owner, project, current.version, scene, json!({}), None)
+        .await
+        .unwrap();
+
+    let resp = get(
+        &h.app,
+        &format!("/api/projects/{project}/export/3mf"),
+        &session,
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let bytes = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+    let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes.as_ref())).unwrap();
+    let mut xml = String::new();
+    zip.by_name("Metadata/model_settings.config")
+        .unwrap()
+        .read_to_string(&mut xml)
+        .unwrap();
+    assert!(xml.contains(r#"<slic3rpe:text text="Salut""#), "{xml}");
+    assert!(xml.contains(r#"filepath3mf="3D/rect.svg""#), "{xml}");
+    assert!(xml.contains(r#"subtype="negative_part""#), "{xml}");
+    drop(zip);
+
+    let resp = h
+        .app
+        .clone()
+        .oneshot(import_request(&bytes, &session))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let body = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+    let imported: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    let object = &imported["scene"]["objects"][0];
+    assert_eq!(object["emboss"]["type"], "text", "{imported}");
+    assert_eq!(object["emboss"]["text"], "Salut");
+    assert_eq!(object["emboss"]["font"], "noto-sans");
+    let volume = object["volumes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|v| v["name"] == "Connector-1")
+        .unwrap_or_else(|| panic!("{object}"));
+    assert_eq!(volume["type"], "negative", "{volume}");
+    assert_eq!(volume["shape"], "mesh", "{volume}");
+    assert_eq!(volume["emboss"]["type"], "svg", "{volume}");
+    assert_eq!(volume["emboss"]["file_name"], "rect.svg");
+}
+
+/// Lot 26 : vignettes de plateau dans le 3MF (Orca : Metadata/plate_1.png +
+/// plate_1_small.png, `thumbnail_file` dans model_settings.config) — rendu
+/// serveur par défaut, capture de l'interface si envoyée.
+#[tokio::test]
+async fn export_writes_plate_thumbnails_server_or_client() {
+    let h = harness().await;
+    let session = register(&h.app, "thumb@test.local").await;
+    let owner = user_id(&h.storage, "thumb@test.local").await;
+    let project = seed_project(&h, owner).await;
+    let entry = |bytes: &[u8], name: &str| -> Option<Vec<u8>> {
+        let mut zip = zip::ZipArchive::new(std::io::Cursor::new(bytes)).unwrap();
+        let mut file = zip.by_name(name).ok()?;
+        let mut out = Vec::new();
+        file.read_to_end(&mut out).unwrap();
+        Some(out)
+    };
+    let export = || async {
+        let resp = get(
+            &h.app,
+            &format!("/api/projects/{project}/export/3mf"),
+            &session,
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap()
+            .to_vec()
+    };
+
+    let server = export().await;
+    let plate = entry(&server, "Metadata/plate_1.png").expect("plate_1.png");
+    assert!(plate.starts_with(b"\x89PNG"));
+    assert!(entry(&server, "Metadata/plate_1_small.png").is_some());
+    let settings =
+        String::from_utf8(entry(&server, "Metadata/model_settings.config").unwrap()).unwrap();
+    assert!(settings.contains("Metadata/plate_1.png"), "{settings}");
+
+    // Capture de l'interface (PNG 64 × 64 rouge) : remplace le rendu serveur.
+    let red: Vec<u8> = [255u8, 0, 0, 255].repeat(64 * 64);
+    let png = backend::thumbnails::encode_png(&red, 64, 64);
+    let put = |body: Vec<u8>| {
+        h.app.clone().oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/api/projects/{project}/plates/0/thumbnail"))
+                .header(header::COOKIE, &session)
+                .header(header::CONTENT_TYPE, "image/png")
+                .body(Body::from(body))
+                .unwrap(),
+        )
+    };
+    assert_eq!(put(png).await.unwrap().status(), StatusCode::NO_CONTENT);
+    assert_eq!(
+        put(b"pas un png".to_vec()).await.unwrap().status(),
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    let client = export().await;
+    let client_plate = entry(&client, "Metadata/plate_1.png").unwrap();
+    assert_ne!(
+        client_plate, plate,
+        "la capture doit remplacer le rendu serveur"
+    );
+    assert!(entry(&client, "Metadata/plate_1_small.png").is_some());
+
+    // Suppression : retour au rendu serveur (identique au premier export).
+    let resp = h
+        .app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("DELETE")
+                .uri(format!("/api/projects/{project}/plates/0/thumbnail"))
+                .header(header::COOKIE, &session)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+    let again = export().await;
+    assert_eq!(entry(&again, "Metadata/plate_1.png").unwrap(), plate);
+}
+
 /// Contenu de toutes les parties `.model` : le projet est écrit par libslic3r
 /// comme « Save project » d'Orca (SplitModel : maillages dans 3D/Objects/).
 fn all_model_xml(zip: &mut zip::ZipArchive<std::io::Cursor<&[u8]>>) -> String {

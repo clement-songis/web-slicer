@@ -118,6 +118,31 @@ impl FileStore {
             .join(format!("project-{project}.png"))
     }
 
+    /// Vignette fournie par l'interface pour le plateau `plate` (0-based) d'un
+    /// projet, écrite dans le 3MF exporté (Metadata/plate_<n>.png).
+    pub fn plate_thumbnail_path(
+        &self,
+        user: UserId,
+        project: impl std::fmt::Display,
+        plate: u32,
+    ) -> PathBuf {
+        self.space_dir(user, Space::Thumbnails)
+            .join(format!("project-{project}-plate-{plate}.png"))
+    }
+
+    /// Écrit la vignette de plateau fournie par l'interface (atomique).
+    pub async fn write_plate_thumbnail(
+        &self,
+        user: UserId,
+        project: impl std::fmt::Display,
+        plate: u32,
+        bytes: &[u8],
+    ) -> FilesResult<PathBuf> {
+        let name = format!("project-{project}-plate-{plate}.png");
+        self.write_atomic(user, Space::Thumbnails, &name, bytes)
+            .await
+    }
+
     /// Écrit la vignette de projet (atomique).
     pub async fn write_project_thumbnail(
         &self,

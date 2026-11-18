@@ -9,6 +9,7 @@
 
 namespace Slic3r {
 class Model;
+class ModelVolume;
 }
 
 namespace webslicer {
@@ -26,6 +27,10 @@ struct RawStepMesh;
 RawStepMesh load_step_raw(rust::Str path, double linear, double angle, bool split_compound);
 
 RawProject read_project_3mf_raw(rust::Str path);
+// Relief ré-éditable (ModelVolume::text_configuration / emboss_shape) <-> JSON
+// web-slicer ; chaîne vide = aucun.
+std::string emboss_to_json(const Slic3r::ModelVolume &volume);
+void emboss_from_json(Slic3r::ModelVolume &volume, const std::string &json);
 // Model::plates_custom_gcodes <-> JSON (Vec<PlateCustomGcodes> côté Rust).
 std::string custom_gcodes_to_json(const Slic3r::Model &model);
 void custom_gcodes_from_json(Slic3r::Model &model, const std::string &json, int only_plate = -1,

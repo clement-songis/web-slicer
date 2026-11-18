@@ -16,6 +16,8 @@
 // après Model.hpp (dépendances de déclaration)
 #include "libslic3r/Format/bbs_3mf.hpp"
 #include "libslic3r/GCode/GCodeProcessor.hpp"
+#include "libslic3r/GCode/ThumbnailData.hpp"
+#include "libslic3r/PNGReadWrite.hpp"
 
 #include <boost/filesystem.hpp>
 #include <cstdio>
@@ -119,6 +121,7 @@ void raw_into_model(const rust::Vec<RawObject> &objects, Slic3r::Model &model)
                 volume->config.set("extruder", static_cast<int>(raw_volume.extruder));
             volume->set_transformation(
                 Slic3r::Geometry::Transformation(from_col_major(raw_volume.matrix)));
+            emboss_from_json(*volume, std::string(raw_volume.emboss_json));
             // Peintures (supports / couture / MMU / fuzzy) comme le lecteur 3MF
             // d'Orca : une chaîne hex par triangle, indices croissants par canal.
             const size_t painted = std::min({raw_volume.paint_channel.size(),
@@ -424,6 +427,45 @@ rust::Vec<rust::String> read_project_auxiliaries_raw(rust::Str path, rust::Str o
     return out;
 }
 
+namespace {
+// Taille des vignettes de projet d'Orca (Plater.cpp : THUMBNAIL_SIZE_3MF).
+constexpr unsigned int THUMBNAIL_SIZE_3MF = 512;
+
+// PNG → ThumbnailData d'Orca : RGBA 512 × 512, rangées de bas en haut (ordre
+// OpenGL ; _add_thumbnail_file_to_archive retourne l'image à l'écriture).
+// decode_colored_png (PNGReadWrite, celui du chargeur 3MF) lit déjà de bas en
+// haut ; RGB complété d'un alpha opaque ; autre taille → plus proche voisin.
+// PNG illisible → vignette invalide (ignorée par store_bbs_3mf).
+Slic3r::ThumbnailData thumbnail_from_png(const rust::Vec<uint8_t> &png)
+{
+    Slic3r::ThumbnailData out;
+    if (png.empty())
+        return out;
+    Slic3r::png::ReadBuf buf{png.data(), png.size()};
+    if (!Slic3r::png::is_png(buf))
+        return out;
+    Slic3r::png::ImageColorscale img;
+    if (!Slic3r::png::decode_colored_png(buf, img) || img.cols == 0 || img.rows == 0 ||
+        (img.bytes_per_pixel != 3 && img.bytes_per_pixel != 4))
+        return out;
+    const size_t bpp = static_cast<size_t>(img.bytes_per_pixel);
+    out.set(THUMBNAIL_SIZE_3MF, THUMBNAIL_SIZE_3MF);
+    for (unsigned int y = 0; y < THUMBNAIL_SIZE_3MF; ++y) {
+        const size_t sy = static_cast<size_t>(y) * img.rows / THUMBNAIL_SIZE_3MF;
+        for (unsigned int x = 0; x < THUMBNAIL_SIZE_3MF; ++x) {
+            const size_t sx = static_cast<size_t>(x) * img.cols / THUMBNAIL_SIZE_3MF;
+            const unsigned char *src = &img.buf[(sy * img.cols + sx) * bpp];
+            unsigned char *dst = &out.pixels[(static_cast<size_t>(y) * THUMBNAIL_SIZE_3MF + x) * 4];
+            dst[0] = src[0];
+            dst[1] = src[1];
+            dst[2] = src[2];
+            dst[3] = bpp == 4 ? src[3] : 255;
+        }
+    }
+    return out;
+}
+} // namespace
+
 void write_project_plates_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
                               rust::Str custom_gcodes_json,
                               const rust::Vec<RawProjectPlate> &plates, rust::Str aux_dir, rust::Str out_path)
@@ -472,6 +514,21 @@ void write_project_plates_raw(const rust::Vec<RawObject> &objects, rust::Str con
                                                       static_cast<int>(raw.obj_inst[i + 1]));
     }
 
+    // Vignettes par plateau (Plater::priv::export_3mf → thumbnail_data, une
+    // entrée par plateau ; invalide = pas de fichier).
+    std::vector<ThumbnailData> thumbnails;
+    thumbnails.reserve(plates.size());
+    bool any_thumbnail = false;
+    for (const RawProjectPlate &raw : plates) {
+        thumbnails.push_back(thumbnail_from_png(raw.thumbnail_png));
+        any_thumbnail |= thumbnails.back().is_valid();
+    }
+    // PartPlateList::store_to_3mf_structure : plate_thumbnail.load_from(thumbnail_data)
+    // → attribut « thumbnail_file » du plateau dans model_settings.config.
+    for (size_t i = 0; i < plate_data.size() && i < thumbnails.size(); ++i)
+        if (thumbnails[i].is_valid())
+            plate_data[i]->plate_thumbnail.load_from(thumbnails[i]);
+
     const std::string out(out_path);
     StoreParams params;
     params.path = out.c_str();
@@ -479,6 +536,9 @@ void write_project_plates_raw(const rust::Vec<RawObject> &objects, rust::Str con
     params.plate_data_list = plate_data;
     params.config = &config;
     params.strategy = SaveStrategy::SplitModel | SaveStrategy::ShareMesh;
+    if (any_thumbnail)
+        for (ThumbnailData &thumbnail : thumbnails)
+            params.thumbnail_data.push_back(&thumbnail);
     if (!store_bbs_3mf(params))
         throw std::runtime_error("échec d'écriture 3MF : " + out);
 }

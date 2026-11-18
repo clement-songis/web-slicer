@@ -901,16 +901,17 @@ fn run_export_drc(path: &Path) -> engine::api::EngineResult<DrcExportResponse> {
 fn run_mesh_op(path: &Path) -> engine::api::EngineResult<engine::api::split::MeshOpResponse> {
     use engine::api::split::{MeshOpPart, MeshOpRequest, MeshOpResponse};
     let request: MeshOpRequest = read_json_bounded(path)?;
-    let parts = engine::adapters::ffi::run_mesh_op(&request.op, &request.meshes)?;
-    let mut out = Vec::with_capacity(parts.len());
-    for (index, (label, mesh)) in parts.into_iter().enumerate() {
+    let pieces = engine::adapters::ffi::run_mesh_op_pieces(&request.op, &request.meshes)?;
+    let mut out = Vec::with_capacity(pieces.len());
+    for (index, piece) in pieces.into_iter().enumerate() {
         let mesh_path = request.output_dir.join(format!("part-{index}.wsm"));
-        write_display_mesh(&mesh_path, &mesh.encode_display(), "découpé")?;
+        write_display_mesh(&mesh_path, &piece.mesh.encode_display(), "découpé")?;
         out.push(MeshOpPart {
-            label,
+            label: piece.label,
             mesh_path,
-            triangles: mesh.triangle_count() as u32,
-            vertices: mesh.vertices.len() as u32,
+            triangles: piece.mesh.triangle_count() as u32,
+            vertices: piece.mesh.vertices.len() as u32,
+            volume: piece.volume,
         });
     }
     Ok(MeshOpResponse { parts: out })

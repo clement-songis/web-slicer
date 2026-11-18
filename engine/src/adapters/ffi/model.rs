@@ -226,6 +226,9 @@ fn to_volume(raw: ffi::RawVolume) -> ModelVolume {
                 .collect(),
         },
         settings: config_from_orca_json(&raw.config_json),
+        emboss: (!raw.emboss_json.trim().is_empty())
+            .then(|| serde_json::from_str(&raw.emboss_json).ok())
+            .flatten(),
     }
 }
 
@@ -310,6 +313,7 @@ pub(super) fn to_raw_objects(model: &Model) -> Vec<ffi::RawObject> {
                     paint_triangle: v.paint.facets.iter().map(|f| f.1).collect(),
                     paint_state: v.paint.facets.iter().map(|f| f.2.clone()).collect(),
                     config_json: config_to_orca_json(&v.settings),
+                    emboss_json: v.emboss.as_ref().map(|e| e.to_string()).unwrap_or_default(),
                 })
                 .collect(),
             instances: o

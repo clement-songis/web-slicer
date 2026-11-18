@@ -3,6 +3,8 @@
 #include "engine/src/adapters/ffi/bridge.rs.h"
 
 #include "libslic3r/Model.hpp"
+#include "libslic3r/EmbossShape.hpp"
+#include "libslic3r/TextConfiguration.hpp"
 #include "libslic3r/Utils.hpp"
 #include "libslic3r/PrintConfig.hpp"
 #include "libslic3r/TriangleMesh.hpp"
@@ -175,6 +177,7 @@ rust::Vec<RawObject> model_to_raw(const Slic3r::Model &model)
                 if (key != "extruder")
                     volume_config[key] = volume->config.opt_serialize(key);
             raw_volume.config_json = volume_config.dump();
+            raw_volume.emboss_json = emboss_to_json(*volume);
             // Peintures (relecture 3MF) : même format hex que le writer d'Orca.
             const Slic3r::FacetsAnnotation *channels[4] = {
                 &volume->supported_facets, &volume->seam_facets,
@@ -230,6 +233,145 @@ size_t model_triangle_count(rust::Str path)
 size_t print_config_option_count()
 {
     return Slic3r::print_config_def.options.size();
+}
+
+
+// ---------------------------------------------------------------------------
+// Relief ré-éditable (lot 26) : paramètres de l'outil Emboss / SVG d'Orca
+// conservés sur le volume (TextConfiguration + EmbossShape), écrits et relus
+// par store_bbs_3mf / load_bbs_3mf (<slic3rpe:text>, <slic3rpe:shape>, SVG
+// sous 3D/<nom>.svg). JSON web-slicer :
+//   { "type": "text", "text", "font_file", "style_name", "size_mm", "depth_mm",
+//     "boldness_mm"?, "skew"?, "char_gap"?, "line_gap"?, "per_glyph"?,
+//     "align"?: ["left|center|right", "top|center|bottom"], "use_surface"? }
+//   { "type": "svg", "svg", "file_name", "depth_mm", "width_mm"?, "use_surface"? }
+namespace {
+const char *const H_ALIGN[] = {"left", "center", "right"};
+const char *const V_ALIGN[] = {"top", "center", "bottom"};
+template<class T> T align_from(const nlohmann::json &j, const char *const (&names)[3], T fallback)
+{
+    if (!j.is_string())
+        return fallback;
+    for (int i = 0; i < 3; ++i)
+        if (j.get<std::string>() == names[i])
+            return static_cast<T>(i);
+    return fallback;
+}
+} // namespace
+
+std::string emboss_to_json(const Slic3r::ModelVolume &volume)
+{
+    using namespace Slic3r;
+    nlohmann::json j;
+    if (volume.text_configuration.has_value()) {
+        const TextConfiguration &tc = *volume.text_configuration;
+        const FontProp &fp = tc.style.prop;
+        j["type"] = "text";
+        j["text"] = tc.text;
+        // Orca ne stocke que le nom du fichier de police (confidentialité).
+        std::string file = tc.style.path;
+        const size_t slash = file.find_last_of("/\\");
+        if (slash != std::string::npos)
+            file = file.substr(slash + 1);
+        j["font_file"] = file;
+        j["style_name"] = tc.style.name;
+        j["size_mm"] = fp.size_in_mm;
+        if (fp.boldness.has_value()) j["boldness_mm"] = *fp.boldness;
+        if (fp.skew.has_value()) j["skew"] = *fp.skew;
+        if (fp.char_gap.has_value()) j["char_gap"] = *fp.char_gap;
+        if (fp.line_gap.has_value()) j["line_gap"] = *fp.line_gap;
+        if (fp.per_glyph) j["per_glyph"] = true;
+        j["align"] = {H_ALIGN[static_cast<int>(fp.align.first) % 3], V_ALIGN[static_cast<int>(fp.align.second) % 3]};
+        if (volume.emboss_shape.has_value()) {
+            j["depth_mm"] = volume.emboss_shape->projection.depth;
+            if (volume.emboss_shape->projection.use_surface) j["use_surface"] = true;
+        }
+        return j.dump();
+    }
+    if (volume.emboss_shape.has_value() && volume.emboss_shape->svg_file.has_value()) {
+        const EmbossShape &es = *volume.emboss_shape;
+        const EmbossShape::SvgFile &svg = *es.svg_file;
+        j["type"] = "svg";
+        j["svg"] = svg.file_data ? *svg.file_data : std::string();
+        std::string name = !svg.path.empty() ? svg.path : svg.path_in_3mf;
+        const size_t slash = name.find_last_of("/\\");
+        if (slash != std::string::npos)
+            name = name.substr(slash + 1);
+        j["file_name"] = name;
+        j["depth_mm"] = es.projection.depth;
+        if (es.projection.use_surface) j["use_surface"] = true;
+        return j.dump();
+    }
+    return std::string();
+}
+
+void emboss_from_json(Slic3r::ModelVolume &volume, const std::string &text)
+{
+    using namespace Slic3r;
+    if (text.empty())
+        return;
+    const nlohmann::json j = nlohmann::json::parse(text, nullptr, /*allow_exceptions=*/false);
+    if (!j.is_object())
+        return;
+    const std::string type = j.value("type", std::string());
+    EmbossShape shape;
+    shape.projection.depth = j.value("depth_mm", 1.0);
+    shape.projection.use_surface = j.value("use_surface", false);
+    if (type == "text") {
+        TextConfiguration tc;
+        tc.text = j.value("text", std::string());
+        tc.style.name = j.value("style_name", std::string());
+        tc.style.path = j.value("font_file", std::string());
+        // EmbossStyle::Type::file_path : police TrueType désignée par fichier.
+        tc.style.type = EmbossStyle::Type::file_path;
+        FontProp &fp = tc.style.prop;
+        fp.size_in_mm = j.value("size_mm", 10.f);
+        if (j.contains("boldness_mm") && j["boldness_mm"].is_number()) fp.boldness = j["boldness_mm"].get<float>();
+        if (j.contains("skew") && j["skew"].is_number()) fp.skew = j["skew"].get<float>();
+        if (j.contains("char_gap") && j["char_gap"].is_number()) fp.char_gap = j["char_gap"].get<int>();
+        if (j.contains("line_gap") && j["line_gap"].is_number()) fp.line_gap = j["line_gap"].get<int>();
+        fp.per_glyph = j.value("per_glyph", false);
+        if (j.contains("align") && j["align"].is_array() && j["align"].size() == 2) {
+            fp.align.first = align_from(j["align"][0], H_ALIGN, FontProp::HorizontalAlign::center);
+            fp.align.second = align_from(j["align"][1], V_ALIGN, FontProp::VerticalAlign::center);
+        }
+        volume.text_configuration = std::move(tc);
+        volume.emboss_shape = std::move(shape);
+    } else if (type == "svg") {
+        EmbossShape::SvgFile svg;
+        svg.path = j.value("file_name", std::string("shape.svg"));
+        svg.file_data = std::make_shared<std::string>(j.value("svg", std::string()));
+        if (svg.file_data->empty())
+            return;
+        // Plater::publish → create_unique_3mf_filepath : « 3D/<nom>.svg ».
+        std::string stem = svg.path;
+        const size_t dot = stem.find_last_of('.');
+        if (dot != std::string::npos)
+            stem = stem.substr(0, dot);
+        for (char &c : stem)
+            if (c == '/' || c == '\\' || c == '"' || c == '<' || c == '>' || c == '&')
+                c = '_';
+        if (stem.empty())
+            stem = "shape";
+        std::string path_in_3mf = "3D/" + stem + ".svg";
+        size_t suffix = 1;
+        const Model *model = volume.get_object() ? volume.get_object()->get_model() : nullptr;
+        auto taken = [&](const std::string &candidate) {
+            if (!model)
+                return false;
+            for (const ModelObject *o : model->objects)
+                for (const ModelVolume *v : o->volumes)
+                    if (v != &volume && v->emboss_shape.has_value() && v->emboss_shape->svg_file.has_value() &&
+                        v->emboss_shape->svg_file->path_in_3mf == candidate)
+                        return true;
+            return false;
+        };
+        while (taken(path_in_3mf))
+            path_in_3mf = "3D/" + stem + "_" + std::to_string(++suffix) + ".svg";
+        svg.path_in_3mf = path_in_3mf;
+        shape.svg_file = std::move(svg);
+        volume.emboss_shape = std::move(shape);
+    }
 }
 
 } // namespace webslicer
