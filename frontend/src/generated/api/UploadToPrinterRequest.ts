@@ -11,4 +11,10 @@ storage?: string,
 /**
  * Démarrer l'impression immédiatement (`print=true`, FR-061).
  */
-start_now: boolean, };
+start_now: boolean, 
+/**
+ * « Téléverser et mettre en file » (Orca PrintHostPostUploadAction::QueuePrint,
+ * PrusaConnect : champ `to_queue=True`) ; exclusif de `start_now`, refusé
+ * (422) pour les hôtes qui ne le proposent pas.
+ */
+queue?: boolean, };

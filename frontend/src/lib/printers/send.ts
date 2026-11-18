@@ -45,7 +45,12 @@ export function normalizeMoonrakerUrl(raw: string): string | null {
 }
 
 /** Libellé de succès : fichier déposé, impression démarrée ou non. */
-export function sendSuccessMessage(printerName: string, result: PrinterUploadResponse): string {
+export function sendSuccessMessage(
+	printerName: string,
+	result: PrinterUploadResponse,
+	queued = false
+): string {
+	if (queued) return `« ${result.path} » envoyé à ${printerName} et mis en file d'attente.`;
 	return result.print_started
 		? `« ${result.path} » envoyé à ${printerName} — impression démarrée.`
 		: `« ${result.path} » envoyé à ${printerName}.`;

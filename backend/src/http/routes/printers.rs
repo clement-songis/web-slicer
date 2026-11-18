@@ -548,9 +548,10 @@ pub async fn upload(
     let filename = crate::gcode_filename::for_gcode(&gcode.stats, &bytes, &project_name);
 
     let printer = state.storage.printers().get(user.id, id).await?; // 404, SC-008
+    let action = post_upload_action(&printer, body.start_now, body.queue.unwrap_or(false))?;
     if let Some(host) = host_client(&state, &printer).await? {
         let up = host
-            .upload(&filename, bytes, body.start_now, body.storage.as_deref())
+            .upload_with(&filename, bytes, action, body.storage.as_deref())
             .await?;
         return Ok(Json(PrinterUploadResponse {
             path: up.path,
@@ -560,6 +561,37 @@ pub async fn upload(
     let (_printer, client) = load_client(&state, user.id, id).await?;
     let result = client.upload(&filename, bytes, body.start_now).await?;
     Ok(Json(PrinterUploadResponse::from(result)))
+}
+
+/// Action d'envoi demandée (boîte d'envoi d'Orca : Upload / Upload and Print /
+/// Upload to Queue). La mise en file n'existe que pour les hôtes qui la
+/// proposent (PrintHost::get_post_upload_actions) et exclut le démarrage.
+pub(crate) fn post_upload_action(
+    printer: &Printer,
+    start_now: bool,
+    queue: bool,
+) -> ApiResult<crate::adapters::print_host::PostUploadAction> {
+    use crate::adapters::print_host::{HostKind, PostUploadAction};
+    if !queue {
+        return Ok(if start_now {
+            PostUploadAction::StartPrint
+        } else {
+            PostUploadAction::None
+        });
+    }
+    if start_now {
+        return Err(ApiError::validation(
+            "mise en file et démarrage immédiat sont exclusifs",
+            serde_json::json!({ "queue": true, "start_now": true }),
+        ));
+    }
+    if !HostKind::parse(&printer.host_type).is_some_and(HostKind::supports_queue) {
+        return Err(ApiError::validation(
+            "mise en file non proposée par cet hôte d'impression (PrusaConnect seulement)",
+            serde_json::json!({ "host_type": printer.host_type }),
+        ));
+    }
+    Ok(PostUploadAction::QueuePrint)
 }
 
 /// `GET /api/printers/{id}/storages` — destinations proposées par l'hôte, comme

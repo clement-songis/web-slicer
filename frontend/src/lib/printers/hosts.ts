@@ -37,6 +37,9 @@ export interface HostMeta {
 	serialNumber?: boolean;
 	/** Destinations proposées à l'envoi (stockages PrusaLink, groupes Repetier). */
 	storages: boolean;
+	/** « Envoyer et mettre en file » (Orca PrintHostPostUploadAction::QueuePrint,
+	 *  get_post_upload_actions) : PrusaConnect seulement. */
+	queue?: boolean;
 	/** Où trouver l'adresse et les identifiants (aide sous le formulaire). */
 	help: string;
 }
@@ -81,6 +84,8 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		printerSlug: false,
 		// Orca PrusaConnect::get_storage → false : pas de choix du stockage.
 		storages: false,
+		// PrusaConnect::get_post_upload_actions : StartPrint | QueuePrint (to_queue).
+		queue: true,
 		help: "Clé API de l'imprimante, dans Prusa Connect → Imprimante → Réglages."
 	},
 	{

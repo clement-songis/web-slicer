@@ -35,7 +35,8 @@
 		sendAll?: (
 			printerId: string,
 			startNow: boolean,
-			progress: (message: string) => void
+			progress: (message: string) => void,
+			queue?: boolean
 		) => Promise<UploadSlicedResponse>;
 	}
 
@@ -184,8 +185,14 @@
 		}
 	});
 
-	async function send() {
+	/** Dernière action : « Envoyer » ou « Envoyer et mettre en file ». */
+	let lastQueued = $state(false);
+
+	// `queue` : « Envoyer et mettre en file » (Orca « Upload to Queue »,
+	// PrusaConnect to_queue) — jamais avec le démarrage immédiat.
+	async function send(queue = false) {
 		if (!selected || sending) return;
+		if (queue && !meta.queue) return;
 		if (scope === 'plate' && !gcodeId) return;
 		// URL saisie mais pas encore enregistrée : l'enregistrer d'abord (pas
 		// d'étape cachée « Enregistrer l'URL » avant de pouvoir envoyer).
@@ -194,22 +201,25 @@
 			if (needsUrl) return;
 		}
 		sending = true;
+		lastQueued = queue;
 		success = null;
 		error = null;
+		const start = queue ? false : startNow;
 		try {
 			if (scope === 'all' && sendAll) {
-				const res = await sendAll(selected.id, startNow, (m) => (progressMessage = m));
+				const res = await sendAll(selected.id, start, (m) => (progressMessage = m), queue);
 				success =
 					res.files.length === 1
-						? sendSuccessMessage(selected.name, res.files[0])
-						: `${res.files.length} fichiers envoyés à ${selected.name} : ${res.files.map((f) => f.path).join(', ')}.`;
+						? sendSuccessMessage(selected.name, res.files[0], queue)
+						: `${res.files.length} fichiers envoyés à ${selected.name}${queue ? " et mis en file d'attente" : ''} : ${res.files.map((f) => f.path).join(', ')}.`;
 			} else if (gcodeId) {
 				const result = await uploadToPrinter(selected.id, {
 					gcode_id: gcodeId,
-					start_now: startNow,
+					start_now: start,
+					...(queue ? { queue: true } : {}),
 					...(storage ? { storage } : {})
 				});
-				success = sendSuccessMessage(selected.name, result);
+				success = sendSuccessMessage(selected.name, result, queue);
 			}
 		} catch (e) {
 			error = sendErrorMessage(e, selected.name);
@@ -460,6 +470,20 @@
 				>
 					{success ? 'Fermer' : 'Annuler'}
 				</button>
+				{#if meta.queue && selected && !needsUrl}
+					<!-- Orca PrintHostSendDialog « Upload to Queue » : hôtes dont
+					     get_post_upload_actions contient QueuePrint (PrusaConnect). -->
+					<button
+						type="button"
+						class="ws-btn ws-btn-lg ws-btn-secondary"
+						data-testid="send-queue"
+						title="Téléverser puis ajouter à la file d'impression de l'imprimante (sans démarrer)"
+						disabled={(scope === 'plate' && !gcodeId) || sending || loading}
+						onclick={() => send(true)}
+					>
+						{sending && lastQueued ? 'Envoi…' : 'Envoyer et mettre en file'}
+					</button>
+				{/if}
 				<button
 					type="button"
 					class="ws-btn ws-btn-lg {success ? 'ws-btn-secondary' : 'ws-btn-primary'}"
@@ -472,9 +496,9 @@
 						savingSlug ||
 						(meta.printerSlug && !selected?.host_port && !needsUrl) ||
 						loading}
-					onclick={send}
+					onclick={() => send()}
 				>
-					{sending ? 'Envoi…' : success ? 'Renvoyer' : 'Envoyer'}
+					{sending && !lastQueued ? 'Envoi…' : success ? 'Renvoyer' : 'Envoyer'}
 				</button>
 			</div>
 		</div>

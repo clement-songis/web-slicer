@@ -45,6 +45,11 @@ describe('hôtes d impression (PhysicalPrinterDialog)', () => {
 		expect(hostMeta('simplyprint').id).toBe('moonraker');
 	});
 
+	it('« mettre en file » : PrusaConnect seulement (get_post_upload_actions)', () => {
+		expect(HOST_TYPES.filter((h) => h.queue).map((h) => h.id)).toEqual(['prusaconnect']);
+		expect(hostMeta('prusalink').queue).toBeFalsy();
+	});
+
 	it('suivi et contrôles : Moonraker connecté seulement', () => {
 		expect(hasLiveControls(printer({ moonraker_url: 'http://k:7125' }))).toBe(true);
 		expect(hasLiveControls(printer({}))).toBe(false);

@@ -8,7 +8,9 @@ use std::time::Duration;
 use axum::body::{to_bytes, Body};
 use axum::http::{Request, Response, StatusCode};
 use axum::Router;
-use backend::adapters::print_host::{HostClient, HostConfig, HostKind};
+use backend::adapters::print_host::{
+    HostClient, HostConfig, HostError, HostKind, PostUploadAction,
+};
 
 #[derive(Debug, Clone)]
 struct Seen {
@@ -316,6 +318,90 @@ async fn prusaconnect_post_fields_like_orca() {
     assert_eq!(post.field("to_print").as_deref(), Some("True"));
     assert!(post.field("print").is_none());
     assert!(post.header("Accept-Language").is_some());
+}
+
+/// « Upload to Queue » (PrintHostPostUploadAction::QueuePrint) : PrusaConnect
+/// ajoute `to_queue=True` au même POST multipart que `to_print`
+/// (PrusaConnect::set_http_post_header_args, OctoPrint.cpp:1131) ; « Upload »
+/// seul n'ajoute aucun des deux ; les autres hôtes refusent sans rien envoyer.
+#[tokio::test]
+async fn prusaconnect_upload_to_queue_like_orca() {
+    let (host, log) = fake(|_, uri, _| {
+        if uri == "/api/version" {
+            (200, r#"{"text":"OctoPrint 1.3.10"}"#.into())
+        } else {
+            (200, "ok".into())
+        }
+    })
+    .await;
+    let client = HostClient::new(
+        HostKind::Prusaconnect,
+        HostConfig {
+            api_key: Some("T".into()),
+            ..cfg(&host)
+        },
+    );
+    let up = client
+        .upload_with(
+            "q.gcode",
+            GCODE.to_vec(),
+            PostUploadAction::QueuePrint,
+            None,
+        )
+        .await
+        .unwrap();
+    assert!(!up.print_started);
+    assert_eq!(up.path, "/local/q.gcode");
+    let reqs = seen(&log);
+    assert_eq!(
+        reqs.iter()
+            .map(|r| (r.method.as_str(), r.uri.as_str()))
+            .collect::<Vec<_>>(),
+        vec![("GET", "/api/version"), ("POST", "/api/files/local")]
+    );
+    let post = &reqs[1];
+    assert_eq!(post.header("X-Api-Key"), Some("T"));
+    assert!(post.header("Accept-Language").is_some());
+    assert_eq!(post.field("to_queue").as_deref(), Some("True"));
+    assert!(post.field("to_print").is_none());
+    assert!(post.field("print").is_none());
+    assert_eq!(post.field("path").as_deref(), Some(""));
+    assert_eq!(post.file_name("file").as_deref(), Some("q.gcode"));
+    assert!(post.body.contains("G1 X10"));
+
+    // « Upload » seul : ni to_print ni to_queue.
+    log.lock().unwrap().clear();
+    client
+        .upload_with("n.gcode", GCODE.to_vec(), PostUploadAction::None, None)
+        .await
+        .unwrap();
+    let post = seen(&log).into_iter().find(|r| r.method == "POST").unwrap();
+    assert!(post.field("to_queue").is_none());
+    assert!(post.field("to_print").is_none());
+
+    // PrusaLink (get_post_upload_actions = StartPrint) : refus, aucune requête.
+    log.lock().unwrap().clear();
+    let link = HostClient::new(
+        HostKind::Prusalink,
+        HostConfig {
+            api_key: Some("T".into()),
+            ..cfg(&host)
+        },
+    );
+    let err = link
+        .upload_with(
+            "q.gcode",
+            GCODE.to_vec(),
+            PostUploadAction::QueuePrint,
+            None,
+        )
+        .await
+        .unwrap_err();
+    assert!(matches!(err, HostError::Unsupported(_)), "{err}");
+    assert!(seen(&log).is_empty());
+    assert!(HostKind::Prusaconnect.supports_queue());
+    assert!(!HostKind::Prusalink.supports_queue());
+    assert!(!HostKind::Octoprint.supports_queue());
 }
 
 #[tokio::test]

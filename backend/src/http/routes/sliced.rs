@@ -42,6 +42,10 @@ pub struct UploadSlicedRequest {
     pub job_ids: Vec<String>,
     #[serde(default)]
     pub start_now: bool,
+    /// « Téléverser et mettre en file » (PrusaConnect `to_queue`), comme
+    /// `UploadToPrinterRequest::queue`.
+    #[serde(default)]
+    pub queue: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -259,10 +263,11 @@ pub async fn upload_sliced(
         );
     }
     let printer = state.storage.printers().get(user.id, printer_id).await?; // 404, SC-008
+    let action = super::printers::post_upload_action(&printer, body.start_now, body.queue)?;
     if let Some(host) = super::printers::host_client(&state, &printer).await? {
         let mut files = Vec::with_capacity(uploads.len());
         for (name, bytes) in uploads {
-            let up = host.upload(&name, bytes, body.start_now, None).await?;
+            let up = host.upload_with(&name, bytes, action, None).await?;
             files.push(PrinterUploadResponse {
                 path: up.path,
                 print_started: up.print_started,

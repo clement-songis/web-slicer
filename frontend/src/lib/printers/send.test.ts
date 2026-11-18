@@ -56,6 +56,11 @@ describe('sendSuccessMessage', () => {
 			'démarrée'
 		);
 	});
+	it('mise en file (PrusaConnect to_queue)', () => {
+		expect(sendSuccessMessage('MK4', { path: '/local/a.gcode', print_started: false }, true)).toBe(
+			"« /local/a.gcode » envoyé à MK4 et mis en file d'attente."
+		);
+	});
 });
 
 describe('sendErrorMessage', () => {

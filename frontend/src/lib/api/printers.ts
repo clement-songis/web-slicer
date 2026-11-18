@@ -53,7 +53,7 @@ export interface UploadSlicedResponse {
 /** Envoie tous les plateaux tranchés d'un projet (jobs réussis de `POST /slice`). */
 export const uploadSliced = (
 	id: string,
-	body: { project_id: string; job_ids: string[]; start_now: boolean }
+	body: { project_id: string; job_ids: string[]; start_now: boolean; queue?: boolean }
 ) => api.post<UploadSlicedResponse>(`/printers/${id}/upload-sliced`, body);
 
 /** Met l'impression en pause. */

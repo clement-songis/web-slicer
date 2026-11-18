@@ -84,6 +84,24 @@ impl HostKind {
             Self::Elegoolink => "ElegooLink",
         }
     }
+    /// « Téléverser et mettre en file » proposé (PrintHost::get_post_upload_actions
+    /// contient QueuePrint) : PrusaConnect seulement (OctoPrint.hpp:112).
+    pub fn supports_queue(self) -> bool {
+        matches!(self, Self::Prusaconnect)
+    }
+}
+
+/// Action après l'envoi (Orca PrintHostPostUploadAction ; StartSimulation n'est
+/// proposé par aucun hôte d'Orca).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum PostUploadAction {
+    /// « Upload » : dépôt du fichier seulement.
+    #[default]
+    None,
+    /// « Upload and Print ».
+    StartPrint,
+    /// « Upload to Queue » (PrusaConnect : champ `to_queue`).
+    QueuePrint,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -498,6 +516,27 @@ impl HostClient {
         start: bool,
         target: Option<&str>,
     ) -> HostResult<Uploaded> {
+        let action = if start {
+            PostUploadAction::StartPrint
+        } else {
+            PostUploadAction::None
+        };
+        self.upload_with(filename, data, action, target).await
+    }
+
+    /// Envoi avec l'action choisie dans la boîte d'envoi d'Orca (Upload /
+    /// Upload and Print / Upload to Queue). QueuePrint : hôtes `supports_queue`.
+    pub async fn upload_with(
+        &self,
+        filename: &str,
+        data: Vec<u8>,
+        action: PostUploadAction,
+        target: Option<&str>,
+    ) -> HostResult<Uploaded> {
+        if action == PostUploadAction::QueuePrint && !self.kind.supports_queue() {
+            return Err(HostError::Unsupported(self.kind.display()));
+        }
+        let start = action == PostUploadAction::StartPrint;
         let target = target.filter(|t| !t.is_empty());
         match self.kind {
             HostKind::Moonraker => Err(HostError::Unsupported("Moonraker (client dédié)")),
@@ -565,8 +604,15 @@ impl HostClient {
                     self.prusa_request(Method::POST, &url, |r| {
                         let mut form = reqwest::multipart::Form::new().text("path", "");
                         if connect {
-                            if start {
-                                form = form.text("to_print", "True");
+                            // PrusaConnect::set_http_post_header_args (OctoPrint.cpp:1131).
+                            match action {
+                                PostUploadAction::StartPrint => {
+                                    form = form.text("to_print", "True");
+                                }
+                                PostUploadAction::QueuePrint => {
+                                    form = form.text("to_queue", "True");
+                                }
+                                PostUploadAction::None => {}
                             }
                         } else {
                             form = form.text("print", if start { "true" } else { "false" });

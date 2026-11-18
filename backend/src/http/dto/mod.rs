@@ -899,6 +899,12 @@ pub struct UploadToPrinterRequest {
     pub storage: Option<String>,
     /// Démarrer l'impression immédiatement (`print=true`, FR-061).
     pub start_now: bool,
+    /// « Téléverser et mettre en file » (Orca PrintHostPostUploadAction::QueuePrint,
+    /// PrusaConnect : champ `to_queue=True`) ; exclusif de `start_now`, refusé
+    /// (422) pour les hôtes qui ne le proposent pas.
+    #[serde(default)]
+    #[ts(optional)]
+    pub queue: Option<bool>,
 }
 
 /// Résultat d'un envoi vers l'imprimante (`POST /api/printers/{id}/upload`).

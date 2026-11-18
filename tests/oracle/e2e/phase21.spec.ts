@@ -213,6 +213,7 @@ test('OctoPrint (serveur factice) : capacités, clé refusée puis acceptée, en
 		await send.getByTestId('send-printer-select').selectOption(await printerId(page, 'OctoPi'));
 		await expect(send.getByTestId('send-host-info')).toContainText('OctoPrint · envoi et lancement');
 		await expect(send.getByTestId('send-storage')).toHaveCount(0);
+		await expect(send.getByTestId('send-queue')).toHaveCount(0); // QueuePrint : PrusaConnect seulement
 		await send.getByTestId('send-start-now').check();
 		await send.getByTestId('send-confirm').click();
 		await expect(send.getByTestId('send-success')).toBeVisible({
@@ -314,6 +315,7 @@ test('PrusaLink digest (serveur factice) : stockages à l envoi ; Repetier : imp
 		const storage = send.getByTestId('send-storage');
 		await expect(storage.locator('option')).toHaveText(['Mémoire interne', 'Clé USB']); // SD en lecture seule exclue
 		await storage.selectOption('/usb');
+		await expect(send.getByTestId('send-queue')).toHaveCount(0);
 		await send.getByTestId('send-start-now').check();
 		await send.getByTestId('send-confirm').click();
 		await expect(send.getByTestId('send-success')).toBeVisible({
@@ -362,6 +364,73 @@ test('PrusaLink digest (serveur factice) : stockages à l envoi ; Repetier : imp
 	} finally {
 		prusa.close();
 		rep.close();
+	}
+});
+
+// PrusaConnect (OctoPrint.cpp:1126) : protocole PrusaLink par clé API, POST multipart
+// (version ≠ PrusaLink ≥ 0.7) avec Accept-Language et to_print / to_queue.
+const prusaconnect = () =>
+	mockHost((r, send) => {
+		if (r.headers['x-api-key'] !== 'PC-KEY') return send(401, { error: 'unauthorized' });
+		if (r.method === 'GET' && r.url === '/api/version') return send(200, { text: 'OctoPrint 1.3.10' });
+		if (r.method === 'POST' && r.url === '/api/files/local') return send(200, {});
+		send(404, { error: 'not found' });
+	});
+
+test('PrusaConnect (serveur factice) : « Envoyer et mettre en file » → to_queue=True @F:ui.print-hosts', async ({ page }) => {
+	const pc = await prusaconnect();
+	try {
+		const project = await bootstrap(page);
+		const machine = (
+			(await (await page.request.get('/api/printers')).json()) as {
+				machine_preset_id: string;
+			}[]
+		)[0].machine_preset_id;
+		await page.request.post('/api/printers', {
+			data: {
+				name: 'Connect',
+				machine_preset_id: machine,
+				host_type: 'prusaconnect',
+				moonraker_url: pc.url,
+				api_key: 'PC-KEY'
+			}
+		});
+		await page.goto('/projects/' + project);
+		await importModel(page, 'cube20');
+		await sliceInUi(page);
+		await page.getByTestId('send-to-printer').click();
+		const send = page.getByTestId('send-dialog');
+		await send.getByTestId('send-printer-select').selectOption(await printerId(page, 'Connect'));
+		await expect(send.getByTestId('send-storage')).toHaveCount(0); // get_storage → false
+		const queue = send.getByTestId('send-queue');
+		await expect(queue).toHaveText('Envoyer et mettre en file');
+		// Démarrage coché puis « mettre en file » : la mise en file l'emporte (jamais les deux).
+		await send.getByTestId('send-start-now').check();
+		const [req] = await Promise.all([
+			page.waitForRequest((r) => /\/api\/printers\/[^/]+\/upload$/.test(r.url()) && r.method() === 'POST'),
+			queue.click()
+		]);
+		expect(req.postDataJSON()).toMatchObject({ start_now: false, queue: true });
+		await expect(send.getByTestId('send-success')).toContainText("mis en file d'attente", {
+			timeout: 30_000
+		});
+		const posts = pc.log.filter((h) => h.method === 'POST' && h.url === '/api/files/local');
+		expect(posts).toHaveLength(1);
+		expect(posts[0].body).toMatch(/name="to_queue"\r\n\r\nTrue/);
+		expect(posts[0].body).not.toContain('name="to_print"');
+		expect(posts[0].headers['accept-language']).toBeTruthy();
+		expect(posts[0].body).toMatch(/name="file"; filename="[^"]+\.gcode"/);
+
+		// « Envoyer » avec démarrage : to_print=True, sans to_queue.
+		await send.getByTestId('send-confirm').click();
+		await expect(send.getByTestId('send-success')).toContainText('impression démarrée', {
+			timeout: 30_000
+		});
+		const last = pc.log.filter((h) => h.method === 'POST' && h.url === '/api/files/local').at(-1)!;
+		expect(last.body).toMatch(/name="to_print"\r\n\r\nTrue/);
+		expect(last.body).not.toContain('name="to_queue"');
+	} finally {
+		pc.close();
 	}
 });
 

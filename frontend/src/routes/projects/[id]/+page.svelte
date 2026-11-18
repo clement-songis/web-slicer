@@ -5328,7 +5328,8 @@
 	async function sendAllPlates(
 		printerId: string,
 		startNow: boolean,
-		progress: (message: string) => void
+		progress: (message: string) => void,
+		queue = false
 	) {
 		const { succeeded, missed, firstError } = await sliceAllPlatesJobs('Envoi', progress);
 		if (succeeded.length === 0)
@@ -5341,7 +5342,8 @@
 		return uploadSliced(printerId, {
 			project_id: data.project.id,
 			job_ids: succeeded.map((j) => j.id),
-			start_now: startNow
+			start_now: startNow,
+			...(queue ? { queue: true } : {})
 		});
 	}
 

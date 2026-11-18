@@ -852,6 +852,17 @@ async fn prusalink_host_through_the_api() {
     assert!(up["path"].as_str().unwrap().starts_with("/usb/"), "{up}");
     assert_eq!(puts.lock().unwrap().len(), 1);
     assert!(puts.lock().unwrap()[0].starts_with("/api/v1/files/usb/"));
+    // « Mettre en file » : PrusaConnect seulement → 422, rien d'envoyé.
+    let resp = send(
+        &h.app,
+        "POST",
+        &format!("/api/printers/{id}/upload"),
+        &session,
+        json!({ "gcode_id": gcode, "start_now": false, "queue": true }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(puts.lock().unwrap().len(), 1);
 
     // Actions propres à Moonraker : 409.
     let resp = get(&h.app, &format!("/api/printers/{id}/status"), &session).await;
@@ -892,6 +903,111 @@ async fn prusalink_host_through_the_api() {
     }))
     .await;
     assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+/// PrusaConnect par l'API : `queue: true` → POST multipart avec `to_queue=True`
+/// (Orca « Upload to Queue ») ; `queue` + `start_now` refusés (422).
+#[tokio::test]
+async fn prusaconnect_queue_through_the_api() {
+    let h = harness().await;
+    let session = register(&h.app, "connect@test.local").await;
+    let owner = user_id(&h.storage, "connect@test.local").await;
+    let preset = seed_machine_preset(&h.storage, owner).await;
+
+    let posts = Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
+    let p = posts.clone();
+    let fake = Router::new().fallback(move |req: Request<Body>| {
+        let p = p.clone();
+        async move {
+            let key_ok =
+                req.headers().get("X-Api-Key").and_then(|v| v.to_str().ok()) == Some("pc-key");
+            let (method, uri) = (req.method().to_string(), req.uri().path().to_string());
+            let body = to_bytes(req.into_body(), usize::MAX).await.unwrap();
+            if !key_ok {
+                return axum::http::Response::builder()
+                    .status(401)
+                    .body(Body::empty())
+                    .unwrap();
+            }
+            let text = match (method.as_str(), uri.as_str()) {
+                ("GET", "/api/version") => r#"{"text":"OctoPrint 1.3.10"}"#.to_string(),
+                ("POST", "/api/files/local") => {
+                    p.lock()
+                        .unwrap()
+                        .push(String::from_utf8_lossy(&body).into_owned());
+                    String::new()
+                }
+                _ => "{}".into(),
+            };
+            axum::http::Response::builder()
+                .status(200)
+                .body(Body::from(text))
+                .unwrap()
+        }
+    });
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move { axum::serve(listener, fake).await.unwrap() });
+
+    let resp = send(
+        &h.app,
+        "POST",
+        "/api/printers",
+        &session,
+        json!({
+            "name": "Connect", "moonraker_url": format!("127.0.0.1:{port}"), "api_key": "pc-key",
+            "machine_preset_id": preset, "host_type": "prusaconnect"
+        }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let id = json_body(resp).await["id"].as_str().unwrap().to_string();
+    let project = h
+        .storage
+        .projects()
+        .create(
+            owner,
+            NewProject {
+                name: "P".into(),
+                scene: json!({}),
+                active_presets: json!({}),
+                thumbnail_path: None,
+            },
+        )
+        .await
+        .unwrap();
+    let gcode = seed_gcode(&h, owner, project.id).await;
+
+    let resp = send(
+        &h.app,
+        "POST",
+        &format!("/api/printers/{id}/upload"),
+        &session,
+        json!({ "gcode_id": gcode, "start_now": true, "queue": true }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(posts.lock().unwrap().is_empty());
+
+    let resp = send(
+        &h.app,
+        "POST",
+        &format!("/api/printers/{id}/upload"),
+        &session,
+        json!({ "gcode_id": gcode, "start_now": false, "queue": true }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let up = json_body(resp).await;
+    assert_eq!(up["print_started"], false);
+    let posts = posts.lock().unwrap().clone();
+    assert_eq!(posts.len(), 1);
+    assert!(
+        posts[0].contains("name=\"to_queue\"\r\n\r\nTrue"),
+        "{}",
+        posts[0]
+    );
+    assert!(!posts[0].contains("name=\"to_print\""));
 }
 
 /// Flashforge : le numéro de série saisi est enregistré (host_options.serial_number,
