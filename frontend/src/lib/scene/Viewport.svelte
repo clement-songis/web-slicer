@@ -5,7 +5,7 @@
 	import { T, useTask, useThrelte } from '@threlte/core';
 	import { HTML, interactivity } from '@threlte/extras';
 	import CameraControls from './CameraControls.svelte';
-	import { Box3, Object3D, Vector3 } from 'three';
+	import { Box3, Euler, Object3D, Plane, Quaternion, Raycaster, Vector2, Vector3 } from 'three';
 	import type { ScreenBox, SectionPlane } from './screen-select';
 	import Bed from './Bed.svelte';
 	import type { BedShape } from './bed';
@@ -28,6 +28,7 @@
 	import WipeTower from './WipeTower.svelte';
 	import { volumeFromWorld, volumeWorldTransform } from './volume-frame';
 	import { BufferAttribute, BufferGeometry, DoubleSide } from 'three';
+	import { setCaptureSource } from './plate-thumbnail';
 	import { flattenPlanes, flattenRotation, type FlattenPlane } from './gizmos/flatten';
 	import type { SceneVolume } from './volumes';
 	import type { PaintOverlay } from './gizmos/painting/paint-overlay';
@@ -231,6 +232,69 @@
 	const { camera, size, invalidate, renderer } = useThrelte();
 	// Plans de coupe par matériau (section des gizmos de peinture).
 	renderer.localClippingEnabled = true;
+
+	// — Outil Coupe (phase 28) : anneaux de rotation sur un témoin posé au
+	//   centre du plan (ordre Euler 'ZYX' = rotation_transform d'Orca), et clic
+	//   sur le plan (rayon ∩ plan, indépendant des objets) pour poser un connecteur.
+	// Vignette de plateau (3MF) : rendu forcé puis lecture du canvas WebGL
+	// (sans preserveDrawingBuffer, la lecture doit suivre le rendu).
+	const { scene } = useThrelte();
+	$effect(() => {
+		setCaptureSource(() => {
+			renderer.render(scene, camera.current);
+			return renderer.domElement;
+		});
+		return () => setCaptureSource(null);
+	});
+	const cutProxy = new Object3D();
+	cutProxy.rotation.order = 'ZYX';
+	let cutDragging = false;
+	$effect(() => {
+		const p = guides?.plane;
+		if (!p?.onrotate || cutDragging) return;
+		const rad = Math.PI / 180;
+		const r = p.rotation ?? [0, 0, 0];
+		cutProxy.position.set(...p.center);
+		cutProxy.rotation.set(r[0] * rad, r[1] * rad, r[2] * rad, 'ZYX');
+		cutProxy.updateMatrixWorld();
+		invalidate();
+	});
+	$effect(() => {
+		const p = guides?.plane;
+		const dom = renderer.domElement;
+		if (!p?.onclick) return;
+		const onclick = p.onclick;
+		let down: [number, number] | null = null;
+		const pd = (e: PointerEvent) => (down = [e.clientX, e.clientY]);
+		const up = (e: PointerEvent) => {
+			if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 4) return;
+			if (performance.now() - gestureEndedAt < 250) return;
+			const rect = dom.getBoundingClientRect();
+			const ndc = new Vector2(
+				((e.clientX - rect.left) / rect.width) * 2 - 1,
+				-((e.clientY - rect.top) / rect.height) * 2 + 1
+			);
+			const ray = new Raycaster();
+			ray.setFromCamera(ndc, camera.current);
+			const n = new Vector3(...p.normal);
+			const plane = new Plane().setFromNormalAndCoplanarPoint(n, new Vector3(...p.center));
+			const hit = ray.ray.intersectPlane(plane, new Vector3());
+			if (!hit) return;
+			const q = new Quaternion(...(p.quaternion ?? [0, 0, 0, 1]));
+			const local = hit
+				.clone()
+				.sub(new Vector3(...p.center))
+				.applyQuaternion(q.invert());
+			if (Math.abs(local.x) > p.size[0] / 2 || Math.abs(local.y) > p.size[1] / 2) return;
+			onclick([hit.x, hit.y, hit.z]);
+		};
+		dom.addEventListener('pointerdown', pd);
+		dom.addEventListener('pointerup', up);
+		return () => {
+			dom.removeEventListener('pointerdown', pd);
+			dom.removeEventListener('pointerup', up);
+		};
+	});
 	const volumeProxy = new Object3D();
 	let gesture: { objectId: string; base: SceneVolume; object: Transform } | null = null;
 
@@ -605,7 +669,8 @@
 	<!-- Plan de l'outil Coupe (gizmo Cut d'Orca) : semi-transparent, non cliquable. -->
 	<T.Mesh
 		position={guides.plane.center}
-		rotation={guideRotation(guides.plane.normal)}
+		quaternion={guides.plane.quaternion ??
+			new Quaternion().setFromEuler(new Euler(...guideRotation(guides.plane.normal))).toArray()}
 		renderOrder={4}
 		userData={{ guide: 'cut-plane' }}
 	>
@@ -618,6 +683,40 @@
 			depthWrite={false}
 		/>
 	</T.Mesh>
+{/if}
+{#each guides?.plane?.connectors ?? [] as c (c.id)}
+	<!-- Connecteurs de l'outil Coupe : prisme à c.segments côtés le long de la normale. -->
+	<T.Group position={c.center} quaternion={guides?.plane?.quaternion ?? [0, 0, 0, 1]}>
+		<T.Mesh
+			rotation={[Math.PI / 2, (c.rotation * Math.PI) / 180, 0]}
+			renderOrder={5}
+			userData={{ guide: 'cut-connector' }}
+		>
+			<T.CylinderGeometry args={[c.size / 2, c.size / 2, c.depth, c.segments]} />
+			<T.MeshBasicMaterial
+				color={c.selected ? $sceneColors.measureFirst : $sceneColors.measureSecond}
+				depthTest={false}
+				transparent
+				opacity={0.9}
+			/>
+		</T.Mesh>
+	</T.Group>
+{/each}
+{#if guides?.plane?.onrotate}
+	<T is={cutProxy} />
+	<TransformGizmo
+		object={cutProxy}
+		mode="rotate"
+		ondragstart={() => {
+			cutDragging = true;
+			dragging = true;
+		}}
+		onchange={(t) => guides?.plane?.onrotate?.(t.rotation)}
+		oncommit={() => {
+			cutDragging = false;
+			endGesture();
+		}}
+	/>
 {/if}
 {#each guides?.points ?? [] as point, i (i)}
 	<!-- Points de l'outil Mesure : toujours visibles (pas de test de profondeur). -->

@@ -28,6 +28,8 @@ export interface SceneVolume {
 	/** Extrudeur propre du volume (1-based ; absent/0 = celui de l'objet),
 	 *  Orca `ModelVolume` « extruder » (pièces et modificateurs). */
 	extruder?: number;
+	/** Phase 28 — texte / SVG en relief ré-éditable (parts[].emboss du serveur). */
+	emboss?: Record<string, unknown>;
 }
 
 /** Action de menu → rôle (libellés de parité Orca). */
@@ -105,6 +107,9 @@ export function parseVolumes(raw: unknown): SceneVolume[] {
 				settings: o.settings && typeof o.settings === 'object' ? { ...o.settings } : {},
 				...(Number.isInteger(o.extruder) && (o.extruder as number) > 0
 					? { extruder: o.extruder as number }
+					: {}),
+				...(o.emboss && typeof o.emboss === 'object' && !Array.isArray(o.emboss)
+					? { emboss: { ...o.emboss } }
 					: {})
 			}
 		];

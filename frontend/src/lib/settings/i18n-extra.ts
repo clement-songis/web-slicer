@@ -31,6 +31,10 @@ export const SETTINGS_FR_EXTRA: Record<string, string> = {
 	'Machine limits': 'Limites de la machine',
 	Other: 'Autre',
 	// Phase 27 — msgid sans msgstr (ou msgstr fautive) dans OrcaSlicer_fr.po 2.4.1.
+	// Phase 28 — msgstr d'Orca citant les valeurs anglaises « Default » / « Disable »
+	// alors que la liste affiche leurs traductions (« Défaut », « Désactiver »).
+	'Choose the input shaper algorithm.\nDefault uses the firmware default settings.\nDisable turns off input shaping in the firmware.':
+		'Choisissez l’algorithme de mise en forme du signal.\n« Défaut » utilise les réglages par défaut du firmware.\n« Désactiver » désactive la mise en forme du signal dans le firmware.',
 	'Printer notes': 'Notes de l’imprimante',
 	'Use 3MF instead of G-code': 'Utiliser un 3MF au lieu du G-code',
 	'Enable this if the printer accepts a 3MF file as the print job. When enabled, Orca Slicer sends the sliced file as a .gcode.3mf, instead of a plain .gcode file.':

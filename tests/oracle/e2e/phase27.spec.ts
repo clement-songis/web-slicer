@@ -127,7 +127,7 @@ test("objet par objet : objets trop proches signalés avant tranchage, « Dispos
     timeout: 60_000,
   });
   await page.getByRole("button", { name: "Objets", exact: true }).click();
-  await page.getByTestId("overlap-arrange").click();
+  // Phase 28 : le 2e import est posé à côté (Orca) — plus de superposition à disposer.
   await expect(page.getByTestId("overlap-warning")).toHaveCount(0, {
     timeout: 30_000,
   });

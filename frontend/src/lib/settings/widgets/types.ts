@@ -54,3 +54,30 @@ export function unitText(sidetext: string | null | undefined): string {
 	const m = /^(.*?)(?=[A-Z][a-z])/.exec(s);
 	return m && m[1].trim() ? m[1].trim() : '';
 }
+
+/**
+ * Phase 28 — séparateur décimal homogène : les champs numériques natifs
+ * (input type=number) affichent celui de la langue du navigateur (« 0,2 » en
+ * français) ; les champs texte « mm ou % » / « % » affichent désormais le même.
+ * La valeur stockée garde le point (format de config d'Orca).
+ */
+export function decimalSeparator(locale?: string): string {
+	try {
+		const lang =
+			locale ?? (typeof navigator !== 'undefined' ? navigator.language : undefined) ?? 'en';
+		return (1.5).toLocaleString(lang).includes(',') ? ',' : '.';
+	} catch {
+		return '.';
+	}
+}
+
+/** Valeur de config → texte affiché (point → séparateur local entre deux chiffres). */
+export function toDisplayDecimal(value: unknown, sep = decimalSeparator()): string {
+	const s = value === undefined || value === null ? '' : String(value);
+	return sep === '.' ? s : s.replace(/(\d)\.(\d)/g, '$1' + sep + '$2');
+}
+
+/** Texte saisi → valeur de config (virgule décimale → point). */
+export function fromDisplayDecimal(text: string): string {
+	return text.replace(/(\d),(\d)/g, '$1.$2').replace(/^,(\d)/, '0.$1');
+}

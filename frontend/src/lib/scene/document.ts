@@ -44,6 +44,8 @@ export interface SceneObjectDoc {
 	printable?: boolean;
 	/** Nom du volume du maillage propre (`<nom>_1` après split) ; absent = `name`. */
 	meshName?: string;
+	/** Phase 28 — objet texte / SVG en relief ré-éditable (objects[].emboss). */
+	emboss?: Record<string, unknown>;
 }
 
 /**
@@ -90,6 +92,7 @@ export interface SceneObjectState {
 	layerRanges?: LayerRange[];
 	printable: boolean;
 	meshName?: string;
+	emboss?: Record<string, unknown>;
 }
 
 /** Sérialise un objet vivant en document. */
@@ -106,6 +109,8 @@ export function serializeObject(o: SceneObjectState): SceneObjectDoc {
 		brimEars: o.brimEars.serialize(),
 		printable: o.printable,
 		...(o.meshName ? { meshName: o.meshName } : {}),
+		// Copie JSON : l'objet peut être un proxy réactif (non clonable par structuredClone).
+		...(o.emboss ? { emboss: JSON.parse(JSON.stringify(o.emboss)) } : {}),
 		...(o.volumes && o.volumes.length > 0 ? { volumes: structuredClone(o.volumes) } : {}),
 		...(o.layerRanges && o.layerRanges.length > 0
 			? { layerRanges: structuredClone(o.layerRanges) }
@@ -127,6 +132,9 @@ export function deserializeObject(doc: SceneObjectDoc): SceneObjectState {
 		brimEars: BrimEars.deserialize(doc.brimEars ?? { points: [] }),
 		printable: doc.printable ?? true,
 		...(typeof doc.meshName === 'string' && doc.meshName ? { meshName: doc.meshName } : {}),
+		...(doc.emboss && typeof doc.emboss === 'object' && !Array.isArray(doc.emboss)
+			? { emboss: { ...doc.emboss } }
+			: {}),
 		volumes: parseVolumes(doc.volumes),
 		layerRanges: parseLayerRanges(doc.layerRanges)
 	};

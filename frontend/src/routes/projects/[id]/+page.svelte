@@ -196,7 +196,12 @@
 	import { SceneHistory, takeSnapshot, type SceneSnapshot } from '$lib/scene/scene-history';
 	import type { SceneNode } from '$lib/scene/objects.svelte';
 	import CalibrationDialog from '$lib/calibration/CalibrationDialog.svelte';
-	import { embossPartOffset, type EmbossParams } from '$lib/scene/gizmos/emboss';
+	import {
+		embossEditLabel,
+		embossPartOffset,
+		paramsFromEmboss,
+		type EmbossParams
+	} from '$lib/scene/gizmos/emboss';
 	import EngineCalibrationDialog from '$lib/calibration/EngineCalibrationDialog.svelte';
 	import FlowRateDialog from '$lib/calibration/FlowRateDialog.svelte';
 	import PresetBundleDialog, { type BundlePresetRef } from '$lib/presets/PresetBundleDialog.svelte';
@@ -294,8 +299,11 @@
 		type PaintOverlay
 	} from '$lib/scene/gizmos/painting/paint-overlay';
 	import { StrokeRecorder } from '$lib/scene/gizmos/painting/stroke';
-	import type { CutPlane } from '$lib/scene/tools/cut';
-	import { cutGuidePlane, measureGuides, type Axis as CutAxis } from '$lib/scene/guides';
+	import { CutSession } from '$lib/scene/tools/cut-session.svelte';
+	import { cutPartLabel } from '$lib/scene/tools/cut-plan';
+	import { nearestFreeCell } from '$lib/scene/arrange';
+	import { measureGuides } from '$lib/scene/guides';
+	import { capturePlatePng, putPlateThumbnail } from '$lib/scene/plate-thumbnail';
 	import type { BooleanOp } from '$lib/scene/tools/BooleanTool.svelte';
 	import {
 		instancesOfModel,
@@ -491,15 +499,40 @@
 	const volumeMeshRequests = new Set<string>();
 	let measuredPoints = $state<[number, number, number][]>([]);
 	// Repères 3D des outils (phase 26) : plan de l'outil Coupe, points de Mesure.
-	let cutPreview = $state<{ axis: CutAxis; offset: number } | null>(null);
+	// Phase 28 : état de l'outil Coupe complet (plan incliné, connecteurs, queue
+	// d'aronde) partagé entre le panneau, la vue 3D et la requête serveur.
+	const cutSession = new CutSession();
+	$effect(() => {
+		const o = tools.active === 'cut' ? activeObject : null;
+		cutSession.bind(
+			o
+				? {
+						id: o.id,
+						positions: o.mesh.positions,
+						indices: o.mesh.indices,
+						xf: {
+							position: [...(o.position ?? [0, 0, 0])] as [number, number, number],
+							rotation: [...(o.rotation ?? [0, 0, 0])] as [number, number, number],
+							scale: [...(o.scale ?? [1, 1, 1])] as [number, number, number]
+						}
+					}
+				: null
+		);
+	});
+	// Pose des connecteurs : partie supérieure masquée (face de coupe visible, comme Orca).
+	const cutClip = $derived.by(() => {
+		if (tools.active !== 'cut' || !cutSession.editingConnectors || cutSession.mode !== 'planar')
+			return null;
+		const g = cutSession.guide();
+		if (!g) return null;
+		const n = g.normal;
+		return { normal: n, offset: n[0] * g.center[0] + n[1] * g.center[1] + n[2] * g.center[2] };
+	});
 	const sceneGuides = $derived.by(() => {
-		if (tools.active === 'cut' && cutPreview && activeObject)
-			return {
-				plane: cutGuidePlane(cutPreview.axis, cutPreview.offset, activeBounds, {
-					origin: activeObject.position ?? [0, 0, 0],
-					scale: activeObject.scale ?? [1, 1, 1]
-				})
-			};
+		if (tools.active === 'cut' && cutSession.target) {
+			const plane = cutSession.guide();
+			return plane ? { plane } : null;
+		}
 		if (tools.active === 'measure' && measuredPoints.length > 0)
 			return measureGuides(measuredPoints);
 		return null;
@@ -1310,6 +1343,7 @@
 				node.printable = restored.printable;
 				node.settings = { ...restored.settings };
 				if (restored.meshName) node.meshName = restored.meshName;
+				if (restored.emboss) node.emboss = restored.emboss;
 			}
 			paintings[objectId] = restored.painting;
 			layerProfiles[objectId] = restored.layerProfile;
@@ -2388,6 +2422,7 @@
 				node.printable = restored.printable;
 				node.settings = { ...restored.settings };
 				if (restored.meshName) node.meshName = restored.meshName;
+				if (restored.emboss) node.emboss = restored.emboss;
 			}
 			paintings[id] = restored.painting;
 			layerProfiles[id] = restored.layerProfile;
@@ -2453,10 +2488,26 @@
 				if (sceneObjects.some((object) => object.id === item.objectId)) continue;
 				// Transformation sauvegardée prioritaire sur le recentrage par défaut.
 				const t = savedTransformByObject[item.objectId];
+				let position = positionForImport(center, [bed.center.x, bed.center.y], t?.position);
+				if (!t?.position) {
+					// Phase 28 : posé à côté des objets du plateau (Orca, cellule libre la
+					// plus proche du centre) au lieu d'être empilé au centre.
+					const taken = [...activeSceneObjects, ...added].map((o) =>
+						objectFootprint(o, [bed.center.x, bed.center.y])
+					);
+					const fp = objectFootprint({ id: item.objectId, mesh }, [0, 0]);
+					const [x, y] = nearestFreeCell(fp, taken, {
+						x: bed.origin.x,
+						y: bed.origin.y,
+						width: bed.width,
+						depth: bed.depth
+					});
+					position = [x, y, position[2]];
+				}
 				added.push({
 					id: item.objectId,
 					mesh,
-					position: positionForImport(center, [bed.center.x, bed.center.y], t?.position),
+					position,
 					rotation: t?.rotation,
 					scale: t?.scale
 				});
@@ -3153,7 +3204,8 @@
 					modelId: part.model.id,
 					size,
 					offset: embossPartOffset(meshBounds(host.mesh).max[2], size),
-					settings: {}
+					settings: {},
+					...(part.emboss ? { emboss: part.emboss } : {})
 				};
 				volumesByObject = {
 					...volumesByObject,
@@ -3164,6 +3216,12 @@
 				return;
 			}
 			const ids = await applyMeshOpParts(res, null, []);
+			// Phase 28 : paramètres ré-éditables portés par l'objet (objects[].emboss).
+			ids.forEach((id, i) => {
+				const node = tree.get(id);
+				const e = res.parts[i]?.emboss;
+				if (node && e) node.emboss = e;
+			});
 			// Posé au centre du plateau (le maillage part de l'origine).
 			sceneObjects = sceneObjects.map((o) =>
 				ids.includes(o.id)
@@ -3177,6 +3235,132 @@
 			embossBusy = false;
 		}
 	}
+
+	// — Phase 28 : ré-édition d'un texte / SVG en relief (Orca : double-clic sur
+	//   le volume texte ou « Edit text ») — l'outil se rouvre avec les
+	//   paramètres emboss, l'appliquer régénère le maillage à la même place.
+	let embossEdit = $state<{
+		objectId: string;
+		volumeId: string | null;
+		params: EmbossParams;
+	} | null>(null);
+	/** Cible ré-éditable d'un objet : volume sélectionné, objet, sinon 1er volume en relief. */
+	function embossTarget(
+		objectId: string | null
+	): { volumeId: string | null; emboss: unknown } | null {
+		if (!objectId) return null;
+		const vols = volumesByObject[objectId] ?? [];
+		const sel = vols.find((v) => v.id === selectedVolumeId && v.emboss);
+		if (sel) return { volumeId: sel.id, emboss: sel.emboss };
+		const own = tree.get(objectId)?.emboss;
+		if (own) return { volumeId: null, emboss: own };
+		const first = vols.find((v) => v.emboss);
+		return first ? { volumeId: first.id, emboss: first.emboss } : null;
+	}
+	function openEmbossEdit(objectId: string | null): boolean {
+		const target = embossTarget(objectId);
+		const params = target ? paramsFromEmboss(target.emboss) : null;
+		if (!objectId || !target || !params) return false;
+		embossEdit = { objectId, volumeId: target.volumeId, params };
+		if (tools.active !== 'emboss') tools = setTool(tools, 'emboss');
+		return true;
+	}
+	async function applyEmbossEdit(params: EmbossParams) {
+		const edit = embossEdit;
+		if (!edit) return;
+		const object = sceneObjects.find((o) => o.id === edit.objectId);
+		if (!object) return;
+		const label = params.source === 'svg' ? 'Forme SVG' : 'Texte en relief';
+		embossBusy = true;
+		try {
+			const res =
+				params.source === 'svg'
+					? await embossSvg(data.project.id, {
+							svg: params.svg,
+							width_mm: params.svgWidth,
+							depth_mm: params.depth,
+							...(params.svgFileName ? { file_name: params.svgFileName } : {})
+						})
+					: await embossText(data.project.id, {
+							text: params.text,
+							font: params.font,
+							size_mm: params.fontSize,
+							depth_mm: params.depth,
+							boldness_mm: params.boldness
+						});
+			const part = res.parts[0];
+			if (!part) throw new Error('aucune pièce');
+			const { mesh } = await loadCenteredMesh(part.model.id);
+			projectModelIds.add(part.model.id);
+			const b = meshBounds(mesh);
+			const size = [0, 1, 2].map((a) => Math.round((b.max[a] - b.min[a]) * 1000) / 1000) as [
+				number,
+				number,
+				number
+			];
+			if (edit.volumeId) {
+				volumeMeshRequests.add(part.model.id);
+				volumeMeshes = { ...volumeMeshes, [part.model.id]: mesh };
+				const vols = volumesByObject[edit.objectId] ?? [];
+				const old = vols.find((v) => v.id === edit.volumeId);
+				// Posé sur le dessus : la base du relief reste à la même hauteur.
+				const base = old ? old.offset[2] - old.size[2] / 2 : 0;
+				volumesByObject = {
+					...volumesByObject,
+					[edit.objectId]: vols.map((v) =>
+						v.id === edit.volumeId
+							? {
+									...v,
+									modelId: part.model.id,
+									size,
+									offset: [
+										v.offset[0],
+										v.offset[1],
+										Math.round((base + size[2] / 2) * 10000) / 10000
+									],
+									name:
+										params.source === 'svg'
+											? v.name
+											: 'Texte « ' + params.text.trim().slice(0, 24) + ' »',
+									...(part.emboss ? { emboss: part.emboss } : {})
+								}
+							: v
+					)
+				};
+			} else {
+				// Objet texte : nouveau modèle, même position (posé sur le plateau).
+				imports = imports.map((i) =>
+					i.objectId === edit.objectId ? { ...i, modelId: part.model.id } : i
+				);
+				sceneObjects = sceneObjects.map((o) =>
+					o.id === edit.objectId
+						? {
+								...o,
+								mesh,
+								position: [
+									o.position?.[0] ?? 0,
+									o.position?.[1] ?? 0,
+									restingZ(mesh, o.rotation, o.scale)
+								]
+							}
+						: o
+				);
+				const node = tree.get(edit.objectId);
+				if (node && part.emboss) node.emboss = part.emboss;
+			}
+			saveMessage = label + ' : relief mis à jour.';
+			embossEdit = null;
+			closeTool();
+		} catch (e) {
+			saveMessage =
+				label + ' : ' + (e instanceof ApiError ? e.message : 'échec de la mise à jour.');
+		} finally {
+			embossBusy = false;
+		}
+	}
+	$effect(() => {
+		if (tools.active !== 'emboss' && tools.active !== 'svg' && embossEdit) embossEdit = null;
+	});
 
 	/** Z monde de la face supérieure (rotation ignorée : objets posés). */
 	function objectTopZ(o: SceneObject): number {
@@ -4701,34 +4885,146 @@
 		}
 	}
 
-	/** Outil Coupe : plan dans le repère recentré du maillage (celui de l'outil). */
-	async function cutObject(
-		id: string | null,
-		plane: CutPlane,
-		connectorSpacing: number,
-		keep: { upper: boolean; lower: boolean }
-	) {
+	/**
+	 * Outil Coupe complet (phase 28, lot 26 : Slic3r::Cut côté serveur). Plan,
+	 * connecteurs et options viennent de cutSession ; chaque pièce devient un
+	 * objet, ses volumes additionnels (trous de connecteurs, tenon, 2e pièce de
+	 * « Couper en pièces ») des volumes maillés de la scène. Rotation/échelle
+	 * de l'objet cuites par le serveur (instance_matrix) → pièces sans
+	 * rotation. Les pièces qui se chevauchent sont posées à côté (cellule libre).
+	 */
+	async function cutObject(id: string | null) {
 		const object = id ? sceneObjects.find((o) => o.id === id) : undefined;
 		const modelId = id ? objectModelId(id) : null;
 		if (!object || !modelId) {
 			saveMessage = 'Coupe : sélectionnez un objet dont le maillage est prêt.';
 			return;
 		}
-		await runMeshOp(
-			'Coupe',
-			[modelId],
-			() =>
-				cutModel(modelId, {
-					plane: { point: plane.point, normal: plane.normal },
-					keep_upper: keep.upper,
-					keep_lower: keep.lower
-				}),
-			object,
-			[object.id]
+		if (meshOpBusy || repairingModels.has(modelId)) {
+			saveMessage = 'Coupe : une opération est déjà en cours sur ce modèle.';
+			return;
+		}
+		const source = objectTransform(object);
+		const body = cutSession.request(() =>
+			worldMatrix({ position: [0, 0, 0], rotation: source.rotation, scale: source.scale })
 		);
-		if (connectorSpacing > 0)
-			saveMessage += ' (connecteurs non pris en charge : coupe plane seule)';
-		closeTool();
+		if (!body) return;
+		const connectorCount = body.connectors?.length ?? 0;
+		const generation = sceneGeneration;
+		const plateId = plates.plateOf(object.id) ?? plates.activeId;
+		meshOpBusy = true;
+		repairingModels.add(modelId);
+		try {
+			const res = await cutModel(modelId, body);
+			const loaded = await Promise.all(
+				res.parts.map(async (part) => ({
+					part,
+					...(await loadCenteredMesh(part.model.id)),
+					volumes: await Promise.all(
+						(part.volumes ?? []).map(async (v) => ({
+							v,
+							mesh: (await loadCenteredMesh(v.model.id)).mesh
+						}))
+					)
+				}))
+			);
+			if (generation !== sceneGeneration) return;
+			const baked = !!body.instance_matrix;
+			const others = objectsOnPlate(sceneObjects, plates.get(plateId ?? '') ?? activePlate)
+				.filter((o) => o.id !== object.id)
+				.map((o) => objectFootprint(o, [bed.center.x, bed.center.y]));
+			const added: SceneObject[] = [];
+			const newIds: string[] = [];
+			const names: string[] = [];
+			for (const { part, mesh, center, volumes } of loaded) {
+				projectModelIds.add(part.model.id);
+				const objectId = tree.add(part.model.filename).id;
+				if (plateId) plates.assign(objectId, plateId);
+				imports = [
+					...imports,
+					markConverted(
+						markUploaded(startImport(objectId, part.model.filename), part.model.id, false)
+					)
+				];
+				const placed = baked
+					? {
+							position: [0, 1, 2].map((a) => source.position[a] + center[a]) as [
+								number,
+								number,
+								number
+							],
+							rotation: [0, 0, 0] as [number, number, number],
+							scale: [1, 1, 1] as [number, number, number]
+						}
+					: placeSourcePart(source, center);
+				placed.position[2] = restingZ(mesh, placed.rotation, placed.scale);
+				const candidate: SceneObject = { id: objectId, mesh, ...placed };
+				const fp = objectFootprint(candidate, [bed.center.x, bed.center.y]);
+				const overlaps = others.some(
+					(f) =>
+						(f.width + fp.width) / 2 - Math.abs(f.x - fp.x) > 0.5 &&
+						(f.depth + fp.depth) / 2 - Math.abs(f.y - fp.y) > 0.5
+				);
+				if (overlaps) {
+					const [x, y] = nearestFreeCell(fp, others, {
+						x: bed.origin.x,
+						y: bed.origin.y,
+						width: bed.width,
+						depth: bed.depth
+					});
+					candidate.position = [x, y, placed.position[2]];
+					fp.x = x;
+					fp.y = y;
+				}
+				others.push(fp);
+				added.push(candidate);
+				newIds.push(objectId);
+				names.push(cutPartLabel(part.label));
+				if (volumes.length > 0) {
+					const sceneVolumes: SceneVolume[] = volumes.map(({ v, mesh: vm }) => {
+						projectModelIds.add(v.model.id);
+						volumeMeshRequests.add(v.model.id);
+						volumeMeshes = { ...volumeMeshes, [v.model.id]: vm };
+						const b = meshBounds(vm);
+						return {
+							id: crypto.randomUUID(),
+							type: (['part', 'negative', 'modifier', 'blocker', 'enforcer'].includes(v.type)
+								? v.type
+								: 'part') as SceneVolume['type'],
+							name: v.name,
+							shape: 'mesh',
+							modelId: v.model.id,
+							size: [0, 1, 2].map((a) =>
+								Math.max(0.001, Math.round((b.max[a] - b.min[a]) * 1000) / 1000)
+							) as [number, number, number],
+							offset: [...v.offset] as [number, number, number],
+							settings: {}
+						};
+					});
+					volumesByObject = { ...volumesByObject, [objectId]: sceneVolumes };
+				}
+			}
+			sceneObjects = [...sceneObjects, ...added];
+			removeObject(object.id);
+			ws = setSelection(ws, new Set(newIds));
+			saveMessage =
+				'Coupe : ' +
+				newIds.length +
+				' objet(s) créé(s) (' +
+				names.join(', ') +
+				')' +
+				(connectorCount ? ', ' + connectorCount + ' connecteur(s)' : '') +
+				'.';
+			closeTool();
+		} catch (e) {
+			saveMessage =
+				e instanceof ApiError
+					? meshOpErrorMessage('Coupe', e.status, e.message)
+					: meshOpErrorMessage('Coupe', null, 'erreur inconnue');
+		} finally {
+			repairingModels.delete(modelId);
+			meshOpBusy = false;
+		}
 	}
 
 	// Opérandes du booléen : deux objets sélectionnés (ordre de sélection).
@@ -5243,6 +5539,11 @@
 		if (unitAction) {
 			for (const target of ws.selection.has(id) ? selectedIds : [id])
 				convertObjectUnits(target, unitAction.unit, unitAction.restore);
+			return;
+		}
+		if (action === 'object.editEmboss') {
+			ws = setSelection(ws, new Set([id]));
+			openEmbossEdit(id);
 			return;
 		}
 		switch (action) {
@@ -5914,6 +6215,16 @@
 			saveMessage = `Export 3MF : ${outcome.status === 'error' ? outcome.message : 'sauvegarde impossible'}`;
 			return;
 		}
+		// Phase 28 : vignette du plateau actif (Metadata/plate_<n>.png), capturée
+		// dans la vue 3D comme « Save project » d'Orca ; sinon rendu serveur.
+		const plateIndex = Math.max(
+			0,
+			plates.list().findIndex((p) => p.id === plates.activeId)
+		);
+		if (layout.tab === 'prepare' && activeSceneObjects.length > 0) {
+			const png = await capturePlatePng();
+			if (png) await putPlateThumbnail(data.project.id, plateIndex, png).catch(() => {});
+		}
 		downloadUrl(`/api/projects/${data.project.id}/export/3mf`);
 	}
 
@@ -6441,6 +6752,7 @@
 					extruder: clampExtruder(tree.effectiveExtruder(o.id), filamentSlots),
 					name: tree.get(o.id)?.name,
 					meshName: tree.get(o.id)?.meshName,
+					emboss: tree.get(o.id)?.emboss,
 					printable: tree.isPrintable(o.id),
 					settings: { ...(tree.get(o.id)?.settings ?? {}) },
 					painting:
@@ -6771,6 +7083,10 @@
 				class="hidden rounded bg-primary px-3 py-1.5 text-sm text-primary-content hover:bg-primary-hover 2xl:inline-block"
 				href="/api/projects/{data.project.id}/export/3mf"
 				download
+				onclick={(e) => {
+					e.preventDefault();
+					void exportGeneric3mf();
+				}}
 			>
 				{$t('Export Generic 3MF…')}
 			</a>
@@ -6971,12 +7287,24 @@
 		open={contextMenu.open}
 		x={contextMenu.x}
 		y={contextMenu.y}
-		items={contextMenu.part
-			? PART_CONTEXT_ITEMS
-			: withUnitItems(
-					OBJECT_CONTEXT_ITEMS,
-					sceneObjects.find((o) => o.id === contextMenu.targetId)?.scale
-				)}
+		items={[
+			...(embossTarget(contextMenu.targetId)
+				? [
+						{
+							label:
+								embossEditLabel(embossTarget(contextMenu.targetId)?.emboss) ?? 'Modifier le texte',
+							action: 'object.editEmboss'
+						},
+						'separator' as const
+					]
+				: []),
+			...(contextMenu.part
+				? PART_CONTEXT_ITEMS
+				: withUnitItems(
+						OBJECT_CONTEXT_ITEMS,
+						sceneObjects.find((o) => o.id === contextMenu.targetId)?.scale
+					))
+		]}
 		onaction={onObjectAction}
 		onclose={closeContext}
 	/>
@@ -7886,42 +8214,46 @@
 				</div>
 			{/if}
 			{#if layout.tab === 'prepare'}
-				{#await sceneModule then { default: SceneView }}
-					<SceneView
-						{bed}
-						objects={visibleSceneObjects}
-						bind:selection={ws.selection}
-						gizmoMode={activeGizmoMode}
-						view={cameraView}
-						zoom={cameraZoom}
-						focus={cameraFocus}
-						{showGrid}
-						{projection}
-						{overhangNormalZ}
-						labels={objectLabels}
-						printOrder={scenePrintOrder}
-						extruderColors={filamentSlotColors}
-						paintOverlays={scenePaintOverlays}
-						objectExtruders={sceneObjectExtruders}
-						wipeTower={layout.tab === 'prepare' ? sceneWipeTower : null}
-						onmovewipetower={moveWipeTower}
-						{selectedVolumeId}
-						onpickvolume={pickVolume}
-						onmeshpick={onMeshPick}
-						paintstroke={!!paintChannel}
-						suspendcontrols={paintDragging}
-						flattenMode={tools.active === 'flatten'}
-						onflatten={flattenOnFace}
-						ontransform={onTransform}
-						onvolumechange={replaceVolume}
-						ondragchange={onGizmoDragChange}
-						{sectionRatio}
-						clipPlane={sectionClip}
-						guides={sceneGuides}
-						oncameradir={(forward) => (cameraForward = forward)}
-						onpickobject={() => (selectedVolumeId = null)}
-					/>
-				{/await}
+				<!-- Phase 28 : double-clic sur un texte / SVG en relief → ré-édition. -->
+				<!-- svelte-ignore a11y_no_static_element_interactions -->
+				<div class="contents" ondblclick={() => openEmbossEdit(selId)}>
+					{#await sceneModule then { default: SceneView }}
+						<SceneView
+							{bed}
+							objects={visibleSceneObjects}
+							bind:selection={ws.selection}
+							gizmoMode={activeGizmoMode}
+							view={cameraView}
+							zoom={cameraZoom}
+							focus={cameraFocus}
+							{showGrid}
+							{projection}
+							{overhangNormalZ}
+							labels={objectLabels}
+							printOrder={scenePrintOrder}
+							extruderColors={filamentSlotColors}
+							paintOverlays={scenePaintOverlays}
+							objectExtruders={sceneObjectExtruders}
+							wipeTower={layout.tab === 'prepare' ? sceneWipeTower : null}
+							onmovewipetower={moveWipeTower}
+							{selectedVolumeId}
+							onpickvolume={pickVolume}
+							onmeshpick={onMeshPick}
+							paintstroke={!!paintChannel}
+							suspendcontrols={paintDragging}
+							flattenMode={tools.active === 'flatten'}
+							onflatten={flattenOnFace}
+							ontransform={onTransform}
+							onvolumechange={replaceVolume}
+							ondragchange={onGizmoDragChange}
+							{sectionRatio}
+							clipPlane={cutClip ?? sectionClip}
+							guides={sceneGuides}
+							oncameradir={(forward) => (cameraForward = forward)}
+							onpickobject={() => (selectedVolumeId = null)}
+						/>
+					{/await}
+				</div>
 
 				<!-- Barre d'outils de plateau (T106) : horizontale, en haut au centre,
 				     précédée d'Annuler / Rétablir avec la liste des étapes (Orca) — le coin
@@ -8001,16 +8333,9 @@
 							/>
 						{:else if tools.active === 'cut'}
 							<CutTool
-								min={activeBounds.min}
-								max={activeBounds.max}
-								frame={{
-									origin: activeObject?.position ?? [0, 0, 0],
-									scale: activeObject?.scale ?? [1, 1, 1]
-								}}
-								onpreview={(p) => (cutPreview = p)}
+								session={cutSession}
 								busy={meshOpBusy}
-								oncut={(plane, spacing, keep) =>
-									cutObject(activeObject?.id ?? null, plane, spacing, keep)}
+								oncut={() => cutObject(activeObject?.id ?? null)}
 								oncancel={closeTool}
 							/>
 						{:else if tools.active === 'boolean'}
@@ -8044,13 +8369,18 @@
 						{:else if tools.active === 'measure'}
 							<MeasureTool {measurement} onclear={() => (measuredPoints = [])} />
 						{:else if tools.active === 'emboss'}
-							<EmbossTool
-								available
-								fonts={embossFonts}
-								busy={embossBusy}
-								canEngrave={!!selId}
-								onsubmit={createEmboss}
-							/>
+							{#key embossEdit}
+								<EmbossTool
+									available
+									fonts={embossFonts}
+									busy={embossBusy}
+									canEngrave={!!selId}
+									initial={embossEdit?.params ?? null}
+									initialSource={embossEdit?.params.source ?? 'text'}
+									oncancel={closeTool}
+									onsubmit={embossEdit ? applyEmbossEdit : createEmboss}
+								/>
+							{/key}
 						{:else if tools.active === 'svg'}
 							<EmbossTool
 								available

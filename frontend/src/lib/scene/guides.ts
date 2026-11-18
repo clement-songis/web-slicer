@@ -13,6 +13,24 @@ export interface GuidePlane {
 	center: Vec3;
 	normal: Vec3;
 	size: [number, number];
+	/** Phase 28 — plan incliné : orientation (quaternion three.js x, y, z, w). */
+	quaternion?: [number, number, number, number];
+	/** Rotation Orca du plan (degrés, Rz·Ry·Rx) : anneaux de rotation. */
+	rotation?: Vec3;
+	/** Connecteurs posés (centres monde, diamètre, profondeur, côtés du prisme). */
+	connectors?: {
+		id: string;
+		center: Vec3;
+		size: number;
+		depth: number;
+		segments: number;
+		rotation: number;
+		selected: boolean;
+	}[];
+	/** Clic sur le plan (pose d'un connecteur), point monde. */
+	onclick?: (world: Vec3) => void;
+	/** Anneaux de rotation du plan : nouvelle rotation (degrés, ordre Orca). */
+	onrotate?: (rotation: Vec3) => void;
 }
 
 /** Repères de la scène : plan de coupe et/ou points de mesure (monde, mm). */

@@ -28,6 +28,8 @@ export interface EmbossParams {
 	/** En relief avec un objet sélectionné : pièce posée sur sa face supérieure
 	 *  (comportement du gizmo Emboss d'Orca) plutôt qu'un nouvel objet. */
 	onObject?: boolean;
+	/** Nom du fichier SVG d'origine (3D/<nom>.svg du 3MF), conservé à la ré-édition. */
+	svgFileName?: string;
 }
 
 /**
@@ -72,4 +74,43 @@ export function validateEmboss(p: EmbossParams): string | null {
 		return 'le contenu SVG est vide';
 	}
 	return null;
+}
+
+/**
+ * Phase 28 — paramètres ré-éditables renvoyés par /emboss et /emboss-svg
+ * (parts[].emboss, recopiés dans objects[].emboss / volumes[].emboss) →
+ * paramètres de l'outil. null si le JSON n'est ni texte ni SVG.
+ */
+export function paramsFromEmboss(e: unknown): EmbossParams | null {
+	if (!e || typeof e !== 'object') return null;
+	const o = e as Record<string, unknown>;
+	const num = (v: unknown, d: number) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
+	const str = (v: unknown, d: string) => (typeof v === 'string' ? v : d);
+	const base = defaultEmbossParams();
+	if (o.type === 'text' && typeof o.text === 'string')
+		return {
+			...base,
+			source: 'text',
+			text: o.text,
+			font: str(o.font, base.font),
+			fontSize: num(o.size_mm, base.fontSize),
+			depth: num(o.depth_mm, base.depth),
+			boldness: num(o.boldness_mm, 0)
+		};
+	if (o.type === 'svg' && typeof o.svg === 'string')
+		return {
+			...base,
+			source: 'svg',
+			svg: o.svg,
+			svgWidth: num(o.width_mm, base.svgWidth),
+			depth: num(o.depth_mm, base.depth),
+			svgFileName: str(o.file_name, '') || undefined
+		};
+	return null;
+}
+
+/** Libellé du menu (Orca : « Edit text » / « Edit SVG »). */
+export function embossEditLabel(e: unknown): string | null {
+	const p = paramsFromEmboss(e);
+	return p ? (p.source === 'svg' ? 'Modifier le SVG' : 'Modifier le texte') : null;
 }

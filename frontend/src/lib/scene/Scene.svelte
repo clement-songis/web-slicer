@@ -205,6 +205,11 @@
 		? guides.plane.center.map((c) => c.toFixed(2)).join(',')
 		: undefined}
 	data-guide-points={guides?.points?.length || undefined}
+	data-guide-normal={guides?.plane
+		? guides.plane.normal.map((c) => c.toFixed(3)).join(',')
+		: undefined}
+	data-guide-connectors={guides?.plane?.connectors?.length ?? undefined}
+	data-guide-pickable={guides?.plane?.onclick ? 'true' : undefined}
 	data-testid="scene-canvas"
 	data-projection={projection}
 	data-camera-view={view}

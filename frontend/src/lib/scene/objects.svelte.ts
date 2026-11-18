@@ -32,6 +32,8 @@ export interface SceneNode {
 	 * `ModelVolume`, `<nom>_1` après un split) ; absent = nom de l'objet.
 	 */
 	meshName?: string;
+	/** Phase 28 — objet texte / SVG en relief ré-éditable (objects[].emboss). */
+	emboss?: Record<string, unknown>;
 }
 
 function cloneNode(n: SceneNode): SceneNode {
@@ -61,7 +63,8 @@ export class ObjectTree {
 			printable: opts.printable ?? true,
 			extruder: opts.extruder ?? 0,
 			settings: { ...(opts.settings ?? {}) },
-			...(opts.meshName ? { meshName: opts.meshName } : {})
+			...(opts.meshName ? { meshName: opts.meshName } : {}),
+			...(opts.emboss ? { emboss: opts.emboss } : {})
 		};
 		this.nodes.push(node);
 		return node;

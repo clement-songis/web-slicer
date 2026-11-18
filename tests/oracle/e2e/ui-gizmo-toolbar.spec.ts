@@ -197,8 +197,18 @@ test("Mesh Boolean : différence A−B appliquée au maillage @F:gizmo.meshboole
   page,
 }) => {
   await setup(page, ["cube20", "cube20"]);
-  await select(page, 1);
+  // Phase 28 : le 2e import est posé à côté (Orca) — on recentre B sur A.
+  await select(page, 0);
   await page.getByTestId("tool-flatten").click();
+  const ax = await page
+    .getByLabel("Position (mm) X", { exact: true })
+    .inputValue();
+  const ay = await page
+    .getByLabel("Position (mm) Y", { exact: true })
+    .inputValue();
+  await select(page, 1);
+  await page.getByLabel("Position (mm) X", { exact: true }).fill(ax);
+  await page.getByLabel("Position (mm) Y", { exact: true }).fill(ay);
   await page.getByLabel("Position (mm) Z", { exact: true }).fill("18");
   await select(page, 0);
   await page

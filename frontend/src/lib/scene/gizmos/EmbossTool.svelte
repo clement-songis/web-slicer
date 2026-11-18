@@ -16,6 +16,10 @@
 		busy?: boolean;
 		/** Un objet est sélectionné : le mode « en creux » est disponible. */
 		canEngrave?: boolean;
+		/** Phase 28 — ré-édition d'un relief existant (paramètres emboss relus). */
+		initial?: EmbossParams | null;
+		/** Ré-édition : « Annuler » referme sans rien changer. */
+		oncancel?: () => void;
 	}
 
 	let {
@@ -24,15 +28,20 @@
 		initialSource = 'text',
 		fonts = [],
 		busy = false,
-		canEngrave = false
+		canEngrave = false,
+		initial = null,
+		oncancel
 	}: Props = $props();
 
 	// Source initiale lue une fois (outil Texte ou SVG) : l'utilisateur bascule ensuite.
 	const startSource = untrack(() => initialSource);
-	let params = $state<EmbossParams>({ ...defaultEmbossParams(), source: startSource });
+	const editing = untrack(() => !!initial);
+	let params = $state<EmbossParams>(
+		untrack(() => (initial ? { ...initial } : { ...defaultEmbossParams(), source: startSource }))
+	);
 	// Sans objet sélectionné, seule la création en relief est possible.
 	$effect(() => {
-		if (!canEngrave) params.embossed = true;
+		if (!canEngrave && !editing) params.embossed = true;
 	});
 	$effect(() => {
 		if (fonts.length > 0 && !fonts.some((f) => f.id === params.font)) params.font = fonts[0].id;
@@ -178,23 +187,29 @@
 		/>
 	</label>
 
-	<label class="flex items-center gap-2">
-		<input
-			type="checkbox"
-			bind:checked={params.embossed}
-			disabled={!canEngrave}
-			data-testid="emboss-raised"
-		/>
-		<span class="text-content-muted"
-			>En relief (décoché : gravé en creux dans l’objet sélectionné)</span
-		>
-	</label>
-
-	{#if canEngrave && params.embossed}
+	{#if editing}
+		<p class="text-xs text-content-subtle" data-testid="emboss-editing">
+			Modification du relief existant : il est régénéré à la même place.
+		</p>
+	{:else}
 		<label class="flex items-center gap-2">
-			<input type="checkbox" bind:checked={params.onObject} data-testid="emboss-on-object" />
-			<span class="text-content-muted">Sur l’objet sélectionné (pièce posée sur le dessus)</span>
+			<input
+				type="checkbox"
+				bind:checked={params.embossed}
+				disabled={!canEngrave}
+				data-testid="emboss-raised"
+			/>
+			<span class="text-content-muted"
+				>En relief (décoché : gravé en creux dans l’objet sélectionné)</span
+			>
 		</label>
+
+		{#if canEngrave && params.embossed}
+			<label class="flex items-center gap-2">
+				<input type="checkbox" bind:checked={params.onObject} data-testid="emboss-on-object" />
+				<span class="text-content-muted">Sur l’objet sélectionné (pièce posée sur le dessus)</span>
+			</label>
+		{/if}
 	{/if}
 
 	{#if error}
@@ -206,8 +221,23 @@
 		class="ws-btn ws-btn-primary self-start"
 		data-testid="emboss-submit"
 		disabled={!available || busy || error !== null}
-		onclick={() => onsubmit($state.snapshot(params))}>{busy ? 'Création…' : 'Créer l’objet'}</button
+		onclick={() => onsubmit($state.snapshot(params))}
+		>{busy
+			? editing
+				? 'Mise à jour…'
+				: 'Création…'
+			: editing
+				? 'Appliquer'
+				: 'Créer l’objet'}</button
 	>
+	{#if editing}
+		<button
+			type="button"
+			class="ws-btn ws-btn-secondary self-start"
+			data-testid="emboss-cancel"
+			onclick={() => oncancel?.()}>Annuler</button
+		>
+	{/if}
 	{#if !available}
 		<p class="text-content-subtle">La création de volume nécessite le moteur (à venir).</p>
 	{/if}

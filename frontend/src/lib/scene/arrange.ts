@@ -68,3 +68,58 @@ export function applyPlacements(
 		return { ...o, position: [pl.x, pl.y, z] as [number, number, number] };
 	});
 }
+
+/** Rectangle du plateau (mm) : coin min, dimensions. */
+export interface BedRect {
+	x: number;
+	y: number;
+	width: number;
+	depth: number;
+}
+
+/**
+ * Place un nouvel objet à côté des objets du plateau (phase 28) — Orca
+ * Plater::priv::load_model_objects (AUTOPLACEMENT_ON_LOAD) : plateau vide →
+ * centre ; sinon GLCanvas3D::get_nearest_empty_cell, grille de pas 10 mm
+ * alignée sur le centre, cellules triées par distance au centre. Orca ne teste
+ * que le centre de la cellule contre les enveloppes existantes (le nouvel
+ * objet chevauche souvent son voisin) : on teste l'empreinte entière, écart
+ * gap (min_object_distance d'Orca, 6 mm), dans le plateau. Rien de libre →
+ * repli d'Orca : centre + 5 % de la plus grande dimension du plateau.
+ */
+export function nearestFreeCell(
+	size: { width: number; depth: number },
+	existing: readonly Footprint[],
+	bed: BedRect,
+	step = 10,
+	gap = 6
+): [number, number] {
+	const cx = bed.x + bed.width / 2;
+	const cy = bed.y + bed.depth / 2;
+	if (existing.length === 0) return [cx, cy];
+	const hw = size.width / 2;
+	const hd = size.depth / 2;
+	const cells: [number, number][] = [];
+	const minX = cx - step * Math.floor((cx - bed.x) / step);
+	const minY = cy - step * Math.floor((cy - bed.y) / step);
+	for (let x = minX; x < bed.x + bed.width - step / 2 + 1e-9; x += step)
+		for (let y = minY; y < bed.y + bed.depth - step / 2 + 1e-9; y += step) cells.push([x, y]);
+	cells.sort((a, b) => Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(b[0] - cx, b[1] - cy));
+	for (const [x, y] of cells) {
+		if (
+			x - hw < bed.x ||
+			x + hw > bed.x + bed.width ||
+			y - hd < bed.y ||
+			y + hd > bed.y + bed.depth
+		)
+			continue;
+		const free = existing.every(
+			(f) =>
+				Math.abs(f.x - x) >= (f.width + size.width) / 2 + gap - 1e-9 ||
+				Math.abs(f.y - y) >= (f.depth + size.depth) / 2 + gap - 1e-9
+		);
+		if (free) return [x, y];
+	}
+	const off = 0.05 * Math.max(bed.width, bed.depth);
+	return [cx + off, cy + off];
+}
