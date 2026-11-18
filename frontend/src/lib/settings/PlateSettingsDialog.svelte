@@ -30,6 +30,8 @@
 		extruders?: number;
 		/** Couleur de chaque filament de la barre (pastilles de la répartition). */
 		filamentColours?: readonly string[];
+		/** Valeurs des presets : option « Profil (…) » (Orca « Same as Global … »). */
+		inherited?: Record<string, unknown>;
 	}
 
 	let {
@@ -39,8 +41,21 @@
 		onClose,
 		onsetting,
 		extruders = 1,
-		filamentColours = []
+		filamentColours = [],
+		inherited = {}
 	}: Props = $props();
+
+	/** « Profil (Par couche) » : valeur suivie quand le plateau ne surcharge rien. */
+	function profileLabel(key: string): string {
+		const def = PARAMS[key];
+		let v = inherited[key];
+		if (Array.isArray(v)) v = v[0];
+		if (!def || v === undefined || v === null || v === '') return 'Profil';
+		if (def.type === 'coBool')
+			return `Profil (${v === true || v === '1' || v === 1 ? 'Oui' : 'Non'})`;
+		const i = def.enumValues.indexOf(String(v));
+		return i >= 0 ? `Profil (${$t(def.enumLabels[i] || def.enumValues[i])})` : 'Profil';
+	}
 
 	// Répartition par buse (Orca FilamentMapDialog) : mode + buse de chaque filament.
 	let mapMode = $state<FilamentMapMode | ''>('');
@@ -140,7 +155,7 @@
 						<span class="text-content-muted">{$t(def.label)}</span>
 						{#if def.type === 'coBool'}
 							<select class="ws-field ws-field-sm w-48 shrink-0" bind:value={draft[key]}>
-								<option value="">Profil</option>
+								<option value="">{profileLabel(key)}</option>
 								<option value="1">Oui</option>
 								<option value="0">Non</option>
 							</select>
@@ -153,7 +168,7 @@
 							/>
 						{:else}
 							<select class="ws-field ws-field-sm w-48 shrink-0" bind:value={draft[key]}>
-								<option value="">Profil</option>
+								<option value="">{profileLabel(key)}</option>
 								{#each def.enumValues as v, i (v)}
 									<option value={v}>{$t(def.enumLabels[i] || v)}</option>
 								{/each}

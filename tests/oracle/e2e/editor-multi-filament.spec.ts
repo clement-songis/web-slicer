@@ -34,9 +34,10 @@ test('multi-filament : couleurs, purge, extrudeur par volume, persistance @F:edi
 	await expect(page.getByTestId('import-status')).toHaveCount(0, { timeout: 60_000 });
 	const scene = page.getByTestId('scene-canvas');
 
-	// Un seul filament : pas d'outils multi-filament, scène neutre.
+	// Un seul filament : pas d'outils multi-filament ; objets à la couleur du
+	// filament comme Orca (GLVolumeCollection::update_colors_by_extruder).
 	await expect(page.getByTestId('multi-filament-tools')).toHaveCount(0);
-	await expect(scene).not.toHaveAttribute('data-extruder-colors', /.+/);
+	await expect(scene).toHaveAttribute('data-extruder-colors', '1');
 	await page.getByTestId('add-filament-slot').click();
 	await expect(page.getByTestId('multi-filament-tools')).toBeVisible();
 	await expect(scene).toHaveAttribute('data-extruder-colors', '2');

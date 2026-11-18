@@ -39,6 +39,16 @@ for (const page of layout) {
 	}
 }
 
+// Toutes les options du registre, pas seulement celles de la mise en page :
+// pages spéciales (G-code machine, notes), recherche « + Réglage », réglages
+// par objet/plateau affichent aussi libellés et infobulles (phase 27 : ≈420
+// chaînes restaient en anglais alors que le .po d'Orca les traduit).
+for (const def of Object.values(params)) {
+	if (def.label) labels.add(def.label);
+	if (def.tooltip) labels.add(def.tooltip);
+	for (const e of def.enumLabels ?? []) if (e) labels.add(e);
+}
+
 // Parse minimal du .po : entrées sans msgctxt, msgid/msgstr mono ou multi-lignes.
 const po = new Map();
 const unq = (s) => JSON.parse(s);
@@ -108,7 +118,16 @@ const existing = new Set(
 		.filter(([k]) => k !== '$schema')
 		.map(([, v]) => v)
 );
-const dict = { 'Extruder 1': 'Extrudeur 1' };
+// Additif : les entrées déjà présentes (ajouts manuels, générations
+// précédentes) sont conservées telles quelles.
+const DICT_FILE = join(FRONT, 'src/lib/settings/i18n/fr.json');
+let previous = {};
+try {
+	previous = JSON.parse(readFileSync(DICT_FILE, 'utf8'));
+} catch {
+	previous = {};
+}
+const dict = { 'Extruder 1': 'Extrudeur 1', ...previous };
 const missing = [];
 for (const label of [...labels].sort()) {
 	if (existing.has(label) || label in dict) continue;
@@ -125,7 +144,7 @@ const dump = (o) => JSON.stringify(o, null, '\t') + '\n';
 writeFileSync(join(FRONT, 'messages/en.json'), dump(en));
 writeFileSync(join(FRONT, 'messages/fr.json'), dump(fr));
 mkdirSync(join(FRONT, 'src/lib/settings/i18n'), { recursive: true });
-writeFileSync(join(FRONT, 'src/lib/settings/i18n/fr.json'), dump(dict));
+writeFileSync(DICT_FILE, dump(dict));
 console.log(
 	JSON.stringify({
 		labels: labels.size,

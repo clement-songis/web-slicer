@@ -29,5 +29,12 @@ export const SETTINGS_FR_EXTRA: Record<string, string> = {
 	Extruders: 'Extrudeurs',
 	'Layers and Perimeters': 'Couches et Périmètres',
 	'Machine limits': 'Limites de la machine',
-	Other: 'Autre'
+	Other: 'Autre',
+	// Phase 27 — msgid sans msgstr (ou msgstr fautive) dans OrcaSlicer_fr.po 2.4.1.
+	'Printer notes': 'Notes de l’imprimante',
+	'Use 3MF instead of G-code': 'Utiliser un 3MF au lieu du G-code',
+	'Enable this if the printer accepts a 3MF file as the print job. When enabled, Orca Slicer sends the sliced file as a .gcode.3mf, instead of a plain .gcode file.':
+		'À activer si l’imprimante accepte un fichier 3MF comme tâche d’impression : le fichier tranché est alors envoyé en .gcode.3mf au lieu d’un simple .gcode.',
+	'Tightens the gyroid wave along the Z (vertical) axis at low infill density to shorten the effective vertical column length and improve Z-axis compression buckling resistance. Filament use is preserved. No effect at ~30% sparse infill density and above. Only applies when Sparse infill pattern is set to Gyroid.':
+		'Resserre l’onde du gyroïde selon l’axe Z (vertical) aux faibles densités de remplissage pour raccourcir la longueur effective des colonnes verticales et améliorer la résistance au flambage en compression selon Z. La quantité de filament est inchangée. Sans effet à partir d’environ 30 % de densité de remplissage. Ne s’applique qu’au motif de remplissage Gyroïde.'
 };

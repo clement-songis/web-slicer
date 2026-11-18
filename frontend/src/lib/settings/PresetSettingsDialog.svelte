@@ -1,4 +1,5 @@
 <script lang="ts">
+	import IconUnlink from '~icons/lucide/lock-open';
 	import { dialogFocus } from '$lib/ui/dialog-focus';
 	// Dialogue modal de réglages (Phase 14, T138) — parité des dialogues
 	// OrcaSlicer « Paramètres de l'imprimante » / presets filament/process : les
@@ -181,14 +182,21 @@
 								>
 								{#if renameError}<span class="text-danger" role="alert">{renameError}</span>{/if}
 							{:else}
-								<span class="truncate font-medium text-content" data-testid="preset-name"
-									>{preset.name}</span
+								<!-- Le nom passe avant « hérite de … » : seul ce dernier se tronque
+								     (« Mon … » tronqué avec 4 boutons d'en-tête, phase 27). -->
+								<span
+									class="max-w-full shrink-0 truncate font-medium text-content"
+									data-testid="preset-name"
+									title={preset.name}>{preset.name}</span
 								>
-								<span class="ws-badge h-4 px-1.5"
+								<span class="ws-badge h-4 shrink-0 px-1.5"
 									>{preset.origin === 'user' ? 'Utilisateur' : 'Système'}</span
 								>
 								{#if preset.inherits}
-									<span class="truncate text-content-subtle">hérite de {preset.inherits}</span>
+									<span
+										class="min-w-0 truncate text-content-subtle"
+										title="hérite de {preset.inherits}">hérite de {preset.inherits}</span
+									>
 								{/if}
 							{/if}
 						</div>
@@ -204,7 +212,11 @@
 							'user'
 								? preset?.inherits
 								: preset?.name} »"
-							onclick={startDetach}>🔓 Détacher…</button
+							onclick={startDetach}
+							><IconUnlink
+								class="mr-1 inline h-3.5 w-3.5 align-[-2px]"
+								aria-hidden="true"
+							/>Détacher…</button
 						>
 					{/if}
 					{#if preset && oncompare}

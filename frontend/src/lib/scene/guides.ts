@@ -81,6 +81,37 @@ export function guideRotation(normal: Vec3): Vec3 {
 	return [0, 0, 0];
 }
 
+/** Caméra vue par le calcul de taille écran (sous-ensemble de three.js). */
+export interface MarkerCamera {
+	/** Perspective : champ vertical (degrés). */
+	fov?: number;
+	/** Orthographique : hauteur du frustum (top − bottom) et zoom. */
+	orthoHeight?: number;
+	zoom?: number;
+}
+
+/** Rayon des repères de mesure à l'écran (px), comme les repères d'Orca. */
+export const MARKER_PX = 5;
+
+/**
+ * Rayon monde (mm) d'un repère dessiné à `px` pixels à l'écran : les points de
+ * mesure d'Orca (GLGizmoMeasure) gardent une taille écran constante, au lieu
+ * de sphères de 1,2 mm invisibles de loin et énormes en gros plan.
+ */
+export function markerWorldRadius(
+	px: number,
+	distance: number,
+	viewportHeight: number,
+	camera: MarkerCamera
+): number {
+	const h = Math.max(1, viewportHeight);
+	const perPixel =
+		camera.orthoHeight !== undefined
+			? camera.orthoHeight / Math.max(1e-6, camera.zoom ?? 1) / h
+			: (2 * Math.max(0, distance) * Math.tan(((camera.fov ?? 45) * Math.PI) / 360)) / h;
+	return Math.min(500, Math.max(1e-3, px * perPixel));
+}
+
 /** Points de mesure (au plus deux) et segment à tracer entre eux. */
 export function measureGuides(points: readonly Vec3[]): SceneGuides {
 	const pts = points.slice(-2).map((p) => [...p] as Vec3);

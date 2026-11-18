@@ -71,7 +71,11 @@ export function isWidgetFill(key: string, value: unknown): boolean {
 	// Option « nullable » (surcharge filament) : la valeur n'existe que si
 	// l'utilisateur a coché la surcharge — jamais un remplissage du widget, même
 	// égale au premier choix (ex. `filament_retract_lift_enforce = All Surfaces`).
-	if (PARAMS[key]?.nullable && value !== undefined && value !== null) return false;
+	if (PARAMS[key]?.nullable) {
+		// Vecteur entièrement « nil » ([null], [null, null]) : pas de surcharge.
+		const entries = Array.isArray(value) ? value : [value];
+		return entries.every((v) => v === undefined || v === null);
+	}
 	if (value === undefined || value === null || value === '' || value === false || value === 0)
 		return true;
 	// Défaut Orca connu (registre PrintConfig) : c'est la valeur effective d'une

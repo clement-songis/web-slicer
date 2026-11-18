@@ -32,7 +32,7 @@
 	import type { SceneVolume } from './volumes';
 	import type { PaintOverlay } from './gizmos/painting/paint-overlay';
 	import { sceneColors } from './scene-colors';
-	import { guideRotation, type SceneGuides } from './guides';
+	import { guideRotation, markerWorldRadius, MARKER_PX, type SceneGuides } from './guides';
 
 	interface Props {
 		bed: BedShape;
@@ -345,6 +345,35 @@
 		{ autoInvalidate: false }
 	);
 
+	// Points de mesure à taille écran constante (rayon MARKER_PX) : l'échelle des
+	// sphères (rayon 1) suit le zoom et la distance, recalculée à chaque rendu.
+	const markerRefs: (import('three').Mesh | undefined)[] = $state([]);
+	const markerPos = new Vector3();
+	useTask(
+		() => {
+			const cam = camera.current as Object3D & {
+				isOrthographicCamera?: boolean;
+				fov?: number;
+				top?: number;
+				bottom?: number;
+				zoom?: number;
+			};
+			for (const marker of markerRefs) {
+				if (!marker) continue;
+				const r = markerWorldRadius(
+					MARKER_PX,
+					cam.getWorldPosition(markerPos).distanceTo(marker.position),
+					size.current.height,
+					cam.isOrthographicCamera
+						? { orthoHeight: (cam.top ?? 1) - (cam.bottom ?? -1), zoom: cam.zoom }
+						: { fov: cam.fov }
+				);
+				marker.scale.setScalar(r);
+			}
+		},
+		{ autoInvalidate: false }
+	);
+
 	// Direction de vue courante (normale du plan de coupe de peinture).
 	const forward = new Vector3();
 	let lastForward = '';
@@ -592,14 +621,23 @@
 {/if}
 {#each guides?.points ?? [] as point, i (i)}
 	<!-- Points de l'outil Mesure : toujours visibles (pas de test de profondeur). -->
-	<T.Mesh position={point} renderOrder={6}>
-		<T.SphereGeometry args={[1.2, 16, 12]} />
-		<T.MeshBasicMaterial color={$sceneColors.partSelected} depthTest={false} transparent />
+	<T.Mesh
+		position={point}
+		renderOrder={6}
+		bind:ref={markerRefs[i]}
+		userData={{ guide: 'measure-point' }}
+	>
+		<T.SphereGeometry args={[1, 16, 12]} />
+		<T.MeshBasicMaterial
+			color={i === 0 ? $sceneColors.measureFirst : $sceneColors.measureSecond}
+			depthTest={false}
+			transparent
+		/>
 	</T.Mesh>
 {/each}
 {#if measureLine}
 	<T.Line geometry={measureLine} renderOrder={6}>
-		<T.LineBasicMaterial color={$sceneColors.partSelected} depthTest={false} transparent />
+		<T.LineBasicMaterial color={$sceneColors.measureFirst} depthTest={false} transparent />
 	</T.Line>
 {/if}
 

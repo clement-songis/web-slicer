@@ -123,7 +123,7 @@
 	{#if isVisible(node)}
 		<li>
 			<div
-				class="flex min-h-8 items-center gap-1 rounded-md px-1.5 py-0.5 transition-colors {selected
+				class="flex min-h-8 flex-wrap items-center gap-x-1 rounded-md px-1.5 py-0.5 transition-colors {selected
 					? 'bg-primary text-primary-content'
 					: 'hover:bg-overlay'}"
 				data-testid="object-row"
@@ -199,11 +199,13 @@
 					{/if}
 					<button
 						type="button"
-						class="flex-1 truncate text-left text-sm {tree.isHidden(node.id) ||
-						!tree.isPrintable(node.id)
+						class="max-w-full min-w-0 flex-[1_1_auto] truncate text-left text-sm {tree.isHidden(
+							node.id
+						) || !tree.isPrintable(node.id)
 							? 'opacity-40'
 							: ''}"
 						data-testid="object-name"
+						title={node.name}
 						onclick={(e) => onselect(node.id, e.shiftKey || e.ctrlKey || e.metaKey)}
 						ondblclick={() => onrename && (editingId = node.id)}
 						onkeydown={(e) => {
@@ -239,112 +241,118 @@
 					</button>
 				{/if}
 
-				{#if nSettings || ov?.ranges || ov?.parts}
+				<!-- Commandes de la ligne : groupées à droite ; si le nom ne tient pas à côté,
+				     elles passent sous le nom (flex-wrap) au lieu de le tronquer (« cube2… »). -->
+				<div class="ml-auto flex shrink-0 items-center gap-1" data-testid="object-row-controls">
+					{#if nSettings || ov?.ranges || ov?.parts}
+						<button
+							type="button"
+							class="flex shrink-0 items-center gap-1.5 rounded px-1 text-2xs tabular-nums opacity-90 hover:bg-overlay"
+							data-testid="object-overrides"
+							data-settings={nSettings}
+							aria-label="Surcharges de {node.name} : {nSettings} réglage(s){ov?.ranges
+								? `, ${ov.ranges} plage(s) de hauteur`
+								: ''}{ov?.parts ? `, ${ov.parts} pièce(s)/modificateur(s)` : ''}"
+							data-tip="{nSettings} réglage(s) surchargé(s){ov?.ranges
+								? ` · ${ov.ranges} plage(s) de hauteur`
+								: ''}{ov?.parts ? ` · ${ov.parts} pièce(s)/modificateur(s)` : ''}"
+							onclick={() => onselect(node.id, false)}
+						>
+							{#if nSettings}<span class="flex items-center gap-0.5"
+									><IconSettings class="h-3 w-3" aria-hidden="true" />{nSettings}</span
+								>{/if}
+							{#if ov?.ranges}<span class="flex items-center gap-0.5"
+									><IconLayers class="h-3 w-3" aria-hidden="true" />{ov.ranges}</span
+								>{/if}
+							{#if ov?.parts}<span class="flex items-center gap-0.5"
+									><IconBox class="h-3 w-3" aria-hidden="true" />{ov.parts}</span
+								>{/if}
+						</button>
+					{/if}
+
+					{#if node.kind !== 'group'}
+						{@const ex = shownExtruder(node)}
+						{#if (ex > 0 || extruders.length === 1) && extruderColors[Math.max(ex, 1) - 1]}
+							<span
+								class="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-border-strong"
+								style="background-color: {extruderColors[Math.max(ex, 1) - 1]}"
+								data-testid="object-extruder-swatch"
+								aria-hidden="true"
+							></span>
+						{/if}
+						<!-- Orca masque la colonne filament avec un seul filament
+					     (ObjectList::set_filament_column_hidden). -->
+						{#if extruders.length > 1}<select
+								class="ws-field ws-field-sm h-6 px-0.5"
+								aria-label={`Extrudeur de ${node.name}`}
+								value={ex}
+								onchange={(e) => onextruder(node.id, Number(e.currentTarget.value))}
+							>
+								<option value={0}>auto</option>
+								{#each extruders as ex (ex)}
+									<option value={ex}>{ex}</option>
+								{/each}
+							</select>{/if}
+					{/if}
+
+					{#if node.kind === 'object' && onassign && plates.length > 1}
+						<select
+							class="ws-field ws-field-sm h-6 max-w-24 px-0.5"
+							aria-label={`Plateau de ${node.name}`}
+							value={plates.find((plate) => plate.objectIds.includes(node.id))?.id ?? ''}
+							onchange={(e) => onassign(node.id, e.currentTarget.value)}
+						>
+							{#each plates as plate (plate.id)}
+								<option value={plate.id}>{plate.name}</option>
+							{/each}
+						</select>
+					{/if}
+
 					<button
 						type="button"
-						class="flex shrink-0 items-center gap-1.5 rounded px-1 text-2xs tabular-nums opacity-90 hover:bg-overlay"
-						data-testid="object-overrides"
-						data-settings={nSettings}
-						aria-label="Surcharges de {node.name} : {nSettings} réglage(s){ov?.ranges
-							? `, ${ov.ranges} plage(s) de hauteur`
-							: ''}{ov?.parts ? `, ${ov.parts} pièce(s)/modificateur(s)` : ''}"
-						data-tip="{nSettings} réglage(s) surchargé(s){ov?.ranges
-							? ` · ${ov.ranges} plage(s) de hauteur`
-							: ''}{ov?.parts ? ` · ${ov.parts} pièce(s)/modificateur(s)` : ''}"
-						onclick={() => onselect(node.id, false)}
+						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+						aria-pressed={node.locked}
+						aria-label={`Verrouiller ${node.name}`}
+						title={node.locked ? 'Déverrouiller' : 'Verrouiller'}
+						onclick={() => ontogglelock(node.id)}
 					>
-						{#if nSettings}<span class="flex items-center gap-0.5"
-								><IconSettings class="h-3 w-3" aria-hidden="true" />{nSettings}</span
-							>{/if}
-						{#if ov?.ranges}<span class="flex items-center gap-0.5"
-								><IconLayers class="h-3 w-3" aria-hidden="true" />{ov.ranges}</span
-							>{/if}
-						{#if ov?.parts}<span class="flex items-center gap-0.5"
-								><IconBox class="h-3 w-3" aria-hidden="true" />{ov.parts}</span
-							>{/if}
+						{#if node.locked}<IconLock class="h-3.5 w-3.5" aria-hidden="true" />{:else}<IconUnlock
+								class="h-3.5 w-3.5"
+								aria-hidden="true"
+							/>{/if}
 					</button>
-				{/if}
-
-				{#if node.kind !== 'group'}
-					{@const ex = shownExtruder(node)}
-					{#if ex > 0 && extruderColors[ex - 1]}
-						<span
-							class="inline-block h-2.5 w-2.5 shrink-0 rounded-full border border-border-strong"
-							style="background-color: {extruderColors[ex - 1]}"
-							data-testid="object-extruder-swatch"
-							aria-hidden="true"
-						></span>
-					{/if}
-					<select
-						class="ws-field ws-field-sm h-6 px-0.5"
-						aria-label={`Extrudeur de ${node.name}`}
-						value={ex}
-						onchange={(e) => onextruder(node.id, Number(e.currentTarget.value))}
+					<button
+						type="button"
+						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+						aria-pressed={node.hidden}
+						aria-label={`Masquer ${node.name}`}
+						title={node.hidden ? 'Afficher' : 'Masquer'}
+						onclick={() => ontogglehide(node.id)}
 					>
-						<option value={0}>auto</option>
-						{#each extruders as ex (ex)}
-							<option value={ex}>{ex}</option>
-						{/each}
-					</select>
-				{/if}
-
-				{#if node.kind === 'object' && onassign && plates.length > 1}
-					<select
-						class="ws-field ws-field-sm h-6 max-w-24 px-0.5"
-						aria-label={`Plateau de ${node.name}`}
-						value={plates.find((plate) => plate.objectIds.includes(node.id))?.id ?? ''}
-						onchange={(e) => onassign(node.id, e.currentTarget.value)}
+						{#if node.hidden}<IconEyeOff class="h-3.5 w-3.5" aria-hidden="true" />{:else}<IconEye
+								class="h-3.5 w-3.5"
+								aria-hidden="true"
+							/>{/if}
+					</button>
+					<button
+						type="button"
+						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+						aria-label={`Dupliquer ${node.name}`}
+						title="Dupliquer"
+						onclick={() => onduplicate(node.id)}
 					>
-						{#each plates as plate (plate.id)}
-							<option value={plate.id}>{plate.name}</option>
-						{/each}
-					</select>
-				{/if}
-
-				<button
-					type="button"
-					class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
-					aria-pressed={node.locked}
-					aria-label={`Verrouiller ${node.name}`}
-					title={node.locked ? 'Déverrouiller' : 'Verrouiller'}
-					onclick={() => ontogglelock(node.id)}
-				>
-					{#if node.locked}<IconLock class="h-3.5 w-3.5" aria-hidden="true" />{:else}<IconUnlock
-							class="h-3.5 w-3.5"
-							aria-hidden="true"
-						/>{/if}
-				</button>
-				<button
-					type="button"
-					class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
-					aria-pressed={node.hidden}
-					aria-label={`Masquer ${node.name}`}
-					title={node.hidden ? 'Afficher' : 'Masquer'}
-					onclick={() => ontogglehide(node.id)}
-				>
-					{#if node.hidden}<IconEyeOff class="h-3.5 w-3.5" aria-hidden="true" />{:else}<IconEye
-							class="h-3.5 w-3.5"
-							aria-hidden="true"
-						/>{/if}
-				</button>
-				<button
-					type="button"
-					class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
-					aria-label={`Dupliquer ${node.name}`}
-					title="Dupliquer"
-					onclick={() => onduplicate(node.id)}
-				>
-					<IconCopy class="h-3.5 w-3.5" aria-hidden="true" />
-				</button>
-				<button
-					type="button"
-					class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
-					aria-label={`Supprimer ${node.name}`}
-					title="Supprimer"
-					onclick={() => ondelete(node.id)}
-				>
-					<IconX class="h-3.5 w-3.5" aria-hidden="true" />
-				</button>
+						<IconCopy class="h-3.5 w-3.5" aria-hidden="true" />
+					</button>
+					<button
+						type="button"
+						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+						aria-label={`Supprimer ${node.name}`}
+						title="Supprimer"
+						onclick={() => ondelete(node.id)}
+					>
+						<IconX class="h-3.5 w-3.5" aria-hidden="true" />
+					</button>
+				</div>
 			</div>
 
 			{#if tree.children(node.id).length}

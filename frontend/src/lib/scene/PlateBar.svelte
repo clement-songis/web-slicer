@@ -25,6 +25,8 @@
 		oncontext?: (id: string, x: number, y: number) => void;
 		/** Plateaux dont un résultat de tranchage est mémorisé (phase 25, « Slice all »). */
 		sliced?: readonly string[];
+		/** Valeurs des presets, affichées dans l'option « Profil (…) » des réglages. */
+		inherited?: Record<string, unknown>;
 	}
 
 	let {
@@ -37,7 +39,8 @@
 		onrename,
 		onsetting,
 		oncontext,
-		sliced = []
+		sliced = [],
+		inherited = {}
 	}: Props = $props();
 
 	// Types de plaque traduits (dictionnaire des réglages chargé à la demande).
@@ -140,7 +143,11 @@
 			</select>
 		</label>
 		{#if onsetting}
-			<PlateSettings plate={active} onsetting={(key, value) => onsetting(active.id, key, value)} />
+			<PlateSettings
+				plate={active}
+				{inherited}
+				onsetting={(key, value) => onsetting(active.id, key, value)}
+			/>
 		{/if}
 	{/if}
 </div>

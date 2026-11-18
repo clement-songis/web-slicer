@@ -85,6 +85,7 @@
 		permuteInSlots,
 		sequentialArrangeFields
 	} from '$lib/scene/print-order';
+	import { clearanceItem, sequentialClearance } from '$lib/scene/sequential-clearance';
 	import { safeFileName } from '$lib/export/stl';
 	import { getJob, listJobs } from '$lib/api/jobs';
 	import type { JobResponse } from '$lib/api/types';
@@ -1081,6 +1082,10 @@
 	);
 	// Import de modèles (T089) : file d'imports suivie + zone de dépôt.
 	let imports = $state<ImportItem[]>([]);
+	// Fichiers choisis mais pas encore pris en charge (l'éditeur attend presets et
+	// plateau, `editorReady`, jusqu'à ~2 s à l'ouverture) : état de chargement
+	// explicite au lieu d'un plateau vide qui invite encore à « glisser un modèle ».
+	let queuedImports = $state<string[]>([]);
 	let importError = $state<string | null>(null);
 	let dragOver = $state(false);
 	let fileInput: HTMLInputElement | null = null;
@@ -2261,6 +2266,10 @@
 		const mtls = files.filter((f) => isMtl(f.name));
 		const models = files.filter((f) => !isMtl(f.name));
 		if (mtls.length && !models.length) importError = 'Un fichier .mtl s’importe avec son .obj.';
+		queuedImports = [
+			...queuedImports,
+			...models.filter((f) => isAccepted(f.name)).map((f) => f.name)
+		];
 		for (const file of models) {
 			if (/\.obj$/i.test(file.name) && mtls.length) {
 				const text = await file
@@ -2293,7 +2302,12 @@
 
 	/** Importe un fichier ; `true` si l'upload a abouti (modèle chargé côté serveur). */
 	async function importOne(file: File): Promise<boolean> {
-		await editorReady;
+		try {
+			await editorReady;
+		} finally {
+			const at = queuedImports.indexOf(file.name);
+			if (at >= 0) queuedImports = queuedImports.filter((_, i) => i !== at);
+		}
 		const generation = sceneGeneration;
 		const node = tree.add(file.name);
 		const objectId = node.id;
@@ -2317,8 +2331,11 @@
 			if (generation !== sceneGeneration) return false;
 			projectModelIds.add(model.id);
 			patchImport(objectId, (i) => markUploaded(i, model.id, model.conversion_pending));
-			if (!model.conversion_pending) await resolveConversion(model.id);
-			else void watchConversion(model.id, generation);
+			if (!model.conversion_pending) {
+				await resolveConversion(model.id);
+				// Fichier illisible : objet retiré, et le projet ne prend pas son nom.
+				if (!sceneObjects.some((o) => o.id === objectId)) return false;
+			} else void watchConversion(model.id, generation);
 			if (/\.obj$/i.test(file.name)) void detectObjColors(objectId, model.id, file, generation);
 			if (isStep(file.name)) void offerStepMesh(objectId, model.id, file.name, generation);
 			if (!/\.3mf$/i.test(file.name)) void offerUnitConversion(objectId, file.name, generation);
@@ -2462,7 +2479,7 @@
 			if (e instanceof ApiError && e.status === 409) return;
 			const message =
 				e instanceof ApiError && e.code === 'conversion_failed'
-					? 'échec de la conversion du modèle'
+					? 'fichier illisible ou corrompu, le moteur n’a pas pu en extraire un maillage'
 					: e instanceof ApiError
 						? e.message
 						: 'maillage converti indisponible';
@@ -2474,7 +2491,9 @@
 	}
 
 	function failImport(objectId: string, message: string) {
-		importError = message;
+		// Message préfixé du fichier concerné (« casse.stl : fichier illisible… »).
+		const file = imports.find((i) => i.objectId === objectId)?.filename;
+		importError = file ? `${file} : ${message}` : message;
 		rollbackImportIds.delete(objectId);
 		removeObject(objectId);
 	}
@@ -3825,7 +3844,11 @@
 		const index = list.filter((v) => v.type === spec.type).length + 1;
 		const volume = defaultVolume(spec.type, extent, crypto.randomUUID(), `${spec.name} ${index}`);
 		volumesByObject = { ...volumesByObject, [id]: [...list, volume] };
+		// Comme Orca (ObjectList::add_generic_subobject) : le volume ajouté est
+		// sélectionné et ses réglages s'ouvrent dans l'onglet Objets.
 		ws = setSelection(ws, new Set([id]));
+		selectedVolumeId = volume.id;
+		configTab = 'objects';
 		saveMessage = `${volume.name} ajouté (${volume.size.join(' × ')} mm).`;
 	}
 
@@ -4118,6 +4141,35 @@
 			if (node.kind === 'object' && activeObjectIds.has(node.id) && tree.isPrintable(node.id))
 				rank[node.id] = ++n;
 		return n > 0 ? rank : null;
+	});
+	// Valeurs des presets que suit un plateau sans surcharge (option « Profil (…) »).
+	const plateInherited = $derived({ ...machineValues, ...processValues });
+	// Objet par objet : contrôle de dégagement AVANT tranchage, comme la
+	// validation d'arrière-plan d'Orca (objets trop proches / trop hauts).
+	const sequenceConflicts = $derived.by(() => {
+		if (!sequentialPrint || layout.tab !== 'prepare') return null;
+		const byId = new Map(activeSceneObjects.map((o) => [o.id, o]));
+		const items = tree
+			.roots()
+			.filter((n) => n.kind === 'object' && byId.has(n.id) && tree.isPrintable(n.id))
+			.map((n) => clearanceItem(byId.get(n.id)!, [bed.center.x, bed.center.y]));
+		const f = sequentialArrangeFields(machineValues, processValues);
+		const printable = Number(machineValues.printable_height);
+		const r = sequentialClearance(items, {
+			radius: f.extruder_clearance_radius,
+			heightToRod: f.extruder_clearance_height_to_rod,
+			heightToLid: f.extruder_clearance_height_to_lid,
+			nozzleHeight: f.nozzle_height,
+			printableHeight: Number.isFinite(printable) && printable > 0 ? printable : 250
+		});
+		const names = (ids: string[]) => ids.map((id) => `« ${tree.get(id)?.name ?? id} »`).join(', ');
+		const parts = [
+			r.close.length
+				? `${names(r.close)} trop près des objets imprimés avant (dégagement de la tête : ${f.extruder_clearance_radius} mm)`
+				: '',
+			r.tall.length ? `${names(r.tall)} trop haut pour passer sous la tête ou le portique` : ''
+		].filter(Boolean);
+		return parts.length ? { ...r, message: `Objet par objet : ${parts.join(' ; ')}.` } : null;
 	});
 	// — Tour d'essuyage sur le plateau (Préparer) : taille estimée comme Orca,
 	//   position par plateau dans la config projet (wipe_tower_x/y).
@@ -5408,9 +5460,9 @@
 			}
 			const name =
 				/filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ??
-				safeFileName(data.project.name, split ? 'zip' : format);
+				safeFileName(projectName || data.project.name, split ? 'zip' : format);
 			downloadBlob(await res.blob(), name);
-			saveMessage = `Export ${label} : ${split ? 'archive par objet' : 'fichier fusionné'} exporté.`;
+			saveMessage = `Export ${label} : ${split ? 'archive (un fichier par objet) exportée' : 'fichier fusionné exporté'} — « ${name} ».`;
 		} catch {
 			saveMessage = `Export ${label} : échec du téléchargement.`;
 		}
@@ -5566,13 +5618,12 @@
 			}
 			const name =
 				/filename="([^"]+)"/.exec(resp.headers.get('content-disposition') ?? '')?.[1] ??
-				`${safeFileName(data.project.name, 'gcode')}.3mf`;
+				`${safeFileName(projectName || data.project.name, 'gcode')}.3mf`;
 			downloadBlob(await resp.blob(), name);
+			const nPlates = (n: number) => `${n} plateau${n > 1 ? 'x' : ''}`;
 			saveMessage =
-				`${label} : ${succeeded.length} plateau(x) dans « ${name} ».` +
-				(missed > 0
-					? ` ${missed} plateau(x) en échec${firstError ? ` — ${firstError}` : '.'}`
-					: '');
+				`${label} : ${nPlates(succeeded.length)} dans « ${name} ».` +
+				(missed > 0 ? ` ${nPlates(missed)} en échec${firstError ? ` — ${firstError}` : '.'}` : '');
 		} catch (e) {
 			saveMessage = `${label} : ${e instanceof Error ? e.message : 'échec'}`;
 		} finally {
@@ -5762,12 +5813,11 @@
 		}
 		const last = Math.max(0, previewMeta.layer_count - 1);
 		await loader.ensureRange(0, last);
-		const text = toolpathsToObj(loader.rangeSegments(0, last), data.project.name);
-		downloadBlob(
-			new TextEncoder().encode(text),
-			safeFileName(`${data.project.name}_toolpaths`, 'obj'),
-			'model/obj'
-		);
+		const base = projectName || data.project.name;
+		const text = toolpathsToObj(loader.rangeSegments(0, last), base);
+		const file = safeFileName(`${base}_trajets`, 'obj');
+		downloadBlob(new TextEncoder().encode(text), file, 'model/obj');
+		saveMessage = `Trajets exportés en OBJ — « ${file} ».`;
 	}
 
 	async function openProjectFile(file: File) {
@@ -5848,7 +5898,10 @@
 				saveMessage = 'Export des presets : aucun preset actif.';
 				return;
 			}
-			downloadBlob(buildZip(entries), safeFileName(`${data.project.name}_presets`, 'zip'));
+			downloadBlob(
+				buildZip(entries),
+				safeFileName(`${projectName || data.project.name}_presets`, 'zip')
+			);
 			saveMessage = `Export des presets : ${entries.length} profil(s) exporté(s).`;
 		} catch (e) {
 			saveMessage = `Export des presets : ${e instanceof Error ? e.message : 'échec'}`;
@@ -6628,6 +6681,7 @@
 					plates.activeId && plates.setPlateSetting(plates.activeId, key, value)}
 				extruders={extruderCount(machineValues.nozzle_diameter)}
 				filamentColours={filamentSlotColors}
+				inherited={plateInherited}
 			/>
 			<!-- Bouton Trancher + options (Orca : « Slice plate » / « Slice all »). -->
 			<div class="relative flex">
@@ -7149,6 +7203,7 @@
 						ontype={(id, plateType) => plates.setPlateType(id, plateType)}
 						onrename={(id, name) => plates.rename(id, name)}
 						onsetting={(id, key, value) => plates.setPlateSetting(id, key, value)}
+						inherited={plateInherited}
 						oncontext={(id, x, y) => (plateMenu = { open: true, x, y, plateId: id })}
 						sliced={Object.keys(plateResults)}
 					/>
@@ -7663,9 +7718,7 @@
 										title={volumeTypeName(volume.type)}
 										data-testid="object-volume-select"
 										aria-pressed={selectedVolumeId === volume.id}
-										onclick={() =>
-											(selectedVolumeId = selectedVolumeId === volume.id ? null : volume.id)}
-										>{volume.name}</button
+										onclick={() => (selectedVolumeId = volume.id)}>{volume.name}</button
 									>
 									<span class="text-xs text-content-subtle">{volume.size.join('×')}</span>
 									{#if filamentSlots > 1 && (volume.type === 'part' || volume.type === 'modifier')}
@@ -7812,6 +7865,25 @@
 						onclick={() => void arrangeActive()}>Disposer</button
 					>
 				</div>
+			{:else if sequenceConflicts}
+				<div
+					class="ws-floating absolute bottom-3 left-3 z-20 flex max-w-xl items-center gap-2 px-3 py-2 text-xs text-content"
+					role="status"
+					data-testid="sequence-warning"
+					data-close={sequenceConflicts.close.length}
+					data-tall={sequenceConflicts.tall.length}
+				>
+					<span class="h-2 w-2 shrink-0 rounded-full bg-warning" aria-hidden="true"></span>
+					<span>{sequenceConflicts.message}</span>
+					{#if sequenceConflicts.close.length}
+						<button
+							type="button"
+							class="ws-btn ws-btn-sm ws-btn-secondary shrink-0"
+							data-testid="sequence-arrange"
+							onclick={() => void arrangeActive()}>Disposer</button
+						>
+					{/if}
+				</div>
 			{/if}
 			{#if layout.tab === 'prepare'}
 				{#await sceneModule then { default: SceneView }}
@@ -7828,7 +7900,7 @@
 						{overhangNormalZ}
 						labels={objectLabels}
 						printOrder={scenePrintOrder}
-						extruderColors={filamentSlots > 1 ? filamentSlotColors : null}
+						extruderColors={filamentSlotColors}
 						paintOverlays={scenePaintOverlays}
 						objectExtruders={sceneObjectExtruders}
 						wipeTower={layout.tab === 'prepare' ? sceneWipeTower : null}
@@ -8028,11 +8100,22 @@
 						<div
 							class="ws-floating flex max-w-sm flex-col items-center gap-2 border-dashed px-6 py-5 text-center text-sm text-content-muted"
 						>
-							<IconFileUp class="h-6 w-6 text-primary" aria-hidden="true" />
-							<p>
-								Glissez un modèle ici (STL, OBJ, 3MF, STEP, AMF, SVG, DRC)<br />ou cliquez sur
-								<span class="font-medium text-content">{$t('Import')}</span>.
-							</p>
+							{#if queuedImports.length || imports.some(isPending)}
+								{@const name = queuedImports[0] ?? imports.find(isPending)?.filename}
+								<span
+									class="inline-block size-6 animate-spin rounded-full border-2 border-primary border-t-transparent"
+									aria-hidden="true"
+								></span>
+								<p role="status" data-testid="import-loading">
+									Import de <span class="font-medium text-content">{name}</span>…
+								</p>
+							{:else}
+								<IconFileUp class="h-6 w-6 text-primary" aria-hidden="true" />
+								<p>
+									Glissez un modèle ici (STL, OBJ, 3MF, STEP, AMF, SVG, DRC)<br />ou cliquez sur
+									<span class="font-medium text-content">{$t('Import')}</span>.
+								</p>
+							{/if}
 						</div>
 					</div>
 				{/if}

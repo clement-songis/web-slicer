@@ -6,6 +6,7 @@
 	import { widgetFor } from './widgets';
 	import { t } from '$lib/i18n';
 	import { clonePresetValues, settingChanged } from './editing';
+	import { untrack } from 'svelte';
 	import IconUndo from '~icons/lucide/undo-2';
 	import IconLockOpen from '~icons/lucide/lock-open';
 
@@ -64,11 +65,17 @@
 			? 0
 			: undefined
 	);
-	let overrideEnabled = $state(true);
+	// État initial pris de la valeur : partir de « coché » montait d'abord le
+	// widget lié, dont la case écrivait `false` dans un vecteur « nil ».
+	let overrideEnabled = $state(untrack(() => !def.nullable || hasOverride(value)));
 	const controlDisabled = $derived(disabled || (def.nullable && !overrideEnabled));
 
 	$effect(() => {
 		if (def.nullable) overrideEnabled = hasOverride(value);
+		// Surcharge filament non cochée (absente ou « nil ») : ne RIEN écrire —
+		// un `[null]` posé ici partait dans le brouillon et le tranchage échouait
+		// (« valeur illisible pour filament_retract_lift_above », phase 27).
+		if (def.nullable && !hasOverride(value)) return;
 		if ((scalarVector || pointVector) && !Array.isArray(value)) {
 			value = value === null || value === undefined ? [null] : [value];
 		}
@@ -145,7 +152,16 @@
 		</div>
 	{/if}
 	<div class="{compact ? 'w-32' : 'w-56'} shrink-0">
-		{#if (scalarVector || pointVector) && Array.isArray(value)}
+		{#if def.nullable && !overrideEnabled}
+			<!-- Non lié : un widget inactif (case décochée) ne doit pas écrire
+			     sa valeur neutre (false, 0…) dans un vecteur « nil ». -->
+			<Widget
+				{def}
+				value={Array.isArray(value) ? value[0] : value}
+				index={indexed}
+				disabled={true}
+			/>
+		{:else if (scalarVector || pointVector) && Array.isArray(value)}
 			<Widget {def} bind:value={value[0]} index={indexed} disabled={controlDisabled} />
 		{:else if !scalarVector && !pointVector}
 			<Widget {def} bind:value index={indexed} disabled={controlDisabled} />

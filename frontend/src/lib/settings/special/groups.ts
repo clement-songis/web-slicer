@@ -110,6 +110,8 @@ export const FILAMENT_MULTIMATERIAL: SpecialGroup[] = [
 
 /** Une surcharge filament est active si sa valeur n'est pas « N/A » (`null`). */
 export function isOverrideActive(value: unknown): boolean {
+	// Vecteur « nil » (presets Bambu à variantes : [null, null]) = N/A.
+	if (Array.isArray(value)) return value.some((v) => v !== null && v !== undefined);
 	return value !== null && value !== undefined;
 }
 

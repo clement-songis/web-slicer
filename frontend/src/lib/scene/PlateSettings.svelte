@@ -10,9 +10,22 @@
 	interface Props {
 		plate: Plate;
 		onsetting: (key: string, value: unknown) => void;
+		/** Valeurs des presets (sans surcharge du plateau) : affichées dans
+		 *  l'option « Profil (…) », comme « Same as Global … » d'Orca. */
+		inherited?: Record<string, unknown>;
 	}
 
-	let { plate, onsetting }: Props = $props();
+	let { plate, onsetting, inherited = {} }: Props = $props();
+
+	/** « Profil (Par couche) » : valeur effective quand le plateau ne surcharge rien. */
+	function profileLabel(key: string): string {
+		let v = inherited[key];
+		if (Array.isArray(v)) v = v[0];
+		if (v === undefined || v === null || v === '') return 'Profil';
+		const s = typeof v === 'boolean' ? (v ? '1' : '0') : String(v);
+		const opt = options(key).find((o) => o.value === s);
+		return opt ? `Profil (${opt.label})` : 'Profil';
+	}
 
 	// Valeurs d'énumération (types de plaque, séquence) traduites comme dans le
 	// dialogue de réglages : dictionnaire chargé à la demande.
@@ -61,7 +74,7 @@
 					onsetting(field.key, v === '' ? undefined : v);
 				}}
 			>
-				<option value="">Profil</option>
+				<option value="">{profileLabel(field.key)}</option>
 				{#each options(field.key) as opt (opt.value)}
 					<option value={opt.value}>{opt.label}</option>
 				{/each}

@@ -125,11 +125,37 @@
 		}
 		return [...merged.values()];
 	});
-	// Hors recherche, tous les onglets du type restent présents quel que soit le
-	// mode (sélecteur stable) ; seules leurs options sont filtrées.
-	const pages = $derived(
-		filterLayout(scoped, mode, query, query.trim().length === 0) as LinkedPage[]
+	// Comme Orca (Tab::update_visibility → Page::get_show), un onglet sans
+	// aucune option au mode courant est masqué (ex. « G-code de la machine » en
+	// Simple) au lieu d'afficher une page vide ; il réapparaît en Avancé.
+	const pages = $derived(filterLayout(scoped, mode, query, false) as LinkedPage[]);
+	/** Premier mode (≥ courant) où l'onglet `slug` du type a des options. */
+	function modeShowing(slug: string): DisplayMode | null {
+		for (const m of MODES.slice(MODES.indexOf(mode))) {
+			const shown = filterLayout(scoped, m, '', false) as LinkedPage[];
+			if (shown.some((page) => page.kind === kind && pageSlug(page.title) === slug)) return m;
+		}
+		return null;
+	}
+	// Onglets du type masqués au mode courant : signalés (et atteignables d'un
+	// clic) pour ne pas « perdre » le G-code machine en mode Simple.
+	const hiddenPages = $derived.by(() => {
+		if (query.trim()) return [];
+		const shown = new Set(pages.filter((p) => p.kind === kind).map((p) => p.title));
+		return (filterLayout(scoped, 'develop', '', false) as LinkedPage[]).filter(
+			(p) => p.kind === kind && !shown.has(p.title)
+		);
+	});
+	const revealMode = $derived(
+		hiddenPages.length ? modeShowing(pageSlug(hiddenPages[0].title)) : null
 	);
+	// Ouverture ciblée sur un onglet masqué au mode courant : on passe au premier
+	// mode qui l'affiche plutôt que de retomber sur le premier onglet.
+	untrack(() => {
+		if (!initialPage) return;
+		const m = modeShowing(pageSlug(initialPage));
+		if (m && m !== mode) mode = m;
+	});
 
 	// Page active suivie par position : les titres de page ne sont pas uniques
 	// entre types (« Notes », « Multimaterial »), mais le cadrage par type limite
@@ -274,6 +300,23 @@
 				{#each ownPages as page (pageSlug(page.title))}
 					{@render tabButton(page)}
 				{/each}
+				{#if hiddenPages.length && revealMode}
+					<button
+						type="button"
+						class="ml-auto self-center rounded px-1.5 text-2xs text-content-muted hover:bg-overlay hover:text-content"
+						data-testid="settings-hidden-pages"
+						data-tip="Onglets sans réglage au mode {MODE_LABELS[mode]} : {hiddenPages
+							.map((p) => $t(pageTitle(p.title)))
+							.join(', ')}"
+						onclick={() => {
+							activeSlug = pageSlug(hiddenPages[0].title);
+							mode = revealMode;
+						}}
+						>+{hiddenPages.length} onglet{hiddenPages.length > 1 ? 's' : ''} en mode {MODE_LABELS[
+							revealMode
+						]}</button
+					>
+				{/if}
 			</div>
 			{#each linkedGroups as group (group.kind)}
 				<div
