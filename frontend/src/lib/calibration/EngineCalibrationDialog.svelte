@@ -70,11 +70,18 @@
 					['Début', 'start'],
 					['Fin', 'end']
 				]
-			: [
-					['Début', 'start'],
-					['Fin', 'end'],
-					['Pas', 'step']
-				]
+			: kind === 'pa_pattern'
+				? [
+						// Orca PA_Calibration_Dlg : « Start PA / End PA / PA step ».
+						['PA de départ (K)', 'start'],
+						['PA final (K)', 'end'],
+						['Pas de PA', 'step']
+					]
+				: [
+						['Début', 'start'],
+						['Fin', 'end'],
+						['Pas', 'step']
+					]
 	);
 	const hasModel = $derived(TEST_MODEL_KINDS.includes(kind));
 	const isShaping = $derived(kind === 'input_shaping_freq' || kind === 'input_shaping_damp');

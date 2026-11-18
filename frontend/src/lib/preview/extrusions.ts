@@ -14,10 +14,50 @@ export const VOLUME_SEGMENT_LIMIT = 400_000;
 
 export type RenderMode = 'auto' | 'volumes' | 'lines';
 
-/** Mode effectif : `auto` → volumes sous la limite, lignes au-delà. */
-export function effectiveRenderMode(mode: RenderMode, segments: number): 'volumes' | 'lines' {
+/**
+ * Mode effectif : `auto` → volumes sous la limite, lignes au-delà — et lignes
+ * en rendu WebGL **logiciel** (pas de GPU : SwiftShader, llvmpipe…), où une
+ * image en volumes bloque le fil principal plusieurs secondes (mesuré phase 25 :
+ * 2,8 à 4 s pour 100 couches, au-delà de 15 s sous charge).
+ */
+export function effectiveRenderMode(
+	mode: RenderMode,
+	segments: number,
+	software = false
+): 'volumes' | 'lines' {
 	if (mode !== 'auto') return mode;
+	if (software) return 'lines';
 	return segments <= VOLUME_SEGMENT_LIMIT ? 'volumes' : 'lines';
+}
+
+/** Moteurs WebGL logiciels (aucune accélération matérielle). */
+const SOFTWARE_RENDERERS = /swiftshader|llvmpipe|softpipe|software|basic render/i;
+
+/** Le nom du moteur WebGL désigne-t-il un rendu logiciel ? */
+export function isSoftwareRenderer(renderer: string | null | undefined): boolean {
+	return !!renderer && SOFTWARE_RENDERERS.test(renderer);
+}
+
+/** Détecte (une fois) un rendu WebGL logiciel dans ce navigateur. */
+let softwareGl: boolean | null = null;
+export function detectSoftwareRenderer(): boolean {
+	if (softwareGl !== null) return softwareGl;
+	softwareGl = false;
+	try {
+		const canvas = document.createElement('canvas');
+		const gl = (canvas.getContext('webgl2') ?? canvas.getContext('webgl')) as
+			| WebGLRenderingContext
+			| null;
+		if (gl) {
+			const info = gl.getExtension('WEBGL_debug_renderer_info');
+			const name = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+			softwareGl = isSoftwareRenderer(String(name ?? ''));
+			gl.getExtension('WEBGL_lose_context')?.loseContext();
+		}
+	} catch {
+		// Pas de WebGL : rien à adapter.
+	}
+	return softwareGl;
 }
 
 /**

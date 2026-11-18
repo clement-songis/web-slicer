@@ -100,6 +100,13 @@ export interface ObjectMenuItem {
 	hint?: string;
 	/** Sous-menu (déplié dans le menu, ex. « Modèles pratiques »). */
 	items?: ObjectMenuItem[];
+	/**
+	 * Sous-menu **ouvert** (phase 25) : rendu en section titrée, ses entrées
+	 * toujours visibles (menu en colonnes). Les specs gelés cliquent les actions
+	 * directement après le clic droit : un sous-menu replié les rendrait
+	 * inatteignables, la section garde donc chaque action à un clic.
+	 */
+	section?: true;
 }
 
 /** Entrée du menu contextuel objet, avec séparateurs. */
@@ -110,57 +117,119 @@ export type ObjectMenuEntry = ObjectMenuItem | 'separator';
  * Libellés = clés de parité (tracés dans `traceability-map.json#context_menu`).
  */
 export const OBJECT_CONTEXT_ITEMS: ObjectMenuEntry[] = [
-	{ label: 'HideShow', action: 'object.hideShow' },
-	{ label: 'Rename', action: 'object.rename' },
-	{ label: 'Edit', action: 'object.edit' },
-	{ label: 'Add settings', action: 'object.addSettings' },
-	'separator',
-	{ label: 'Clone', action: 'object.clone' },
-	{ label: 'Add instance', action: 'object.addInstance' },
-	{ label: 'Remove instance', action: 'object.removeInstance' },
-	'separator',
-	{ label: 'Set number of instances…', action: 'object.setInstances' },
-	{ label: 'Set as an individual object', action: 'object.individual' },
-	{ label: 'Fill bed with copies', action: 'object.fillBed' },
-	{ label: 'Fill bed with instances…', action: 'object.fillBed' },
-	'separator',
-	{ label: 'Auto orientation', action: 'object.orient' },
-	{ label: 'Center', action: 'object.center' },
-	{ label: 'Drop', action: 'object.drop' },
-	{ label: 'Scale to build volume', action: 'object.scaleToBed' },
-	// Sous-menu Mirror d'Orca (`append_menu_items_mirror`), aplati : le rôle
-	// « Miroir » est rappelé en second (sinon « Selon l'axe X » est sibyllin).
-	{ label: 'Along X axis', action: 'object.mirrorX', hint: 'Mirror' },
-	{ label: 'Along Y axis', action: 'object.mirrorY', hint: 'Mirror' },
-	{ label: 'Along Z axis', action: 'object.mirrorZ', hint: 'Mirror' },
-	'separator',
-	{ label: 'Add part', action: 'object.addPart' },
-	{ label: 'Add negative volume', action: 'object.addNegativeVolume' },
-	{ label: 'Add modifier', action: 'object.addModifier' },
-	{ label: 'Height range Modifier', action: 'object.addHeightRange' },
-	{ label: 'Add support blocker', action: 'object.addSupportBlocker' },
-	{ label: 'Add support enforcer', action: 'object.addSupportEnforcer' },
-	'separator',
-	{ label: 'Fix model', action: 'object.fix' },
-	{ label: 'Reload from disk', action: 'object.reload' },
-	{ label: 'Replace 3D file…', action: 'object.replace' },
-	{ label: 'Replace all with 3D files…', action: 'object.replaceAll' },
-	{ label: 'Simplify Model', action: 'object.simplify' },
-	{ label: 'Subdivision mesh(Lost color)', action: 'object.smooth' },
-	{ label: 'Mesh boolean', action: 'object.meshBoolean' },
-	{ label: 'Assemble', action: 'object.assemble' },
-	{ label: 'Assemble (single part)', action: 'object.assembleSingle' },
-	{ label: 'To objects', action: 'object.toObjects' },
-	{ label: 'To parts', action: 'object.toParts' },
-	{ label: 'Split', action: 'object.split' },
-	'separator',
-	{ label: 'Export as one STL…', action: 'object.exportStl' },
-	{ label: 'Export as STLs…', action: 'object.exportStls' },
-	{ label: 'Export as one DRC…', action: 'object.exportDrc' },
-	{ label: 'Export as DRCs…', action: 'object.exportDrcs' },
-	'separator',
-	{ label: 'Delete', action: 'object.delete' }
+	// Phase 25 : les 43 entrées à plat (plus hautes que l'écran) sont rangées en
+	// sous-menus ouverts, à la manière des sous-menus d'Orca (`create_object_menu` :
+	// Add part/modifier…, Mirror, Split, Export) — aucune action retirée.
+	{
+		label: 'Object',
+		action: 'section.object',
+		section: true,
+		items: [
+			{ label: 'HideShow', action: 'object.hideShow' },
+			{ label: 'Rename', action: 'object.rename' },
+			{ label: 'Edit', action: 'object.edit' },
+			{ label: 'Add settings', action: 'object.addSettings' },
+			{ label: 'Delete', action: 'object.delete' }
+		]
+	},
+	{
+		label: 'Instances',
+		action: 'section.instances',
+		section: true,
+		items: [
+			{ label: 'Clone', action: 'object.clone' },
+			{ label: 'Add instance', action: 'object.addInstance' },
+			{ label: 'Remove instance', action: 'object.removeInstance' },
+			{ label: 'Set number of instances…', action: 'object.setInstances' },
+			{ label: 'Set as an individual object', action: 'object.individual' },
+			{ label: 'Fill bed with copies', action: 'object.fillBed' },
+			{ label: 'Fill bed with instances…', action: 'object.fillBed' }
+		]
+	},
+	{
+		label: 'Placement',
+		action: 'section.placement',
+		section: true,
+		items: [
+			{ label: 'Auto orientation', action: 'object.orient' },
+			{ label: 'Center', action: 'object.center' },
+			{ label: 'Drop', action: 'object.drop' },
+			{ label: 'Scale to build volume', action: 'object.scaleToBed' }
+		]
+	},
+	// Sous-menu Mirror d'Orca (`append_menu_items_mirror`). Le rappel « Miroir »
+	// (`hint`) reste dans les données (entrées hors section, tests) ; la section
+	// porte déjà ce titre, ContextMenu ne le répète pas.
+	{
+		label: 'Mirror',
+		action: 'section.mirror',
+		section: true,
+		items: [
+			{ label: 'Along X axis', action: 'object.mirrorX', hint: 'Mirror' },
+			{ label: 'Along Y axis', action: 'object.mirrorY', hint: 'Mirror' },
+			{ label: 'Along Z axis', action: 'object.mirrorZ', hint: 'Mirror' }
+		]
+	},
+	{
+		label: 'Parts and modifiers',
+		action: 'section.parts',
+		section: true,
+		items: [
+			{ label: 'Add part', action: 'object.addPart' },
+			{ label: 'Add negative volume', action: 'object.addNegativeVolume' },
+			{ label: 'Add modifier', action: 'object.addModifier' },
+			{ label: 'Height range Modifier', action: 'object.addHeightRange' },
+			{ label: 'Add support blocker', action: 'object.addSupportBlocker' },
+			{ label: 'Add support enforcer', action: 'object.addSupportEnforcer' }
+		]
+	},
+	{
+		label: 'Mesh',
+		action: 'section.mesh',
+		section: true,
+		items: [
+			{ label: 'Fix model', action: 'object.fix' },
+			{ label: 'Simplify Model', action: 'object.simplify' },
+			{ label: 'Subdivision mesh(Lost color)', action: 'object.smooth' },
+			{ label: 'Mesh boolean', action: 'object.meshBoolean' },
+			{ label: 'Reload from disk', action: 'object.reload' },
+			{ label: 'Replace 3D file…', action: 'object.replace' },
+			{ label: 'Replace all with 3D files…', action: 'object.replaceAll' }
+		]
+	},
+	// Sous-menu Split d'Orca (`append_menu_item_split` : To objects / To parts)
+	// + assemblage.
+	{
+		label: 'Split and assemble',
+		action: 'section.split',
+		section: true,
+		items: [
+			{ label: 'Split', action: 'object.split' },
+			{ label: 'To objects', action: 'object.toObjects' },
+			{ label: 'To parts', action: 'object.toParts' },
+			{ label: 'Assemble', action: 'object.assemble' },
+			{ label: 'Assemble (single part)', action: 'object.assembleSingle' }
+		]
+	},
+	{
+		label: 'Export',
+		action: 'section.export',
+		section: true,
+		items: [
+			{ label: 'Export as one STL…', action: 'object.exportStl' },
+			{ label: 'Export as STLs…', action: 'object.exportStls' },
+			{ label: 'Export as one DRC…', action: 'object.exportDrc' },
+			{ label: 'Export as DRCs…', action: 'object.exportDrcs' }
+		]
+	}
 ];
+
+/** Actions feuilles d'un menu (sections et sous-menus dépliés), dans l'ordre. */
+export function menuLeaves(entries: readonly ObjectMenuEntry[]): ObjectMenuItem[] {
+	return entries.flatMap((e) =>
+		e === 'separator' ? [] : e.items ? menuLeaves(e.items) : [e]
+	);
+}
 
 /**
  * Menu d'une pièce (ligne enfant d'un objet multi-pièces) : `create_part_menu`

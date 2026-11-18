@@ -68,6 +68,9 @@ export interface AppPreferences {
 	/** Orca `max_recent_count` (0–999, défaut 18) : projets de la vue « Récemment
 	 *  ouvert » de la bibliothèque ; les autres restent accessibles. */
 	maxRecent: number;
+	/** Filaments cochés à l'assistant (Orca : section « filaments » d'AppConfig,
+	 *  noms de presets). `null` : assistant jamais passé (phase 25). */
+	wizardFilaments: string[] | null;
 }
 
 export const PREFERENCES_KEY = 'web-slicer.preferences';
@@ -97,7 +100,8 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
 	mixedTemperature: false,
 	filamentMapPopup: false,
 	defaultPage: 'home',
-	maxRecent: 18
+	maxRecent: 18,
+	wizardFilaments: null
 };
 
 /** Bornes d'Orca (MainFrame::set_max_recent_count : 0–999). */
@@ -158,7 +162,10 @@ export function parsePreferences(raw: string | null): AppPreferences {
 			filamentMapPopup: bool(value.filamentMapPopup, d.filamentMapPopup),
 			defaultPage: oneOf(value.defaultPage, ['home', 'prepare'] as const, d.defaultPage),
 			maxRecent:
-				typeof value.maxRecent === 'number' ? clampRecentCount(value.maxRecent) : d.maxRecent
+				typeof value.maxRecent === 'number' ? clampRecentCount(value.maxRecent) : d.maxRecent,
+			wizardFilaments: Array.isArray(value.wizardFilaments)
+				? value.wizardFilaments.filter((n): n is string => typeof n === 'string').slice(0, 500)
+				: d.wizardFilaments
 		};
 	} catch {
 		return { ...DEFAULT_PREFERENCES, camera: { ...CAMERA_DEFAULTS } };

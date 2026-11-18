@@ -42,6 +42,9 @@
 		confirmLabel?: string;
 		/** Désactive les actions pendant un envoi. */
 		busy?: boolean;
+		/** Sélection courante (modèle + presets machine des buses cochées), à chaque
+		 *  changement : l'assistant en déduit les filaments proposés (phase 25). */
+		onpick?: (picked: { model: PrinterCatalogModel; ids: string[] }[]) => void;
 	}
 
 	let {
@@ -51,7 +54,8 @@
 		oncreate,
 		confirmLabel = 'Confirmer',
 		busy = false,
-		chooseNozzle = false
+		chooseNozzle = false,
+		onpick
 	}: Props = $props();
 
 	let selected = $state<Set<string>>(new Set());
@@ -72,6 +76,10 @@
 		nozzlePick = { ...nozzlePick, [key]: next };
 	}
 	const missingNozzle = $derived(chooseNozzle && picked.some((p) => p.ids.length === 0));
+	$effect(() => {
+		const current = picked.map((p) => ({ model: p.model, ids: [...p.ids] }));
+		onpick?.(current);
+	});
 
 	let query = $state('');
 	let view = $state<CatalogView>('grid');

@@ -50,6 +50,8 @@ export class LazyPreviewLoader {
 	private readonly maxBytes: number;
 
 	private readonly cache = new Map<number, CachedChunk>();
+	/** Téléchargements en cours : deux appels concurrents partagent la même requête. */
+	private readonly inflight = new Map<number, Promise<PreviewSegments>>();
 	private readonly lastUse = new Map<number, number>();
 	private clock = 0;
 	private resident = 0;
@@ -147,11 +149,25 @@ export class LazyPreviewLoader {
 	private async load(needed: number[]): Promise<void> {
 		for (const index of needed) {
 			if (!this.cache.has(index)) {
-				const { from, to } = this.chunkRange(index);
-				const segments = await this.fetchRange(from, to);
-				const bytes = segmentsBytes(segments);
-				this.cache.set(index, { segments, bytes });
-				this.resident += bytes;
+				let pending = this.inflight.get(index);
+				if (!pending) {
+					const { from, to } = this.chunkRange(index);
+					// Mise en cache dans la promesse partagée, avant de la retirer des
+					// téléchargements en cours : aucun appel ne voit la tranche « ni en
+					// cache ni en cours » entre les deux.
+					pending = this.fetchRange(from, to)
+						.then((segments) => {
+							if (!this.cache.has(index)) {
+								const bytes = segmentsBytes(segments);
+								this.cache.set(index, { segments, bytes });
+								this.resident += bytes;
+							}
+							return segments;
+						})
+						.finally(() => this.inflight.delete(index));
+					this.inflight.set(index, pending);
+				}
+				await pending;
 			}
 			this.lastUse.set(index, this.clock++);
 		}

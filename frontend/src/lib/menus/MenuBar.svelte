@@ -47,7 +47,14 @@
 			</button>
 
 			{#if openTitle === menu.title}
-				<div class="absolute top-full left-0 z-30 mt-1 min-w-56 ws-menu" role="menu">
+				<div
+					class="absolute top-full left-0 z-30 mt-1 max-h-[calc(100vh-4rem)] max-w-[26rem] overflow-y-auto ws-menu {menu.entries.some(
+						(e) => e !== 'separator' && e.hint
+					)
+						? 'w-80'
+						: 'min-w-56'}"
+					role="menu"
+				>
 					{#each menu.entries as entry, i (i)}
 						{#if entry === 'separator'}
 							<div class="my-1 h-px bg-border"></div>
@@ -81,13 +88,22 @@
 						{:else}
 							<button
 								type="button"
-								class="ws-menu-item justify-between"
+								class="ws-menu-item justify-between {entry.hint ? 'flex-wrap gap-y-0' : ''}"
 								role="menuitem"
+								aria-describedby={entry.hint ? `menu-hint-${entry.action}` : undefined}
 								onclick={() => pick(entry.action)}
 							>
 								<span>{$t(entry.label)}</span>
 								{#if entry.shortcut}<span class="ml-4 text-xs text-content-subtle"
 										>{entry.shortcut}</span
+									>{/if}
+								<!-- Description (aide d'Orca) : hors du nom accessible, qui reste le
+								     libellé de parité ; lue comme description (aria-describedby). -->
+								{#if entry.hint}<span
+										id="menu-hint-{entry.action}"
+										aria-hidden="true"
+										class="block w-full text-left text-xs leading-tight text-content-subtle"
+										data-testid="menu-hint">{$t(entry.hint)}</span
 									>{/if}
 							</button>
 						{/if}

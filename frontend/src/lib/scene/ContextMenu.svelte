@@ -55,6 +55,10 @@
 		expanded = expanded === action ? null : action;
 		queueMicrotask(reposition);
 	}
+
+	// Menu rangé en sous-menus ouverts (sections titrées, phase 25) : rendu en
+	// colonnes pour tenir à l'écran sans défilement.
+	const sectioned = $derived(items.some((item) => item !== 'separator' && item.section));
 </script>
 
 {#if open}
@@ -72,13 +76,45 @@
 	></button>
 	<div
 		bind:this={menuElement}
-		class="fixed z-50 max-h-[calc(100vh-1rem)] min-w-48 max-w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain ws-menu"
+		class="fixed z-50 max-h-[calc(100vh-1rem)] min-w-48 max-w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain ws-menu {sectioned
+			? 'w-[min(46rem,calc(100vw-1rem))] columns-[13.5rem] gap-1'
+			: ''}"
 		style="left: {left}px; top: {top}px"
 		role="menu"
+		data-layout={sectioned ? 'sections' : 'list'}
 	>
 		{#each items as item, i (i)}
 			{#if item === 'separator'}
 				<div class="my-1 h-px bg-border"></div>
+			{:else if item.section && item.items}
+				<!-- Sous-menu ouvert : titre + actions, jamais coupé entre deux colonnes. -->
+				<div
+					role="group"
+					aria-labelledby="ctx-section-{item.action}"
+					class="break-inside-avoid pb-1"
+					data-testid="menu-section-{item.action}"
+				>
+					<div
+						id="ctx-section-{item.action}"
+						class="px-3 pt-1.5 pb-0.5 text-[11px] font-semibold tracking-wide text-content-subtle uppercase"
+					>
+						{$t(item.label)}
+					</div>
+					{#each item.items as sub, j (j)}
+						<button
+							type="button"
+							class="ws-menu-item flex items-baseline justify-between gap-3"
+							role="menuitem"
+							data-action={sub.action}
+							onclick={() => pick(sub.action)}
+						>
+							<span>{$t(sub.label)}</span>
+							{#if sub.hint && sub.hint !== item.label}<span class="text-xs text-content-subtle"
+									>{$t(sub.hint)}</span
+								>{/if}
+						</button>
+					{/each}
+				</div>
 			{:else if item.items}
 				<button
 					type="button"

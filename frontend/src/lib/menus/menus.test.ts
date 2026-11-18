@@ -1,5 +1,7 @@
 // Tests des menus principaux et de l'aide raccourcis (T079, Annexe B §B.2/B.6).
 import { describe, expect, test } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { MAIN_MENUS, allMenuLabels, menuLabels } from './menus';
 import { SHORTCUT_GROUPS, totalShortcuts } from './shortcuts';
 import type { MenuItem } from './menus';
@@ -135,3 +137,41 @@ describe('SHORTCUT_GROUPS', () => {
 		expect(global.shortcuts.some((s) => s.keys === '?')).toBe(true);
 	});
 });
+
+describe('menu Calibration : libellés clarifiés (phase 25)', () => {
+	const calib = MAIN_MENUS.find((m) => m.title === 'Calibration')!;
+	const items = calib.entries.filter((e): e is MenuItem => e !== 'separator');
+	const read = (loc: string) =>
+		JSON.parse(readFileSync(resolve(import.meta.dirname, `../../../messages/${loc}.json`), 'utf8'));
+	test('libellés et actions inchangés (clés de parité ciblées par les specs gelés)', () => {
+		expect(items.map((i) => i.label)).toEqual([
+			'Temperature',
+			'Max flowrate',
+			'Pressure advance',
+			'Pressure advance pattern',
+			'Pressure advance history',
+			'Flow ratio',
+			'Flow rate (pass 1)',
+			'Flow rate (pass 2)',
+			'Retraction test',
+			'Cornering',
+			'Input Shaping Frequency',
+			'Input Shaping Damping/zeta factor',
+			'VFA',
+			'Calibration Guide'
+		]);
+	});
+	test('chaque entrée a une description traduite en français', () => {
+		const en = read('en');
+		const fr = read('fr');
+		const key = (text: string) => Object.keys(en).find((k) => en[k] === text);
+		for (const i of items) {
+			expect(i.hint, i.label).toBeTruthy();
+			expect(fr[key(i.hint!) ?? ''], i.hint).toBeTruthy();
+		}
+		// Les passes 1/2 sont nommées comme des passes du ratio de débit.
+		expect(fr[key('Flow rate (pass 1)')!]).toBe('Ratio de débit : passe 1');
+		expect(fr[key('Flow ratio')!]).toBe('Ratio de débit (assistant)');
+	});
+});
+

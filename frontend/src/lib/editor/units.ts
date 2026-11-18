@@ -4,7 +4,7 @@
 // (GUI_Factories.cpp:1225). Côté web, la conversion est un facteur d'échelle
 // uniforme (×25,4 ou ×1000) : visible et réversible dans le panneau d'échelle.
 import type { SceneMesh } from '$lib/scene/mesh';
-import type { ObjectMenuEntry } from '$lib/scene/menus';
+import type { ObjectMenuEntry, ObjectMenuItem } from '$lib/scene/menus';
 import { registerTranslations } from '$lib/i18n';
 
 export type UnitSource = 'inch' | 'meter';
@@ -100,8 +100,22 @@ export function withUnitItems(
 	items: readonly ObjectMenuEntry[],
 	scale?: readonly number[]
 ): ObjectMenuEntry[] {
+	const isScale = (e: ObjectMenuEntry) => e !== 'separator' && e.action === 'object.scaleToBed';
+	// Menu rangé en sections (phase 25) : insertion dans la section qui porte
+	// « Scale to build volume » (Placement).
+	const section = items.findIndex(
+		(e) => e !== 'separator' && !!e.items && e.items.some((sub) => isScale(sub))
+	);
+	if (section >= 0) {
+		const host = items[section] as ObjectMenuItem;
+		const subs = [...(host.items ?? [])];
+		subs.splice(subs.findIndex(isScale) + 1, 0, ...(unitMenuItems(scale) as ObjectMenuItem[]));
+		const out = [...items];
+		out[section] = { ...host, items: subs };
+		return out;
+	}
 	const out = [...items];
-	const at = out.findIndex((e) => e !== 'separator' && e.action === 'object.scaleToBed');
+	const at = out.findIndex(isScale);
 	out.splice(at >= 0 ? at + 1 : out.length, 0, ...unitMenuItems(scale));
 	return out;
 }

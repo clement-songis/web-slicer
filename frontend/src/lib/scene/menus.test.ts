@@ -12,7 +12,8 @@ import {
 	OBJECTS_LIST_SHORTCUTS,
 	GIZMO_SHORTCUTS,
 	PLATE_CONTEXT_ITEMS,
-	OBJECT_CONTEXT_ITEMS
+	OBJECT_CONTEXT_ITEMS,
+	menuLeaves
 } from './menus';
 
 const ANNEXE = readFileSync(
@@ -144,11 +145,11 @@ describe('couverture menus.ts ↔ Annexe B', () => {
 
 describe('menu objet : rôle des entrées aplaties', () => {
 	test('« Selon l’axe X/Y/Z » rappelle « Miroir » (sous-menu Mirror d’Orca aplati)', () => {
-		const mirror = OBJECT_CONTEXT_ITEMS.filter(
-			(i) => i !== 'separator' && /^object\.mirror[XYZ]$/.test(i.action)
+		const mirror = menuLeaves(OBJECT_CONTEXT_ITEMS).filter((i) =>
+			/^object\.mirror[XYZ]$/.test(i.action)
 		);
 		expect(mirror).toHaveLength(3);
-		for (const i of mirror) expect(i !== 'separator' && i.hint).toBe('Mirror');
+		for (const i of mirror) expect(i.hint).toBe('Mirror');
 		const en = JSON.parse(
 			readFileSync(resolve(import.meta.dirname, '../../../messages/en.json'), 'utf8')
 		);
@@ -159,3 +160,55 @@ describe('menu objet : rôle des entrées aplaties', () => {
 		expect(key && fr[key]).toBe('Miroir');
 	});
 });
+
+describe('menu objet : sous-menus ouverts (phase 25)', () => {
+	// Les 43 actions du menu à plat de la phase 24, dans l'ordre de l'époque.
+	const PHASE24 = [
+		'HideShow', 'Rename', 'Edit', 'Add settings', 'Clone', 'Add instance', 'Remove instance',
+		'Set number of instances…', 'Set as an individual object', 'Fill bed with copies',
+		'Fill bed with instances…', 'Auto orientation', 'Center', 'Drop', 'Scale to build volume',
+		'Along X axis', 'Along Y axis', 'Along Z axis', 'Add part', 'Add negative volume',
+		'Add modifier', 'Height range Modifier', 'Add support blocker', 'Add support enforcer',
+		'Fix model', 'Reload from disk', 'Replace 3D file…', 'Replace all with 3D files…',
+		'Simplify Model', 'Subdivision mesh(Lost color)', 'Mesh boolean', 'Assemble',
+		'Assemble (single part)', 'To objects', 'To parts', 'Split', 'Export as one STL…',
+		'Export as STLs…', 'Export as one DRC…', 'Export as DRCs…', 'Delete'
+	];
+	test('aucune action perdue : mêmes libellés et actions, rangés en sections', () => {
+		const leaves = menuLeaves(OBJECT_CONTEXT_ITEMS);
+		expect(leaves.map((l) => l.label).sort()).toEqual([...PHASE24].sort());
+		const sections = OBJECT_CONTEXT_ITEMS.flatMap((e) => (e === 'separator' ? [] : [e]));
+		expect(sections.every((e) => e.section && e.items?.length)).toBe(true);
+		// Aucune section plus haute que 7 entrées : le menu tient en colonnes.
+		expect(Math.max(...sections.map((e) => e.items!.length))).toBe(7);
+	});
+	test('sous-menus d’Orca repris : Mirror, Split (To objects / To parts), Export', () => {
+		const of = (label: string) =>
+			OBJECT_CONTEXT_ITEMS.find((e) => e !== 'separator' && e.label === label);
+		const labels = (label: string) => {
+			const s = of(label);
+			return s && s !== 'separator' ? s.items!.map((i) => i.label) : [];
+		};
+		expect(labels('Mirror')).toEqual(['Along X axis', 'Along Y axis', 'Along Z axis']);
+		expect(labels('Split and assemble')).toEqual(
+			expect.arrayContaining(['To objects', 'To parts', 'Split'])
+		);
+		expect(labels('Export')).toHaveLength(4);
+		expect(labels('Parts and modifiers')).toContain('Add modifier');
+	});
+	test('titres de section traduits en français', () => {
+		const en = JSON.parse(
+			readFileSync(resolve(import.meta.dirname, '../../../messages/en.json'), 'utf8')
+		);
+		const fr = JSON.parse(
+			readFileSync(resolve(import.meta.dirname, '../../../messages/fr.json'), 'utf8')
+		);
+		for (const e of OBJECT_CONTEXT_ITEMS) {
+			if (e === 'separator') continue;
+			const key = Object.keys(en).find((k) => en[k] === e.label);
+			expect(key, e.label).toBeTruthy();
+			expect(fr[key!], e.label).toBeTruthy();
+		}
+	});
+});
+

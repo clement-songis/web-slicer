@@ -172,3 +172,21 @@ describe('segmentsBytes', () => {
 		expect(segmentsBytes(fakeSegments(0, 0, 1000))).toBe(40_000);
 	});
 });
+
+describe('LazyPreviewLoader : appels concurrents (phase 25)', () => {
+	test('deux ensureRange simultanés partagent les téléchargements', async () => {
+		const { loader, ranges } = instrumented({ layerCount: 100, chunkSize: 20 });
+		await Promise.all([loader.ensureRange(0, 99), loader.ensureRange(0, 99), loader.ensureRange(40, 99)]);
+		// Chaque tranche téléchargée une seule fois (ordre indifférent).
+		expect([...ranges].sort((a, b) => a[0] - b[0])).toEqual([
+			[0, 19],
+			[20, 39],
+			[40, 59],
+			[60, 79],
+			[80, 99]
+		]);
+		expect(loader.loadedChunks()).toEqual([0, 1, 2, 3, 4]);
+		expect(loader.rangeSegments(0, 99)).toHaveLength(5);
+	});
+});
+

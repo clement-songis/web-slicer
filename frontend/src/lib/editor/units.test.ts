@@ -61,6 +61,27 @@ describe('conversion d’unités (Orca Model.cpp:830-872)', () => {
 			'object.convertFromMeters',
 			'x'
 		]);
+		// Menu en sections (phase 25) : insertion dans la section de « Scale to build volume ».
+		const sectioned = withUnitItems([
+			{ label: 'A', action: 'section.a', section: true, items: [{ label: 'Y', action: 'y' }] },
+			{
+				label: 'P',
+				action: 'section.p',
+				section: true,
+				items: [
+					{ label: 'Scale to build volume', action: 'object.scaleToBed' },
+					{ label: 'Z', action: 'z' }
+				]
+			}
+		]);
+		expect(sectioned).toHaveLength(2);
+		const p = sectioned[1];
+		expect(p !== 'separator' && p.items?.map((i) => i.action)).toEqual([
+			'object.scaleToBed',
+			'object.convertFromInches',
+			'object.convertFromMeters',
+			'z'
+		]);
 		expect(unitActionOf('object.restoreToMeters')).toEqual({ unit: 'meter', restore: true });
 		expect(unitActionOf('object.center')).toBeNull();
 	});

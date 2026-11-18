@@ -116,7 +116,8 @@ export const ENGINE_CALIB_UNITS: Record<EngineCalibKind, string> = {
 	retraction: 'mm',
 	vfa: 'mm/s',
 	max_volumetric_speed: 'mm³/s',
-	pa_pattern: 's',
+	// Valeur K sans unité (Orca PA_Calibration_Dlg : « Start PA / End PA / PA step »).
+	pa_pattern: '',
 	input_shaping_freq: 'Hz',
 	input_shaping_damp: '',
 	cornering: 'mm/s'

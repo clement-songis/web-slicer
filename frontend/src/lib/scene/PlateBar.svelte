@@ -23,6 +23,8 @@
 		onsetting?: (id: string, key: string, value: unknown) => void;
 		/** Clic droit sur un onglet : menu contextuel du plateau (`create_plate_menu`). */
 		oncontext?: (id: string, x: number, y: number) => void;
+		/** Plateaux dont un résultat de tranchage est mémorisé (phase 25, « Slice all »). */
+		sliced?: readonly string[];
 	}
 
 	let {
@@ -34,7 +36,8 @@
 		ontype,
 		onrename,
 		onsetting,
-		oncontext
+		oncontext,
+		sliced = []
 	}: Props = $props();
 
 	// Types de plaque traduits (dictionnaire des réglages chargé à la demande).
@@ -56,6 +59,7 @@
 				data-testid="plate-tab"
 				data-plate-id={plate.id}
 				data-active={plate.id === activeId ? 'true' : 'false'}
+				data-sliced={sliced.includes(plate.id) ? 'true' : 'false'}
 				role="presentation"
 				oncontextmenu={(e) => {
 					if (!oncontext) return;
@@ -96,6 +100,11 @@
 					>
 						{plate.name}
 						<span class="text-content-subtle">({plate.objectIds.length})</span>
+						{#if sliced.includes(plate.id)}<span
+								class="text-success-text"
+								aria-hidden="true"
+								title="Plateau tranché : son aperçu est mémorisé">✓</span
+							>{/if}
 					</button>
 				{/if}
 				{#if plates.length > 1}

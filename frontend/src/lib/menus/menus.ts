@@ -18,6 +18,12 @@ export interface MenuItem {
 	action: string;
 	/** Sous-menu éventuel (Import/Export). */
 	items?: MenuItem[];
+	/**
+	 * Description courte affichée sous le libellé (aide de la barre d'état
+	 * d'Orca, `append_menu_item(…, help)`). Exclue du nom accessible (le libellé
+	 * reste la clé de parité ciblée par les tests) et exposée en `aria-description`.
+	 */
+	hint?: string;
 }
 
 /** Séparateur visuel entre groupes d'items. */
@@ -123,27 +129,91 @@ const viewMenu: Menu = {
 const calibrationMenu: Menu = {
 	title: 'Calibration',
 	entries: [
-		{ label: 'Temperature', action: 'calib.temperature' },
-		{ label: 'Max flowrate', action: 'calib.maxVolumetricSpeed' },
-		{ label: 'Pressure advance', action: 'calib.pressureAdvance' },
-		{ label: 'Pressure advance pattern', action: 'calib.paPattern' },
+		// Libellés = clés de parité (inchangés, ciblés par les specs gelés) ; la
+		// description (`hint`) dit ce que règle chaque test (phase 25). Groupes :
+		// température/débit max, pressure advance, ratio de débit, mouvements.
+		{
+			label: 'Temperature',
+			action: 'calib.temperature',
+			hint: 'Temperature tower: best nozzle temperature'
+		},
+		{
+			label: 'Max flowrate',
+			action: 'calib.maxVolumetricSpeed',
+			hint: 'Maximum volumetric speed of the filament (mm³/s)'
+		},
+		'separator',
+		{
+			label: 'Pressure advance',
+			action: 'calib.pressureAdvance',
+			hint: 'Tower: K value read from the best height'
+		},
+		{
+			label: 'Pressure advance pattern',
+			action: 'calib.paPattern',
+			hint: 'Printed pattern: K value read from the sharpest corner'
+		},
 		// Historique des valeurs K (Orca : historique de calibration PA).
-		{ label: 'Pressure advance history', action: 'calib.paHistory' },
-		{ label: 'Flow ratio', action: 'calib.flowRate' },
+		{
+			label: 'Pressure advance history',
+			action: 'calib.paHistory',
+			hint: 'K values saved per filament'
+		},
+		'separator',
+		{
+			label: 'Flow ratio',
+			action: 'calib.flowRate',
+			hint: 'Flow ratio wizard (YOLO or two passes)'
+		},
+		// Passes directes historiques (spec gelé editor-calibration-more) : ce
+		// sont les deux passes de l'assistant « Flow ratio », lancées directement.
+		{
+			label: 'Flow rate (pass 1)',
+			action: 'calib.flowPass1',
+			hint: 'Flow ratio, coarse pass (-20 % to +20 %)'
+		},
+		{
+			label: 'Flow rate (pass 2)',
+			action: 'calib.flowPass2',
+			hint: 'Flow ratio, fine pass after pass 1'
+		},
+		'separator',
 		// Calibrations « mode moteur » (calib_params transmis au moteur).
 		// « Retraction test » : libellé conservé tant que le spec gelé
 		// editor-calibration-engine le cible (Orca : « Retraction »).
-		{ label: 'Retraction test', action: 'calib.retraction' },
-		{ label: 'Cornering', action: 'calib.cornering' },
+		{
+			label: 'Retraction test',
+			action: 'calib.retraction',
+			hint: 'Retraction tower: shortest length without stringing'
+		},
+		{
+			label: 'Cornering',
+			action: 'calib.cornering',
+			hint: 'Jerk / junction deviation in corners'
+		},
 		// Sous-menu « Input Shaping » d'Orca aplati : les specs gelés ciblent
 		// directement l'entrée « Input Shaping Frequency ».
-		{ label: 'Input Shaping Frequency', action: 'calib.inputShapingFreq' },
-		{ label: 'Input Shaping Damping/zeta factor', action: 'calib.inputShapingDamp' },
-		{ label: 'VFA', action: 'calib.vfa' },
-		// Passes directes historiques (spec gelé editor-calibration-more).
-		{ label: 'Flow rate (pass 1)', action: 'calib.flowPass1' },
-		{ label: 'Flow rate (pass 2)', action: 'calib.flowPass2' },
-		{ label: 'Calibration Guide', action: 'calib.guide' }
+		{
+			label: 'Input Shaping Frequency',
+			action: 'calib.inputShapingFreq',
+			hint: 'Resonance frequency per axis (Hz)'
+		},
+		{
+			label: 'Input Shaping Damping/zeta factor',
+			action: 'calib.inputShapingDamp',
+			hint: 'Damping ratio of the input shaper'
+		},
+		{
+			label: 'VFA',
+			action: 'calib.vfa',
+			hint: 'Vertical fine artifacts by speed'
+		},
+		'separator',
+		{
+			label: 'Calibration Guide',
+			action: 'calib.guide',
+			hint: 'OrcaSlicer documentation (new tab)'
+		}
 	]
 };
 

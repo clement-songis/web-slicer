@@ -48,6 +48,16 @@
 	import { detachPreset } from '$lib/api/presets';
 	// Lot 21 : brouillon au tranchage, peinture conservée, températures, buses.
 	import { buildSliceDraft } from '$lib/editor/slice-draft';
+	import { preferredFilaments } from '$lib/printers/wizard-filaments';
+	import {
+		applyBatchEvent,
+		batchFinished,
+		batchLabel,
+		makeBatch,
+		resultFor,
+		type PlateResults,
+		type SliceBatch
+	} from '$lib/editor/plate-results';
 	import { checkFilamentCompatibility, compatibilityText } from '$lib/editor/filament-compat';
 	import { paintedChannels, remapPaint } from '$lib/editor/keep-paint';
 	import {
@@ -244,6 +254,7 @@
 	import { formatDuration } from '$lib/preview/stats';
 	import {
 		effectiveRenderMode,
+		detectSoftwareRenderer,
 		VOLUME_SEGMENT_LIMIT,
 		type RenderMode
 	} from '$lib/preview/extrusions';
@@ -876,6 +887,12 @@
 	// Tranchage + aperçu G-code (T088) : machine à états pure `session` pilotée
 	// par les événements WebSocket ; le G-code prêt est chargé paresseusement.
 	let session = $state(prepareSession());
+	// Résultat mémorisé par plateau et lot en cours (« Trancher tout », phase 25) :
+	// changer d'onglet de plateau affiche le résultat de ce plateau, comme Orca.
+	let plateResults = $state<PlateResults>({});
+	let sliceBatch = $state<SliceBatch | null>(null);
+	/** Plateau (rang d'onglet) du dernier résultat restauré à l'ouverture. */
+	let restoredPlateIndex: number | null = null;
 	let previewMeta = $state<PreviewMeta | null>(null);
 	let previewGeometry = $state<PreviewGeometry | null>(null);
 	let rawStats = $state<unknown>(null);
@@ -988,8 +1005,10 @@
 	// Rendu des extrusions (volumes éclairés comme Orca, lignes en repli ;
 	// « auto » bascule en lignes au-delà de VOLUME_SEGMENT_LIMIT segments).
 	let renderMode = $state<RenderMode>('auto');
+	// Rendu WebGL logiciel détecté (phase 25) : « auto » rend en lignes.
+	const softwareGl = typeof document !== 'undefined' && detectSoftwareRenderer();
 	const effectiveRender = $derived(
-		effectiveRenderMode(renderMode, previewGeometry?.visibleCount ?? 0)
+		effectiveRenderMode(renderMode, previewGeometry?.visibleCount ?? 0, softwareGl)
 	);
 	/** Position relative (0–1) d'une couche sur la piste du curseur. */
 	function layerPct(layer: number): number {
@@ -1062,6 +1081,13 @@
 			!!activePresets.process &&
 			activePresets.filaments.length > 0
 	);
+	// « Trancher tout » : au moins un objet sur un plateau (les plateaux vides sont sautés).
+	const canSliceAll = $derived(
+		sceneObjects.length > 0 &&
+			!imports.some((item) => isPending(item)) &&
+			!!activePresets.process &&
+			activePresets.filaments.length > 0
+	);
 	// Raison affichée au survol quand le tranchage est impossible.
 	const sliceBlocker = $derived(
 		activeSceneObjects.length === 0
@@ -1102,9 +1128,13 @@
 			if (id) activePresets.process = id;
 		}
 		if (activePresets.filaments.length === 0 && filamentPresets.length > 0) {
+			// Filaments cochés à l'assistant (phase 25) en tête, défaut machine ensuite.
 			const id = pickDefault(
 				filamentPresets,
-				machineResolvedValues.default_filament_profile,
+				preferredFilaments(
+					machineResolvedValues.default_filament_profile,
+					untrack(() => currentPreferences().wizardFilaments)
+				),
 				/Generic PLA/
 			);
 			if (id) activePresets = setFilament(activePresets, id, 0);
@@ -1162,6 +1192,7 @@
 					gcodeId: latest.gcode_id
 				};
 				previewLoadedFor = latest.gcode_id;
+				restoredPlateIndex = Number(latest.plate_index);
 				layout = setTab(layout, 'preview');
 				void loadPreview(latest.gcode_id);
 			})
@@ -1903,9 +1934,37 @@
 
 	function onEvent(event: ServerEvent) {
 		const wasPreview = layout.tab === 'preview';
-		session = applyJobEvent(session, event);
-		if (event.event === 'job.finished' && session.jobIds.includes(event.id)) {
-			rawStats = event.stats;
+		if (
+			sliceBatch &&
+			(event.event === 'job.updated' || event.event === 'job.finished') &&
+			sliceBatch.jobPlates[event.id]
+		) {
+			// Lot par plateau : la session suit le plateau actif, les autres
+			// résultats sont mémorisés (plate-results.ts).
+			const before = session.gcodeId;
+			const step = applyBatchEvent(
+				{ session, batch: sliceBatch, results: plateResults },
+				plates.activeId,
+				event
+			);
+			session = step.session;
+			sliceBatch = step.batch;
+			plateResults = step.results;
+			if (step.showPlate && plates.get(step.showPlate)) {
+				plates.activeId = step.showPlate;
+				ws = setSelection(ws, new Set());
+			}
+			if (session.gcodeId && session.gcodeId !== before) {
+				const shown = Object.values(plateResults).find((r) => r.gcodeId === session.gcodeId);
+				rawStats = shown?.stats ?? null;
+			}
+			const label = batchLabel(sliceBatch);
+			if (label) saveMessage = `Trancher tout : ${label}${batchFinished(sliceBatch) ? '.' : '…'}`;
+		} else {
+			session = applyJobEvent(session, event);
+			if (event.event === 'job.finished' && session.jobIds.includes(event.id)) {
+				rawStats = event.stats;
+			}
 		}
 		// Au premier G-code de la session : charge l'aperçu et bascule sur l'onglet
 		// (sauf si l'utilisateur l'a déjà quitté). Le chargement doit se faire même
@@ -2432,6 +2491,71 @@
 		plates.activeId = id;
 		ws = setSelection(ws, new Set());
 		closeContext();
+	}
+
+	// Changement d'onglet de plateau (clic, ajout, duplication, lot « Trancher
+	// tout ») : l'aperçu suit le résultat mémorisé du plateau.
+	let shownPlateId: string | null = null;
+	$effect(() => {
+		const id = plates.activeId;
+		untrack(() => {
+			const previous = shownPlateId;
+			shownPlateId = id;
+			if (previous === null || id === null || previous === id) return;
+			rememberShownResult(previous);
+			showPlateResult(id);
+		});
+	});
+
+	// — Résultat par plateau (phase 25, Orca PartPlate) ————————————————————
+	/** Empreinte de ce qui est tranché : scène (hors onglet actif), presets, brouillon. */
+	function sliceSignature(): string {
+		const scene = buildSceneForSave() as unknown as Record<string, unknown>;
+		const saved = scene.plates;
+		const stable =
+			saved && typeof saved === 'object' && !Array.isArray(saved)
+				? { ...scene, plates: { ...(saved as Record<string, unknown>), activeId: null } }
+				: scene;
+		return (
+			JSON.stringify(stable) +
+			JSON.stringify(serializeActivePresets(activePresets)) +
+			JSON.stringify(currentDraft() ?? null)
+		);
+	}
+	/** Résultat affiché (restauré à l'ouverture) rattaché à son plateau avant de changer d'onglet. */
+	function rememberShownResult(previous: string) {
+		if (session.phase !== 'preview' || !session.gcodeId) return;
+		if (Object.values(plateResults).some((r) => r.gcodeId === session.gcodeId)) return;
+		const owner =
+			restoredPlateIndex !== null ? plates.list()[restoredPlateIndex]?.id : previous;
+		if (!owner) return;
+		plateResults = {
+			...plateResults,
+			[owner]: { gcodeId: session.gcodeId, jobId: '', stats: rawStats, signature: null }
+		};
+	}
+	/** Affiche le résultat mémorisé du plateau (ou « non tranché »). */
+	function showPlateResult(id: string) {
+		if (session.phase === 'slicing') return; // le lot en cours décide
+		const result = resultFor(plateResults, id, sliceSignature());
+		if (!result && plateResults[id]) {
+			// Résultat périmé (scène ou réglages modifiés depuis) : oublié.
+			const rest = { ...plateResults };
+			delete rest[id];
+			plateResults = rest;
+		}
+		if (result) {
+			if (session.gcodeId === result.gcodeId && session.phase === 'preview') return;
+			session = { ...prepareSession(), phase: 'preview', progress: 1, gcodeId: result.gcodeId };
+			rawStats = result.stats;
+			previewLoadedFor = result.gcodeId;
+			void loadPreview(result.gcodeId);
+		} else if (session.gcodeId || session.phase === 'error') {
+			// Le résultat affiché appartient à un autre plateau : celui-ci n'est pas tranché.
+			session = prepareSession();
+			rawStats = null;
+			previewLoadedFor = null;
+		}
 	}
 
 	function assignObjectToPlate(id: string, plateId: string) {
@@ -5973,6 +6097,50 @@
 				res.jobs.map((j) => j.id),
 				res.warnings
 			);
+			sliceBatch = makeBatch(
+				res.jobs,
+				plates.list().map((p) => p.id),
+				sliceSignature()
+			);
+			layout = setTab(layout, 'preview');
+		} catch (e) {
+			session = sliceFailed(e instanceof ApiError ? e.message : 'échec du lancement du tranchage');
+			layout = setTab(layout, 'preview');
+		}
+	}
+
+	// « Slice all » d'Orca (bouton Trancher › Trancher tout) : un job par plateau
+	// non vide ; l'aperçu montre le plateau actif dès qu'il est prêt, chaque
+	// résultat est mémorisé et réaffiché en changeant d'onglet de plateau.
+	let sliceMenuOpen = $state(false);
+	async function sliceAll() {
+		sliceMenuOpen = false;
+		void loadPreviewScene();
+		await editorReady;
+		if (!(await askFilamentMap(true))) return;
+		const saved = await save();
+		if (saved.status === 'conflict' || saved.status === 'error') {
+			session = sliceFailed(
+				saved.status === 'error'
+					? saved.message
+					: 'Conflit : le projet a été modifié ailleurs. Rechargez avant de trancher.'
+			);
+			layout = setTab(layout, 'preview');
+			return;
+		}
+		try {
+			const res = await sliceProject(data.project.id, sliceRequestWithDraft('all', 0));
+			session = startSlicing(
+				res.jobs.map((j) => j.id),
+				res.warnings
+			);
+			sliceBatch = makeBatch(
+				res.jobs,
+				plates.list().map((p) => p.id),
+				sliceSignature()
+			);
+			if (res.jobs.length > 1)
+				saveMessage = `Trancher tout : 0 / ${res.jobs.length} plateaux tranchés…`;
 			layout = setTab(layout, 'preview');
 		} catch (e) {
 			session = sliceFailed(e instanceof ApiError ? e.message : 'échec du lancement du tranchage');
@@ -6025,7 +6193,34 @@
 	}
 	// Reconstruit la géométrie de lignes pour la couche haute visible, avec la
 	// coloration active et les types de ligne visibles (T116).
-	async function refreshGeometry() {
+	//
+	// Appels concurrents regroupés (phase 25) : à l'ouverture de l'aperçu, la
+	// méta WSPv, la piste texte puis la méta moteur déclenchaient chacune une
+	// reconstruction complète (×3 téléchargements des tranches et ×3 rendus
+	// WebGL lourds, plusieurs secondes de fil principal bloqué en rendu
+	// logiciel). Une seule reconstruction à la fois, relancée une fois à la fin si
+	// d'autres demandes sont arrivées entre-temps.
+	let geometryRun: Promise<void> | null = null;
+	let geometryAgain = false;
+	function refreshGeometry(): Promise<void> {
+		if (geometryRun) {
+			geometryAgain = true;
+			return geometryRun;
+		}
+		const run = (async () => {
+			try {
+				do {
+					geometryAgain = false;
+					await refreshGeometryNow();
+				} while (geometryAgain);
+			} finally {
+				geometryRun = null;
+			}
+		})();
+		geometryRun = run;
+		return run;
+	}
+	async function refreshGeometryNow() {
 		if (!loader || !previewMeta) return;
 		const { from, to } = visibleRange(layerRange);
 		await loader.ensureRange(from, to);
@@ -6365,7 +6560,9 @@
 				disabled={!plates.activeId}
 				onclick={() => (plateSettingsOpen = true)}
 			>
-				<IconPlateSettings class="h-4 w-4" aria-hidden="true" /><span class="hidden xl:inline"
+				<!-- Libellé dès 1536 px : la flèche « Trancher tout » (phase 25) prend sa
+				     place à 1280 px sans masquer les onglets de vue. -->
+				<IconPlateSettings class="h-4 w-4" aria-hidden="true" /><span class="hidden 2xl:inline"
 					>Plateau</span
 				>
 			</button>
@@ -6379,16 +6576,69 @@
 				extruders={extruderCount(machineValues.nozzle_diameter)}
 				filamentColours={filamentSlotColors}
 			/>
-			<button
-				class="ws-btn ws-btn-primary"
-				data-testid="slice-button"
-				onclick={sliceActive}
-				disabled={!canSliceNow}
-				title={canSliceNow ? 'Trancher le plateau actif' : sliceBlocker}
-			>
-				<span class="2xl:hidden">{$locale === 'fr' ? 'Trancher' : 'Slice'}</span>
-				<span class="hidden 2xl:inline">{$t('Slice plate')}</span>
-			</button>
+			<!-- Bouton Trancher + options (Orca : « Slice plate » / « Slice all »). -->
+			<div class="relative flex">
+				<button
+					class="ws-btn ws-btn-primary rounded-r-none"
+					data-testid="slice-button"
+					onclick={sliceActive}
+					disabled={!canSliceNow}
+					title={canSliceNow ? 'Trancher le plateau actif' : sliceBlocker}
+				>
+					<span class="2xl:hidden">{$locale === 'fr' ? 'Trancher' : 'Slice'}</span>
+					<span class="hidden 2xl:inline">{$t('Slice plate')}</span>
+				</button>
+				<button
+					type="button"
+					class="ws-btn ws-btn-primary rounded-l-none border-l border-l-white/30 px-1.5"
+					data-testid="slice-menu-button"
+					aria-haspopup="menu"
+					aria-expanded={sliceMenuOpen}
+					aria-label="Options de découpe"
+					title="Trancher le plateau ou tous les plateaux"
+					onclick={() => (sliceMenuOpen = !sliceMenuOpen)}
+				>
+					<span aria-hidden="true">▾</span>
+				</button>
+				{#if sliceMenuOpen}
+					<button
+						type="button"
+						class="fixed inset-0 z-40 cursor-default"
+						tabindex="-1"
+						aria-label="Fermer le menu"
+						onclick={() => (sliceMenuOpen = false)}
+					></button>
+					<div
+						class="absolute top-full right-0 z-50 mt-1 min-w-52 ws-menu"
+						role="menu"
+						data-testid="slice-menu"
+					>
+						<button
+							type="button"
+							class="ws-menu-item"
+							role="menuitem"
+							data-testid="slice-plate-item"
+							disabled={!canSliceNow}
+							onclick={() => {
+								sliceMenuOpen = false;
+								void sliceActive();
+							}}>{$t('Slice plate')}</button
+						>
+						<button
+							type="button"
+							class="ws-menu-item"
+							role="menuitem"
+							data-testid="slice-all"
+							disabled={!canSliceAll}
+							onclick={() => void sliceAll()}
+							>{$t('Slice all')}
+							<span class="ml-auto text-xs text-content-subtle"
+								>{plates.list().length} plateau{plates.list().length > 1 ? 'x' : ''}</span
+							></button
+						>
+					</div>
+				{/if}
+			</div>
 			<SaveControls {save} {unsaved} />
 			<button
 				type="button"
@@ -6847,6 +7097,7 @@
 						onrename={(id, name) => plates.rename(id, name)}
 						onsetting={(id, key, value) => plates.setPlateSetting(id, key, value)}
 						oncontext={(id, x, y) => (plateMenu = { open: true, x, y, plateId: id })}
+						sliced={Object.keys(plateResults)}
 					/>
 				{:else}
 					<div
@@ -7921,7 +8172,9 @@
 											aria-pressed={renderMode === id}
 											data-testid={`preview-render-${id}`}
 											data-tip={id === 'auto'
-												? `Volumes jusqu'à ${VOLUME_SEGMENT_LIMIT.toLocaleString('fr-FR')} segments, lignes au-delà`
+												? softwareGl
+													? 'Rendu WebGL logiciel détecté (pas de GPU) : lignes'
+													: `Volumes jusqu'à ${VOLUME_SEGMENT_LIMIT.toLocaleString('fr-FR')} segments, lignes au-delà`
 												: id === 'volumes'
 													? 'Cordons pleins éclairés (largeur × hauteur réelles)'
 													: 'Lignes fines (rapide, gros fichiers)'}
