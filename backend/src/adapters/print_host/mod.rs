@@ -272,6 +272,16 @@ impl HostClient {
 
     /// Requête PrusaLink/PrusaConnect authentifiée : clé API ou digest HTTP
     /// (Http::auth_digest : défi 401 puis réponse MD5).
+    ///
+    /// Comme libcurl avec `CURLAUTH_DIGEST` (Http.cpp:599) : le digest est une
+    /// authentification à plusieurs passes, donc pour une méthode autre que
+    /// GET/HEAD le premier envoi est une **négociation sans corps**
+    /// (`authneg` de curl : `Content-Length: 0`). Le fichier n'est transmis
+    /// qu'une fois, avec l'en-tête `Authorization` calculé sur le défi reçu.
+    /// Si le serveur ne réclame pas d'authentification (pas de 401) : GET/HEAD →
+    /// réponse rendue ; autre méthode → requête complète renvoyée sans
+    /// `Authorization` (curl s'arrêterait sur la négociation vide et le fichier
+    /// ne serait jamais envoyé). Le corps reste transmis une seule fois.
     async fn prusa_request(
         &self,
         method: Method,
@@ -281,12 +291,21 @@ impl HostClient {
         if !self.cfg.auth_user {
             return Self::send(build(self.with_key(self.http.request(method, url)))).await;
         }
-        let first = build(self.http.request(method.clone(), url))
+        let probe = self.http.request(method.clone(), url);
+        let probe = if method == Method::GET || method == Method::HEAD {
+            build(probe)
+        } else {
+            probe.header(reqwest::header::CONTENT_LENGTH, "0")
+        };
+        let first = probe
             .send()
             .await
             .map_err(|e| HostError::Network(e.to_string()))?;
         if first.status() != StatusCode::UNAUTHORIZED {
-            return Self::finish(first).await;
+            if method == Method::GET || method == Method::HEAD {
+                return Self::finish(first).await;
+            }
+            return Self::send(build(self.http.request(method, url))).await;
         }
         let challenge = first
             .headers()

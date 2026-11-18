@@ -531,3 +531,95 @@ async fn esp3d_like_orca() {
     assert_eq!(s[1].file_name("file").as_deref(), Some("Benchy_P.gco"));
     assert_eq!(s[1].header("Connection"), Some("keep-alive"));
 }
+
+/// Digest PrusaLink (Http::auth_digest = CURLAUTH_DIGEST) : comme libcurl, la
+/// négociation d'un PUT/POST part sans corps ; le G-code n'est transmis
+/// qu'une fois, authentifié. Octets de G-code reçus comptés par le serveur.
+#[tokio::test]
+async fn prusalink_digest_sends_the_gcode_only_once() {
+    let payload: Vec<u8> = (0..200_000u32)
+        .map(|i| b"G1X\n"[(i % 4) as usize])
+        .collect();
+    let log: Log = Arc::new(Mutex::new(Vec::new()));
+    let received = Arc::new(Mutex::new(0usize));
+    let (l, rx) = (log.clone(), received.clone());
+    let app = Router::new().fallback(move |req: Request<Body>| {
+        let (l, rx) = (l.clone(), rx.clone());
+        async move {
+            let method = req.method().to_string();
+            let uri = req.uri().to_string();
+            let headers: Vec<(String, String)> = req
+                .headers()
+                .iter()
+                .map(|(k, v)| (k.to_string(), v.to_str().unwrap_or_default().to_string()))
+                .collect();
+            let auth = req
+                .headers()
+                .get("authorization")
+                .and_then(|v| v.to_str().ok())
+                .map(str::to_string);
+            let body = to_bytes(req.into_body(), usize::MAX).await.unwrap();
+            *rx.lock().unwrap() += body.len();
+            l.lock().unwrap().push(Seen {
+                method: method.clone(),
+                uri: uri.clone(),
+                headers,
+                body: body.len().to_string(),
+            });
+            match auth {
+                Some(a) if a.starts_with("Digest ") && a.contains("response=") => {
+                    let text = if uri == "/api/version" {
+                        r#"{"text":"PrusaLink 0.8.0"}"#
+                    } else {
+                        "{}"
+                    };
+                    Response::builder()
+                        .status(if method == "PUT" { 201 } else { 200 })
+                        .body(Body::from(text))
+                        .unwrap()
+                }
+                _ => Response::builder()
+                    .status(401)
+                    .header(
+                        "WWW-Authenticate",
+                        r#"Digest realm="Printer API", nonce="n0nce", qop="auth""#,
+                    )
+                    .body(Body::empty())
+                    .unwrap(),
+            }
+        }
+    });
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    let client = HostClient::new(
+        HostKind::Prusalink,
+        HostConfig {
+            auth_user: true,
+            user: Some("maker".into()),
+            password: Some("secret".into()),
+            ..cfg(&format!("127.0.0.1:{port}"))
+        },
+    );
+    client
+        .upload("big.gcode", payload.clone(), false, None)
+        .await
+        .expect("upload digest");
+    assert_eq!(
+        *received.lock().unwrap(),
+        payload.len(),
+        "G-code transmis une seule fois"
+    );
+    let puts: Vec<_> = seen(&log)
+        .into_iter()
+        .filter(|r| r.method == "PUT")
+        .collect();
+    assert_eq!(puts.len(), 2, "négociation puis envoi : {puts:?}");
+    assert_eq!(puts[0].body, "0", "négociation sans corps");
+    assert!(puts[0].header("authorization").is_none());
+    assert_eq!(puts[1].body, payload.len().to_string());
+    assert!(puts[1]
+        .header("authorization")
+        .unwrap()
+        .contains(r#"uri="/api/v1/files/local/big.gcode""#));
+}
