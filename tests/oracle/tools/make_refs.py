@@ -202,8 +202,11 @@ def scene_config(scene: str, key: str, value, requires: dict) -> dict:
             n = max(len(base), 1)
             return (vals * n)[:n] if len(vals) < n else vals[:n]
         return v[0] if isinstance(v, list) and v else v
+    # Vecteurs dont la longueur n'est pas « une valeur par filament/extrudeur »
+    # (séquences d'impression par couche) : posés tels quels.
+    FREE_VECTORS = {"other_layers_print_sequence", "first_layer_print_sequence"}
     for k, v in {**(requires or {}), key: value}.items():
-        cfg[k] = fit(v, cfg.get(k))
+        cfg[k] = v if k in FREE_VECTORS else fit(v, cfg.get(k))
     return cfg
 
 

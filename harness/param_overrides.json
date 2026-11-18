@@ -999,19 +999,19 @@
  },
  "other_layers_print_sequence_nums": {
   "value": "1",
+  "scene": "two_objects",
   "requires": {
-   "bottom_shell_layers": "1",
-   "top_shell_layers": "1",
-   "top_shell_thickness": "0"
+   "other_layers_print_sequence": [
+    "2",
+    "4",
+    "2",
+    "1"
+   ]
   }
  },
  "support_object_skip_flush": {
   "value": "1",
-  "requires": {
-   "bottom_shell_layers": "1",
-   "top_shell_layers": "1",
-   "top_shell_thickness": "0"
-  }
+  "scene": "bambu_h2d"
  },
  "enable_overhang_speed": "0",
  "enable_overhang_bridge_fan": [

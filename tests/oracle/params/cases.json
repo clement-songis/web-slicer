@@ -5589,10 +5589,14 @@
   "label": "The number of other layers print sequence",
   "mode": "simple",
   "nullable": false,
+  "scene": "two_objects",
   "requires": {
-   "bottom_shell_layers": "1",
-   "top_shell_layers": "1",
-   "top_shell_thickness": "0"
+   "other_layers_print_sequence": [
+    "2",
+    "4",
+    "2",
+    "1"
+   ]
   }
  },
  {
@@ -8293,11 +8297,7 @@
   "label": null,
   "mode": "simple",
   "nullable": false,
-  "requires": {
-   "bottom_shell_layers": "1",
-   "top_shell_layers": "1",
-   "top_shell_thickness": "0"
-  }
+  "scene": "bambu_h2d"
  },
  {
   "id": "param.support_object_xy_distance",

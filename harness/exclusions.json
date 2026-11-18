@@ -3,11 +3,22 @@
  "ids": {
   "shortcut.ctrl-n": "Réservé par le navigateur (nouvelle fenêtre), non interceptable par une page ; Nouveau projet reste dans le menu Fichier",
   "shortcut.ctrl-tab": "Réservé par le navigateur (onglet suivant), non interceptable par une page",
-  "shortcut.l": "Mort dans Orca côté Plater : gizmo SLA commenté (GLGizmosManager.cpp:222), handler L commenté (GLCanvas3D.cpp:3525) ; le L actif de l'aperçu est shortcut.l-2"
+  "shortcut.l": "Mort dans Orca côté Plater : gizmo SLA commenté (GLGizmosManager.cpp:222), handler L commenté (GLCanvas3D.cpp:3525) ; le L actif de l'aperçu est shortcut.l-2",
+  "param.compatible_printers": "Filtre de compatibilité des presets, pas un réglage de tranchage : le CLI Orca refuse de trancher avec (décision déléguée par gateway-owner le 2026-11-18) ; couvert par http_presets_compat",
+  "param.post_process": "Scripts de post-traitement jamais exécutés côté serveur (sécurité), avertissement affiché ; pas de valeur de test reproductible (décision déléguée par gateway-owner le 2026-11-18)"
  },
  "patterns": [
-  {"re": "^menu\\.(upload-models|download-models|sync-presets|open-network-test|show-configuration-folder|new-window|reset-window-layout|quit|open-slicer|check-for-updates|troubleshoot-center)", "reason": "Notion de bureau ou service cloud Bambu, sans objet en web auto-hébergé"},
-  {"re": "3dconnexion", "reason": "Périphérique local inaccessible depuis un navigateur"},
-  {"re": "^shortcut\\.ctrl-m$|^shortcut\\.ctrl-shift-m$", "reason": "Réglages 3Dconnexion"}
+  {
+   "re": "^menu\\.(upload-models|download-models|sync-presets|open-network-test|show-configuration-folder|new-window|reset-window-layout|quit|open-slicer|check-for-updates|troubleshoot-center)",
+   "reason": "Notion de bureau ou service cloud Bambu, sans objet en web auto-hébergé"
+  },
+  {
+   "re": "3dconnexion",
+   "reason": "Périphérique local inaccessible depuis un navigateur"
+  },
+  {
+   "re": "^shortcut\\.ctrl-m$|^shortcut\\.ctrl-shift-m$",
+   "reason": "Réglages 3Dconnexion"
+  }
  ]
 }
