@@ -242,3 +242,188 @@ async fn auxiliaries_api_and_3mf_round_trip() {
     let list = json_body(send(&app, request("GET", &base, json!({}), Some(&user))).await).await;
     assert_eq!(list.as_array().unwrap().len(), 1);
 }
+
+fn multipart(uri: &str, filename: &str, bytes: &[u8], cookie: &str) -> Request<Body> {
+    let boundary = "----webslicer-aux";
+    let mut body = Vec::new();
+    body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
+    body.extend_from_slice(
+        format!("Content-Disposition: form-data; name=\"file\"; filename=\"{filename}\"\r\n")
+            .as_bytes(),
+    );
+    body.extend_from_slice(b"Content-Type: model/3mf\r\n\r\n");
+    body.extend_from_slice(bytes);
+    body.extend_from_slice(format!("\r\n--{boundary}--\r\n").as_bytes());
+    Request::builder()
+        .method("POST")
+        .uri(uri)
+        .header(
+            header::CONTENT_TYPE,
+            format!("multipart/form-data; boundary={boundary}"),
+        )
+        .header(header::COOKIE, cookie)
+        .body(Body::from(body))
+        .unwrap()
+}
+
+/// Comme Orca (Plater::priv::load_files) : les fichiers auxiliaires d'un 3MF ne
+/// sont repris qu'à l'OUVERTURE du projet (LoadModel | LoadConfig → LoadAuxiliary,
+/// Plater.cpp ~5970) ; l'ajout de sa géométrie à un projet existant (« Import
+/// geometry only » : LoadModel seul) ne les reprend pas et garde ceux du projet.
+#[tokio::test]
+async fn auxiliaries_follow_orca_on_open_vs_add() {
+    if !backend::engine::worker_binary().exists() {
+        eprintln!("engine-worker absent — ignoré");
+        return;
+    }
+    let bytes = std::fs::read(
+        std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../engine/tests/fixtures/auxiliaries/project_aux.3mf"),
+    )
+    .unwrap();
+    let (_d, app) = app().await;
+    let user = register(&app, "auxopen@test.local").await;
+
+    // Ouverture comme projet : les 3 fichiers auxiliaires sont repris.
+    let resp = send(
+        &app,
+        multipart("/api/projects/import", "project_aux.3mf", &bytes, &user),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let opened = json_body(resp).await["id"].as_str().unwrap().to_string();
+    let list = json_body(
+        send(
+            &app,
+            request(
+                "GET",
+                &format!("/api/projects/{opened}/auxiliaries"),
+                json!({}),
+                Some(&user),
+            ),
+        )
+        .await,
+    )
+    .await;
+    let paths: Vec<&str> = list
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|f| f["path"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        paths,
+        [
+            "Bill of Materials/bom.csv",
+            "Model Pictures/vue.png",
+            "Others/notes.txt"
+        ]
+    );
+
+    // Ajout dans un projet existant : géométrie seulement, auxiliaires du projet inchangés.
+    let project = json_body(
+        send(
+            &app,
+            request(
+                "POST",
+                "/api/projects",
+                json!({ "name": "Cible" }),
+                Some(&user),
+            ),
+        )
+        .await,
+    )
+    .await;
+    let id = project["id"].as_str().unwrap().to_string();
+    let resp = send(
+        &app,
+        raw(
+            "PUT",
+            &format!("/api/projects/{id}/auxiliaries/Others/mien.txt"),
+            b"a moi".to_vec(),
+            &user,
+        ),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let resp = send(
+        &app,
+        multipart(
+            &format!("/api/projects/{id}/import-3mf"),
+            "project_aux.3mf",
+            &bytes,
+            &user,
+        ),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let list = json_body(
+        send(
+            &app,
+            request(
+                "GET",
+                &format!("/api/projects/{id}/auxiliaries"),
+                json!({}),
+                Some(&user),
+            ),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(list, json!([{ "path": "Others/mien.txt", "size": 5 }]));
+}
+
+/// Limite de corps des fichiers auxiliaires : 3 Mo acceptés (au-delà des 2 Mo
+/// par défaut d'axum), plus de 50 Mo refusés (413 par DefaultBodyLimit).
+#[tokio::test]
+async fn auxiliary_body_limit() {
+    let (_d, app) = app().await;
+    let user = register(&app, "auxsize@test.local").await;
+    let project = json_body(
+        send(
+            &app,
+            request(
+                "POST",
+                "/api/projects",
+                json!({ "name": "Taille" }),
+                Some(&user),
+            ),
+        )
+        .await,
+    )
+    .await;
+    let base = format!(
+        "/api/projects/{}/auxiliaries",
+        project["id"].as_str().unwrap()
+    );
+    let resp = send(
+        &app,
+        raw(
+            "PUT",
+            &format!("{base}/Others/gros.bin"),
+            vec![7u8; 3 * 1024 * 1024],
+            &user,
+        ),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let list = json_body(send(&app, request("GET", &base, json!({}), Some(&user))).await).await;
+    assert_eq!(list[0]["size"], 3 * 1024 * 1024);
+    let resp = send(
+        &app,
+        raw(
+            "PUT",
+            &format!("{base}/Others/trop.bin"),
+            vec![0u8; 50 * 1024 * 1024 + 2048],
+            &user,
+        ),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    let list = json_body(send(&app, request("GET", &base, json!({}), Some(&user))).await).await;
+    assert_eq!(
+        list.as_array().unwrap().len(),
+        1,
+        "rien écrit au-delà de la limite"
+    );
+}

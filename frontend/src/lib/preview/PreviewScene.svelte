@@ -8,6 +8,7 @@
 	import PreviewLines from './PreviewLines.svelte';
 	import PreviewPoints from './PreviewPoints.svelte';
 	import PreviewExtrusions from './PreviewExtrusions.svelte';
+	import PreviewWarmup from './PreviewWarmup.svelte';
 	import type { PreviewGeometry, PreviewOverlay } from './geometry';
 
 	interface Props {
@@ -34,12 +35,30 @@
 		renderMode = 'volumes'
 	}: Props = $props();
 
+	// Précompilation des shaders avant la première image de chaque mode de
+	// rendu (volumes éclairés / lignes) : état exposé pour les tests et la mesure.
+	let compiled = $state<{ mode: string; ms: number; timedOut: boolean } | null>(null);
+	// Interrupteur de diagnostic (mesure A/B) : localStorage « web-slicer.preview-warmup » = « off ».
+	const warmup = (() => {
+		try {
+			return localStorage.getItem('web-slicer.preview-warmup') !== 'off';
+		} catch {
+			return true;
+		}
+	})();
+
 	const pose = $derived(
 		fit === 'objects' && frame ? frameBox(frame.min, frame.max) : frameBed(bed)
 	);
 </script>
 
-<div class="h-full w-full">
+<div
+	class="h-full w-full"
+	data-testid="preview-scene"
+	data-preview-ready={compiled?.mode === renderMode ? 'true' : 'false'}
+	data-preview-compile-ms={compiled?.ms}
+	data-preview-compile-timeout={compiled?.timedOut ? 'true' : undefined}
+>
 	<Canvas>
 		{#key frameKey}
 			<T.PerspectiveCamera
@@ -68,6 +87,11 @@
 		{/if}
 		{#if overlay && overlay.points.visibleCount > 0}
 			<PreviewPoints geometry={overlay.points} />
+		{/if}
+		{#if warmup}
+			{#key renderMode}
+				<PreviewWarmup onready={(r) => (compiled = { mode: renderMode, ...r })} />
+			{/key}
 		{/if}
 	</Canvas>
 </div>

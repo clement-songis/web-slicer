@@ -5,7 +5,9 @@
 	// Autonome : la page ne fournit que l'identifiant du G-code courant.
 	import IconSend from '~icons/lucide/send';
 	import { resolve } from '$app/paths';
+	import { hostMeta } from './hosts';
 	import {
+		getPrinterStorages,
 		listPrinters,
 		updatePrinter,
 		uploadToPrinter,
@@ -57,6 +59,29 @@
 	// l'URL se saisit ici, sans quitter l'éditeur (Orca : bouton de connexion
 	// à côté du choix d'imprimante, Plater.cpp `m_printer_connect`).
 	const needsUrl = $derived(!!selected && !selected.moonraker_url?.trim());
+	// Destination sur l'hôte (Orca PrintHostSendDialog : stockage PrusaLink /
+	// PrusaConnect, groupe Repetier), chargée à la sélection de l'imprimante.
+	let storages = $state<{ kind: string; items: { path: string; name: string }[] } | null>(null);
+	let storage = $state('');
+	let storagesFor = '';
+	$effect(() => {
+		const p = selected;
+		const key = p && p.moonraker_url && hostMeta(p.host_type).storages ? p.id : '';
+		if (key === storagesFor) return;
+		storagesFor = key;
+		storages = null;
+		storage = '';
+		if (!key) return;
+		void getPrinterStorages(key)
+			.then((s) => {
+				if (storagesFor !== key) return;
+				storages = s;
+				storage = s.items[0]?.path ?? '';
+			})
+			.catch(() => {
+				if (storagesFor === key) storages = { kind: 'none', items: [] };
+			});
+	});
 	let urlDraft = $state('');
 	let savingUrl = $state(false);
 	let urlError = $state<string | null>(null);
@@ -134,7 +159,8 @@
 			} else if (gcodeId) {
 				const result = await uploadToPrinter(selected.id, {
 					gcode_id: gcodeId,
-					start_now: startNow
+					start_now: startNow,
+					...(storage ? { storage } : {})
 				});
 				success = sendSuccessMessage(selected.name, result);
 			}
@@ -275,6 +301,23 @@
 							</p>
 						{/if}
 					</form>
+				{/if}
+				{#if storages && storages.items.length > 0}
+					<label class="flex flex-col gap-1 text-sm">
+						<span class="text-content-muted"
+							>{storages.kind === 'group' ? 'Groupe (Repetier)' : 'Stockage de destination'}</span
+						>
+						<select
+							class="ws-field"
+							bind:value={storage}
+							data-testid="send-storage"
+							disabled={sending || scope === 'all'}
+						>
+							{#each storages.items as s (s.path)}
+								<option value={s.path}>{s.name}</option>
+							{/each}
+						</select>
+					</label>
 				{/if}
 				<label class="flex items-center gap-2 text-sm">
 					<input

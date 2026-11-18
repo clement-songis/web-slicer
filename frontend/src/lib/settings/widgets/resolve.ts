@@ -18,7 +18,8 @@ export type WidgetKind =
 	| 'strings'
 	| 'multiline'
 	| 'point'
-	| 'color';
+	| 'color'
+	| 'ramming';
 
 /** Les champs G-code personnalisés sont édités en zone multiligne (parité). */
 export function isGcodeParam(key: string): boolean {
@@ -32,6 +33,8 @@ export function isGcodeParam(key: string): boolean {
  */
 export function resolveWidgetKind(def: ParamDef): WidgetKind {
 	if (def.guiType === 'color') return 'color';
+	// Chaîne éditée par le dialogue Ramming d'Orca (courbe), pas à la main.
+	if (def.key === 'filament_ramming_parameters') return 'ramming';
 
 	// Enums fermés (coEnum*) et enums « ouverts » (numérique/texte + valeurs
 	// suggérées, gui_type *_enum_open / select_open) partagent le sélecteur.

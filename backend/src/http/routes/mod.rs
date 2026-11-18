@@ -88,7 +88,10 @@ where
         )
         .route("/api/models/{id}/mesh", get(models::mesh))
         .route("/api/models/{id}/file", get(models::download_file))
-        .route("/api/models/{id}/obj-colors", post(models::obj_colors))
+        .route(
+            "/api/models/{id}/obj-colors",
+            post(models::obj_colors).layer(DefaultBodyLimit::max(models::MAX_BODY_BYTES)),
+        )
         .route("/api/models/{id}/step-mesh", post(models::step_mesh))
         .route("/api/models/{id}/repair", post(scene::repair))
         .route("/api/models/{id}/simplify", post(scene::simplify))
@@ -121,7 +124,8 @@ where
             "/api/projects/{id}/auxiliaries/{folder}/{name}",
             get(auxiliaries::get)
                 .put(auxiliaries::put)
-                .delete(auxiliaries::delete),
+                .delete(auxiliaries::delete)
+                .layer(DefaultBodyLimit::max(auxiliaries::MAX_AUX_BYTES + 1024)),
         )
         .route(
             "/api/calibrations/pa",

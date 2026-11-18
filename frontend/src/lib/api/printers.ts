@@ -86,3 +86,14 @@ export const startPrinterFile = (id: string, filename: string) =>
  *  température, déplacements, mise à l'origine, ventilateurs. */
 export const sendPrinterGcode = (id: string, script: string) =>
 	api.post<void>(`/printers/${id}/gcode`, { script });
+
+/** Destinations d'envoi proposées par l'hôte (stockages PrusaLink/PrusaConnect,
+ *  groupes Repetier) ; `kind: 'none'` pour les autres hôtes. */
+export interface HostStorages {
+	kind: 'storage' | 'group' | 'none';
+	items: { path: string; name: string }[];
+}
+export const getPrinterStorages = (id: string) => api.get<HostStorages>(`/printers/${id}/storages`);
+
+/** Imprimantes d'un serveur Repetier (slugs à reporter dans `host_port`). */
+export const getHostPrinters = (id: string) => api.get<string[]>(`/printers/${id}/host-printers`);

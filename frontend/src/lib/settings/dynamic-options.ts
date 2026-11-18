@@ -34,17 +34,31 @@ export const DYNAMIC_OPTIONS: Record<string, string> = {
 	'machine/Machine G-code/Template Custom G-code': 'template_custom_gcode' // 4710
 };
 
+/**
+ * Lignes à widget d'Orca (`create_line_with_widget`) absentes du layout généré,
+ * ajoutées en fin de section : `<kind>/<page>/<section>` → clés.
+ */
+export const WIDGET_LINES: Record<string, string[]> = {
+	// TabFilament::build, Tab.cpp:4191 — bouton « Ramming settings… » (RammingDialog).
+	'filament/Multimaterial/Tool change parameters with single extruder MM printers': [
+		'filament_ramming_parameters'
+	]
+};
+
 /** Remplace les marqueurs dynamiques connus par leur clé (copie, layout intact). */
 export function resolveDynamicOptions(layout: UiPage[]): UiPage[] {
 	return layout.map((page) => ({
 		...page,
-		sections: page.sections.map((section) => ({
-			...section,
-			options: section.options.map((option): UiOption => {
+		sections: page.sections.map((section) => {
+			const path = `${page.kind}/${page.title}/${section.title}`;
+			const options = section.options.map((option): UiOption => {
 				if (typeof option === 'string') return option;
-				const key = DYNAMIC_OPTIONS[`${page.kind}/${page.title}/${section.title}`];
+				const key = DYNAMIC_OPTIONS[path];
 				return key && PARAMS[key] ? key : option;
-			})
-		}))
+			});
+			for (const key of WIDGET_LINES[path] ?? [])
+				if (PARAMS[key] && !options.includes(key)) options.push(key);
+			return { ...section, options };
+		})
 	}));
 }

@@ -38,6 +38,18 @@
 	} from '$lib/printers/printers';
 	import type { PageData } from './$types';
 	import AppSidebar from '$lib/nav/AppSidebar.svelte';
+	import Dialog from '$lib/ui/Dialog.svelte';
+	import PrinterHostFields from '$lib/printers/PrinterHostFields.svelte';
+	import {
+		emptyHostForm,
+		hasLiveControls,
+		hostFormError,
+		hostFormOf,
+		hostMeta,
+		hostRequest,
+		testMessage,
+		type HostForm
+	} from '$lib/printers/hosts';
 	import IconPlus from '~icons/lucide/plus';
 	import IconChevron from '~icons/lucide/chevron-right';
 	import IconRefresh from '~icons/lucide/refresh-cw';
@@ -56,8 +68,68 @@
 
 	// Formulaire de déclaration.
 	let name = $state('');
-	let url = $state('');
-	let apiKey = $state('');
+	let hostForm = $state<HostForm>(emptyHostForm());
+	const hostError = $derived(hostFormError(hostForm));
+
+	// Connexion d'une imprimante déclarée (Orca : PhysicalPrinterDialog).
+	let connecting = $state<PrinterResponse | null>(null);
+	let connectForm = $state<HostForm>(emptyHostForm());
+	let connectMessage = $state<string | null>(null);
+	let connectError = $state<string | null>(null);
+	let connectBusy = $state(false);
+	const connectFormError = $derived(hostFormError(connectForm));
+	function openConnection(printer: PrinterResponse) {
+		connecting = printer;
+		connectForm = hostFormOf(printer);
+		connectMessage = null;
+		connectError = null;
+	}
+	/** Enregistre la connexion ; renvoie l'id (null si échec). */
+	async function saveConnection(): Promise<string | null> {
+		if (!connecting || connectFormError) return null;
+		connectError = null;
+		try {
+			const saved = await updatePrinter(connecting.id, {
+				name: connecting.name,
+				machine_preset_id: connecting.machine_preset_id,
+				...hostRequest(connectForm)
+			});
+			printers = printers.map((p) => (p.id === saved.id ? saved : p));
+			connecting = saved;
+			// Secrets enregistrés : champs vidés (conservés côté serveur).
+			connectForm = { ...connectForm, apiKey: '', password: '' };
+			if (!hasLiveControls(saved)) {
+				const { [saved.id]: _drop, ...rest } = statuses;
+				void _drop;
+				statuses = rest;
+			}
+			return saved.id;
+		} catch (e) {
+			connectError = e instanceof ApiError ? e.message : 'Enregistrement impossible';
+			return null;
+		}
+	}
+	async function saveAndClose() {
+		connectBusy = true;
+		const id = await saveConnection();
+		connectBusy = false;
+		if (id) connecting = null;
+	}
+	async function saveAndTest() {
+		connectBusy = true;
+		connectMessage = null;
+		const id = await saveConnection();
+		if (id && connecting) {
+			try {
+				const r = await testPrinter(id);
+				connectMessage = testMessage(connecting.host_type, r);
+				testResult = { ...testResult, [id]: connectMessage };
+			} catch (e) {
+				connectError = e instanceof ApiError ? e.message : 'Échec de connexion';
+			}
+		}
+		connectBusy = false;
+	}
 	let machinePreset = $state('');
 	/** Formulaire de déclaration manuelle replié (le catalogue est l'entrée principale). */
 	let showManual = $state(false);
@@ -164,16 +236,15 @@
 		creating = true;
 		error = null;
 		try {
+			const host = hostRequest(hostForm);
 			const printer = await createPrinter({
-				name: name.trim() || defaultName(url),
-				moonraker_url: url || undefined,
-				api_key: apiKey || undefined,
-				machine_preset_id: machinePreset
+				name: name.trim() || defaultName(host.moonraker_url ?? ''),
+				machine_preset_id: machinePreset,
+				...host
 			});
 			printers = [...printers, printer];
 			name = '';
-			url = '';
-			apiKey = '';
+			hostForm = emptyHostForm(hostForm.type);
 		} catch (e) {
 			fail(e, 'Déclaration impossible');
 		} finally {
@@ -186,12 +257,8 @@
 		error = null;
 		try {
 			const result = await testPrinter(id);
-			testResult = {
-				...testResult,
-				[id]: result.connected
-					? `Connecté (Klipper ${result.klippy_state}, Moonraker ${result.moonraker_version})`
-					: `Injoignable (${result.klippy_state})`
-			};
+			const type = printers.find((p) => p.id === id)?.host_type ?? 'moonraker';
+			testResult = { ...testResult, [id]: testMessage(type, result) };
 		} catch (e) {
 			testResult = { ...testResult, [id]: 'Échec de connexion' };
 			fail(e, 'Test impossible');
@@ -300,7 +367,7 @@
 					<IconChevron
 						class="h-4 w-4 transition-transform {showManual ? 'rotate-90' : ''}"
 						aria-hidden="true"
-					/> Déclarer manuellement (Moonraker)
+					/> Déclarer manuellement (Moonraker, OctoPrint, PrusaLink…)
 				</button>
 				{#if showManual}
 					<form class="flex flex-col gap-3" onsubmit={declare}>
@@ -312,26 +379,7 @@
 								placeholder="Imprimante du salon (défaut : hôte de l'URL)"
 							/>
 						</label>
-						<label class="flex flex-col gap-1 text-sm">
-							<span class="text-content-muted">URL Moonraker (facultatif)</span>
-							<input
-								class="ws-field"
-								bind:value={url}
-								type="url"
-								data-testid="printer-moonraker-url"
-								placeholder="http://klipper.local:7125"
-							/>
-						</label>
-						<label class="flex flex-col gap-1 text-sm">
-							<span class="text-content-muted">Clé API (facultatif)</span>
-							<input
-								class="ws-field"
-								bind:value={apiKey}
-								type="password"
-								autocomplete="off"
-								placeholder="X-Api-Key"
-							/>
-						</label>
+						<PrinterHostFields bind:form={hostForm} />
 						<label class="flex flex-col gap-1 text-sm">
 							<span class="text-content-muted">Préréglage machine</span>
 							<select class="ws-field" bind:value={machinePreset} required>
@@ -344,10 +392,13 @@
 							type="submit"
 							class="ws-btn ws-btn-primary self-start"
 							data-testid="printer-save"
-							disabled={creating || machines.length === 0}
+							disabled={creating || machines.length === 0 || !!hostError}
 						>
 							Déclarer
 						</button>
+						{#if hostError && hostForm.url.trim()}
+							<p class="text-xs text-danger-text" role="alert">{hostError}</p>
+						{/if}
 						{#if machines.length === 0}
 							<p class="text-xs text-warning">Aucun preset machine disponible.</p>
 						{/if}
@@ -404,8 +455,13 @@
 									<span class="truncate text-xs text-content-subtle">
 										{machines.find((m) => m.id === printer.machine_preset_id)?.name ?? ''}
 									</span>
-									<span class="truncate text-xs text-content-subtle">
-										{printer.moonraker_url ?? 'Non connectée'}
+									<span class="flex min-w-0 items-center gap-1.5 text-xs text-content-subtle">
+										{#if printer.moonraker_url}
+											<span class="ws-badge shrink-0" data-testid="printer-host-type"
+												>{hostMeta(printer.host_type).label}</span
+											>
+										{/if}
+										<span class="truncate">{printer.moonraker_url ?? 'Non connectée'}</span>
 									</span>
 								</div>
 								{#if st}
@@ -449,6 +505,15 @@
 								>
 									Réglages
 								</button>
+								<button
+									type="button"
+									class="ws-btn ws-btn-sm ws-btn-secondary"
+									data-testid="printer-connection"
+									disabled={busy[printer.id]}
+									onclick={() => openConnection(printer)}
+								>
+									Connexion…
+								</button>
 								{#if printer.moonraker_url}
 									<button
 										type="button"
@@ -458,22 +523,25 @@
 									>
 										Tester
 									</button>
-									<button
-										type="button"
-										class="ws-btn ws-btn-sm ws-btn-secondary"
-										disabled={busy[printer.id]}
-										onclick={() => refreshStatus(printer.id)}
-									>
-										État
-									</button>
+									{#if hasLiveControls(printer)}
+										<button
+											type="button"
+											class="ws-btn ws-btn-sm ws-btn-secondary"
+											data-testid="printer-status"
+											disabled={busy[printer.id]}
+											onclick={() => refreshStatus(printer.id)}
+										>
+											État
+										</button>
+									{/if}
 								{:else}
 									<span class="self-center text-xs text-content-subtle"
-										>Sans URL Moonraker : réglages et tranchage seulement.</span
+										>Sans URL Moonraker ni autre hôte : réglages et tranchage seulement.</span
 									>
 								{/if}
 								<!-- Commandes d'impression : seulement quand l'état est connu
 								     (au lieu de trois boutons grisés en permanence). -->
-								{#if st}
+								{#if st && hasLiveControls(printer)}
 									<button
 										type="button"
 										class="ws-btn ws-btn-sm ws-btn-secondary"
@@ -542,6 +610,59 @@
 		</div>
 	</div>
 {/if}
+
+<!-- Connexion d'une imprimante (Orca : PhysicalPrinterDialog). -->
+<Dialog
+	open={connecting !== null}
+	label="Connexion de l'imprimante"
+	title={connecting ? `Connexion — ${connecting.name}` : ''}
+	size="md"
+	onclose={() => !connectBusy && (connecting = null)}
+	data-testid="printer-connection-dialog"
+>
+	{#if connecting}
+		<div class="flex flex-col gap-3">
+			<PrinterHostFields
+				bind:form={connectForm}
+				printerId={connecting.id}
+				hasSecret={connecting.has_api_key}
+				hasPassword={connecting.has_host_password}
+				beforeListPrinters={saveConnection}
+			/>
+			{#if connectFormError && connectForm.url.trim()}
+				<p class="text-xs text-danger-text" role="alert">{connectFormError}</p>
+			{/if}
+			{#if connectError}
+				<p class="text-xs text-danger-text" role="alert" data-testid="connection-error">
+					{connectError}
+				</p>
+			{:else if connectMessage}
+				<p class="text-xs text-success-text" role="status" data-testid="connection-result">
+					{connectMessage}
+				</p>
+			{/if}
+		</div>
+	{/if}
+	{#snippet footer()}
+		<button
+			type="button"
+			class="ws-btn ws-btn-secondary mr-auto"
+			data-testid="connection-test"
+			disabled={connectBusy || !!connectFormError || !connectForm.url.trim()}
+			onclick={saveAndTest}>Tester la connexion</button
+		>
+		<button type="button" class="ws-btn ws-btn-ghost" onclick={() => (connecting = null)}
+			>Annuler</button
+		>
+		<button
+			type="button"
+			class="ws-btn ws-btn-primary"
+			data-testid="connection-save"
+			disabled={connectBusy || !!connectFormError}
+			onclick={saveAndClose}>Enregistrer</button
+		>
+	{/snippet}
+</Dialog>
 
 <!-- Réglages complets d'une imprimante (dialogue réutilisé de l'éditeur). -->
 <PresetSettingsDialog

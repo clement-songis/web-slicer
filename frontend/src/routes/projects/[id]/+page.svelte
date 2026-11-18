@@ -284,6 +284,19 @@
 		showWipeTower
 	} from '$lib/scene/wipe-tower';
 	import FlushVolumesDialog from '$lib/editor/FlushVolumesDialog.svelte';
+	import ObjColorDialog from '$lib/editor/ObjColorDialog.svelte';
+	import StepMeshDialog from '$lib/editor/StepMeshDialog.svelte';
+	import { isStep } from '$lib/editor/step-mesh';
+	import AuxiliariesPanel from '$lib/editor/AuxiliariesPanel.svelte';
+	import { objColors } from '$lib/api/auxiliaries';
+	import {
+		isMtl,
+		mapExtruder,
+		pickMtl,
+		remapMmu,
+		type ObjColorPlan,
+		type ObjColorsResponse
+	} from '$lib/editor/obj-colors';
 	import { computeFlushVolumes, flushVolumesAvailable } from '$lib/api/flush';
 	import {
 		afterSlotAdded,
@@ -943,7 +956,7 @@
 	let projectFileInput: HTMLInputElement | null = null;
 	let zipFileInput: HTMLInputElement | null = null;
 	let configFileInput: HTMLInputElement | null = null;
-	const ACCEPT = '.stl,.obj,.3mf,.oltp,.step,.stp,.amf,.svg,.drc';
+	const ACCEPT = '.stl,.obj,.mtl,.3mf,.oltp,.step,.stp,.amf,.svg,.drc';
 	const canSliceNow = $derived(
 		activeSceneObjects.length > 0 &&
 			!imports.some((item) => isPending(item)) &&
@@ -1777,11 +1790,127 @@
 		imports = imports.map((i) => (i.objectId === objectId ? fn(i) : i));
 	}
 
+	// — OBJ coloré (Orca : ObjColorDialog, lot 16) : après l'upload d'un OBJ, le
+	// serveur détecte ses couleurs ; si l'OBJ en a, le dialogue propose de les
+	// répartir sur des filaments (nouveaux ou existants) et la peinture MMU
+	// renvoyée est renumérotée vers ces filaments. Un dialogue à la fois.
+	type ObjColorRequest = { objectId: string; filename: string; res: ObjColorsResponse };
+	const objMtlFiles = new WeakMap<File, File>();
+	let objColorPending = $state<ObjColorRequest | null>(null);
+	const objColorQueue: ObjColorRequest[] = [];
+	async function detectObjColors(
+		objectId: string,
+		modelId: string,
+		file: File,
+		generation: number
+	) {
+		let res: ObjColorsResponse;
+		try {
+			res = await objColors(modelId, objMtlFiles.get(file) ?? null);
+		} catch {
+			return; // détection indisponible : l'objet reste sur un seul filament
+		}
+		if (generation !== sceneGeneration || !tree.get(objectId)) return;
+		if (!res.colored || !res.palette?.length) return;
+		const request = { objectId, filename: file.name, res };
+		if (objColorPending) objColorQueue.push(request);
+		else objColorPending = request;
+	}
+	// — Maillage STEP (Orca : StepMeshDialog, lot 17) : proposé une fois le STEP
+	// converti ; chaque remaillage remplace le maillage affiché des instances.
+	type StepMeshRequest = {
+		objectId: string;
+		modelId: string;
+		filename: string;
+		triangles: number | null;
+	};
+	let stepMeshPending = $state<StepMeshRequest | null>(null);
+	async function offerStepMesh(
+		objectId: string,
+		modelId: string,
+		filename: string,
+		generation: number
+	) {
+		for (let i = 0; i < 360; i++) {
+			if (generation !== sceneGeneration || !tree.get(objectId)) return;
+			const item = imports.find((x) => x.objectId === objectId);
+			if (!item || item.status === 'failed') return;
+			const obj = sceneObjects.find((o) => o.id === objectId);
+			if (item.status === 'ready' && obj) {
+				if (stepMeshPending) return; // un dialogue à la fois
+				stepMeshPending = { objectId, modelId, filename, triangles: obj.mesh.indices.length / 3 };
+				return;
+			}
+			await new Promise((r) => setTimeout(r, 500));
+		}
+	}
+	async function reloadStepMesh(modelId: string) {
+		meshRequests.delete(modelId);
+		const { mesh } = await loadCenteredMesh(modelId);
+		const ids = new Set(imports.filter((i) => i.modelId === modelId).map((i) => i.objectId));
+		// Nouveau maillage : la peinture par triangle de l'ancien n'a plus de sens.
+		for (const id of ids) delete paintings[id];
+		paintings = { ...paintings };
+		sceneObjects = sceneObjects.map((o) => (ids.has(o.id) ? { ...o, mesh } : o));
+	}
+	function nextObjColor() {
+		objColorPending = objColorQueue.shift() ?? null;
+	}
+	function applyObjColors(plan: ObjColorPlan) {
+		const pending = objColorPending;
+		if (!pending) return;
+		const { objectId, res } = pending;
+		const mesh = sceneObjects.find((o) => o.id === objectId)?.mesh;
+		const meshTriangles = mesh ? mesh.indices.length / 3 : null;
+		if (
+			meshTriangles !== null &&
+			res.triangles &&
+			![meshTriangles, meshTriangles * 3].includes(res.triangles)
+		) {
+			saveMessage = `Couleurs de « ${pending.filename} » non appliquées : maillage différent (${res.triangles} / ${meshTriangles} triangles).`;
+			nextObjColor();
+			return;
+		}
+		let added = 0;
+		for (const colour of plan.newColours) {
+			const before = activePresets.filaments.length;
+			addFilament();
+			if (activePresets.filaments.length === before) break;
+			projectFilament = setSlotColour(projectFilament, activePresets.filaments.length - 1, colour);
+			added++;
+		}
+		const doc = paintingFor(objectId);
+		paintUndo.push({ id: objectId, channel: 'mmu', facets: doc.serialize().mmu ?? {} });
+		paintRedo = [];
+		doc.replaceChannel('mmu', remapMmu(res.painting?.mmu ?? {}, plan));
+		paintings = { ...paintings };
+		tree.setExtruder(objectId, mapExtruder(plan, res.extruder || 1));
+		saveMessage = `Couleurs de « ${pending.filename} » appliquées${added ? ` : ${added} filament${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''}` : ''}.`;
+		nextObjColor();
+	}
+
 	// Importe une liste de fichiers : aperçu immédiat + upload en tâche de fond.
 	async function importFiles(files: File[]) {
 		importError = null;
 		let firstLoaded: string | null = null;
-		for (const file of files) {
+		// OBJ coloré : un .mtl déposé avec l'OBJ l'accompagne (couleurs Kd).
+		const mtls = files.filter((f) => isMtl(f.name));
+		const models = files.filter((f) => !isMtl(f.name));
+		if (mtls.length && !models.length) importError = 'Un fichier .mtl s’importe avec son .obj.';
+		for (const file of models) {
+			if (/\.obj$/i.test(file.name) && mtls.length) {
+				const text = await file
+					.slice(0, 64 * 1024)
+					.text()
+					.catch(() => null);
+				const name = pickMtl(
+					file.name,
+					text,
+					mtls.map((m) => m.name)
+				);
+				const mtl = mtls.find((m) => m.name === name);
+				if (mtl) objMtlFiles.set(file, mtl);
+			}
 			if (!isAccepted(file.name)) {
 				importError = `Format non supporté : ${file.name}`;
 				continue;
@@ -1826,6 +1955,8 @@
 			patchImport(objectId, (i) => markUploaded(i, model.id, model.conversion_pending));
 			if (!model.conversion_pending) await resolveConversion(model.id);
 			else void watchConversion(model.id, generation);
+			if (/\.obj$/i.test(file.name)) void detectObjColors(objectId, model.id, file, generation);
+			if (isStep(file.name)) void offerStepMesh(objectId, model.id, file.name, generation);
 			return true;
 		} catch (e) {
 			if (generation !== sceneGeneration) return false;
@@ -5332,6 +5463,8 @@
 	// modèles rattachés) : on enregistre donc d'abord pour que les objets ajoutés
 	// dans la session soient bien pris en compte (sinon « plateau vide »).
 	async function sliceActive() {
+		// Module de l'aperçu chargé pendant le tranchage (pas à l'ouverture).
+		void loadPreviewScene();
 		await editorReady;
 		const saved = await save();
 		if (saved.status === 'conflict') {
@@ -5824,6 +5957,26 @@
 			e.currentTarget.value = '';
 		}}
 	/>
+	{#if stepMeshPending}
+		<StepMeshDialog
+			open
+			filename={stepMeshPending.filename}
+			modelId={stepMeshPending.modelId}
+			initialTriangles={stepMeshPending.triangles}
+			onremeshed={() => reloadStepMesh(stepMeshPending!.modelId)}
+			onclose={() => (stepMeshPending = null)}
+		/>
+	{/if}
+	{#if objColorPending}
+		<ObjColorDialog
+			open
+			filename={objColorPending.filename}
+			palette={objColorPending.res.palette}
+			slotColours={filamentSlotColors}
+			onapply={applyObjColors}
+			onskip={nextObjColor}
+		/>
+	{/if}
 	<input
 		bind:this={configFileInput}
 		type="file"
@@ -7388,7 +7541,7 @@
 			{:else}
 				<!-- Onglet Projet (T117) : métadonnées du projet + renommage. -->
 				<div class="h-full overflow-auto p-6">
-					<div class="mx-auto flex w-full max-w-2xl flex-col gap-4">
+					<div class="mx-auto flex w-full max-w-4xl flex-col gap-4">
 						<h2 class="ws-dialog-title">Projet</h2>
 						{#if data.project.has_thumbnail}
 							<img
@@ -7418,6 +7571,7 @@
 							<dt class="text-content-muted">Modifié le</dt>
 							<dd class="text-content">{new Date(data.project.updated_at).toLocaleString()}</dd>
 						</dl>
+						<AuxiliariesPanel projectId={data.project.id} />
 					</div>
 				</div>
 			{/if}

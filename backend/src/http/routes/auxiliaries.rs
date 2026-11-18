@@ -23,7 +23,7 @@ use crate::http::extract::CurrentUser;
 use crate::http::state::AppState;
 
 /// 50 Mo par fichier auxiliaire.
-const MAX_AUX_BYTES: usize = 50 * 1024 * 1024;
+pub(crate) const MAX_AUX_BYTES: usize = 50 * 1024 * 1024;
 
 async fn owned_project(state: &AppState, user: UserId, raw: &str) -> ApiResult<ProjectId> {
     let id = uuid::Uuid::parse_str(raw)

@@ -95,6 +95,11 @@ describe('resolveWidgetKind', () => {
 		}
 	});
 
+	it('filament_ramming_parameters : éditeur de courbe (dialogue Ramming d Orca)', () => {
+		expect(resolveWidgetKind(PARAMS['filament_ramming_parameters'])).toBe('ramming');
+		expect(resolveWidgetKind(def({ type: 'coStrings', key: 'filament_notes' }))).toBe('strings');
+	});
+
 	it('résout les 858 paramètres sans trou', () => {
 		const known = new Set<WidgetKind>([
 			'bool',
@@ -107,7 +112,8 @@ describe('resolveWidgetKind', () => {
 			'strings',
 			'multiline',
 			'point',
-			'color'
+			'color',
+			'ramming'
 		]);
 		for (const p of Object.values(PARAMS)) {
 			expect(known.has(resolveWidgetKind(p))).toBe(true);

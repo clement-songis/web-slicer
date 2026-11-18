@@ -13,6 +13,7 @@ import IntWidget from './IntWidget.svelte';
 import MultilineWidget from './MultilineWidget.svelte';
 import PercentWidget from './PercentWidget.svelte';
 import PointWidget from './PointWidget.svelte';
+import RammingWidget from './RammingWidget.svelte';
 import { resolveWidgetKind, type WidgetKind } from './resolve';
 import StringWidget from './StringWidget.svelte';
 import StringsWidget from './StringsWidget.svelte';
@@ -34,7 +35,8 @@ export const WIDGETS: Record<WidgetKind, WidgetComponent> = {
 	strings: StringsWidget,
 	multiline: MultilineWidget,
 	point: PointWidget,
-	color: ColorWidget
+	color: ColorWidget,
+	ramming: RammingWidget
 };
 
 /** Composant d'édition d'un paramètre, résolu par son type de registre. */
