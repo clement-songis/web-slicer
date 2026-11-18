@@ -207,6 +207,21 @@
 						onclick={(e) => onselect(node.id, e.shiftKey || e.ctrlKey || e.metaKey)}
 						ondblclick={() => onrename && (editingId = node.id)}
 						onkeydown={(e) => {
+							// Groupe « Objects List » d'Orca : Espace renomme l'objet/la pièce
+							// sélectionné(e) ; F2 (convention bureau) aussi. Un premier Espace
+							// sur une ligne non sélectionnée la sélectionne (bouton natif).
+							if (
+								onrename &&
+								!e.altKey &&
+								!e.ctrlKey &&
+								!e.metaKey &&
+								(e.key === 'F2' || (e.key === ' ' && selection.has(node.id)))
+							) {
+								e.preventDefault();
+								e.stopPropagation();
+								editingId = node.id;
+								return;
+							}
 							if (!onreorder || !orderable(node) || !e.altKey) return;
 							if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
 							const other = neighbour(node.id, e.key === 'ArrowUp' ? -1 : 1);

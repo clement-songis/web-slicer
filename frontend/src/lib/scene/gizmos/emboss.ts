@@ -25,6 +25,23 @@ export interface EmbossParams {
 	boldness: number;
 	/** Largeur de la forme SVG (mm). */
 	svgWidth: number;
+	/** En relief avec un objet sélectionné : pièce posée sur sa face supérieure
+	 *  (comportement du gizmo Emboss d'Orca) plutôt qu'un nouvel objet. */
+	onObject?: boolean;
+}
+
+/**
+ * Placement d'un relief ajouté comme pièce d'un objet (phase 26) : centré en
+ * XY sur l'objet, posé sur sa face supérieure — repère recentré de l'objet.
+ * `objectMaxZ` : Z max du maillage recentré de l'objet ; `size` : emprise du
+ * maillage du relief (mm). Renvoie le décalage du centre de la pièce.
+ */
+export function embossPartOffset(
+	objectMaxZ: number,
+	size: readonly [number, number, number]
+): [number, number, number] {
+	const r = (v: number) => Math.round(v * 10000) / 10000;
+	return [0, 0, r(objectMaxZ + size[2] / 2)];
 }
 
 export function defaultEmbossParams(): EmbossParams {
@@ -37,7 +54,8 @@ export function defaultEmbossParams(): EmbossParams {
 		svgWidth: 30,
 		fontSize: 10,
 		depth: 2,
-		embossed: true
+		embossed: true,
+		onObject: true
 	};
 }
 

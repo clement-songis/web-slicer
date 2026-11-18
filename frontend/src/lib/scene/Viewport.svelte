@@ -32,6 +32,7 @@
 	import type { SceneVolume } from './volumes';
 	import type { PaintOverlay } from './gizmos/painting/paint-overlay';
 	import { sceneColors } from './scene-colors';
+	import { guideRotation, type SceneGuides } from './guides';
 
 	interface Props {
 		bed: BedShape;
@@ -104,6 +105,8 @@
 		onscreenboxes?: (boxes: Record<string, ScreenBox>) => void;
 		/** Plan de coupe appliqué à l'objet sélectionné (peinture), ou null. */
 		clipPlane?: SectionPlane | null;
+		/** Repères d'outil (plan de l'outil Coupe, points de l'outil Mesure). */
+		guides?: SceneGuides | null;
 		/** Direction de vue (avant caméra, unitaire), à chaque changement. */
 		oncameradir?: (forward: [number, number, number]) => void;
 		/** Clic simple sur un objet : sélection de l'objet entier (pas d'une pièce). */
@@ -143,9 +146,23 @@
 		onvolumegizmo,
 		onscreenboxes,
 		clipPlane = null,
+		guides = null,
 		oncameradir,
 		onpickobject
 	}: Props = $props();
+
+	// Segment de mesure (deux points) : géométrie de ligne recréée à chaque mesure.
+	const measureLine = $derived.by(() => {
+		const pts = guides?.points ?? [];
+		if (pts.length !== 2) return null;
+		const g = new BufferGeometry();
+		g.setAttribute('position', new BufferAttribute(new Float32Array([...pts[0], ...pts[1]]), 3));
+		return g;
+	});
+	$effect(() => {
+		const g = measureLine;
+		return () => g?.dispose();
+	});
 
 	// Active le raycasting Threlte (événements de pointeur sur les meshes).
 	interactivity();
@@ -553,6 +570,37 @@
 			</T.Mesh>
 		{/each}
 	</T.Group>
+{/if}
+
+{#if guides?.plane}
+	<!-- Plan de l'outil Coupe (gizmo Cut d'Orca) : semi-transparent, non cliquable. -->
+	<T.Mesh
+		position={guides.plane.center}
+		rotation={guideRotation(guides.plane.normal)}
+		renderOrder={4}
+		userData={{ guide: 'cut-plane' }}
+	>
+		<T.PlaneGeometry args={guides.plane.size} />
+		<T.MeshBasicMaterial
+			color={$sceneColors.sectionPlaneHover}
+			transparent
+			opacity={0.55}
+			side={DoubleSide}
+			depthWrite={false}
+		/>
+	</T.Mesh>
+{/if}
+{#each guides?.points ?? [] as point, i (i)}
+	<!-- Points de l'outil Mesure : toujours visibles (pas de test de profondeur). -->
+	<T.Mesh position={point} renderOrder={6}>
+		<T.SphereGeometry args={[1.2, 16, 12]} />
+		<T.MeshBasicMaterial color={$sceneColors.partSelected} depthTest={false} transparent />
+	</T.Mesh>
+{/each}
+{#if measureLine}
+	<T.Line geometry={measureLine} renderOrder={6}>
+		<T.LineBasicMaterial color={$sceneColors.partSelected} depthTest={false} transparent />
+	</T.Line>
 {/if}
 
 {#if targetVolume && gizmoMode && targetId}

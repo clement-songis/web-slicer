@@ -93,7 +93,8 @@ test('coupe horizontale : cube de 20 mm coupé à +2,5 mm @F:editor.mesh-cut', a
 	await page.getByTestId('object-row').first().click();
 	await railTool(page, /^(cut|coupe)$/i).click();
 	await expect(page.getByTestId('cut-apply')).toBeVisible();
-	await page.getByTestId('cut-offset-input').fill('2.5');
+	// Hauteur depuis le plateau (phase 26) : milieu du bloc (10) + 2,5 mm.
+	await page.getByTestId('cut-offset-input').fill('12.5');
 	const [res] = await Promise.all([
 		page.waitForResponse((r) => r.request().method() === 'POST' && /\/cut$/.test(r.url())),
 		page.getByTestId('cut-apply').click()

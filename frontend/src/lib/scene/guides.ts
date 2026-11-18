@@ -1,0 +1,88 @@
+// Repères visuels de la vue 3D pendant un outil (phase 26) : plan de coupe
+// (gizmo Cut d'Orca, qui dessine le plan dans la scène) et points/segment de
+// mesure (gizmo Measure). Fonctions pures, testables : la vue 3D ne fait que
+// dessiner ce qui est calculé ici.
+
+export type Vec3 = [number, number, number];
+export type Axis = 'x' | 'y' | 'z';
+
+export const AXIS_INDEX: Record<Axis, 0 | 1 | 2> = { x: 0, y: 1, z: 2 };
+
+/** Plan dessiné : centre monde, normale (axe), dimensions dans le plan (mm). */
+export interface GuidePlane {
+	center: Vec3;
+	normal: Vec3;
+	size: [number, number];
+}
+
+/** Repères de la scène : plan de coupe et/ou points de mesure (monde, mm). */
+export interface SceneGuides {
+	plane?: GuidePlane | null;
+	points?: Vec3[];
+}
+
+/** Repère de l'objet : origine monde du maillage recentré et échelle. */
+export interface ObjectFrame {
+	origin: Vec3;
+	scale: Vec3;
+}
+
+const IDENTITY: ObjectFrame = { origin: [0, 0, 0], scale: [1, 1, 1] };
+
+/** Décalage local (repère recentré) → coordonnée monde sur l'axe. */
+export function cutWorld(offset: number, axis: Axis, frame: ObjectFrame = IDENTITY): number {
+	const a = AXIS_INDEX[axis];
+	return frame.origin[a] + offset * (frame.scale[a] || 1);
+}
+
+/** Coordonnée monde sur l'axe → décalage local (repère recentré). */
+export function cutOffset(world: number, axis: Axis, frame: ObjectFrame = IDENTITY): number {
+	const a = AXIS_INDEX[axis];
+	return (world - frame.origin[a]) / (frame.scale[a] || 1);
+}
+
+/**
+ * Plan de coupe à dessiner : perpendiculaire à `axis`, au décalage local
+ * `offset`, couvrant l'emprise de l'objet (+ `margin` mm de chaque côté) —
+ * comme le plan semi-transparent du gizmo Cut d'Orca. Rotation de l'objet
+ * ignorée (la coupe serveur est faite dans le repère du maillage).
+ */
+export function cutGuidePlane(
+	axis: Axis,
+	offset: number,
+	bounds: { min: Vec3; max: Vec3 },
+	frame: ObjectFrame = IDENTITY,
+	margin = 4
+): GuidePlane {
+	const a = AXIS_INDEX[axis];
+	const center = [0, 1, 2].map(
+		(i) => frame.origin[i] + ((bounds.min[i] + bounds.max[i]) / 2) * (frame.scale[i] || 1)
+	) as Vec3;
+	center[a] = cutWorld(offset, axis, frame);
+	const ext = [0, 1, 2].map(
+		(i) => Math.abs((bounds.max[i] - bounds.min[i]) * (frame.scale[i] || 1)) + 2 * margin
+	);
+	const normal: Vec3 = [0, 0, 0];
+	normal[a] = 1;
+	// Dimensions dans le repère du PlaneGeometry après `guideRotation` :
+	// Z → (X, Y) ; X → (Z, Y) ; Y → (X, Z).
+	const size: [number, number] =
+		a === 2 ? [ext[0], ext[1]] : a === 0 ? [ext[2], ext[1]] : [ext[0], ext[2]];
+	return { center, normal, size };
+}
+
+/**
+ * Rotation Euler (XYZ, radians) qui amène la normale +Z d'un PlaneGeometry
+ * sur la normale du plan (un des trois axes).
+ */
+export function guideRotation(normal: Vec3): Vec3 {
+	if (Math.abs(normal[0]) > 0.5) return [0, Math.PI / 2, 0];
+	if (Math.abs(normal[1]) > 0.5) return [-Math.PI / 2, 0, 0];
+	return [0, 0, 0];
+}
+
+/** Points de mesure (au plus deux) et segment à tracer entre eux. */
+export function measureGuides(points: readonly Vec3[]): SceneGuides {
+	const pts = points.slice(-2).map((p) => [...p] as Vec3);
+	return { points: pts };
+}

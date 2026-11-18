@@ -23,5 +23,11 @@ export const SETTINGS_FR_EXTRA: Record<string, string> = {
 	layers: 'couches',
 	layer: 'couche',
 	'money/kg': 'argent/kg',
-	'money/h': '€/heure'
+	'money/h': '€/heure',
+	// Catégories de réglages (en-têtes de la recherche « + Réglage ») : msgstr
+	// d'OrcaSlicer_fr.po, absentes du dictionnaire généré (chaînes d'interface).
+	Extruders: 'Extrudeurs',
+	'Layers and Perimeters': 'Couches et Périmètres',
+	'Machine limits': 'Limites de la machine',
+	Other: 'Autre'
 };

@@ -175,7 +175,8 @@ test("Cut : le plan produit deux objets volumétriques @F:gizmo.cut", async ({
   await setup(page);
   await select(page);
   await page.getByTestId("tool-cut").click();
-  await page.getByTestId("cut-offset-input").fill("2.5");
+  // Hauteur depuis le plateau (phase 26) : milieu du cube (10) + 2,5 mm.
+  await page.getByTestId("cut-offset-input").fill("12.5");
   const [res] = await Promise.all([
     page.waitForResponse(
       (r) => r.request().method() === "POST" && /\/cut$/.test(r.url()),
@@ -252,7 +253,11 @@ test("Emboss et SVG : création de deux maillages depuis le rail @F:gizmo.emboss
   await expect(page.getByTestId("object-row")).toHaveCount(1, {
     timeout: 120_000,
   });
+  // Sans sélection : la forme SVG devient un nouvel objet (avec un objet
+  // sélectionné, elle serait posée dessus comme pièce — phase 26).
+  await page.keyboard.press("Escape");
   await page.getByTestId("tool-svg").click();
+  await page.getByText("Source SVG (coller)").click();
   await page
     .getByTestId("emboss-svg")
     .fill(

@@ -9,6 +9,7 @@
 	import type { NamedView, Projection } from './camera';
 	import type { Transform } from './transform';
 	import type { SceneVolume } from './volumes';
+	import type { SceneGuides } from './guides';
 	import Viewport from './Viewport.svelte';
 	import type { PaintOverlay } from './gizmos/painting/paint-overlay';
 	import { overhangIndices } from './overhang';
@@ -76,6 +77,8 @@
 		/** Plan de coupe de peinture (Alt+molette) : ratio 0..1 et hauteur (mm). */
 		sectionRatio?: number;
 		clipPlane?: SectionPlane | null;
+		/** Repères d'outil dessinés dans la vue (plan de coupe, points de mesure). */
+		guides?: SceneGuides | null;
 		oncameradir?: (forward: [number, number, number]) => void;
 		onpickobject?: (id: string) => void;
 	}
@@ -110,6 +113,7 @@
 		ondragchange,
 		sectionRatio = 0,
 		clipPlane = null,
+		guides = null,
 		oncameradir,
 		onpickobject
 	}: Props = $props();
@@ -197,6 +201,10 @@
 	data-section-ratio={sectionRatio.toFixed(2)}
 	data-section-normal={clipPlane?.normal.map((n) => n.toFixed(3)).join(',')}
 	data-section-offset={clipPlane?.offset.toFixed(2)}
+	data-guide-plane={guides?.plane
+		? guides.plane.center.map((c) => c.toFixed(2)).join(',')
+		: undefined}
+	data-guide-points={guides?.points?.length || undefined}
 	data-testid="scene-canvas"
 	data-projection={projection}
 	data-camera-view={view}
@@ -260,6 +268,7 @@
 			onflattenanchors={(anchors) => (flattenAnchors = anchors)}
 			onscreenboxes={(boxes) => (screenBoxes = boxes)}
 			{clipPlane}
+			{guides}
 			{oncameradir}
 			{onpickobject}
 		/>

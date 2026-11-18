@@ -38,6 +38,18 @@
 		if (fonts.length > 0 && !fonts.some((f) => f.id === params.font)) params.font = fonts[0].id;
 	});
 	const error = $derived(validateEmboss(params));
+
+	// Sélecteur SVG (phase 26) : bouton stylé au lieu du « Choose File » natif
+	// (anglais dans l'UI française) + aperçu de la forme ; la source brute reste
+	// accessible (repliée) pour coller un SVG.
+	let svgInput = $state<HTMLInputElement | null>(null);
+	let svgFileName = $state<string | null>(null);
+	const svgPreview = $derived.by(() => {
+		const src = params.svg.trim();
+		if (!src.startsWith('<') || !/<svg[\s>]/i.test(src)) return null;
+		// <img> : le SVG n'est jamais exécuté (pas de script), simple aperçu.
+		return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(src);
+	});
 </script>
 
 <div class="flex flex-col gap-2 text-sm">
@@ -91,24 +103,53 @@
 			/>
 		</label>
 	{:else}
-		<label class="flex flex-col gap-1">
-			<span class="text-content-muted">SVG</span>
+		<div class="flex flex-col gap-1">
+			<span class="text-content-muted">Forme SVG</span>
 			<input
+				bind:this={svgInput}
 				type="file"
 				accept=".svg,image/svg+xml"
 				data-testid="emboss-svg-file"
-				class="text-xs"
+				class="sr-only"
+				tabindex="-1"
+				aria-hidden="true"
 				onchange={async (e) => {
 					const file = e.currentTarget.files?.[0];
-					if (file) params.svg = await file.text();
+					if (file) {
+						params.svg = await file.text();
+						svgFileName = file.name;
+					}
 				}}
 			/>
-			<textarea
-				bind:value={params.svg}
-				data-testid="emboss-svg"
-				rows="3"
-				class="ws-field ws-field-sm font-mono"></textarea>
-		</label>
+			<div class="flex items-center gap-2">
+				<button
+					type="button"
+					class="ws-btn ws-btn-secondary"
+					data-testid="emboss-svg-pick"
+					onclick={() => svgInput?.click()}>Choisir un fichier SVG…</button
+				>
+				<span class="min-w-0 truncate text-xs text-content-subtle" data-testid="emboss-svg-name"
+					>{svgFileName ?? (params.svg.trim() ? 'SVG collé' : 'Aucun fichier')}</span
+				>
+			</div>
+			{#if svgPreview}
+				<img
+					src={svgPreview}
+					alt="Aperçu de la forme SVG"
+					data-testid="emboss-svg-preview"
+					class="h-24 w-full rounded border border-border bg-surface-sunken object-contain p-1"
+				/>
+			{/if}
+			<details class="text-xs">
+				<summary class="cursor-pointer text-content-subtle">Source SVG (coller)</summary>
+				<textarea
+					bind:value={params.svg}
+					data-testid="emboss-svg"
+					rows="3"
+					aria-label="Source SVG"
+					class="ws-field ws-field-sm mt-1 w-full font-mono"></textarea>
+			</details>
+		</div>
 	{/if}
 
 	{#if params.source === 'svg'}
@@ -148,6 +189,13 @@
 			>En relief (décoché : gravé en creux dans l’objet sélectionné)</span
 		>
 	</label>
+
+	{#if canEngrave && params.embossed}
+		<label class="flex items-center gap-2">
+			<input type="checkbox" bind:checked={params.onObject} data-testid="emboss-on-object" />
+			<span class="text-content-muted">Sur l’objet sélectionné (pièce posée sur le dessus)</span>
+		</label>
+	{/if}
 
 	{#if error}
 		<p class="text-warning">{error}</p>

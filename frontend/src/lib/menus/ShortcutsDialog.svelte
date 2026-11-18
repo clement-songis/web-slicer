@@ -3,8 +3,9 @@
 	// Dialogue d'aide des raccourcis clavier (T079, Annexe B §B.6). Modal listant
 	// les 92 raccourcis groupés, ouvert par « ? » ou le menu Aide. Présentational
 	// seulement : les données viennent de `shortcuts.ts`.
-	import { t } from '$lib/i18n';
+	import { locale, t } from '$lib/i18n';
 	import { SHORTCUT_GROUPS, totalShortcuts } from './shortcuts';
+	import { shortcutKeysText, shortcutText } from './shortcuts-fr';
 
 	let { open = false, onClose }: { open?: boolean; onClose: () => void } = $props();
 
@@ -44,17 +45,19 @@
 
 			<div class="grid gap-6 sm:grid-cols-2">
 				{#each SHORTCUT_GROUPS as group (group.group)}
-					<section aria-label={group.group}>
-						<h3 class="mb-2 text-sm font-semibold text-primary">{$t(group.group)}</h3>
+					<section aria-label={shortcutText(group.group, $locale)}>
+						<h3 class="mb-2 text-sm font-semibold text-primary">
+							{shortcutText(group.group, $locale)}
+						</h3>
 						<dl class="flex flex-col gap-1">
 							{#each group.shortcuts as shortcut (shortcut.keys + shortcut.action)}
 								<div class="flex items-start justify-between gap-3 text-xs">
-									<dt class="text-content-muted">{shortcut.action}</dt>
+									<dt class="text-content-muted">{shortcutText(shortcut.action, $locale)}</dt>
 									<dd>
 										<kbd
 											class="whitespace-nowrap rounded border border-border-strong bg-surface-sunken px-1.5 py-0.5 font-mono text-content"
 										>
-											{shortcut.keys}
+											{shortcutKeysText(shortcut.keys, $locale)}
 										</kbd>
 									</dd>
 								</div>

@@ -195,7 +195,7 @@
 	import { SceneHistory, takeSnapshot, type SceneSnapshot } from '$lib/scene/scene-history';
 	import type { SceneNode } from '$lib/scene/objects.svelte';
 	import CalibrationDialog from '$lib/calibration/CalibrationDialog.svelte';
-	import type { EmbossParams } from '$lib/scene/gizmos/emboss';
+	import { embossPartOffset, type EmbossParams } from '$lib/scene/gizmos/emboss';
 	import EngineCalibrationDialog from '$lib/calibration/EngineCalibrationDialog.svelte';
 	import FlowRateDialog from '$lib/calibration/FlowRateDialog.svelte';
 	import PresetBundleDialog, { type BundlePresetRef } from '$lib/presets/PresetBundleDialog.svelte';
@@ -294,6 +294,7 @@
 	} from '$lib/scene/gizmos/painting/paint-overlay';
 	import { StrokeRecorder } from '$lib/scene/gizmos/painting/stroke';
 	import type { CutPlane } from '$lib/scene/tools/cut';
+	import { cutGuidePlane, measureGuides, type Axis as CutAxis } from '$lib/scene/guides';
 	import type { BooleanOp } from '$lib/scene/tools/BooleanTool.svelte';
 	import {
 		instancesOfModel,
@@ -488,6 +489,20 @@
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const volumeMeshRequests = new Set<string>();
 	let measuredPoints = $state<[number, number, number][]>([]);
+	// Repères 3D des outils (phase 26) : plan de l'outil Coupe, points de Mesure.
+	let cutPreview = $state<{ axis: CutAxis; offset: number } | null>(null);
+	const sceneGuides = $derived.by(() => {
+		if (tools.active === 'cut' && cutPreview && activeObject)
+			return {
+				plane: cutGuidePlane(cutPreview.axis, cutPreview.offset, activeBounds, {
+					origin: activeObject.position ?? [0, 0, 0],
+					scale: activeObject.scale ?? [1, 1, 1]
+				})
+			};
+		if (tools.active === 'measure' && measuredPoints.length > 0)
+			return measureGuides(measuredPoints);
+		return null;
+	});
 	const measurement = $derived(
 		measuredPoints.length === 2 ? measurePoints(measuredPoints[0], measuredPoints[1]) : null
 	);
@@ -2526,8 +2541,7 @@
 	function rememberShownResult(previous: string) {
 		if (session.phase !== 'preview' || !session.gcodeId) return;
 		if (Object.values(plateResults).some((r) => r.gcodeId === session.gcodeId)) return;
-		const owner =
-			restoredPlateIndex !== null ? plates.list()[restoredPlateIndex]?.id : previous;
+		const owner = restoredPlateIndex !== null ? plates.list()[restoredPlateIndex]?.id : previous;
 		if (!owner) return;
 		plateResults = {
 			...plateResults,
@@ -3089,6 +3103,45 @@
 					null,
 					[target.id]
 				);
+				return;
+			}
+			// En relief sur l'objet sélectionné (gizmo Emboss d'Orca) : le relief devient
+			// une pièce de l'objet, posée sur sa face supérieure, au lieu d'un objet
+			// séparé superposé au centre du plateau.
+			const host =
+				params.embossed && params.onObject !== false && selId
+					? (sceneObjects.find((o) => o.id === selId) ?? null)
+					: null;
+			if (host && res.parts[0]) {
+				const part = res.parts[0];
+				const { mesh } = await loadCenteredMesh(part.model.id);
+				projectModelIds.add(part.model.id);
+				volumeMeshRequests.add(part.model.id);
+				volumeMeshes = { ...volumeMeshes, [part.model.id]: mesh };
+				const pb = meshBounds(mesh);
+				const size = [0, 1, 2].map((a) => Math.round((pb.max[a] - pb.min[a]) * 1000) / 1000) as [
+					number,
+					number,
+					number
+				];
+				const name =
+					params.source === 'svg' ? 'Forme SVG' : `Texte « ${params.text.trim().slice(0, 24)} »`;
+				const volume: SceneVolume = {
+					id: crypto.randomUUID(),
+					type: 'part',
+					name,
+					shape: 'mesh',
+					modelId: part.model.id,
+					size,
+					offset: embossPartOffset(meshBounds(host.mesh).max[2], size),
+					settings: {}
+				};
+				volumesByObject = {
+					...volumesByObject,
+					[host.id]: [...(volumesByObject[host.id] ?? []), volume]
+				};
+				ws = setSelection(ws, new Set([host.id]));
+				saveMessage = `${label} : pièce « ${name} » ajoutée sur « ${tree.get(host.id)?.name ?? 'objet'} ».`;
 				return;
 			}
 			const ids = await applyMeshOpParts(res, null, []);
@@ -6525,7 +6578,7 @@
 			<span
 				class="ml-2 hidden min-w-0 truncate text-sm text-content-subtle 2xl:inline"
 				data-testid="project-name"
-				title={data.project.name}>{data.project.name}</span
+				title={savedName || data.project.name}>{savedName || data.project.name}</span
 			>
 		</div>
 
@@ -7792,6 +7845,7 @@
 						ondragchange={onGizmoDragChange}
 						{sectionRatio}
 						clipPlane={sectionClip}
+						guides={sceneGuides}
 						oncameradir={(forward) => (cameraForward = forward)}
 						onpickobject={() => (selectedVolumeId = null)}
 					/>
@@ -7877,6 +7931,11 @@
 							<CutTool
 								min={activeBounds.min}
 								max={activeBounds.max}
+								frame={{
+									origin: activeObject?.position ?? [0, 0, 0],
+									scale: activeObject?.scale ?? [1, 1, 1]
+								}}
+								onpreview={(p) => (cutPreview = p)}
 								busy={meshOpBusy}
 								oncut={(plane, spacing, keep) =>
 									cutObject(activeObject?.id ?? null, plane, spacing, keep)}

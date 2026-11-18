@@ -44,6 +44,25 @@ export function matchesQuery(def: ParamDef, query: string): boolean {
 	);
 }
 
+/**
+ * Pertinence d'un réglage pour une requête (plus petit = plus pertinent) :
+ * 0 libellé (traduit ou anglais) qui commence par la requête, 1 un mot du
+ * libellé qui commence par la requête, 2 libellé qui la contient, 3 clé,
+ * 4 infobulle seule, 5 aucune correspondance. Sert à trier les résultats de
+ * recherche pour que « remplissage » propose d'abord « Densité du
+ * remplissage » plutôt qu'un réglage qui ne le cite que dans son infobulle.
+ */
+export function queryRank(def: ParamDef, query: string): number {
+	const q = fold(query.trim());
+	if (!q) return 0;
+	const labels = [tr(def.label), def.label].map(fold);
+	if (labels.some((l) => l.startsWith(q))) return 0;
+	if (labels.some((l) => l.split(/[^a-z0-9]+/).some((w) => w.startsWith(q)))) return 1;
+	if (labels.some((l) => l.includes(q))) return 2;
+	if (fold(def.key).includes(q)) return 3;
+	return matchesQuery(def, query) ? 4 : 5;
+}
+
 /** Visibilité d'une option paramètre selon le mode et la recherche. */
 export function optionVisible(def: ParamDef, mode: DisplayMode, query: string): boolean {
 	if (query.trim()) {

@@ -6,7 +6,7 @@
 
 import { PARAMS, type ParamDef } from '../../generated/params';
 import { orcaDefault } from '$lib/settings/editing';
-import { optionVisible, type DisplayMode } from '$lib/settings/filter';
+import { optionVisible, queryRank, type DisplayMode } from '$lib/settings/filter';
 
 /** Clés de PrintRegionConfig (réglables par objet et par volume). */
 export const REGION_KEYS: readonly string[] = [
@@ -308,13 +308,24 @@ export function searchOverridable(
 	limit = 30,
 	filamentCount = 1
 ): ParamDef[] {
-	return allowedKeys(isPart)
-		.filter((k) => !(k in existing))
-		.map((k) => PARAMS[k])
-		.filter((def) => !isImproperCategory(def.category, filamentCount, isPart))
-		.filter((def) => optionVisible(def, mode, query))
-		.sort((a, b) => a.category.localeCompare(b.category) || a.key.localeCompare(b.key))
-		.slice(0, limit);
+	return (
+		allowedKeys(isPart)
+			.filter((k) => !(k in existing))
+			.map((k) => PARAMS[k])
+			.filter((def) => !isImproperCategory(def.category, filamentCount, isPart))
+			.filter((def) => optionVisible(def, mode, query))
+			.map((def) => ({ def, rank: queryRank(def, query) }))
+			// Avec une requête : les plus pertinents d'abord (libellé avant infobulle),
+			// puis catégorie/clé ; les groupes suivent l'ordre du meilleur résultat.
+			.sort(
+				(a, b) =>
+					a.rank - b.rank ||
+					a.def.category.localeCompare(b.def.category) ||
+					a.def.key.localeCompare(b.def.key)
+			)
+			.map(({ def }) => def)
+			.slice(0, limit)
+	);
 }
 
 /**
