@@ -434,6 +434,21 @@
 						mixedCtl,
 						'mixed-temperature'
 					)}
+					{#snippet fmapCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-filament-map-popup"
+							aria-labelledby="pref-filament-map-popup-label"
+							checked={prefs.filamentMapPopup}
+							onchange={(e) => update({ filamentMapPopup: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Choisir la répartition des filaments avant de trancher',
+						'Imprimantes à deux buses (Bambu Lab H2D) : une fenêtre propose, à chaque tranchage, la buse de chaque filament (automatique ou manuelle).',
+						fmapCtl,
+						'filament-map-popup'
+					)}
 					{#snippet stepCtl()}
 						<input
 							type="checkbox"

@@ -1,9 +1,11 @@
 // Préférences applicatives (menu « Preferences ») : sous-ensemble de
 // PreferencesDialog.cpp d'Orca qui a un sens dans un navigateur — général,
 // contrôle (comportement, tranchage, caméra/souris), presets, choix mémorisés.
-// Persistées dans localStorage **par utilisateur** (clé suffixée par l'id de
-// session, repli sur la clé globale historique) ; le thème et la langue
-// délèguent à leurs modules (`$lib/theme`, `$lib/i18n`).
+// Persistées **sur le serveur, par compte** (GET/PUT /api/me/preferences :
+// lecture au changement de session, écriture différée) ; localStorage sert de
+// cache (clé suffixée par l'id du compte + copie sous la clé historique). Si
+// le serveur n'a encore rien ({}), les préférences locales y sont migrées une
+// fois. Le thème et la langue délèguent à leurs modules (`$lib/theme`, `$lib/i18n`).
 //
 // Les réglages lus hors de la page (scène 3D, aperçu, sélecteurs de presets)
 // passent par le store `appPreferences`.
@@ -55,6 +57,9 @@ export interface AppPreferences {
 	keepPainting: boolean;
 	/** Orca `enable_high_low_temp_mixed_printing` : lève le refus des filaments haute/basse température. */
 	mixedTemperature: boolean;
+	/** Orca `pop_up_filament_map_dialog` : proposer la répartition des filaments par buse
+	 *  avant chaque tranchage (imprimantes à deux buses). */
+	filamentMapPopup: boolean;
 }
 
 export const PREFERENCES_KEY = 'web-slicer.preferences';
@@ -81,7 +86,8 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
 	showUnsupportedPresets: false,
 	unitConversionPrompt: true,
 	keepPainting: false,
-	mixedTemperature: false
+	mixedTemperature: false,
+	filamentMapPopup: false
 };
 
 const ORBIT_MIN = 0.05;
@@ -132,7 +138,8 @@ export function parsePreferences(raw: string | null): AppPreferences {
 			showUnsupportedPresets: bool(value.showUnsupportedPresets, d.showUnsupportedPresets),
 			unitConversionPrompt: bool(value.unitConversionPrompt, d.unitConversionPrompt),
 			keepPainting: bool(value.keepPainting, d.keepPainting),
-			mixedTemperature: bool(value.mixedTemperature, d.mixedTemperature)
+			mixedTemperature: bool(value.mixedTemperature, d.mixedTemperature),
+			filamentMapPopup: bool(value.filamentMapPopup, d.filamentMapPopup)
 		};
 	} catch {
 		return { ...DEFAULT_PREFERENCES, camera: { ...CAMERA_DEFAULTS } };
@@ -163,13 +170,156 @@ function readRaw(user: string | null): string | null {
 /** Préférences courantes, partagées (scène 3D, aperçu, sélecteurs). */
 export const appPreferences = writable<AppPreferences>(parsePreferences(null));
 
-/** Change d'utilisateur (session) : recharge ses préférences. */
+// — Synchronisation serveur ————————————————————————————————————————————
+/** Transport des préférences du compte (GET/PUT /api/me/preferences). */
+export interface PreferencesRemote {
+	load(): Promise<Record<string, unknown>>;
+	save(doc: Record<string, unknown>, opts?: { keepalive?: boolean }): Promise<void>;
+}
+
+/** Délai d'écriture différée (les réglages en rafale ne font qu'un PUT). */
+export const SAVE_DELAY_MS = 800;
+const MIGRATED_KEY = `${PREFERENCES_KEY}.migrated`;
+
+const httpRemote: PreferencesRemote = {
+	async load() {
+		const res = await fetch('/api/me/preferences', { credentials: 'include' });
+		if (!res.ok) throw new Error(`préférences : HTTP ${res.status}`);
+		const doc = (await res.json()) as unknown;
+		return doc && typeof doc === 'object' && !Array.isArray(doc)
+			? (doc as Record<string, unknown>)
+			: {};
+	},
+	async save(doc, opts) {
+		const res = await fetch('/api/me/preferences', {
+			method: 'PUT',
+			credentials: 'include',
+			keepalive: opts?.keepalive,
+			headers: { 'content-type': 'application/json' },
+			body: JSON.stringify(doc)
+		});
+		if (!res.ok) throw new Error(`préférences : HTTP ${res.status}`);
+	}
+};
+
+// Navigateur seulement (les tests unitaires tournent sous Node sans backend).
+let remote: PreferencesRemote | null = typeof window !== 'undefined' ? httpRemote : null;
+/** Dernier document serveur : ses clés inconnues sont conservées à l'écriture. */
+let serverDoc: Record<string, unknown> = {};
+/** Génération de session : une lecture serveur périmée est ignorée. */
+let generation = 0;
+/** Modifié localement depuis le début de la lecture serveur : le local gagne. */
+let dirty = false;
+let saveTimer: ReturnType<typeof setTimeout> | null = null;
+let pending: AppPreferences | null = null;
+let inflight: Promise<void> = Promise.resolve();
+
+/** Remplace le transport (tests) ; `null` = local seulement. */
+export function setPreferencesRemote(next: PreferencesRemote | null): void {
+	remote = next;
+}
+
+function writeCache(prefs: AppPreferences): void {
+	try {
+		localStorage.setItem(preferencesKey(), JSON.stringify(prefs));
+		// Copie sous la clé historique (dernier compte actif) : compatibilité avec
+		// les lecteurs existants ; la clé par compte reste la référence.
+		if (userScope) localStorage.setItem(PREFERENCES_KEY, JSON.stringify(prefs));
+	} catch {
+		// Stockage indisponible : préférence valable pour la session seulement.
+	}
+}
+
+function pushNow(prefs: AppPreferences, keepalive = false): Promise<void> {
+	if (!remote || !userScope) return Promise.resolve();
+	const doc = { ...serverDoc, ...prefs } as Record<string, unknown>;
+	const user = userScope;
+	const target = remote;
+	inflight = target
+		.save(doc, { keepalive })
+		.then(() => {
+			if (userScope === user) serverDoc = doc;
+		})
+		.catch(() => {
+			// Hors ligne / session expirée : le cache local garde la valeur.
+		});
+	return inflight;
+}
+
+/** Écrit tout de suite l'éventuelle écriture différée (fermeture de page, tests). */
+export function flushPreferences(keepalive = false): Promise<void> {
+	if (saveTimer) clearTimeout(saveTimer);
+	saveTimer = null;
+	const prefs = pending;
+	pending = null;
+	return prefs ? pushNow(prefs, keepalive) : inflight;
+}
+
+function schedulePush(prefs: AppPreferences): void {
+	if (!remote || !userScope) return;
+	pending = prefs;
+	if (saveTimer) clearTimeout(saveTimer);
+	saveTimer = setTimeout(() => void flushPreferences(), SAVE_DELAY_MS);
+}
+
+if (typeof window !== 'undefined')
+	window.addEventListener('pagehide', () => void flushPreferences(true));
+
+/** Lecture serveur du compte `user` ; migration unique si le serveur est vide. */
+async function pullRemote(user: string, gen: number, localRaw: string | null): Promise<void> {
+	if (!remote) return;
+	let doc: Record<string, unknown>;
+	try {
+		doc = await remote.load();
+	} catch {
+		return; // Hors ligne : on reste sur le cache local.
+	}
+	if (gen !== generation || userScope !== user) return;
+	serverDoc = doc;
+	if (Object.keys(doc).length === 0) {
+		// Serveur vierge : reprise unique des préférences locales de ce navigateur.
+		let migrated = false;
+		try {
+			migrated = localStorage.getItem(`${MIGRATED_KEY}:${user}`) !== null;
+		} catch {
+			// Stockage indisponible.
+		}
+		if (migrated || localRaw === null) return;
+		await pushNow(get(appPreferences));
+		try {
+			if (userScope === user) localStorage.setItem(`${MIGRATED_KEY}:${user}`, '1');
+		} catch {
+			// Stockage indisponible.
+		}
+		return;
+	}
+	if (dirty) return; // Modifié pendant la lecture : l'écriture différée fera foi.
+	const prefs = parsePreferences(JSON.stringify(doc));
+	appPreferences.set(prefs);
+	writeCache(prefs);
+}
+
+/** Change d'utilisateur (session) : préférences du cache, puis celles du serveur. */
 export function setPreferencesUser(user: string | null): AppPreferences {
 	if (user === userScope) return get(appPreferences);
+	// L'écriture différée du compte précédent ne part pas sous la nouvelle session.
+	if (saveTimer) clearTimeout(saveTimer);
+	saveTimer = null;
+	pending = null;
+	serverDoc = {};
+	dirty = false;
 	userScope = user;
-	const prefs = parsePreferences(readRaw(user));
+	const gen = ++generation;
+	const raw = readRaw(user);
+	const prefs = parsePreferences(raw);
 	appPreferences.set(prefs);
+	if (user && remote) inflight = pullRemote(user, gen, raw);
 	return prefs;
+}
+
+/** Attend la lecture / écriture serveur en cours (tests, chargement). */
+export function preferencesSettled(): Promise<void> {
+	return inflight;
 }
 
 export function loadPreferences(): AppPreferences {
@@ -180,14 +330,9 @@ export function loadPreferences(): AppPreferences {
 
 export function savePreferences(prefs: AppPreferences): void {
 	appPreferences.set(prefs);
-	try {
-		localStorage.setItem(preferencesKey(), JSON.stringify(prefs));
-		// Copie sous la clé historique (dernier compte actif) : compatibilité avec
-		// les lecteurs existants ; la clé par compte reste la référence.
-		if (userScope) localStorage.setItem(PREFERENCES_KEY, JSON.stringify(prefs));
-	} catch {
-		// Stockage indisponible : préférence valable pour la session seulement.
-	}
+	dirty = true;
+	writeCache(prefs);
+	schedulePush(prefs);
 }
 
 /** Lecture ponctuelle hors composant (handlers). */

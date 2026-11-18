@@ -50,7 +50,17 @@
 	import { buildSliceDraft } from '$lib/editor/slice-draft';
 	import { checkFilamentCompatibility, compatibilityText } from '$lib/editor/filament-compat';
 	import { paintedChannels, remapPaint } from '$lib/editor/keep-paint';
-	import { extruderCount } from '$lib/editor/filament-map';
+	import {
+		effectiveMapMode,
+		extruderCount,
+		filamentMapChoice,
+		isBambuMachine,
+		listedFilaments,
+		readFilamentMap,
+		shouldPromptFilamentMap,
+		type FilamentMapMode
+	} from '$lib/editor/filament-map';
+	import FilamentMapDialog from '$lib/editor/FilamentMapDialog.svelte';
 	import { buildZip } from '$lib/export/zip';
 	import { modelsFromZip, presetsFromFiles } from '$lib/editor/menu-files';
 	import { tabTogglesView } from '$lib/editor/tab-focus';
@@ -5168,11 +5178,73 @@
 
 	// Tranche tous les plateaux (« Slice all ») après sauvegarde et attend les
 	// jobs. Renvoie les jobs réussis (ordre des plateaux) et le nombre d'échecs.
+	// Répartition des filaments par buse avant le tranchage (Orca
+	// try_pop_up_before_slice) : deux buses Bambu Lab + préférence active.
+	// Résout `true` pour trancher (choix écrit sur le(s) plateau(x)), `false` = annulé.
+	let filamentMapPrompt = $state<{
+		allPlates: boolean;
+		mode: FilamentMapMode;
+		map: number[];
+		filaments: number[];
+		resolve: (ok: boolean) => void;
+	} | null>(null);
+	function askFilamentMap(allPlates: boolean): Promise<boolean> {
+		const extruders = extruderCount(machineValues.nozzle_diameter);
+		const printerName = machinePresets.find((m) => m.id === activePresets.printer)?.name;
+		if (
+			!shouldPromptFilamentMap({
+				enabled: $appPreferences.filamentMapPopup,
+				extruders,
+				bambu: isBambuMachine(machineValues, printerName)
+			})
+		)
+			return Promise.resolve(true);
+		const settings = plates.list().find((p) => p.id === plates.activeId)?.settings ?? {};
+		const count = filamentSlotColors.length;
+		const used: number[] = [];
+		if (!allPlates)
+			for (const o of activeSceneObjects) {
+				if (!tree.isPrintable(o.id)) continue;
+				used.push(clampExtruder(tree.effectiveExtruder(o.id), Math.max(1, count)) || 1);
+				for (const v of volumesByObject[o.id] ?? [])
+					if (v.type === 'part' && v.extruder) used.push(v.extruder);
+			}
+		return new Promise((resolve) => {
+			filamentMapPrompt = {
+				allPlates,
+				mode: effectiveMapMode(
+					settings.filament_map_mode,
+					processValues.filament_map_mode ?? machineValues.filament_map_mode
+				),
+				map: readFilamentMap(settings.filament_map, count, extruders),
+				filaments: listedFilaments(used, count),
+				resolve
+			};
+		});
+	}
+	function closeFilamentMap(choice: { mode: FilamentMapMode; map: number[] } | null) {
+		const prompt = filamentMapPrompt;
+		filamentMapPrompt = null;
+		if (!prompt) return;
+		if (choice) {
+			const ids = prompt.allPlates
+				? plates.list().map((p) => p.id)
+				: plates.activeId
+					? [plates.activeId]
+					: [];
+			for (const id of ids)
+				for (const [key, value] of filamentMapChoice(choice.mode, choice.map))
+					plates.setPlateSetting(id, key, value);
+		}
+		prompt.resolve(choice !== null);
+	}
+
 	async function sliceAllPlatesJobs(
 		label: string,
 		progress: (message: string) => void
 	): Promise<{ succeeded: JobResponse[]; missed: number; firstError: string | null }> {
 		await editorReady;
+		if (!(await askFilamentMap(true))) throw new Error('tranchage annulé');
 		const saved = await save();
 		if (saved.status !== 'saved')
 			throw new Error(saved.status === 'error' ? saved.message : 'sauvegarde impossible');
@@ -5798,6 +5870,7 @@
 		// Module de l'aperçu chargé pendant le tranchage (pas à l'ouverture).
 		void loadPreviewScene();
 		await editorReady;
+		if (!(await askFilamentMap(false))) return;
 		const saved = await save();
 		if (saved.status === 'conflict') {
 			session = sliceFailed(
@@ -6280,6 +6353,19 @@
 				if (dontAsk) savePreferences({ ...currentPreferences(), unitConversionPrompt: false });
 				unitPending = null;
 			}}
+		/>
+	{/if}
+	{#if filamentMapPrompt}
+		<FilamentMapDialog
+			extruders={extruderCount(machineValues.nozzle_diameter)}
+			colours={filamentSlotColors}
+			mode={filamentMapPrompt.mode}
+			map={filamentMapPrompt.map}
+			filaments={filamentMapPrompt.filaments}
+			allPlates={filamentMapPrompt.allPlates}
+			onconfirm={(mode, map) => closeFilamentMap({ mode, map })}
+			oncancel={() => closeFilamentMap(null)}
+			ondisable={() => savePreferences({ ...currentPreferences(), filamentMapPopup: false })}
 		/>
 	{/if}
 	{#if handySuggestion}
