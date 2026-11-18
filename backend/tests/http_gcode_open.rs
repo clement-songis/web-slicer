@@ -8,7 +8,7 @@ use axum::http::{header, Request, StatusCode};
 use axum::response::Response;
 use axum::Router;
 use backend::adapters::files::FileStore;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::domain::Storage;
 use serde_json::Value;
 use tower::ServiceExt;
@@ -32,7 +32,7 @@ G1 X0 Y0 E2.0 F1800
 async fn app() -> (tempfile::TempDir, Router) {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("open.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let state = backend::http::state::AppState::new(
         storage as Arc<dyn Storage>,
         FileStore::new(dir.path().join("data")),

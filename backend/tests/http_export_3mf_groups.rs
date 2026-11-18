@@ -13,7 +13,7 @@ use axum::http::{header, Request, StatusCode};
 use axum::response::Response;
 use axum::Router;
 use backend::adapters::files::FileStore;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::domain::repo::{NewModel, NewProject};
 use backend::domain::{
     ModelFormat, Preset, PresetId, PresetKind, PresetOrigin, ProjectId, Storage, UserId,
@@ -35,7 +35,7 @@ endsolid t
 
 struct Harness {
     _dir: tempfile::TempDir,
-    storage: Arc<SqliteStorage>,
+    storage: Arc<AnyStorage>,
     files: FileStore,
     app: Router,
 }
@@ -43,7 +43,7 @@ struct Harness {
 async fn harness() -> Harness {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("groups.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
     let state = backend::http::state::AppState::new(
         Arc::clone(&storage) as Arc<dyn Storage>,

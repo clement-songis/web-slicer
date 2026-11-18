@@ -8,7 +8,7 @@ use axum::http::{header, Request, StatusCode};
 use axum::response::Response;
 use axum::Router;
 use backend::adapters::files::FileStore;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::http::routes::router;
 use backend::http::state::AppState;
 use std::sync::Arc;
@@ -23,7 +23,7 @@ async fn app() -> (tempfile::TempDir, Router) {
 async fn app_with_profiles(profiles: Option<std::path::PathBuf>) -> (tempfile::TempDir, Router) {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("admin.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
     let mut state = AppState::new(storage, files);
     if let Some(p) = profiles {

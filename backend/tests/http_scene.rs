@@ -7,7 +7,7 @@ use axum::http::{header, Request, StatusCode};
 use axum::response::Response;
 use axum::Router;
 use backend::adapters::files::FileStore;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::http::routes::router;
 use backend::http::state::AppState;
 use std::sync::Arc;
@@ -18,7 +18,7 @@ async fn app() -> (tempfile::TempDir, Router, AppState) {
     let _ = tracing_subscriber::fmt().with_test_writer().try_init();
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("scene.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
     let state = AppState::new(storage, files);
     let session_layer = SessionManagerLayer::new(MemoryStore::default()).with_secure(false);

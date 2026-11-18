@@ -1,15 +1,15 @@
 //! Service d'authentification (T028) sur stockage SQLite réel : bootstrap du
 //! premier admin, politiques d'inscription, invitations, identifiants.
 
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::auth::{authenticate, register, AuthError};
 use backend::domain::{RegistrationPolicy, Role, Storage};
 use time::{Duration, OffsetDateTime};
 
-async fn storage() -> (tempfile::TempDir, SqliteStorage) {
+async fn storage() -> (tempfile::TempDir, AnyStorage) {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("auth.db").display());
-    let s = SqliteStorage::connect(&url).await.unwrap();
+    let s = AnyStorage::connect_test(&url).await.unwrap();
     (dir, s)
 }
 

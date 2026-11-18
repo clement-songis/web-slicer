@@ -15,7 +15,7 @@ use axum::response::Response;
 use axum::Router;
 use backend::adapters::files::FileStore;
 use backend::adapters::moonraker::MoonrakerClient;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::auth::SecretBox;
 use backend::domain::repo::{NewGcode, NewJob, NewProject};
 use backend::domain::{Preset, PresetKind, PresetOrigin, Storage, UserId};
@@ -29,7 +29,7 @@ const FIFTY_MB: usize = 50 * 1024 * 1024;
 
 struct Harness {
     _dir: tempfile::TempDir,
-    storage: Arc<SqliteStorage>,
+    storage: Arc<AnyStorage>,
     files: FileStore,
     app: Router,
 }
@@ -37,7 +37,7 @@ struct Harness {
 async fn harness() -> Harness {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("integration.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
     let state = backend::http::state::AppState::new(
         Arc::clone(&storage) as Arc<dyn Storage>,
@@ -84,7 +84,7 @@ async fn register(app: &Router, email: &str) -> String {
     cookie(&resp)
 }
 
-async fn user_id(storage: &SqliteStorage, email: &str) -> UserId {
+async fn user_id(storage: &AnyStorage, email: &str) -> UserId {
     storage
         .users()
         .find_by_email(email)
@@ -128,7 +128,7 @@ async fn json_body(resp: Response) -> Value {
     serde_json::from_slice(&bytes).unwrap()
 }
 
-async fn seed_machine_preset(storage: &SqliteStorage, owner: UserId) -> String {
+async fn seed_machine_preset(storage: &AnyStorage, owner: UserId) -> String {
     let preset = storage
         .presets()
         .create_user_preset(

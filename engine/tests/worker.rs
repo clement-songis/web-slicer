@@ -92,6 +92,83 @@ fn worker_crash_becomes_error() {
     assert_eq!(err.code, EngineErrorCode::EngineCrashed, "{err}");
 }
 
+#[test]
+fn hung_worker_is_killed_after_the_timeout() {
+    let work = tempfile::tempdir().unwrap();
+    let (sink, _seen) = collecting_sink();
+    let started = std::time::Instant::now();
+    let err = worker::drive_with_timeout(
+        &["self-test", "--hang", &work.path().to_string_lossy()],
+        &sink,
+        &CancelToken::new(),
+        std::time::Duration::from_millis(800),
+    )
+    .expect_err("un worker bloqué doit être tué au délai");
+    assert_eq!(err.code, EngineErrorCode::EngineCrashed, "{err}");
+    assert!(err.message.contains("délai dépassé"), "{err}");
+    assert!(
+        started.elapsed() < std::time::Duration::from_secs(10),
+        "rendu peu après le délai : {:?}",
+        started.elapsed()
+    );
+}
+
+#[test]
+fn verbose_stderr_does_not_block_the_worker() {
+    // 1 Mio sur stderr (> pipe de 64 Kio) : sans lecture côté parent, le
+    // worker resterait bloqué en écriture jusqu'au délai.
+    let work = tempfile::tempdir().unwrap();
+    let (sink, _seen) = collecting_sink();
+    let json = worker::drive_with_timeout(
+        &[
+            "self-test",
+            "--stderr-flood",
+            &work.path().to_string_lossy(),
+        ],
+        &sink,
+        &CancelToken::new(),
+        std::time::Duration::from_secs(20),
+    )
+    .expect("le journal stderr est vidé en continu");
+    assert!(json.contains("self-test.gcode"), "{json}");
+}
+
+#[cfg(target_os = "linux")]
+#[test]
+fn worker_exits_when_its_parent_dies() {
+    // Un shell lance le worker (bloqué) en arrière-plan, affiche son PID puis
+    // meurt : le worker, orphelin, doit se terminer de lui-même.
+    let work = tempfile::tempdir().unwrap();
+    let out = Command::new("sh")
+        .arg("-c")
+        .arg(format!(
+            "'{}' self-test --hang '{}' >/dev/null 2>&1 & echo $!; sleep 0.5",
+            worker_binary(),
+            work.path().display()
+        ))
+        .output()
+        .expect("sh");
+    let pid: u32 = String::from_utf8_lossy(&out.stdout)
+        .trim()
+        .parse()
+        .expect("PID du worker");
+    let alive = |pid: u32| {
+        std::fs::read_to_string(format!("/proc/{pid}/stat"))
+            .ok()
+            .and_then(|s| s.rsplit(')').next().map(|r| r.trim().to_string()))
+            .is_some_and(|rest| !rest.starts_with('Z') && !rest.starts_with('X'))
+    };
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    while alive(pid) && std::time::Instant::now() < deadline {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    let still_alive = alive(pid);
+    if still_alive {
+        let _ = Command::new("kill").arg("-9").arg(pid.to_string()).status();
+    }
+    assert!(!still_alive, "worker {pid} orphelin toujours vivant");
+}
+
 /// Chemin du binaire `engine-worker` bâti par cargo pour ce test d'intégration.
 fn worker_binary() -> &'static str {
     env!("CARGO_BIN_EXE_engine-worker")

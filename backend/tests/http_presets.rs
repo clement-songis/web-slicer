@@ -8,7 +8,7 @@ use axum::http::{header, Request, StatusCode};
 use axum::response::Response;
 use axum::Router;
 use backend::adapters::files::FileStore;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::domain::{Preset, PresetId, PresetKind, PresetOrigin, Storage};
 use backend::http::routes::router;
 use backend::http::state::AppState;
@@ -45,7 +45,7 @@ fn sys(
 async fn app() -> (tempfile::TempDir, Router) {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("presets.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
 
     // Parent abstrait (masqué de la liste) porteur des défauts hérités.
     let process_common = sys(
@@ -400,7 +400,7 @@ async fn resolved_homonym_copy_inherits_system_parent() {
 async fn create_options_list_orca_dialog_data_and_system_templates() {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("p.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let base = sys(
         PresetKind::Filament,
         "fdm_filament_exotic",

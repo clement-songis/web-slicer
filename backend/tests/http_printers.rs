@@ -12,7 +12,7 @@ use axum::http::{header, Request, StatusCode};
 use axum::response::Response;
 use axum::Router;
 use backend::adapters::files::FileStore;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::auth::SecretBox;
 use backend::domain::repo::{NewGcode, NewJob, NewProject};
 use backend::domain::{Preset, PresetKind, PresetOrigin, PrinterId, ProjectId, Storage, UserId};
@@ -23,7 +23,7 @@ use tower_sessions::{MemoryStore, SessionManagerLayer};
 
 struct Harness {
     _dir: tempfile::TempDir,
-    storage: Arc<SqliteStorage>,
+    storage: Arc<AnyStorage>,
     files: FileStore,
     app: Router,
 }
@@ -31,7 +31,7 @@ struct Harness {
 async fn harness() -> Harness {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("printers.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
     let state = backend::http::state::AppState::new(
         Arc::clone(&storage) as Arc<dyn Storage>,
@@ -79,7 +79,7 @@ async fn register(app: &Router, email: &str) -> String {
     cookie(&resp)
 }
 
-async fn user_id(storage: &SqliteStorage, email: &str) -> UserId {
+async fn user_id(storage: &AnyStorage, email: &str) -> UserId {
     storage
         .users()
         .find_by_email(email)
@@ -90,7 +90,7 @@ async fn user_id(storage: &SqliteStorage, email: &str) -> UserId {
 }
 
 /// Crée un preset machine pour satisfaire la FK `machine_preset_id`.
-async fn seed_machine_preset(storage: &SqliteStorage, owner: UserId) -> String {
+async fn seed_machine_preset(storage: &AnyStorage, owner: UserId) -> String {
     let preset = storage
         .presets()
         .create_user_preset(
@@ -116,7 +116,7 @@ async fn seed_machine_preset(storage: &SqliteStorage, owner: UserId) -> String {
 }
 
 /// Crée un preset machine **instanciable** d'une marque/nom donnés.
-async fn seed_machine(storage: &SqliteStorage, owner: UserId, vendor: &str, name: &str) {
+async fn seed_machine(storage: &AnyStorage, owner: UserId, vendor: &str, name: &str) {
     storage
         .presets()
         .create_user_preset(

@@ -7,16 +7,16 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use async_trait::async_trait;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::domain::repo::{NewJob, NewProject, NewUser};
 use backend::domain::{JobId, JobStatus, ProjectId, Role, SlicingJob, Storage, UserId};
 use backend::queue::{JobContext, JobRunner, Queue, QueueConfig, RunOutcome};
 use serde_json::json;
 
-async fn storage() -> (tempfile::TempDir, Arc<SqliteStorage>) {
+async fn storage() -> (tempfile::TempDir, Arc<AnyStorage>) {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("queue.db").display());
-    (dir, Arc::new(SqliteStorage::connect(&url).await.unwrap()))
+    (dir, Arc::new(AnyStorage::connect_test(&url).await.unwrap()))
 }
 
 async fn make_project(s: &dyn Storage) -> (UserId, ProjectId) {

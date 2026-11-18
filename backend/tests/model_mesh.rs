@@ -14,16 +14,16 @@ use tower::ServiceExt;
 use tower_sessions::{MemoryStore, SessionManagerLayer};
 
 use backend::adapters::files::FileStore;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::domain::{ModelFormat, NewModel, NewProject, Storage, UserId};
 use backend::http::routes::router;
 use backend::http::state::AppState;
 
 /// Harnais exposant le stockage concret (pour ensemencer) et le routeur HTTP.
-async fn harness() -> (tempfile::TempDir, Arc<SqliteStorage>, FileStore, Router) {
+async fn harness() -> (tempfile::TempDir, Arc<AnyStorage>, FileStore, Router) {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("models.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
     let state = AppState::new(storage.clone(), files.clone());
     let session_layer = SessionManagerLayer::new(MemoryStore::default()).with_secure(false);
@@ -32,7 +32,7 @@ async fn harness() -> (tempfile::TempDir, Arc<SqliteStorage>, FileStore, Router)
 }
 
 /// Enregistre un compte via HTTP et renvoie (cookie de session, id utilisateur).
-async fn register(app: &Router, storage: &SqliteStorage, email: &str) -> (String, UserId) {
+async fn register(app: &Router, storage: &AnyStorage, email: &str) -> (String, UserId) {
     let resp = app
         .clone()
         .oneshot(
@@ -69,7 +69,7 @@ async fn register(app: &Router, storage: &SqliteStorage, email: &str) -> (String
 
 /// Crée un modèle rattaché à un nouveau projet du compte, non converti.
 async fn create_model(
-    storage: &SqliteStorage,
+    storage: &AnyStorage,
     user: UserId,
     format: ModelFormat,
 ) -> backend::domain::ModelId {

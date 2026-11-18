@@ -10,7 +10,7 @@ use axum::http::{header, Request, StatusCode};
 use axum::response::Response;
 use axum::Router;
 use backend::adapters::files::FileStore;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::domain::repo::{JobOutcome, NewJob, NewProject};
 use backend::domain::{ProjectId, Storage, UserId};
 use backend::http::routes::router;
@@ -23,7 +23,7 @@ use tower_sessions::{MemoryStore, SessionManagerLayer};
 
 struct Harness {
     _dir: tempfile::TempDir,
-    storage: Arc<SqliteStorage>,
+    storage: Arc<AnyStorage>,
     files: FileStore,
     app: Router,
 }
@@ -31,7 +31,7 @@ struct Harness {
 async fn harness() -> Harness {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("thumbs.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
     let state = AppState::new(Arc::clone(&storage) as Arc<dyn Storage>, files.clone());
     let session_layer = SessionManagerLayer::new(MemoryStore::default()).with_secure(false);
@@ -99,7 +99,7 @@ async fn body(resp: Response) -> Vec<u8> {
         .to_vec()
 }
 
-async fn new_project(storage: &SqliteStorage, owner: UserId, name: &str) -> ProjectId {
+async fn new_project(storage: &AnyStorage, owner: UserId, name: &str) -> ProjectId {
     storage
         .projects()
         .create(

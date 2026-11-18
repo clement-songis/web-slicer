@@ -13,7 +13,7 @@
 //!   `R <chemin>` (T121, pipeline de conversion serveur). Le WSMh est binaire et
 //!   libslic3r pollue stdout de lignes Boost.Log — d'où le protocole `R`/`E`
 //!   plutôt qu'un flux brut. Erreur → ligne `E <code> <message>` + sortie ≠ 0.
-//! - `self-test [--crash|--hang] <work_dir>` : exerce le protocole de T018
+//! - `self-test [--crash|--hang|--stderr-flood] <work_dir>` : exerce le protocole de T018
 //!   sans dépendre du pipeline de tranchage (branché en T019).
 //! - `arrange <request.json>` : nesting libslic3r, matrices complètes en `R`.
 //! - `repair <request.json>` : réparation admesh, WSMh dans le fichier demandé
@@ -199,7 +199,32 @@ fn effective_args() -> Vec<String> {
     }
 }
 
+/// Code de sortie d'un worker dont le parent a disparu (voir [`exit_with_parent`]).
+const EXIT_ORPHANED: i32 = 70;
+
+/// Termine le worker si son parent (backend) disparaît : un backend tué en
+/// plein tranchage ne laisse pas de process `engine-worker` orphelin qui
+/// continuerait à consommer CPU et mémoire. Sondage du PID parent (pas de
+/// `PR_SET_PDEATHSIG`, lié au *thread* créateur — les threads bloquants de
+/// tokio qui lancent les workers peuvent s'arrêter avant eux).
+fn exit_with_parent() {
+    #[cfg(unix)]
+    {
+        let parent = std::os::unix::process::parent_id();
+        if parent <= 1 {
+            return; // déjà détaché (lancement manuel via init) : rien à surveiller
+        }
+        std::thread::spawn(move || loop {
+            std::thread::sleep(std::time::Duration::from_millis(200));
+            if std::os::unix::process::parent_id() != parent {
+                std::process::exit(EXIT_ORPHANED);
+            }
+        });
+    }
+}
+
 fn main() {
+    exit_with_parent();
     let args = effective_args();
     match args.get(1).map(String::as_str) {
         Some("triangle-count") => {
@@ -988,11 +1013,15 @@ fn readable_path(path: &Path, ext: &str) -> std::io::Result<(PathBuf, Option<Pat
 fn self_test(args: &[String]) {
     let mut crash = false;
     let mut hang = false;
+    let mut stderr_flood = false;
     let mut work_dir: Option<std::path::PathBuf> = None;
     for arg in args {
         match arg.as_str() {
             "--crash" => crash = true,
             "--hang" => hang = true,
+            // Journal abondant sur stderr (Boost.Log) : le parent doit le
+            // vider, sinon le pipe plein bloque le worker indéfiniment.
+            "--stderr-flood" => stderr_flood = true,
             other => work_dir = Some(std::path::PathBuf::from(other)),
         }
     }
@@ -1007,6 +1036,13 @@ fn self_test(args: &[String]) {
     ];
     for (i, (ratio, phase)) in phases.iter().enumerate() {
         progress(*ratio, phase);
+        if stderr_flood && i == 1 {
+            let line = "x".repeat(1023);
+            let mut stderr = std::io::stderr().lock();
+            for _ in 0..1024 {
+                let _ = writeln!(stderr, "{line}");
+            }
+        }
         if crash && i == 1 {
             // crash C++ typique : abandon du process (pas de ligne R/E).
             std::process::abort();

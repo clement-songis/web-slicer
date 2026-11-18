@@ -11,7 +11,7 @@ use axum::http::{header, Request, StatusCode};
 use axum::response::Response;
 use axum::Router;
 use backend::adapters::files::FileStore;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::auth::SecretBox;
 use backend::domain::repo::{NewGcode, NewJob, NewModel, NewPrinter, NewProject};
 use backend::domain::{ModelFormat, ModelId, Preset, PresetKind, PresetOrigin, Storage, UserId};
@@ -21,7 +21,7 @@ use tower_sessions::{MemoryStore, SessionManagerLayer};
 
 struct Harness {
     _dir: tempfile::TempDir,
-    storage: Arc<SqliteStorage>,
+    storage: Arc<AnyStorage>,
     files: FileStore,
     app: Router,
 }
@@ -29,7 +29,7 @@ struct Harness {
 async fn harness() -> Harness {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("isolation.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
     let state = backend::http::state::AppState::new(
         Arc::clone(&storage) as Arc<dyn Storage>,
@@ -76,7 +76,7 @@ async fn register(app: &Router, email: &str) -> String {
     cookie(&resp)
 }
 
-async fn user_id(storage: &SqliteStorage, email: &str) -> UserId {
+async fn user_id(storage: &AnyStorage, email: &str) -> UserId {
     storage
         .users()
         .find_by_email(email)
@@ -421,4 +421,283 @@ async fn register_existing(app: &Router, email: &str) -> String {
         .unwrap();
     assert_eq!(resp.status(), StatusCode::OK);
     cookie(&resp)
+}
+
+// --- Parcours automatique de toutes les routes par identifiant ---------------
+
+/// Routes déclarées dans le routeur, lues depuis sa source : (méthode, chemin).
+/// Lire la source plutôt qu'une liste figée garantit qu'une route ajoutée plus
+/// tard est parcourue (ou fait échouer le test si son identifiant est inconnu).
+fn declared_routes() -> Vec<(String, String)> {
+    let source = include_str!("../src/http/routes/mod.rs");
+    let method_re = regex::Regex::new(r"(?:^|[^A-Za-z0-9_])(get|post|put|delete|patch)\(").unwrap();
+    let path_re = regex::Regex::new(r#""(/api/[^"]*)""#).unwrap();
+    let mut routes = Vec::new();
+    let mut rest = source;
+    while let Some(start) = rest.find(".route(") {
+        let after = &rest[start + ".route(".len()..];
+        // Fin de l'appel : parenthèse fermante au niveau 0 (hors chaînes).
+        let (mut depth, mut in_str, mut end) = (1usize, false, after.len());
+        for (i, c) in after.char_indices() {
+            match c {
+                '"' => in_str = !in_str,
+                '(' if !in_str => depth += 1,
+                ')' if !in_str => {
+                    depth -= 1;
+                    if depth == 0 {
+                        end = i;
+                        break;
+                    }
+                }
+                _ => {}
+            }
+        }
+        let call = &after[..end];
+        if let Some(path) = path_re.captures(call).map(|c| c[1].to_string()) {
+            let handlers = &call[call.find(&path).unwrap() + path.len()..];
+            for m in method_re.captures_iter(handlers) {
+                routes.push((m[1].to_uppercase(), path.clone()));
+            }
+        }
+        rest = &after[end..];
+    }
+    routes
+}
+
+#[test]
+fn router_source_parsing_finds_the_known_routes() {
+    let routes = declared_routes();
+    for expected in [
+        ("GET", "/api/projects/{id}"),
+        ("DELETE", "/api/admin/users/{id}"),
+        ("PUT", "/api/calibrations/pa/{id}"),
+        ("DELETE", "/api/projects/{id}/auxiliaries/{folder}/{name}"),
+        ("PATCH", "/api/projects/{id}/rename"),
+        ("POST", "/api/printers/{id}/objects/exclude"),
+    ] {
+        assert!(
+            routes
+                .iter()
+                .any(|(m, p)| m == expected.0 && p == expected.1),
+            "route {expected:?} absente de l'analyse : {routes:?}"
+        );
+    }
+    assert!(routes.len() > 100, "{} routes seulement", routes.len());
+}
+
+/// Isolation sur **toutes** les routes à identifiant du routeur : Bob visant
+/// une ressource d'Alice obtient exactement la même réponse que pour un
+/// identifiant inexistant (aucun oracle d'existence), jamais un succès ni un
+/// 403 (hors routes d'administration, réservées au rôle admin), aucune donnée
+/// d'Alice dans le corps ; les ressources d'Alice sont intactes à la fin.
+#[tokio::test]
+async fn every_id_route_of_the_router_is_isolated_between_accounts() {
+    let h = harness().await;
+    let alice_session = register(&h.app, "alice@test.local").await;
+    let alice = user_id(&h.storage, "alice@test.local").await;
+    let r = seed_alice(&h, alice).await;
+    let bob = register(&h.app, "bob@test.local").await;
+
+    // Ressources créées par l'API : calibration PA et fichier auxiliaire.
+    let pa = attempt(
+        &h.app,
+        "POST",
+        "/api/calibrations/pa",
+        &alice_session,
+        Some(json!({
+            "machine_preset": "Voron 2.4 350 0.4 nozzle",
+            "filament_preset": "Alice PLA",
+            "filament_id": "GFL99",
+            "nozzle_diameter": 0.4,
+            "k_value": 0.04,
+            "method": "pa_pattern"
+        })),
+    )
+    .await;
+    assert_eq!(pa.status(), StatusCode::CREATED);
+    let pa: Value = serde_json::from_slice(
+        &axum::body::to_bytes(pa.into_body(), usize::MAX)
+            .await
+            .unwrap(),
+    )
+    .unwrap();
+    let pa = pa["id"].as_str().unwrap().to_string();
+    let aux = h
+        .app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!(
+                    "/api/projects/{}/auxiliaries/Others/mien.txt",
+                    r.project
+                ))
+                .header(header::COOKIE, &alice_session)
+                .body(Body::from("secret d'Alice"))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(aux.status(), StatusCode::CREATED);
+
+    let alice_id = alice.to_string();
+    let substitute = |path: &str, id: &str| -> String {
+        path.replace("{id}", id)
+            .replace("{folder}", "Others")
+            .replace("{name}", "mien.txt")
+            .replace("{key}", "orca-cube")
+    };
+    let owner_id = |path: &str| -> &str {
+        let prefixes: [(&str, &str); 8] = [
+            ("/api/projects/{id}", r.project.as_str()),
+            ("/api/models/{id}", r.model.as_str()),
+            ("/api/jobs/{id}", r.job.as_str()),
+            ("/api/gcodes/{id}", r.gcode.as_str()),
+            ("/api/presets/{id}", r.preset.as_str()),
+            ("/api/printers/{id}", r.printer.as_str()),
+            ("/api/calibrations/pa/{id}", pa.as_str()),
+            ("/api/admin/users/{id}", alice_id.as_str()),
+        ];
+        prefixes
+            .iter()
+            .find(|(prefix, _)| path.starts_with(prefix))
+            .map(|(_, id)| *id)
+            .unwrap_or_else(|| {
+                panic!("route {path} : identifiant non couvert par la campagne, l'ajouter ici")
+            })
+    };
+
+    let routes: Vec<(String, String)> = declared_routes()
+        .into_iter()
+        .filter(|(_, path)| path.contains('{'))
+        .collect();
+    assert!(routes.len() >= 70, "{} routes à identifiant", routes.len());
+    // Corps valides pour les routes qui valident la forme du corps avant le
+    // propriétaire : avec eux, la réponse attendue est strictement 404.
+    let valid_body = |method: &str, path: &str| -> Option<Value> {
+        Some(match (method, path) {
+            ("PUT", "/api/projects/{id}") => {
+                json!({ "expected_version": 0, "scene": {}, "active_presets": {} })
+            }
+            ("PATCH", "/api/projects/{id}/rename") => json!({ "name": "pwned" }),
+            ("POST", "/api/models/{id}/remap-paint") => json!({ "channels": {} }),
+            ("POST", "/api/projects/{id}/emboss-svg") => {
+                json!({ "svg": "<svg xmlns='http://www.w3.org/2000/svg'/>", "width_mm": 10.0, "depth_mm": 1.0 })
+            }
+            ("POST", "/api/projects/{id}/export/sliced") => json!({ "job_ids": [r.job] }),
+            ("POST", "/api/printers/{id}/upload-sliced") => {
+                json!({ "project_id": r.project, "job_ids": [r.job], "start_now": false })
+            }
+            ("POST", "/api/printers/{id}/objects/exclude") => json!({ "name": "part" }),
+            ("POST", "/api/printers/{id}/upload") => {
+                json!({ "gcode_id": r.gcode, "start_now": false })
+            }
+            ("PUT", "/api/calibrations/pa/{id}") => json!({
+                "machine_preset": "Voron 2.4 350 0.4 nozzle",
+                "filament_preset": "Bob PLA",
+                "nozzle_diameter": 0.4,
+                "k_value": 0.09,
+                "method": "manual"
+            }),
+            ("POST", "/api/projects/{id}/arrange") => {
+                json!({ "bed_width": 200.0, "bed_depth": 200.0, "spacing": 2.0, "items": [] })
+            }
+            _ => return None,
+        })
+    };
+    let mut report = Vec::new();
+    let mut strict = 0;
+    for (method, path) in &routes {
+        let target = substitute(path, owner_id(path));
+        let unknown = substitute(path, &uuid::Uuid::new_v4().to_string());
+        let valid = valid_body(method, path);
+        if valid.is_some() {
+            strict += 1;
+        }
+        let body = valid
+            .clone()
+            .or_else(|| matches!(method.as_str(), "POST" | "PUT" | "PATCH").then(|| json!({})));
+        let on_alice = attempt(&h.app, method, &target, &bob, body.clone()).await;
+        let status = on_alice.status();
+        let text = String::from_utf8_lossy(
+            &axum::body::to_bytes(on_alice.into_body(), usize::MAX)
+                .await
+                .unwrap(),
+        )
+        .into_owned();
+        let on_unknown = attempt(&h.app, method, &unknown, &bob, body).await.status();
+        report.push(format!("{method} {path} → {status}"));
+        if valid.is_some() {
+            assert_eq!(
+                status,
+                StatusCode::NOT_FOUND,
+                "{method} {path} : corps valide, 404 attendu pour la ressource d'un autre compte"
+            );
+        }
+        assert_eq!(
+            status, on_unknown,
+            "{method} {path} : réponse différente pour une ressource d'Alice ({status}) et un identifiant inexistant ({on_unknown}) — oracle d'existence"
+        );
+        assert!(
+            !status.is_success(),
+            "{method} {path} : Bob obtient {status} sur une ressource d'Alice"
+        );
+        if !path.starts_with("/api/admin/") {
+            assert_ne!(
+                status,
+                StatusCode::FORBIDDEN,
+                "{method} {path} : 403 (SC-008)"
+            );
+        }
+        for secret in [
+            "Alice project",
+            "Alice machine",
+            "Alice printer",
+            "alice@test.local",
+            "secret d'Alice",
+            "Alice PLA",
+        ] {
+            assert!(
+                !text.contains(secret),
+                "{method} {path} : le corps révèle « {secret} » : {text}"
+            );
+        }
+    }
+    eprintln!(
+        "{} routes à identifiant parcourues ({strict} avec corps valide) :\n{}",
+        routes.len(),
+        report.join("\n")
+    );
+
+    // Rien n'a été modifié ni supprimé chez Alice.
+    for uri in [
+        format!("/api/projects/{}", r.project),
+        format!("/api/presets/{}", r.preset),
+        format!("/api/printers/{}", r.printer),
+        format!("/api/calibrations/pa/{pa}"),
+        format!("/api/gcodes/{}/stats", r.gcode),
+        format!("/api/jobs/{}", r.job),
+        format!("/api/projects/{}/auxiliaries/Others/mien.txt", r.project),
+    ] {
+        let resp = attempt(&h.app, "GET", &uri, &alice_session, None).await;
+        assert_eq!(resp.status(), StatusCode::OK, "Alice garde {uri}");
+    }
+    let project = h
+        .storage
+        .projects()
+        .get(alice, uuid::Uuid::parse_str(&r.project).unwrap().into())
+        .await
+        .unwrap();
+    assert_eq!(project.name, "Alice project", "projet ni renommé ni écrasé");
+    assert!(h
+        .storage
+        .models()
+        .get(alice, uuid::Uuid::parse_str(&r.model).unwrap().into())
+        .await
+        .is_ok());
+    assert_eq!(
+        h.storage.users().count().await.unwrap(),
+        2,
+        "aucun compte supprimé"
+    );
 }

@@ -9,7 +9,7 @@ use async_trait::async_trait;
 use axum::body::Body;
 use axum::http::{header, Request, StatusCode};
 use backend::adapters::files::FileStore;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::domain::repo::{NewJob, NewProject, NewUser};
 use backend::domain::{JobStatus, ProjectId, Role, SlicingJob, Storage, UserId};
 use backend::http::routes::router;
@@ -21,10 +21,10 @@ use tokio::sync::broadcast;
 use tower::ServiceExt;
 use tower_sessions::{MemoryStore, SessionManagerLayer};
 
-async fn storage() -> (tempfile::TempDir, Arc<SqliteStorage>) {
+async fn storage() -> (tempfile::TempDir, Arc<AnyStorage>) {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("ws.db").display());
-    (dir, Arc::new(SqliteStorage::connect(&url).await.unwrap()))
+    (dir, Arc::new(AnyStorage::connect_test(&url).await.unwrap()))
 }
 
 async fn make_user(s: &dyn Storage, email: &str) -> UserId {
@@ -166,7 +166,7 @@ async fn queue_relays_job_progress_to_owner_only() {
 async fn app_async() -> (tempfile::TempDir, axum::Router) {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("ws_http.db").display());
-    let store = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let store = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
     let state = AppState::new(Arc::clone(&store) as Arc<dyn Storage>, files);
     let session_layer = SessionManagerLayer::new(MemoryStore::default()).with_secure(false);

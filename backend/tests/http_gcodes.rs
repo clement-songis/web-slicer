@@ -9,7 +9,7 @@ use axum::http::{header, Request, StatusCode};
 use axum::response::Response;
 use axum::Router;
 use backend::adapters::files::FileStore;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::domain::repo::{NewJob, NewProject};
 use backend::domain::{JobId, ProjectId, Storage, UserId};
 use backend::http::routes::router;
@@ -34,7 +34,7 @@ G1 X10 Y10 E1.2
 
 struct Harness {
     _dir: tempfile::TempDir,
-    storage: Arc<SqliteStorage>,
+    storage: Arc<AnyStorage>,
     files: FileStore,
     app: Router,
 }
@@ -42,7 +42,7 @@ struct Harness {
 async fn harness() -> Harness {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("gcodes.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
     let state = AppState::new(Arc::clone(&storage) as Arc<dyn Storage>, files.clone());
     let session_layer = SessionManagerLayer::new(MemoryStore::default()).with_secure(false);
@@ -86,7 +86,7 @@ async fn register(app: &Router, email: &str) -> String {
     cookie(&resp)
 }
 
-async fn user_id(storage: &SqliteStorage, email: &str) -> UserId {
+async fn user_id(storage: &AnyStorage, email: &str) -> UserId {
     storage
         .users()
         .find_by_email(email)
@@ -96,7 +96,7 @@ async fn user_id(storage: &SqliteStorage, email: &str) -> UserId {
         .id
 }
 
-async fn make_job(storage: &SqliteStorage, owner: UserId) -> (ProjectId, JobId) {
+async fn make_job(storage: &AnyStorage, owner: UserId) -> (ProjectId, JobId) {
     let project = storage
         .projects()
         .create(

@@ -2,7 +2,7 @@
 //! et préservation des presets utilisateur. Utilise un petit lot de presets
 //! importés synthétiques (pas les 11 895 profils réels — testé côté engine).
 
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::domain::presets::reseed_system_presets;
 use backend::domain::{
     NewPrinter, NewProject, NewUser, Preset, PresetId, PresetKind, PresetOrigin, Role, Storage,
@@ -29,10 +29,10 @@ fn imported_vendor(name: &str, kind: EngineKind, vendor: &str) -> ImportedPreset
     }
 }
 
-async fn storage() -> (tempfile::TempDir, SqliteStorage) {
+async fn storage() -> (tempfile::TempDir, AnyStorage) {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("seed.db").display());
-    (dir, SqliteStorage::connect(&url).await.unwrap())
+    (dir, AnyStorage::connect_test(&url).await.unwrap())
 }
 
 #[tokio::test]

@@ -124,3 +124,100 @@ impl ExpiredDeletion for SqliteSessionStore {
         Ok(())
     }
 }
+
+/// Store de sessions Postgres (feature `postgres`), miroir du store SQLite :
+/// même table `sessions` (`expiry_date` en `timestamptz`).
+#[cfg(feature = "postgres")]
+#[derive(Clone, Debug)]
+pub struct PgSessionStore {
+    pool: sqlx::PgPool,
+}
+
+#[cfg(feature = "postgres")]
+impl PgSessionStore {
+    pub fn new(pool: sqlx::PgPool) -> Self {
+        Self { pool }
+    }
+
+    fn encode(record: &Record) -> SessionResult<(String, String)> {
+        let body =
+            serde_json::to_string(record).map_err(|e| SessionError::Encode(e.to_string()))?;
+        Ok((record.id.to_string(), body))
+    }
+}
+
+#[cfg(feature = "postgres")]
+#[async_trait]
+impl SessionStore for PgSessionStore {
+    async fn create(&self, record: &mut Record) -> SessionResult<()> {
+        loop {
+            let (id, body) = Self::encode(record)?;
+            let res =
+                sqlx::query("INSERT INTO sessions (id, record, expiry_date) VALUES ($1, $2, $3)")
+                    .bind(&id)
+                    .bind(&body)
+                    .bind(record.expiry_date)
+                    .execute(&self.pool)
+                    .await;
+            match res {
+                Ok(_) => return Ok(()),
+                Err(sqlx::Error::Database(db)) if db.is_unique_violation() => {
+                    record.id = Id::default();
+                }
+                Err(e) => return Err(SessionError::Backend(e.to_string())),
+            }
+        }
+    }
+
+    async fn save(&self, record: &Record) -> SessionResult<()> {
+        let (id, body) = Self::encode(record)?;
+        sqlx::query(
+            "INSERT INTO sessions (id, record, expiry_date) VALUES ($1, $2, $3) \
+             ON CONFLICT (id) DO UPDATE SET record = excluded.record, \
+             expiry_date = excluded.expiry_date",
+        )
+        .bind(&id)
+        .bind(&body)
+        .bind(record.expiry_date)
+        .execute(&self.pool)
+        .await
+        .map_err(|e| SessionError::Backend(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn load(&self, session_id: &Id) -> SessionResult<Option<Record>> {
+        let row: Option<(String,)> =
+            sqlx::query_as("SELECT record FROM sessions WHERE id = $1 AND expiry_date > now()")
+                .bind(session_id.to_string())
+                .fetch_optional(&self.pool)
+                .await
+                .map_err(|e| SessionError::Backend(e.to_string()))?;
+        match row {
+            Some((body,)) => serde_json::from_str(&body)
+                .map(Some)
+                .map_err(|e| SessionError::Decode(e.to_string())),
+            None => Ok(None),
+        }
+    }
+
+    async fn delete(&self, session_id: &Id) -> SessionResult<()> {
+        sqlx::query("DELETE FROM sessions WHERE id = $1")
+            .bind(session_id.to_string())
+            .execute(&self.pool)
+            .await
+            .map_err(|e| SessionError::Backend(e.to_string()))?;
+        Ok(())
+    }
+}
+
+#[cfg(feature = "postgres")]
+#[async_trait]
+impl ExpiredDeletion for PgSessionStore {
+    async fn delete_expired(&self) -> SessionResult<()> {
+        sqlx::query("DELETE FROM sessions WHERE expiry_date <= now()")
+            .execute(&self.pool)
+            .await
+            .map_err(|e| SessionError::Backend(e.to_string()))?;
+        Ok(())
+    }
+}

@@ -50,6 +50,37 @@ impl PostgresStorage {
         Ok(Self::from_pool(pool))
     }
 
+    /// Crée une base vierge nommée `ws_test_<uuid>` sur le serveur de `base_url`
+    /// puis s'y connecte (migrations appliquées). Réservé aux tests
+    /// d'intégration : une base par test, comme un fichier SQLite temporaire.
+    #[doc(hidden)]
+    pub async fn connect_fresh(base_url: &str) -> StorageResult<Self> {
+        use sqlx::postgres::PgConnectOptions;
+        use sqlx::{ConnectOptions, Connection};
+        use std::str::FromStr;
+
+        let options = PgConnectOptions::from_str(base_url).map_err(map_pg)?;
+        let name = format!("ws_test_{}", uuid::Uuid::new_v4().simple());
+        let mut admin = options.connect().await.map_err(map_pg)?;
+        // Nom généré ci-dessus (préfixe + uuid hexadécimal) : aucune entrée externe.
+        sqlx::raw_sql(sqlx::AssertSqlSafe(format!("CREATE DATABASE \"{name}\"")))
+            .execute(&mut admin)
+            .await
+            .map_err(map_pg)?;
+        admin.close().await.map_err(map_pg)?;
+        // Pool réduit : des centaines de tests ouvrent chacun leur base.
+        let pool = PgPoolOptions::new()
+            .max_connections(4)
+            .connect_with(options.database(&name))
+            .await
+            .map_err(map_pg)?;
+        sqlx::migrate!("migrations/postgres")
+            .run(&pool)
+            .await
+            .map_err(|e| StorageError::Backend(e.to_string()))?;
+        Ok(Self::from_pool(pool))
+    }
+
     /// Pool sous-jacent (pour le store de sessions partageant la même base).
     pub fn pool(&self) -> PgPool {
         self.users.pool()

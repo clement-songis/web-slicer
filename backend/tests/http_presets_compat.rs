@@ -10,7 +10,7 @@ use axum::body::{to_bytes, Body};
 use axum::http::{header, Request, StatusCode};
 use axum::Router;
 use backend::adapters::files::FileStore;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::domain::presets::reseed_system_presets;
 use backend::http::routes::router;
 use backend::http::state::AppState;
@@ -23,7 +23,7 @@ async fn app_with_real_profiles() -> Option<(tempfile::TempDir, Router)> {
         engine::presets::import_profiles(&backend::http::state::default_profiles_dir()).ok()?;
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("compat.db").display());
-    let storage = SqliteStorage::connect(&url).await.unwrap();
+    let storage = AnyStorage::connect_test(&url).await.unwrap();
     reseed_system_presets(&storage, &imported.presets)
         .await
         .unwrap();

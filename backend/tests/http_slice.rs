@@ -7,7 +7,7 @@ use axum::http::{header, Request, StatusCode};
 use axum::response::Response;
 use axum::Router;
 use backend::adapters::files::FileStore;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::domain::repo::NewPrinter;
 use backend::domain::{NewUser, PresetKind, PresetOrigin, Role, Storage, UserId};
 use backend::http::routes::router;
@@ -17,10 +17,10 @@ use std::sync::Arc;
 use tower::ServiceExt;
 use tower_sessions::{MemoryStore, SessionManagerLayer};
 
-async fn app() -> (tempfile::TempDir, Arc<SqliteStorage>, Router) {
+async fn app() -> (tempfile::TempDir, Arc<AnyStorage>, Router) {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("slice.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
     let state = AppState::new(Arc::clone(&storage) as Arc<dyn Storage>, files);
     let session_layer = SessionManagerLayer::new(MemoryStore::default()).with_secure(false);
@@ -69,7 +69,7 @@ async fn register(app: &Router, email: &str) -> String {
 
 /// Crée un projet directement en base avec une scène et des presets actifs donnés.
 async fn create_project(
-    storage: &SqliteStorage,
+    storage: &AnyStorage,
     app: &Router,
     email: &str,
     scene: Value,
@@ -95,7 +95,7 @@ async fn create_project(
 
 /// Preset process utilisateur portant une valeur hors bornes (déclenche un
 /// avertissement moteur au clamp, FR-032).
-async fn make_bad_process(storage: &SqliteStorage, owner: UserId) -> String {
+async fn make_bad_process(storage: &AnyStorage, owner: UserId) -> String {
     let preset = storage
         .presets()
         .create_user_preset(
@@ -123,7 +123,7 @@ async fn make_bad_process(storage: &SqliteStorage, owner: UserId) -> String {
     preset.id.to_string()
 }
 
-async fn make_valid_mirror_process(storage: &SqliteStorage, owner: UserId) -> String {
+async fn make_valid_mirror_process(storage: &AnyStorage, owner: UserId) -> String {
     let preset = storage
         .presets()
         .create_user_preset(
@@ -153,7 +153,7 @@ async fn make_valid_mirror_process(storage: &SqliteStorage, owner: UserId) -> St
 }
 
 async fn make_filament(
-    storage: &SqliteStorage,
+    storage: &AnyStorage,
     owner: UserId,
     name: &str,
     material: &str,
@@ -190,13 +190,13 @@ async fn make_filament(
 }
 
 /// Preset machine utilisateur (config vide, se résout sans avertissement).
-async fn make_machine_preset(storage: &SqliteStorage, owner: UserId) -> String {
+async fn make_machine_preset(storage: &AnyStorage, owner: UserId) -> String {
     make_named_machine_preset(storage, owner, "Ma machine").await
 }
 
 /// Idem, avec un nom explicite (pour tester la garde par **modèle** : deux buses
 /// « `<Modèle> <buse> nozzle` » partagent le même modèle).
-async fn make_named_machine_preset(storage: &SqliteStorage, owner: UserId, name: &str) -> String {
+async fn make_named_machine_preset(storage: &AnyStorage, owner: UserId, name: &str) -> String {
     let preset = storage
         .presets()
         .create_user_preset(
@@ -222,7 +222,7 @@ async fn make_named_machine_preset(storage: &SqliteStorage, owner: UserId, name:
 }
 
 /// Déclare une imprimante possédée par `owner` pointant vers ce preset machine.
-async fn own_printer(storage: &SqliteStorage, owner: UserId, machine_preset_id: &str) {
+async fn own_printer(storage: &AnyStorage, owner: UserId, machine_preset_id: &str) {
     storage
         .printers()
         .create(
@@ -241,7 +241,7 @@ async fn own_printer(storage: &SqliteStorage, owner: UserId, machine_preset_id: 
 }
 
 /// Réécrit les presets actifs d'un projet (helper de test).
-async fn set_active_presets(storage: &SqliteStorage, owner: UserId, project: &str, active: Value) {
+async fn set_active_presets(storage: &AnyStorage, owner: UserId, project: &str, active: Value) {
     let id = backend::domain::ProjectId(uuid::Uuid::parse_str(project).unwrap());
     // Version courante (verrou optimiste) : le helper peut être appelé plusieurs fois.
     let version = storage.projects().get(owner, id).await.unwrap().version;
@@ -377,7 +377,7 @@ fn machine_preset(
 
 /// Seed système minimal : un parent abstrait et deux buses du modèle « Voron 2.4 300 ».
 /// Renvoie l'id du preset système « Voron 2.4 300 0.4 nozzle ».
-async fn seed_voron_system(storage: &SqliteStorage) -> String {
+async fn seed_voron_system(storage: &AnyStorage) -> String {
     let common = machine_preset(
         "fdm_klipper_common",
         PresetOrigin::System,
@@ -418,12 +418,7 @@ async fn seed_voron_system(storage: &SqliteStorage) -> String {
 }
 
 /// Copie utilisateur d'un preset machine (nom libre, `inherits` = parent).
-async fn derive_machine(
-    storage: &SqliteStorage,
-    owner: UserId,
-    name: &str,
-    parent: &str,
-) -> String {
+async fn derive_machine(storage: &AnyStorage, owner: UserId, name: &str, parent: &str) -> String {
     storage
         .presets()
         .create_user_preset(
@@ -1028,7 +1023,7 @@ async fn slice_l_over_http(scale_x: f64) -> String {
 
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("mirror.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
     let state = AppState::new(Arc::clone(&storage) as Arc<dyn Storage>, files);
     let session_layer = SessionManagerLayer::new(MemoryStore::default()).with_secure(false);
@@ -1241,7 +1236,7 @@ async fn split_to_parts_object_slices_both_mesh_volumes_and_exports_them() {
 
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("parts.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
     let state = AppState::new(Arc::clone(&storage) as Arc<dyn Storage>, files);
     let session_layer = SessionManagerLayer::new(MemoryStore::default()).with_secure(false);
@@ -1486,7 +1481,7 @@ async fn layer_config_ranges_change_the_layer_heights_of_their_z_range() {
     async fn slice(ranges: Value) -> (String, Vec<u8>) {
         let dir = tempfile::tempdir().unwrap();
         let url = format!("sqlite://{}", dir.path().join("ranges.db").display());
-        let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+        let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
         let files = FileStore::new(dir.path().join("data"));
         let state = AppState::new(Arc::clone(&storage) as Arc<dyn Storage>, files);
         let session_layer = SessionManagerLayer::new(MemoryStore::default()).with_secure(false);

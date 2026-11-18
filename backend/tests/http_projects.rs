@@ -7,7 +7,7 @@ use axum::http::{header, Request, StatusCode};
 use axum::response::Response;
 use axum::Router;
 use backend::adapters::files::FileStore;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::domain::{ModelFormat, ModelId, NewModel, ProjectId, Storage};
 use backend::http::routes::router;
 use backend::http::state::AppState;
@@ -20,10 +20,10 @@ async fn app() -> (tempfile::TempDir, Router) {
     (dir, app)
 }
 
-async fn app_with_storage() -> (tempfile::TempDir, Router, Arc<SqliteStorage>, FileStore) {
+async fn app_with_storage() -> (tempfile::TempDir, Router, Arc<AnyStorage>, FileStore) {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("projects.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
     let state = AppState::new(storage.clone(), files.clone());
     let session_layer = SessionManagerLayer::new(MemoryStore::default()).with_secure(false);

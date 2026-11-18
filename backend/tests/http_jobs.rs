@@ -9,7 +9,7 @@ use axum::http::{header, Request, StatusCode};
 use axum::response::Response;
 use axum::Router;
 use backend::adapters::files::FileStore;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::domain::repo::{JobOutcome, NewGcode, NewJob, NewProject};
 use backend::domain::{JobId, ProjectId, Storage, UserId};
 use serde_json::{json, Value};
@@ -18,14 +18,14 @@ use tower_sessions::{MemoryStore, SessionManagerLayer};
 
 struct Harness {
     _dir: tempfile::TempDir,
-    storage: Arc<SqliteStorage>,
+    storage: Arc<AnyStorage>,
     app: Router,
 }
 
 async fn harness() -> Harness {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("jobs.db").display());
-    let storage = Arc::new(SqliteStorage::connect(&url).await.unwrap());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
     let files = FileStore::new(dir.path().join("data"));
     let state =
         backend::http::state::AppState::new(Arc::clone(&storage) as Arc<dyn Storage>, files);
@@ -68,7 +68,7 @@ async fn register(app: &Router, email: &str) -> String {
     cookie(&resp)
 }
 
-async fn user_id(storage: &SqliteStorage, email: &str) -> UserId {
+async fn user_id(storage: &AnyStorage, email: &str) -> UserId {
     storage
         .users()
         .find_by_email(email)
@@ -78,7 +78,7 @@ async fn user_id(storage: &SqliteStorage, email: &str) -> UserId {
         .id
 }
 
-async fn make_project(storage: &SqliteStorage, owner: UserId) -> ProjectId {
+async fn make_project(storage: &AnyStorage, owner: UserId) -> ProjectId {
     storage
         .projects()
         .create(
@@ -95,7 +95,7 @@ async fn make_project(storage: &SqliteStorage, owner: UserId) -> ProjectId {
         .id
 }
 
-async fn enqueue(storage: &SqliteStorage, owner: UserId, project: ProjectId, plate: i64) -> JobId {
+async fn enqueue(storage: &AnyStorage, owner: UserId, project: ProjectId, plate: i64) -> JobId {
     storage
         .jobs()
         .enqueue(

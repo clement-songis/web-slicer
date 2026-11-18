@@ -6,16 +6,16 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use async_trait::async_trait;
-use backend::adapters::storage::sqlite::SqliteStorage;
+use backend::adapters::storage::AnyStorage;
 use backend::domain::repo::{NewGcode, NewJob, NewProject, NewUser};
 use backend::domain::{JobId, JobStatus, ProjectId, Role, SlicingJob, Storage, UserId};
 use backend::queue::{JobContext, JobRunner, Queue, QueueConfig, RunOutcome};
 use serde_json::json;
 
-async fn storage() -> (tempfile::TempDir, Arc<SqliteStorage>) {
+async fn storage() -> (tempfile::TempDir, Arc<AnyStorage>) {
     let dir = tempfile::tempdir().unwrap();
     let url = format!("sqlite://{}", dir.path().join("concurrency.db").display());
-    (dir, Arc::new(SqliteStorage::connect(&url).await.unwrap()))
+    (dir, Arc::new(AnyStorage::connect_test(&url).await.unwrap()))
 }
 
 async fn make_account(s: &dyn Storage, email: &str) -> (UserId, ProjectId) {
