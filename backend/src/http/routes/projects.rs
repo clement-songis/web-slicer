@@ -18,7 +18,8 @@ use crate::domain::{
     GcodeId, NewProject, Preset, PresetId, PresetKind, PresetOrigin, ProjectId, UserId,
 };
 use crate::http::dto::{
-    CreateProjectRequest, ProjectResponse, RenameProjectRequest, SaveProjectRequest,
+    CreateProjectRequest, PatchProjectRequest, ProjectResponse, RenameProjectRequest,
+    SaveProjectRequest,
 };
 use crate::http::error::{ApiError, ApiResult};
 use crate::http::extract::CurrentUser;
@@ -1045,6 +1046,62 @@ pub async fn save(
         .await?;
     spawn_scene_thumbnail(&state, user.id, &project);
     Ok(Json(project.into()))
+}
+
+/// `PATCH /api/projects/{id}` — mise à jour partielle (lot 26, phase 26 E-a :
+/// la route répondait 405). `name` → renommage ; `scene` / `active_presets`
+/// → sauvegarde du seul champ fourni (l'autre est conservé) sous verrou
+/// optimiste (`expected_version` obligatoire, 409 si décalé).
+pub async fn patch(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<PatchProjectRequest>,
+) -> ApiResult<Json<ProjectResponse>> {
+    let id = parse_project_id(&id)?;
+    let touches_content = body.scene.is_some() || body.active_presets.is_some();
+    if body.name.is_none() && !touches_content {
+        return Err(ApiError::validation(
+            "aucun champ à modifier (name, scene, active_presets)",
+            json!({}),
+        ));
+    }
+    let name = match body.name.as_deref().map(str::trim) {
+        Some("") => {
+            return Err(ApiError::validation(
+                "le nom du projet est requis",
+                json!({ "field": "name" }),
+            ))
+        }
+        other => other.map(str::to_string),
+    };
+    // Projet d'autrui ou absent → 404 avant toute écriture.
+    let mut project = state.storage.projects().get(user.id, id).await?;
+    if touches_content {
+        let Some(expected_version) = body.expected_version else {
+            return Err(ApiError::validation(
+                "expected_version est requis pour modifier scene ou active_presets",
+                json!({ "field": "expected_version" }),
+            ));
+        };
+        project = state
+            .storage
+            .projects()
+            .update(
+                user.id,
+                id,
+                expected_version,
+                body.scene.unwrap_or(project.scene),
+                body.active_presets.unwrap_or(project.active_presets),
+                None,
+            )
+            .await?;
+        spawn_scene_thumbnail(&state, user.id, &project);
+    }
+    if let Some(name) = name {
+        project = state.storage.projects().rename(user.id, id, &name).await?;
+    }
+    Ok(Json(with_gcode_thumbnail(&state, user.id, project).await))
 }
 
 /// Vignette de la bibliothèque recalculée à chaque sauvegarde (comme Orca,

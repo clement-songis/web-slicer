@@ -187,6 +187,28 @@ pub struct SaveProjectRequest {
     pub active_presets: serde_json::Value,
 }
 
+/// Corps de `PATCH /api/projects/{id}` : mise à jour partielle (lot 26).
+/// `name` renomme (comme `…/rename`) ; `scene` / `active_presets` remplacent
+/// le champ correspondant et exigent `expected_version` (verrou optimiste,
+/// 409 si décalé) ; un champ absent est conservé. Corps vide → 422.
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+#[ts(export)]
+pub struct PatchProjectRequest {
+    #[serde(default)]
+    #[ts(optional)]
+    pub name: Option<String>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub expected_version: Option<i64>,
+    #[serde(default)]
+    #[ts(optional, type = "unknown")]
+    pub scene: Option<serde_json::Value>,
+    #[serde(default)]
+    #[ts(optional, type = "unknown")]
+    pub active_presets: Option<serde_json::Value>,
+}
+
 /// Corps de `PATCH /api/projects/{id}/rename`.
 #[derive(Debug, Clone, Deserialize, TS)]
 #[ts(export)]

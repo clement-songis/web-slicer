@@ -221,6 +221,79 @@ async fn duplicate_and_rename() {
     assert_eq!(json_body(resp).await["name"], "Benchy v2");
 }
 
+/// Lot 26 (phase 26 E-a) : `PATCH /api/projects/{id}` répondait 405.
+#[tokio::test]
+async fn patch_project_updates_only_given_fields() {
+    let (_d, app) = app().await;
+    let user = register(&app, "patch@test.local").await;
+    let project = create_project(&app, &user, "Avant").await;
+    let id = project["id"].as_str().unwrap().to_string();
+    let uri = format!("/api/projects/{id}");
+    let send = |body: serde_json::Value| {
+        let app = app.clone();
+        let uri = uri.clone();
+        let user = user.clone();
+        async move {
+            app.oneshot(request("PATCH", &uri, body, Some(&user)))
+                .await
+                .unwrap()
+        }
+    };
+
+    // Renommage seul.
+    let resp = send(serde_json::json!({ "name": "  Après " })).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = json_body(resp).await;
+    assert_eq!(body["name"], "Après");
+    let version = body["version"].as_i64().unwrap();
+
+    // Presets seuls : la scène est conservée, la version avance.
+    let scene_before = body["scene"].clone();
+    let resp = send(serde_json::json!({
+        "expected_version": version,
+        "active_presets": { "printer": "p" }
+    }))
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = json_body(resp).await;
+    assert_eq!(body["active_presets"]["printer"], "p");
+    assert_eq!(body["scene"], scene_before);
+    assert_eq!(body["version"].as_i64().unwrap(), version + 1);
+
+    // Verrou optimiste : version périmée → 409 ; version absente → 422.
+    let stale = send(serde_json::json!({ "expected_version": version, "scene": {} })).await;
+    assert_eq!(stale.status(), StatusCode::CONFLICT);
+    let missing = send(serde_json::json!({ "scene": {} })).await;
+    assert_eq!(missing.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    // Corps vide, nom vide, champ inconnu → refusés.
+    assert_eq!(
+        send(serde_json::json!({})).await.status(),
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    assert_eq!(
+        send(serde_json::json!({ "name": " " })).await.status(),
+        StatusCode::UNPROCESSABLE_ENTITY
+    );
+    assert!(send(serde_json::json!({ "nom": "x" }))
+        .await
+        .status()
+        .is_client_error());
+
+    // Projet d'autrui → 404.
+    let other = register(&app, "patch-other@test.local").await;
+    let resp = app
+        .clone()
+        .oneshot(request(
+            "PATCH",
+            &uri,
+            serde_json::json!({ "name": "volé" }),
+            Some(&other),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+}
+
 #[tokio::test]
 async fn duplicate_copies_models_files_meshes_and_remaps_the_scene() {
     let (_d, app, storage, files) = app_with_storage().await;

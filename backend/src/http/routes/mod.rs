@@ -81,6 +81,7 @@ where
             "/api/projects/{id}",
             get(projects::get)
                 .put(projects::save)
+                .patch(projects::patch)
                 .delete(projects::delete),
         )
         .route("/api/projects/{id}/duplicate", post(projects::duplicate))
