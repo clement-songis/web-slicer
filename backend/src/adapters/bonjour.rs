@@ -112,10 +112,23 @@ pub fn build_query(service: &str, id: u16) -> Vec<u8> {
 /// Enregistrement de ressource décodé (types utiles seulement).
 #[derive(Debug, Clone, PartialEq)]
 pub enum Record {
-    Ptr { name: String, target: String },
-    Srv { name: String, port: u16, target: String },
-    Txt { name: String, entries: BTreeMap<String, String> },
-    A { name: String, ip: Ipv4Addr },
+    Ptr {
+        name: String,
+        target: String,
+    },
+    Srv {
+        name: String,
+        port: u16,
+        target: String,
+    },
+    Txt {
+        name: String,
+        entries: BTreeMap<String, String>,
+    },
+    A {
+        name: String,
+        ip: Ipv4Addr,
+    },
 }
 
 struct Reader<'a> {
@@ -124,11 +137,6 @@ struct Reader<'a> {
 }
 
 impl Reader<'_> {
-    fn u8(&mut self) -> Option<u8> {
-        let b = *self.buf.get(self.pos)?;
-        self.pos += 1;
-        Some(b)
-    }
     fn u16(&mut self) -> Option<u16> {
         let b = self.buf.get(self.pos..self.pos + 2)?;
         self.pos += 2;
@@ -196,7 +204,8 @@ pub fn parse_records(buf: &[u8]) -> Vec<Record> {
     }
     for _ in 0..rr {
         let Some(name) = r.name() else { break };
-        let (Some(rtype), Some(_class), Some(_ttl), Some(len)) = (r.u16(), r.u16(), r.u32(), r.u16())
+        let (Some(rtype), Some(_class), Some(_ttl), Some(len)) =
+            (r.u16(), r.u16(), r.u32(), r.u16())
         else {
             break;
         };
@@ -209,14 +218,21 @@ pub fn parse_records(buf: &[u8]) -> Vec<Record> {
         match rtype {
             TYPE_PTR => {
                 if let Some(target) = r.name() {
-                    out.push(Record::Ptr { name: name_l, target });
+                    out.push(Record::Ptr {
+                        name: name_l,
+                        target,
+                    });
                 }
             }
             TYPE_SRV => {
                 let _prio = r.u16();
                 let _weight = r.u16();
                 if let (Some(port), Some(target)) = (r.u16(), r.name()) {
-                    out.push(Record::Srv { name: name_l, port, target });
+                    out.push(Record::Srv {
+                        name: name_l,
+                        port,
+                        target,
+                    });
                 }
             }
             TYPE_TXT => {
@@ -224,7 +240,9 @@ pub fn parse_records(buf: &[u8]) -> Vec<Record> {
                 let mut p = start;
                 while p < end {
                     let l = usize::from(buf[p]);
-                    let Some(item) = buf.get(p + 1..(p + 1 + l).min(end)) else { break };
+                    let Some(item) = buf.get(p + 1..(p + 1 + l).min(end)) else {
+                        break;
+                    };
                     let item = String::from_utf8_lossy(item);
                     if let Some((k, v)) = item.split_once('=') {
                         entries.insert(k.to_ascii_lowercase(), v.to_string());
@@ -233,7 +251,10 @@ pub fn parse_records(buf: &[u8]) -> Vec<Record> {
                     }
                     p += 1 + l;
                 }
-                out.push(Record::Txt { name: name_l, entries });
+                out.push(Record::Txt {
+                    name: name_l,
+                    entries,
+                });
             }
             TYPE_A if len == 4 => {
                 out.push(Record::A {
@@ -259,13 +280,17 @@ pub fn assemble(
     let suffix = format!(".{domain}");
     let mut out: Vec<BonjourReply> = Vec::new();
     for rec in records {
-        let Record::Ptr { name, target } = rec else { continue };
+        let Record::Ptr { name, target } = rec else {
+            continue;
+        };
         if *name != domain {
             continue;
         }
         let instance = target.to_ascii_lowercase();
         let Some((port, host)) = records.iter().find_map(|r| match r {
-            Record::Srv { name, port, target } if *name == instance => Some((*port, target.clone())),
+            Record::Srv { name, port, target } if *name == instance => {
+                Some((*port, target.clone()))
+            }
             _ => None,
         }) else {
             continue;
@@ -306,7 +331,11 @@ pub fn assemble(
             out.push(reply);
         }
     }
-    out.sort_by(|a, b| a.service_name.cmp(&b.service_name).then(a.full_address.cmp(&b.full_address)));
+    out.sort_by(|a, b| {
+        a.service_name
+            .cmp(&b.service_name)
+            .then(a.full_address.cmp(&b.full_address))
+    });
     out
 }
 
@@ -348,7 +377,11 @@ pub async fn discover_at(
             sent += 1;
             next_send = now + step;
         }
-        let wake = if sent < retries { next_send.min(deadline) } else { deadline };
+        let wake = if sent < retries {
+            next_send.min(deadline)
+        } else {
+            deadline
+        };
         match tokio::time::timeout_at(wake, socket.recv_from(&mut buf)).await {
             Ok(Ok((n, from))) => {
                 let recs = parse_records(&buf[..n]);
