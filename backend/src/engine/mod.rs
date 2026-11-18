@@ -12,4 +12,6 @@ pub mod scene;
 pub mod serve_pool;
 pub mod worker;
 
-pub use worker::{run_worker, run_worker_at, worker_binary, WorkerError, DEFAULT_TIMEOUT};
+pub use worker::{
+    run_worker, run_worker_at, run_worker_warm_at, worker_binary, WorkerError, DEFAULT_TIMEOUT,
+};

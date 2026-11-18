@@ -25,6 +25,12 @@
 //!   sessions de peinture TriangleSelector en mémoire (`api::paint`).
 //! - `layer-profile <request.json>` : profil de hauteur variable libslic3r
 //!   (`layer_height_profile_adaptive` / `smooth_height_profile`), `R` = profil plat.
+//! - `--args-from-stdin` : worker **préchauffé à usage unique**. Le process est
+//!   lancé à l'avance par le backend ; l'initialisation statique de libslic3r
+//!   (~0,1 s avant `main`) est ainsi payée hors requête. Il lit ensuite UNE
+//!   ligne JSON (tableau de chaînes = arguments de la sous-commande), l'exécute
+//!   comme si elle avait été passée en ligne de commande, puis se termine :
+//!   un process neuf par opération (isolation et déterminisme inchangés).
 
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -170,8 +176,29 @@ struct SimplifyResponse {
     report: engine::api::mesh::SimplifyReport,
 }
 
-fn main() {
+/// Arguments effectifs : ligne de commande, ou (`--args-from-stdin`) première
+/// ligne JSON de stdin. Stdin fermé sans ligne = parent parti → sortie muette.
+fn effective_args() -> Vec<String> {
     let args: Vec<String> = std::env::args().collect();
+    if args.get(1).map(String::as_str) != Some("--args-from-stdin") {
+        return args;
+    }
+    let mut line = String::new();
+    match std::io::stdin().read_line(&mut line) {
+        Ok(0) | Err(_) => std::process::exit(0),
+        Ok(_) => {}
+    }
+    match serde_json::from_str::<Vec<String>>(line.trim_end()) {
+        Ok(rest) => std::iter::once(args[0].clone()).chain(rest).collect(),
+        Err(e) => {
+            eprintln!("--args-from-stdin : ligne JSON invalide : {e}");
+            std::process::exit(2);
+        }
+    }
+}
+
+fn main() {
+    let args = effective_args();
     match args.get(1).map(String::as_str) {
         Some("triangle-count") => {
             let path = std::path::Path::new(args.get(2).expect("usage: triangle-count <fichier>"));

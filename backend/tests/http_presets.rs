@@ -882,3 +882,142 @@ async fn presets_require_a_session() {
     .await;
     assert_eq!(resp.status(), StatusCode::UNAUTHORIZED);
 }
+
+/// « Detach from system preset » (Tab.cpp:2163, save_current_preset detach) :
+/// copie détachée d'un preset système, détachement sur place d'un preset
+/// utilisateur (valeurs aplaties, plus de parent), résolution inchangée.
+#[tokio::test]
+async fn detach_flattens_chain_and_clears_parent() {
+    let (_d, app) = app().await;
+    let user = register(&app, "detach@test.local").await;
+    let list = json_body(
+        send(
+            &app,
+            request(
+                "GET",
+                "/api/presets?kind=process",
+                serde_json::json!({}),
+                Some(&user),
+            ),
+        )
+        .await,
+    )
+    .await;
+    let sys_id = list[0]["id"].as_str().unwrap().to_string();
+
+    // Système sans nom : refus ; avec nom : copie détachée 201.
+    let resp = send(
+        &app,
+        request(
+            "POST",
+            &format!("/api/presets/{sys_id}/detach"),
+            serde_json::json!({}),
+            Some(&user),
+        ),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let resp = send(
+        &app,
+        request(
+            "POST",
+            &format!("/api/presets/{sys_id}/detach"),
+            serde_json::json!({ "name": "Mon standard" }),
+            Some(&user),
+        ),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let copy = json_body(resp).await;
+    assert_eq!(copy["name"], "Mon standard");
+    assert!(copy["inherits"].is_null(), "copie sans parent : {copy}");
+    assert_eq!(copy["values"]["layer_height"], "0.20");
+    assert_eq!(copy["values"]["wall_loops"], "3", "valeur héritée aplatie");
+
+    // Preset utilisateur dérivé du système : détaché sur place.
+    let resp = send(
+        &app,
+        request(
+            "POST",
+            "/api/presets",
+            serde_json::json!({ "kind": "process", "name": "Dérivé", "inherits": "0.20mm Standard",
+                                "values": { "wall_loops": "5" } }),
+            Some(&user),
+        ),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let derived = json_body(resp).await;
+    let did = derived["id"].as_str().unwrap().to_string();
+    let before = json_body(
+        send(
+            &app,
+            request(
+                "GET",
+                &format!("/api/presets/{did}/resolved"),
+                serde_json::json!({}),
+                Some(&user),
+            ),
+        )
+        .await,
+    )
+    .await;
+    let resp = send(
+        &app,
+        request(
+            "POST",
+            &format!("/api/presets/{did}/detach"),
+            serde_json::json!({}),
+            Some(&user),
+        ),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let detached = json_body(resp).await;
+    assert_eq!(detached["id"], did.as_str());
+    assert!(detached["inherits"].is_null());
+    assert_eq!(detached["values"]["wall_loops"], "5", "la feuille gagne");
+    assert_eq!(detached["values"]["layer_height"], "0.20");
+    let after = json_body(
+        send(
+            &app,
+            request(
+                "GET",
+                &format!("/api/presets/{did}/resolved"),
+                serde_json::json!({}),
+                Some(&user),
+            ),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(
+        before["values"], after["values"],
+        "valeurs effectives inchangées"
+    );
+
+    // Idempotent ; preset d'autrui : 404.
+    let resp = send(
+        &app,
+        request(
+            "POST",
+            &format!("/api/presets/{did}/detach"),
+            serde_json::json!({}),
+            Some(&user),
+        ),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let other = register(&app, "other-detach@test.local").await;
+    let resp = send(
+        &app,
+        request(
+            "POST",
+            &format!("/api/presets/{did}/detach"),
+            serde_json::json!({}),
+            Some(&other),
+        ),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+}

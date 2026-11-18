@@ -14,7 +14,7 @@ use std::time::Duration;
 use backend::engine::scene::{
     arrange_at, repair_at, ArrangeWorkerRequest, MAX_SCENE_REQUEST_BYTES,
 };
-use backend::engine::{run_worker_at, WorkerError};
+use backend::engine::{run_worker_at, run_worker_warm_at, WorkerError};
 use engine::api::{ArrangeParams, BuildVolume, Model, ModelInstance, TriangleMesh};
 
 /// Chemin du binaire `engine-worker` s'il est disponible : `ENGINE_WORKER_BIN`
@@ -103,6 +103,54 @@ async fn hang_maps_to_timeout() {
     assert!(
         matches!(err, WorkerError::Timeout(_)),
         "blocage mappé en Timeout : {err:?}"
+    );
+}
+
+/// Worker préchauffé (lot 18) : sous-commande transmise sur stdin, un process
+/// neuf par opération (le suivant est relancé à chaque prise), même mappage
+/// succès / crash / timeout qu'au lancement à froid.
+#[tokio::test]
+async fn warm_worker_runs_each_operation_in_a_fresh_process() {
+    let bin = worker_or_skip!();
+    let dir = tempfile::tempdir().unwrap();
+    let work = dir.path().to_string_lossy().to_string();
+    for _ in 0..3 {
+        let out = run_worker_warm_at(&bin, &["self-test", &work], Duration::from_secs(30))
+            .await
+            .expect("self-test via worker préchauffé");
+        let text = String::from_utf8_lossy(&out);
+        assert!(text.contains("self-test.gcode"), "ligne R : {text}");
+    }
+    let err = run_worker_warm_at(
+        &bin,
+        &["self-test", "--crash", &work],
+        Duration::from_secs(30),
+    )
+    .await
+    .expect_err("crash remonté");
+    assert!(matches!(err, WorkerError::Crashed { .. }), "{err:?}");
+    let err = run_worker_warm_at(
+        &bin,
+        &["self-test", "--hang", &work],
+        Duration::from_millis(800),
+    )
+    .await
+    .expect_err("blocage expiré");
+    assert!(matches!(err, WorkerError::Timeout(_)), "{err:?}");
+    // Après crash et timeout, l'emplacement est toujours servi.
+    let out = run_worker_warm_at(&bin, &["config-count"], Duration::from_secs(30))
+        .await
+        .expect("config-count après incidents");
+    assert!(
+        String::from_utf8_lossy(&out)
+            .lines()
+            .last()
+            .unwrap_or("")
+            .trim()
+            .parse::<usize>()
+            .is_ok(),
+        "nombre d'options : {}",
+        String::from_utf8_lossy(&out)
     );
 }
 

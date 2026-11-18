@@ -799,6 +799,26 @@ impl PresetRepo for SqlitePresetRepo {
         row_to_preset(&row)
     }
 
+    async fn detach_user_preset(
+        &self,
+        owner: UserId,
+        id: PresetId,
+        values: serde_json::Value,
+    ) -> StorageResult<Preset> {
+        let row = sqlx::query(
+            "UPDATE presets SET inherits = NULL, values_json = ? \
+             WHERE id = ? AND user_id = ? RETURNING *",
+        )
+        .bind(json_text(&values))
+        .bind(id_str(id))
+        .bind(id_str(owner))
+        .fetch_optional(&self.pool)
+        .await
+        .map_err(map_sqlx)?
+        .ok_or(StorageError::NotFound)?;
+        row_to_preset(&row)
+    }
+
     async fn delete_user_preset(&self, owner: UserId, id: PresetId) -> StorageResult<()> {
         let mut tx = begin_write(&self.pool).await.map_err(map_sqlx)?;
         let owned = sqlx::query("SELECT 1 AS found FROM presets WHERE id = ? AND user_id = ?")

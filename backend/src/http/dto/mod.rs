@@ -363,6 +363,17 @@ pub struct UpdatePresetRequest {
     pub values: Option<serde_json::Value>,
 }
 
+/// Corps de `POST /api/presets/{id}/detach` (Orca : bouton « Detach from system
+/// preset », Tab.cpp:2163). `name` : nom de la copie, requis pour un preset
+/// système (Orca crée une copie détachée) ; ignoré pour un preset utilisateur
+/// (détaché sur place).
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[ts(export)]
+pub struct DetachPresetRequest {
+    #[ts(optional)]
+    pub name: Option<String>,
+}
+
 /// Corps de `POST /api/presets/import` — profil JSON Orca (clés legacy tolérées).
 #[derive(Debug, Clone, Deserialize, TS)]
 #[ts(export)]

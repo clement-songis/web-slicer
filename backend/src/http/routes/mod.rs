@@ -9,6 +9,7 @@ pub mod export;
 pub mod flush;
 pub mod gcode_open;
 pub mod gcodes;
+pub mod handy_models;
 pub mod harness;
 pub mod jobs;
 pub mod mesh_ops;
@@ -102,6 +103,11 @@ where
         .route("/api/projects/{id}/emboss", post(mesh_ops::emboss))
         .route("/api/projects/{id}/emboss-svg", post(mesh_ops::emboss_svg))
         .route("/api/projects/{id}/primitive", post(mesh_ops::primitive))
+        .route("/api/handy-models", get(handy_models::list))
+        .route(
+            "/api/projects/{id}/handy-models/{key}",
+            post(handy_models::add),
+        )
         .route("/api/projects/{id}/paint", get(paint::paint_ws))
         .route(
             "/api/models/{id}/layer-profile",
@@ -169,11 +175,13 @@ where
                 .delete(presets::delete),
         )
         .route("/api/presets/{id}/resolved", get(presets::resolved))
+        .route("/api/presets/{id}/detach", post(presets::detach))
         .route("/api/presets/{id}/export", get(presets::export))
         .route("/api/presets/import", post(presets::import))
         .route("/api/presets/create-options", get(presets::create_options))
         .route("/api/printer-catalog", get(printers::catalog))
         .route("/api/printers", get(printers::list).post(printers::create))
+        .route("/api/printers/discover", get(printers::discover))
         .route(
             "/api/printers/{id}",
             get(printers::get)

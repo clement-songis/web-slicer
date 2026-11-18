@@ -537,6 +537,42 @@ pub async fn storages(
 
 /// `GET /api/printers/{id}/host-printers` — imprimantes d'un serveur Repetier
 /// (Repetier::get_printers : slugs, à reporter dans `host_port`).
+/// Paramètres de `GET /api/printers/discover`.
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct DiscoverQuery {
+    /// Service DNS-SD sans `_` ni `._tcp` (défaut `octoprint`, comme Orca).
+    #[serde(default)]
+    pub service: Option<String>,
+    /// Durée d'écoute en ms (défaut 4000 comme BonjourDialog, borné 500–10000).
+    #[serde(default)]
+    pub timeout_ms: Option<u64>,
+}
+
+/// `GET /api/printers/discover` — découverte mDNS des hôtes du réseau local
+/// (Orca : bouton « Browse » de PhysicalPrinterDialog → BonjourDialog,
+/// `Bonjour("octoprint")`, 3 essais). Le serveur interroge son propre LAN.
+pub async fn discover(
+    CurrentUser(_user): CurrentUser,
+    axum::extract::Query(q): axum::extract::Query<DiscoverQuery>,
+) -> ApiResult<Json<Vec<crate::adapters::bonjour::BonjourReply>>> {
+    use crate::adapters::bonjour;
+    let service = q.service.unwrap_or_else(|| "octoprint".into());
+    if !bonjour::valid_service(&service) {
+        return Err(ApiError::validation(
+            "service DNS-SD invalide (minuscules, chiffres, tirets)",
+            serde_json::json!({ "service": service }),
+        ));
+    }
+    let timeout = std::time::Duration::from_millis(q.timeout_ms.unwrap_or(4000).clamp(500, 10_000));
+    let replies = bonjour::discover_at(bonjour::MDNS_ADDR, &service, timeout, 3)
+        .await
+        .map_err(|e| {
+            tracing::warn!(error = %e, "découverte mDNS");
+            ApiError::internal()
+        })?;
+    Ok(Json(replies))
+}
+
 pub async fn host_printers(
     CurrentUser(user): CurrentUser,
     State(state): State<AppState>,

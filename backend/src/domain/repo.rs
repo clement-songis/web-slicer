@@ -179,6 +179,15 @@ pub trait PresetRepo: Send + Sync {
         values: serde_json::Value,
     ) -> StorageResult<Preset>;
     async fn delete_user_preset(&self, owner: UserId, id: PresetId) -> StorageResult<()>;
+    /// Détache un preset **utilisateur** de son parent (Orca
+    /// `save_current_preset(…, detach=true)`) : `inherits` vidé, valeurs
+    /// remplacées par la chaîne aplatie. `NotFound` comme `update_user_preset`.
+    async fn detach_user_preset(
+        &self,
+        owner: UserId,
+        id: PresetId,
+        values: serde_json::Value,
+    ) -> StorageResult<Preset>;
 }
 
 #[derive(Debug, Clone)]

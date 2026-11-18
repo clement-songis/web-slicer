@@ -17,8 +17,8 @@ use uuid::Uuid;
 use crate::domain::preset_compat::{self, ActivePrinter, RegexCache};
 use crate::domain::{Preset, PresetId, PresetKind, PresetOrigin, UserId};
 use crate::http::dto::{
-    CreatePresetRequest, ImportPresetRequest, PresetDetail, PresetSummary, ResolvedPreset,
-    UpdatePresetRequest,
+    CreatePresetRequest, DetachPresetRequest, ImportPresetRequest, PresetDetail, PresetSummary,
+    ResolvedPreset, UpdatePresetRequest,
 };
 use crate::http::error::{ApiError, ApiResult};
 use crate::http::extract::CurrentUser;
@@ -332,6 +332,75 @@ pub async fn update(
         .update_user_preset(user.id, id, &name, values)
         .await?;
     Ok(Json(updated.into()))
+}
+
+/// Valeurs brutes de la chaîne aplaties (racine → feuille, la feuille gagne),
+/// au format JSON Orca stocké ; identifiants de réglage renommés comme Orca
+/// (`save_current_preset` avec `detach` : `*_settings_id` = nouveau nom).
+pub(crate) fn flatten_chain(chain: &[RawPreset], name: &str) -> Value {
+    let mut values = Map::new();
+    for raw in chain {
+        for (k, v) in &raw.values {
+            if k != "inherits" {
+                values.insert(k.clone(), v.clone());
+            }
+        }
+    }
+    for key in ["print_settings_id", "printer_settings_id"] {
+        if values.contains_key(key) {
+            values.insert(key.into(), Value::String(name.into()));
+        }
+    }
+    if let Some(v) = values.get_mut("filament_settings_id") {
+        *v = match v {
+            Value::Array(_) => Value::Array(vec![Value::String(name.into())]),
+            _ => Value::String(name.into()),
+        };
+    }
+    Value::Object(values)
+}
+
+/// `POST /api/presets/{id}/detach` — « Detach from system preset » d'Orca
+/// (Tab.cpp:2163, `PresetCollection::save_current_preset(…, detach=true)`) :
+/// - preset utilisateur : détaché sur place (`inherits` vidé, valeurs =
+///   chaîne aplatie) → 200 ; déjà sans parent → 200 inchangé ;
+/// - preset système : copie utilisateur détachée nommée `name` (requis) → 201.
+pub async fn detach(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    body: Option<Json<DetachPresetRequest>>,
+) -> ApiResult<(StatusCode, Json<PresetDetail>)> {
+    let id = parse_preset_id(&id)?;
+    let body = body.map(|Json(b)| b).unwrap_or_default();
+    let leaf = load_visible(&state, user.id, id).await?;
+    if leaf.origin == PresetOrigin::User && leaf.inherits.is_none() {
+        return Ok((StatusCode::OK, Json(leaf.into())));
+    }
+    let chain = load_chain(&state, user.id, &leaf).await?;
+    if leaf.origin == PresetOrigin::User {
+        let values = flatten_chain(&chain, &leaf.name);
+        let updated = state
+            .storage
+            .presets()
+            .detach_user_preset(user.id, leaf.id, values)
+            .await?;
+        return Ok((StatusCode::OK, Json(updated.into())));
+    }
+    let name = body.name.unwrap_or_default();
+    let preset = new_user_preset(
+        user.id,
+        leaf.kind,
+        &name,
+        None,
+        flatten_chain(&chain, name.trim()),
+    )?;
+    let created = state
+        .storage
+        .presets()
+        .create_user_preset(user.id, preset)
+        .await?;
+    Ok((StatusCode::CREATED, Json(created.into())))
 }
 
 /// `DELETE /api/presets/{id}` — supprime un preset utilisateur.
