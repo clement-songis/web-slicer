@@ -99,11 +99,11 @@ fn host_from_body(
 
 /// Client d'un hôte d'impression non Moonraker (adapters::print_host), secrets
 /// déchiffrés à la volée.
-pub(crate) fn host_client(
+pub(crate) async fn host_client(
     state: &AppState,
     printer: &Printer,
 ) -> ApiResult<Option<crate::adapters::print_host::HostClient>> {
-    use crate::adapters::print_host::{HostClient, HostConfig, HostKind};
+    use crate::adapters::print_host::{HostClient, HostKind};
     let kind = HostKind::parse(&printer.host_type).unwrap_or(HostKind::Moonraker);
     if kind == HostKind::Moonraker {
         return Ok(None);
@@ -113,35 +113,83 @@ pub(crate) fn host_client(
             "Imprimante non connectée (aucune adresse d'hôte)",
         ));
     };
-    let opt = |k: &str| {
-        printer
-            .host_options
-            .get(k)
-            .and_then(Value::as_str)
-            .map(str::to_string)
+    let preset = machine_preset_values(state, printer).await;
+    let api_key = printer
+        .api_key
+        .as_deref()
+        .and_then(|e| state.secrets.decrypt(e));
+    let password = printer
+        .host_options
+        .get("password")
+        .and_then(Value::as_str)
+        .and_then(|e| state.secrets.decrypt(e));
+    let cfg = host_config(host, api_key, password, &printer.host_options, &preset);
+    Ok(Some(HostClient::new(kind, cfg)))
+}
+
+/// Valeurs aplaties (racine → feuille) du preset machine de l'imprimante ;
+/// vide si le preset est introuvable (l'hôte reste utilisable).
+async fn machine_preset_values(
+    state: &AppState,
+    printer: &Printer,
+) -> serde_json::Map<String, Value> {
+    let Ok(leaf) = state.storage.presets().get(printer.machine_preset_id).await else {
+        return serde_json::Map::new();
     };
-    Ok(Some(HostClient::new(
-        kind,
-        HostConfig {
-            host,
-            api_key: printer
-                .api_key
-                .as_deref()
-                .and_then(|e| state.secrets.decrypt(e)),
-            auth_user: opt("auth").as_deref() == Some("user"),
-            user: opt("user"),
-            password: opt("password").and_then(|e| state.secrets.decrypt(&e)),
-            port: opt("port"),
-            start_delay: std::time::Duration::from_millis(1500),
-            mks_console_port: 8080,
-            serial_number: opt("serial_number"),
-            klipper: opt("gcode_flavor").as_deref() == Some("klipper"),
-            save_delay: std::time::Duration::from_millis(3000),
-            flashforge_http_port: None,
-            flashforge_console_port: None,
-            creality_ws_port: None,
-        },
-    )))
+    let Ok(chain) = super::presets::load_chain(state, printer.user_id, &leaf).await else {
+        return serde_json::Map::new();
+    };
+    match super::presets::flatten_chain(&chain, &leaf.name) {
+        Value::Object(m) => m,
+        _ => serde_json::Map::new(),
+    }
+}
+
+/// Réglages d'hôte comme Orca (PrintHost::get_print_host lit la config de
+/// l'imprimante physique + preset machine) : `host_options` explicites
+/// d'abord, sinon clés Orca du preset machine — printhost_port,
+/// printhost_authorization_type (`user` → digest), printhost_user,
+/// flashforge_serial_number ; gcode_flavor et printer_model viennent toujours
+/// du preset (Flashforge : ~M640 si klipper ; ElegooLink : protocole par modèle).
+pub(crate) fn host_config(
+    host: String,
+    api_key: Option<String>,
+    password: Option<String>,
+    options: &Value,
+    preset: &serde_json::Map<String, Value>,
+) -> crate::adapters::print_host::HostConfig {
+    let text = |v: &Value| -> Option<String> {
+        match v {
+            Value::String(s) => Some(s.clone()),
+            Value::Array(a) => a.first().and_then(|x| x.as_str()).map(str::to_string),
+            Value::Number(n) => Some(n.to_string()),
+            _ => None,
+        }
+        .filter(|s| !s.is_empty())
+    };
+    let opt = |k: &str| options.get(k).and_then(text);
+    let pre = |k: &str| preset.get(k).and_then(text);
+    let auth = opt("auth").or_else(|| pre("printhost_authorization_type"));
+    let flavor = opt("gcode_flavor").or_else(|| pre("gcode_flavor"));
+    crate::adapters::print_host::HostConfig {
+        host,
+        api_key,
+        auth_user: auth.as_deref() == Some("user"),
+        user: opt("user").or_else(|| pre("printhost_user")),
+        password: password.or_else(|| pre("printhost_password")),
+        port: opt("port").or_else(|| pre("printhost_port")),
+        start_delay: std::time::Duration::from_millis(1500),
+        mks_console_port: 8080,
+        serial_number: opt("serial_number").or_else(|| pre("flashforge_serial_number")),
+        klipper: flavor.as_deref() == Some("klipper"),
+        printer_model: opt("printer_model").or_else(|| pre("printer_model")),
+        save_delay: std::time::Duration::from_millis(3000),
+        ws_delay: std::time::Duration::from_secs(1),
+        flashforge_http_port: None,
+        flashforge_console_port: None,
+        creality_ws_port: None,
+        elegoo_ws_port: None,
+    }
 }
 
 impl From<crate::adapters::print_host::HostError> for ApiError {
@@ -439,7 +487,7 @@ pub async fn test(
 ) -> ApiResult<Json<TestPrinterResponse>> {
     let id = parse_printer_id(&id)?;
     let printer = state.storage.printers().get(user.id, id).await?; // 404, SC-008
-    if let Some(host) = host_client(&state, &printer)? {
+    if let Some(host) = host_client(&state, &printer).await? {
         // Hôtes d'Orca : PrintHost::test (connexion + type d'hôte vérifié).
         let info = host.test().await?;
         return Ok(Json(TestPrinterResponse {
@@ -495,7 +543,7 @@ pub async fn upload(
     let filename = crate::gcode_filename::for_gcode(&gcode.stats, &bytes, &project_name);
 
     let printer = state.storage.printers().get(user.id, id).await?; // 404, SC-008
-    if let Some(host) = host_client(&state, &printer)? {
+    if let Some(host) = host_client(&state, &printer).await? {
         let up = host
             .upload(&filename, bytes, body.start_now, body.storage.as_deref())
             .await?;
@@ -520,7 +568,7 @@ pub async fn storages(
     use crate::adapters::print_host::HostKind;
     let id = parse_printer_id(&id)?;
     let printer = state.storage.printers().get(user.id, id).await?; // 404, SC-008
-    let Some(host) = host_client(&state, &printer)? else {
+    let Some(host) = host_client(&state, &printer).await? else {
         return Ok(Json(serde_json::json!({ "kind": "none", "items": [] })));
     };
     let value = match host.kind() {
@@ -586,7 +634,8 @@ pub async fn host_printers(
 ) -> ApiResult<Json<Vec<String>>> {
     let id = parse_printer_id(&id)?;
     let printer = state.storage.printers().get(user.id, id).await?; // 404, SC-008
-    let host = host_client(&state, &printer)?
+    let host = host_client(&state, &printer)
+        .await?
         .ok_or_else(|| ApiError::conflict("hôte Moonraker : pas de liste d'imprimantes"))?;
     Ok(Json(host.printers().await?))
 }
@@ -832,4 +881,57 @@ where
     let (_printer, client) = load_client(state, user, id).await?;
     action(client).await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[cfg(test)]
+mod tests {
+    use serde_json::Value;
+
+    #[test]
+    fn host_config_reads_orca_keys_from_the_machine_preset() {
+        let preset: serde_json::Map<String, Value> = serde_json::from_value(serde_json::json!({
+            "gcode_flavor": "klipper",
+            "printer_model": "Elegoo Centauri Carbon",
+            "printhost_port": "42",
+            "printhost_authorization_type": "user",
+            "printhost_user": "maker",
+            "flashforge_serial_number": "SN9"
+        }))
+        .unwrap();
+        let cfg = super::host_config(
+            "h".into(),
+            Some("k".into()),
+            None,
+            &serde_json::json!({}),
+            &preset,
+        );
+        assert!(cfg.klipper);
+        assert_eq!(cfg.printer_model.as_deref(), Some("Elegoo Centauri Carbon"));
+        assert_eq!(cfg.port.as_deref(), Some("42"));
+        assert!(cfg.auth_user);
+        assert_eq!(cfg.user.as_deref(), Some("maker"));
+        assert_eq!(cfg.serial_number.as_deref(), Some("SN9"));
+        // Options explicites de l'imprimante prioritaires sur le preset.
+        let cfg = super::host_config(
+            "h".into(),
+            None,
+            Some("pw".into()),
+            &serde_json::json!({ "port": "7", "auth": "key", "serial_number": "X", "gcode_flavor": "marlin2" }),
+            &preset,
+        );
+        assert_eq!(cfg.port.as_deref(), Some("7"));
+        assert!(!cfg.auth_user);
+        assert!(!cfg.klipper);
+        assert_eq!(cfg.serial_number.as_deref(), Some("X"));
+        assert_eq!(cfg.password.as_deref(), Some("pw"));
+        // Preset vide : valeurs par défaut.
+        let cfg = super::host_config(
+            "h".into(),
+            None,
+            None,
+            &serde_json::json!({}),
+            &serde_json::Map::new(),
+        );
+        assert!(!cfg.klipper && cfg.printer_model.is_none() && cfg.port.is_none());
+    }
 }

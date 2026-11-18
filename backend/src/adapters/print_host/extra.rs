@@ -108,7 +108,7 @@ enum Serial<'a> {
 }
 
 impl HostClient {
-    fn host_name(&self) -> String {
+    pub(super) fn host_name(&self) -> String {
         // Http::get_host_from_url / extract_host_name : hôte sans schéma, port ni chemin.
         let h = self.bare_host();
         let h = h.split('/').next().unwrap_or_default();

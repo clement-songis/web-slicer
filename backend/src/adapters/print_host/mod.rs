@@ -4,7 +4,7 @@
 //! ESP3D, plus Obico, Creality Print et Flashforge (module `extra`, lot 19).
 //! Moonraker garde son client dédié (adapters::moonraker), plus riche
 //! (état, pause, fichiers…). SimplyPrint (OAuth + serveur intermédiaire),
-//! ElegooLink et 3DPrinterOS ne sont pas portés.
+//! 3DPrinterOS ne sont pas portés. ElegooLink : module `elegoo` (lot 20).
 //!
 //! Correspondance des réglages Orca : print_host → \`host\`, printhost_apikey →
 //! \`api_key\`, printhost_authorization_type / printhost_user / printhost_password
@@ -13,7 +13,9 @@
 
 use std::time::Duration;
 
+mod elegoo;
 mod extra;
+pub use elegoo::{classify as elegoo_classify, ElegooType};
 pub use extra::{creality_model_name, flashforge_filename};
 
 use md5::{Digest, Md5};
@@ -38,6 +40,7 @@ pub enum HostKind {
     Obico,
     Crealityprint,
     Flashforge,
+    Elegoolink,
 }
 
 impl HostKind {
@@ -59,6 +62,7 @@ impl HostKind {
             Self::Obico => "obico",
             Self::Crealityprint => "crealityprint",
             Self::Flashforge => "flashforge",
+            Self::Elegoolink => "elegoolink",
         }
     }
     /// Nom affiché par Orca (get_name).
@@ -77,6 +81,7 @@ impl HostKind {
             Self::Obico => "Obico",
             Self::Crealityprint => "Creality Print",
             Self::Flashforge => "Flashforge",
+            Self::Elegoolink => "ElegooLink",
         }
     }
 }
@@ -102,11 +107,17 @@ pub struct HostConfig {
     pub klipper: bool,
     /// Flashforge : délai avant ~M29 (3 s dans Orca) — réglable en test.
     pub save_delay: Duration,
+    /// printer_model du preset machine (ElegooLink : protocole par modèle).
+    pub printer_model: Option<String>,
+    /// ElegooLink : pause entre étapes SDCP (1 s dans Orca) — réglable en test.
+    pub ws_delay: Duration,
     /// Ports réglables en test (défauts d'Orca si `None`) : API locale
     /// Flashforge 8898, console Flashforge 8899, WebSocket Creality 9999.
     pub flashforge_http_port: Option<u16>,
     pub flashforge_console_port: Option<u16>,
     pub creality_ws_port: Option<u16>,
+    /// WebSocket SDCP ElegooLink (3030).
+    pub elegoo_ws_port: Option<u16>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -463,6 +474,7 @@ impl HostClient {
             HostKind::Obico => self.obico_test().await,
             HostKind::Crealityprint => self.creality_test().await,
             HostKind::Flashforge => self.flashforge_test().await,
+            HostKind::Elegoolink => self.elegoo_test().await,
             HostKind::Esp3d => {
                 Self::send(
                     self.http
@@ -675,6 +687,7 @@ impl HostClient {
             HostKind::Obico => self.obico_upload(filename, data, start).await,
             HostKind::Crealityprint => self.creality_upload(filename, data, start).await,
             HostKind::Flashforge => self.flashforge_upload(filename, data, start).await,
+            HostKind::Elegoolink => self.elegoo_upload(filename, data, start).await,
             HostKind::Esp3d => {
                 let short = esp3d_short_name(filename);
                 let form = reqwest::multipart::Form::new()

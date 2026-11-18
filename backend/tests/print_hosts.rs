@@ -922,3 +922,228 @@ async fn flashforge_like_orca() {
         .to_string()
         .contains("bad check code"));
 }
+
+/// Serveur SDCP factice (ElegooLink Centauri Carbon, ws :3030/websocket) :
+/// répond « occupé » (CurrentStatus [8]) au 1er Cmd 0, libre au suivant,
+/// puis acquitte Cmd 128 avec `ack`. Enregistre les commandes reçues.
+#[allow(clippy::result_large_err)] // rappel de poignée de main imposé par tungstenite
+async fn fake_sdcp(ack: i64) -> (u16, Arc<Mutex<Vec<serde_json::Value>>>) {
+    use futures_util::{SinkExt, StreamExt};
+    use tokio_tungstenite::tungstenite::Message;
+    let msgs: Arc<Mutex<Vec<serde_json::Value>>> = Arc::new(Mutex::new(Vec::new()));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let m = msgs.clone();
+    tokio::spawn(async move {
+        while let Ok((stream, _)) = listener.accept().await {
+            let m = m.clone();
+            tokio::spawn(async move {
+                let path = Arc::new(Mutex::new(String::new()));
+                let p2 = path.clone();
+                let cb = move |req: &tokio_tungstenite::tungstenite::handshake::server::Request,
+                               resp| {
+                    *p2.lock().unwrap() = req.uri().path().to_string();
+                    Ok(resp)
+                };
+                let mut ws = tokio_tungstenite::accept_hdr_async(stream, cb)
+                    .await
+                    .unwrap();
+                assert_eq!(*path.lock().unwrap(), "/websocket");
+                let mut status_calls = 0;
+                while let Some(Ok(Message::Text(t))) = ws.next().await {
+                    let v: serde_json::Value = serde_json::from_str(&t).unwrap();
+                    m.lock().unwrap().push(v.clone());
+                    let reply = match v["Data"]["Cmd"].as_i64() {
+                        Some(0) => {
+                            status_calls += 1;
+                            let cur = if status_calls == 1 { 8 } else { 0 };
+                            serde_json::json!({ "Status": { "CurrentStatus": [cur] } })
+                        }
+                        Some(128) => serde_json::json!({
+                            "Data": { "Cmd": 128, "Data": { "Ack": ack } },
+                            "Topic": "sdcp/response/x"
+                        }),
+                        _ => continue,
+                    };
+                    ws.send(Message::Text(reply.to_string().into()))
+                        .await
+                        .unwrap();
+                }
+            });
+        }
+    });
+    (port, msgs)
+}
+
+/// ElegooLink (ElegooLink.cpp) : 3 protocoles selon printer_model.
+#[tokio::test]
+async fn elegoolink_like_orca() {
+    // 1) Autre modèle → protocole OctoPrint (toute version acceptée).
+    let (host, log) = fake(|_, uri, _| match uri {
+        "/api/version" => (200, r#"{"text":"ElegooLink 1.0"}"#.into()),
+        _ => (201, "{}".into()),
+    })
+    .await;
+    let other = HostClient::new(
+        HostKind::Elegoolink,
+        HostConfig {
+            api_key: Some("K".into()),
+            printer_model: Some("Elegoo Neptune 4 Pro".into()),
+            ..cfg(&host)
+        },
+    );
+    assert_eq!(
+        other.test().await.unwrap().version.as_deref(),
+        Some("ElegooLink 1.0")
+    );
+    other
+        .upload("p.gcode", GCODE.to_vec(), true, None)
+        .await
+        .unwrap();
+    let post = seen(&log).into_iter().find(|r| r.method == "POST").unwrap();
+    assert_eq!(post.uri, "/api/files/local");
+    assert_eq!(post.header("x-api-key"), Some("K"));
+    assert_eq!(post.field("print").as_deref(), Some("true"));
+
+    // 2) Centauri Carbon : morceaux de 1 Mio + SDCP.
+    let payload: Vec<u8> = (0..(2 * 1024 * 1024 + 1000u32))
+        .map(|i| b"G1X\n"[(i % 4) as usize])
+        .collect();
+    let (host, log) = fake(|_, uri, _| match uri {
+        "/" => (200, "<html><title>ELEGOO</title></html>".into()),
+        "/uploadFile/upload" => (200, r#"{"code":"000000","messages":null}"#.into()),
+        _ => (404, String::new()),
+    })
+    .await;
+    let (ws_port, msgs) = fake_sdcp(0).await;
+    let cc = HostClient::new(
+        HostKind::Elegoolink,
+        HostConfig {
+            printer_model: Some("Elegoo Centauri Carbon".into()),
+            elegoo_ws_port: Some(ws_port),
+            ..cfg(&host)
+        },
+    );
+    let up = cc
+        .upload("dir/big part.gcode", payload.clone(), true, None)
+        .await
+        .unwrap();
+    assert_eq!(up.path, "/local/big part.gcode");
+    let parts: Vec<_> = seen(&log)
+        .into_iter()
+        .filter(|r| r.uri == "/uploadFile/upload")
+        .collect();
+    assert_eq!(parts.len(), 3, "3 morceaux de 1 Mio max");
+    let md5 = parts[0].field("S-File-MD5").unwrap();
+    assert_eq!(md5.len(), 32);
+    assert_eq!(
+        md5,
+        md5.to_ascii_uppercase(),
+        "MD5 hex majuscule (bbl_calc_md5)"
+    );
+    let uuid = parts[0].field("Uuid").unwrap();
+    let mut received = 0;
+    for (i, part) in parts.iter().enumerate() {
+        assert_eq!(part.field("Check").as_deref(), Some("1"));
+        assert_eq!(part.field("Offset"), Some((i * 1024 * 1024).to_string()));
+        assert_eq!(part.field("TotalSize"), Some(payload.len().to_string()));
+        assert_eq!(part.field("Uuid").as_deref(), Some(uuid.as_str()));
+        assert_eq!(part.field("S-File-MD5").as_deref(), Some(md5.as_str()));
+        assert_eq!(part.file_name("File").as_deref(), Some("big part.gcode"));
+        received += part.field("File").map(|f| f.len()).unwrap_or(0);
+    }
+    assert_eq!(received, payload.len(), "chaque octet transmis une fois");
+    let m = msgs.lock().unwrap().clone();
+    let cmds: Vec<_> = m
+        .iter()
+        .map(|v| v["Data"]["Cmd"].as_i64().unwrap())
+        .collect();
+    assert_eq!(cmds, [0, 0, 128], "état (occupé puis libre) puis démarrage");
+    assert_eq!(m[2]["Data"]["Data"]["Filename"], "/local/big part.gcode");
+    assert_eq!(m[2]["Data"]["Data"]["StartLayer"], 0);
+    assert_eq!(m[2]["Data"]["From"], 1);
+    // Acquittement d'erreur : message d'Orca.
+    let (ws_port, _) = fake_sdcp(1).await;
+    let busy = HostClient::new(
+        HostKind::Elegoolink,
+        HostConfig {
+            printer_model: Some("Elegoo Centauri Carbon".into()),
+            elegoo_ws_port: Some(ws_port),
+            ..cfg(&host)
+        },
+    );
+    let e = busy
+        .upload("x.gcode", GCODE.to_vec(), true, None)
+        .await
+        .unwrap_err();
+    assert!(
+        e.to_string().contains("The printer is busy") && e.to_string().contains("Error code: 1"),
+        "{e}"
+    );
+
+    // 3) Centauri Carbon 2 : jeton, system/info, PUT par plages, pas de démarrage.
+    let (host, log) = fake(|method, uri, headers| {
+        let token = headers
+            .iter()
+            .find(|(k, _)| k == "x-token")
+            .map(|(_, v)| v.clone());
+        if token.as_deref() != Some("123456") {
+            return (401, String::new());
+        }
+        match (method, uri) {
+            ("GET", "/system/info?X-Token=123456") => (
+                200,
+                r#"{"error_code":0,"system_info":{"sn":"CC2SN"}}"#.into(),
+            ),
+            ("PUT", "/upload") => (200, r#"{"error_code":0}"#.into()),
+            _ => (404, String::new()),
+        }
+    })
+    .await;
+    let cc2 = HostClient::new(
+        HostKind::Elegoolink,
+        HostConfig {
+            printer_model: Some("Elegoo Centauri Carbon 2".into()),
+            ..cfg(&host)
+        },
+    );
+    assert_eq!(cc2.test().await.unwrap().version.as_deref(), Some("CC2SN"));
+    let up = cc2
+        .upload("a.gcode", payload.clone(), true, None)
+        .await
+        .unwrap();
+    assert!(!up.print_started, "CC2 : post-action None");
+    let puts: Vec<_> = seen(&log)
+        .into_iter()
+        .filter(|r| r.method == "PUT")
+        .collect();
+    assert_eq!(puts.len(), 3);
+    let total = payload.len();
+    assert_eq!(
+        puts[0].header("content-range"),
+        Some("bytes 0-1048575/".to_string() + &total.to_string()).as_deref()
+    );
+    assert_eq!(
+        puts[2].header("content-range").map(str::to_string),
+        Some(format!("bytes 2097152-{}/{total}", total - 1))
+    );
+    assert_eq!(puts[0].header("x-file-name"), Some("a.gcode"));
+    let md5 = puts[0].header("x-file-md5").unwrap();
+    assert_eq!(md5, md5.to_ascii_lowercase(), "MD5 minuscule (CC2)");
+    assert_eq!(puts.iter().map(|p| p.body.len()).sum::<usize>(), total);
+    // Mauvais code d'accès → « Invalid access code ».
+    let bad = HostClient::new(
+        HostKind::Elegoolink,
+        HostConfig {
+            api_key: Some("999".into()),
+            printer_model: Some("Elegoo Centauri Carbon 2".into()),
+            ..cfg(&host)
+        },
+    );
+    assert!(bad
+        .test()
+        .await
+        .unwrap_err()
+        .to_string()
+        .contains("Invalid access code"));
+}

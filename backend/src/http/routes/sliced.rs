@@ -259,7 +259,7 @@ pub async fn upload_sliced(
         );
     }
     let printer = state.storage.printers().get(user.id, printer_id).await?; // 404, SC-008
-    if let Some(host) = super::printers::host_client(&state, &printer)? {
+    if let Some(host) = super::printers::host_client(&state, &printer).await? {
         let mut files = Vec::with_capacity(uploads.len());
         for (name, bytes) in uploads {
             let up = host.upload(&name, bytes, body.start_now, None).await?;
