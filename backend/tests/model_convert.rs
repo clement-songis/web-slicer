@@ -1,6 +1,6 @@
 //! Service de conversion de modèle (T123) : chemin heureux (décodage → mesh
 //! stocké → `set_mesh` → événement `model.converted`) et repli d'échec
-//! (`mark_conversion_failed`, aucun événement). Décodeur et dépôt injectés
+//! (`mark_conversion_failed`, événement `model.conversion_failed` seul). Décodeur et dépôt injectés
 //! (stubs) : aucun process worker ni base réelle.
 
 use std::path::Path;
@@ -208,7 +208,18 @@ async fn failure_marks_conversion_and_emits_no_event() {
         other => panic!("attendu Failed, obtenu {other:?}"),
     }
 
-    // Aucun événement de succès en cas d'échec.
+    // Aucun événement de succès en cas d'échec : seul `model.conversion_failed`
+    // (lot 27) est publié, avec la cause persistée.
+    match rx.try_recv() {
+        Ok(backend::http::dto::ServerEvent::ModelConversionFailed {
+            model_id: id,
+            error,
+        }) => {
+            assert_eq!(id, model_id.to_string());
+            assert!(!error.is_empty());
+        }
+        other => panic!("attendu model.conversion_failed, obtenu {other:?}"),
+    }
     assert!(
         matches!(rx.try_recv(), Err(TryRecvError::Empty)),
         "aucun model.converted en cas d'échec"

@@ -49,6 +49,55 @@ pub enum ConvertError {
     Storage(#[from] StorageError),
 }
 
+impl ConvertError {
+    /// Cause précise de l'échec, destinée à l'utilisateur : message du worker
+    /// (ligne `E <code> <message>` du protocole, ex. « STL tronqué ») plutôt que
+    /// le texte technique complet (code de sortie, stderr), qui part dans les logs.
+    pub fn cause(&self) -> String {
+        match self {
+            ConvertError::Worker(WorkerError::Failed { stdout, stderr, .. }) => {
+                worker_error_line(&String::from_utf8_lossy(stdout))
+                    .or_else(|| worker_error_line(stderr))
+                    .unwrap_or_else(|| "le moteur n'a pas pu lire le fichier".into())
+            }
+            ConvertError::Worker(WorkerError::Timeout(d)) => {
+                format!(
+                    "lecture du fichier interrompue après {} s (délai dépassé)",
+                    d.as_secs()
+                )
+            }
+            ConvertError::Worker(WorkerError::Crashed { .. }) => {
+                "le moteur s'est arrêté brutalement en lisant le fichier (fichier corrompu ?)"
+                    .into()
+            }
+            other => other.to_string(),
+        }
+    }
+}
+
+/// Message de la première ligne `E <code> <message>` (protocole worker).
+fn worker_error_line(text: &str) -> Option<String> {
+    text.lines()
+        .map(str::trim)
+        .find_map(|line| line.strip_prefix("E "))
+        .map(|line| {
+            line.split_once(' ')
+                .map_or(line, |(_, m)| m)
+                .trim()
+                .to_string()
+        })
+        .filter(|m| !m.is_empty())
+}
+
+/// Cause lisible d'un `conversion_error` persisté : les échecs enregistrés
+/// avant le lot 27 contiennent le texte technique complet du worker
+/// (« worker sorti en code 1 — stderr : … — stdout : E invalid_model … ») ; on
+/// en extrait le message du moteur. Sinon le texte persisté tel quel.
+pub fn conversion_cause(stored: &str) -> String {
+    let stdout = stored.rsplit_once("stdout : ").map_or(stored, |(_, s)| s);
+    worker_error_line(stdout).unwrap_or_else(|| stored.trim().to_string())
+}
+
 /// Décodeur de production : lance `engine-worker load-model` et récupère le WSMh
 /// via la ligne `R <chemin>` (le worker écrit le binaire dans un fichier, car
 /// libslic3r pollue stdout — cf. T121).
@@ -155,13 +204,19 @@ impl ModelConverter {
             Err(_) => return,
         };
         if let Err(error) = self.run(&model).await {
-            let message = error.to_string();
+            tracing::warn!(model = %model.id, error = %error, "conversion du modèle en échec");
+            let message = error.cause();
             // Persiste l'échec (best-effort : l'erreur de persistance est loguée
             // mais ne masque pas l'échec de conversion d'origine).
             let _ = self
                 .models
                 .mark_conversion_failed(model.user_id, model.id, &message)
                 .await;
+            self.events.publish_model_conversion_failed(
+                model.user_id,
+                &model.id.to_string(),
+                &message,
+            );
         }
     }
 
@@ -174,11 +229,17 @@ impl ModelConverter {
             Err(_) => return,
         };
         if let Err(error) = self.store_mesh(&model, mesh.encode_display()).await {
-            let message = error.to_string();
+            tracing::warn!(model = %model.id, error = %error, "conversion du modèle en échec");
+            let message = error.cause();
             let _ = self
                 .models
                 .mark_conversion_failed(model.user_id, model.id, &message)
                 .await;
+            self.events.publish_model_conversion_failed(
+                model.user_id,
+                &model.id.to_string(),
+                &message,
+            );
         }
     }
 
@@ -209,6 +270,30 @@ impl ModelConverter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn cause_is_the_worker_message_not_the_technical_dump() {
+        let error = ConvertError::Worker(WorkerError::Failed {
+            code: 1,
+            stdout:
+                b"[log] bruit\nE invalid_model Failed loading the input model: STL tronqu\xc3\xa9\n"
+                    .to_vec(),
+            stderr: "trace C++".into(),
+        });
+        assert_eq!(error.cause(), "Failed loading the input model: STL tronqué");
+        assert!(
+            ConvertError::Worker(WorkerError::Timeout(Duration::from_secs(60)))
+                .cause()
+                .contains("60 s")
+        );
+        // Ancien format persisté (avant lot 27) : cause extraite.
+        let stored = "décodage moteur : worker sorti en code 1 — stderr :  — stdout : E invalid_model Fichier STEP illisible\n";
+        assert_eq!(conversion_cause(stored), "Fichier STEP illisible");
+        assert_eq!(
+            conversion_cause("WSMh invalide : vide"),
+            "WSMh invalide : vide"
+        );
+    }
 
     #[test]
     fn parses_result_path_ignoring_log_noise() {

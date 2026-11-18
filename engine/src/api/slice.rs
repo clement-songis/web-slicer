@@ -210,6 +210,71 @@ pub struct SliceResult {
     pub thumbnails: Vec<PathBuf>,
 }
 
+/// Origine d'une entrée de validation : `StringExceptionType` d'Orca
+/// (PrintBase.hpp) ou contrôle hors `Print::validate`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ValidateIssueKind {
+    /// `STRING_EXCEPT_NOT_DEFINED`.
+    General,
+    /// `STRING_EXCEPT_FILAMENT_NOT_MATCH_BED_TYPE`.
+    FilamentNotMatchBedType,
+    /// `STRING_EXCEPT_FILAMENTS_DIFFERENT_TEMP`.
+    FilamentsDifferentTemp,
+    /// `STRING_EXCEPT_OBJECT_COLLISION_IN_SEQ_PRINT` (« by object » : dégagement extrudeur).
+    ObjectCollisionInSeqPrint,
+    /// `STRING_EXCEPT_OBJECT_COLLISION_IN_LAYER_PRINT` (zones exclues, tour de purge).
+    ObjectCollisionInLayerPrint,
+    /// `STRING_EXCEPT_LAYER_HEIGHT_EXCEEDS_LIMIT`.
+    LayerHeightExceedsLimit,
+    /// `DynamicPrintConfig::validate` (bornes / incompatibilités, CLI Orca).
+    Config,
+    /// Cohérence de la scène vérifiée par le pont (filaments manquants,
+    /// matrice de purge, plateau vide).
+    Consistency,
+}
+
+impl ValidateIssueKind {
+    /// Depuis le code du pont (`RawValidateIssue::kind`).
+    pub fn from_code(code: i32) -> Self {
+        match code {
+            1 => Self::FilamentNotMatchBedType,
+            2 => Self::FilamentsDifferentTemp,
+            3 => Self::ObjectCollisionInSeqPrint,
+            4 => Self::ObjectCollisionInLayerPrint,
+            5 => Self::LayerHeightExceedsLimit,
+            -1 => Self::Config,
+            -2 => Self::Consistency,
+            _ => Self::General,
+        }
+    }
+}
+
+/// Erreur ou avertissement de `Print::validate` (miroir `StringObjectException`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct ValidateIssue {
+    /// Message d'Orca (anglais) ou du pont (français).
+    pub message: String,
+    pub kind: ValidateIssueKind,
+    /// Avertissement (le tranchage reste possible) ou erreur bloquante.
+    pub is_warning: bool,
+    /// Option en cause (`opt_key`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub opt_key: Option<String>,
+    /// Index de l'objet en cause dans `Model::objects` de la requête.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub object_index: Option<usize>,
+    /// Paramètres du message (`StringObjectException::params`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub params: Vec<String>,
+}
+
+/// Résultat de la validation avant tranchage d'un plateau.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct ValidateResult {
+    pub issues: Vec<ValidateIssue>,
+}
+
 /// Récepteur de progression : `phase` lisible + ratio [0, 1].
 pub type ProgressSink = Box<dyn Fn(&str, f32) + Send + Sync>;
 

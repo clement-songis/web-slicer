@@ -384,6 +384,21 @@ fn main() {
                 }
             }
         }
+        // Validation avant tranchage (`Print::validate` d'Orca) d'une requête
+        // de tranchage, sans `Print::process` : `R {"issues":[…]}`.
+        Some("validate") => {
+            let Some(path) = args.get(2).map(PathBuf::from) else {
+                eprintln!("usage: validate <request.json>");
+                std::process::exit(2);
+            };
+            match engine::adapters::ffi::validate_in_worker(&path) {
+                Ok(result) => emit_json_result(&result),
+                Err(e) => {
+                    emit_error(&code_slug(e.code), &e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
         Some("arrange") => {
             let Some(path) = args.get(2).map(PathBuf::from) else {
                 eprintln!("usage: arrange <request.json>");

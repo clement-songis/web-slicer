@@ -246,6 +246,44 @@ async fn failed_conversion_is_unprocessable() {
     let body = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
     let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
     assert_eq!(json["code"], "conversion_failed");
+    // Lot 27 : la cause précise (message du worker) est remontée.
+    assert!(
+        json["message"]
+            .as_str()
+            .unwrap()
+            .ends_with(": fichier illisible"),
+        "{json}"
+    );
+    assert_eq!(json["details"]["cause"], "fichier illisible");
+    assert_eq!(json["details"]["model_id"], model_id.to_string());
+}
+
+/// Lot 27 : un échec persisté dans l'ancien format technique (sortie complète
+/// du worker) expose seulement le message du moteur, dans le 422 comme dans
+/// l'état du modèle (`conversion_error`, `conversion_pending` faux).
+#[tokio::test]
+async fn failed_conversion_exposes_the_worker_cause_in_the_model_state() {
+    let (_d, storage, _files, app) = harness().await;
+    let (cookie, user) = register(&app, &storage, "cause@test.local").await;
+    let model_id = create_model(&storage, user, ModelFormat::Step).await;
+    storage
+        .models()
+        .mark_conversion_failed(
+            user,
+            model_id,
+            "décodage moteur : worker sorti en code 1 — stderr : trace — stdout : [log] x\nE invalid_model STEP sans solide\n",
+        )
+        .await
+        .unwrap();
+    let resp = get_mesh(&app, &cookie, &model_id.to_string()).await;
+    let body = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+    let json: serde_json::Value = serde_json::from_slice(&body).unwrap();
+    assert_eq!(json["details"]["cause"], "STEP sans solide");
+
+    let model = storage.models().get(user, model_id).await.unwrap();
+    let dto = backend::http::dto::ModelResponse::from(model);
+    assert_eq!(dto.conversion_error.as_deref(), Some("STEP sans solide"));
+    assert!(!dto.conversion_pending);
 }
 
 #[tokio::test]

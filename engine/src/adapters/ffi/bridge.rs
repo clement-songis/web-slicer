@@ -277,6 +277,24 @@ pub(crate) mod ffi {
         shaper_type: String,
     }
 
+    /// Erreur ou avertissement de validation avant tranchage
+    /// (`StringObjectException` de `Print::validate`, ou contrôle du pont).
+    #[derive(Debug, Default, Clone)]
+    struct RawValidateIssue {
+        /// Message d'Orca (anglais, une ligne par objet en cause).
+        message: String,
+        /// Option en cause (`opt_key`), vide si aucune.
+        opt_key: String,
+        /// Index de l'objet de la requête en cause, -1 si global.
+        object_index: i32,
+        /// `StringExceptionType` d'Orca (0 = non défini) ; -1 = config
+        /// (`DynamicPrintConfig::validate`), -2 = cohérence du pont.
+        kind: i32,
+        is_warning: bool,
+        /// Paramètres du message (`StringObjectException::params`).
+        params: Vec<String>,
+    }
+
     /// Facettes peintes d'un canal : triangle (croissant) → chaîne hex Orca.
     #[derive(Debug, Default)]
     struct RawPaintFacets {
@@ -514,6 +532,17 @@ pub(crate) mod ffi {
             custom_gcodes_json: &str,
             allow_mixed_temperatures: bool,
         ) -> Result<RawSliceResult>;
+
+        /// Validation avant tranchage, comme `Print::validate(&warning)` de la
+        /// GUI d'Orca : même préparation que `slice_raw` (config, apply), sans
+        /// `Print::process`. Renvoie erreurs et avertissements.
+        fn validate_raw(
+            objects: &Vec<RawObject>,
+            config_json: &str,
+            calib: &RawCalibParams,
+            custom_gcodes_json: &str,
+            allow_mixed_temperatures: bool,
+        ) -> Result<Vec<RawValidateIssue>>;
 
         /// Sépare un maillage en composantes connexes (`TriangleMesh::split`,
         /// pièces < 3 facettes ignorées comme `ModelObject::split`).

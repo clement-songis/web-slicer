@@ -815,8 +815,8 @@ fn parse_matrix(values: &[f64], operand: &str) -> ApiResult<glam::DMat4> {
 /// Lit le WSMh converti du modèle (409 pendant la conversion, 422 en échec).
 pub(crate) async fn load_mesh(state: &AppState, model: &Model) -> ApiResult<TriangleMesh> {
     let Some(path) = model.mesh_path.as_deref() else {
-        return Err(if model.conversion_error.is_some() {
-            ApiError::conversion_failed("échec de la conversion du modèle par le moteur")
+        return Err(if let Some(error) = model.conversion_error.as_deref() {
+            ApiError::conversion_failed_for(model.id, error)
         } else {
             ApiError::conflict("conversion en cours (voir l'événement model.converted)")
         });

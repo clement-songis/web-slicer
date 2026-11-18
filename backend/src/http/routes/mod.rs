@@ -23,6 +23,7 @@ pub mod projects;
 pub mod scene;
 pub mod slice;
 pub mod sliced;
+pub mod validate;
 
 use axum::extract::DefaultBodyLimit;
 use axum::routing::{get, patch, post};
@@ -128,6 +129,7 @@ where
         .route("/api/projects/{id}/arrange", post(scene::arrange))
         .route("/api/projects/{id}/orient", post(scene::orient))
         .route("/api/projects/{id}/slice", post(slice::slice))
+        .route("/api/projects/{id}/validate", post(validate::validate))
         .route("/api/projects/{id}/export/3mf", get(export::export_3mf))
         .route(
             "/api/projects/{id}/plates/{index}/thumbnail",
@@ -241,5 +243,12 @@ where
         app
     };
 
-    app.layer(session_layer).with_state(state)
+    // Enveloppe d'erreur uniforme { code, message, details? } sur toutes les
+    // routes, y compris les rejets d'axum (extracteurs, limite de corps,
+    // route inconnue, méthode non permise) — lot 27, voir backend/API.md.
+    app.layer(session_layer)
+        .layer(axum::middleware::map_response(
+            super::envelope::normalize_error_response,
+        ))
+        .with_state(state)
 }

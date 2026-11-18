@@ -670,19 +670,106 @@ bool is_bbl_vendor_preset(const Slic3r::DynamicPrintConfig &config)
     return !name.empty() && starts_with_bambu(name);
 }
 
+// Ajoute une entrée de validation (mode validation de `run_print`).
+void push_issue(rust::Vec<RawValidateIssue> &issues, const std::string &message, const std::string &opt_key,
+                int object_index, int kind, bool is_warning, const std::vector<std::string> &params = {})
+{
+    RawValidateIssue issue;
+    issue.message = rust::String(message);
+    issue.opt_key = rust::String(opt_key);
+    issue.object_index = object_index;
+    issue.kind = kind;
+    issue.is_warning = is_warning;
+    for (const std::string &param : params)
+        issue.params.push_back(rust::String(param));
+    issues.push_back(std::move(issue));
+}
+
+// Index (dans la requête) de l'objet désigné par une StringObjectException :
+// ModelObject, ModelInstance (collisions) ou PrintObject (réglages par objet).
+// Print::apply copie le modèle en conservant les ObjectID : on compare les id.
+int object_index_of(const Slic3r::ObjectBase *object, const Slic3r::Model &model)
+{
+    if (object == nullptr)
+        return -1;
+    const Slic3r::ModelObject *model_object = dynamic_cast<const Slic3r::ModelObject *>(object);
+    if (model_object == nullptr)
+        if (const auto *instance = dynamic_cast<const Slic3r::ModelInstance *>(object))
+            model_object = instance->get_object();
+    if (model_object == nullptr)
+        if (const auto *print_object = dynamic_cast<const Slic3r::PrintObject *>(object))
+            model_object = print_object->model_object();
+    if (model_object == nullptr)
+        return -1;
+    for (size_t index = 0; index < model.objects.size(); ++index)
+        if (model.objects[index]->id() == model_object->id())
+            return static_cast<int>(index);
+    return -1;
+}
+
+// Restitue une StringObjectException d'Orca. Les contrôles de collision
+// concatènent un message par objet (« %1% is too close to others… » séparés
+// par \n, objet nul) : une entrée par ligne, objet retrouvé par son nom
+// (préfixe du message, seulement s'il est unique).
+void push_exception(rust::Vec<RawValidateIssue> &issues, const Slic3r::StringObjectException &ex,
+                    bool is_warning, const Slic3r::Model &model)
+{
+    if (ex.string.empty())
+        return;
+    std::vector<std::string> lines;
+    std::string current;
+    std::istringstream stream(ex.string);
+    while (std::getline(stream, current)) {
+        boost::algorithm::trim(current);
+        if (!current.empty())
+            lines.push_back(current);
+    }
+    if (lines.empty())
+        return;
+    const int pointed = object_index_of(ex.object, model);
+    for (const std::string &line : lines) {
+        int index = lines.size() == 1 ? pointed : -1;
+        if (index < 0) {
+            int found = -1, matches = 0;
+            for (size_t i = 0; i < model.objects.size(); ++i) {
+                const std::string &name = model.objects[i]->name;
+                if (!name.empty() && line.compare(0, name.size(), name) == 0) {
+                    found = static_cast<int>(i);
+                    ++matches;
+                }
+            }
+            if (matches == 1)
+                index = found;
+            else if (lines.size() == 1)
+                index = pointed;
+        }
+        push_issue(issues, line, ex.opt_key, index, static_cast<int>(ex.type), is_warning || ex.is_warning,
+                   ex.params);
+    }
+}
+
 } // namespace
 
-RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
-                         rust::Str work_dir, const RawCalibParams &calib,
-                         rust::Str custom_gcodes_json, bool allow_mixed_temperatures)
+// Tranchage complet (`issues` nul) ou validation seule (`issues` non nul :
+// mêmes étapes jusqu'à `Print::validate` + contrôles de cohérence du pont,
+// refus collectés au lieu d'être levés, sans Print::process).
+static RawSliceResult run_print(const rust::Vec<RawObject> &objects, rust::Str config_json,
+                                rust::Str work_dir, const RawCalibParams &calib,
+                                rust::Str custom_gcodes_json, bool allow_mixed_temperatures,
+                                rust::Vec<RawValidateIssue> *issues)
 {
     Slic3r::Model model;
     raw_into_model(objects, model);
     // Changements de couleur / pauses / G-code perso du plateau tranché
     // (Model::get_curr_plate_custom_gcodes, lu par Print::apply).
     custom_gcodes_from_json(model, std::string(custom_gcodes_json), -1, model.curr_plate_index);
-    if (model.objects.empty())
+    if (model.objects.empty()) {
+        if (issues != nullptr) {
+            push_issue(*issues, "aucun objet à trancher", "", -1, -2, false);
+            return {};
+        }
         throw std::runtime_error("aucun objet à trancher");
+    }
 
     // Config = tous les défauts du registre + surcharges de la requête
     // (contrat trait_suite : « complétée par les défauts côté implémentation »),
@@ -785,6 +872,11 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
     // les couvre pas (ex. default_junction_deviation=0.5 > max 0.3).
     {
         const std::map<std::string, std::string> validity = config.validate(/*under_cli=*/true);
+        if (!validity.empty() && issues != nullptr) {
+            for (const auto &[key, reason] : validity)
+                push_issue(*issues, reason, key, -1, -1, false);
+            return {};
+        }
         if (!validity.empty()) {
             std::string message = "configuration invalide : valeur(s) de paramètre invalide(s) — ";
             bool first = true;
@@ -864,6 +956,11 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
         std::cout.flush();
     });
 
+    if (print.empty() && issues != nullptr) {
+        push_issue(*issues, "rien à trancher : plateau vide ou objets hors du volume d'impression", "", -1,
+                   -2, false);
+        return {};
+    }
     if (print.empty())
         throw std::runtime_error(
             "rien à trancher : plateau vide ou objets hors du volume d'impression");
@@ -873,8 +970,16 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
     // compatibilité haute/basse température des filaments (refus par défaut,
     // simple avertissement si levée ; placeholder enable_high_low_temp_mix).
     print.set_check_multi_filaments_compatibility(!allow_mixed_temperatures);
-    Slic3r::StringObjectException err = print.validate();
-    if (!err.string.empty() && !err.is_warning)
+    // Comme le CLI (OrcaSlicer.cpp:6063) et la GUI (Plater.cpp:8036) : un
+    // pointeur d'avertissement est fourni, sans quoi l'avertissement de
+    // températures mixtes était renvoyé comme erreur et court-circuitait la
+    // suite de la validation (collisions, hauteur, tour de purge…).
+    Slic3r::StringObjectException warning;
+    Slic3r::StringObjectException err = print.validate(&warning);
+    if (issues != nullptr) {
+        push_exception(*issues, err, false, print.model());
+        push_exception(*issues, warning, true, print.model());
+    } else if (!err.string.empty() && !err.is_warning)
         throw std::runtime_error("configuration invalide : " + err.string);
 
     // Cohérence multi-filament AVANT Print::process : Orca 2.4.1 ne la vérifie
@@ -882,7 +987,7 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
     // compris : scène Prusa XL 5T dont le 3MF exporté par le CLI n'a gardé
     // qu'un filament) quand un objet/volume vise un filament absent ou quand
     // flush_volumes_matrix n'a pas filaments² × buses entrées.
-    {
+    try {
         for (const Slic3r::ModelObject *object : model.objects)
             for (const Slic3r::ModelVolume *volume : object->volumes) {
                 const int extruder = volume->extruder_id();
@@ -925,7 +1030,17 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
                     " valeurs, " + std::to_string(per_nozzle) + " attendues (" + std::to_string(filaments) +
                     " filaments²" + (nozzle_count > 1 ? " × " + std::to_string(nozzle_count) + " buses" : "") + ")");
         }
+    } catch (const std::runtime_error &error) {
+        if (issues == nullptr)
+            throw;
+        std::string message = error.what();
+        const std::string prefix = "configuration invalide : ";
+        if (message.rfind(prefix, 0) == 0)
+            message = message.substr(prefix.size());
+        push_issue(*issues, message, "", -1, -2, false);
     }
+    if (issues != nullptr)
+        return {};
 
     // Erreurs de tranchage « par objet » d'Orca (Slic3r::SlicingErrors, ex.
     // GCode::collect_layers_to_print : « One object has an empty first layer
@@ -980,6 +1095,23 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
     }
 
     return raw;
+}
+
+RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
+                         rust::Str work_dir, const RawCalibParams &calib,
+                         rust::Str custom_gcodes_json, bool allow_mixed_temperatures)
+{
+    return run_print(objects, config_json, work_dir, calib, custom_gcodes_json, allow_mixed_temperatures,
+                     nullptr);
+}
+
+rust::Vec<RawValidateIssue> validate_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
+                                         const RawCalibParams &calib, rust::Str custom_gcodes_json,
+                                         bool allow_mixed_temperatures)
+{
+    rust::Vec<RawValidateIssue> issues;
+    run_print(objects, config_json, rust::Str(""), calib, custom_gcodes_json, allow_mixed_temperatures, &issues);
+    return issues;
 }
 
 // Accès publics (calib_project.cpp : _calib_pa_pattern / calib_input_shaping_*).

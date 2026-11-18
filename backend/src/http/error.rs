@@ -93,6 +93,20 @@ impl ApiError {
         )
     }
 
+    /// `conversion_failed` d'un modèle précis, avec la **cause** remontée par le
+    /// moteur (message du worker) dans le message et `details.cause`.
+    pub fn conversion_failed_for(model_id: impl ToString, stored_error: &str) -> Self {
+        let cause = crate::models::convert::conversion_cause(stored_error);
+        let mut e = Self::conversion_failed(format!(
+            "échec de la conversion du modèle par le moteur : {cause}"
+        ));
+        e.body.details = Some(serde_json::json!({
+            "model_id": model_id.to_string(),
+            "cause": cause,
+        }));
+        e
+    }
+
     /// Imprimante déclarée mais **sans connexion réseau** (`moonraker_url` absent,
     /// Phase 14) : les actions Moonraker (test, statut, envoi, contrôle) sont
     /// impossibles. 409 avec un code dédié pour que l'UI propose de connecter

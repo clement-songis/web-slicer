@@ -2,6 +2,7 @@
 //! applicatif, extracteurs de session et routes/handlers minces.
 
 pub mod dto;
+pub mod envelope;
 pub mod error;
 pub mod extract;
 pub mod printer_relay;

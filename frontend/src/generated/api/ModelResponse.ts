@@ -14,8 +14,13 @@ format: string, size_bytes: bigint,
 triangle_count: bigint, 
 /**
  * STEP en attente de conversion mesh asynchrone (R7) — voir `model.converted`.
+ * Faux une fois la conversion terminée **ou échouée**.
  */
 conversion_pending: boolean, 
+/**
+ * Cause de l'échec de conversion (message du moteur), absente sinon.
+ */
+conversion_error?: string, 
 /**
  * Vrai si un maillage affichable est disponible (`…/mesh`).
  */

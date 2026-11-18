@@ -280,6 +280,10 @@ fn join_string_items(items: &[Value]) -> String {
 
 #[derive(Debug, Clone)]
 struct SceneObjectSpec {
+    /// Identifiant de l'objet dans la scène (`objects[].id`), absent en repli.
+    scene_id: Option<String>,
+    /// Nom affiché de l'objet (`objects[].name`), absent si non renseigné.
+    scene_name: Option<String>,
     model_id: String,
     plate_index: u32,
     matrix: DMat4,
@@ -305,21 +309,49 @@ pub(crate) async fn build_scene_model(
     scene: &Value,
     plate_index: Option<u32>,
 ) -> anyhow::Result<Model> {
+    Ok(
+        build_scene_model_indexed(state, user, project_id, scene, plate_index)
+            .await?
+            .0,
+    )
+}
+
+/// Objet de scène correspondant à `Model::objects[i]` (même ordre).
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct SceneObjectRef {
+    /// `objects[].id` de la scène (absent en repli sans scène).
+    pub id: Option<String>,
+    /// Nom affiché : `objects[].name`, sinon nom du fichier (nom Orca).
+    pub name: String,
+}
+
+/// Comme [`build_scene_model`], avec l'objet de scène de chaque objet du
+/// modèle (validation : rattacher un refus d'Orca à l'objet de l'éditeur).
+pub(crate) async fn build_scene_model_indexed(
+    state: &AppState,
+    user: UserId,
+    project_id: ProjectId,
+    scene: &Value,
+    plate_index: Option<u32>,
+) -> anyhow::Result<(Model, Vec<SceneObjectRef>)> {
     let models = state.storage.models().list(user, Some(project_id)).await?;
     let specs = scene_object_specs(scene, plate_index);
     let mut model = Model::default();
+    let mut refs = Vec::new();
 
     if specs.as_ref().is_some_and(Vec::is_empty) {
-        return Ok(model);
+        return Ok((model, refs));
     }
     let fallback = specs.is_none();
     if fallback && plate_index.is_some_and(|index| index > 0) {
-        return Ok(model);
+        return Ok((model, refs));
     }
     let specs = specs.unwrap_or_else(|| {
         models
             .iter()
             .map(|m| SceneObjectSpec {
+                scene_id: None,
+                scene_name: None,
                 model_id: m.id.to_string(),
                 plate_index: 0,
                 matrix: DMat4::IDENTITY,
@@ -370,6 +402,13 @@ pub(crate) async fn build_scene_model(
                 mesh
             }
         };
+        refs.push(SceneObjectRef {
+            id: spec.scene_id.clone(),
+            name: spec
+                .scene_name
+                .clone()
+                .unwrap_or_else(|| source.filename.clone()),
+        });
         let object = model.add_object(source.filename.clone(), mesh);
         object.settings = spec.settings;
         object.layer_height_profile = spec.layer_height_profile;
@@ -412,7 +451,7 @@ pub(crate) async fn build_scene_model(
             object.volumes.push(volume);
         }
     }
-    Ok(model)
+    Ok((model, refs))
 }
 
 /// Nombre de triangles du maillage servi à l'éditeur (garde-fou : la peinture
@@ -554,6 +593,13 @@ fn scene_object_specs(scene: &Value, requested_plate: Option<u32>) -> Option<Vec
                 let model_id = object.get("modelId")?.as_str()?.to_string();
                 let transform = object.get("transform");
                 Some(SceneObjectSpec {
+                    scene_id: id.map(str::to_string),
+                    scene_name: object
+                        .get("name")
+                        .and_then(Value::as_str)
+                        .map(str::trim)
+                        .filter(|name| !name.is_empty())
+                        .map(str::to_string),
                     model_id,
                     plate_index,
                     matrix: transform.map_or(DMat4::IDENTITY, scene_transform_matrix),

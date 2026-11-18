@@ -27,5 +27,6 @@ pub use model::{
 pub use presets::{ArrangeParams, RawPreset};
 pub use slice::{
     BuildVolume, CalibMode, CalibParams, CancelToken, ProgressSink, ShaperType, SliceRequest,
-    SliceResult, SliceStats, OUTPUT_FILENAME_BASE_TOKEN,
+    SliceResult, SliceStats, ValidateIssue, ValidateIssueKind, ValidateResult,
+    OUTPUT_FILENAME_BASE_TOKEN,
 };

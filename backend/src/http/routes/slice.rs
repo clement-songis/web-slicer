@@ -39,48 +39,21 @@ pub async fn slice(
     let project_id = parse_project_id(&project_raw)?;
     let project = state.storage.projects().get(user.id, project_id).await?; // 404, SC-008
 
-    let plates = plate_object_ids(&project.scene);
-    let plate_count = plates.len().max(1);
-
-    // Cible : un plateau précis (borné) ou tous les plateaux préparés.
-    let plate_ids = |t: i64| {
-        plates
-            .get(t as usize)
-            .cloned()
-            .unwrap_or_else(|| all_object_ids(&project.scene))
-    };
-    let targets: Vec<i64> = match body.plate_index {
-        Some(n) => {
-            if n < 0 || n as usize >= plate_count {
-                return Err(ApiError::validation(
-                    "plate_index hors limites",
-                    json!({ "plate_index": n, "plate_count": plate_count }),
-                ));
-            }
-            vec![n]
+    let targets = match plate_targets(&project.scene, body.plate_index)? {
+        targets if targets.is_empty() => {
+            return Err(ApiError::validation(
+                "plateau vide (aucun objet à trancher)",
+                json!({ "plate_index": 0 }),
+            ))
         }
-        // « Slice all » d'Orca : un plateau vide n'a rien à trancher et est
-        // sauté (Plater::priv::on_process_completed → plateau suivant), seul
-        // un projet sans aucun objet est refusé.
-        None => {
-            let non_empty: Vec<i64> = (0..plate_count as i64)
-                .filter(|&t| !plate_ids(t).is_empty())
-                .collect();
-            if non_empty.is_empty() {
-                return Err(ApiError::validation(
-                    "plateau vide (aucun objet à trancher)",
-                    json!({ "plate_index": 0 }),
-                ));
-            }
-            non_empty
-        }
+        targets => targets,
     };
 
     // Garde avant slice : chaque plateau ciblé doit contenir des objets, tous
     // sur le plateau (FR-032, « hors plateau → erreur avant slice »).
     let off_bed = off_bed_ids(&project.scene);
     for &t in &targets {
-        let ids = plate_ids(t);
+        let ids = plate_scene_ids(&project.scene, t);
         if ids.is_empty() {
             return Err(ApiError::validation(
                 "plateau vide (aucun objet à trancher)",
@@ -95,32 +68,18 @@ pub async fn slice(
         }
     }
 
-    // Presets actifs résolus (figés) + avertissements moteur, puis réglages du
-    // projet (scene.projectConfig : couleurs, matrice/multiplicateur de purge)
-    // par-dessus, comme Orca applique sa config projet sur les presets.
-    let (mut merged, mut warnings) =
-        resolve_active_config(&state, user.id, &project.active_presets).await?;
-    if let Some(draft) = &body.draft {
-        apply_draft(&mut merged, draft)?;
-        // Avertissements recalculés sur la config réellement tranchée.
-        warnings = merged
-            .validate()
-            .into_iter()
-            .map(|w| SliceWarning {
-                key: w.key,
-                message: w.message,
-            })
-            .collect();
-    }
-    apply_project_config(&mut merged, &project.scene);
-    if let Some(warning) = post_process_warning(&merged) {
-        warnings.push(warning);
-    }
-    let allow_mixed = body.allow_mixed_temperatures.unwrap_or(false);
-    if let Some(warning) = filament_compatibility_warning(&merged, allow_mixed) {
-        warnings.push(warning);
-    }
-    let resolved = Value::Object(presets::config_to_json(&merged));
+    let SliceConfig {
+        resolved,
+        warnings,
+        allow_mixed,
+    } = resolve_slice_config(
+        &state,
+        user.id,
+        &project.scene,
+        &project.active_presets,
+        &body,
+    )
+    .await?;
     // Instantané de scène du job : options de tranchage hors config Orca.
     let mut job_scene = project.scene.clone();
     if allow_mixed {
@@ -155,6 +114,86 @@ pub async fn slice(
     }
 
     Ok((StatusCode::CREATED, Json(SliceResponse { jobs, warnings })))
+}
+
+/// Plateaux ciblés : `plate_index` (borné, 422 sinon) ou, pour « tout
+/// trancher », les plateaux non vides (« Slice all » d'Orca : un plateau vide
+/// n'a rien à trancher et est sauté, Plater::priv::on_process_completed →
+/// plateau suivant). Vide = aucun objet dans le projet.
+pub(crate) fn plate_targets(scene: &Value, plate_index: Option<i64>) -> ApiResult<Vec<i64>> {
+    let plate_count = plate_object_ids(scene).len().max(1);
+    match plate_index {
+        Some(n) => {
+            if n < 0 || n as usize >= plate_count {
+                return Err(ApiError::validation(
+                    "plate_index hors limites",
+                    json!({ "plate_index": n, "plate_count": plate_count }),
+                ));
+            }
+            Ok(vec![n])
+        }
+        None => Ok((0..plate_count as i64)
+            .filter(|&t| !plate_scene_ids(scene, t).is_empty())
+            .collect()),
+    }
+}
+
+/// Objets (ids de scène) du plateau `t` ; sans plateaux, tous les objets.
+pub(crate) fn plate_scene_ids(scene: &Value, t: i64) -> Vec<String> {
+    plate_object_ids(scene)
+        .get(t.max(0) as usize)
+        .cloned()
+        .unwrap_or_else(|| all_object_ids(scene))
+}
+
+/// Configuration réellement tranchée (presets actifs + brouillon + projet).
+pub(crate) struct SliceConfig {
+    /// Snapshot JSON figé dans le job (`resolved_settings`, hors plateau).
+    pub resolved: Value,
+    /// Avertissements de configuration (bornes clampées, post-traitement,
+    /// compatibilité des filaments).
+    pub warnings: Vec<SliceWarning>,
+    pub allow_mixed: bool,
+}
+
+/// Presets actifs résolus (figés) + avertissements moteur, puis brouillon de
+/// l'éditeur, puis réglages du projet (scene.projectConfig : couleurs,
+/// matrice/multiplicateur de purge) par-dessus, comme Orca applique sa config
+/// projet sur les presets. Partagé par POST …/slice et POST …/validate.
+pub(crate) async fn resolve_slice_config(
+    state: &AppState,
+    user: crate::domain::UserId,
+    scene: &Value,
+    active_presets: &Value,
+    body: &SliceRequest,
+) -> ApiResult<SliceConfig> {
+    let (mut merged, mut warnings) = resolve_active_config(state, user, active_presets).await?;
+    if let Some(draft) = &body.draft {
+        apply_draft(&mut merged, draft)?;
+        // Avertissements recalculés sur la config réellement tranchée.
+        warnings = merged
+            .validate()
+            .into_iter()
+            .map(|w| SliceWarning {
+                key: w.key,
+                message: w.message,
+            })
+            .collect();
+    }
+    apply_project_config(&mut merged, scene);
+    if let Some(warning) = post_process_warning(&merged) {
+        warnings.push(warning);
+    }
+    let allow_mixed = body.allow_mixed_temperatures.unwrap_or(false);
+    if let Some(warning) = filament_compatibility_warning(&merged, allow_mixed) {
+        warnings.push(warning);
+    }
+    let resolved = Value::Object(presets::config_to_json(&merged));
+    Ok(SliceConfig {
+        resolved,
+        warnings,
+        allow_mixed,
+    })
 }
 
 /// Vérification haute/basse température d'Orca sur les filaments `indices`
@@ -272,11 +311,18 @@ pub async fn filament_compatibility_check(
 /// process/imprimante clé par clé, filaments sur l'élément `index` des
 /// vecteurs par filament (une clé scalaire n'est prise que du filament 1,
 /// comme la fusion d'Orca). Valeur illisible → 422.
+///
+/// `null` (seul ou dans un vecteur) sur une option **nullable** d'Orca
+/// (`ConfigOptionFloatsNullable`, `…BoolsNullable`, enums nullables : surcharges
+/// filament de la rétraction, etc.) vaut `nil` (« hériter de l'imprimante »),
+/// comme `ConfigOption*Nullable::deserialize` ; sur une option non nullable
+/// Orca refuse (« Deserializing nil into a non-nullable object ») → 422 ciblé.
 pub(crate) fn apply_draft(
     merged: &mut DynamicPrintConfig,
     draft: &crate::http::dto::SliceDraft,
 ) -> ApiResult<()> {
     let parse = |values: &serde_json::Map<String, Value>| {
+        let values = draft_nil_values(values)?;
         let config = engine::presets::resolve_preset_chain(&[engine::api::RawPreset {
             name: "draft".into(),
             inherits: None,
@@ -309,8 +355,45 @@ pub(crate) fn apply_draft(
     Ok(())
 }
 
+/// `null` JSON → `nil` d'Orca pour les options nullables (voir `apply_draft`).
+fn draft_nil_values(
+    values: &serde_json::Map<String, Value>,
+) -> ApiResult<serde_json::Map<String, Value>> {
+    let mut out = values.clone();
+    for (key, value) in out.iter_mut() {
+        let Some(def) = engine::params::get(key) else {
+            continue; // clé inconnue : ignorée comme Orca
+        };
+        let has_null = match value {
+            Value::Null => true,
+            Value::Array(items) => items.iter().any(Value::is_null),
+            _ => false,
+        };
+        if !has_null {
+            continue;
+        }
+        if !def.nullable {
+            return Err(ApiError::validation(
+                format!("brouillon invalide : {key} n'accepte pas de valeur nulle (nil)"),
+                json!({ "key": key }),
+            ));
+        }
+        match value {
+            Value::Array(items) => {
+                for item in items.iter_mut().filter(|item| item.is_null()) {
+                    *item = Value::String("nil".into());
+                }
+            }
+            other => *other = Value::String("nil".into()),
+        }
+    }
+    Ok(out)
+}
+
 /// Remplace la valeur du filament `index` d'une clé (vecteur par filament) ;
-/// clé scalaire : seul le filament 1 la porte.
+/// clé scalaire : seul le filament 1 la porte. Un `nil` dans un vecteur
+/// jusqu'ici non nullable le convertit en vecteur nullable (même longueur),
+/// comme `ConfigOptionFloatsNullable` d'Orca.
 fn set_filament_value(
     merged: &mut DynamicPrintConfig,
     index: usize,
@@ -330,6 +413,16 @@ fn set_filament_value(
         }};
     }
     if let Some(existing) = merged.0.get_mut(&key) {
+        // Promotion en vecteur nullable quand le brouillon apporte un `nil`.
+        match (&*existing, &incoming) {
+            (ConfigValue::Floats(v), ConfigValue::FloatsNullable(_)) => {
+                *existing = ConfigValue::FloatsNullable(v.iter().map(|x| Some(*x)).collect());
+            }
+            (ConfigValue::Bools(v), ConfigValue::BoolsNullable(_)) => {
+                *existing = ConfigValue::BoolsNullable(v.iter().map(|x| Some(*x)).collect());
+            }
+            _ => {}
+        }
         match (existing, &incoming) {
             (ConfigValue::Bools(out), ConfigValue::Bools(v)) => put!(out, v, false),
             (ConfigValue::Ints(out), ConfigValue::Ints(v)) => put!(out, v, 0),
@@ -342,6 +435,10 @@ fn set_filament_value(
                 put!(out, v, None)
             }
             (ConfigValue::BoolsNullable(out), ConfigValue::BoolsNullable(v)) => put!(out, v, None),
+            (ConfigValue::BoolsNullable(out), ConfigValue::Bools(v)) => {
+                let v: Vec<Option<bool>> = v.iter().map(|x| Some(*x)).collect();
+                put!(out, v, None)
+            }
             (ConfigValue::Strings(out), ConfigValue::Strings(v)) => put!(out, v, String::new()),
             (ConfigValue::Points(out), ConfigValue::Points(v)) => put!(out, v, Vec::new()),
             _ => {}
@@ -840,7 +937,7 @@ pub(crate) fn apply_project_config(config: &mut engine::api::DynamicPrintConfig,
 /// plateaux, ou document `{ plates: [...], activeId }`). Vide si aucun plateau.
 /// Snapshot `resolved` + surcharges explicites du plateau `index`
 /// (`plates[index].settings`, clés Orca par plateau uniquement).
-fn with_plate_settings(resolved: &Value, scene: &Value, index: i64) -> Value {
+pub(crate) fn with_plate_settings(resolved: &Value, scene: &Value, index: i64) -> Value {
     let plates = match scene.get("plates") {
         Some(Value::Array(plates)) => Some(plates),
         Some(Value::Object(document)) => document.get("plates").and_then(Value::as_array),
@@ -899,7 +996,7 @@ fn all_object_ids(scene: &Value) -> Vec<String> {
 }
 
 /// Identifiants d'objets marqués hors plateau (`off_bed: true`) par le client.
-fn off_bed_ids(scene: &Value) -> HashSet<String> {
+pub(crate) fn off_bed_ids(scene: &Value) -> HashSet<String> {
     scene
         .get("objects")
         .and_then(Value::as_array)

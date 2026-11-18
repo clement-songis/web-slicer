@@ -954,6 +954,348 @@ async fn slice_others_project_is_404() {
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 }
 
+/// Lot 27 : `null` sur une option nullable d'Orca (surcharge filament
+/// `filament_retraction_length`) vaut `nil` et ne rejette plus le tranchage ;
+/// sur une option non nullable, 422 ciblé.
+#[tokio::test]
+async fn draft_null_on_a_nullable_option_is_nil_like_orca() {
+    let (_d, storage, app) = app().await;
+    let (project, owner, session) = create_project(
+        &storage,
+        &app,
+        "nil@test.local",
+        scene_one_object(),
+        json!({}),
+    )
+    .await;
+    let machine = make_machine_preset(&storage, owner).await;
+    own_printer(&storage, owner, &machine).await;
+    let pla = make_filament(&storage, owner, "PLA a", "PLA", 205, Some(0.8)).await;
+    let petg = make_filament(&storage, owner, "PLA b", "PLA", 210, Some(1.2)).await;
+    set_activ_presets_both(&storage, owner, &project, &machine, &pla, &petg).await;
+
+    let resp = app
+        .clone()
+        .oneshot(slice_req(
+            &project,
+            &session,
+            json!({ "plate_index": 0, "draft": { "filaments": [null, { "filament_retraction_length": null }] } }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let job = &storage.jobs().list(owner).await.unwrap()[0];
+    // Filament 1 inchangé, filament 2 → nil (hérite de l'imprimante).
+    let value = &job.resolved_settings["filament_retraction_length"];
+    let text = value.to_string();
+    assert!(
+        text.contains("0.8") && (text.contains("nil") || text.contains("null")),
+        "{text}"
+    );
+    assert!(!text.contains("1.2"), "{text}");
+
+    // Forme vecteur [null] acceptée aussi.
+    let resp = app
+        .clone()
+        .oneshot(slice_req(
+            &project,
+            &session,
+            json!({ "plate_index": 0, "draft": { "filaments": [{ "filament_retraction_length": [null] }] } }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    // Option non nullable : refus ciblé.
+    let resp = app
+        .clone()
+        .oneshot(slice_req(
+            &project,
+            &session,
+            json!({ "plate_index": 0, "draft": { "process": { "layer_height": null } } }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    let body = body_json(resp).await;
+    assert_eq!(body["code"], "validation");
+    assert_eq!(body["details"]["key"], "layer_height");
+}
+
+async fn set_activ_presets_both(
+    storage: &AnyStorage,
+    owner: UserId,
+    project: &str,
+    machine: &str,
+    first: &str,
+    second: &str,
+) {
+    set_active_presets(
+        storage,
+        owner,
+        project,
+        json!({ "printer": machine, "filaments": [first, second] }),
+    )
+    .await;
+}
+
+/// Lot 27 : rejets d'axum (JSON illisible, champ de type faux, Content-Type
+/// absent, route inconnue, méthode non permise) dans l'enveloppe commune.
+#[tokio::test]
+async fn axum_rejections_use_the_error_envelope() {
+    let (_d, storage, app) = app().await;
+    let (project, _owner, session) = create_project(
+        &storage,
+        &app,
+        "env@test.local",
+        scene_one_object(),
+        json!({}),
+    )
+    .await;
+    let send = |method: &str, uri: String, ct: Option<&str>, body: &str| {
+        let mut b = Request::builder()
+            .method(method)
+            .uri(uri)
+            .header(header::COOKIE, session.clone());
+        if let Some(ct) = ct {
+            b = b.header(header::CONTENT_TYPE, ct);
+        }
+        b.body(Body::from(body.to_string())).unwrap()
+    };
+    let cases = [
+        (
+            send(
+                "POST",
+                format!("/api/projects/{project}/slice"),
+                Some("application/json"),
+                "{",
+            ),
+            StatusCode::BAD_REQUEST,
+            "bad_request",
+        ),
+        (
+            send(
+                "POST",
+                format!("/api/projects/{project}/slice"),
+                Some("application/json"),
+                r#"{"plate_index":"x"}"#,
+            ),
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "validation",
+        ),
+        (
+            send("POST", format!("/api/projects/{project}/slice"), None, "{}"),
+            StatusCode::UNSUPPORTED_MEDIA_TYPE,
+            "unsupported_media_type",
+        ),
+        (
+            send("GET", "/api/nope".into(), None, ""),
+            StatusCode::NOT_FOUND,
+            "not_found",
+        ),
+        (
+            send("DELETE", format!("/api/projects/{project}/slice"), None, ""),
+            StatusCode::METHOD_NOT_ALLOWED,
+            "method_not_allowed",
+        ),
+    ];
+    for (req, status, code) in cases {
+        let resp = app.clone().oneshot(req).await.unwrap();
+        assert_eq!(resp.status(), status);
+        assert_eq!(
+            resp.headers()[header::CONTENT_TYPE].to_str().unwrap(),
+            "application/json"
+        );
+        let body = body_json(resp).await;
+        assert_eq!(body["code"], code, "{body}");
+        assert!(body["message"].as_str().is_some_and(|m| !m.is_empty()));
+    }
+}
+
+fn validate_req(project: &str, session: &str, body: Value) -> Request<Body> {
+    Request::builder()
+        .method("POST")
+        .uri(format!("/api/projects/{project}/validate"))
+        .header(header::CONTENT_TYPE, "application/json")
+        .header(header::COOKIE, session)
+        .body(Body::from(body.to_string()))
+        .unwrap()
+}
+
+/// Lot 27 : la validation rapporte plateau vide / objet hors plateau comme
+/// erreurs (200, sans job), et refuse un plate_index hors limites (422).
+#[tokio::test]
+async fn validate_reports_scene_guards_without_enqueuing() {
+    let (_d, storage, app) = app().await;
+    let scene = json!({
+        "schema_version": 1,
+        "objects": [{ "id": "o1", "modelId": "m1", "name": "Cube", "off_bed": true }],
+        "plates": [{ "id": "p1", "objectIds": ["o1"] }, { "id": "p2", "objectIds": [] }]
+    });
+    let (project, owner, session) =
+        create_project(&storage, &app, "val@test.local", scene, json!({})).await;
+
+    let resp = app
+        .clone()
+        .oneshot(validate_req(&project, &session, json!({})))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_json(resp).await;
+    assert_eq!(body["valid"], false);
+    let plates = body["plates"].as_array().unwrap();
+    assert_eq!(
+        plates.len(),
+        1,
+        "plateau vide sauté comme « tout trancher »"
+    );
+    let error = &plates[0]["errors"][0];
+    assert_eq!(error["kind"], "object_outside_plate");
+    assert_eq!(error["object_id"], "o1");
+    assert_eq!(error["object_name"], "Cube");
+
+    let resp = app
+        .clone()
+        .oneshot(validate_req(
+            &project,
+            &session,
+            json!({ "plate_index": 1 }),
+        ))
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    assert_eq!(body["plates"][0]["errors"][0]["kind"], "empty_plate");
+
+    let resp = app
+        .clone()
+        .oneshot(validate_req(
+            &project,
+            &session,
+            json!({ "plate_index": 7 }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(storage.jobs().list(owner).await.unwrap().is_empty());
+}
+
+/// Lot 27, vrai worker : objet valide → aucune erreur ; objet plus haut que
+/// le volume (`printable_height`) → erreur d'Orca rattachée à l'objet ;
+/// séquence « par objet » + lissage du timelapse → erreur globale d'Orca.
+/// Aucun job n'est créé.
+#[tokio::test]
+async fn validate_runs_orca_print_validate_per_object() {
+    use backend::http::state::AppState;
+
+    let dir = tempfile::tempdir().unwrap();
+    let url = format!("sqlite://{}", dir.path().join("validate.db").display());
+    let storage = Arc::new(AnyStorage::connect_test(&url).await.unwrap());
+    let files = FileStore::new(dir.path().join("data"));
+    let state = AppState::new(Arc::clone(&storage) as Arc<dyn Storage>, files);
+    let session_layer = SessionManagerLayer::new(MemoryStore::default()).with_secure(false);
+    let app = router(state, session_layer);
+    let (project, owner, session) =
+        create_project(&storage, &app, "valw@test.local", json!({}), json!({})).await;
+    let model = upload_l(&app, &project, &session).await;
+    let machine = make_machine_preset(&storage, owner).await;
+    own_printer(&storage, owner, &machine).await;
+    let process = make_valid_mirror_process(&storage, owner).await;
+    let filament = make_filament(&storage, owner, "PLA", "PLA", 205, Some(0.8)).await;
+    let pid = backend::domain::ProjectId(uuid::Uuid::parse_str(&project).unwrap());
+    let active = json!({"printer": machine, "process": process, "filaments": [filament]});
+
+    let scene_for = |scale_z: f64| {
+        json!({
+            "schema_version": 1,
+            "objects": [{"id": "L", "name": "Équerre", "modelId": model, "transform": {
+                "position": [100.0, 100.0, 3.0 * scale_z], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, scale_z]
+            }}],
+            "plates": [{"id": "p1", "objectIds": ["L"]}]
+        })
+    };
+    storage
+        .projects()
+        .update(owner, pid, 1, scene_for(1.0), active.clone(), None)
+        .await
+        .unwrap();
+    let started = std::time::Instant::now();
+    let resp = app
+        .clone()
+        .oneshot(validate_req(
+            &project,
+            &session,
+            json!({ "plate_index": 0 }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_json(resp).await;
+    assert_eq!(body["valid"], true, "{body}");
+    assert!(body["plates"][0]["errors"].as_array().unwrap().is_empty());
+    eprintln!("validation d'un objet : {:?}", started.elapsed());
+
+    // 6 mm × 100 = 600 mm > printable_height (défaut Orca 100 mm).
+    storage
+        .projects()
+        .update(owner, pid, 2, scene_for(100.0), active.clone(), None)
+        .await
+        .unwrap();
+    let resp = app
+        .clone()
+        .oneshot(validate_req(
+            &project,
+            &session,
+            json!({ "plate_index": 0 }),
+        ))
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    assert_eq!(body["valid"], false, "{body}");
+    let error = &body["plates"][0]["errors"][0];
+    assert!(
+        error["message"]
+            .as_str()
+            .unwrap()
+            .contains("exceeds the maximum build volume height"),
+        "{body}"
+    );
+    assert_eq!(error["object_id"], "L", "{body}");
+    assert_eq!(error["object_name"], "Équerre", "{body}");
+
+    // Brouillon : séquence « par objet » + timelapse lissé, 2 instances
+    // (Print.cpp:1287 — refus global d'Orca).
+    let mut two = scene_for(1.0);
+    let second = json!({"id": "L2", "modelId": model, "transform": {
+        "position": [160.0, 160.0, 3.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.0]
+    }});
+    two["objects"].as_array_mut().unwrap().push(second);
+    two["plates"][0]["objectIds"] = json!(["L", "L2"]);
+    storage
+        .projects()
+        .update(owner, pid, 3, two, active.clone(), None)
+        .await
+        .unwrap();
+    let resp = app
+        .clone()
+        .oneshot(validate_req(
+            &project,
+            &session,
+            json!({ "plate_index": 0, "draft": { "process": { "print_sequence": "by object", "timelapse_type": "1" } } }),
+        ))
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    assert_eq!(body["valid"], false, "{body}");
+    assert!(
+        body["plates"][0]["errors"][0]["message"]
+            .as_str()
+            .unwrap()
+            .contains("Smooth mode of timelapse is not supported"),
+        "{body}"
+    );
+    assert!(storage.jobs().list(owner).await.unwrap().is_empty());
+}
+
 /// STL ASCII d'un prisme en L centré (40 × 40 mm, bras de 10 mm, hauteur 6 mm).
 fn l_prism_stl() -> Vec<u8> {
     let outline = [

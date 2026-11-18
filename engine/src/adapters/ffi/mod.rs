@@ -35,7 +35,7 @@ pub use model::{
 };
 pub use obj_colors::{load_obj_colors, ObjColors};
 pub use paint::{remap_painting, PaintSession};
-pub use slice::{run_in_worker, slice};
+pub use slice::{run_in_worker, slice, validate_in_worker};
 pub use split::{run_mesh_op, run_mesh_op_pieces};
 pub use threemf::{
     read_project_3mf, read_project_3mf_import, read_project_auxiliaries, write_gcode_3mf,

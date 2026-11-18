@@ -14,7 +14,7 @@ use super::model::{config_to_orca_json, ffi_guard, to_raw_objects};
 use super::worker;
 use crate::api::{
     CancelToken, EngineError, EngineErrorCode, EngineResult, ProgressSink, SliceRequest,
-    SliceResult, SliceStats,
+    SliceResult, SliceStats, ValidateIssue, ValidateIssueKind, ValidateResult,
 };
 
 const REQUEST_FILE: &str = "slice-request.json";
@@ -41,23 +41,43 @@ pub fn slice(
         .map_err(|e| EngineError::new(EngineErrorCode::Internal, format!("résultat worker : {e}")))
 }
 
-/// Côté worker : lit la requête, appelle le bridge C++ et renvoie le résultat.
-/// La progression est émise par `slice_raw` (C++) directement sur stdout.
-pub fn run_in_worker(request_path: &Path) -> EngineResult<SliceResult> {
-    // Initialise le runtime FFI (répertoires + `print_config_static_initializer`)
-    // avant tout appel : sans quoi les caches statiques de config peuvent rester
-    // vides selon l'élagage `--gc-sections` du binaire, et la validation rejette
-    // à tort (ex. `layer_gcode` perdu → « G92 E0 requis »). Même garde que
-    // `read_project_3mf` / `load_model`.
+/// Côté worker : validation avant tranchage (`Print::validate` d'Orca) de la
+/// même requête que `slice` (`work_dir` ignoré), sans `Print::process`.
+pub fn validate_in_worker(request_path: &Path) -> EngineResult<ValidateResult> {
     let _guard = ffi_guard();
     let raw = std::fs::read_to_string(request_path)?;
     let req: SliceRequest = serde_json::from_str(&raw)
         .map_err(|e| EngineError::new(EngineErrorCode::Internal, format!("requête : {e}")))?;
-
     let objects = to_raw_objects(&req.model);
     let config_json = config_to_orca_json(&req.config);
+    let calib = raw_calib(&req)?;
+    let custom_gcodes_json = plate_custom_gcodes_json(&req)?;
+    let issues = ffi::validate_raw(
+        &objects,
+        &config_json,
+        &calib,
+        &custom_gcodes_json,
+        req.allow_mixed_temperatures,
+    )
+    .map_err(|e| EngineError::new(EngineErrorCode::InvalidConfig, e.to_string()))?;
+    Ok(ValidateResult {
+        issues: issues
+            .into_iter()
+            .map(|issue| ValidateIssue {
+                message: issue.message,
+                kind: ValidateIssueKind::from_code(issue.kind),
+                is_warning: issue.is_warning,
+                opt_key: (!issue.opt_key.is_empty()).then_some(issue.opt_key),
+                object_index: usize::try_from(issue.object_index).ok(),
+                params: issue.params,
+            })
+            .collect(),
+    })
+}
 
-    let calib = match req.calib {
+/// `Calib_Params` du pont (défaut = aucun mode), paramètres vérifiés.
+fn raw_calib(req: &SliceRequest) -> EngineResult<ffi::RawCalibParams> {
+    Ok(match req.calib {
         Some(params) => {
             params
                 .validate()
@@ -77,9 +97,12 @@ pub fn run_in_worker(request_path: &Path) -> EngineResult<SliceResult> {
             }
         }
         None => ffi::RawCalibParams::default(),
-    };
-    // G-code personnalisés du plateau tranché seulement (rangés sous le plateau
-    // courant du modèle C++).
+    })
+}
+
+/// G-code personnalisés du plateau tranché seulement (rangés sous le plateau
+/// courant du modèle C++), entrées vérifiées.
+fn plate_custom_gcodes_json(req: &SliceRequest) -> EngineResult<String> {
     let plate_gcodes: Vec<_> = req
         .model
         .custom_gcodes
@@ -92,7 +115,27 @@ pub fn run_in_worker(request_path: &Path) -> EngineResult<SliceResult> {
                 .map_err(|e| EngineError::new(EngineErrorCode::InvalidConfig, e))?;
         }
     }
-    let custom_gcodes_json = serde_json::to_string(&plate_gcodes).expect("sérialisable");
+    Ok(serde_json::to_string(&plate_gcodes).expect("sérialisable"))
+}
+
+/// Côté worker : lit la requête, appelle le bridge C++ et renvoie le résultat.
+/// La progression est émise par `slice_raw` (C++) directement sur stdout.
+pub fn run_in_worker(request_path: &Path) -> EngineResult<SliceResult> {
+    // Initialise le runtime FFI (répertoires + `print_config_static_initializer`)
+    // avant tout appel : sans quoi les caches statiques de config peuvent rester
+    // vides selon l'élagage `--gc-sections` du binaire, et la validation rejette
+    // à tort (ex. `layer_gcode` perdu → « G92 E0 requis »). Même garde que
+    // `read_project_3mf` / `load_model`.
+    let _guard = ffi_guard();
+    let raw = std::fs::read_to_string(request_path)?;
+    let req: SliceRequest = serde_json::from_str(&raw)
+        .map_err(|e| EngineError::new(EngineErrorCode::Internal, format!("requête : {e}")))?;
+
+    let objects = to_raw_objects(&req.model);
+    let config_json = config_to_orca_json(&req.config);
+
+    let calib = raw_calib(&req)?;
+    let custom_gcodes_json = plate_custom_gcodes_json(&req)?;
     let result = ffi::slice_raw(
         &objects,
         &config_json,

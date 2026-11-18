@@ -282,10 +282,8 @@ pub async fn mesh(
         if model.mesh_path.is_some() {
             break model;
         }
-        if model.conversion_error.is_some() {
-            return Err(ApiError::conversion_failed(
-                "échec de la conversion du modèle par le moteur",
-            ));
+        if let Some(error) = model.conversion_error.as_deref() {
+            return Err(ApiError::conversion_failed_for(model.id, error));
         }
         let now = tokio::time::Instant::now();
         if now >= deadline {

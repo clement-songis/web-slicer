@@ -265,14 +265,25 @@ pub struct ModelResponse {
     /// Nombre de triangles (0 si non déterminé à l'import — ex. STEP avant conversion).
     pub triangle_count: i64,
     /// STEP en attente de conversion mesh asynchrone (R7) — voir `model.converted`.
+    /// Faux une fois la conversion terminée **ou échouée**.
     pub conversion_pending: bool,
+    /// Cause de l'échec de conversion (message du moteur), absente sinon.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub conversion_error: Option<String>,
     /// Vrai si un maillage affichable est disponible (`…/mesh`).
     pub has_mesh: bool,
 }
 
 impl From<Model> for ModelResponse {
     fn from(m: Model) -> Self {
-        let conversion_pending = m.format.needs_engine_conversion() && m.mesh_path.is_none();
+        let conversion_error = m
+            .conversion_error
+            .as_deref()
+            .map(crate::models::convert::conversion_cause);
+        let conversion_pending = m.format.needs_engine_conversion()
+            && m.mesh_path.is_none()
+            && conversion_error.is_none();
         Self {
             id: m.id.to_string(),
             project_id: m.project_id.map(|p| p.to_string()),
@@ -281,6 +292,7 @@ impl From<Model> for ModelResponse {
             size_bytes: m.size_bytes,
             triangle_count: m.triangle_count,
             conversion_pending,
+            conversion_error,
             has_mesh: m.mesh_path.is_some(),
         }
     }
@@ -616,6 +628,10 @@ pub enum ServerEvent {
     /// Fin de conversion STEP → mesh (R7) : maillage désormais servi par `mesh_url`.
     #[serde(rename = "model.converted")]
     ModelConverted { model_id: String, mesh_url: String },
+    /// Échec de conversion (lot 27) : cause précise remontée par le moteur
+    /// (même texte que `ModelResponse.conversion_error` et le 422 de `/mesh`).
+    #[serde(rename = "model.conversion_failed")]
+    ModelConversionFailed { model_id: String, error: String },
     /// Suivi d'impression en direct (relais Moonraker, T076). Diffusé au seul
     /// propriétaire de l'imprimante (isolation SC-008).
     #[serde(rename = "printer.status")]

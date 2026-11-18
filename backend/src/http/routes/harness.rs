@@ -173,7 +173,12 @@ impl IntoResponse for HarnessError {
     fn into_response(self) -> Response {
         (
             self.status,
-            Json(serde_json::json!({ "error": self.message })),
+            // `error` (contrat harness historique) + enveloppe commune.
+            Json(serde_json::json!({
+                "error": self.message,
+                "code": crate::http::envelope::status_code_slug(self.status).0,
+                "message": self.message,
+            })),
         )
             .into_response()
     }

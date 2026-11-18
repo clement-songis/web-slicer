@@ -72,6 +72,17 @@ impl EventHub {
         );
     }
 
+    /// Publie `model.conversion_failed` (cause précise de l'échec) au propriétaire.
+    pub fn publish_model_conversion_failed(&self, user: UserId, model_id: &str, error: &str) {
+        self.publish(
+            user,
+            ServerEvent::ModelConversionFailed {
+                model_id: model_id.to_string(),
+                error: error.to_string(),
+            },
+        );
+    }
+
     /// Publie `printer.status` (suivi Moonraker relayé, T076) au propriétaire.
     pub fn publish_printer_status(
         &self,
