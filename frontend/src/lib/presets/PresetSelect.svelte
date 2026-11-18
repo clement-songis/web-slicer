@@ -5,6 +5,8 @@
 	import type { PresetSummary } from '../api/types';
 	import { inheritanceLabel, isDerived, partitionByOrigin } from './catalog';
 	import { filterPresetList, type ActivePrinter } from './search';
+	import { appPreferences } from '$lib/settings/preferences';
+	import { unsupportedPresets } from './unsupported';
 
 	interface Props {
 		/** Presets d'un type (déjà filtrés par compatibilité). */
@@ -49,7 +51,25 @@
 	const groups = $derived(partitionByOrigin(presets));
 	// Recherche (accents/casse ignorés) et filtre de compatibilité imprimante.
 	let query = $state('');
-	let showAll = $state(false);
+	// Orca `show_unsupported_presets` : la préférence coche « Afficher les
+	// incompatibles » par défaut et ajoute les presets prévus pour d'autres
+	// imprimantes, grisés (non sélectionnables), en fin de liste.
+	let showAll = $state($appPreferences.showUnsupportedPresets);
+	let unsupported = $state<PresetSummary[]>([]);
+	$effect(() => {
+		const kind = presets[0]?.kind;
+		if (!$appPreferences.showUnsupportedPresets || !printer || !kind) {
+			unsupported = [];
+			return;
+		}
+		let alive = true;
+		void unsupportedPresets(kind, presets).then((list) => {
+			if (alive) unsupported = list;
+		});
+		return () => {
+			alive = false;
+		};
+	});
 	// Compact avec imprimante (filament) : tout est proposé, comme Orca (la
 	// bibliothèque de filaments vaut pour toutes les imprimantes), mais groupé par
 	// fabricant — Génériques en tête — au lieu d'une liste plate de centaines de noms.
@@ -68,6 +88,19 @@
 		'w-full rounded border border-border-strong px-2 py-1 text-sm bg-surface-raised text-content';
 	const BTN = 'ws-btn ws-btn-sm ws-btn-secondary';
 </script>
+
+{#snippet unsupportedOptions()}
+	{#if unsupported.length}
+		<optgroup
+			label="Incompatibles avec cette imprimante"
+			data-testid={testid ? `${testid}-unsupported` : undefined}
+		>
+			{#each unsupported as p (p.id)}
+				<option value={p.id} disabled>{p.name}</option>
+			{/each}
+		</optgroup>
+	{/if}
+{/snippet}
 
 {#snippet options()}
 	<option value={null} disabled>Choisir…</option>
@@ -93,6 +126,7 @@
 			{/each}
 		</optgroup>
 	{/if}
+	{@render unsupportedOptions()}
 {/snippet}
 
 {#snippet search()}

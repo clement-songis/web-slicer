@@ -37,3 +37,16 @@ export type { PrinterStatusResponse } from '../../generated/api/PrinterStatusRes
 export type { PrinterCatalogVendor } from '../../generated/api/PrinterCatalogVendor';
 export type { PrinterCatalogModel } from '../../generated/api/PrinterCatalogModel';
 export type { PrinterCatalogVariant } from '../../generated/api/PrinterCatalogVariant';
+export type { HandyModelInfo } from '../../generated/api/HandyModelInfo';
+export type { HandyModelSuggestion } from '../../generated/api/HandyModelSuggestion';
+export type { HandyModelAdded } from '../../generated/api/HandyModelAdded';
+export type { BonjourReply } from '../../generated/api/BonjourReply';
+export type { DetachPresetRequest } from '../../generated/api/DetachPresetRequest';
+export type { ExcludeObjectStatus } from '../../generated/api/ExcludeObjectStatus';
+export type { LabeledObject } from '../../generated/api/LabeledObject';
+export type { ExcludeObjectRequest } from '../../generated/api/ExcludeObjectRequest';
+export type { SliceDraft } from '../../generated/api/SliceDraft';
+export type { FilamentCompatibilityRequest } from '../../generated/api/FilamentCompatibilityRequest';
+export type { FilamentCompatibilityResponse } from '../../generated/api/FilamentCompatibilityResponse';
+export type { RemapPaintHttpRequest } from '../../generated/api/RemapPaintHttpRequest';
+export type { RemapPaintHttpResponse } from '../../generated/api/RemapPaintHttpResponse';

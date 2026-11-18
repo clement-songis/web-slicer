@@ -2,7 +2,18 @@
 	// Champs de connexion d'une imprimante (Orca : PhysicalPrinterDialog) : type
 	// d'hôte, adresse, clé API ou utilisateur / mot de passe, imprimante du
 	// serveur Repetier. Seuls les champs utiles au type choisi sont affichés.
-	import { getHostPrinters } from '$lib/api/printers';
+	import { discoverPrinters, getHostPrinters } from '$lib/api/printers';
+	import type { BonjourReply } from '$lib/api/types';
+	import {
+		ELEGOO_PROTOCOL_LABELS,
+		discoveryService,
+		elegooProtocol,
+		hostPrinterValue,
+		profileHost,
+		profilePlaceholder,
+		type ProfileHost
+	} from './hosts';
+	import { getResolvedPreset } from '$lib/api/presets';
 	import { ApiError } from '$lib/api/client';
 	import { HOST_GROUPS, hostCapabilities, hostMeta, type HostForm } from './hosts';
 	import IconCheck from '~icons/lucide/check';
@@ -17,6 +28,11 @@
 		hasPassword?: boolean;
 		/** Avant de lister les imprimantes Repetier : enregistrer l'adresse/clé. */
 		beforeListPrinters?: () => Promise<string | null>;
+		/** Preset machine de l'imprimante : ses réglages d'hôte (port, utilisateur,
+		 *  n° de série, modèle) servent quand le champ reste vide. */
+		machinePresetId?: string | null;
+		/** Réglages d'hôte du profil machine (liable, pour la validation). */
+		profile?: ProfileHost;
 	}
 
 	let {
@@ -24,14 +40,66 @@
 		printerId = null,
 		hasSecret = false,
 		hasPassword = false,
-		beforeListPrinters
+		beforeListPrinters,
+		machinePresetId = null,
+		profile = $bindable({})
 	}: Props = $props();
 
+	// Lecture du profil machine (valeurs résolues de la chaîne d'héritage).
+	$effect(() => {
+		const id = machinePresetId;
+		if (!id) {
+			profile = {};
+			return;
+		}
+		let alive = true;
+		getResolvedPreset(id)
+			.then((r) => {
+				if (alive) profile = profileHost(r.values as Record<string, unknown>);
+			})
+			.catch(() => {
+				if (alive) profile = {};
+			});
+		return () => {
+			alive = false;
+		};
+	});
+	const elegoo = $derived(form.type === 'elegoolink' ? elegooProtocol(profile.model) : null);
+
 	const meta = $derived(hostMeta(form.type));
-	const capabilities = $derived(hostCapabilities(form.type));
+	const capabilities = $derived(hostCapabilities(form.type, profile.model));
 	let slugs = $state<string[] | null>(null);
 	let slugError = $state<string | null>(null);
 	let loadingSlugs = $state(false);
+
+	// « Parcourir » (Orca BonjourDialog) : recherche DNS-SD depuis le serveur.
+	const service = $derived(discoveryService(form.type));
+	let found = $state<BonjourReply[] | null>(null);
+	let browsing = $state(false);
+	let browseError = $state<string | null>(null);
+	$effect(() => {
+		void form.type;
+		found = null;
+		browseError = null;
+	});
+	async function browse() {
+		if (!service) return;
+		browsing = true;
+		browseError = null;
+		found = null;
+		try {
+			found = await discoverPrinters(service);
+		} catch (e) {
+			browseError =
+				e instanceof ApiError && (e.status === 404 || e.status === 405)
+					? 'Recherche réseau indisponible : le serveur web-slicer doit être mis à jour.'
+					: e instanceof ApiError
+						? e.message
+						: 'Recherche impossible.';
+		} finally {
+			browsing = false;
+		}
+	}
 
 	async function listSlugs() {
 		loadingSlugs = true;
@@ -43,7 +111,7 @@
 				return;
 			}
 			slugs = await getHostPrinters(id);
-			if (slugs.length && !form.slug) form.slug = slugs[0];
+			if (slugs.length && !form.slug) form.slug = hostPrinterValue(form.type, slugs[0]);
 			if (!slugs.length) slugError = 'Aucune imprimante sur ce serveur.';
 		} catch (e) {
 			slugError = e instanceof ApiError ? e.message : 'Liste indisponible.';
@@ -93,14 +161,70 @@
 	<label class="flex flex-col gap-1 text-sm">
 		<span class="text-content-muted">Adresse{form.type === 'moonraker' ? ' (facultatif)' : ''}</span
 		>
-		<input
-			class="ws-field"
-			bind:value={form.url}
-			data-testid="printer-moonraker-url"
-			placeholder={meta.placeholder}
-			autocomplete="off"
-		/>
+		<div class="flex gap-2">
+			<input
+				class="ws-field min-w-0 flex-1"
+				bind:value={form.url}
+				data-testid="printer-moonraker-url"
+				placeholder={meta.placeholder}
+				autocomplete="off"
+			/>
+			{#if service}
+				<button
+					type="button"
+					class="ws-btn ws-btn-secondary shrink-0"
+					data-testid="host-browse"
+					disabled={browsing}
+					aria-busy={browsing}
+					onclick={browse}>{browsing ? 'Recherche…' : 'Parcourir le réseau'}</button
+				>
+			{/if}
+		</div>
 	</label>
+	{#if service && (browsing || found || browseError)}
+		<div
+			class="-mt-1 rounded-md border border-border px-3 py-2 text-sm"
+			data-testid="host-browse-results"
+			aria-live="polite"
+		>
+			{#if browsing}
+				<p class="text-content-muted">
+					Recherche des serveurs annoncés sur le réseau local (quelques secondes)…
+				</p>
+			{:else if browseError}
+				<p class="text-danger" role="alert">{browseError}</p>
+			{:else if found && found.length === 0}
+				<p class="text-content-muted">
+					Aucun serveur trouvé. La recherche part du serveur web-slicer : l’imprimante doit être sur
+					le même réseau local que lui et annoncer son service (mDNS).
+				</p>
+			{:else if found}
+				<ul class="flex flex-col divide-y divide-border">
+					{#each found as host (host.full_address + host.service_name)}
+						<li class="flex items-center justify-between gap-3 py-1.5">
+							<span class="min-w-0">
+								<span class="block truncate text-content">{host.service_name || host.hostname}</span
+								>
+								<span class="block truncate text-xs text-content-subtle"
+									>{host.full_address}{host.hostname ? ` · ${host.hostname}` : ''}</span
+								>
+							</span>
+							<button
+								type="button"
+								class="ws-btn ws-btn-sm {form.url === host.full_address
+									? 'ws-btn-ghost'
+									: 'ws-btn-primary'} shrink-0"
+								data-testid="host-browse-use"
+								disabled={form.url === host.full_address}
+								onclick={() => (form.url = host.full_address)}
+								>{form.url === host.full_address ? 'Choisi' : 'Utiliser'}</button
+							>
+						</li>
+					{/each}
+				</ul>
+			{/if}
+		</div>
+	{/if}
 	{#if meta.authChoice}
 		<div class="flex flex-col gap-1 text-sm" role="radiogroup" aria-label="Authentification">
 			<span class="text-content-muted">Authentification</span>
@@ -118,11 +242,31 @@
 			</div>
 		</div>
 	{/if}
+	{#if meta.authChoice && profile.auth}
+		<p class="-mt-2 text-xs text-content-subtle" data-testid="host-auth-profile">
+			Profil machine : {profile.auth === 'user'
+				? 'utilisateur et mot de passe'
+				: 'clé API'}{profile.auth !== form.auth ? ' — votre choix ci-dessus prévaut' : ''}.
+		</p>
+	{/if}
+	{#if elegoo}
+		<p class="-mt-1 text-xs text-content-muted" data-testid="host-elegoo-protocol">
+			{profile.model
+				? `Modèle du profil machine : ${profile.model} — `
+				: ''}{ELEGOO_PROTOCOL_LABELS[elegoo]}.
+		</p>
+	{/if}
 	{#if meta.authChoice && form.auth === 'user'}
 		<div class="grid grid-cols-2 gap-3">
 			<label class="flex flex-col gap-1 text-sm">
 				<span class="text-content-muted">Utilisateur</span>
-				<input class="ws-field" bind:value={form.user} autocomplete="off" data-testid="host-user" />
+				<input
+					class="ws-field"
+					bind:value={form.user}
+					autocomplete="off"
+					placeholder={profilePlaceholder(profile.user)}
+					data-testid="host-user"
+				/>
 			</label>
 			<label class="flex flex-col gap-1 text-sm">
 				<span class="text-content-muted">Mot de passe</span>
@@ -131,7 +275,11 @@
 					type="password"
 					bind:value={form.password}
 					autocomplete="new-password"
-					placeholder={hasPassword ? '•••••• Enregistré' : ''}
+					placeholder={hasPassword
+						? '•••••• Enregistré'
+						: profile.hasPassword
+							? 'depuis le profil machine'
+							: ''}
 					title={hasPassword ? 'Laisser vide pour garder le mot de passe enregistré' : undefined}
 					data-testid="host-password"
 				/>
@@ -150,19 +298,39 @@
 			/>
 		</label>
 	{/if}
+	{#if meta.serialNumber}
+		<label class="flex flex-col gap-1 text-sm">
+			<span class="text-content-muted">Numéro de série</span>
+			<input
+				class="ws-field"
+				bind:value={form.serial}
+				autocomplete="off"
+				spellcheck="false"
+				placeholder={profile.serial
+					? profilePlaceholder(profile.serial)
+					: printerId
+						? 'Enregistré — laisser vide pour le garder'
+						: 'ex. SNMOMC9900728'}
+				data-testid="host-serial"
+			/>
+		</label>
+	{/if}
 	{#if meta.printerSlug}
 		<div class="flex flex-col gap-1 text-sm">
-			<span class="text-content-muted">Imprimante sur le serveur</span>
+			<span class="text-content-muted">{meta.slugLabel ?? 'Imprimante sur le serveur'}</span>
 			<div class="flex gap-2">
 				{#if slugs?.length}
 					<select class="ws-field flex-1" bind:value={form.slug} data-testid="host-slug">
-						{#each slugs as s (s)}<option value={s}>{s}</option>{/each}
+						{#each slugs as s (s)}<option value={hostPrinterValue(form.type, s)}>{s}</option>{/each}
 					</select>
 				{:else}
 					<input
 						class="ws-field flex-1"
 						bind:value={form.slug}
-						placeholder="slug Repetier"
+						placeholder={profilePlaceholder(
+							profile.port,
+							form.type === 'obico' ? 'ID Obico' : 'slug Repetier'
+						)}
 						data-testid="host-slug"
 					/>
 				{/if}

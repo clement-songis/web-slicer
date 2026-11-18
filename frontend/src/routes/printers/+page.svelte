@@ -51,7 +51,8 @@
 		testFailure,
 		testOutcome,
 		type HostForm,
-		type TestOutcome
+		type TestOutcome,
+		type ProfileHost
 	} from '$lib/printers/hosts';
 	import IconOk from '~icons/lucide/circle-check';
 	import IconFail from '~icons/lucide/circle-alert';
@@ -74,7 +75,8 @@
 	// Formulaire de déclaration.
 	let name = $state('');
 	let hostForm = $state<HostForm>(emptyHostForm());
-	const hostError = $derived(hostFormError(hostForm));
+	let hostProfile = $state<ProfileHost>({});
+	const hostError = $derived(hostFormError(hostForm, hostProfile));
 
 	// Connexion d'une imprimante déclarée (Orca : PhysicalPrinterDialog).
 	let connecting = $state<PrinterResponse | null>(null);
@@ -82,7 +84,8 @@
 	let connectMessage = $state<TestOutcome | null>(null);
 	let connectError = $state<string | null>(null);
 	let connectBusy = $state(false);
-	const connectFormError = $derived(hostFormError(connectForm));
+	let connectProfile = $state<ProfileHost>({});
+	const connectFormError = $derived(hostFormError(connectForm, connectProfile));
 	function openConnection(printer: PrinterResponse) {
 		connecting = printer;
 		connectForm = hostFormOf(printer);
@@ -391,7 +394,11 @@
 								placeholder="Imprimante du salon (défaut : hôte de l'URL)"
 							/>
 						</label>
-						<PrinterHostFields bind:form={hostForm} />
+						<PrinterHostFields
+							bind:form={hostForm}
+							bind:profile={hostProfile}
+							machinePresetId={machinePreset || null}
+						/>
 						<label class="flex flex-col gap-1 text-sm">
 							<span class="text-content-muted">Préréglage machine</span>
 							<select class="ws-field" bind:value={machinePreset} required>
@@ -662,6 +669,8 @@
 		<div class="flex flex-col gap-3">
 			<PrinterHostFields
 				bind:form={connectForm}
+				bind:profile={connectProfile}
+				machinePresetId={connecting.machine_preset_id}
 				printerId={connecting.id}
 				hasSecret={connecting.has_api_key}
 				hasPassword={connecting.has_host_password}

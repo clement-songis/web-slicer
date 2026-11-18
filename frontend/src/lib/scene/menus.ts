@@ -96,6 +96,10 @@ export const PLATER_MENU: ContextMenuItem[] = [
 export interface ObjectMenuItem {
 	label: string;
 	action: string;
+	/** Précision affichée en second (rôle de l'entrée). */
+	hint?: string;
+	/** Sous-menu (déplié dans le menu, ex. « Modèles pratiques »). */
+	items?: ObjectMenuItem[];
 }
 
 /** Entrée du menu contextuel objet, avec séparateurs. */

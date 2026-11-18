@@ -15,10 +15,42 @@
 	import PreferencesDialog from '$lib/settings/PreferencesDialog.svelte';
 	import {
 		DEFAULT_PREFERENCES,
+		appPreferences,
+		currentPreferences,
 		loadPreferences,
 		savePreferences,
 		type AppPreferences
 	} from '$lib/settings/preferences';
+	// Phase 22 (audit Orca §10) : modèles pratiques, unités, À propos, purge auto.
+	import AboutDialog from '$lib/menus/AboutDialog.svelte';
+	import UnitConversionDialog from '$lib/editor/UnitConversionDialog.svelte';
+	import HandySuggestionDialog from '$lib/editor/HandySuggestionDialog.svelte';
+	import {
+		addHandyModel,
+		handyKeyOf,
+		listHandyModels,
+		suggestionApplies,
+		withHandyMenu,
+		type HandyModelAdded,
+		type HandyModelInfo,
+		type HandyModelSuggestion
+	} from '$lib/editor/handy-models';
+	import {
+		convertScale,
+		detectUnits,
+		meshVolume,
+		scaledVolume,
+		unitActionOf,
+		withUnitItems,
+		type UnitSource
+	} from '$lib/editor/units';
+	import { changedSlots, mergeFlushSlots, type FlushSnapshot } from '$lib/editor/auto-flush';
+	import { detachPreset } from '$lib/api/presets';
+	// Lot 21 : brouillon au tranchage, peinture conservée, températures, buses.
+	import { buildSliceDraft } from '$lib/editor/slice-draft';
+	import { checkFilamentCompatibility, compatibilityText } from '$lib/editor/filament-compat';
+	import { paintedChannels, remapPaint } from '$lib/editor/keep-paint';
+	import { extruderCount } from '$lib/editor/filament-map';
 	import { buildZip } from '$lib/export/zip';
 	import { modelsFromZip, presetsFromFiles } from '$lib/editor/menu-files';
 	import { tabTogglesView } from '$lib/editor/tab-focus';
@@ -463,6 +495,7 @@
 	// Dialogue des raccourcis clavier (menu Aide, T111).
 	let showShortcuts = $state(false);
 	let showTipOfTheDay = $state(false);
+	let showAbout = $state(false);
 
 	// Onglet Projet (T117) : nom éditable (renommage via l'API projets).
 	let projectName = $state('');
@@ -1264,6 +1297,42 @@
 			return e instanceof ApiError ? e.message : 'renommage impossible';
 		}
 	}
+	// Détacher du preset système (Orca Tab::detach_preset) : copie autonome
+	// sélectionnée (preset système) ou preset utilisateur détaché sur place.
+	async function detachActivePreset(kind: Kind, name: string | null): Promise<string | null> {
+		const preset = activePresetOf(kind);
+		if (!preset) return 'aucun preset sélectionné';
+		if (name && presetsOfKind(kind).some((p) => p.name === name))
+			return `un preset « ${name} » existe déjà`;
+		try {
+			const detached = await detachPreset(preset.id, name);
+			const summary = {
+				...preset,
+				id: detached.id,
+				name: detached.name,
+				origin: 'user',
+				inherits: undefined
+			};
+			const list = presetsOfKind(kind);
+			if (preset.origin === 'user') {
+				replacePresetList(
+					kind,
+					list.map((p) => (p.id === preset.id ? summary : p))
+				);
+				saveMessage = `« ${preset.name} » est maintenant autonome.`;
+			} else {
+				replacePresetList(kind, [...list, summary]);
+				if (kind === 'process') activePresets.process = summary.id;
+				else if (kind === 'filament')
+					setFilamentSlot(clampFilamentSlot(activePresets, filamentSlot), summary.id);
+				else activePresets.printer = summary.id;
+				saveMessage = `Copie autonome « ${summary.name} » créée et sélectionnée.`;
+			}
+			return null;
+		} catch (e) {
+			return e instanceof ApiError ? e.message : 'détachement impossible';
+		}
+	}
 	async function deleteActivePreset(kind: Kind) {
 		const preset = activePresetOf(kind);
 		if (!preset || preset.origin !== 'user') return;
@@ -1822,6 +1891,144 @@
 		if (objColorPending) objColorQueue.push(request);
 		else objColorPending = request;
 	}
+	// — Conversion d'unités (Orca : « Object too small », Plater.cpp:6693) : un
+	// objet de moins de 8 mm³ (0,008 en mètres) propose ×25,4 ou ×1000.
+	type UnitRequest = {
+		objectId: string;
+		filename: string;
+		size: [number, number, number];
+		suggested: UnitSource;
+	};
+	let unitPending = $state<UnitRequest | null>(null);
+	async function offerUnitConversion(objectId: string, filename: string, generation: number) {
+		if (!currentPreferences().unitConversionPrompt) return;
+		for (let i = 0; i < 360; i++) {
+			if (generation !== sceneGeneration || !tree.get(objectId)) return;
+			const item = imports.find((x) => x.objectId === objectId);
+			if (!item || item.status === 'failed') return;
+			const obj = sceneObjects.find((o) => o.id === objectId);
+			if (item.status === 'ready' && obj) {
+				const unit = detectUnits(scaledVolume(meshVolume(obj.mesh), obj.scale));
+				if (!unit || unitPending) return;
+				const [sx, sy, sz] = worldSize(obj.mesh, obj.rotation, obj.scale);
+				unitPending = { objectId, filename, size: [sx, sy, sz], suggested: unit };
+				return;
+			}
+			await new Promise((r) => setTimeout(r, 500));
+		}
+	}
+	function convertObjectUnits(id: string, unit: UnitSource, restore: boolean) {
+		const obj = sceneObjects.find((o) => o.id === id);
+		if (!obj) return;
+		const scale = convertScale(obj.scale, unit, restore);
+		const [x, y] = obj.position ?? [bed.center.x, bed.center.y, 0];
+		onTransform(id, {
+			...objectTransform(obj),
+			position: [x, y, restingZ(obj.mesh, obj.rotation, scale)],
+			scale
+		});
+	}
+
+	// — Modèles pratiques (Orca « Add Handy models ») : catalogue du backend,
+	// un objet par fichier, arrangement si demandé, suggestion String Hell.
+	let handyModels = $state<HandyModelInfo[]>([]);
+	let handySuggestion = $state<HandyModelSuggestion | null>(null);
+	onMount(() => {
+		listHandyModels()
+			.then((list) => (handyModels = list))
+			.catch(() => {});
+	});
+	async function importsReady(ids: string[], generation: number): Promise<boolean> {
+		for (let i = 0; i < 360; i++) {
+			if (generation !== sceneGeneration) return false;
+			const items = ids.map((id) => imports.find((x) => x.objectId === id));
+			if (items.some((x) => !x || x.status === 'failed')) return false;
+			if (
+				items.every((x) => x?.status === 'ready') &&
+				ids.every((id) => sceneObjects.some((o) => o.id === id))
+			)
+				return true;
+			await new Promise((r) => setTimeout(r, 500));
+		}
+		return false;
+	}
+	async function addHandyModelToScene(key: string) {
+		await editorReady;
+		const generation = sceneGeneration;
+		importError = null;
+		let res: HandyModelAdded;
+		try {
+			res = await addHandyModel(data.project.id, key);
+		} catch (e) {
+			importError = e instanceof ApiError ? e.message : 'ajout du modèle pratique impossible';
+			return;
+		}
+		if (generation !== sceneGeneration) return;
+		const before = activeSceneObjects.length;
+		const ids: string[] = [];
+		for (const model of res.models) {
+			const objectId = tree.add(model.filename).id;
+			ids.push(objectId);
+			rollbackImportIds.add(objectId);
+			if (plates.activeId) plates.assign(objectId, plates.activeId);
+			imports = [...imports, startImport(objectId, model.filename)];
+			projectModelIds.add(model.id);
+			patchImport(objectId, (i) => markUploaded(i, model.id, model.conversion_pending));
+			if (!model.conversion_pending) await resolveConversion(model.id);
+			else void watchConversion(model.id, generation);
+		}
+		ws = setSelection(ws, new Set(ids));
+		// Orca : arrangement après l'ajout pour les combos ; ici aussi dès que le
+		// plateau contenait déjà des objets (préférence « Arranger automatiquement »).
+		const arrange =
+			res.handy_model.arrange_after_import || (currentPreferences().autoArrange && before > 0);
+		if (arrange && (await importsReady(ids, generation))) await arrangeActive();
+		const suggestion = res.handy_model.suggestion;
+		if (suggestion && suggestionApplies(suggestion, processValues)) handySuggestion = suggestion;
+	}
+
+	// — Purge automatique (Orca auto_calculate_flush) : après un changement de
+	// couleur (ou de filament), lignes et colonnes du slot recalculées.
+	let flushSnapshot: FlushSnapshot | null = null;
+	$effect(() => {
+		const next: FlushSnapshot = {
+			colours: [...filamentSlotColors],
+			filaments: [...activePresets.filaments]
+		};
+		const mode = $appPreferences.autoFlush;
+		if (!baselineReady) {
+			flushSnapshot = next;
+			return;
+		}
+		const slots = changedSlots(flushSnapshot, next, mode);
+		flushSnapshot = next;
+		if (slots.length) void autoRecalcFlush(slots, next.colours.length);
+	});
+	async function autoRecalcFlush(slots: number[], n: number) {
+		if (!(await flushVolumesAvailable().catch(() => false))) return;
+		try {
+			const multiplier = projectFilament.flush_multiplier ?? presetFlushMultiplier;
+			const { matrix } = await computeFlushVolumes(
+				[...filamentSlotColors],
+				multiplier,
+				data.project.id
+			);
+			if (filamentSlotColors.length !== n) return;
+			projectFilament = {
+				...projectFilament,
+				flush_volumes_matrix: mergeFlushSlots(
+					projectFilament.flush_volumes_matrix,
+					matrix,
+					n,
+					slots
+				)
+			};
+			saveMessage = `Volumes de purge recalculés (filament ${slots.map((s) => s + 1).join(', ')}).`;
+		} catch {
+			// Calcul indisponible : les volumes saisis restent en place.
+		}
+	}
+
 	// — Maillage STEP (Orca : StepMeshDialog, lot 17) : proposé une fois le STEP
 	// converti ; chaque remaillage remplace le maillage affiché des instances.
 	type StepMeshRequest = {
@@ -1973,6 +2180,7 @@
 			else void watchConversion(model.id, generation);
 			if (/\.obj$/i.test(file.name)) void detectObjColors(objectId, model.id, file, generation);
 			if (isStep(file.name)) void offerStepMesh(objectId, model.id, file.name, generation);
+			if (!/\.3mf$/i.test(file.name)) void offerUnitConversion(objectId, file.name, generation);
 			return true;
 		} catch (e) {
 			if (generation !== sceneGeneration) return false;
@@ -3423,11 +3631,68 @@
 	// pose sur toutes les instances (transforms, plateau et documents conservés).
 	// Renvoie le suffixe d'avertissement (peinture) ou `null` si le rechargement
 	// a échoué / la scène a changé entre-temps (message déjà posé).
+	// Corps de tranchage : brouillon des presets (Orca tranche le preset édité)
+	// et préférence « mélange haute/basse température » (lot 21).
+	function currentDraft() {
+		return buildSliceDraft({
+			process: { resolved: processResolvedValues, current: processValues },
+			printer: { resolved: machineResolvedValues, current: machineValues },
+			filament: {
+				slot: clampFilamentSlot(activePresets, filamentSlot),
+				count: activePresets.filaments.length,
+				resolved: filamentResolvedValues,
+				current: filamentValues
+			}
+		});
+	}
+	function sliceRequestWithDraft(scope: 'plate' | 'all', plateIndex: number) {
+		const draft = currentDraft();
+		return {
+			...sliceRequestFor(scope, plateIndex),
+			...(draft ? { draft } : {}),
+			...(currentPreferences().mixedTemperature ? { allow_mixed_temperatures: true } : {})
+		};
+	}
+	// Contrôle à la volée des filaments haute/basse température (Orca Print.cpp:1149).
+	let filamentCompatMessage = $state<{ text: string; blocking: boolean } | null>(null);
+	let compatTimer: ReturnType<typeof setTimeout> | null = null;
+	$effect(() => {
+		const count = activePresets.filaments.length;
+		void activePresets.filaments.join(',');
+		void filamentValues;
+		const allow = $appPreferences.mixedTemperature;
+		if (compatTimer) clearTimeout(compatTimer);
+		if (count < 2 || !baselineReady) {
+			filamentCompatMessage = null;
+			return;
+		}
+		compatTimer = setTimeout(() => {
+			const draft = untrack(currentDraft);
+			checkFilamentCompatibility(data.project.id, {
+				...(draft ? { draft } : {}),
+				allow_mixed_temperatures: allow
+			})
+				.then((r) => {
+					const text = compatibilityText(r);
+					filamentCompatMessage = text ? { text, blocking: r.blocking } : null;
+				})
+				.catch(() => (filamentCompatMessage = null));
+		}, 600);
+	});
+
 	async function reloadServerMesh(
 		modelId: string,
 		generation: number,
-		what: string
+		what: string,
+		meshChange = false
 	): Promise<string | null> {
+		// Simplifier / Réparer (Orca keep_painting) : peinture sauvegardée avant le
+		// rechargement puis reportée sur le nouveau maillage, ou effacée.
+		const before = meshChange
+			? [...instancesOfModel(imports, modelId)]
+					.map((oid) => ({ oid, channels: paintedChannels(paintings[oid]?.serialize()) }))
+					.filter((p) => Object.keys(p.channels).length > 0)
+			: [];
 		// Le cache partagé par modèle contient l'ancien maillage : on l'invalide.
 		meshRequests.delete(modelId);
 		let mesh: SceneMesh;
@@ -3445,6 +3710,30 @@
 		const previous = sceneObjects.find((o) => ids.has(o.id));
 		const previousTriangles = previous ? previous.mesh.indices.length / 3 : null;
 		sceneObjects = replaceMesh(sceneObjects, ids, mesh);
+		if (before.length) {
+			if (!currentPreferences().keepPainting) {
+				for (const { oid } of before) delete paintings[oid];
+				paintings = { ...paintings };
+				return ' Peinture effacée (Préférences › Comportement › « Garder la peinture » pour la conserver).';
+			}
+			try {
+				for (const { oid, channels } of before) {
+					const remapped = await remapPaint(modelId, channels);
+					const doc = paintingFor(oid);
+					for (const [channel, facets] of Object.entries(remapped.channels))
+						doc.replaceChannel(
+							channel as Parameters<typeof doc.replaceChannel>[0],
+							facets as unknown as Record<string, string>
+						);
+				}
+				paintings = { ...paintings };
+				return ' Peinture reportée sur le nouveau maillage.';
+			} catch (e) {
+				if (!(e instanceof ApiError && (e.status === 404 || e.status === 405))) {
+					saveMessage = `Peinture non reportée : ${e instanceof ApiError ? e.message : 'erreur inconnue'}`;
+				}
+			}
+		}
 		// La peinture est indexée par triangle : si la topologie change, elle
 		// est conservée mais peut ne plus correspondre aux facettes.
 		const painted = [...ids].some((oid) =>
@@ -3489,7 +3778,7 @@
 				return;
 			}
 			if (generation !== sceneGeneration) return;
-			const warning = await reloadServerMesh(modelId, generation, 'Maillage réparé');
+			const warning = await reloadServerMesh(modelId, generation, 'Maillage réparé', true);
 			if (warning === null) return;
 			saveMessage = repairSummary(report) + warning;
 		} finally {
@@ -3531,7 +3820,7 @@
 				return;
 			}
 			if (generation !== sceneGeneration) return;
-			const warning = await reloadServerMesh(modelId, generation, 'Maillage simplifié');
+			const warning = await reloadServerMesh(modelId, generation, 'Maillage simplifié', true);
 			if (warning === null) return;
 			saveMessage = simplifySummary(report) + warning;
 		} finally {
@@ -4227,6 +4516,8 @@
 		for (const id of selectedIds) {
 			duplicateObject(id);
 		}
+		// Orca auto_arrange : « Arranger automatiquement après clonage ».
+		if (currentPreferences().autoArrange) void arrangeActive();
 	}
 	function selectAllObjects() {
 		ws = setSelection(ws, new Set(activeSceneObjects.map((o) => o.id)));
@@ -4486,6 +4777,11 @@
 	}
 	// Dispatch du menu d'ajout (T113) : Load (import) ou primitive.
 	function onAddAction(action: string) {
+		const handyKey = handyKeyOf(action);
+		if (handyKey) {
+			void addHandyModelToScene(handyKey);
+			return;
+		}
 		if (action === 'add.load') {
 			fileInput?.click();
 			return;
@@ -4619,6 +4915,12 @@
 		const id = contextMenu.targetId;
 		if (!id) return;
 		const obj = sceneObjects.find((o) => o.id === id);
+		const unitAction = unitActionOf(action);
+		if (unitAction) {
+			for (const target of ws.selection.has(id) ? selectedIds : [id])
+				convertObjectUnits(target, unitAction.unit, unitAction.restore);
+			return;
+		}
 		switch (action) {
 			case 'object.hideShow':
 				tree.setHidden(id, !tree.isHidden(id));
@@ -4640,6 +4942,7 @@
 			case 'object.clone':
 			case 'object.addInstance':
 				duplicateObject(id);
+				if (action === 'object.clone' && currentPreferences().autoArrange) void arrangeActive();
 				break;
 			case 'object.removeInstance': {
 				// Instance = objet partageant le même modèle serveur. Comme Orca
@@ -4868,7 +5171,7 @@
 		const saved = await save();
 		if (saved.status !== 'saved')
 			throw new Error(saved.status === 'error' ? saved.message : 'sauvegarde impossible');
-		const res = await sliceProject(data.project.id, sliceRequestFor('all', 0));
+		const res = await sliceProject(data.project.id, sliceRequestWithDraft('all', 0));
 		progress(`${label} : tranchage de ${res.jobs.length} plateau(x)…`);
 		const deadline = Date.now() + 10 * 60_000;
 		// Table locale (non réactive) des jobs terminés.
@@ -5009,11 +5312,16 @@
 	let preferences = $state<AppPreferences>(DEFAULT_PREFERENCES);
 	onMount(() => {
 		preferences = loadPreferences();
+		// Préférences modifiées ailleurs (dialogue des purges…) : même état.
+		const unsubscribe = appPreferences.subscribe((p) => (preferences = p));
 		const warn = (event: BeforeUnloadEvent) => {
 			if (preferences.confirmClose && unsavedNow()) event.preventDefault();
 		};
 		window.addEventListener('beforeunload', warn);
-		return () => window.removeEventListener('beforeunload', warn);
+		return () => {
+			unsubscribe();
+			window.removeEventListener('beforeunload', warn);
+		};
 	});
 
 	// Projection de la vue 3D (menu Vue).
@@ -5420,6 +5728,9 @@
 			case 'help.tipOfTheDay':
 				showTipOfTheDay = true;
 				break;
+			case 'help.about':
+				showAbout = true;
+				break;
 			case 'calib.flowPass1':
 			case 'calib.flowPass2':
 				await startFlowCalibration(action === 'calib.flowPass1' ? 1 : 2);
@@ -5495,7 +5806,7 @@
 			layout = setTab(layout, 'preview');
 			return;
 		}
-		const req = sliceRequestFor('plate', plates.plateIndex(plates.activeId ?? ''));
+		const req = sliceRequestWithDraft('plate', plates.plateIndex(plates.activeId ?? ''));
 		try {
 			const res = await sliceProject(data.project.id, req);
 			session = startSlicing(
@@ -5902,6 +6213,8 @@
 				onClose={() => (plateSettingsOpen = false)}
 				onsetting={(key, value) =>
 					plates.activeId && plates.setPlateSetting(plates.activeId, key, value)}
+				extruders={extruderCount(machineValues.nozzle_diameter)}
+				filamentColours={filamentSlotColors}
 			/>
 			<button
 				class="ws-btn ws-btn-primary"
@@ -5948,6 +6261,33 @@
 	<!-- Dialogue des raccourcis clavier (menu Aide, T111). -->
 	<ShortcutsDialog open={showShortcuts} onClose={() => (showShortcuts = false)} />
 	<TipOfTheDayDialog open={showTipOfTheDay} onClose={() => (showTipOfTheDay = false)} />
+	<AboutDialog open={showAbout} onclose={() => (showAbout = false)} />
+	{#if unitPending}
+		<UnitConversionDialog
+			filename={unitPending.filename}
+			size={unitPending.size}
+			suggested={unitPending.suggested}
+			onconvert={(unit) => {
+				if (unitPending) convertObjectUnits(unitPending.objectId, unit, false);
+				unitPending = null;
+			}}
+			onkeep={(dontAsk) => {
+				if (dontAsk) savePreferences({ ...currentPreferences(), unitConversionPrompt: false });
+				unitPending = null;
+			}}
+		/>
+	{/if}
+	{#if handySuggestion}
+		<HandySuggestionDialog
+			suggestion={handySuggestion}
+			values={processValues}
+			onapply={() => {
+				if (handySuggestion) processValues = { ...processValues, ...handySuggestion.apply };
+				handySuggestion = null;
+			}}
+			onignore={() => (handySuggestion = null)}
+		/>
+	{/if}
 
 	<input
 		bind:this={projectFileInput}
@@ -6094,7 +6434,12 @@
 		open={contextMenu.open}
 		x={contextMenu.x}
 		y={contextMenu.y}
-		items={contextMenu.part ? PART_CONTEXT_ITEMS : OBJECT_CONTEXT_ITEMS}
+		items={contextMenu.part
+			? PART_CONTEXT_ITEMS
+			: withUnitItems(
+					OBJECT_CONTEXT_ITEMS,
+					sceneObjects.find((o) => o.id === contextMenu.targetId)?.scale
+				)}
 		onaction={onObjectAction}
 		onclose={closeContext}
 	/>
@@ -6116,7 +6461,7 @@
 		open={addMenu.open}
 		x={addMenu.x}
 		y={addMenu.y}
-		items={addMenu.scene ? SCENE_CONTEXT_ITEMS : SCENE_ADD_ITEMS}
+		items={withHandyMenu(addMenu.scene ? SCENE_CONTEXT_ITEMS : SCENE_ADD_ITEMS, handyModels)}
 		onaction={onAddAction}
 		onclose={closeAddMenu}
 	/>
@@ -6463,6 +6808,24 @@
 									{/if}
 								</div>
 							{/each}
+							{#if filamentCompatMessage}
+								<p
+									class="rounded border px-2 py-1 text-xs {filamentCompatMessage.blocking
+										? 'border-danger/40 bg-danger-soft text-danger-content'
+										: 'border-warning/40 bg-warning-soft text-warning-text'}"
+									role="status"
+									data-testid="filament-compatibility"
+								>
+									{filamentCompatMessage.text}
+									{#if filamentCompatMessage.blocking}
+										<button
+											type="button"
+											class="ws-link ml-1"
+											onclick={() => (showPreferences = true)}>Préférences…</button
+										>
+									{/if}
+								</p>
+							{/if}
 							{#if filamentSlots > 1}
 								<!-- Multi-filament : purge entre filaments (config projet) et tour
 								     d'essuyage (réglages d'impression, onglet Multimatériau). -->
@@ -6662,6 +7025,7 @@
 								onrename={(name) => renameActivePreset('process', name)}
 								ondelete={() => deleteActivePreset('process')}
 								oncompare={() => openCompare('process')}
+								ondetach={(name) => detachActivePreset('process', name)}
 								bind:mode={settingsMode}
 								bind:values={processValues}
 								valuesByKind={{
@@ -6691,6 +7055,7 @@
 								onrename={(name) => renameActivePreset('filament', name)}
 								ondelete={() => deleteActivePreset('filament')}
 								oncompare={() => openCompare('filament')}
+								ondetach={(name) => detachActivePreset('filament', name)}
 								bind:mode={settingsMode}
 								bind:values={filamentValues}
 								valuesByKind={{
@@ -6717,6 +7082,7 @@
 								onrename={(name) => renameActivePreset('machine', name)}
 								ondelete={() => deleteActivePreset('machine')}
 								oncompare={() => openCompare('machine')}
+								ondetach={(name) => detachActivePreset('machine', name)}
 								bind:mode={settingsMode}
 								bind:values={machineValues}
 								valuesByKind={{

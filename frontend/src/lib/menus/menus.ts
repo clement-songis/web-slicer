@@ -152,7 +152,9 @@ const helpMenu: Menu = {
 	entries: [
 		{ label: 'Keyboard Shortcuts', shortcut: '?', action: 'help.shortcuts' },
 		{ label: 'Setup Wizard', action: 'help.setupWizard' },
-		{ label: 'Show Tip of the Day', action: 'help.tipOfTheDay' }
+		{ label: 'Show Tip of the Day', action: 'help.tipOfTheDay' },
+		'separator',
+		{ label: 'About', action: 'help.about' }
 	]
 };
 

@@ -1,9 +1,22 @@
 <script lang="ts">
-	// Dialogue « Preferences » (menu Fichier/Application) : thème, langue,
-	// unités, avertissement avant fermeture. Applique immédiatement.
+	// Dialogue « Preferences » (Orca PreferencesDialog.cpp), regroupé en quatre
+	// onglets : Général, Caméra et souris, Comportement, Presets. Chaque réglage
+	// s'applique immédiatement et est mémorisé pour l'utilisateur connecté.
 	import { THEME_PREFS, themePref, setTheme, type ThemePref } from '$lib/theme';
 	import { LOCALES, locale, setLocale, type Locale } from '$lib/i18n';
-	import { savePreferences, type AppPreferences, type Units } from './preferences';
+	import {
+		CAMERA_DEFAULTS,
+		REMEMBERED_CHOICES,
+		clampOrbitSpeed,
+		clearRememberedChoices,
+		savePreferences,
+		type AppPreferences,
+		type AutoFlush,
+		type CameraPreferences,
+		type DragAction,
+		type Units
+	} from './preferences';
+	import { loadStepPrefs, saveStepPrefs } from '$lib/editor/step-mesh';
 	import { dialogFocus } from '$lib/ui/dialog-focus';
 
 	interface Props {
@@ -15,10 +28,34 @@
 
 	let { open, prefs, onchange, onclose }: Props = $props();
 
+	type TabId = 'general' | 'camera' | 'behaviour' | 'presets';
+	const TABS: { id: TabId; label: string }[] = [
+		{ id: 'general', label: 'Général' },
+		{ id: 'camera', label: 'Caméra et souris' },
+		{ id: 'behaviour', label: 'Comportement' },
+		{ id: 'presets', label: 'Presets' }
+	];
+	let tab = $state<TabId>('general');
+
 	const themeLabels: Record<ThemePref, string> = {
 		light: 'Clair',
 		dark: 'Sombre',
 		system: 'Système'
+	};
+	const DRAG_LABELS: Record<DragAction, string> = {
+		rotate: 'Rotation',
+		pan: 'Panoramique',
+		none: 'Rien'
+	};
+	const BUTTONS: { key: 'leftDrag' | 'middleDrag' | 'rightDrag'; label: string }[] = [
+		{ key: 'leftDrag', label: 'Bouton gauche' },
+		{ key: 'middleDrag', label: 'Bouton du milieu' },
+		{ key: 'rightDrag', label: 'Bouton droit' }
+	];
+	const FLUSH_LABELS: Record<AutoFlush, string> = {
+		all: 'Couleur ou filament',
+		color: 'Couleur seulement',
+		disabled: 'Jamais'
 	};
 
 	function update(patch: Partial<AppPreferences>) {
@@ -26,7 +63,53 @@
 		savePreferences(next);
 		onchange(next);
 	}
+	function updateCamera(patch: Partial<CameraPreferences>) {
+		update({ camera: { ...prefs.camera, ...patch } });
+	}
+
+	const cam = $derived(prefs.camera);
+	const touchpad = $derived(cam.style === 'touchpad');
+	const cameraIsDefault = $derived(
+		(Object.keys(CAMERA_DEFAULTS) as (keyof CameraPreferences)[]).every(
+			(k) => cam[k] === CAMERA_DEFAULTS[k]
+		)
+	);
+	const noRotate = $derived(!touchpad && !BUTTONS.some((b) => cam[b.key] === 'rotate'));
+
+	// Dialogue STEP (Orca enable_step_mesh_setting) : préférence du module STEP.
+	let stepAsk = $state(true);
+	$effect(() => {
+		if (open) stepAsk = loadStepPrefs().ask;
+	});
+	function setStepAsk(ask: boolean) {
+		stepAsk = ask;
+		saveStepPrefs({ ...loadStepPrefs(), ask });
+	}
+
+	let cleared = $state<string | null>(null);
+	function clearChoices() {
+		const n = clearRememberedChoices();
+		cleared = n ? `${n} choix effacé${n > 1 ? 's' : ''}.` : 'Aucun choix mémorisé.';
+	}
+
+	// Saisie libre (virgule acceptée), resynchronisée sur la valeur mémorisée.
+	let orbitText = $derived(cam.orbitSpeed.toFixed(2).replace('.', ','));
+	function commitOrbit(text: string) {
+		const value = clampOrbitSpeed(Number(text.replace(',', '.')));
+		updateCamera({ orbitSpeed: value });
+		orbitText = value.toFixed(2).replace('.', ',');
+	}
 </script>
+
+{#snippet row(label: string, hint: string | null, control: import('svelte').Snippet, id: string)}
+	<div class="flex items-start justify-between gap-4 py-2" data-pref-row={id}>
+		<div class="min-w-0">
+			<div class="text-sm text-content" id="pref-{id}-label">{label}</div>
+			{#if hint}<p class="mt-0.5 text-xs leading-5 text-content-subtle">{hint}</p>{/if}
+		</div>
+		<div class="shrink-0">{@render control()}</div>
+	</div>
+{/snippet}
 
 {#if open}
 	<div
@@ -35,7 +118,7 @@
 		onclick={onclose}
 	>
 		<div
-			class="ws-dialog w-96 p-4"
+			class="ws-dialog flex max-h-[calc(100vh-2rem)] w-[38rem] max-w-[calc(100vw-2rem)] flex-col p-0"
 			role="dialog"
 			aria-modal="true"
 			aria-label="Préférences"
@@ -45,72 +128,368 @@
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.key === 'Escape' && onclose()}
 		>
-			<h2 class="ws-dialog-title mb-3">Préférences</h2>
-			<div class="flex flex-col gap-3 text-sm">
-				<label class="flex items-center justify-between gap-2">
-					<span>Thème</span>
-					<select
-						data-testid="pref-theme"
-						class="ws-field ws-field-sm"
-						value={$themePref}
-						onchange={(e) => setTheme(e.currentTarget.value as ThemePref)}
-					>
-						{#each THEME_PREFS as pref (pref)}
-							<option value={pref}>{themeLabels[pref]}</option>
-						{/each}
-					</select>
-				</label>
-				<label class="flex items-center justify-between gap-2">
-					<span>Langue</span>
-					<select
-						data-testid="pref-language"
-						class="ws-field ws-field-sm"
-						value={$locale}
-						onchange={(e) => setLocale(e.currentTarget.value as Locale)}
-					>
-						{#each LOCALES as code (code)}
-							<option value={code}>{code}</option>
-						{/each}
-					</select>
-				</label>
-				<label class="flex items-center justify-between gap-2">
-					<span>Unités</span>
-					<select
-						data-testid="pref-units"
-						class="ws-field ws-field-sm"
-						value={prefs.units}
-						onchange={(e) => update({ units: e.currentTarget.value as Units })}
-					>
-						<option value="mm">Millimètres</option>
-						<option value="in">Pouces</option>
-					</select>
-				</label>
-				<label class="flex items-center justify-between gap-2">
-					<span>Devise des coûts</span>
-					<input
-						data-testid="pref-currency"
-						class="ws-field ws-field-sm w-20 text-center"
-						maxlength="4"
-						value={prefs.currency}
-						onchange={(e) => update({ currency: e.currentTarget.value.trim() || '€' })}
-						aria-describedby="pref-currency-hint"
-					/>
-				</label>
-				<p id="pref-currency-hint" class="-mt-2 text-xs text-content-subtle">
-					Unité du « Coût du filament » (par kg) saisi dans les réglages du filament.
-				</p>
-				<label class="flex items-center justify-between gap-2">
-					<span>Avertir avant de fermer</span>
-					<input
-						type="checkbox"
-						data-testid="pref-confirm-close"
-						checked={prefs.confirmClose}
-						onchange={(e) => update({ confirmClose: e.currentTarget.checked })}
-					/>
-				</label>
+			<div class="px-4 pt-4">
+				<h2 class="ws-dialog-title mb-3">Préférences</h2>
+				<div class="flex gap-1 border-b border-border" role="tablist" aria-label="Rubriques">
+					{#each TABS as t (t.id)}
+						<button
+							type="button"
+							role="tab"
+							aria-selected={tab === t.id}
+							data-testid="pref-tab-{t.id}"
+							class="ws-tab text-sm {tab === t.id ? 'ws-tab-on' : ''}"
+							onclick={() => (tab = t.id)}>{t.label}</button
+						>
+					{/each}
+				</div>
 			</div>
-			<div class="mt-4 flex justify-end">
-				<button type="button" class="ws-btn ws-btn-primary" onclick={onclose}>Fermer</button>
+
+			<div class="min-h-[22rem] flex-1 overflow-y-auto px-4 py-2" role="tabpanel">
+				{#if tab === 'general'}
+					{#snippet themeCtl()}
+						<select
+							data-testid="pref-theme"
+							aria-labelledby="pref-theme-label"
+							class="ws-field ws-field-sm w-40"
+							value={$themePref}
+							onchange={(e) => setTheme(e.currentTarget.value as ThemePref)}
+						>
+							{#each THEME_PREFS as pref (pref)}
+								<option value={pref}>{themeLabels[pref]}</option>
+							{/each}
+						</select>
+					{/snippet}
+					{@render row('Thème', null, themeCtl, 'theme')}
+					{#snippet langCtl()}
+						<select
+							data-testid="pref-language"
+							aria-labelledby="pref-language-label"
+							class="ws-field ws-field-sm w-40"
+							value={$locale}
+							onchange={(e) => setLocale(e.currentTarget.value as Locale)}
+						>
+							{#each LOCALES as code (code)}
+								<option value={code}>{code}</option>
+							{/each}
+						</select>
+					{/snippet}
+					{@render row('Langue', null, langCtl, 'language')}
+					{#snippet unitsCtl()}
+						<select
+							data-testid="pref-units"
+							aria-labelledby="pref-units-label"
+							class="ws-field ws-field-sm w-40"
+							value={prefs.units}
+							onchange={(e) => update({ units: e.currentTarget.value as Units })}
+						>
+							<option value="mm">Métrique (mm)</option>
+							<option value="in">Impérial (pouces)</option>
+						</select>
+					{/snippet}
+					{@render row('Unités', null, unitsCtl, 'units')}
+					{#snippet currencyCtl()}
+						<input
+							data-testid="pref-currency"
+							aria-labelledby="pref-currency-label"
+							class="ws-field ws-field-sm w-20 text-center"
+							maxlength="4"
+							value={prefs.currency}
+							onchange={(e) => update({ currency: e.currentTarget.value.trim() || '€' })}
+						/>
+					{/snippet}
+					{@render row(
+						'Devise des coûts',
+						'Unité du « Coût du filament » (par kg) saisi dans les réglages du filament.',
+						currencyCtl,
+						'currency'
+					)}
+					{#snippet closeCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-confirm-close"
+							aria-labelledby="pref-confirm-close-label"
+							checked={prefs.confirmClose}
+							onchange={(e) => update({ confirmClose: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Avertir avant de fermer',
+						'Demande confirmation en quittant un projet non sauvegardé.',
+						closeCtl,
+						'confirm-close'
+					)}
+				{:else if tab === 'camera'}
+					{#snippet styleCtl()}
+						<div class="ws-seg" role="radiogroup" aria-labelledby="pref-camera-style-label">
+							{#each [['default', 'Souris'], ['touchpad', 'Pavé tactile']] as [value, label] (value)}
+								<button
+									type="button"
+									role="radio"
+									aria-checked={cam.style === value}
+									data-testid="pref-camera-style-{value}"
+									class="ws-seg-item {cam.style === value ? 'ws-seg-on' : ''}"
+									onclick={() => updateCamera({ style: value as CameraPreferences['style'] })}
+									>{label}</button
+								>
+							{/each}
+						</div>
+					{/snippet}
+					{@render row(
+						'Style de navigation',
+						touchpad
+							? 'Alt + déplacement : rotation · Maj + déplacement : panoramique · défilement : zoom.'
+							: 'Glisser avec les boutons de la souris (actions ci-dessous) ; molette : zoom.',
+						styleCtl,
+						'camera-style'
+					)}
+					{#if !touchpad}
+						{#each BUTTONS as b (b.key)}
+							{#snippet dragCtl()}
+								<select
+									data-testid="pref-{b.key}"
+									aria-labelledby="pref-{b.key}-label"
+									class="ws-field ws-field-sm w-40"
+									value={cam[b.key]}
+									onchange={(e) => updateCamera({ [b.key]: e.currentTarget.value as DragAction })}
+								>
+									{#each Object.entries(DRAG_LABELS) as [value, label] (value)}
+										<option {value}>{label}</option>
+									{/each}
+								</select>
+							{/snippet}
+							{@render row(b.label + ' (glisser)', null, dragCtl, b.key)}
+						{/each}
+						{#if noRotate}
+							<p
+								class="rounded border border-warning/40 bg-warning-soft px-2 py-1 text-xs text-warning-text"
+								data-testid="pref-no-rotate"
+								role="status"
+							>
+								Aucun bouton ne fait tourner la vue : utilisez les vues prédéfinies (menu Vue) pour
+								changer d’angle.
+							</p>
+						{/if}
+					{/if}
+					{#snippet orbitCtl()}
+						<div class="flex items-center gap-2">
+							<input
+								type="range"
+								min="0.05"
+								max="2"
+								step="0.05"
+								class="w-28"
+								aria-labelledby="pref-orbit-label"
+								data-testid="pref-orbit-range"
+								value={cam.orbitSpeed}
+								oninput={(e) =>
+									updateCamera({ orbitSpeed: clampOrbitSpeed(Number(e.currentTarget.value)) })}
+							/>
+							<input
+								class="ws-field ws-field-sm w-16 text-center"
+								inputmode="decimal"
+								aria-labelledby="pref-orbit-label"
+								data-testid="pref-orbit"
+								bind:value={orbitText}
+								onchange={(e) => commitOrbit(e.currentTarget.value)}
+								onkeydown={(e) => e.key === 'Enter' && commitOrbit(e.currentTarget.value)}
+							/>
+							<span class="text-xs text-content-subtle">×</span>
+						</div>
+					{/snippet}
+					{@render row(
+						'Vitesse de rotation',
+						'Multiplicateur de 0,05 à 2 (1 = normal).',
+						orbitCtl,
+						'orbit'
+					)}
+					{#snippet zoomCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-zoom-to-mouse"
+							aria-labelledby="pref-zoom-to-mouse-label"
+							checked={cam.zoomToMouse}
+							onchange={(e) => updateCamera({ zoomToMouse: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Zoomer vers le pointeur',
+						'Le zoom se rapproche du point visé plutôt que du centre de la vue.',
+						zoomCtl,
+						'zoom-to-mouse'
+					)}
+					{#snippet reverseCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-reverse-wheel"
+							aria-labelledby="pref-reverse-wheel-label"
+							checked={cam.reverseWheel}
+							onchange={(e) => updateCamera({ reverseWheel: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row('Inverser le sens de la molette', null, reverseCtl, 'reverse-wheel')}
+					{#snippet freeCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-free-camera"
+							aria-labelledby="pref-free-camera-label"
+							checked={cam.freeCamera}
+							onchange={(e) => updateCamera({ freeCamera: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Caméra libre',
+						'Rotation sans contrainte dans toutes les directions. Désactivée : l’axe Z reste vertical (recommandé).',
+						freeCtl,
+						'free-camera'
+					)}
+					<div
+						class="flex items-center justify-between gap-2 border-t border-border pt-2 text-xs text-content-subtle"
+					>
+						<span>Souris 3D (3Dconnexion) : non prise en charge par le navigateur.</span>
+						<button
+							type="button"
+							class="ws-btn ws-btn-sm ws-btn-ghost"
+							data-testid="pref-camera-reset"
+							disabled={cameraIsDefault}
+							onclick={() => update({ camera: { ...CAMERA_DEFAULTS } })}>Valeurs par défaut</button
+						>
+					</div>
+				{:else if tab === 'behaviour'}
+					{#snippet arrangeCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-auto-arrange"
+							aria-labelledby="pref-auto-arrange-label"
+							checked={prefs.autoArrange}
+							onchange={(e) => update({ autoArrange: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Arranger automatiquement',
+						'Réorganise le plateau après un clonage ou l’ajout d’un modèle pratique, pour éviter les chevauchements.',
+						arrangeCtl,
+						'auto-arrange'
+					)}
+					{#snippet flushCtl()}
+						<select
+							data-testid="pref-auto-flush"
+							aria-labelledby="pref-auto-flush-label"
+							class="ws-field ws-field-sm w-44"
+							value={prefs.autoFlush}
+							onchange={(e) => update({ autoFlush: e.currentTarget.value as AutoFlush })}
+						>
+							{#each Object.entries(FLUSH_LABELS) as [value, label] (value)}
+								<option {value}>{label}</option>
+							{/each}
+						</select>
+					{/snippet}
+					{@render row(
+						'Recalculer les volumes de purge',
+						'Après un changement de filament, les purges vers et depuis ce filament sont recalculées ; les autres valeurs saisies sont conservées.',
+						flushCtl,
+						'auto-flush'
+					)}
+					{#snippet unitCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-unit-conversion"
+							aria-labelledby="pref-unit-conversion-label"
+							checked={prefs.unitConversionPrompt}
+							onchange={(e) => update({ unitConversionPrompt: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Détecter les modèles en pouces ou en mètres',
+						'À l’import, un objet minuscule (moins de 8 mm³) propose une conversion en millimètres.',
+						unitCtl,
+						'unit-conversion'
+					)}
+					{#snippet keepPaintCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-keep-painting"
+							aria-labelledby="pref-keep-painting-label"
+							checked={prefs.keepPainting}
+							onchange={(e) => update({ keepPainting: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Garder la peinture après Simplifier / Réparer',
+						'Reporte supports, couture, couleurs et surface floue peints sur le nouveau maillage. Désactivé : la peinture est effacée, comme dans OrcaSlicer.',
+						keepPaintCtl,
+						'keep-painting'
+					)}
+					{#snippet mixedCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-mixed-temperature"
+							aria-labelledby="pref-mixed-temperature-label"
+							checked={prefs.mixedTemperature}
+							onchange={(e) => update({ mixedTemperature: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Autoriser les filaments haute et basse température ensemble',
+						'Par défaut, un mélange comme PLA + PC est refusé au tranchage (risque de bouchage). Activé : simple avertissement.',
+						mixedCtl,
+						'mixed-temperature'
+					)}
+					{#snippet stepCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-step-dialog"
+							aria-labelledby="pref-step-dialog-label"
+							checked={stepAsk}
+							onchange={(e) => setStepAsk(e.currentTarget.checked)}
+						/>
+					{/snippet}
+					{@render row(
+						'Options de maillage à l’import STEP',
+						'Affiche le réglage de précision après chaque import STEP ; sinon les derniers réglages s’appliquent.',
+						stepCtl,
+						'step-dialog'
+					)}
+					{#snippet clearCtl()}
+						<button
+							type="button"
+							class="ws-btn ws-btn-sm ws-btn-secondary"
+							data-testid="pref-clear-choices"
+							onclick={clearChoices}>Effacer</button
+						>
+					{/snippet}
+					{@render row(
+						'Choix « Ne plus demander »',
+						cleared ?? REMEMBERED_CHOICES.map((c) => c.label).join(' · '),
+						clearCtl,
+						'clear-choices'
+					)}
+				{:else}
+					{#snippet unsupportedCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-show-unsupported"
+							aria-labelledby="pref-show-unsupported-label"
+							checked={prefs.showUnsupportedPresets}
+							onchange={(e) => update({ showUnsupportedPresets: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Afficher les presets incompatibles',
+						'Les filaments et traitements prévus pour d’autres imprimantes apparaissent grisés dans les listes, sans pouvoir être choisis.',
+						unsupportedCtl,
+						'show-unsupported'
+					)}
+				{/if}
+			</div>
+
+			<div class="flex items-center justify-between gap-3 border-t border-border px-4 py-3">
+				<p class="text-xs text-content-subtle">Enregistré automatiquement pour votre compte.</p>
+				<button
+					type="button"
+					class="ws-btn ws-btn-primary"
+					data-testid="preferences-close"
+					onclick={onclose}>Fermer</button
+				>
 			</div>
 		</div>
 	</div>

@@ -44,6 +44,17 @@
 		onaction(action);
 		onclose();
 	}
+
+	// Sous-menus dépliés sur place (accordéon) : lisibles et utilisables au
+	// clavier, sans menu volant qui sortirait de l'écran.
+	let expanded = $state<string | null>(null);
+	$effect(() => {
+		if (!open) expanded = null;
+	});
+	function toggle(action: string) {
+		expanded = expanded === action ? null : action;
+		queueMicrotask(reposition);
+	}
 </script>
 
 {#if open}
@@ -68,6 +79,36 @@
 		{#each items as item, i (i)}
 			{#if item === 'separator'}
 				<div class="my-1 h-px bg-border"></div>
+			{:else if item.items}
+				<button
+					type="button"
+					class="ws-menu-item flex items-center justify-between gap-3"
+					role="menuitem"
+					aria-haspopup="true"
+					aria-expanded={expanded === item.action}
+					data-testid="menu-sub-{item.action}"
+					onclick={() => toggle(item.action)}
+				>
+					<span>{$t(item.label)}</span>
+					<span aria-hidden="true" class="text-content-subtle"
+						>{expanded === item.action ? '▾' : '▸'}</span
+					>
+				</button>
+				{#if expanded === item.action}
+					<div role="group" aria-label={$t(item.label)} class="ml-2 border-l border-border pl-1">
+						{#each item.items as sub (sub.action)}
+							<button
+								type="button"
+								class="ws-menu-item flex items-baseline justify-between gap-3"
+								role="menuitem"
+								onclick={() => pick(sub.action)}
+							>
+								<span>{$t(sub.label)}</span>
+								{#if sub.hint}<span class="text-xs text-content-subtle">{sub.hint}</span>{/if}
+							</button>
+						{/each}
+					</div>
+				{/if}
 			{:else}
 				<button
 					type="button"

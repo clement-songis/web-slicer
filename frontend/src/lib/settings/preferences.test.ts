@@ -6,10 +6,9 @@ describe('préférences', () => {
 		expect(parsePreferences(null)).toEqual(DEFAULT_PREFERENCES);
 		expect(parsePreferences('{oops')).toEqual(DEFAULT_PREFERENCES);
 		expect(parsePreferences('{"units":"in","confirmClose":false}')).toEqual({
+			...DEFAULT_PREFERENCES,
 			units: 'in',
-			confirmClose: false,
-			sidebarCollapsed: false,
-			currency: '€'
+			confirmClose: false
 		});
 		expect(parsePreferences('{"units":"km"}').units).toBe('mm');
 	});

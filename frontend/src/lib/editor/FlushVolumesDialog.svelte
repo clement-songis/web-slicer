@@ -5,6 +5,7 @@
 	import Dialog from '$lib/ui/Dialog.svelte';
 	import { swatchStyle } from '$lib/ui/color';
 	import { DEFAULT_FLUSH, resizeFlushMatrix } from './multi-filament';
+	import { appPreferences, savePreferences, type AutoFlush } from '$lib/settings/preferences';
 
 	interface Props {
 		open: boolean;
@@ -178,6 +179,21 @@
 				}}>Valeurs par défaut ({DEFAULT_FLUSH} mm³ × {defaultMultiplier})</button
 			>
 		</div>
+		<!-- Orca auto_calculate_flush : même préférence que Préférences › Comportement. -->
+		<label class="flex items-center justify-between gap-2 text-xs text-content-muted">
+			<span>Recalculer automatiquement quand un filament change</span>
+			<select
+				class="ws-field ws-field-sm w-44"
+				data-testid="flush-auto"
+				value={$appPreferences.autoFlush}
+				onchange={(e) =>
+					savePreferences({ ...$appPreferences, autoFlush: e.currentTarget.value as AutoFlush })}
+			>
+				<option value="all">Couleur ou filament</option>
+				<option value="color">Couleur seulement</option>
+				<option value="disabled">Jamais</option>
+			</select>
+		</label>
 		{#if computeError}
 			<p class="text-xs text-danger" role="alert">{computeError}</p>
 		{:else if canCompute === false}

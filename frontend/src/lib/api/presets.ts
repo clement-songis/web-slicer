@@ -22,6 +22,12 @@ export const getPreset = (id: string) => api.get<PresetDetail>(`/presets/${id}`)
 /** Valeurs effectives (chaîne d'héritage résolue). */
 export const getResolvedPreset = (id: string) => api.get<ResolvedPreset>(`/presets/${id}/resolved`);
 
+/** Détache un preset de son parent système (Orca Tab::detach_preset) : copie
+ *  utilisateur autonome pour un preset système (`name` requis), sur place pour
+ *  un preset utilisateur. */
+export const detachPreset = (id: string, name?: string | null) =>
+	api.post<PresetDetail>(`/presets/${id}/detach`, name ? { name } : {});
+
 /** Crée / dérive un preset utilisateur. */
 export const createPreset = (body: CreatePresetRequest) => api.post<PresetDetail>('/presets', body);
 

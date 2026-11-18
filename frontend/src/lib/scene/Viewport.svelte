@@ -3,7 +3,8 @@
 	// plateau et objets, gestion de la sélection par raycast. Monte le gizmo de
 	// transformation (T103) sur l'objet unique sélectionné selon le mode actif.
 	import { T, useTask, useThrelte } from '@threlte/core';
-	import { HTML, OrbitControls, interactivity } from '@threlte/extras';
+	import { HTML, interactivity } from '@threlte/extras';
+	import CameraControls from './CameraControls.svelte';
 	import { Box3, Object3D, Vector3 } from 'three';
 	import type { ScreenBox, SectionPlane } from './screen-select';
 	import Bed from './Bed.svelte';
@@ -437,11 +438,11 @@
 		near={-20000}
 		far={20000}
 	>
-		<OrbitControls enableDamping enabled={!dragging && !suspendcontrols} target={pose.target} />
+		<CameraControls enabled={!dragging && !suspendcontrols} target={pose.target} {up} />
 	</T.OrthographicCamera>
 {:else}
 	<T.PerspectiveCamera makeDefault position={pose.position} {up} fov={50} near={1} far={20000}>
-		<OrbitControls enableDamping enabled={!dragging && !suspendcontrols} target={pose.target} />
+		<CameraControls enabled={!dragging && !suspendcontrols} target={pose.target} {up} />
 	</T.PerspectiveCamera>
 {/if}
 

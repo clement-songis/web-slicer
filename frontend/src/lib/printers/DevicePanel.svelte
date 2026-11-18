@@ -39,6 +39,9 @@
 		isMissingRoute,
 		loadWebcamUrl,
 		moveGcode,
+		unhomedAxes,
+		recenterMuted,
+		muteRecenter,
 		remainingSeconds,
 		saveWebcamUrl,
 		temperatureGcode,
@@ -47,6 +50,7 @@
 		type Heater
 	} from './device';
 	import type { PrinterResponse } from '$lib/api/types';
+	import PrintObjectsPanel from './PrintObjectsPanel.svelte';
 
 	type Cap = 'unknown' | 'yes' | 'no';
 	interface Live {
@@ -100,6 +104,35 @@
 	});
 	const webcamSrc = $derived(webcamUrl || printerWebcam);
 	let confirmCancel = $state(false);
+
+	// Origine avant déplacement (Orca RecenterDialog) : un axe sans origine
+	// n'a pas de position connue, le déplacer peut buter en fin de course.
+	const unhomed = $derived(unhomedAxes(cur?.ext.homed_axes));
+	let recenter = $state<{ axis: Axis; delta: number } | null>(null);
+	let recenterMute = $state(false);
+	function requestJog(axis: Axis, delta: number) {
+		if (unhomedAxes(cur?.ext.homed_axes, [axis]).length && !recenterMuted()) {
+			recenter = { axis, delta };
+			recenterMute = false;
+			return;
+		}
+		jogNow(axis, delta);
+	}
+	function jogNow(axis: Axis, delta: number) {
+		void gcode(`${axis} ${delta > 0 ? '+' : '−'}${Math.abs(delta)} mm`, moveGcode(axis, delta));
+	}
+	function resolveRecenter(choice: 'home' | 'move' | 'cancel') {
+		const r = recenter;
+		recenter = null;
+		if (recenterMute && choice !== 'cancel') muteRecenter();
+		if (!r || choice === 'cancel') return;
+		if (choice === 'home')
+			void gcode(
+				`Origine puis ${r.axis} ${r.delta > 0 ? '+' : '−'}${Math.abs(r.delta)} mm`,
+				`${homeGcode()}\n${moveGcode(r.axis, r.delta)}`
+			);
+		else jogNow(r.axis, r.delta);
+	}
 
 	async function refresh(id: string) {
 		// Hôtes autres que Moonraker : pas d'état (409 côté serveur).
@@ -263,8 +296,7 @@
 		class="ws-icon-btn border-border-strong {cls}"
 		aria-label="{axis}{sign > 0 ? '+' : '−'}{step} mm"
 		disabled={capGcode !== 'yes' || busy || active}
-		onclick={() => gcode(`${axis} ${sign > 0 ? '+' : '−'}${step} mm`, moveGcode(axis, sign * step))}
-		>{label}</button
+		onclick={() => requestJog(axis, sign * step)}>{label}</button
 	>
 {/snippet}
 
@@ -537,6 +569,9 @@
 							</div>
 						</section>
 
+						<!-- Objets de l'impression : exclusion en cours d'impression (PartSkipDialog). -->
+						<PrintObjectsPanel printerId={printer.id} {active} tick={cur?.at ?? 0} />
+
 						<!-- Fichiers de l'imprimante -->
 						<section
 							class="flex flex-col gap-2 rounded-lg border border-border bg-surface-raised p-4"
@@ -670,12 +705,55 @@
 									{@render jog('Z', -1, 'Z−', '')}
 								</div>
 							</div>
+							{#if recenter}
+								<div
+									class="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-sm text-warning-text"
+									role="alertdialog"
+									aria-label="Origine avant déplacement"
+									data-testid="device-recenter"
+								>
+									<p>
+										L’axe {recenter.axis} n’a pas fait son origine : sa position est inconnue et le déplacement
+										peut buter en fin de course. Faites d’abord l’origine.
+									</p>
+									<div class="flex flex-wrap items-center gap-2">
+										<button
+											type="button"
+											class="ws-btn ws-btn-sm ws-btn-primary"
+											data-testid="device-recenter-home"
+											onclick={() => resolveRecenter('home')}>Origine puis déplacer</button
+										>
+										<button
+											type="button"
+											class="ws-btn ws-btn-sm ws-btn-secondary"
+											data-testid="device-recenter-move"
+											onclick={() => resolveRecenter('move')}>Déplacer quand même</button
+										>
+										<button
+											type="button"
+											class="ws-btn ws-btn-sm ws-btn-ghost"
+											onclick={() => resolveRecenter('cancel')}>Annuler</button
+										>
+										<label class="ml-auto flex items-center gap-1 text-xs"
+											><input
+												type="checkbox"
+												bind:checked={recenterMute}
+												data-testid="device-recenter-mute"
+											/> Ne plus avertir</label
+										>
+									</div>
+								</div>
+							{/if}
 							<button
 								type="button"
 								class="ws-btn ws-btn-secondary"
 								disabled={capGcode !== 'yes' || busy || active}
 								onclick={() => gcode("Mise à l'origine", homeGcode())}
-								>Origine de tous les axes</button
+								>Origine de tous les axes{#if unhomed.length}<span
+										class="ws-badge ml-2 h-4 px-1.5"
+										data-testid="device-unhomed"
+										title="Axes sans origine">à faire : {unhomed.join(' ')}</span
+									>{/if}</button
 							>
 						</section>
 

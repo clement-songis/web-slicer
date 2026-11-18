@@ -93,3 +93,72 @@ export function formatSize(bytes: number): string {
 	if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(1)} Mo`;
 	return `${Math.max(1, Math.round(bytes / 1024))} ko`;
 }
+
+/**
+ * Axes sans origine (Orca RecenterDialog : déplacement refusé tant que la tête
+ * n'a pas fait son origine). `homed` = `homed_axes` Klipper (« xyz », « xy »,
+ * « »). Inconnu (statut sans ce champ) → aucun avertissement.
+ */
+export function unhomedAxes(
+	homed: string | null | undefined,
+	axes: readonly Axis[] = ['X', 'Y', 'Z']
+): Axis[] {
+	if (homed === null || homed === undefined) return [];
+	const h = homed.toLowerCase();
+	return axes.filter((a) => !h.includes(a.toLowerCase()));
+}
+
+export const RECENTER_KEY = 'web-slicer.recenter';
+/** « Ne plus avertir » mémorisé (effacé par Préférences › Effacer mes choix). */
+export function recenterMuted(): boolean {
+	try {
+		return localStorage.getItem(RECENTER_KEY) === 'muted';
+	} catch {
+		return false;
+	}
+}
+export function muteRecenter(): void {
+	try {
+		localStorage.setItem(RECENTER_KEY, 'muted');
+	} catch {
+		/* stockage indisponible */
+	}
+}
+
+// — Exclusion d'objet en cours d'impression (Orca PartSkipDialog ; Klipper
+// exclude_object : noms EXCLUDE_OBJECT_DEFINE d'Orca « <objet>_id_<n>_copy_<i> »).
+export type PrintObjectState = 'excluded' | 'current' | 'pending';
+
+/** Nom lisible : « cube.stl_id_0_copy_1 » → « cube.stl · copie 2 ». */
+export function printObjectLabel(name: string): string {
+	const m = /^(.*)_id_(\d+)_copy_(\d+)$/i.exec(name);
+	if (!m) return name;
+	const copy = Number(m[3]);
+	return copy > 0 ? `${m[1]} · copie ${copy + 1}` : m[1];
+}
+
+export function printObjectState(
+	name: string,
+	s: { excluded_objects: readonly string[]; current_object?: string | null }
+): PrintObjectState {
+	const n = name.toLowerCase();
+	if (s.excluded_objects.some((e) => e.toLowerCase() === n)) return 'excluded';
+	if (s.current_object && s.current_object.toLowerCase() === n) return 'current';
+	return 'pending';
+}
+
+/** Cadre SVG englobant les contours (marge 5 %), Y inversé géré par l'appelant. */
+export function objectsBounds(
+	objects: readonly {
+		polygon: readonly (readonly [number, number])[];
+		center?: readonly [number, number] | null;
+	}[]
+): { minX: number; minY: number; width: number; height: number } | null {
+	const pts = objects.flatMap((o) => (o.polygon.length ? o.polygon : o.center ? [o.center] : []));
+	if (!pts.length) return null;
+	const xs = pts.map((p) => p[0]);
+	const ys = pts.map((p) => p[1]);
+	const [x0, x1, y0, y1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+	const m = Math.max(x1 - x0, y1 - y0, 10) * 0.05;
+	return { minX: x0 - m, minY: y0 - m, width: x1 - x0 + 2 * m, height: y1 - y0 + 2 * m };
+}

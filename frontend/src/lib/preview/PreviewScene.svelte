@@ -3,7 +3,7 @@
 	// éclairage neutre et lignes d'extrusion colorées (PreviewLines). Pendant du
 	// `Scene.svelte` de préparation, réutilisé par le workspace éditeur.
 	import { Canvas, T } from '@threlte/core';
-	import { OrbitControls } from '@threlte/extras';
+	import CameraControls from '$lib/scene/CameraControls.svelte';
 	import { frameBed, frameBox, type BedShape } from '$lib/scene';
 	import PreviewLines from './PreviewLines.svelte';
 	import PreviewPoints from './PreviewPoints.svelte';
@@ -69,7 +69,7 @@
 				near={1}
 				far={20000}
 			>
-				<OrbitControls enableDamping target={pose.target} />
+				<CameraControls target={pose.target} />
 			</T.PerspectiveCamera>
 		{/key}
 		{#if renderMode === 'volumes'}

@@ -4,9 +4,12 @@ import { writable } from 'svelte/store';
 import * as auth from './auth';
 import { ApiError } from './client';
 import type { UserResponse } from './types';
+import { setPreferencesUser } from '$lib/settings/preferences';
 
 /** Compte connecté, ou `null` si la session est absente/expirée. */
 export const currentUser = writable<UserResponse | null>(null);
+// Préférences par utilisateur : chaque compte retrouve les siennes.
+currentUser.subscribe((user) => setPreferencesUser(user?.id ?? null));
 
 /**
  * Recharge la session depuis le backend (`GET /auth/me`). Met à jour le store et

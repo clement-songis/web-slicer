@@ -5,7 +5,7 @@
 	// Autonome : la page ne fournit que l'identifiant du G-code courant.
 	import IconSend from '~icons/lucide/send';
 	import { resolve } from '$app/paths';
-	import { hasLiveControls, hostMeta } from './hosts';
+	import { hasLiveControls, hostMeta, hostPrinterValue } from './hosts';
 	import {
 		getHostPrinters,
 		getPrinterStorages,
@@ -317,7 +317,9 @@
 				{/if}
 				{#if selected && !needsUrl && meta.printerSlug}
 					<label class="flex flex-col gap-1 text-sm">
-						<span class="text-content-muted">Imprimante du serveur Repetier</span>
+						<span class="text-content-muted"
+							>{meta.id === 'obico' ? 'Imprimante Obico' : 'Imprimante du serveur Repetier'}</span
+						>
 						{#if hostPrinters?.length}
 							<select
 								class="ws-field"
@@ -328,9 +330,9 @@
 							>
 								{#if !selected.host_port}<option value="" disabled>Choisir…</option>{/if}
 								{#each hostPrinters as slug (slug)}
-									<option value={slug}>{slug}</option>
+									<option value={hostPrinterValue(meta.id, slug)}>{slug}</option>
 								{/each}
-								{#if selected.host_port && !hostPrinters.includes(selected.host_port)}
+								{#if selected.host_port && !hostPrinters.some((s) => hostPrinterValue(meta.id, s) === selected.host_port)}
 									<option value={selected.host_port}>{selected.host_port} (introuvable)</option>
 								{/if}
 							</select>

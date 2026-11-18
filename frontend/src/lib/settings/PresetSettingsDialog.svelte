@@ -48,6 +48,10 @@
 		onrename?: (name: string) => Promise<string | null>;
 		ondelete?: () => void;
 		oncompare?: () => void;
+		/** Détache du preset système parent (Orca : cadenas « Detach from system
+		 *  preset ») ; `name` = nom de la copie pour un preset système. Renvoie
+		 *  un message d'erreur ou null. */
+		ondetach?: (name: string | null) => Promise<string | null>;
 	}
 
 	let {
@@ -68,6 +72,7 @@
 		systemByKind,
 		preset = null,
 		onrename,
+		ondetach,
 		ondelete,
 		oncompare
 	}: Props = $props();
@@ -75,6 +80,31 @@
 	let renaming = $state<string | null>(null);
 	let renameError = $state<string | null>(null);
 	let confirmDelete = $state(false);
+	// Détacher (Tab.cpp:2163) : visible si le parent est un preset système
+	// (preset système lui-même, ou preset utilisateur qui en hérite).
+	const canDetach = $derived(
+		!!preset && !!ondetach && (preset.origin !== 'user' || !!preset.inherits)
+	);
+	let detaching = $state<string | null>(null);
+	let detachError = $state<string | null>(null);
+	let detachBusy = $state(false);
+	function startDetach() {
+		detachError = null;
+		detaching = preset && preset.origin !== 'user' ? `${preset.name} (détaché)` : '';
+	}
+	async function confirmDetach() {
+		if (detaching === null || !ondetach || !preset) return;
+		const system = preset.origin !== 'user';
+		const name = detaching.trim();
+		if (system && !name) {
+			detachError = 'nom requis';
+			return;
+		}
+		detachBusy = true;
+		detachError = await ondetach(system ? name : null);
+		detachBusy = false;
+		if (!detachError) detaching = null;
+	}
 	$effect(() => {
 		if (!open) {
 			renaming = null;
@@ -165,6 +195,18 @@
 					{/if}
 				</div>
 				<div class="flex shrink-0 items-center gap-2">
+					{#if canDetach && detaching === null}
+						<button
+							type="button"
+							class="ws-btn ws-btn-sm ws-btn-ghost"
+							data-testid="preset-detach"
+							title="Rendre ce preset autonome : il ne suivra plus les mises à jour de « {preset?.origin ===
+							'user'
+								? preset?.inherits
+								: preset?.name} »"
+							onclick={startDetach}>🔓 Détacher…</button
+						>
+					{/if}
 					{#if preset && oncompare}
 						<button
 							type="button"
@@ -215,6 +257,52 @@
 					</button>
 				</div>
 			</div>
+			{#if detaching !== null && preset}
+				<div
+					class="mx-4 mt-2 flex flex-col gap-2 rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-sm text-warning-text"
+					role="alertdialog"
+					aria-label="Détacher le preset"
+					data-testid="preset-detach-panel"
+				>
+					<p>
+						{#if preset.origin !== 'user'}
+							Une copie autonome de « {preset.name} » sera créée dans vos presets. Elle garde toutes les
+							valeurs actuelles mais ne suivra plus les mises à jour du preset système.
+						{:else}
+							« {preset.name} » deviendra autonome : les valeurs héritées de « {preset.inherits} » y sont
+							recopiées, et il ne suivra plus ses mises à jour.
+						{/if}
+						Les modifications non enregistrées ne sont pas incluses. Action irréversible.
+					</p>
+					<div class="flex flex-wrap items-center gap-2">
+						{#if preset.origin !== 'user'}
+							<label class="flex items-center gap-2 text-xs">
+								Nom de la copie
+								<input
+									class="ws-field ws-field-sm w-64"
+									data-testid="preset-detach-name"
+									bind:value={detaching}
+									onkeydown={(e) => e.key === 'Enter' && void confirmDetach()}
+								/>
+							</label>
+						{/if}
+						<button
+							type="button"
+							class="ws-btn ws-btn-sm ws-btn-primary"
+							data-testid="preset-detach-confirm"
+							disabled={detachBusy}
+							aria-busy={detachBusy}
+							onclick={confirmDetach}>Détacher</button
+						>
+						<button
+							type="button"
+							class="ws-btn ws-btn-sm ws-btn-ghost"
+							onclick={() => (detaching = null)}>Annuler</button
+						>
+						{#if detachError}<span class="text-danger" role="alert">{detachError}</span>{/if}
+					</div>
+				</div>
+			{/if}
 
 			<div class="min-h-0 flex-1 overflow-y-auto px-4 py-3">
 				<!-- Tant que `/resolved` n'a pas répondu (jusqu'à plusieurs secondes pour

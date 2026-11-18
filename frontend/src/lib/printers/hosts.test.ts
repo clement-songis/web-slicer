@@ -23,14 +23,18 @@ const printer = (p: Partial<PrinterResponse>): PrinterResponse => ({
 });
 
 describe('hôtes d impression (PhysicalPrinterDialog)', () => {
-	it('10 types du serveur, Moonraker par défaut', () => {
+	it('14 types du serveur, Moonraker par défaut', () => {
 		expect(HOST_TYPES.map((h) => h.id).sort()).toEqual([
 			'astrobox',
+			'crealityprint',
 			'duet',
+			'elegoolink',
 			'esp3d',
 			'flashair',
+			'flashforge',
 			'mks',
 			'moonraker',
+			'obico',
 			'octoprint',
 			'prusaconnect',
 			'prusalink',
@@ -55,7 +59,7 @@ describe('hôtes d impression (PhysicalPrinterDialog)', () => {
 		expect(hostFormError(emptyHostForm())).toBeNull();
 		expect(hostFormError(emptyHostForm('octoprint'))).toMatch(/OctoPrint requise/);
 		expect(hostFormError({ ...emptyHostForm('prusalink'), url: 'h', auth: 'user' })).toBe(
-			'Utilisateur requis.'
+			'Utilisateur requis (absent du profil machine).'
 		);
 		expect(hostFormError({ ...emptyHostForm('octoprint'), url: 'http://a b' })).toBe(
 			'Adresse invalide.'
@@ -121,7 +125,8 @@ describe('hôtes d impression (PhysicalPrinterDialog)', () => {
 			auth: 'key',
 			user: '',
 			password: '',
-			slug: 'mk3'
+			slug: 'mk3',
+			serial: ''
 		});
 		expect(
 			hostFormOf(printer({ host_type: 'prusalink', host_auth: 'user', host_user: 'u' })).auth

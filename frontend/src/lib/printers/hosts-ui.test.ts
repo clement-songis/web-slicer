@@ -22,8 +22,8 @@ const printer = (p: Partial<PrinterResponse>): PrinterResponse => ({
 });
 
 describe('hôtes d impression : interface (phase 21)', () => {
-	it('les 10 hôtes, chacun avec une aide, regroupés sans doublon', () => {
-		expect(HOST_TYPES).toHaveLength(10);
+	it('les 14 hôtes (dont Obico, Creality Print, Flashforge, ElegooLink), chacun avec une aide, regroupés sans doublon', () => {
+		expect(HOST_TYPES).toHaveLength(14);
 		for (const h of HOST_TYPES) expect(h.help.length).toBeGreaterThan(10);
 		const ids = HOST_GROUPS.flatMap((g) => g.hosts.map((h) => h.id));
 		expect(ids.sort()).toEqual(HOST_TYPES.map((h) => h.id).sort());

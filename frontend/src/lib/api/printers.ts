@@ -9,7 +9,9 @@ import type {
 	PrinterUploadResponse,
 	SavePrinterRequest,
 	TestPrinterResponse,
-	UploadToPrinterRequest
+	UploadToPrinterRequest,
+	BonjourReply,
+	ExcludeObjectStatus
 } from './types';
 
 /** Imprimantes déclarées du compte. */
@@ -97,3 +99,17 @@ export const getPrinterStorages = (id: string) => api.get<HostStorages>(`/printe
 
 /** Imprimantes d'un serveur Repetier (slugs à reporter dans `host_port`). */
 export const getHostPrinters = (id: string) => api.get<string[]>(`/printers/${id}/host-printers`);
+
+/** Recherche mDNS / DNS-SD d'hôtes sur le réseau local du serveur (Orca BonjourDialog). */
+export const discoverPrinters = (service: string, timeoutMs = 4000) =>
+	api.get<BonjourReply[]>(
+		`/printers/discover?service=${encodeURIComponent(service)}&timeout_ms=${timeoutMs}`
+	);
+
+/** Objets étiquetés de l'impression en cours (Klipper exclude_object). */
+export const getPrintObjects = (id: string) =>
+	api.get<ExcludeObjectStatus>(`/printers/${id}/objects`);
+
+/** Exclut un objet de l'impression en cours (EXCLUDE_OBJECT, irréversible ; 409 hors impression). */
+export const excludePrintObject = (id: string, name: string) =>
+	api.post<ExcludeObjectStatus>(`/printers/${id}/objects/exclude`, { name });
