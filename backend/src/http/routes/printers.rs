@@ -134,6 +134,12 @@ pub(crate) fn host_client(
             port: opt("port"),
             start_delay: std::time::Duration::from_millis(1500),
             mks_console_port: 8080,
+            serial_number: opt("serial_number"),
+            klipper: opt("gcode_flavor").as_deref() == Some("klipper"),
+            save_delay: std::time::Duration::from_millis(3000),
+            flashforge_http_port: None,
+            flashforge_console_port: None,
+            creality_ws_port: None,
         },
     )))
 }
@@ -711,6 +717,76 @@ pub async fn gcode(
         client.gcode_script(&script).await?;
     }
     Ok(StatusCode::NO_CONTENT)
+}
+
+/// `GET /api/printers/{id}/objects` — objets étiquetés de l'impression en
+/// cours (Klipper `exclude_object` ; G-code d'Orca avec « Exclude objects »).
+pub async fn objects(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> ApiResult<Json<crate::adapters::moonraker::ExcludeObjectStatus>> {
+    let id = parse_printer_id(&id)?;
+    let (_printer, client) = load_client(&state, user.id, id).await?;
+    Ok(Json(client.exclude_object_status().await?))
+}
+
+/// Corps de `POST /api/printers/{id}/objects/exclude`.
+#[derive(Debug, Clone, serde::Deserialize, ts_rs::TS)]
+#[ts(export)]
+pub struct ExcludeObjectRequest {
+    /// Nom tel que listé par `GET …/objects` (`objects[].name`).
+    pub name: String,
+}
+
+/// `POST /api/printers/{id}/objects/exclude` — exclut un objet de
+/// l'impression en cours (`EXCLUDE_OBJECT NAME=…`, équivalent web du
+/// PartSkipDialog d'Orca). 422 nom invalide ; 409 si aucune impression en
+/// cours/en pause, objet inconnu ou déjà exclu ; renvoie l'état mis à jour.
+pub async fn exclude_object(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<ExcludeObjectRequest>,
+) -> ApiResult<Json<crate::adapters::moonraker::ExcludeObjectStatus>> {
+    use crate::adapters::moonraker::valid_object_name;
+    if !valid_object_name(&body.name) {
+        return Err(ApiError::validation(
+            "nom d'objet invalide",
+            serde_json::json!({ "name": body.name }),
+        ));
+    }
+    let id = parse_printer_id(&id)?;
+    let (_printer, client) = load_client(&state, user.id, id).await?;
+    let status = client.query_status().await?;
+    if status.state != "printing" && status.state != "paused" {
+        return Err(ApiError::conflict(format!(
+            "aucune impression en cours (état : {})",
+            status.state
+        )));
+    }
+    let objects = client.exclude_object_status().await?;
+    // Klipper met les noms en majuscules (EXCLUDE_OBJECT_DEFINE).
+    let name = body.name.to_ascii_uppercase();
+    if !objects
+        .objects
+        .iter()
+        .any(|o| o.name.eq_ignore_ascii_case(&name))
+    {
+        return Err(ApiError::conflict(format!("objet inconnu : {}", body.name)));
+    }
+    if objects
+        .excluded_objects
+        .iter()
+        .any(|o| o.eq_ignore_ascii_case(&name))
+    {
+        return Err(ApiError::conflict(format!(
+            "objet déjà exclu : {}",
+            body.name
+        )));
+    }
+    client.exclude_object(&name).await?;
+    Ok(Json(client.exclude_object_status().await?))
 }
 
 /// `POST /api/printers/{id}/pause`.

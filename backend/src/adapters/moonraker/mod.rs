@@ -14,10 +14,12 @@
 use std::time::Duration;
 
 use futures_util::{SinkExt, StreamExt};
+use serde::Serialize;
 use serde_json::{json, Map, Value};
 use tokio::sync::mpsc;
 use tokio::task::JoinHandle;
 use tokio_tungstenite::tungstenite::Message;
+use ts_rs::TS;
 
 /// Objets Moonraker suivis (R10). L'ordre est stable pour des requêtes
 /// reproductibles.
@@ -133,6 +135,89 @@ pub struct PrinterStatus {
     pub fan_speed: Option<f64>,
     /// `toolhead.homed_axes` (ex. « xyz »).
     pub homed_axes: Option<String>,
+}
+
+/// Objet étiqueté du G-code en cours (Klipper `exclude_object.objects[]`,
+/// défini par `EXCLUDE_OBJECT_DEFINE NAME=… CENTER=… POLYGON=…` qu'Orca émet
+/// quand « Exclude objects » est actif, GCode.cpp:8104).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, TS)]
+#[ts(export)]
+pub struct LabeledObject {
+    pub name: String,
+    #[ts(optional)]
+    pub center: Option<[f64; 2]>,
+    pub polygon: Vec<[f64; 2]>,
+}
+
+/// État Klipper `exclude_object` : objets du G-code, objets exclus, objet en
+/// cours d'impression.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, TS)]
+#[ts(export)]
+pub struct ExcludeObjectStatus {
+    pub objects: Vec<LabeledObject>,
+    pub excluded_objects: Vec<String>,
+    #[ts(optional)]
+    pub current_object: Option<String>,
+}
+
+impl ExcludeObjectStatus {
+    /// Décode `status.exclude_object` (champs absents tolérés).
+    pub fn from_value(v: &Value) -> Self {
+        let pair = |v: &Value| -> Option<[f64; 2]> {
+            let a = v.as_array()?;
+            Some([a.first()?.as_f64()?, a.get(1)?.as_f64()?])
+        };
+        let objects = v
+            .get("objects")
+            .and_then(Value::as_array)
+            .map(|items| {
+                items
+                    .iter()
+                    .filter_map(|o| {
+                        Some(LabeledObject {
+                            name: o.get("name")?.as_str()?.to_string(),
+                            center: o.get("center").and_then(pair),
+                            polygon: o
+                                .get("polygon")
+                                .and_then(Value::as_array)
+                                .map(|pts| pts.iter().filter_map(pair).collect())
+                                .unwrap_or_default(),
+                        })
+                    })
+                    .collect()
+            })
+            .unwrap_or_default();
+        let excluded_objects = v
+            .get("excluded_objects")
+            .and_then(Value::as_array)
+            .map(|a| {
+                a.iter()
+                    .filter_map(|n| n.as_str().map(str::to_owned))
+                    .collect()
+            })
+            .unwrap_or_default();
+        let current_object = v
+            .get("current_object")
+            .and_then(Value::as_str)
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned);
+        Self {
+            objects,
+            excluded_objects,
+            current_object,
+        }
+    }
+}
+
+/// Nom d'objet acceptable dans `EXCLUDE_OBJECT NAME=…` : caractères des noms
+/// qu'Orca produit (`sanitize_instance_name` : alphanumériques, `_`, `-`, `.`),
+/// sans espace ni retour ligne (pas d'injection de commande dans le script).
+pub fn valid_object_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 255
+        && name
+            .bytes()
+            .all(|b| b.is_ascii_alphanumeric() || matches!(b, b'_' | b'-' | b'.'))
 }
 
 /// Accumulateur d'état : Moonraker envoie des mises à jour **partielles**
@@ -522,6 +607,43 @@ impl MoonrakerClient {
             acc.apply(status);
         }
         Ok(acc.snapshot())
+    }
+
+    /// `GET /printer/objects/query?exclude_object` — objets étiquetés du
+    /// G-code en cours, exclus et courant (Klipper `[exclude_object]`).
+    pub async fn exclude_object_status(&self) -> MoonrakerResult<ExcludeObjectStatus> {
+        let resp = self
+            .with_key(
+                self.http
+                    .get(self.url("/printer/objects/query?exclude_object")),
+            )
+            .send()
+            .await
+            .map_err(|e| MoonrakerError::Network(e.to_string()))?;
+        let body: Value = Self::ensure_ok(resp)
+            .await?
+            .json()
+            .await
+            .map_err(|e| MoonrakerError::Decode(e.to_string()))?;
+        let status = body
+            .get("result")
+            .and_then(|r| r.get("status"))
+            .and_then(|s| s.get("exclude_object"))
+            .cloned()
+            .unwrap_or(Value::Null);
+        Ok(ExcludeObjectStatus::from_value(&status))
+    }
+
+    /// Exclut un objet de l'impression en cours : `EXCLUDE_OBJECT NAME=<nom>`
+    /// (commande Klipper ; le nom doit passer [`valid_object_name`]).
+    pub async fn exclude_object(&self, name: &str) -> MoonrakerResult<()> {
+        if !valid_object_name(name) {
+            return Err(MoonrakerError::Decode(format!(
+                "nom d'objet invalide : {name:?}"
+            )));
+        }
+        self.gcode_script(&format!("EXCLUDE_OBJECT NAME={name}"))
+            .await
     }
 
     /// URL WebSocket dérivée de l'URL de base (`http`→`ws`, `https`→`wss`).

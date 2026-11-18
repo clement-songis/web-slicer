@@ -205,7 +205,12 @@ where
         .route("/api/printers/{id}/cancel", post(printers::cancel))
         .route("/api/printers/{id}/files", get(printers::files))
         .route("/api/printers/{id}/print", post(printers::print))
-        .route("/api/printers/{id}/gcode", post(printers::gcode));
+        .route("/api/printers/{id}/gcode", post(printers::gcode))
+        .route("/api/printers/{id}/objects", get(printers::objects))
+        .route(
+            "/api/printers/{id}/objects/exclude",
+            post(printers::exclude_object),
+        );
 
     // API de testabilité strictement absente de la configuration normale :
     // aucune réponse d'erreur spécifique, les URI restent de simples 404.

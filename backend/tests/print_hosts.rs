@@ -623,3 +623,302 @@ async fn prusalink_digest_sends_the_gcode_only_once() {
         .unwrap()
         .contains(r#"uri="/api/v1/files/local/big.gcode""#));
 }
+
+/// Obico (Obico.cpp) : clé requise, Bearer, version puis g_code_files.
+#[tokio::test]
+async fn obico_like_orca() {
+    let (host, log) = fake(|_, uri, _| match uri {
+        "/api/v1/version/" => (200, r#"{"version":"2.4"}"#.into()),
+        "/api/v1/printers/" => (200, r#"[{"name":"Voron","id":42}]"#.into()),
+        _ => (201, "{}".into()),
+    })
+    .await;
+    let no_key = HostClient::new(HostKind::Obico, cfg(&host));
+    assert!(no_key.test().await.is_err(), "clé d'API requise");
+    assert!(seen(&log).is_empty(), "aucune requête sans clé");
+    let client = HostClient::new(
+        HostKind::Obico,
+        HostConfig {
+            api_key: Some("tok".into()),
+            port: Some("42".into()),
+            ..cfg(&host)
+        },
+    );
+    assert_eq!(client.test().await.unwrap().version.as_deref(), Some("2.4"));
+    assert_eq!(client.printers().await.unwrap(), ["Voron [42]"]);
+    client
+        .upload("part.gcode", GCODE.to_vec(), true, None)
+        .await
+        .unwrap();
+    let s = seen(&log);
+    assert!(s
+        .iter()
+        .all(|r| r.header("authorization") == Some("Bearer tok")));
+    let post = s.iter().find(|r| r.method == "POST").unwrap();
+    assert_eq!(post.uri, "/api/v1/g_code_files/");
+    assert_eq!(post.field("print").as_deref(), Some("true"));
+    assert_eq!(post.field("path").as_deref(), Some(""));
+    assert_eq!(post.field("printer_id").as_deref(), Some("42"));
+    assert_eq!(post.field("filename").as_deref(), Some("part.gcode"));
+    assert_eq!(post.file_name("file").as_deref(), Some("part.gcode"));
+    // Orca teste avant d'envoyer.
+    let methods: Vec<_> = s
+        .iter()
+        .map(|r| format!("{} {}", r.method, r.uri))
+        .collect();
+    assert_eq!(methods[methods.len() - 2], "GET /api/v1/version/");
+}
+
+/// Serveur WebSocket factice : enregistre les messages texte reçus, répond « ok ».
+async fn fake_ws() -> (u16, Arc<Mutex<Vec<serde_json::Value>>>) {
+    use futures_util::{SinkExt, StreamExt};
+    let msgs: Arc<Mutex<Vec<serde_json::Value>>> = Arc::new(Mutex::new(Vec::new()));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let m = msgs.clone();
+    tokio::spawn(async move {
+        while let Ok((stream, _)) = listener.accept().await {
+            let m = m.clone();
+            tokio::spawn(async move {
+                let mut ws = tokio_tungstenite::accept_async(stream).await.unwrap();
+                while let Some(Ok(msg)) = ws.next().await {
+                    if let tokio_tungstenite::tungstenite::Message::Text(t) = msg {
+                        m.lock().unwrap().push(serde_json::from_str(&t).unwrap());
+                        let _ = ws
+                            .send(tokio_tungstenite::tungstenite::Message::Text(
+                                r#"{"ret":0}"#.into(),
+                            ))
+                            .await;
+                    }
+                }
+            });
+        }
+    });
+    (port, msgs)
+}
+
+/// Creality Print (CrealityPrint.cpp) : info (Bearer), upload/<nom> (espaces →
+/// _), démarrage WebSocket : opGcodeFile (mono) ou colorMatch + multiColorPrint (K2).
+#[tokio::test]
+async fn crealityprint_like_orca() {
+    for (model, multi) in [("F001", false), ("F008", true)] {
+        let body = format!(r#"{{"model":"{model}"}}"#);
+        let (host, log) = fake(move |_, uri, _| {
+            if uri == "/info" {
+                (200, body.clone())
+            } else {
+                (200, "{}".into())
+            }
+        })
+        .await;
+        let (ws_port, msgs) = fake_ws().await;
+        let client = HostClient::new(
+            HostKind::Crealityprint,
+            HostConfig {
+                api_key: Some("k".into()),
+                creality_ws_port: Some(ws_port),
+                ..cfg(&host)
+            },
+        );
+        let info = client.test().await.unwrap();
+        assert_eq!(
+            info.version.as_deref(),
+            Some(if multi { "K2 Plus" } else { "unknown (F001)" })
+        );
+        let up = client
+            .upload("my part.gcode", GCODE.to_vec(), true, None)
+            .await
+            .unwrap();
+        assert_eq!(up.path, "my_part.gcode");
+        let s = seen(&log);
+        let post = s.iter().find(|r| r.method == "POST").unwrap();
+        assert_eq!(post.uri, "/upload/my_part.gcode");
+        assert_eq!(post.header("authorization"), Some("Bearer k"));
+        assert_eq!(post.file_name("file").as_deref(), Some("my_part.gcode"));
+        assert_eq!(
+            post.field("path").is_some(),
+            !multi,
+            "champ path sauf multicouleur"
+        );
+        // Le serveur traite les messages en parallèle de la fermeture du client.
+        let want = if multi { 2 } else { 1 };
+        for _ in 0..100 {
+            if msgs.lock().unwrap().len() >= want {
+                break;
+            }
+            tokio::time::sleep(Duration::from_millis(10)).await;
+        }
+        let m = msgs.lock().unwrap().clone();
+        if multi {
+            assert_eq!(m.len(), 2, "{m:?}");
+            assert_eq!(
+                m[0]["params"]["colorMatch"]["path"],
+                "/mnt/UDISK/printer_data/gcodes/my_part.gcode"
+            );
+            assert_eq!(m[0]["params"]["colorMatch"]["list"], serde_json::json!([]));
+            assert_eq!(
+                m[1]["params"]["multiColorPrint"]["gcode"],
+                "/mnt/UDISK/printer_data/gcodes/my_part.gcode"
+            );
+            assert_eq!(m[1]["params"]["multiColorPrint"]["enableSelfTest"], 0);
+        } else {
+            assert_eq!(m.len(), 1, "{m:?}");
+            assert_eq!(m[0]["method"], "set");
+            assert_eq!(
+                m[0]["params"]["opGcodeFile"],
+                "printprt:/usr/data/printer_data/gcodes/my_part.gcode"
+            );
+        }
+    }
+}
+
+/// Sessions console : (commandes reçues, octets de données) par connexion.
+type FfSessions = Arc<Mutex<Vec<(Vec<String>, usize)>>>;
+
+/// Console Flashforge factice (TCPConsole d'Orca) : une entrée par connexion,
+/// commandes reçues et octets de données après ~M28 ; répond « ok » à chaque commande.
+async fn fake_ff_console() -> (u16, FfSessions) {
+    use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
+    let sessions: FfSessions = Arc::new(Mutex::new(Vec::new()));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let s = sessions.clone();
+    tokio::spawn(async move {
+        while let Ok((stream, _)) = listener.accept().await {
+            let s = s.clone();
+            tokio::spawn(async move {
+                let idx = {
+                    let mut g = s.lock().unwrap();
+                    g.push((Vec::new(), 0));
+                    g.len() - 1
+                };
+                let (r, mut w) = stream.into_split();
+                let mut r = BufReader::new(r);
+                loop {
+                    let mut line = String::new();
+                    if r.read_line(&mut line).await.unwrap_or(0) == 0 {
+                        break;
+                    }
+                    let cmd = line.trim().to_string();
+                    if cmd.is_empty() {
+                        continue;
+                    }
+                    s.lock().unwrap()[idx].0.push(cmd.clone());
+                    w.write_all(format!("CMD {cmd} Received.\r\nok\r\n").as_bytes())
+                        .await
+                        .unwrap();
+                    if let Some(rest) = cmd.strip_prefix("~M28 ") {
+                        let n: usize = rest.split(' ').next().unwrap().parse().unwrap();
+                        let mut buf = vec![0u8; n];
+                        r.read_exact(&mut buf).await.unwrap();
+                        s.lock().unwrap()[idx].1 += n;
+                    }
+                }
+            });
+        }
+    });
+    (port, sessions)
+}
+
+/// Flashforge (Flashforge.cpp) : console TCP (connect, M28 + données en
+/// paquets, M29, M23) et API locale HTTP :8898 (detail, uploadGcode + en-têtes).
+#[tokio::test]
+async fn flashforge_like_orca() {
+    let payload: Vec<u8> = (0..10_000u32).map(|i| b"G1X\n"[(i % 4) as usize]).collect();
+    let (port, sessions) = fake_ff_console().await;
+    let client = HostClient::new(
+        HostKind::Flashforge,
+        HostConfig {
+            flashforge_console_port: Some(port),
+            ..cfg("127.0.0.1")
+        },
+    );
+    client.test().await.unwrap();
+    let up = client
+        .upload("dir/My part.gcode", payload.clone(), true, None)
+        .await
+        .unwrap();
+    assert_eq!(up.path, "0:/user/My_part.gcode");
+    let s = sessions.lock().unwrap().clone();
+    let cmds: Vec<Vec<String>> = s.iter().map(|(c, _)| c.clone()).collect();
+    assert_eq!(
+        cmds,
+        vec![
+            vec!["~M601 S1".to_string()],
+            vec![
+                "~M601 S1".into(),
+                "~M115".into(),
+                "~M650".into(),
+                "~M119".into()
+            ],
+            vec![format!("~M28 {} 0:/user/My_part.gcode", payload.len())],
+            vec!["~M29".into()],
+            vec!["~M23 0:/user/My_part.gcode".into()],
+        ]
+    );
+    assert_eq!(s[2].1, payload.len(), "données transmises une fois");
+
+    // API locale (numéro de série + code d'accès).
+    let (host, log) = fake(|_, uri, _| match uri {
+        "/detail" => (
+            200,
+            r#"{"code":0,"detail":{"firmwareVersion":"3.1.3"}}"#.into(),
+        ),
+        "/uploadGcode" => (200, r#"{"code":0,"message":"Success"}"#.into()),
+        _ => (404, String::new()),
+    })
+    .await;
+    let http_port: u16 = host.rsplit(':').next().unwrap().parse().unwrap();
+    let client = HostClient::new(
+        HostKind::Flashforge,
+        HostConfig {
+            serial_number: Some("SN1".into()),
+            api_key: Some("CODE".into()),
+            flashforge_http_port: Some(http_port),
+            ..cfg("127.0.0.1")
+        },
+    );
+    assert_eq!(
+        client.test().await.unwrap().version.as_deref(),
+        Some("3.1.3")
+    );
+    client
+        .upload("a b.gcode", GCODE.to_vec(), false, None)
+        .await
+        .unwrap();
+    let s = seen(&log);
+    assert!(
+        s[0].body.contains(r#""serialNumber":"SN1""#)
+            && s[0].body.contains(r#""checkCode":"CODE""#)
+    );
+    let up = &s[1];
+    assert_eq!(up.uri, "/uploadGcode");
+    assert_eq!(up.header("serialNumber"), Some("SN1"));
+    assert_eq!(up.header("checkCode"), Some("CODE"));
+    assert_eq!(
+        up.header("fileSize"),
+        Some(GCODE.len().to_string().as_str())
+    );
+    assert_eq!(up.header("printNow"), Some("false"));
+    assert_eq!(up.header("materialMappings"), Some("W10="));
+    assert_eq!(up.header("useMatlStation"), Some("false"));
+    assert_eq!(up.file_name("gcodeFile").as_deref(), Some("a_b.gcode"));
+    // Code d'erreur de l'API → erreur.
+    let (host, _log) = fake(|_, _, _| (200, r#"{"code":2,"msg":"bad check code"}"#.into())).await;
+    let http_port: u16 = host.rsplit(':').next().unwrap().parse().unwrap();
+    let bad = HostClient::new(
+        HostKind::Flashforge,
+        HostConfig {
+            serial_number: Some("SN1".into()),
+            api_key: Some("X".into()),
+            flashforge_http_port: Some(http_port),
+            ..cfg("127.0.0.1")
+        },
+    );
+    assert!(bad
+        .test()
+        .await
+        .unwrap_err()
+        .to_string()
+        .contains("bad check code"));
+}

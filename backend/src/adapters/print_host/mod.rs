@@ -1,9 +1,10 @@
 //! Hôtes d'impression comme Orca (src/slic3r/Utils/*.cpp, PrintHost::get_print_host) :
 //! mêmes requêtes que les adaptateurs C++ d'Orca, pour OctoPrint, AstroBox,
 //! PrusaLink, PrusaConnect, Duet (RRF / DSF), Repetier-Server, MKS, FlashAir et
-//! ESP3D. Moonraker garde son client dédié (adapters::moonraker), plus riche
+//! ESP3D, plus Obico, Creality Print et Flashforge (module `extra`, lot 19).
+//! Moonraker garde son client dédié (adapters::moonraker), plus riche
 //! (état, pause, fichiers…). SimplyPrint (OAuth + serveur intermédiaire),
-//! CrealityPrint, Obico, Flashforge, ElegooLink et 3DPrinterOS ne sont pas portés.
+//! ElegooLink et 3DPrinterOS ne sont pas portés.
 //!
 //! Correspondance des réglages Orca : print_host → \`host\`, printhost_apikey →
 //! \`api_key\`, printhost_authorization_type / printhost_user / printhost_password
@@ -11,6 +12,9 @@
 //! Repetier) → \`port\`.
 
 use std::time::Duration;
+
+mod extra;
+pub use extra::{creality_model_name, flashforge_filename};
 
 use md5::{Digest, Md5};
 use reqwest::{Method, RequestBuilder, Response, StatusCode};
@@ -31,6 +35,9 @@ pub enum HostKind {
     Mks,
     Flashair,
     Esp3d,
+    Obico,
+    Crealityprint,
+    Flashforge,
 }
 
 impl HostKind {
@@ -49,6 +56,9 @@ impl HostKind {
             Self::Mks => "mks",
             Self::Flashair => "flashair",
             Self::Esp3d => "esp3d",
+            Self::Obico => "obico",
+            Self::Crealityprint => "crealityprint",
+            Self::Flashforge => "flashforge",
         }
     }
     /// Nom affiché par Orca (get_name).
@@ -64,6 +74,9 @@ impl HostKind {
             Self::Mks => "MKS",
             Self::Flashair => "FlashAir",
             Self::Esp3d => "ESP3D",
+            Self::Obico => "Obico",
+            Self::Crealityprint => "Creality Print",
+            Self::Flashforge => "Flashforge",
         }
     }
 }
@@ -82,6 +95,18 @@ pub struct HostConfig {
     pub start_delay: Duration,
     /// Port de la console TCP MKS (8080 dans Orca) — réglable en test.
     pub mks_console_port: u16,
+    /// Flashforge : numéro de série (flashforge_serial_number) ; avec la clé
+    /// (code d'accès), active l'API locale HTTP.
+    pub serial_number: Option<String>,
+    /// Flashforge : gcode_flavor Klipper (~M640 au lieu de ~M650).
+    pub klipper: bool,
+    /// Flashforge : délai avant ~M29 (3 s dans Orca) — réglable en test.
+    pub save_delay: Duration,
+    /// Ports réglables en test (défauts d'Orca si `None`) : API locale
+    /// Flashforge 8898, console Flashforge 8899, WebSocket Creality 9999.
+    pub flashforge_http_port: Option<u16>,
+    pub flashforge_console_port: Option<u16>,
+    pub creality_ws_port: Option<u16>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -435,6 +460,9 @@ impl HostClient {
                     version: None,
                 })
             }
+            HostKind::Obico => self.obico_test().await,
+            HostKind::Crealityprint => self.creality_test().await,
+            HostKind::Flashforge => self.flashforge_test().await,
             HostKind::Esp3d => {
                 Self::send(
                     self.http
@@ -644,6 +672,9 @@ impl HostClient {
                     print_started: false,
                 })
             }
+            HostKind::Obico => self.obico_upload(filename, data, start).await,
+            HostKind::Crealityprint => self.creality_upload(filename, data, start).await,
+            HostKind::Flashforge => self.flashforge_upload(filename, data, start).await,
             HostKind::Esp3d => {
                 let short = esp3d_short_name(filename);
                 let form = reqwest::multipart::Form::new()
@@ -752,6 +783,9 @@ impl HostClient {
 
     /// Imprimantes d'un serveur Repetier (Repetier::get_printers : data[].slug).
     pub async fn printers(&self) -> HostResult<Vec<String>> {
+        if self.kind == HostKind::Obico {
+            return self.obico_printers().await;
+        }
         if self.kind != HostKind::Repetier {
             return Err(HostError::Unsupported(self.kind.display()));
         }
