@@ -258,6 +258,9 @@ pub(crate) fn typed_settings(settings: &Map<String, Value>) -> Map<String, Value
         .iter()
         .map(|(key, value)| {
             let typed = match (value, engine::params::get(key)) {
+                // Les pourcentages restent des chaînes (« 0% », « 105% ») : l'export
+                // 3MF doit restituer exactement la valeur d'Orca.
+                (Value::String(text), Some(_)) if text.trim_end().ends_with('%') => value.clone(),
                 (Value::String(text), Some(def)) => {
                     engine::params::orca_values::parse_orca_value(def, text)
                         .map(|parsed| crate::http::routes::presets::config_value_to_json(&parsed))
@@ -625,7 +628,7 @@ mod tests {
         assert_eq!(typed["print_flow_ratio"], serde_json::json!(0.8));
         assert_eq!(typed["wall_loops"], serde_json::json!(5));
         assert_eq!(typed["enable_support"], serde_json::json!(true));
-        assert_eq!(typed["sparse_infill_density"], serde_json::json!(15.0));
+        assert_eq!(typed["sparse_infill_density"], serde_json::json!("15%"));
         assert_eq!(typed["outer_wall_line_width"], serde_json::json!(0.45));
         assert_eq!(typed["inner_wall_line_width"], serde_json::json!("105%"));
         assert_eq!(typed["sparse_infill_pattern"], serde_json::json!("gyroid"));

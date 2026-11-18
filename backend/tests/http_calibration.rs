@@ -465,7 +465,9 @@ async fn flow_pass1_object_settings_are_typed() {
         for (key, value) in o["settings"].as_object().unwrap() {
             if let Some(def) = engine::params::get(key) {
                 use engine::params::ParamKind as K;
-                if matches!(def.kind, K::Float | K::Int | K::Percent) {
+                // Les pourcentages restent « 15% » (chaîne) pour un export 3MF identique à Orca.
+                let percent_text = value.as_str().is_some_and(|s| s.trim_end().ends_with('%'));
+                if matches!(def.kind, K::Float | K::Int | K::Percent) && !percent_text {
                     assert!(value.is_number(), "{key} = {value}");
                 }
                 if def.kind == K::Bool {
