@@ -19,6 +19,8 @@ export type CameraStyle = 'default' | 'touchpad';
 export type DragAction = 'none' | 'pan' | 'rotate';
 /** Orca `auto_calculate_flush` : « all », « color change », « disabled ». */
 export type AutoFlush = 'all' | 'color' | 'disabled';
+/** Orca `default_page` : 0 = Accueil, 1 = Préparer. */
+export type DefaultPage = 'home' | 'prepare';
 
 export interface CameraPreferences {
 	style: CameraStyle;
@@ -60,6 +62,12 @@ export interface AppPreferences {
 	/** Orca `pop_up_filament_map_dialog` : proposer la répartition des filaments par buse
 	 *  avant chaque tranchage (imprimantes à deux buses). */
 	filamentMapPopup: boolean;
+	/** Orca `default_page` : page ouverte au démarrage (après connexion ou à la
+	 *  racine du site) — bibliothèque, ou dernier projet modifié. */
+	defaultPage: DefaultPage;
+	/** Orca `max_recent_count` (0–999, défaut 18) : projets de la vue « Récemment
+	 *  ouvert » de la bibliothèque ; les autres restent accessibles. */
+	maxRecent: number;
 }
 
 export const PREFERENCES_KEY = 'web-slicer.preferences';
@@ -87,8 +95,16 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
 	unitConversionPrompt: true,
 	keepPainting: false,
 	mixedTemperature: false,
-	filamentMapPopup: false
+	filamentMapPopup: false,
+	defaultPage: 'home',
+	maxRecent: 18
 };
+
+/** Bornes d'Orca (MainFrame::set_max_recent_count : 0–999). */
+export function clampRecentCount(value: number): number {
+	if (!Number.isFinite(value)) return DEFAULT_PREFERENCES.maxRecent;
+	return Math.round(Math.min(999, Math.max(0, value)));
+}
 
 const ORBIT_MIN = 0.05;
 const ORBIT_MAX = 2;
@@ -139,7 +155,10 @@ export function parsePreferences(raw: string | null): AppPreferences {
 			unitConversionPrompt: bool(value.unitConversionPrompt, d.unitConversionPrompt),
 			keepPainting: bool(value.keepPainting, d.keepPainting),
 			mixedTemperature: bool(value.mixedTemperature, d.mixedTemperature),
-			filamentMapPopup: bool(value.filamentMapPopup, d.filamentMapPopup)
+			filamentMapPopup: bool(value.filamentMapPopup, d.filamentMapPopup),
+			defaultPage: oneOf(value.defaultPage, ['home', 'prepare'] as const, d.defaultPage),
+			maxRecent:
+				typeof value.maxRecent === 'number' ? clampRecentCount(value.maxRecent) : d.maxRecent
 		};
 	} catch {
 		return { ...DEFAULT_PREFERENCES, camera: { ...CAMERA_DEFAULTS } };

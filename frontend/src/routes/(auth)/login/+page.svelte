@@ -23,7 +23,8 @@
 		error = null;
 		try {
 			await login(email, password);
-			await goto(resolve('/library'));
+			// Racine : page de démarrage choisie (préférence Orca default_page).
+			await goto(resolve('/'));
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : 'Erreur inattendue';
 		} finally {

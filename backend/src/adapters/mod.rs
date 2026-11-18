@@ -3,6 +3,7 @@
 
 pub mod bonjour;
 pub mod files;
+pub mod lan_discovery;
 pub mod moonraker;
 pub mod print_host;
 pub mod sessions;

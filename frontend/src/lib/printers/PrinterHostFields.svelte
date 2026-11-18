@@ -6,7 +6,9 @@
 	import type { BonjourReply } from '$lib/api/types';
 	import {
 		ELEGOO_PROTOCOL_LABELS,
+		discoveryHints,
 		discoveryService,
+		discoveryTimeoutMs,
 		elegooProtocol,
 		hostPrinterValue,
 		profileHost,
@@ -74,6 +76,7 @@
 
 	// « Parcourir » (Orca BonjourDialog) : recherche DNS-SD depuis le serveur.
 	const service = $derived(discoveryService(form.type));
+	const hints = $derived(discoveryHints(service ?? ''));
 	let found = $state<BonjourReply[] | null>(null);
 	let browsing = $state(false);
 	let browseError = $state<string | null>(null);
@@ -88,7 +91,7 @@
 		browseError = null;
 		found = null;
 		try {
-			found = await discoverPrinters(service);
+			found = await discoverPrinters(service, discoveryTimeoutMs(service));
 		} catch (e) {
 			browseError =
 				e instanceof ApiError && (e.status === 404 || e.status === 405)
@@ -99,6 +102,13 @@
 		} finally {
 			browsing = false;
 		}
+	}
+
+	// Orca (Flashforge) : l'adresse et le n° de série de l'imprimante choisie.
+	function useHost(host: BonjourReply) {
+		form.url = host.full_address;
+		const serial = host.txt?.serial_number;
+		if (form.type === 'flashforge' && serial) form.serial = serial;
 	}
 
 	async function listSlugs() {
@@ -188,16 +198,11 @@
 			aria-live="polite"
 		>
 			{#if browsing}
-				<p class="text-content-muted">
-					Recherche des serveurs annoncés sur le réseau local (quelques secondes)…
-				</p>
+				<p class="text-content-muted">{hints.waiting}</p>
 			{:else if browseError}
 				<p class="text-danger" role="alert">{browseError}</p>
 			{:else if found && found.length === 0}
-				<p class="text-content-muted">
-					Aucun serveur trouvé. La recherche part du serveur web-slicer : l’imprimante doit être sur
-					le même réseau local que lui et annoncer son service (mDNS).
-				</p>
+				<p class="text-content-muted">{hints.none}</p>
 			{:else if found}
 				<ul class="flex flex-col divide-y divide-border">
 					{#each found as host (host.full_address + host.service_name)}
@@ -216,7 +221,7 @@
 									: 'ws-btn-primary'} shrink-0"
 								data-testid="host-browse-use"
 								disabled={form.url === host.full_address}
-								onclick={() => (form.url = host.full_address)}
+								onclick={() => useHost(host)}
 								>{form.url === host.full_address ? 'Choisi' : 'Utiliser'}</button
 							>
 						</li>

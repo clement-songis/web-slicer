@@ -600,6 +600,9 @@ pub async fn storages(
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct DiscoverQuery {
     /// Service DNS-SD sans `_` ni `._tcp` (défaut `octoprint`, comme Orca).
+    /// Deux valeurs réservées : `creality` (méta-requête DNS-SD des K-series,
+    /// CrealityHostDiscovery) et `flashforge` (diffusion UDP 48899,
+    /// Flashforge::discover_printers).
     #[serde(default)]
     pub service: Option<String>,
     /// Durée d'écoute en ms (défaut 4000 comme BonjourDialog, borné 500–10000).
@@ -622,13 +625,20 @@ pub async fn discover(
             serde_json::json!({ "service": service }),
         ));
     }
-    let timeout = std::time::Duration::from_millis(q.timeout_ms.unwrap_or(4000).clamp(500, 10_000));
-    let replies = bonjour::discover_at(bonjour::MDNS_ADDR, &service, timeout, 3)
-        .await
-        .map_err(|e| {
-            tracing::warn!(error = %e, "découverte mDNS");
-            ApiError::internal()
-        })?;
+    let ms = |default: u64| {
+        std::time::Duration::from_millis(q.timeout_ms.unwrap_or(default).clamp(500, 10_000))
+    };
+    use crate::adapters::lan_discovery;
+    let replies = match service.as_str() {
+        // Orca : écoute jusqu'à 5 s sans réponse (cxmdns) ; 10 s par essai, 3 essais (Flashforge).
+        "creality" => lan_discovery::discover_creality(ms(5000)).await,
+        "flashforge" => lan_discovery::discover_flashforge(ms(10_000)).await,
+        _ => bonjour::discover_at(bonjour::MDNS_ADDR, &service, ms(4000), 3).await,
+    }
+    .map_err(|e| {
+        tracing::warn!(error = %e, "découverte mDNS");
+        ApiError::internal()
+    })?;
     Ok(Json(replies))
 }
 

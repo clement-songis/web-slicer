@@ -8,11 +8,13 @@
 		CAMERA_DEFAULTS,
 		REMEMBERED_CHOICES,
 		clampOrbitSpeed,
+		clampRecentCount,
 		clearRememberedChoices,
 		savePreferences,
 		type AppPreferences,
 		type AutoFlush,
 		type CameraPreferences,
+		type DefaultPage,
 		type DragAction,
 		type Units
 	} from './preferences';
@@ -217,6 +219,47 @@
 						'Demande confirmation en quittant un projet non sauvegardé.',
 						closeCtl,
 						'confirm-close'
+					)}
+					{#snippet startCtl()}
+						<select
+							data-testid="pref-default-page"
+							aria-labelledby="pref-default-page-label"
+							class="ws-field ws-field-sm w-40"
+							value={prefs.defaultPage}
+							onchange={(e) => update({ defaultPage: e.currentTarget.value as DefaultPage })}
+						>
+							<option value="home">Accueil (projets)</option>
+							<option value="prepare">Dernier projet</option>
+						</select>
+					{/snippet}
+					{@render row(
+						'Page au démarrage',
+						'Page ouverte après la connexion ou à l’adresse du site : la liste des projets, ou directement le dernier projet modifié.',
+						startCtl,
+						'default-page'
+					)}
+					{#snippet recentCtl()}
+						<input
+							type="number"
+							min="0"
+							max="999"
+							step="1"
+							data-testid="pref-max-recent"
+							aria-labelledby="pref-max-recent-label"
+							class="ws-field ws-field-sm w-20 text-center"
+							value={prefs.maxRecent}
+							onchange={(e) => {
+								const v = clampRecentCount(Number(e.currentTarget.value));
+								e.currentTarget.value = String(v);
+								update({ maxRecent: v });
+							}}
+						/>
+					{/snippet}
+					{@render row(
+						'Projets récents affichés',
+						'Nombre de projets de « Récemment ouvert » sur la page d’accueil (0 à 999) ; les autres restent accessibles par la recherche ou « Tout afficher ».',
+						recentCtl,
+						'max-recent'
 					)}
 				{:else if tab === 'camera'}
 					{#snippet styleCtl()}

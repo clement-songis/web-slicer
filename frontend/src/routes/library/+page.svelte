@@ -16,12 +16,14 @@
 		importProject
 	} from '$lib/api/projects';
 	import { isAccepted } from '$lib/editor';
+	import { appPreferences } from '$lib/settings/preferences';
 	import AppSidebar from '$lib/nav/AppSidebar.svelte';
 	import {
 		sortByUpdated,
 		formatDate,
 		thumbnailUrl,
 		filterProjects,
+		limitRecent,
 		relativeTime,
 		sortProjects,
 		type ProjectSort
@@ -60,7 +62,18 @@
 		const saved = localStorage.getItem(SORT_KEY);
 		if (saved === 'name' || saved === 'created' || saved === 'updated') sort = saved;
 	});
-	const shown = $derived(filterProjects(sortProjects(projects, sort), query));
+	const filtered = $derived(filterProjects(sortProjects(projects, sort), query));
+	// Préférence « Nombre de projets récents » (Orca max_recent_count) : bornée à la
+	// vue récente (tri par modification, sans recherche) ; « Tout afficher » lève la borne.
+	let showAll = $state(false);
+	const recent = $derived(
+		limitRecent(
+			filtered,
+			$appPreferences.maxRecent,
+			showAll || sort !== 'updated' || !!query.trim()
+		)
+	);
+	const shown = $derived(recent.items);
 	let now = $state(Date.now());
 	onMount(() => {
 		const timer = setInterval(() => (now = Date.now()), 60_000);
@@ -251,7 +264,7 @@
 					Créez un projet ou ouvrez un fichier .3mf / .stl : il apparaîtra ici avec sa vignette.
 				</p>
 			</div>
-		{:else if shown.length === 0}
+		{:else if filtered.length === 0}
 			<div
 				class="ws-empty mt-4 rounded-lg border border-dashed border-border"
 				data-testid="library-no-match"
@@ -337,6 +350,21 @@
 					</li>
 				{/each}
 			</ul>
+			{#if recent.hidden > 0}
+				<div class="mt-4 flex items-center gap-3 text-sm text-content-muted">
+					<span data-testid="library-hidden"
+						>{recent.hidden} projet{recent.hidden > 1 ? 's' : ''} plus ancien{recent.hidden > 1
+							? 's'
+							: ''} masqué{recent.hidden > 1 ? 's' : ''} (préférence « Projets récents affichés »).</span
+					>
+					<button
+						type="button"
+						class="ws-btn ws-btn-sm ws-btn-secondary"
+						data-testid="library-show-all"
+						onclick={() => (showAll = true)}>Tout afficher</button
+					>
+				</div>
+			{/if}
 		{/if}
 	</main>
 </div>

@@ -8,6 +8,24 @@ export function sortByUpdated(list: readonly ProjectResponse[]): ProjectResponse
 	return [...list].sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 }
 
+/** Page de démarrage (Orca `default_page`) : « Préparer » ouvre le dernier
+ *  projet modifié, « Accueil » (ou aucun projet) la bibliothèque. */
+export function startPath(page: 'home' | 'prepare', list: readonly ProjectResponse[]): string {
+	if (page === 'prepare' && list.length) return `/projects/${sortByUpdated(list)[0].id}`;
+	return '/library';
+}
+
+/** Vue « Récemment ouvert » bornée à `max` projets (Orca `max_recent_count`) ;
+ *  `hidden` = projets masqués, affichables à la demande. */
+export function limitRecent<T>(
+	list: readonly T[],
+	max: number,
+	showAll: boolean
+): { items: T[]; hidden: number } {
+	if (showAll || list.length <= max) return { items: [...list], hidden: 0 };
+	return { items: list.slice(0, Math.max(0, max)), hidden: list.length - Math.max(0, max) };
+}
+
 /** Date RFC 3339 → libellé localisé ; retombe sur la chaîne brute si invalide. */
 export function formatDate(rfc3339: string): string {
 	const d = new Date(rfc3339);

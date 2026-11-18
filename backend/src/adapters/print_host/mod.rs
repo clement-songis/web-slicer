@@ -718,8 +718,9 @@ impl HostClient {
     }
 
     /// Stockages PrusaLink (PrusaLink::get_storage : accessibles, inscriptibles, non pleins).
+    /// PrusaConnect n'en propose pas (OctoPrint.hpp:114, `get_storage` → false).
     pub async fn storages(&self) -> HostResult<Vec<Storage>> {
-        if !matches!(self.kind, HostKind::Prusalink | HostKind::Prusaconnect) {
+        if self.kind != HostKind::Prusalink {
             return Err(HostError::Unsupported(self.kind.display()));
         }
         let (_, body) = self

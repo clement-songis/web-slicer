@@ -79,7 +79,8 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		secret: 'Clé API',
 		authChoice: true,
 		printerSlug: false,
-		storages: true,
+		// Orca PrusaConnect::get_storage → false : pas de choix du stockage.
+		storages: false,
 		help: "Clé API de l'imprimante, dans Prusa Connect → Imprimante → Réglages."
 	},
 	{
@@ -480,10 +481,40 @@ export function credentialSummary(
 	return chips;
 }
 
-/** Service DNS-SD à rechercher pour un type d'hôte (Orca : Bonjour("octoprint")),
+/** Service à rechercher pour un type d'hôte (Orca : Bonjour("octoprint") ;
+ *  Creality Print : CrealityDiscoveryDialog ; Flashforge : discover_printers),
  *  ou null si l'hôte ne s'annonce pas. */
 export function discoveryService(type: string): string | null {
 	if (type === 'octoprint') return 'octoprint';
 	if (type === 'moonraker') return 'moonraker';
+	if (type === 'crealityprint') return 'creality';
+	if (type === 'flashforge') return 'flashforge';
 	return null;
+}
+
+/** Durée d'écoute côté serveur (ms) : Orca écoute 5 s pour Creality (cxmdns),
+ *  10 s par essai pour Flashforge (3 essais si rien ne répond), 4 s sinon. */
+export function discoveryTimeoutMs(service: string): number {
+	if (service === 'creality') return 5000;
+	if (service === 'flashforge') return 10_000;
+	return 4000;
+}
+
+/** Texte d'attente et d'absence de résultat selon le service recherché. */
+export function discoveryHints(service: string): { waiting: string; none: string } {
+	if (service === 'creality')
+		return {
+			waiting: 'Recherche des imprimantes Creality (série K) sur le réseau local (environ 5 s)…',
+			none: "Aucune imprimante Creality trouvée. L'imprimante doit être sur le même réseau local que le serveur web-slicer, sans isolation des clients Wi-Fi."
+		};
+	if (service === 'flashforge')
+		return {
+			waiting:
+				'Recherche des imprimantes Flashforge sur le réseau local (jusqu’à 30 s si aucune ne répond)…',
+			none: "Aucune imprimante Flashforge trouvée. L'imprimante doit être sur le même réseau local que le serveur web-slicer (diffusion UDP)."
+		};
+	return {
+		waiting: 'Recherche des serveurs annoncés sur le réseau local (quelques secondes)…',
+		none: 'Aucun serveur trouvé. La recherche part du serveur web-slicer : l’imprimante doit être sur le même réseau local que lui et annoncer son service (mDNS).'
+	};
 }
