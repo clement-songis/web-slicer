@@ -58,6 +58,7 @@ fn slice_3mf(name: &str) -> (engine::api::Model, Vec<String>) {
     let (model, config) = engine::adapters::ffi::read_project_3mf(&fixture(name)).expect("3MF");
     let work = tempfile::tempdir().unwrap();
     let req = SliceRequest {
+        allow_mixed_temperatures: false,
         model: model.clone(),
         config,
         plate_index: 0,

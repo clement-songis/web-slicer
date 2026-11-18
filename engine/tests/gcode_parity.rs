@@ -93,6 +93,7 @@ fn check_nominal(failures: &mut Vec<String>) {
     let work = tempfile::tempdir().unwrap();
     let refused = engine::adapters::ffi::slice(
         SliceRequest {
+            allow_mixed_temperatures: false,
             model,
             config,
             plate_index: 0,
@@ -218,6 +219,7 @@ fn slice_via_ffi_with(project: &str, adjust: impl FnOnce(&mut DynamicPrintConfig
     let diameter = filament_diameter(&config);
     let work = tempfile::tempdir().unwrap();
     let req = SliceRequest {
+        allow_mixed_temperatures: false,
         model,
         config,
         plate_index: 0,

@@ -4,6 +4,7 @@
 pub mod calib;
 pub mod config;
 pub mod error;
+pub mod filament_compat;
 pub mod gcode;
 pub mod gcode_process;
 pub mod layer_profile;

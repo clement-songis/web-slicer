@@ -291,6 +291,7 @@ pub async fn repair(
         tracing::error!(error = %e, "sérialisation du rapport de réparation");
         ApiError::internal()
     })?;
+    keep_previous_mesh(&model).await;
     let mesh_path = state
         .files
         .write_mesh(user.id, model.id, &display_bytes)
@@ -393,6 +394,7 @@ pub async fn simplify(
         open_edges: analysis.open_edges as u32,
         watertight: analysis.watertight(),
     };
+    keep_previous_mesh(&model).await;
     let mesh_path = state
         .files
         .write_mesh(user.id, model.id, &display_bytes)
@@ -631,6 +633,141 @@ fn box_mesh(width: f64, depth: f64) -> TriangleMesh {
             [3, 4, 7],
         ],
     }
+}
+
+/// Suffixe du maillage précédent conservé pour « garder la peinture ».
+const PREVIOUS_MESH_SUFFIX: &str = ".prev";
+
+/// Conserve le maillage courant (avant simplification / réparation) à côté du
+/// nouveau, comme ModelVolume::save_painting garde le maillage source pour
+/// TriangleSelector::remap_painting. Échec silencieux : seul le remappage
+/// ultérieur sera indisponible.
+async fn keep_previous_mesh(model: &Model) {
+    if let Some(path) = model.mesh_path.as_deref() {
+        let prev = format!("{path}{PREVIOUS_MESH_SUFFIX}");
+        if let Err(e) = tokio::fs::copy(path, &prev).await {
+            tracing::warn!(error = %e, "copie du maillage précédent");
+        }
+    }
+}
+
+/// Corps de `POST /api/models/{id}/remap-paint` : peinture (chaînes 3MF par
+/// triangle) de l'ancien maillage, par canal `supports` | `seam` | `mmu` | `fuzzy`.
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct RemapPaintHttpRequest {
+    #[ts(type = "Record<string, Record<number, string>>")]
+    pub channels: std::collections::BTreeMap<String, engine::api::paint::PaintFacets>,
+}
+
+/// Réponse : mêmes canaux sur les triangles du maillage courant.
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct RemapPaintHttpResponse {
+    #[ts(type = "Record<string, Record<number, string>>")]
+    pub channels: std::collections::BTreeMap<String, engine::api::paint::PaintFacets>,
+}
+
+/// `POST /api/models/{id}/remap-paint` — « Garder la peinture » d'Orca
+/// (préférence keep_painting : Simplify / Fix model / Cut) : la peinture
+/// posée sur le maillage d'avant la dernière simplification ou réparation est
+/// reportée sur le maillage courant (TriangleSelector::remap_painting, dans
+/// engine-worker). 409 si aucun maillage précédent n'est conservé.
+pub async fn remap_paint(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(req): Json<RemapPaintHttpRequest>,
+) -> ApiResult<Json<RemapPaintHttpResponse>> {
+    let model_id = parse_model_id(&id)?;
+    let model = state.storage.models().get(user.id, model_id).await?;
+    if let Some(bad) = req
+        .channels
+        .keys()
+        .find(|k| !engine::api::paint::PAINT_CHANNEL_KEYS.contains(&k.as_str()))
+    {
+        return Err(ApiError::validation(
+            "canal de peinture inconnu (supports, seam, mmu, fuzzy)",
+            serde_json::json!({ "channel": bad }),
+        ));
+    }
+    let target = load_converted_mesh(&state, &model).await?;
+    let prev_path = model
+        .mesh_path
+        .as_deref()
+        .map(|p| format!("{p}{PREVIOUS_MESH_SUFFIX}"))
+        .ok_or_else(|| {
+            ApiError::conflict("aucun maillage précédent (simplifier ou réparer d'abord)")
+        })?;
+    let bytes = tokio::fs::read(&prev_path).await.map_err(|_| {
+        ApiError::conflict("aucun maillage précédent (simplifier ou réparer d'abord)")
+    })?;
+    let source = decode_display_mesh(&bytes)?;
+    let dir = crate::workdir::tempdir().map_err(|e| {
+        tracing::error!(error = %e, "répertoire de travail");
+        ApiError::internal()
+    })?;
+    let request_path = dir.path().join("remap-paint.json");
+    let request = engine::api::paint::RemapPaintRequest {
+        source,
+        target,
+        channels: req.channels,
+    };
+    std::fs::write(
+        &request_path,
+        serde_json::to_vec(&request).map_err(|_| ApiError::internal())?,
+    )
+    .map_err(|_| ApiError::internal())?;
+    let stdout = crate::engine::run_worker(
+        &["remap-paint", &request_path.to_string_lossy()],
+        crate::engine::DEFAULT_TIMEOUT,
+    )
+    .await
+    .map_err(|e| match e {
+        crate::engine::WorkerError::Failed { stdout, .. } => ApiError::validation(
+            String::from_utf8_lossy(&stdout)
+                .lines()
+                .find_map(|l| l.strip_prefix("E "))
+                .unwrap_or("remappage de peinture refusé")
+                .to_string(),
+            serde_json::json!({}),
+        ),
+        other => {
+            tracing::error!(error = %other, "worker remap-paint");
+            ApiError::internal()
+        }
+    })?;
+    let text = String::from_utf8_lossy(&stdout);
+    let payload = text
+        .lines()
+        .rev()
+        .find_map(|l| l.strip_prefix("R "))
+        .ok_or_else(ApiError::internal)?;
+    let response: engine::api::paint::RemapPaintResponse =
+        serde_json::from_str(payload).map_err(|_| ApiError::internal())?;
+    Ok(Json(RemapPaintHttpResponse {
+        channels: response.channels,
+    }))
+}
+
+/// WSMh (maillage d'affichage) → TriangleMesh.
+fn decode_display_mesh(bytes: &[u8]) -> ApiResult<TriangleMesh> {
+    let display = engine::api::DisplayMesh::decode(bytes).map_err(|e| {
+        tracing::error!(error = %e, "décodage du maillage");
+        ApiError::internal()
+    })?;
+    Ok(TriangleMesh {
+        vertices: display
+            .positions
+            .chunks_exact(3)
+            .map(|c| [c[0], c[1], c[2]])
+            .collect(),
+        indices: display
+            .indices
+            .chunks_exact(3)
+            .map(|c| [c[0], c[1], c[2]])
+            .collect(),
+    })
 }
 
 async fn load_converted_mesh(state: &AppState, model: &Model) -> ApiResult<TriangleMesh> {

@@ -487,6 +487,7 @@ fn slice_normalizes_spiral_mode_like_the_cli() {
 
     let work = tempfile::tempdir().unwrap();
     let req = SliceRequest {
+        allow_mixed_temperatures: false,
         model,
         config,
         plate_index: 0,
@@ -601,6 +602,7 @@ fn mirrored_instance_slices_as_the_mirror_image() {
         }];
         let work = tempfile::tempdir().unwrap();
         let req = SliceRequest {
+            allow_mixed_temperatures: false,
             model,
             config: config.clone(),
             plate_index: 0,
@@ -684,6 +686,7 @@ fn non_printable_instance_is_excluded_from_gcode() {
         let work = tempfile::tempdir().unwrap();
         let result = engine::adapters::ffi::slice(
             SliceRequest {
+                allow_mixed_temperatures: false,
                 model,
                 config: config.clone(),
                 plate_index: 0,

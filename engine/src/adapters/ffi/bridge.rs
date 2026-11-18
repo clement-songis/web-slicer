@@ -297,6 +297,15 @@ pub(crate) mod ffi {
         ) -> Result<()>;
         /// État du canal en chaînes 3MF (`FacetsAnnotation::get_triangle_as_string`).
         fn paint_session_export(session: &PaintSession, channel: u8) -> Result<RawPaintFacets>;
+        /// « Garder la peinture » d'Orca (préférence keep_painting) : reporte
+        /// la peinture d'un canal de `source` sur `target` après changement de
+        /// maillage (simplifier, réparer…) — ModelVolume::save_painting /
+        /// restore_painting → TriangleSelector::remap_painting.
+        fn remap_painting_raw(
+            source: &RawMesh,
+            target: &RawMesh,
+            facets: &RawPaintFacets,
+        ) -> Result<RawPaintFacets>;
     }
 
     unsafe extern "C++" {
@@ -429,6 +438,7 @@ pub(crate) mod ffi {
             work_dir: &str,
             calib: &RawCalibParams,
             custom_gcodes_json: &str,
+            allow_mixed_temperatures: bool,
         ) -> Result<RawSliceResult>;
 
         /// Sépare un maillage en composantes connexes (`TriangleMesh::split`,

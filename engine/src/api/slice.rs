@@ -32,6 +32,11 @@ pub struct SliceRequest {
     /// Mode calibration d'Orca (`Print::set_calib_params`), absent hors calibration.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub calib: Option<CalibParams>,
+    /// Préférence Orca « Remove mixed temperature restriction »
+    /// (`enable_high_low_temp_mixed_printing`) : filaments haute/basse
+    /// température acceptés (avertissement) au lieu d'être refusés.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub allow_mixed_temperatures: bool,
 }
 
 /// `CalibMode` d'Orca (libslic3r/calib.hpp), dans le même ordre.

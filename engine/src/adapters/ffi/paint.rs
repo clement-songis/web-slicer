@@ -84,3 +84,27 @@ impl PaintSession {
         Ok(raw.triangles.into_iter().zip(raw.states).collect())
     }
 }
+
+/// « Garder la peinture » (préférence keep_painting d'Orca) : peinture d'un
+/// canal de `source` reportée sur `target` après un changement de maillage
+/// (ModelVolume::save_painting / restore_painting → remap_painting).
+pub fn remap_painting(
+    source: &TriangleMesh,
+    target: &TriangleMesh,
+    facets: &PaintFacets,
+) -> EngineResult<PaintFacets> {
+    if facets.is_empty() {
+        return Ok(PaintFacets::new());
+    }
+    let raw_mesh = |m: &TriangleMesh| ffi::RawMesh {
+        vertices: m.vertices.iter().flatten().copied().collect(),
+        indices: m.indices.iter().flatten().copied().collect(),
+    };
+    let raw = ffi::RawPaintFacets {
+        triangles: facets.keys().copied().collect(),
+        states: facets.values().cloned().collect(),
+    };
+    let out = ffi::remap_painting_raw(&raw_mesh(source), &raw_mesh(target), &raw)
+        .map_err(|e| invalid(e.to_string()))?;
+    Ok(out.triangles.into_iter().zip(out.states).collect())
+}

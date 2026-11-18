@@ -239,3 +239,22 @@ mod tests {
         assert!(json.get("error").is_none());
     }
 }
+
+/// Requête worker `remap-paint` : « garder la peinture » d'Orca (préférence
+/// keep_painting) — peinture des canaux de `source` reportée sur `target`.
+/// Clés de canal : `supports`, `seam`, `mmu`, `fuzzy`.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct RemapPaintRequest {
+    pub source: crate::api::TriangleMesh,
+    pub target: crate::api::TriangleMesh,
+    pub channels: BTreeMap<String, PaintFacets>,
+}
+
+/// Réponse : mêmes canaux, sur les triangles de `target`.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RemapPaintResponse {
+    pub channels: BTreeMap<String, PaintFacets>,
+}
+
+/// Canaux reconnus (ordre des TriangleSelector de la session de peinture).
+pub const PAINT_CHANNEL_KEYS: [&str; 4] = ["supports", "seam", "mmu", "fuzzy"];

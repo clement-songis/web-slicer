@@ -429,3 +429,31 @@ async fn saving_a_project_renders_its_library_thumbnail() {
         .unwrap();
     assert_eq!(entry["has_thumbnail"], true);
 }
+
+/// Affectation filament → buse du plateau (H2D, FilamentMapDialog d'Orca) :
+/// `filament_map_mode` / `filament_maps` du <plate> relus comme réglages de
+/// plateau, donc transmis au tranchage (with_plate_settings) comme le CLI
+/// (OrcaSlicer.cpp ~5980). Fixture : scène bambu_h2d, plateau Manual « 1 1 »
+/// (référence Orca et contrôle moteur : .work/staging/parity-audit/lot21).
+#[tokio::test]
+async fn plate_filament_map_is_read_as_a_plate_setting() {
+    let archive = include_bytes!("fixtures/threemf/h2d_filament_map_manual.3mf");
+    let project = backend::models::threemf::read_project(archive)
+        .await
+        .unwrap();
+    let settings = &project.plates[0].settings;
+    assert_eq!(
+        settings.get("filament_map_mode").and_then(|v| v.as_str()),
+        Some("Manual"),
+        "{settings:?}"
+    );
+    let map = settings.get("filament_map").expect("filament_map relu");
+    let text = map
+        .as_str()
+        .map(str::to_string)
+        .unwrap_or_else(|| map.to_string());
+    assert!(
+        text.contains('1') && !text.contains('2'),
+        "carte 1,1 : {text}"
+    );
+}

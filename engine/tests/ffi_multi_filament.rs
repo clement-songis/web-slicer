@@ -59,6 +59,7 @@ fn slice_3mf(name: &str) -> (engine::api::Model, Vec<String>) {
     let (model, config) = engine::adapters::ffi::read_project_3mf(&fixture(name)).expect("3MF");
     let work = tempfile::tempdir().unwrap();
     let req = SliceRequest {
+        allow_mixed_temperatures: false,
         model: model.clone(),
         config,
         plate_index: 0,
@@ -124,6 +125,7 @@ fn printer_scene(name: &str) -> Result<Vec<String>, engine::api::EngineError> {
         engine::adapters::ffi::read_project_3mf(&fixture(&format!("{name}.3mf"))).expect("3MF");
     let work = tempfile::tempdir().unwrap();
     let req = SliceRequest {
+        allow_mixed_temperatures: false,
         model,
         config,
         plate_index: 0,
@@ -311,6 +313,7 @@ fn flush_into_objects_slices() {
         .unwrap();
     let work = tempfile::tempdir().unwrap();
     let req = SliceRequest {
+        allow_mixed_temperatures: false,
         model,
         config,
         plate_index: 0,
@@ -342,4 +345,58 @@ fn two_objects_two_extruders_with_wipe_tower_match_orca() {
     let orca = normalize(&std::fs::read_to_string(fixture("two_objects.orca.gcode")).unwrap());
     assert!(tool_changes(&orca) > 2, "la référence change d'outil");
     assert_same("two_objects", &ours, &orca);
+}
+
+/// Compatibilité haute/basse température (Print::check_multi_filament_valid,
+/// préférence « Remove mixed temperature restriction ») : PLA 220 °C + PC
+/// 270 °C sur deux extrudeurs → refus d'Orca par défaut ; accepté (G-code,
+/// placeholder enable_high_low_temp_mix) quand la restriction est levée.
+#[test]
+fn mixed_temperatures_are_refused_unless_allowed() {
+    use engine::api::ConfigValue;
+    let (model, mut config) =
+        engine::adapters::ffi::read_project_3mf(&fixture("two_volumes.3mf")).expect("3MF");
+    config.0.insert(
+        "filament_type".into(),
+        ConfigValue::Strings(vec!["PLA".into(), "PC".into()]),
+    );
+    config.0.insert(
+        "nozzle_temperature".into(),
+        ConfigValue::Ints(vec![220, 270]),
+    );
+    config.0.insert(
+        "nozzle_temperature_range_low".into(),
+        ConfigValue::Ints(vec![0, 0]),
+    );
+    config.0.insert(
+        "nozzle_temperature_range_high".into(),
+        ConfigValue::Ints(vec![0, 0]),
+    );
+    let run = |allow: bool| {
+        let work = tempfile::tempdir().unwrap();
+        let req = SliceRequest {
+            allow_mixed_temperatures: allow,
+            model: model.clone(),
+            config: config.clone(),
+            plate_index: 0,
+            work_dir: work.path().to_path_buf(),
+            calib: None,
+        };
+        let progress: ProgressSink = Box::new(|_, _| {});
+        engine::adapters::ffi::slice(req, progress, CancelToken::new())
+            .map(|r| std::fs::read_to_string(r.gcode_path).unwrap())
+    };
+    let refused = run(false).expect_err("refus par défaut");
+    assert!(
+        refused
+            .message
+            .contains("Remove mixed temperature restriction"),
+        "{}",
+        refused.message
+    );
+    let gcode = run(true).expect("accepté quand la restriction est levée");
+    assert!(
+        gcode.contains("T1") || gcode.contains("T0"),
+        "G-code produit"
+    );
 }

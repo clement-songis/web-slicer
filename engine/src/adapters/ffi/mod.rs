@@ -34,7 +34,7 @@ pub use model::{
     print_config_option_count, StepMeshOptions,
 };
 pub use obj_colors::{load_obj_colors, ObjColors};
-pub use paint::PaintSession;
+pub use paint::{remap_painting, PaintSession};
 pub use slice::{run_in_worker, slice};
 pub use split::run_mesh_op;
 pub use threemf::{

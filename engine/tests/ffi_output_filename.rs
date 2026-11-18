@@ -28,6 +28,7 @@ fn slice_with_format(format: Option<&str>) -> (String, String) {
     }
     let work = tempfile::tempdir().unwrap();
     let req = SliceRequest {
+        allow_mixed_temperatures: false,
         model,
         config,
         plate_index: 0,

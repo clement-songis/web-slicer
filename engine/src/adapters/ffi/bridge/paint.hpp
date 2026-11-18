@@ -27,5 +27,6 @@ size_t paint_session_triangles(const PaintSession &session);
 void paint_session_load(PaintSession &session, uint8_t channel, const RawPaintFacets &facets);
 void paint_session_stroke(PaintSession &session, uint8_t channel, const RawPaintStroke &stroke);
 RawPaintFacets paint_session_export(const PaintSession &session, uint8_t channel);
+RawPaintFacets remap_painting_raw(const RawMesh &source, const RawMesh &target, const RawPaintFacets &facets);
 
 } // namespace webslicer

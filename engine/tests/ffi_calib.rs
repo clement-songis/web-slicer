@@ -30,6 +30,7 @@ fn slice_cube_with(calib: Option<CalibParams>, overrides: &[(&str, ConfigValue)]
     let work = tempfile::tempdir().unwrap();
     let result = engine::adapters::ffi::slice(
         SliceRequest {
+            allow_mixed_temperatures: false,
             model,
             config,
             plate_index: 0,

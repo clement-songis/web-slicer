@@ -22,6 +22,7 @@ fn inherits_group(adjust: impl FnOnce(&mut engine::api::DynamicPrintConfig)) -> 
     adjust(&mut config);
     let work = tempfile::tempdir().unwrap();
     let req = SliceRequest {
+        allow_mixed_temperatures: false,
         model,
         config,
         plate_index: 0,

@@ -100,11 +100,37 @@ pub async fn slice(
     // par-dessus, comme Orca applique sa config projet sur les presets.
     let (mut merged, mut warnings) =
         resolve_active_config(&state, user.id, &project.active_presets).await?;
+    if let Some(draft) = &body.draft {
+        apply_draft(&mut merged, draft)?;
+        // Avertissements recalculés sur la config réellement tranchée.
+        warnings = merged
+            .validate()
+            .into_iter()
+            .map(|w| SliceWarning {
+                key: w.key,
+                message: w.message,
+            })
+            .collect();
+    }
     apply_project_config(&mut merged, &project.scene);
     if let Some(warning) = post_process_warning(&merged) {
         warnings.push(warning);
     }
+    let allow_mixed = body.allow_mixed_temperatures.unwrap_or(false);
+    if let Some(warning) = filament_compatibility_warning(&merged, allow_mixed) {
+        warnings.push(warning);
+    }
     let resolved = Value::Object(presets::config_to_json(&merged));
+    // Instantané de scène du job : options de tranchage hors config Orca.
+    let mut job_scene = project.scene.clone();
+    if allow_mixed {
+        if let Value::Object(map) = &mut job_scene {
+            map.insert(
+                "sliceOptions".into(),
+                json!({ "allowMixedTemperatures": true }),
+            );
+        }
+    }
 
     let mut jobs = Vec::with_capacity(targets.len());
     for &t in &targets {
@@ -122,13 +148,208 @@ pub async fn slice(
                     plate_index: t,
                     resolved_settings: resolved.clone(),
                 },
-                project.scene.clone(),
+                job_scene.clone(),
             )
             .await?;
         jobs.push(JobResponse::from(job));
     }
 
     Ok((StatusCode::CREATED, Json(SliceResponse { jobs, warnings })))
+}
+
+/// Vérification haute/basse température d'Orca sur les filaments `indices`
+/// (tous si vide) de la config tranchée (`check_multi_filament_valid`).
+pub(crate) fn filament_compatibility(
+    config: &DynamicPrintConfig,
+    indices: &[usize],
+) -> engine::api::filament_compat::FilamentCompatibility {
+    let strings = |k: &str| match config.get(k) {
+        Some(ConfigValue::Strings(v)) => v.clone(),
+        Some(ConfigValue::String(v)) => vec![v.clone()],
+        _ => Vec::new(),
+    };
+    let ints = |k: &str| match config.get(k) {
+        Some(ConfigValue::Ints(v)) => v.clone(),
+        Some(ConfigValue::Int(v)) => vec![*v],
+        _ => Vec::new(),
+    };
+    let types = strings("filament_type");
+    let temps = ints("nozzle_temperature");
+    let lows = ints("nozzle_temperature_range_low");
+    let highs = ints("nozzle_temperature_range_high");
+    // get_at d'Orca : index hors vecteur → premier élément.
+    let at = |v: &Vec<i64>, i: usize| v.get(i).or(v.first()).copied().unwrap_or(0);
+    let picked: Vec<usize> = if indices.is_empty() {
+        (0..types.len()).collect()
+    } else {
+        indices
+            .iter()
+            .copied()
+            .filter(|i| *i < types.len().max(1))
+            .collect()
+    };
+    let t: Vec<String> = picked
+        .iter()
+        .map(|&i| types.get(i).or(types.first()).cloned().unwrap_or_default())
+        .collect();
+    let n: Vec<i64> = picked.iter().map(|&i| at(&temps, i)).collect();
+    let l: Vec<i64> = picked.iter().map(|&i| at(&lows, i)).collect();
+    let h: Vec<i64> = picked.iter().map(|&i| at(&highs, i)).collect();
+    engine::api::filament_compat::check_multi_filaments_compatibility(&t, &n, &l, &h)
+}
+
+/// Avertissement pré-tranchage (tous les filaments de la barre ; le moteur
+/// tranche avec les filaments réellement utilisés et refuse si nécessaire).
+fn filament_compatibility_warning(
+    config: &DynamicPrintConfig,
+    allow_mixed: bool,
+) -> Option<SliceWarning> {
+    let compat = filament_compatibility(config, &[]);
+    engine::api::filament_compat::verdict(compat, allow_mixed).map(|(message, _)| SliceWarning {
+        key: "filament_compatibility".into(),
+        message,
+    })
+}
+
+/// Corps de `POST /api/projects/{id}/filament-compatibility`.
+#[derive(Debug, Clone, Default, serde::Deserialize, ts_rs::TS)]
+#[ts(export)]
+pub struct FilamentCompatibilityRequest {
+    /// Filaments utilisés (index 0-based de la barre) ; absent = tous.
+    #[ts(optional)]
+    pub filaments: Option<Vec<usize>>,
+    /// Brouillon de l'éditeur, comme pour POST …/slice.
+    #[ts(optional)]
+    pub draft: Option<crate::http::dto::SliceDraft>,
+    /// Préférence « Remove mixed temperature restriction ».
+    #[ts(optional)]
+    pub allow_mixed_temperatures: Option<bool>,
+}
+
+/// Réponse : verdict d'Orca.
+#[derive(Debug, Clone, serde::Serialize, ts_rs::TS)]
+#[ts(export)]
+pub struct FilamentCompatibilityResponse {
+    /// `compatible` | `high_low_mixed` | `invalid_temperature_range`.
+    #[ts(type = "\"compatible\" | \"high_low_mixed\" | \"invalid_temperature_range\"")]
+    pub compatibility: engine::api::filament_compat::FilamentCompatibility,
+    /// Le tranchage sera refusé (sinon simple avertissement).
+    pub blocking: bool,
+    /// Message d'Orca (anglais, à traduire côté client) ; absent si compatible.
+    #[ts(optional)]
+    pub message: Option<String>,
+}
+
+/// `POST /api/projects/{id}/filament-compatibility` — vérification haute/basse
+/// température des filaments (Print::check_multi_filament_valid d'Orca) sur les
+/// presets actifs du projet (+ brouillon), sans trancher.
+pub async fn filament_compatibility_check(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(project_raw): Path<String>,
+    Json(body): Json<FilamentCompatibilityRequest>,
+) -> ApiResult<Json<FilamentCompatibilityResponse>> {
+    let project_id = parse_project_id(&project_raw)?;
+    let project = state.storage.projects().get(user.id, project_id).await?;
+    let (mut merged, _) = resolve_active_config(&state, user.id, &project.active_presets).await?;
+    if let Some(draft) = &body.draft {
+        apply_draft(&mut merged, draft)?;
+    }
+    apply_project_config(&mut merged, &project.scene);
+    let compat = filament_compatibility(&merged, body.filaments.as_deref().unwrap_or(&[]));
+    let verdict = engine::api::filament_compat::verdict(
+        compat,
+        body.allow_mixed_temperatures.unwrap_or(false),
+    );
+    Ok(Json(FilamentCompatibilityResponse {
+        compatibility: compat,
+        blocking: verdict.as_ref().is_some_and(|v| v.1),
+        message: verdict.map(|v| v.0),
+    }))
+}
+
+/// Applique le brouillon de l'éditeur (presets modifiés non enregistrés) :
+/// process/imprimante clé par clé, filaments sur l'élément `index` des
+/// vecteurs par filament (une clé scalaire n'est prise que du filament 1,
+/// comme la fusion d'Orca). Valeur illisible → 422.
+pub(crate) fn apply_draft(
+    merged: &mut DynamicPrintConfig,
+    draft: &crate::http::dto::SliceDraft,
+) -> ApiResult<()> {
+    let parse = |values: &serde_json::Map<String, Value>| {
+        let config = engine::presets::resolve_preset_chain(&[engine::api::RawPreset {
+            name: "draft".into(),
+            inherits: None,
+            values: values.clone(),
+        }])
+        .map_err(|e| ApiError::validation(format!("brouillon invalide : {e}"), json!({})))?;
+        // Le registre ignore une valeur illisible : une clé Orca connue absente
+        // du résultat est une saisie invalide (les clés inconnues sont ignorées
+        // comme par Orca).
+        if let Some(key) = values
+            .keys()
+            .find(|k| engine::params::get(k).is_some() && !config.0.contains_key(*k))
+        {
+            return Err(ApiError::validation(
+                format!("brouillon invalide : valeur illisible pour {key}"),
+                json!({ "key": key }),
+            ));
+        }
+        Ok(config)
+    };
+    for values in [&draft.printer, &draft.process].into_iter().flatten() {
+        merged.0.extend(parse(values)?.0);
+    }
+    for (index, values) in draft.filaments.iter().flatten().enumerate() {
+        let Some(values) = values else { continue };
+        for (key, incoming) in parse(values)?.0 {
+            set_filament_value(merged, index, key, incoming);
+        }
+    }
+    Ok(())
+}
+
+/// Remplace la valeur du filament `index` d'une clé (vecteur par filament) ;
+/// clé scalaire : seul le filament 1 la porte.
+fn set_filament_value(
+    merged: &mut DynamicPrintConfig,
+    index: usize,
+    key: String,
+    incoming: ConfigValue,
+) {
+    macro_rules! put {
+        ($out:expr, $vals:expr, $fill:expr) => {{
+            if let Some(v) = $vals.first().cloned() {
+                if $out.len() <= index {
+                    let pad = $out.last().cloned().unwrap_or($fill);
+                    $out.resize(index + 1, pad);
+                }
+                $out[index] = v;
+            }
+            return;
+        }};
+    }
+    if let Some(existing) = merged.0.get_mut(&key) {
+        match (existing, &incoming) {
+            (ConfigValue::Bools(out), ConfigValue::Bools(v)) => put!(out, v, false),
+            (ConfigValue::Ints(out), ConfigValue::Ints(v)) => put!(out, v, 0),
+            (ConfigValue::Floats(out), ConfigValue::Floats(v)) => put!(out, v, 0.0),
+            (ConfigValue::FloatsNullable(out), ConfigValue::FloatsNullable(v)) => {
+                put!(out, v, None)
+            }
+            (ConfigValue::FloatsNullable(out), ConfigValue::Floats(v)) => {
+                let v: Vec<Option<f64>> = v.iter().map(|x| Some(*x)).collect();
+                put!(out, v, None)
+            }
+            (ConfigValue::BoolsNullable(out), ConfigValue::BoolsNullable(v)) => put!(out, v, None),
+            (ConfigValue::Strings(out), ConfigValue::Strings(v)) => put!(out, v, String::new()),
+            (ConfigValue::Points(out), ConfigValue::Points(v)) => put!(out, v, Vec::new()),
+            _ => {}
+        }
+    }
+    if index == 0 || (is_extruder_vector(&incoming) && !merged.0.contains_key(&key)) {
+        merged.0.insert(key, incoming);
+    }
 }
 
 /// Résout les presets actifs (`{printer, process, filaments[]}`) en une config
@@ -731,6 +952,71 @@ mod tests {
         // Clé hors PLATE_SETTING_KEYS ignorée ; plateType seul ne fige rien.
         assert_eq!(b["layer_height"], json!(0.2));
         assert!(b.get("curr_bed_type").is_none());
+    }
+
+    #[test]
+    fn draft_overrides_process_printer_and_one_filament() {
+        let mut merged = DynamicPrintConfig::new();
+        merge_filament_config(&mut merged, filament("PLA", 205, Some(0.8)), 0);
+        merge_filament_config(&mut merged, filament("PETG", 235, None), 1);
+        merged
+            .0
+            .insert("layer_height".into(), ConfigValue::Float(0.2));
+        let draft: crate::http::dto::SliceDraft = serde_json::from_value(json!({
+            "process": { "layer_height": "0.28" },
+            "printer": { "nozzle_diameter": ["0.6"] },
+            "filaments": [null, { "nozzle_temperature": ["250"], "filament_type": ["ASA"] }]
+        }))
+        .unwrap();
+        super::apply_draft(&mut merged, &draft).unwrap();
+        assert_eq!(merged.get("layer_height"), Some(&ConfigValue::Float(0.28)));
+        assert_eq!(
+            merged.get("nozzle_diameter"),
+            Some(&ConfigValue::Floats(vec![0.6]))
+        );
+        assert_eq!(
+            merged.get("nozzle_temperature"),
+            Some(&ConfigValue::Ints(vec![205, 250]))
+        );
+        assert_eq!(
+            merged.get("filament_type"),
+            Some(&ConfigValue::Strings(vec!["PLA".into(), "ASA".into()]))
+        );
+        let bad: crate::http::dto::SliceDraft =
+            serde_json::from_value(json!({ "process": { "layer_height": "abc" } })).unwrap();
+        assert!(super::apply_draft(&mut merged, &bad).is_err());
+    }
+
+    #[test]
+    fn filament_compatibility_uses_orca_ranges_and_selected_filaments() {
+        use engine::api::filament_compat::FilamentCompatibility as C;
+        let mut merged = DynamicPrintConfig::new();
+        merge_filament_config(&mut merged, filament("PLA", 220, None), 0);
+        merge_filament_config(&mut merged, filament("PC", 270, None), 1);
+        merge_filament_config(&mut merged, filament("PETG", 240, None), 2);
+        assert_eq!(super::filament_compatibility(&merged, &[]), C::HighLowMixed);
+        assert_eq!(
+            super::filament_compatibility(&merged, &[0, 2]),
+            C::Compatible
+        );
+        let w = super::filament_compatibility_warning(&merged, false).unwrap();
+        assert_eq!(w.key, "filament_compatibility");
+        assert!(w.message.contains("Remove mixed temperature restriction"));
+        assert!(!super::filament_compatibility_warning(&merged, true)
+            .unwrap()
+            .message
+            .contains("Preferences"));
+    }
+
+    #[test]
+    fn plate_filament_map_reaches_the_slice_snapshot() {
+        let resolved = json!({ "filament_map_mode": "Auto For Flush", "filament_map": [1, 1] });
+        let scene = json!({ "plates": { "plates": [
+            { "id": "a", "objectIds": [], "settings": { "filament_map_mode": "Manual", "filament_map": ["2", "1"] } }
+        ] } });
+        let a = super::with_plate_settings(&resolved, &scene, 0);
+        assert_eq!(a["filament_map_mode"], json!("Manual"));
+        assert_eq!(a["filament_map"], json!([2, 1]));
     }
 
     #[test]

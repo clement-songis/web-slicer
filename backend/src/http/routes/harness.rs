@@ -308,6 +308,7 @@ async fn slice_model(
     work: tempfile::TempDir,
 ) -> HarnessResult<Response> {
     let request = engine::api::SliceRequest {
+        allow_mixed_temperatures: false,
         model,
         config,
         plate_index: 0,

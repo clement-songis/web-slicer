@@ -59,6 +59,76 @@ Slic3r::Transform3d from_col_major16(const std::array<double, 16> &m)
 PaintSession::PaintSession() : impl(std::make_unique<PaintSessionImpl>()) {}
 PaintSession::~PaintSession() = default;
 
+namespace {
+// RawMesh → its avec contrôles (indices de triangle conservés, pas de réparation).
+indexed_triangle_set paint_its(const RawMesh &raw)
+{
+    if (raw.indices.empty() || raw.indices.size() % 3 != 0 || raw.vertices.size() % 3 != 0)
+        throw std::runtime_error("maillage vide ou indices incomplets");
+    const size_t nv = raw.vertices.size() / 3;
+    indexed_triangle_set its;
+    its.vertices.reserve(nv);
+    for (size_t i = 0; i < nv; ++i) {
+        const float x = raw.vertices[3 * i], y = raw.vertices[3 * i + 1], z = raw.vertices[3 * i + 2];
+        if (!std::isfinite(x) || !std::isfinite(y) || !std::isfinite(z))
+            throw std::runtime_error("coordonnée non finie");
+        its.vertices.emplace_back(x, y, z);
+    }
+    for (size_t i = 0; i < raw.indices.size(); i += 3) {
+        if (raw.indices[i] >= nv || raw.indices[i + 1] >= nv || raw.indices[i + 2] >= nv)
+            throw std::runtime_error("indice de sommet hors limites");
+        its.indices.emplace_back(int(raw.indices[i]), int(raw.indices[i + 1]), int(raw.indices[i + 2]));
+    }
+    return its;
+}
+} // namespace
+
+RawPaintFacets remap_painting_raw(const RawMesh &source, const RawMesh &target, const RawPaintFacets &facets)
+{
+    const indexed_triangle_set src = paint_its(source);
+    const indexed_triangle_set dst = paint_its(target);
+    // Tampon de (dé)sérialisation : FacetsAnnotation n'est constructible que
+    // par un ModelVolume (comme la session de peinture).
+    Slic3r::Model model;
+    Slic3r::ModelObject *object = model.add_object();
+    Slic3r::ModelVolume *volume = object->add_volume(Slic3r::TriangleMesh(indexed_triangle_set(src)),
+                                                     Slic3r::ModelVolumeType::MODEL_PART,
+                                                     /*modify_to_center_geometry=*/false);
+    Slic3r::FacetsAnnotation &ann = volume->supported_facets;
+    ann.reset();
+    const size_t n = std::min(facets.triangles.size(), facets.states.size());
+    int last = -1;
+    for (size_t i = 0; i < n; ++i) {
+        const int t = int(facets.triangles[i]);
+        std::string state(facets.states[i]);
+        if (t <= last || t >= int(src.indices.size()) || state.empty())
+            throw std::runtime_error("peinture : indices non croissants ou hors maillage");
+        for (char &c : state)
+            c = char(std::toupper(static_cast<unsigned char>(c)));
+        if (state.find_first_not_of("0123456789ABCDEF") != std::string::npos)
+            throw std::runtime_error("peinture : chaîne hexadécimale invalide");
+        ann.set_triangle_from_string(t, state);
+        last = t;
+    }
+    RawPaintFacets out;
+    if (ann.get_data().bitstream.empty())
+        return out;
+    // ModelVolume::restore_painting : maillage cible dans le repère source
+    // (maillages d'un même volume, sans décalage d'origine ici → identité).
+    Slic3r::TriangleSelector::TriangleSplittingData remapped = Slic3r::TriangleSelector::remap_painting(
+        src, ann.get_data(), dst, Slic3r::Transform3d::Identity(), std::nullopt);
+    Slic3r::FacetsAnnotation &result = volume->seam_facets;
+    result.set_data(std::move(remapped));
+    for (const auto &m : result.get_data().triangles_to_split) {
+        std::string str = result.get_triangle_as_string(m.triangle_idx);
+        if (str.empty())
+            continue;
+        out.triangles.push_back(uint32_t(m.triangle_idx));
+        out.states.push_back(rust::String(str));
+    }
+    return out;
+}
+
 std::unique_ptr<PaintSession> paint_session_new(const RawMesh &raw)
 {
     if (raw.indices.empty() || raw.indices.size() % 3 != 0 || raw.vertices.size() % 3 != 0)

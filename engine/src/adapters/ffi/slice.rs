@@ -99,6 +99,7 @@ pub fn run_in_worker(request_path: &Path) -> EngineResult<SliceResult> {
         &req.work_dir.to_string_lossy(),
         &calib,
         &custom_gcodes_json,
+        req.allow_mixed_temperatures,
     )
     .map_err(|e| {
         let message = e.to_string();

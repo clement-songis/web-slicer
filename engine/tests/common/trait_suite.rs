@@ -221,6 +221,7 @@ fn slice_cube(e: &dyn SlicerEngine, cancel: CancelToken) -> (EngineResult<SliceR
     };
     let result = e.slice(
         SliceRequest {
+            allow_mixed_temperatures: false,
             model,
             config,
             plate_index: 0,

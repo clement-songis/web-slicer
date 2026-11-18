@@ -439,6 +439,30 @@ pub struct SliceRequest {
     /// Trancher tous les plateaux préparés.
     #[ts(optional)]
     pub all: Option<bool>,
+    /// Modifications non enregistrées des presets (brouillon de l'éditeur) :
+    /// Orca tranche avec le preset **édité**, pas avec la version enregistrée.
+    #[ts(optional)]
+    pub draft: Option<SliceDraft>,
+    /// Préférence Orca « Remove mixed temperature restriction »
+    /// (enable_high_low_temp_mixed_printing, défaut false) : filaments haute /
+    /// basse température tranchés avec avertissement au lieu d'être refusés.
+    #[ts(optional)]
+    pub allow_mixed_temperatures: Option<bool>,
+}
+
+/// Brouillon de presets appliqué au tranchage, par-dessus les presets actifs
+/// et avant la config projet / plateau (ordre d'Orca). Valeurs au format des
+/// presets (chaînes Orca ou JSON typé de `/resolved`).
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[ts(export)]
+pub struct SliceDraft {
+    #[ts(optional, type = "Record<string, unknown>")]
+    pub process: Option<serde_json::Map<String, serde_json::Value>>,
+    #[ts(optional, type = "Record<string, unknown>")]
+    pub printer: Option<serde_json::Map<String, serde_json::Value>>,
+    /// Par filament (index de la barre de filaments) ; `null` = inchangé.
+    #[ts(optional, type = "Array<Record<string, unknown> | null>")]
+    pub filaments: Option<Vec<Option<serde_json::Map<String, serde_json::Value>>>>,
 }
 
 /// Avertissement de configuration moteur (FR-032).

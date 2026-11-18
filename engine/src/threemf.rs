@@ -19,6 +19,12 @@ pub const PLATE_SETTING_KEYS: &[&str] = &[
     "other_layers_sequence_choice",
     "other_layers_print_sequence_nums",
     "spiral_mode",
+    // Affectation filament → buse (imprimantes multi-buses, H2D) : PartPlate
+    // persiste filament_map_mode et filament_map (bbs_3mf.cpp:7968, attributs
+    // « filament_map_mode » / « filament_maps ») ; le CLI les applique au
+    // tranchage du plateau (OrcaSlicer.cpp ~5980).
+    "filament_map_mode",
+    "filament_map",
 ];
 
 /// Plateau d'un projet exporté : nom et réglages par plateau

@@ -69,6 +69,7 @@ fn slice(p: &CalibProject, config: DynamicPrintConfig) -> String {
     let work = tempfile::tempdir().unwrap();
     let r = engine::adapters::ffi::slice(
         SliceRequest {
+            allow_mixed_temperatures: false,
             model: p.model.clone(),
             config,
             plate_index: 0,
@@ -324,6 +325,7 @@ fn calib_projects_slice_like_orca_cli() {
         let work = tempfile::tempdir().unwrap();
         let r = engine::adapters::ffi::slice(
             SliceRequest {
+                allow_mixed_temperatures: false,
                 model,
                 config,
                 plate_index: 0,
@@ -388,6 +390,7 @@ fn slice_parity_3mf(kind: &str) -> Vec<String> {
     let work = tempfile::tempdir().unwrap();
     let r = engine::adapters::ffi::slice(
         SliceRequest {
+            allow_mixed_temperatures: false,
             model,
             config,
             plate_index: 0,

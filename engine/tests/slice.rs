@@ -28,6 +28,7 @@ fn slices_real_project_with_progress() {
 
     let work = tempfile::tempdir().unwrap();
     let req = SliceRequest {
+        allow_mixed_temperatures: false,
         model,
         config,
         plate_index: 0,

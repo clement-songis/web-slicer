@@ -290,3 +290,36 @@ fn fill_stop_angle_matches_isolated_orca_reference() {
         assert_eq!(got.len(), 2, "{name}");
     }
 }
+
+/// « Garder la peinture » (keep_painting d'Orca) : remap_painting reporte la
+/// peinture sur un maillage aux triangles réordonnés (même géométrie) ; une
+/// chaîne invalide est refusée ; aucune peinture → vide.
+#[test]
+fn remap_painting_follows_geometry_not_triangle_indices() {
+    let source = cube(20.0);
+    let mut target = source.clone();
+    target.indices.reverse();
+    let n = source.indices.len() as u32;
+    let mut facets = engine::api::paint::PaintFacets::new();
+    facets.insert(0, "4".into());
+    facets.insert(1, "8".into());
+    let out = engine::adapters::ffi::remap_painting(&source, &target, &facets).unwrap();
+    // Seuls les triangles de même géométrie reçoivent la peinture ; le
+    // remappage spatial d'Orca peut subdiviser un triangle à la frontière de
+    // deux états (arête partagée), d'où une chaîne longue pour le n-1.
+    assert_eq!(
+        out.keys().copied().collect::<Vec<_>>(),
+        vec![n - 2, n - 1],
+        "{out:?}"
+    );
+    assert_eq!(out.get(&(n - 2)).map(String::as_str), Some("8"), "{out:?}");
+    assert!(out[&(n - 1)].contains('4'), "enforcer conservé : {out:?}");
+    let mut bad = engine::api::paint::PaintFacets::new();
+    bad.insert(0, "zz".into());
+    assert!(engine::adapters::ffi::remap_painting(&source, &target, &bad).is_err());
+    assert!(
+        engine::adapters::ffi::remap_painting(&source, &target, &Default::default())
+            .unwrap()
+            .is_empty()
+    );
+}

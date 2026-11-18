@@ -23,6 +23,8 @@
 //!   `SimplifyReport` (comptes avant/après) en `R`.
 //! - `serve` : worker persistant JSON-lines (stdin) → `R <json>` (stdout),
 //!   sessions de peinture TriangleSelector en mémoire (`api::paint`).
+//! - `remap-paint <request.json>` : « garder la peinture » (keep_painting),
+//!   TriangleSelector::remap_painting par canal, `R` = canaux remappés.
 //! - `layer-profile <request.json>` : profil de hauteur variable libslic3r
 //!   (`layer_height_profile_adaptive` / `smooth_height_profile`), `R` = profil plat.
 //! - `--args-from-stdin` : worker **préchauffé à usage unique**. Le process est
@@ -315,6 +317,19 @@ fn main() {
                 std::process::exit(2);
             };
             match run_repair(&path) {
+                Ok(result) => emit_json_result(&result),
+                Err(e) => {
+                    emit_error(&code_slug(e.code), &e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Some("remap-paint") => {
+            let Some(path) = args.get(2).map(PathBuf::from) else {
+                eprintln!("usage: remap-paint <request.json>");
+                std::process::exit(2);
+            };
+            match run_remap_paint(&path) {
                 Ok(result) => emit_json_result(&result),
                 Err(e) => {
                     emit_error(&code_slug(e.code), &e.message);
@@ -704,6 +719,27 @@ fn run_repair(path: &Path) -> engine::api::EngineResult<RepairResponse> {
         mesh_path: request.output_path,
         repairs,
     })
+}
+
+/// « Garder la peinture » (keep_painting) : remap_painting par canal.
+fn run_remap_paint(
+    path: &Path,
+) -> engine::api::EngineResult<engine::api::paint::RemapPaintResponse> {
+    use engine::api::paint::{RemapPaintRequest, RemapPaintResponse, PAINT_CHANNEL_KEYS};
+    let request: RemapPaintRequest = read_json_bounded(path)?;
+    let mut out = RemapPaintResponse::default();
+    for (channel, facets) in &request.channels {
+        if !PAINT_CHANNEL_KEYS.contains(&channel.as_str()) {
+            return Err(engine::api::EngineError::new(
+                engine::api::EngineErrorCode::InvalidConfig,
+                format!("canal de peinture inconnu : {channel}"),
+            ));
+        }
+        let remapped =
+            engine::adapters::ffi::remap_painting(&request.source, &request.target, facets)?;
+        out.channels.insert(channel.clone(), remapped);
+    }
+    Ok(out)
 }
 
 fn run_simplify(path: &Path) -> engine::api::EngineResult<SimplifyResponse> {

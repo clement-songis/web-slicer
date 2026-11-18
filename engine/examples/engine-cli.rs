@@ -73,6 +73,7 @@ fn run_slice(engine: &FfiEngine, path: &Path) -> engine::api::EngineResult<()> {
 
     let out = engine.slice(
         SliceRequest {
+            allow_mixed_temperatures: false,
             model,
             config,
             plate_index: 0,

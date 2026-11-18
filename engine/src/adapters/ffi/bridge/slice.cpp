@@ -673,7 +673,7 @@ bool is_bbl_vendor_preset(const Slic3r::DynamicPrintConfig &config)
 
 RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
                          rust::Str work_dir, const RawCalibParams &calib,
-                         rust::Str custom_gcodes_json)
+                         rust::Str custom_gcodes_json, bool allow_mixed_temperatures)
 {
     Slic3r::Model model;
     raw_into_model(objects, model);
@@ -867,6 +867,11 @@ RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
         throw std::runtime_error(
             "rien à trancher : plateau vide ou objets hors du volume d'impression");
 
+    // Préférence Orca « Remove mixed temperature restriction »
+    // (enable_high_low_temp_mixed_printing, Plater.cpp:7976) : vérification de
+    // compatibilité haute/basse température des filaments (refus par défaut,
+    // simple avertissement si levée ; placeholder enable_high_low_temp_mix).
+    print.set_check_multi_filaments_compatibility(!allow_mixed_temperatures);
     Slic3r::StringObjectException err = print.validate();
     if (!err.string.empty() && !err.is_warning)
         throw std::runtime_error("configuration invalide : " + err.string);

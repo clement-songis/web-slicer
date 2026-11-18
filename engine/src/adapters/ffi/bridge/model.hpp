@@ -57,7 +57,7 @@ RawRepairResult repair_mesh_raw(const RawMesh &mesh);
 struct RawCalibParams;
 RawSliceResult slice_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
                          rust::Str work_dir, const RawCalibParams &calib,
-                         rust::Str custom_gcodes_json);
+                         rust::Str custom_gcodes_json, bool allow_mixed_temperatures);
 
 rust::Vec<RawObject> fill_bed_raw(const rust::Vec<RawObject> &objects, const rust::Vec<double> &bed_xy,
                                   rust::Str config_json, uint32_t object_index, double clearance_mm);

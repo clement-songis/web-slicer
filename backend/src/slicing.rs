@@ -100,6 +100,12 @@ impl SliceRunner {
         // Requête sérialisée dans un répertoire de travail isolé (garantie n°3).
         let work = crate::workdir::tempdir()?;
         let request = engine::api::SliceRequest {
+            // Préférence « Remove mixed temperature restriction », figée dans
+            // l'instantané de scène du job par POST …/slice.
+            allow_mixed_temperatures: scene
+                .pointer("/sliceOptions/allowMixedTemperatures")
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false),
             model,
             config,
             plate_index: job.plate_index.max(0) as u32,
@@ -1245,6 +1251,7 @@ mod production_parity {
         .unwrap();
         let work = tempfile::tempdir().unwrap();
         let request = engine::api::SliceRequest {
+            allow_mixed_temperatures: false,
             model: built,
             config,
             plate_index: 0,
@@ -1415,6 +1422,7 @@ mod production_parity {
         }
         let work = tempfile::tempdir().unwrap();
         let request = engine::api::SliceRequest {
+            allow_mixed_temperatures: false,
             model: built,
             config,
             plate_index: 0,

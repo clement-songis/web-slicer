@@ -96,6 +96,7 @@ where
         .route("/api/models/{id}/step-mesh", post(models::step_mesh))
         .route("/api/models/{id}/repair", post(scene::repair))
         .route("/api/models/{id}/simplify", post(scene::simplify))
+        .route("/api/models/{id}/remap-paint", post(scene::remap_paint))
         .route("/api/models/{id}/split", post(mesh_ops::split))
         .route("/api/models/{id}/smooth", post(mesh_ops::smooth))
         .route("/api/models/{id}/cut", post(mesh_ops::cut))
@@ -103,6 +104,10 @@ where
         .route("/api/projects/{id}/emboss", post(mesh_ops::emboss))
         .route("/api/projects/{id}/emboss-svg", post(mesh_ops::emboss_svg))
         .route("/api/projects/{id}/primitive", post(mesh_ops::primitive))
+        .route(
+            "/api/projects/{id}/filament-compatibility",
+            post(slice::filament_compatibility_check),
+        )
         .route("/api/handy-models", get(handy_models::list))
         .route(
             "/api/projects/{id}/handy-models/{key}",
