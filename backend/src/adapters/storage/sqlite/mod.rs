@@ -194,10 +194,16 @@ pub(crate) async fn begin_write(
 // --- Conversions & erreurs ---------------------------------------------------
 
 /// Traduit une erreur sqlx en erreur du domaine (violation d'unicité → Conflict).
+/// Message client d'une violation d'unicité (sans détail SQL).
+pub(crate) const UNIQUE_CONFLICT_MESSAGE: &str = "un élément portant ce nom existe déjà";
+
 pub(crate) fn map_sqlx(e: sqlx::Error) -> StorageError {
     if let sqlx::Error::Database(db) = &e {
         if db.is_unique_violation() {
-            return StorageError::Conflict(db.message().to_string());
+            // Le message brut du SGBD (« UNIQUE constraint failed: … ») part
+            // dans les logs, jamais au client (lot 32).
+            tracing::debug!(error = %db.message(), "violation d'unicité");
+            return StorageError::Conflict(UNIQUE_CONFLICT_MESSAGE.to_string());
         }
     }
     StorageError::Backend(e.to_string())

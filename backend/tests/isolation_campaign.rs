@@ -725,3 +725,174 @@ async fn every_id_route_of_the_router_is_isolated_between_accounts() {
         "aucun compte supprimé"
     );
 }
+
+/// Lot 32 — routes de compte et quotas, vues d'un compte tiers : la liste des
+/// comptes et les réglages de quotas sont réservés à l'admin (403 sans aucune
+/// donnée), l'usage et le changement de mot de passe ne portent que sur le
+/// compte connecté, les quotas se comptent **par compte** (l'espace ou les
+/// tranchages d'Alice ne bloquent jamais Bob) et l'unicité des noms de projet
+/// ne révèle pas les noms d'un autre compte.
+#[tokio::test]
+async fn lot32_account_routes_and_quotas_are_scoped_per_account() {
+    let h = harness().await;
+    let alice_session = register(&h.app, "alice@test.local").await; // 1er = admin
+    let alice = user_id(&h.storage, "alice@test.local").await;
+    let _r = seed_alice(&h, alice).await; // projet « Alice project » + 1 job en file
+    let bob = register(&h.app, "bob@test.local").await;
+    let bob_id = user_id(&h.storage, "bob@test.local").await;
+
+    // Espace d'Alice : 50 000 octets.
+    h.files
+        .write_opened_gcode(
+            alice,
+            "0123456789abcdef0123456789abcdef",
+            &[b'G'; 50_000],
+            4,
+        )
+        .await
+        .unwrap();
+
+    let read = |resp: Response| async move {
+        let status = resp.status();
+        let bytes = axum::body::to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap();
+        (status, String::from_utf8_lossy(&bytes).into_owned())
+    };
+
+    // Routes admin : 403 pour Bob, sans aucune donnée d'Alice.
+    for (method, uri, body) in [
+        ("GET", "/api/admin/users", None),
+        ("GET", "/api/admin/users?q=alice", None),
+        ("GET", "/api/admin/instance", None),
+        (
+            "PATCH",
+            "/api/admin/instance",
+            Some(json!({ "storage_quota_bytes": 1, "max_concurrent_slices": 1 })),
+        ),
+    ] {
+        let (status, text) = read(attempt(&h.app, method, uri, &bob, body).await).await;
+        assert_eq!(status, StatusCode::FORBIDDEN, "{method} {uri}");
+        assert!(
+            !text.contains("alice@test.local"),
+            "{method} {uri} : {text}"
+        );
+    }
+
+    // Usage : Bob ne voit que le sien.
+    let (status, text) = read(attempt(&h.app, "GET", "/api/me/usage", &bob, None).await).await;
+    assert_eq!(status, StatusCode::OK);
+    let usage: Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(
+        usage["storage_bytes"], 0,
+        "espace d'Alice non compté chez Bob"
+    );
+    assert_eq!(usage["active_slices"], 0, "job d'Alice non compté chez Bob");
+
+    // Quotas posés par l'admin (Alice) : 10 000 octets, 1 tranchage.
+    let resp = attempt(
+        &h.app,
+        "PATCH",
+        "/api/admin/instance",
+        &alice_session,
+        Some(json!({ "storage_quota_bytes": 10_000, "max_concurrent_slices": 1 })),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    // Nom de projet identique à celui d'Alice : accepté tel quel chez Bob
+    // (aucun suffixe = aucun oracle sur les noms d'autrui).
+    let (status, text) = read(
+        attempt(
+            &h.app,
+            "POST",
+            "/api/projects",
+            &bob,
+            Some(json!({ "name": "Alice project" })),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED);
+    let bob_project: Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(bob_project["name"], "Alice project");
+    let bob_pid = bob_project["id"].as_str().unwrap().to_string();
+
+    // Stockage : Alice (50 000 > 10 000) est bloquée, Bob (vide) ne l'est pas.
+    let put = |session: &str, project: &str| {
+        Request::builder()
+            .method("PUT")
+            .uri(format!("/api/projects/{project}/auxiliaries/Others/f.txt"))
+            .header(header::COOKIE, session)
+            .body(Body::from(vec![b'x'; 100]))
+            .unwrap()
+    };
+    let alice_pid = h
+        .storage
+        .projects()
+        .list(alice)
+        .await
+        .unwrap()
+        .remove(0)
+        .id
+        .to_string();
+    let resp = h
+        .app
+        .clone()
+        .oneshot(put(&alice_session, &alice_pid))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::PAYLOAD_TOO_LARGE);
+    let resp = h.app.clone().oneshot(put(&bob, &bob_pid)).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED, "quota de Bob intact");
+
+    // Tranchages : le job en file d'Alice ne consomme pas la place de Bob.
+    let scene = json!({
+        "schema_version": 1,
+        "objects": [{ "id": "o1" }],
+        "plates": [{ "id": "p1", "objectIds": ["o1"] }]
+    });
+    let (status, text) = read(
+        attempt(
+            &h.app,
+            "POST",
+            &format!("/api/projects/{bob_pid}/slice"),
+            &bob,
+            Some(json!({ "plate_index": 0, "scene": scene })),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(status, StatusCode::CREATED, "{text}");
+    let (status, text) = read(
+        attempt(
+            &h.app,
+            "POST",
+            &format!("/api/projects/{bob_pid}/slice"),
+            &bob,
+            Some(json!({ "plate_index": 0, "scene": scene })),
+        )
+        .await,
+    )
+    .await;
+    assert_eq!(status, StatusCode::TOO_MANY_REQUESTS);
+    assert!(!text.contains("Alice"), "{text}");
+    let (_, text) = read(attempt(&h.app, "GET", "/api/me/usage", &bob, None).await).await;
+    let usage: Value = serde_json::from_str(&text).unwrap();
+    assert_eq!(usage["active_slices"], 1, "seul le job de Bob compte");
+
+    // Mot de passe : Bob ne change que le sien ; la session d'Alice survit.
+    let resp = attempt(
+        &h.app,
+        "PUT",
+        "/api/me/password",
+        &bob,
+        Some(json!({ "current_password": "password123", "new_password": "bob-new-pass" })),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::NO_CONTENT);
+    let resp = attempt(&h.app, "GET", "/api/auth/me", &alice_session, None).await;
+    assert_eq!(resp.status(), StatusCode::OK, "session d'Alice intacte");
+    register_existing(&h.app, "alice@test.local").await; // mot de passe d'Alice inchangé
+    let _ = bob_id;
+}

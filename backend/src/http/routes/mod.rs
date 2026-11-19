@@ -51,6 +51,11 @@ where
         .route("/api/auth/logout", post(auth::logout))
         .route("/api/auth/me", get(auth::me).delete(auth::delete_me))
         .route(
+            "/api/me/password",
+            axum::routing::put(auth::change_password),
+        )
+        .route("/api/me/usage", get(auth::usage))
+        .route(
             "/api/me/preferences",
             get(preferences::get).put(preferences::put),
         )
@@ -58,7 +63,10 @@ where
             "/api/admin/instance",
             get(admin::get_instance).patch(admin::patch_instance),
         )
-        .route("/api/admin/users", post(admin::create_user))
+        .route(
+            "/api/admin/users",
+            get(admin::list_users).post(admin::create_user),
+        )
         .route(
             "/api/admin/users/{id}",
             axum::routing::delete(admin::delete_user),

@@ -15,6 +15,10 @@ use super::state::AppState;
 /// Clé de session portant l'identifiant du compte connecté.
 pub const SESSION_USER_KEY: &str = "user_id";
 
+/// Clé de session portant l'empreinte du mot de passe au moment de la
+/// connexion (`auth::session_stamp`, lot 32).
+pub const SESSION_STAMP_KEY: &str = "auth_stamp";
+
 /// Compte connecté (extrait de la session).
 pub struct CurrentUser(pub User);
 
@@ -38,6 +42,27 @@ impl FromRequestParts<AppState> for CurrentUser {
             .get(user_id)
             .await
             .map_err(|_| ApiError::unauthorized())?;
+        // Mot de passe changé/réinitialisé depuis l'ouverture de la session →
+        // session révoquée (lot 32). Une session antérieure au lot 32 (sans
+        // empreinte) reçoit l'empreinte courante à sa première requête.
+        let stamp = crate::auth::session_stamp(&user.password_hash);
+        let stored: Option<String> = session
+            .get(SESSION_STAMP_KEY)
+            .await
+            .map_err(|_| ApiError::internal())?;
+        match stored {
+            Some(s) if s == stamp => {}
+            Some(_) => {
+                let _ = session.flush().await;
+                return Err(ApiError::unauthorized());
+            }
+            None => {
+                session
+                    .insert(SESSION_STAMP_KEY, stamp)
+                    .await
+                    .map_err(|_| ApiError::internal())?;
+            }
+        }
         Ok(CurrentUser(user))
     }
 }

@@ -1301,6 +1301,8 @@ impl InstanceRepo for SqliteInstanceRepo {
         Ok(InstanceSettings {
             registration_policy: parse_enum(&row.get::<String, _>("registration_policy"))?,
             upload_limit_bytes: row.get("upload_limit_bytes"),
+            storage_quota_bytes: row.get("storage_quota_bytes"),
+            max_concurrent_slices: row.get("max_concurrent_slices"),
         })
     }
 
@@ -1318,6 +1320,26 @@ impl InstanceRepo for SqliteInstanceRepo {
         self.ensure_row().await?;
         sqlx::query("UPDATE instance_settings SET upload_limit_bytes = ? WHERE id = 1")
             .bind(bytes)
+            .execute(&self.pool)
+            .await
+            .map_err(map_sqlx)?;
+        Ok(())
+    }
+
+    async fn set_storage_quota(&self, bytes: i64) -> StorageResult<()> {
+        self.ensure_row().await?;
+        sqlx::query("UPDATE instance_settings SET storage_quota_bytes = ? WHERE id = 1")
+            .bind(bytes)
+            .execute(&self.pool)
+            .await
+            .map_err(map_sqlx)?;
+        Ok(())
+    }
+
+    async fn set_max_concurrent_slices(&self, n: i64) -> StorageResult<()> {
+        self.ensure_row().await?;
+        sqlx::query("UPDATE instance_settings SET max_concurrent_slices = ? WHERE id = 1")
+            .bind(n)
             .execute(&self.pool)
             .await
             .map_err(map_sqlx)?;

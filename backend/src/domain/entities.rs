@@ -55,6 +55,12 @@ pub struct InstanceSettings {
     pub registration_policy: RegistrationPolicy,
     /// Limite d'upload par fichier (octets ; défaut 500 Mo).
     pub upload_limit_bytes: i64,
+    /// Quota de stockage par compte (octets, tout l'espace fichiers du
+    /// compte) ; 0 = illimité (lot 32).
+    pub storage_quota_bytes: i64,
+    /// Nombre maximal de tranchages simultanés par compte (jobs `queued` +
+    /// `running`) ; 0 = illimité (lot 32).
+    pub max_concurrent_slices: i64,
 }
 
 /// Invitation à usage unique (politique `invite`).

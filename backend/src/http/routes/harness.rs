@@ -21,7 +21,6 @@ use crate::domain::repo::NewPrinter;
 use crate::domain::{NewProject, Preset, PresetKind, PresetOrigin, Role, UserId};
 use crate::engine::{run_worker, WorkerError};
 use crate::http::error::{ApiError, ApiResult};
-use crate::http::extract::SESSION_USER_KEY;
 use crate::http::state::AppState;
 use crate::models::{MeshDecoder, WorkerMeshDecoder};
 
@@ -117,10 +116,7 @@ pub(crate) async fn bootstrap(
         )
         .await?;
 
-    session
-        .insert(SESSION_USER_KEY, user.id.to_string())
-        .await
-        .map_err(|_| ApiError::internal())?;
+    super::auth::open_session(&session, &user).await?;
     Ok(Json(BootstrapResponse {
         project_id: project.id.to_string(),
     }))

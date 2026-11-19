@@ -55,6 +55,85 @@ pub struct DeleteAccountRequest {
     pub password: String,
 }
 
+/// Corps de `PUT /api/me/password` (lot 32).
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct ChangePasswordRequest {
+    pub current_password: String,
+    /// 8 caractères minimum, différent de l'actuel.
+    pub new_password: String,
+}
+
+/// Usage et quotas du compte connecté (`GET /api/me/usage`, lot 32).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct UsageResponse {
+    /// Octets occupés par l'espace fichiers du compte (modèles, maillages,
+    /// G-code, vignettes, fichiers auxiliaires, G-code ouverts).
+    #[ts(type = "number")]
+    pub storage_bytes: i64,
+    /// Quota de stockage par compte (octets) ; 0 = illimité.
+    #[ts(type = "number")]
+    pub storage_quota_bytes: i64,
+    /// Tranchages du compte en file ou en cours.
+    #[ts(type = "number")]
+    pub active_slices: i64,
+    /// Tranchages simultanés autorisés ; 0 = illimité.
+    #[ts(type = "number")]
+    pub max_concurrent_slices: i64,
+}
+
+/// Ligne de la liste des comptes (`GET /api/admin/users`, lot 32).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct AdminUserResponse {
+    pub id: String,
+    pub email: String,
+    /// `admin` | `user`.
+    pub role: String,
+    /// `active` | `disabled`.
+    pub status: String,
+    /// Date de création (RFC 3339, UTC).
+    pub created_at: String,
+    /// Octets occupés par l'espace fichiers du compte.
+    #[ts(type = "number")]
+    pub storage_bytes: i64,
+    /// Nombre de projets du compte.
+    #[ts(type = "number")]
+    pub project_count: i64,
+}
+
+/// Page de la liste des comptes (`GET /api/admin/users`, lot 32).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct AdminUserListResponse {
+    pub users: Vec<AdminUserResponse>,
+    /// Nombre total de comptes correspondant au filtre `q`.
+    #[ts(type = "number")]
+    pub total: i64,
+    /// Page courante (à partir de 1).
+    #[ts(type = "number")]
+    pub page: i64,
+    /// Taille de page (1..=200, défaut 50).
+    #[ts(type = "number")]
+    pub per_page: i64,
+}
+
+/// Paramètres de `GET /api/admin/users` (query string).
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[ts(export)]
+pub struct AdminUsersQuery {
+    /// Page (à partir de 1, défaut 1).
+    #[ts(optional, type = "number")]
+    pub page: Option<i64>,
+    /// Taille de page (défaut 50, bornée à 200).
+    #[ts(optional, type = "number")]
+    pub per_page: Option<i64>,
+    /// Filtre : sous-chaîne de l'e-mail, insensible à la casse.
+    #[ts(optional)]
+    pub q: Option<String>,
+}
+
 /// Représentation publique d'un compte (jamais le hash).
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -85,6 +164,12 @@ pub struct InstanceResponse {
     /// `open` | `closed` | `invite`.
     pub registration_policy: String,
     pub upload_limit_bytes: i64,
+    /// Quota de stockage par compte (octets) ; 0 = illimité (lot 32).
+    #[ts(type = "number")]
+    pub storage_quota_bytes: i64,
+    /// Tranchages simultanés (en file + en cours) par compte ; 0 = illimité.
+    #[ts(type = "number")]
+    pub max_concurrent_slices: i64,
 }
 
 impl From<InstanceSettings> for InstanceResponse {
@@ -92,6 +177,8 @@ impl From<InstanceSettings> for InstanceResponse {
         Self {
             registration_policy: json_lower(&s.registration_policy),
             upload_limit_bytes: s.upload_limit_bytes,
+            storage_quota_bytes: s.storage_quota_bytes,
+            max_concurrent_slices: s.max_concurrent_slices,
         }
     }
 }
@@ -105,6 +192,12 @@ pub struct PatchInstanceRequest {
     pub registration_policy: Option<String>,
     #[ts(optional)]
     pub upload_limit_bytes: Option<i64>,
+    /// Quota de stockage par compte (octets, ≥ 0 ; 0 = illimité).
+    #[ts(optional, type = "number")]
+    pub storage_quota_bytes: Option<i64>,
+    /// Tranchages simultanés par compte (≥ 0 ; 0 = illimité).
+    #[ts(optional, type = "number")]
+    pub max_concurrent_slices: Option<i64>,
 }
 
 /// Corps de `POST /api/admin/users` (compte géré par l'admin).

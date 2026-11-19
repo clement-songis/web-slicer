@@ -66,6 +66,16 @@ impl FileStore {
         self.root.join("users").join(user.to_string())
     }
 
+    /// Octets occupés par tout l'espace fichiers d'un utilisateur
+    /// (`<root>/users/<uid>`, récursif ; liens symboliques non suivis). Un
+    /// espace absent vaut 0. Parcours hors du worker async (lot 32, quotas).
+    pub async fn usage_bytes(&self, user: UserId) -> FilesResult<u64> {
+        let root = self.user_root(user);
+        tokio::task::spawn_blocking(move || dir_size(&root))
+            .await
+            .map_err(|e| FilesError::Io(std::io::Error::other(e)))?
+    }
+
     fn space_dir(&self, user: UserId, space: Space) -> PathBuf {
         self.user_root(user).join(space.dir())
     }
@@ -349,6 +359,31 @@ fn ensure_component(name: &str) -> FilesResult<()> {
         return Err(FilesError::UnsafeName(name.to_string()));
     }
     Ok(())
+}
+
+/// Taille cumulée des fichiers d'une arborescence (0 si absente).
+fn dir_size(root: &Path) -> FilesResult<u64> {
+    let mut total = 0u64;
+    let mut stack = vec![root.to_path_buf()];
+    while let Some(dir) = stack.pop() {
+        let entries = match std::fs::read_dir(&dir) {
+            Ok(entries) => entries,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(e) => return Err(e.into()),
+        };
+        for entry in entries {
+            let entry = entry?;
+            // Fichier supprimé entre la lecture du dossier et celle de ses
+            // métadonnées (purge concurrente) : ignoré.
+            let Ok(meta) = entry.metadata() else { continue };
+            if meta.is_dir() {
+                stack.push(entry.path());
+            } else if meta.is_file() {
+                total += meta.len();
+            }
+        }
+    }
+    Ok(total)
 }
 
 #[cfg(test)]

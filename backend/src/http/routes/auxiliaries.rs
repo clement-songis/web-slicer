@@ -85,6 +85,7 @@ pub async fn put(
         ));
     }
     let existed = path.exists();
+    crate::http::quota::ensure_storage_room(&state, user.id, body.len() as i64).await?;
     state
         .files
         .write_auxiliary(&path, &body)

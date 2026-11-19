@@ -325,6 +325,10 @@ pub trait InstanceRepo: Send + Sync {
     async fn settings(&self) -> StorageResult<InstanceSettings>;
     async fn set_registration_policy(&self, policy: RegistrationPolicy) -> StorageResult<()>;
     async fn set_upload_limit(&self, bytes: i64) -> StorageResult<()>;
+    /// Quota de stockage par compte (octets, 0 = illimité).
+    async fn set_storage_quota(&self, bytes: i64) -> StorageResult<()>;
+    /// Tranchages simultanés par compte (0 = illimité).
+    async fn set_max_concurrent_slices(&self, n: i64) -> StorageResult<()>;
     async fn create_invitation(&self, invitation: NewInvitation) -> StorageResult<Invitation>;
     /// Consomme une invitation valide (non utilisée, non expirée) → l'émetteur.
     /// `NotFound` si le token est invalide/expiré/déjà utilisé.

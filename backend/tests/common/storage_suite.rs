@@ -29,6 +29,45 @@ pub async fn run_all(s: &dyn Storage) {
     printer_preset_references_are_isolated(s).await;
     account_deletion_cascades(s).await;
     user_preferences_are_per_account_and_cascade(s).await;
+    instance_quotas_round_trip(s).await;
+}
+
+/// Quotas d'instance (lot 32) : 0 (illimité) par défaut, écriture indépendante
+/// des autres réglages, conflit d'unicité sans message SQL brut.
+async fn instance_quotas_round_trip(s: &dyn Storage) {
+    let before = s.instance().settings().await.unwrap();
+    assert_eq!(before.storage_quota_bytes, 0);
+    assert_eq!(before.max_concurrent_slices, 0);
+    s.instance().set_storage_quota(5_000_000_000).await.unwrap();
+    s.instance().set_max_concurrent_slices(3).await.unwrap();
+    let after = s.instance().settings().await.unwrap();
+    assert_eq!(after.storage_quota_bytes, 5_000_000_000);
+    assert_eq!(after.max_concurrent_slices, 3);
+    assert_eq!(after.upload_limit_bytes, before.upload_limit_bytes);
+    assert_eq!(after.registration_policy, before.registration_policy);
+    s.instance().set_storage_quota(0).await.unwrap();
+    s.instance().set_max_concurrent_slices(0).await.unwrap();
+
+    let owner = make_user(s).await;
+    make_project(s, owner.id, "Doublon").await;
+    let dup = s
+        .projects()
+        .create(
+            owner.id,
+            backend::domain::repo::NewProject {
+                name: "Doublon".into(),
+                scene: json!({}),
+                active_presets: json!({}),
+                thumbnail_path: None,
+            },
+        )
+        .await;
+    match dup {
+        Err(StorageError::Conflict(m)) => {
+            assert!(!m.contains("UNIQUE") && !m.contains("duplicate key"), "{m}")
+        }
+        other => panic!("conflit attendu : {other:?}"),
+    }
 }
 
 /// Préférences par compte : `{}` par défaut, upsert, isolation, cascade.

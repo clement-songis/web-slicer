@@ -7,4 +7,12 @@ export type PatchInstanceRequest = {
 /**
  * `open` | `closed` | `invite`.
  */
-registration_policy?: string, upload_limit_bytes?: bigint, };
+registration_policy?: string, upload_limit_bytes?: bigint, 
+/**
+ * Quota de stockage par compte (octets, ≥ 0 ; 0 = illimité).
+ */
+storage_quota_bytes?: number, 
+/**
+ * Tranchages simultanés par compte (≥ 0 ; 0 = illimité).
+ */
+max_concurrent_slices?: number, };

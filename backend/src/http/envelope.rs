@@ -38,6 +38,7 @@ pub fn status_code_slug(status: StatusCode) -> (&'static str, &'static str) {
             "Type de contenu non pris en charge (application/json attendu)",
         ),
         StatusCode::UNPROCESSABLE_ENTITY => ("validation", "Corps de requête invalide"),
+        StatusCode::TOO_MANY_REQUESTS => ("too_many_requests", "Trop de requêtes"),
         StatusCode::NOT_IMPLEMENTED => ("not_implemented", "Fonctionnalité indisponible"),
         StatusCode::BAD_GATEWAY => ("bad_gateway", "Service distant injoignable"),
         StatusCode::SERVICE_UNAVAILABLE => ("unavailable", "Service momentanément indisponible"),

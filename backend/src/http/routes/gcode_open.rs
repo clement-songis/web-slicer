@@ -49,6 +49,14 @@ pub async fn process(
         .iter()
         .map(|b| format!("{b:02x}"))
         .collect();
+    // Quota de stockage (lot 32) : seul un fichier pas encore gardé compte.
+    let already_kept = state
+        .files
+        .opened_gcode_path(user.id, &token)
+        .is_ok_and(|p| p.is_file());
+    if !already_kept {
+        crate::http::quota::ensure_storage_room(&state, user.id, body.len() as i64).await?;
+    }
     let path = state
         .files
         .write_opened_gcode(user.id, &token, &body, OPENED_KEEP)

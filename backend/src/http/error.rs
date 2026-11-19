@@ -65,6 +65,79 @@ impl ApiError {
         Self::new(StatusCode::UNAUTHORIZED, "unauthorized", "Session requise")
     }
 
+    /// Identifiants de connexion refusés (e-mail inconnu ou mot de passe faux,
+    /// indistinguables). 401 comme une session absente, mais code dédié (lot 32).
+    pub fn invalid_credentials() -> Self {
+        Self::new(
+            StatusCode::UNAUTHORIZED,
+            "invalid_credentials",
+            "E-mail ou mot de passe incorrect",
+        )
+    }
+
+    /// Mot de passe actuel faux sur une action confirmée par mot de passe
+    /// (changement de mot de passe). 403 et non 401 : la session reste valide.
+    pub fn wrong_password(field: &str) -> Self {
+        let mut e = Self::new(
+            StatusCode::FORBIDDEN,
+            "invalid_credentials",
+            "Mot de passe actuel incorrect",
+        );
+        e.body.details = Some(serde_json::json!({ "field": field }));
+        e
+    }
+
+    /// Nom de projet déjà pris par un autre projet du compte (lot 32).
+    pub fn name_taken(name: &str, suggestion: &str) -> Self {
+        let mut e = Self::new(
+            StatusCode::CONFLICT,
+            "name_taken",
+            format!("Un autre projet s'appelle déjà « {name} »"),
+        );
+        e.body.details = Some(serde_json::json!({
+            "field": "name",
+            "name": name,
+            "suggestion": suggestion,
+        }));
+        e
+    }
+
+    /// Quota de stockage du compte dépassé (lot 32).
+    pub fn storage_quota(used: i64, quota: i64, incoming: i64) -> Self {
+        let mut e = Self::new(
+            StatusCode::PAYLOAD_TOO_LARGE,
+            "storage_quota_exceeded",
+            format!(
+                "Quota de stockage atteint : {} Mo utilisés sur {} Mo",
+                (used.max(0) + 999_999) / 1_000_000,
+                quota / 1_000_000
+            ),
+        );
+        e.body.details = Some(serde_json::json!({
+            "used_bytes": used,
+            "quota_bytes": quota,
+            "incoming_bytes": incoming,
+        }));
+        e
+    }
+
+    /// Trop de tranchages simultanés pour le compte (lot 32).
+    pub fn slice_quota(active: i64, max: i64, requested: i64) -> Self {
+        let mut e = Self::new(
+            StatusCode::TOO_MANY_REQUESTS,
+            "slice_quota_exceeded",
+            format!(
+                "Trop de tranchages simultanés : {active} en cours ou en file, {max} autorisé(s)"
+            ),
+        );
+        e.body.details = Some(serde_json::json!({
+            "active": active,
+            "max": max,
+            "requested": requested,
+        }));
+        e
+    }
+
     /// Action refusée par la politique d'instance (ex. inscription fermée).
     pub fn forbidden(message: impl Into<String>) -> Self {
         Self::new(StatusCode::FORBIDDEN, "forbidden", message)
@@ -199,7 +272,12 @@ impl From<crate::auth::AuthError> for ApiError {
             }
             E::NotFound => ApiError::not_found("Compte"),
             E::LastAdmin => ApiError::forbidden(e.to_string()),
-            E::InvalidCredentials => ApiError::unauthorized(),
+            E::InvalidCredentials => ApiError::invalid_credentials(),
+            E::WrongPassword => ApiError::wrong_password("current_password"),
+            E::SamePassword => ApiError::validation(
+                e.to_string(),
+                serde_json::json!({ "field": "new_password" }),
+            ),
             E::Password(_) | E::Storage(_) => {
                 tracing::error!(error = %e, "erreur d'authentification");
                 ApiError::internal()
@@ -252,6 +330,23 @@ mod tests {
         assert_eq!(j1["code"], "conflict");
         let (s2, _) = body_json(ApiError::unauthorized()).await;
         assert_eq!(s2, StatusCode::UNAUTHORIZED);
+        let (s3, j3) = body_json(ApiError::invalid_credentials()).await;
+        assert_eq!(s3, StatusCode::UNAUTHORIZED);
+        assert_eq!(j3["code"], "invalid_credentials");
+    }
+
+    #[tokio::test]
+    async fn quotas_and_name_taken() {
+        let (s, j) = body_json(ApiError::storage_quota(2_500_000, 2_000_000, 10)).await;
+        assert_eq!(s, StatusCode::PAYLOAD_TOO_LARGE);
+        assert_eq!(j["code"], "storage_quota_exceeded");
+        assert_eq!(j["details"]["quota_bytes"], 2_000_000);
+        let (s, j) = body_json(ApiError::slice_quota(2, 2, 1)).await;
+        assert_eq!(s, StatusCode::TOO_MANY_REQUESTS);
+        assert_eq!(j["code"], "slice_quota_exceeded");
+        let (s, j) = body_json(ApiError::name_taken("A", "A (2)")).await;
+        assert_eq!(s, StatusCode::CONFLICT);
+        assert_eq!(j["details"]["suggestion"], "A (2)");
     }
 
     #[tokio::test]

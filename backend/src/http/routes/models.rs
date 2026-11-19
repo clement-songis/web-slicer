@@ -45,7 +45,7 @@ pub async fn upload(
     // Isolation : le projet doit appartenir au compte (sinon 404, SC-008).
     state.storage.projects().get(user.id, project_id).await?;
 
-    let (filename, format, bytes) = read_model_upload(&state, multipart).await?;
+    let (filename, format, bytes) = read_model_upload(&state, user.id, multipart).await?;
     let model = write_model_record(&state, user.id, project_id, format, filename, &bytes).await?;
     // Décodage moteur asynchrone (R7/T123) : la réponse part immédiatement, le
     // maillage arrive via l'événement WS `model.converted`.
@@ -68,6 +68,7 @@ pub(crate) fn spawn_conversion(state: &AppState, model: Model) {
 /// projet et l'import de projet (T090).
 pub(crate) async fn read_model_upload(
     state: &AppState,
+    user: crate::domain::UserId,
     multipart: Multipart,
 ) -> ApiResult<(String, ModelFormat, Vec<u8>)> {
     let (filename, bytes) = read_upload(multipart).await?;
@@ -84,6 +85,8 @@ pub(crate) async fn read_model_upload(
             bytes.len()
         )));
     }
+    // Quota de stockage du compte (lot 32) : 413 `storage_quota_exceeded`.
+    crate::http::quota::ensure_storage_room(state, user, bytes.len() as i64).await?;
 
     let format = detect_format(&filename).ok_or_else(|| {
         ApiError::validation(

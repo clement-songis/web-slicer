@@ -14,8 +14,11 @@ use glam::{DMat4, DVec3, EulerRot};
 use serde_json::{json, Map, Value};
 use uuid::Uuid;
 
+use std::collections::HashSet;
+
 use crate::domain::{
-    GcodeId, NewProject, Preset, PresetId, PresetKind, PresetOrigin, ProjectId, UserId,
+    GcodeId, NewProject, Preset, PresetId, PresetKind, PresetOrigin, Project, ProjectId,
+    StorageError, UserId,
 };
 use crate::http::dto::{
     CreateProjectRequest, PatchProjectRequest, ProjectResponse, RenameProjectRequest,
@@ -38,6 +41,86 @@ fn parse_project_id(raw: &str) -> ApiResult<ProjectId> {
     Uuid::parse_str(raw)
         .map(ProjectId)
         .map_err(|_| ApiError::not_found("Projet"))
+}
+
+/// Retire un suffixe d'unicité final « (n) » (n ≥ 2) : « cube (2) » → « cube ».
+fn name_base(name: &str) -> &str {
+    if let Some(open) = name.strip_suffix(')').and_then(|s| s.rfind(" (")) {
+        let digits = &name[open + 2..name.len() - 1];
+        if !digits.is_empty()
+            && digits.bytes().all(|b| b.is_ascii_digit())
+            && digits.parse::<u64>().is_ok_and(|n| n >= 2)
+        {
+            return &name[..open];
+        }
+    }
+    name
+}
+
+/// Premier nom libre « base (n) », n ≥ 2, comme l'interface (`names.ts`).
+fn next_free_name(name: &str, taken: &HashSet<String>) -> String {
+    let base = name_base(name);
+    (2u64..)
+        .map(|n| format!("{base} ({n})"))
+        .find(|candidate| !taken.contains(candidate))
+        .unwrap_or_else(|| format!("{base} ({})", Uuid::new_v4().simple()))
+}
+
+async fn taken_names(state: &AppState, owner: UserId) -> ApiResult<HashSet<String>> {
+    Ok(state
+        .storage
+        .projects()
+        .list(owner)
+        .await?
+        .into_iter()
+        .map(|p| p.name)
+        .collect())
+}
+
+/// Crée un projet sous un nom **unique** pour le compte (lot 32) : nom demandé
+/// s'il est libre, sinon « nom (2) », « nom (3) »… Nouvel essai si un autre
+/// onglet prend le nom entre-temps ; jamais l'erreur SQL brute.
+pub(crate) async fn create_unique_project(
+    state: &AppState,
+    owner: UserId,
+    mut project: NewProject,
+) -> ApiResult<Project> {
+    for _ in 0..8 {
+        match state
+            .storage
+            .projects()
+            .create(owner, project.clone())
+            .await
+        {
+            Ok(created) => return Ok(created),
+            Err(StorageError::Conflict(_)) => {
+                let taken = taken_names(state, owner).await?;
+                project.name = next_free_name(&project.name, &taken);
+            }
+            Err(e) => return Err(e.into()),
+        }
+    }
+    Err(ApiError::conflict(
+        "impossible d'attribuer un nom de projet libre",
+    ))
+}
+
+/// Renomme un projet du compte ; nom pris par un **autre** projet du compte →
+/// 409 `name_taken` avec `details.suggestion` (premier nom libre).
+async fn rename_project(
+    state: &AppState,
+    owner: UserId,
+    id: ProjectId,
+    name: &str,
+) -> ApiResult<Project> {
+    match state.storage.projects().rename(owner, id, name).await {
+        Ok(project) => Ok(project),
+        Err(StorageError::Conflict(_)) => {
+            let taken = taken_names(state, owner).await?;
+            Err(ApiError::name_taken(name, &next_free_name(name, &taken)))
+        }
+        Err(e) => Err(e.into()),
+    }
 }
 
 /// `GET /api/projects` — bibliothèque du compte connecté.
@@ -76,19 +159,17 @@ pub async fn create(
             json!({ "field": "name" }),
         ));
     }
-    let project = state
-        .storage
-        .projects()
-        .create(
-            user.id,
-            NewProject {
-                name: name.to_string(),
-                scene: body.scene.unwrap_or_else(default_scene),
-                active_presets: body.active_presets.unwrap_or_else(|| json!({})),
-                thumbnail_path: None,
-            },
-        )
-        .await?;
+    let project = create_unique_project(
+        &state,
+        user.id,
+        NewProject {
+            name: name.to_string(),
+            scene: body.scene.unwrap_or_else(default_scene),
+            active_presets: body.active_presets.unwrap_or_else(|| json!({})),
+            thumbnail_path: None,
+        },
+    )
+    .await?;
     Ok((StatusCode::CREATED, Json(project.into())))
 }
 
@@ -106,23 +187,22 @@ pub async fn import(
 ) -> ApiResult<(StatusCode, Json<ProjectResponse>)> {
     // Validation avant toute création : aucun projet orphelin sur fichier
     // invalide. L'extraction ZIP/XML est CPU/IO bornée et hors worker async.
-    let (filename, format, bytes) = super::models::read_model_upload(&state, multipart).await?;
+    let (filename, format, bytes) =
+        super::models::read_model_upload(&state, user.id, multipart).await?;
     let name = project_name_from(&filename);
 
     if format != crate::domain::ModelFormat::ThreeMf {
-        let project = state
-            .storage
-            .projects()
-            .create(
-                user.id,
-                NewProject {
-                    name,
-                    scene: default_scene(),
-                    active_presets: json!({}),
-                    thumbnail_path: None,
-                },
-            )
-            .await?;
+        let project = create_unique_project(
+            &state,
+            user.id,
+            NewProject {
+                name,
+                scene: default_scene(),
+                active_presets: json!({}),
+                thumbnail_path: None,
+            },
+        )
+        .await?;
         let model = super::models::write_model_record(
             &state, user.id, project.id, format, filename, &bytes,
         )
@@ -135,19 +215,17 @@ pub async fn import(
         .await
         .map_err(|e| ApiError::validation(e.to_string(), details(&filename)))?;
 
-    let project = state
-        .storage
-        .projects()
-        .create(
-            user.id,
-            NewProject {
-                name: name.clone(),
-                scene: default_scene(),
-                active_presets: json!({}),
-                thumbnail_path: None,
-            },
-        )
-        .await?;
+    let project = create_unique_project(
+        &state,
+        user.id,
+        NewProject {
+            name: name.clone(),
+            scene: default_scene(),
+            active_presets: json!({}),
+            thumbnail_path: None,
+        },
+    )
+    .await?;
 
     let result = import_3mf_contents(&state, user.id, project.id, &name, &filename, imported).await;
     let (scene, active_presets, models) = match result {
@@ -205,7 +283,8 @@ pub async fn import_into(
         .projects()
         .get(user.id, parse_project_id(&raw_id)?)
         .await?;
-    let (filename, format, bytes) = super::models::read_model_upload(&state, multipart).await?;
+    let (filename, format, bytes) =
+        super::models::read_model_upload(&state, user.id, multipart).await?;
     if format != crate::domain::ModelFormat::ThreeMf {
         return Err(ApiError::validation(
             "fichier 3MF attendu",
@@ -1105,7 +1184,7 @@ pub async fn patch(
         spawn_scene_thumbnail(&state, user.id, &project);
     }
     if let Some(name) = name {
-        project = state.storage.projects().rename(user.id, id, &name).await?;
+        project = rename_project(&state, user.id, id, &name).await?;
     }
     Ok(Json(with_gcode_thumbnail(&state, user.id, project).await))
 }
@@ -1172,6 +1251,9 @@ pub async fn duplicate(
     let id = parse_project_id(&id)?;
     let source = state.storage.projects().get(user.id, id).await?;
     let models = state.storage.models().list(user.id, Some(id)).await?;
+    // Quota de stockage (lot 32) : la copie duplique les fichiers des modèles.
+    let copied: i64 = models.iter().map(|m| m.size_bytes.max(0)).sum();
+    crate::http::quota::ensure_storage_room(&state, user.id, copied).await?;
 
     let thumbnail_path = match source.thumbnail_path.as_deref() {
         Some(path) => {
@@ -1195,19 +1277,17 @@ pub async fn duplicate(
         }
         None => None,
     };
-    let copy = state
-        .storage
-        .projects()
-        .create(
-            user.id,
-            NewProject {
-                name: format!("{} (copie)", source.name),
-                scene: default_scene(),
-                active_presets: source.active_presets.clone(),
-                thumbnail_path,
-            },
-        )
-        .await?;
+    let copy = create_unique_project(
+        &state,
+        user.id,
+        NewProject {
+            name: format!("{} (copie)", source.name),
+            scene: default_scene(),
+            active_presets: source.active_presets.clone(),
+            thumbnail_path,
+        },
+    )
+    .await?;
 
     let mut id_map = std::collections::HashMap::new();
     let mut pending = Vec::new();
@@ -1333,7 +1413,7 @@ pub async fn rename(
             json!({ "field": "name" }),
         ));
     }
-    let project = state.storage.projects().rename(user.id, id, name).await?;
+    let project = rename_project(&state, user.id, id, name).await?;
     Ok(Json(with_gcode_thumbnail(&state, user.id, project).await))
 }
 
@@ -1528,5 +1608,27 @@ mod thumbnail_tests {
         assert!(best_thumbnail(&json!([])).is_none());
         assert!(best_thumbnail(&json!(null)).is_none());
         assert!(best_thumbnail(&json!([{ "width": 1, "height": 1 }])).is_none());
+    }
+}
+
+#[cfg(test)]
+mod name_tests {
+    use super::*;
+
+    #[test]
+    fn unique_names_follow_the_interface_rule() {
+        assert_eq!(name_base("cube (2)"), "cube");
+        assert_eq!(name_base("cube (12)"), "cube");
+        assert_eq!(name_base("cube (1)"), "cube (1)");
+        assert_eq!(name_base("cube (copie)"), "cube (copie)");
+        assert_eq!(name_base("(2)"), "(2)");
+        assert_eq!(name_base("Sans titre"), "Sans titre");
+        let taken: HashSet<String> = ["Sans titre", "Sans titre (2)", "cube (copie)"]
+            .into_iter()
+            .map(String::from)
+            .collect();
+        assert_eq!(next_free_name("Sans titre", &taken), "Sans titre (3)");
+        assert_eq!(next_free_name("Sans titre (2)", &taken), "Sans titre (3)");
+        assert_eq!(next_free_name("cube (copie)", &taken), "cube (copie) (2)");
     }
 }

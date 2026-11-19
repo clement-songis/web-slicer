@@ -6,6 +6,7 @@ pub mod envelope;
 pub mod error;
 pub mod extract;
 pub mod printer_relay;
+pub mod quota;
 pub mod routes;
 pub mod state;
 pub mod ws;

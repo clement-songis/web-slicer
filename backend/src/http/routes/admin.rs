@@ -2,7 +2,7 @@
 //! `admin` via l'extracteur `AdminUser`. Handlers minces : validation DTO →
 //! service `auth::` ou repo → réponse.
 
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::Json;
 use serde::de::DeserializeOwned;
@@ -12,8 +12,9 @@ use uuid::Uuid;
 use crate::auth;
 use crate::domain::{self, RegistrationPolicy, Role, UserId};
 use crate::http::dto::{
-    AdminCreateUserRequest, CreateInvitationRequest, InstanceResponse, InvitationResponse,
-    PatchInstanceRequest, ReseedResponse, ResetPasswordRequest, UserResponse,
+    AdminCreateUserRequest, AdminUserListResponse, AdminUserResponse, AdminUsersQuery,
+    CreateInvitationRequest, InstanceResponse, InvitationResponse, PatchInstanceRequest,
+    ReseedResponse, ResetPasswordRequest, UserResponse,
 };
 use crate::http::error::{ApiError, ApiResult};
 use crate::http::extract::AdminUser;
@@ -67,8 +68,99 @@ pub async fn patch_instance(
         }
         state.storage.instance().set_upload_limit(limit).await?;
     }
+    if let Some(quota) = body.storage_quota_bytes {
+        if quota < 0 {
+            return Err(ApiError::validation(
+                "le quota de stockage doit être positif ou nul (0 = illimité)",
+                serde_json::json!({ "field": "storage_quota_bytes" }),
+            ));
+        }
+        state.storage.instance().set_storage_quota(quota).await?;
+    }
+    if let Some(max) = body.max_concurrent_slices {
+        if !(0..=1000).contains(&max) {
+            return Err(ApiError::validation(
+                "le nombre de tranchages simultanés doit être entre 0 (illimité) et 1000",
+                serde_json::json!({ "field": "max_concurrent_slices", "min": 0, "max": 1000 }),
+            ));
+        }
+        state
+            .storage
+            .instance()
+            .set_max_concurrent_slices(max)
+            .await?;
+    }
     let settings = state.storage.instance().settings().await?;
     Ok(Json(settings.into()))
+}
+
+/// Taille de page par défaut / maximale de `GET /api/admin/users`.
+const USERS_PER_PAGE: i64 = 50;
+const USERS_PER_PAGE_MAX: i64 = 200;
+
+/// `GET /api/admin/users?page=&per_page=&q=` — liste paginée des comptes
+/// (lot 32), par date de création croissante : rôle, statut, date, espace
+/// disque occupé et nombre de projets. `q` filtre sur une sous-chaîne de
+/// l'e-mail (insensible à la casse). Page au-delà de la fin → liste vide.
+pub async fn list_users(
+    _admin: AdminUser,
+    State(state): State<AppState>,
+    Query(query): Query<AdminUsersQuery>,
+) -> ApiResult<Json<AdminUserListResponse>> {
+    let page = query.page.unwrap_or(1);
+    let per_page = query.per_page.unwrap_or(USERS_PER_PAGE);
+    if page < 1 {
+        return Err(ApiError::validation(
+            "page doit être ≥ 1",
+            serde_json::json!({ "field": "page", "min": 1 }),
+        ));
+    }
+    if !(1..=USERS_PER_PAGE_MAX).contains(&per_page) {
+        return Err(ApiError::validation(
+            format!("per_page doit être entre 1 et {USERS_PER_PAGE_MAX}"),
+            serde_json::json!({ "field": "per_page", "min": 1, "max": USERS_PER_PAGE_MAX }),
+        ));
+    }
+    let needle = query
+        .q
+        .as_deref()
+        .map(|q| q.trim().to_lowercase())
+        .filter(|q| !q.is_empty());
+    let users: Vec<_> = state
+        .storage
+        .users()
+        .list()
+        .await?
+        .into_iter()
+        .filter(|u| needle.as_deref().is_none_or(|n| u.email.contains(n)))
+        .collect();
+    let total = users.len() as i64;
+    let start = usize::try_from((page - 1).saturating_mul(per_page)).unwrap_or(usize::MAX);
+    let mut out = Vec::new();
+    for user in users.into_iter().skip(start).take(per_page as usize) {
+        let storage_bytes = crate::http::quota::storage_used(&state, user.id).await?;
+        let project_count = state.storage.projects().list(user.id).await?.len() as i64;
+        let created_at = user
+            .created_at
+            .format(&time::format_description::well_known::Rfc3339)
+            .map_err(|_| ApiError::internal())?;
+        let public = UserResponse::from(user);
+        out.push(AdminUserResponse {
+            id: public.id,
+            email: public.email,
+            role: public.role,
+            status: public.status,
+            created_at,
+            storage_bytes,
+            project_count,
+        });
+    }
+    Ok(Json(AdminUserListResponse {
+        users: out,
+        total,
+        page,
+        per_page,
+    }))
 }
 
 /// `POST /api/admin/users` — crée un compte géré par l'admin.

@@ -25,6 +25,10 @@ pub enum AuthError {
     InvalidInvitation,
     #[error("identifiants invalides")]
     InvalidCredentials,
+    #[error("mot de passe actuel incorrect")]
+    WrongPassword,
+    #[error("le nouveau mot de passe doit différer de l'actuel")]
+    SamePassword,
     #[error("compte désactivé")]
     AccountDisabled,
     #[error("compte introuvable")]
@@ -146,6 +150,52 @@ pub async fn reset_password(
         .set_password_hash(id, &password_hash)
         .await?;
     Ok(())
+}
+
+/// Change le mot de passe du compte connecté (lot 32) : l'ancien mot de passe
+/// est exigé, le nouveau doit respecter la longueur minimale et différer de
+/// l'actuel. Renvoie le compte relu (nouveau hash) : l'appelant en dérive
+/// l'empreinte de session (`session_stamp`), ce qui invalide toutes les autres
+/// sessions du compte.
+pub async fn change_password(
+    storage: &dyn Storage,
+    user: &User,
+    current_password: &str,
+    new_password: &str,
+) -> Result<User, AuthError> {
+    if !verify_password(current_password, &user.password_hash) {
+        return Err(AuthError::WrongPassword);
+    }
+    if new_password.len() < MIN_PASSWORD_LEN {
+        return Err(AuthError::WeakPassword);
+    }
+    if new_password == current_password {
+        return Err(AuthError::SamePassword);
+    }
+    let password_hash = hash_password(new_password)?;
+    storage
+        .users()
+        .set_password_hash(user.id, &password_hash)
+        .await?;
+    storage.users().get(user.id).await.map_err(|e| match e {
+        StorageError::NotFound => AuthError::NotFound,
+        other => AuthError::Storage(other.to_string()),
+    })
+}
+
+/// Empreinte de session dérivée du hash du mot de passe (sel argon2 compris,
+/// donc différente à chaque changement). Posée dans la session à la connexion
+/// et comparée à chaque requête : un changement ou une réinitialisation de mot
+/// de passe invalide d'un coup toutes les sessions ouvertes avant, quel que
+/// soit le store (SQLite, Postgres, mémoire). Ce n'est pas un secret : seul
+/// un changement de valeur compte.
+pub fn session_stamp(password_hash: &str) -> String {
+    use md5::{Digest, Md5};
+    Md5::digest(password_hash.as_bytes())
+        .iter()
+        .take(8)
+        .map(|b| format!("{b:02x}"))
+        .collect()
 }
 
 /// Émet une invitation à usage unique valable `valid_days` jours (défaut 7).

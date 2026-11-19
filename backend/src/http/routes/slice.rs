@@ -112,6 +112,11 @@ pub async fn slice(
         }
     }
 
+    // Quotas du compte (lot 32) : tranchages simultanés (429) puis stockage
+    // (413, le G-code produit ne pourrait pas être gardé).
+    crate::http::quota::ensure_slice_slots(&state, user.id, targets.len() as i64).await?;
+    crate::http::quota::ensure_storage_room(&state, user.id, 1).await?;
+
     let mut jobs = Vec::with_capacity(targets.len());
     for &t in &targets {
         // Réglages par plateau (Orca « Plate settings » : type de plaque,

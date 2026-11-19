@@ -7,4 +7,12 @@ export type InstanceResponse = {
 /**
  * `open` | `closed` | `invite`.
  */
-registration_policy: string, upload_limit_bytes: bigint, };
+registration_policy: string, upload_limit_bytes: bigint, 
+/**
+ * Quota de stockage par compte (octets) ; 0 = illimité (lot 32).
+ */
+storage_quota_bytes: number, 
+/**
+ * Tranchages simultanés (en file + en cours) par compte ; 0 = illimité.
+ */
+max_concurrent_slices: number, };
