@@ -16,6 +16,7 @@ import {
 	applyPreviewKey,
 	makePreviewState,
 	PREVIEW_SHORTCUTS,
+	jumpToLayer,
 	FAST_STEP
 } from './sliders';
 
@@ -151,5 +152,22 @@ describe('PREVIEW_SHORTCUTS', () => {
 			keys: 'Arrow Up',
 			action: 'Vertical slider - Move active thumb Up'
 		});
+	});
+});
+
+describe('jumpToLayer (Aller à la couche, Maj+G)', () => {
+	test('place la poignée active, bornée et ordonnée', () => {
+		const r = makeLayerRange(100);
+		expect(jumpToLayer(r, 41).high).toBe(41);
+		expect(jumpToLayer(r, 500).high).toBe(99);
+		const low = { ...jumpToLayer(r, 41), active: 'low' as const };
+		expect(jumpToLayer(low, 10)).toMatchObject({ low: 10, high: 41 });
+		expect(jumpToLayer(low, 60)).toMatchObject({ low: 41, high: 41 });
+	});
+	test('Maj+G → go-to-layer ; G seul et Ctrl+G (export) ignorés', () => {
+		expect(resolvePreviewKey({ key: 'G', shiftKey: true })).toEqual({ type: 'go-to-layer' });
+		expect(resolvePreviewKey({ key: 'g', ctrlKey: true })).toBeNull();
+		expect(resolvePreviewKey({ key: 'G', ctrlKey: true, shiftKey: true })).toBeNull();
+		expect(resolvePreviewKey({ key: 'g' })).toBeNull();
 	});
 });

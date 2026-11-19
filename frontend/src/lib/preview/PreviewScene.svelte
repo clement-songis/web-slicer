@@ -24,6 +24,8 @@
 		frameKey?: number;
 		/** Rendu des extrusions : volumes éclairés (défaut) ou lignes. */
 		renderMode?: 'volumes' | 'lines';
+		/** Marqueur de l'outil (sommet courant du curseur horizontal, Orca ToolMarker). */
+		tool?: [number, number, number] | null;
 	}
 
 	let {
@@ -33,8 +35,12 @@
 		frame = null,
 		fit = 'objects',
 		frameKey = 0,
-		renderMode = 'volumes'
+		renderMode = 'volumes',
+		tool = null
 	}: Props = $props();
+	// Marqueur : cône pointe en bas posé sur le sommet (comme le ToolMarker de
+	// libvgcode : blanc translucide, toujours visible au-dessus des parcours).
+	const MARKER_H = 4;
 
 	// Précompilation des shaders avant la première image de chaque mode de
 	// rendu (volumes éclairés / lignes) : état exposé pour les tests et la mesure.
@@ -60,6 +66,7 @@
 	data-preview-bed={`${bed.width}x${bed.depth}`}
 	data-preview-compile-ms={compiled?.ms}
 	data-preview-compile-timeout={compiled?.timedOut ? 'true' : undefined}
+	data-tool-marker={tool ? tool.map((v) => v.toFixed(2)).join(',') : undefined}
 >
 	<Canvas>
 		{#key frameKey}
@@ -91,6 +98,22 @@
 		{/if}
 		{#if overlay && overlay.points.visibleCount > 0}
 			<PreviewPoints geometry={overlay.points} />
+		{/if}
+		{#if tool}
+			<T.Mesh
+				position={[tool[0], tool[1], tool[2] + MARKER_H / 2]}
+				rotation={[-Math.PI / 2, 0, 0]}
+				renderOrder={10}
+			>
+				<T.ConeGeometry args={[1.2, MARKER_H, 20]} />
+				<T.MeshBasicMaterial
+					color="#ffffff"
+					transparent
+					opacity={0.65}
+					depthTest={false}
+					depthWrite={false}
+				/>
+			</T.Mesh>
 		{/if}
 		{#if warmup}
 			{#key renderMode}

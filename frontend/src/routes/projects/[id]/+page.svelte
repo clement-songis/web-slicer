@@ -76,6 +76,13 @@
 	import { tabTogglesView } from '$lib/editor/tab-focus';
 	import { isDefaultProjectName, projectNameFromFile } from '$lib/editor/project-name';
 	import GcodeWindow from '$lib/preview/GcodeWindow.svelte';
+	import { nextNotice, type Notice } from '$lib/editor/notice';
+	import ToolPositionCard from '$lib/preview/ToolPositionCard.svelte';
+	import PreviewPlates from '$lib/preview/PreviewPlates.svelte';
+	import { toolPositionAt, type ToolPosition } from '$lib/preview/tool-position';
+	import { parseGcodeFooterStats } from '$lib/preview/footer-stats';
+	import { platesTotals } from '$lib/preview/plates-summary';
+	import { jumpToLayer } from '$lib/preview/sliders';
 	import { toolpathsToObj } from '$lib/preview/toolpaths-obj';
 	import { supportNormalZ } from '$lib/scene/overhang';
 	import {
@@ -404,6 +411,7 @@
 		compactProjectConfig,
 		effectiveColours,
 		parseProjectConfig,
+		sameProjectConfig,
 		setSlotColour,
 		setTowerPosition,
 		towerPosition,
@@ -989,8 +997,21 @@
 	// reste dans le DOM jusqu'au suivant.
 	const MESSAGE_FADE_MS = 6000;
 	let messageFaded = $state(false);
+	// Phase 31 : chaque affectation est consommée (remise à null) et devient une
+	// notification numérotée → un message identique au précédent réapparaît.
+	let notice = $state<Notice | null>(null);
 	$effect(() => {
-		if (!saveMessage) return;
+		const text = saveMessage;
+		if (text === null) return;
+		notice = nextNotice(
+			untrack(() => notice),
+			text
+		);
+		saveMessage = null;
+	});
+	$effect(() => {
+		if (!notice) return;
+		void notice.seq;
 		messageFaded = false;
 		const timer = setTimeout(() => (messageFaded = true), MESSAGE_FADE_MS);
 		return () => clearTimeout(timer);
@@ -1170,6 +1191,41 @@
 	}
 	// Temps nominal de la couche haute visible (curseur vertical, comme Orca).
 	const topLayerTime = $derived(previewTrack?.layers[layerRange.high]?.time ?? null);
+	// Phase 31 : sommet courant du curseur horizontal (marqueur + fenêtre
+	// « position de l'outil » d'Orca) et « Aller à la couche » (Maj+G).
+	let previewTool = $state<ToolPosition | null>(null);
+	let goToLayerOpen = $state(false);
+	let goToLayerValue = $state('');
+	function openGoToLayer() {
+		goToLayerValue = String(
+			(layerRange.active === 'low' && !layerRange.oneLayerMode ? layerRange.low : layerRange.high) +
+				1
+		);
+		goToLayerOpen = true;
+	}
+	function submitGoToLayer() {
+		const n = Number(goToLayerValue);
+		if (!Number.isInteger(n) || !previewMeta || n < 1 || n > previewMeta.layer_count) return;
+		layerRange = jumpToLayer(layerRange, n - 1);
+		goToLayerOpen = false;
+		void refreshGeometry();
+	}
+	// Plateaux dans l'aperçu : résultat valable par plateau (+ plateau affiché).
+	const previewSlicedPlates = $derived.by(() => {
+		const ids = Object.keys(plateResults);
+		const active = plates.activeId;
+		if (session.phase === 'preview' && session.gcodeId && active && !ids.includes(active))
+			ids.push(active);
+		return ids;
+	});
+	const previewPlatesTotals = $derived(
+		platesTotals(
+			previewSlicedPlates,
+			(id) =>
+				plateResults[id]?.stats ??
+				(id === plates.activeId && session.phase === 'preview' ? rawStats : null)
+		)
+	);
 
 	const previewStats = $derived(
 		rawStats
@@ -1634,7 +1690,20 @@
 	// Changement de preset en attente du chargement de la base (exposé pour
 	// les tests et l'accessibilité : aria-busy sur la barre supérieure).
 	let presetSwitchPending = $state<Kind | null>(null);
-	async function requestPresetSwitch(kind: Kind, id: string | null, apply: () => void) {
+	// Changements de preset demandés mais pas encore appliqués (attente de la
+	// base `/resolved` du preset courant, cf. ci-dessous). Le sélecteur affiche
+	// déjà le nouveau preset : le tranchage les attend avant de lire
+	// `activePresets`, sinon il partait avec l'ancien filament (scène en ligne,
+	// presets jugés enregistrés → G-code au filament_colour du preset quitté).
+	// Une confirmation (UnsavedChangesDialog) ne bloque pas : la promesse se
+	// résout dès l'ouverture du dialogue.
+	let presetSwitches: Promise<unknown> = Promise.resolve();
+	function requestPresetSwitch(kind: Kind, id: string | null, apply: () => void) {
+		const run = requestPresetSwitchNow(kind, id, apply);
+		presetSwitches = Promise.all([presetSwitches, run.catch(() => {})]);
+		return run;
+	}
+	async function requestPresetSwitchNow(kind: Kind, id: string | null, apply: () => void) {
 		const current = activePresetOf(kind);
 		if (!id || id === current?.id) return;
 		// Base `/resolved` du preset courant encore en chargement (ex. juste après
@@ -4500,7 +4569,11 @@
 			// d'enregistrement silencieux, l'état « non enregistré » est conservé.
 			// Repli sur l'enregistrement si le serveur ignore `scene`.
 			const dirty = saveSignature() !== savedSignature;
-			const inline = dirty && (await supportsInlineScene(data.project.id));
+			const inline =
+				dirty &&
+				activePresetsSaved() &&
+				projectConfigSaved() &&
+				(await supportsInlineScene(data.project.id));
 			if (seq !== validationSeq) return;
 			if (dirty && !inline) {
 				const saved = await save({ quiet: true });
@@ -5467,6 +5540,9 @@
 				showGcodeWindow = !showGcodeWindow;
 				void ensureGcodeLines();
 				break;
+			case 'go-to-layer':
+				if (previewMeta && previewMeta.layer_count > 1) openGoToLayer();
+				break;
 			case 'cursor':
 				moveCursor = moveCursorBy(
 					moveCursor,
@@ -6071,6 +6147,9 @@
 			for (const id of ids)
 				for (const [key, value] of filamentMapChoice(choice.mode, choice.map))
 					plates.setPlateSetting(id, key, value);
+			// Choix explicite de l'utilisateur : enregistré comme un réglage de plateau
+			// (le tranchage, lui, part de la scène affichée sans sauvegarder).
+			void saveNow({ quiet: true });
 		}
 		prompt.resolve(choice !== null);
 	}
@@ -6081,10 +6160,7 @@
 	): Promise<{ succeeded: JobResponse[]; missed: number; firstError: string | null }> {
 		await editorReady;
 		if (!(await askFilamentMap(true))) throw new Error('tranchage annulé');
-		const saved = await save();
-		if (saved.status !== 'saved')
-			throw new Error(saved.status === 'error' ? saved.message : 'sauvegarde impossible');
-		const res = await sliceProject(data.project.id, sliceRequestWithDraft('all', 0));
+		const res = await requestSlice(sliceRequestWithDraft('all', 0));
 		progress(`${label} : tranchage de ${res.jobs.length} plateau(x)…`);
 		const deadline = Date.now() + 10 * 60_000;
 		// Table locale (non réactive) des jobs terminés.
@@ -6196,6 +6272,8 @@
 				fetchRange: (from, to) => localGcodeLayers(file, from, to)
 			});
 			engineGcodeId = null;
+			// Pas de stats serveur pour un fichier local : pied de G-code relu.
+			rawStats = parseGcodeFooterStats(await file.text());
 			setGcodeSource(() => file.text());
 			layerRange = makeLayerRange(meta.layer_count);
 			session = { ...prepareSession(), phase: 'preview', progress: 1 };
@@ -6711,31 +6789,75 @@
 		layout = setTab(layout, tab);
 	}
 
-	// Lance le tranchage du plateau actif et affiche la progression dans l'aperçu.
-	// Le backend tranche à partir de la scène **persistée** (objets par plateau,
-	// modèles rattachés) : on enregistre donc d'abord pour que les objets ajoutés
-	// dans la session soient bien pris en compte (sinon « plateau vide »).
+	// Phase 31 (lot 29) : POST /slice reçoit la scène affichée (`scene`), comme
+	// /validate — plus d'enregistrement avant tranchage, l'état « non
+	// enregistré » est conservé (Orca tranche le plateau courant sans
+	// enregistrer). Replis : serveur antérieur (champ ignoré, cf.
+	// supportsInlineScene) ou modèle pas encore rattaché au projet (422
+	// field=scene) → enregistrement puis tranchage de la scène enregistrée.
+	// Presets actifs ou config projet modifiés : enregistrés d'abord
+	// (activePresetsSaved, projectConfigSaved).
+	const SLICE_CONFLICT = 'Conflit : le projet a été modifié ailleurs. Rechargez avant de trancher.';
+	async function requestSlice(
+		req: ReturnType<typeof sliceRequestWithDraft>
+	): Promise<Awaited<ReturnType<typeof sliceProject>>> {
+		const saveFirst = async () => {
+			const saved = await save();
+			if (saved.status === 'conflict') throw new SliceSaveError(SLICE_CONFLICT);
+			if (saved.status === 'error') throw new SliceSaveError(saved.message);
+		};
+		const dirty = saveSignature() !== savedSignature;
+		const inline =
+			dirty &&
+			activePresetsSaved() &&
+			projectConfigSaved() &&
+			(await supportsInlineScene(data.project.id));
+		if (dirty && !inline) await saveFirst();
+		if (!inline) return sliceProject(data.project.id, req);
+		try {
+			return await sliceProject(data.project.id, { ...req, scene: buildSceneForSave() });
+		} catch (e) {
+			const field =
+				e instanceof ApiError ? (e.details as { field?: unknown } | undefined)?.field : null;
+			if (!(e instanceof ApiError && e.status === 422 && field === 'scene')) throw e;
+			await saveFirst();
+			return sliceProject(data.project.id, req);
+		}
+	}
+	class SliceSaveError extends Error {}
+	// Presets actifs (filaments ajoutés, imprimante…) : persistés par la seule
+	// sauvegarde — `scene` ne les transporte pas. Modifiés → enregistrement
+	// avant validation / tranchage (sinon « filament 2 mais le projet n'en
+	// définit que 1 »). savedSignature = scène + presets (saveSignature).
+	function activePresetsSaved(): boolean {
+		return (
+			savedSignature !== null &&
+			savedSignature.endsWith(JSON.stringify(serializeActivePresets(activePresets)))
+		);
+	}
+	// Config projet hors objets (`scene.projectConfig` : couleurs des slots,
+	// matrice et multiplicateur de purge, position de la tour) : même règle que
+	// les presets actifs. Le tranchage la lit bien dans la scène envoyée, mais
+	// elle appartient au projet (export 3MF, vérification des filaments, autre
+	// onglet) : modifiée depuis la dernière sauvegarde → enregistrement avant
+	// validation / tranchage. Comparaison normalisée (parse + compactage) avec
+	// la scène enregistrée (`data.project.scene`, mise à jour par saveNow).
+	function projectConfigSaved(): boolean {
+		const saved = (data.project.scene as { projectConfig?: unknown } | null)?.projectConfig;
+		return sameProjectConfig(saved, $state.snapshot(projectFilament));
+	}
+
+	// Lance le tranchage du plateau actif et affiche la progression dans l'aperçu
+	// (scène affichée envoyée telle quelle, cf. requestSlice).
 	async function sliceActive() {
 		// Module de l'aperçu chargé pendant le tranchage (pas à l'ouverture).
 		void loadPreviewScene();
 		await editorReady;
+		await presetSwitches;
 		if (!(await askFilamentMap(false))) return;
-		const saved = await save();
-		if (saved.status === 'conflict') {
-			session = sliceFailed(
-				'Conflit : le projet a été modifié ailleurs. Rechargez avant de trancher.'
-			);
-			layout = setTab(layout, 'preview');
-			return;
-		}
-		if (saved.status === 'error') {
-			session = sliceFailed(saved.message);
-			layout = setTab(layout, 'preview');
-			return;
-		}
 		const req = sliceRequestWithDraft('plate', plates.plateIndex(plates.activeId ?? ''));
 		try {
-			const res = await sliceProject(data.project.id, req);
+			const res = await requestSlice(req);
 			session = startSlicing(
 				res.jobs.map((j) => j.id),
 				res.warnings
@@ -6747,7 +6869,11 @@
 			);
 			layout = setTab(layout, 'preview');
 		} catch (e) {
-			session = sliceFailed(e instanceof ApiError ? e.message : 'échec du lancement du tranchage');
+			session = sliceFailed(
+				e instanceof ApiError || e instanceof SliceSaveError
+					? e.message
+					: 'échec du lancement du tranchage'
+			);
 			layout = setTab(layout, 'preview');
 		}
 	}
@@ -6760,19 +6886,10 @@
 		sliceMenuOpen = false;
 		void loadPreviewScene();
 		await editorReady;
+		await presetSwitches;
 		if (!(await askFilamentMap(true))) return;
-		const saved = await save();
-		if (saved.status === 'conflict' || saved.status === 'error') {
-			session = sliceFailed(
-				saved.status === 'error'
-					? saved.message
-					: 'Conflit : le projet a été modifié ailleurs. Rechargez avant de trancher.'
-			);
-			layout = setTab(layout, 'preview');
-			return;
-		}
 		try {
-			const res = await sliceProject(data.project.id, sliceRequestWithDraft('all', 0));
+			const res = await requestSlice(sliceRequestWithDraft('all', 0));
 			session = startSlicing(
 				res.jobs.map((j) => j.id),
 				res.warnings
@@ -6786,7 +6903,11 @@
 				saveMessage = `Trancher tout : 0 / ${res.jobs.length} plateaux tranchés…`;
 			layout = setTab(layout, 'preview');
 		} catch (e) {
-			session = sliceFailed(e instanceof ApiError ? e.message : 'échec du lancement du tranchage');
+			session = sliceFailed(
+				e instanceof ApiError || e instanceof SliceSaveError
+					? e.message
+					: 'échec du lancement du tranchage'
+			);
 			layout = setTab(layout, 'preview');
 		}
 	}
@@ -6898,6 +7019,12 @@
 			track:
 				previewTrack && trackMatches(previewTrack, previewMeta.layer_count) ? previewTrack : null
 		});
+		previewTool = toolPositionAt(
+			loader.rangeSegments(to, to),
+			to,
+			moveCursor.position,
+			previewTrack && trackMatches(previewTrack, previewMeta.layer_count) ? previewTrack : null
+		);
 		if (!previewFrame) {
 			previewFrame = boundsOf(previewGeometry.positions);
 			if (previewFrame) previewFrameKey++;
@@ -7041,6 +7168,8 @@
 		void $state.snapshot(layerProfiles);
 		void $state.snapshot(volumesByObject);
 		void $state.snapshot(layerRangesByObject);
+		// Config projet (couleurs, purge, tour) : persistée dans la scène.
+		void $state.snapshot(projectFilament);
 		void activePaintedCount;
 		void baselineReady;
 		const pending = imports.some((item) => isPending(item));
@@ -7681,18 +7810,20 @@
 	     quelques secondes comme les notifications d'Orca. Transparente aux clics
 	     (ne masque jamais un bouton) ; le texte reste dans le DOM jusqu'au message
 	     suivant (lecteurs d'écran, tests). -->
-	{#if saveMessage}
+	{#if notice}
 		<div
 			class="ws-floating pointer-events-none fixed bottom-4 left-1/2 z-40 max-w-[min(40rem,90vw)] -translate-x-1/2 px-4 py-2 text-sm text-content shadow-md transition-opacity duration-700 {messageFaded
 				? 'opacity-0'
 				: 'opacity-100'}"
 			data-testid="editor-message"
 			data-faded={messageFaded ? 'true' : undefined}
+			data-seq={notice.seq}
 			role="region"
 			aria-label="Messages"
 			aria-live="polite"
 		>
-			{saveMessage}
+			<!-- Re-monté à chaque notification (même texte) : relu par aria-live. -->
+			{#key notice.seq}<span class="ws-notice-in">{notice.text}</span>{/key}
 		</div>
 	{/if}
 
@@ -7729,6 +7860,19 @@
 			<div class="min-h-0 flex-1 overflow-auto p-3">
 				<!-- Aperçu : résultat du tranchage en tête de colonne (Orca garde la liste
 				     et affiche les stats de tranchage) ; la configuration reste dessous. -->
+				{#if layout.tab === 'preview' && plates.list().length > 1}
+					<PreviewPlates
+						plates={plates
+							.list()
+							.map((p) => ({ id: p.id, name: p.name, objects: p.objectIds.length }))}
+						activeId={plates.activeId}
+						sliced={previewSlicedPlates}
+						totals={previewPlatesTotals}
+						currency={preferences.currency}
+						onselect={selectPlate}
+						onsliceall={session.phase === 'slicing' ? undefined : () => void sliceAll()}
+					/>
+				{/if}
 				{#if layout.tab === 'preview' && session.phase === 'preview' && previewStats}
 					<section
 						class="mb-4 flex flex-col gap-3 border-b border-border pb-4"
@@ -8839,6 +8983,7 @@
 									fit={previewFit}
 									frameKey={previewFrameKey}
 									renderMode={effectiveRender}
+									tool={previewTool?.position ?? null}
 								/>
 							{/await}
 							{#if showGcodeWindow && gcodeLines.length > 0}
@@ -8847,6 +8992,14 @@
 								</div>
 							{/if}
 
+							{#if previewTool}
+								<!-- Position de l'outil (fenêtre ToolPosition d'Orca, bas de la vue). -->
+								<div
+									class="absolute bottom-16 left-1/2 z-10 max-w-[calc(100%-16rem)] -translate-x-1/2"
+								>
+									<ToolPositionCard tool={previewTool} {coloration} />
+								</div>
+							{/if}
 							<!-- Curseur horizontal intra-couche (←/→, Home/End). -->
 							<div
 								class="ws-floating absolute right-30 bottom-3 left-3 z-10 flex items-center gap-2 px-3 py-2 text-xs text-content-muted"
@@ -9057,6 +9210,44 @@
 										data-tip-side="left"
 										aria-keyshortcuts="L">1 couche</button
 									>
+									{#if goToLayerOpen}
+										<form
+											class="flex w-full flex-col gap-1"
+											data-testid="preview-goto-layer"
+											onsubmit={(e) => {
+												e.preventDefault();
+												submitGoToLayer();
+											}}
+										>
+											<!-- svelte-ignore a11y_autofocus -->
+											<input
+												class="ws-field ws-field-sm w-full text-center"
+												type="number"
+												min="1"
+												max={previewMeta.layer_count}
+												bind:value={goToLayerValue}
+												aria-label="Aller à la couche (1 – {previewMeta.layer_count})"
+												autofocus
+												onkeydown={(e) => {
+													e.stopPropagation();
+													if (e.key === 'Escape') goToLayerOpen = false;
+												}}
+											/>
+											<button type="submit" class="ws-btn ws-btn-sm ws-btn-primary w-full"
+												>Aller</button
+											>
+										</form>
+									{:else}
+										<button
+											type="button"
+											class="ws-chip w-full justify-center"
+											data-testid="preview-goto-layer-open"
+											data-tip="Aller à la couche (Maj+G)"
+											data-tip-side="left"
+											aria-keyshortcuts="Shift+G"
+											onclick={openGoToLayer}>Aller à…</button
+										>
+									{/if}
 								</div>
 							{/if}
 
@@ -9173,6 +9364,22 @@
 
 <style>
 	/* Curseur de couches vertical (T116). */
+	/* Notification (phase 31) : courte entrée à chaque message, même répété. */
+	.ws-notice-in {
+		display: inline-block;
+		animation: ws-notice-in 220ms ease-out;
+	}
+	@keyframes ws-notice-in {
+		from {
+			opacity: 0.2;
+			transform: translateY(4px);
+		}
+	}
+	@media (prefers-reduced-motion: reduce) {
+		.ws-notice-in {
+			animation: none;
+		}
+	}
 	.preview-vslider {
 		position: absolute;
 		inset: 0;

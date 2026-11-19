@@ -68,6 +68,20 @@ export function compactProjectConfig(cfg: ProjectFilamentConfig): ProjectFilamen
 	return Object.keys(out).length ? out : null;
 }
 
+/** Même config projet persistée (lecture tolérante puis compactage des deux
+ *  côtés) : sert à savoir si la config affichée diffère de la dernière
+ *  sauvegarde (ordre des clés, casse des couleurs et entrées vides ignorés). */
+export function sameProjectConfig(a: unknown, b: unknown): boolean {
+	const norm = (raw: unknown) => {
+		const c = compactProjectConfig(parseProjectConfig(raw));
+		if (!c) return 'null';
+		return JSON.stringify(
+			Object.fromEntries(Object.entries(c).sort(([x], [y]) => x.localeCompare(y)))
+		);
+	};
+	return norm(a) === norm(b);
+}
+
 /** Couleurs effectives : surcharge projet du slot, sinon couleur du preset. */
 export function effectiveColours(
 	presetColours: readonly string[],

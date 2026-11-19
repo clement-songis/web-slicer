@@ -13,7 +13,7 @@
 		type UiPage,
 		type UiSection
 	} from '../../generated/ui-layout';
-	import { filterLayout, MODE_RANK, type DisplayMode } from './filter';
+	import { filterLayout, isEditorOnlyPage, MODE_RANK, type DisplayMode } from './filter';
 	import { t, locale } from '$lib/i18n';
 	import { loadSettingsTranslations } from './i18n';
 	import OptionLine from './OptionLine.svelte';
@@ -130,10 +130,21 @@
 		}
 		return [...merged.values()];
 	});
-	// Comme Orca (Tab::update_visibility → Page::get_show), un onglet sans
-	// aucune option au mode courant est masqué (ex. « G-code de la machine » en
-	// Simple) au lieu d'afficher une page vide ; il réapparaît en Avancé.
-	const pages = $derived(filterLayout(scoped, mode, query, false) as LinkedPage[]);
+	// Comme Orca (Tab::update_visibility → Page::get_show), un onglet d'éditeurs
+	// de texte (G-code, notes) sans option au mode courant est masqué (ex.
+	// « G-code de la machine » en Simple) ; il réapparaît en Avancé. Les onglets
+	// de paramètres restent, eux, présents à tous les modes (sélecteur stable :
+	// « Vitesse » en Simple affiche une page vide avec un lien vers le mode
+	// utile) ; en recherche, seuls les onglets ayant un résultat restent.
+	const editorOnlyTitles = $derived(
+		new Set(scoped.filter((page) => isEditorOnlyPage(page)).map((page) => page.title))
+	);
+	const pages = $derived.by(() => {
+		const searching = query.trim().length > 0;
+		return (filterLayout(scoped, mode, query, !searching) as LinkedPage[]).filter(
+			(page) => page.sections.length > 0 || (!searching && !editorOnlyTitles.has(page.title))
+		);
+	});
 	/** Premier mode (≥ courant) où l'onglet `slug` du type a des options. */
 	function modeShowing(slug: string): DisplayMode | null {
 		for (const m of MODES.slice(MODES.indexOf(mode))) {
@@ -216,6 +227,16 @@
 	const activePage = $derived(
 		pages.find((page) => pageSlug(page.title) === activeSlug) ?? pages[0]
 	);
+	/** Onglet stable vide au mode courant : premier mode supérieur qui le remplit. */
+	const emptyPageMode = $derived.by((): DisplayMode | null => {
+		if (!activePage || activePage.sections.length > 0) return null;
+		const source = scoped.find((p) => p.title === activePage.title && p.kind === activePage.kind);
+		if (!source) return null;
+		for (const m of MODES.slice(MODES.indexOf(mode) + 1)) {
+			if (filterLayout([source], m, '', false).length > 0) return m;
+		}
+		return null;
+	});
 
 	// Phase 29 : « Régler « option » » depuis une notification de validation
 	// (Orca Sidebar::jump_to_option → Tab::activate_option) : onglet de l'option,
@@ -400,6 +421,16 @@
 							data-testid="settings-page-empty"
 						>
 							Aucun paramètre de cet onglet à ce niveau d'affichage.
+							{#if emptyPageMode}
+								<button
+									type="button"
+									class="ml-1 text-primary underline-offset-2 hover:underline"
+									data-testid="settings-page-reveal"
+									onclick={() => {
+										if (emptyPageMode) mode = emptyPageMode;
+									}}>Afficher en mode {MODE_LABELS[emptyPageMode]}</button
+								>
+							{/if}
 						</p>
 					{/if}
 					{#if searchAll}

@@ -30,11 +30,16 @@ function bigIntReplacer(_key: string, value: unknown): unknown {
 
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
 	const hasBody = body !== undefined;
+	const json = hasBody ? JSON.stringify(body, bigIntReplacer) : undefined;
 	const res = await fetch(`${API_BASE}${path}`, {
 		method,
 		credentials: 'include',
 		headers: hasBody ? { 'content-type': 'application/json' } : undefined,
-		body: hasBody ? JSON.stringify(body, bigIntReplacer) : undefined
+		body: json,
+		// Phase 31 : une écriture (sauvegarde du projet…) lancée juste avant un
+		// rechargement / une fermeture d'onglet va à son terme au lieu d'être
+		// annulée. keepalive limite les corps en vol à 64 Kio : petits corps seuls.
+		keepalive: (method === 'PUT' || method === 'PATCH') && (json?.length ?? 0) < 30_000
 	});
 
 	// 204 (logout, delete) : pas de corps.

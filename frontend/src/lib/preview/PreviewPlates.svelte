@@ -1,0 +1,73 @@
+<script lang="ts">
+	// Plateaux dans l'aperçu (phase 31) : Orca liste les plateaux à gauche de
+	// l'aperçu (vignettes PartPlateList) et affiche « Statistiques de tous les
+	// plateaux » après « Trancher tout » (GCodeViewer::render_all_plates_stats).
+	// Ici : une puce par plateau (✓ tranché, clic = aperçu de ce plateau) et les
+	// totaux temps / filament / coût des plateaux tranchés.
+	import { formatMoney } from '$lib/settings/preferences';
+	import { formatDuration } from './stats';
+	import type { PlatesTotals } from './plates-summary';
+
+	interface Props {
+		plates: { id: string; name: string; objects: number }[];
+		activeId: string | null;
+		sliced: readonly string[];
+		totals: PlatesTotals | null;
+		currency?: string;
+		onselect: (id: string) => void;
+		/** « Trancher tout » proposé tant qu'un plateau non vide n'est pas tranché. */
+		onsliceall?: () => void;
+	}
+	let { plates, activeId, sliced, totals, currency = '€', onselect, onsliceall }: Props = $props();
+	const pending = $derived(plates.filter((p) => p.objects > 0 && !sliced.includes(p.id)).length);
+</script>
+
+<section
+	class="mb-4 flex flex-col gap-2 border-b border-border pb-4"
+	data-testid="preview-plates"
+	aria-label="Plateaux"
+>
+	<h2 class="ws-section-title">Plateaux</h2>
+	<div class="flex flex-wrap gap-1.5" role="group" aria-label="Aperçu du plateau">
+		{#each plates as plate (plate.id)}
+			{@const done = sliced.includes(plate.id)}
+			<button
+				type="button"
+				class="ws-chip h-7 gap-1.5 {plate.id === activeId ? 'ws-chip-on' : ''}"
+				aria-pressed={plate.id === activeId}
+				data-testid="preview-plate"
+				data-plate-id={plate.id}
+				data-sliced={done ? 'true' : 'false'}
+				data-tip={done
+					? 'Tranché : afficher son aperçu'
+					: plate.objects
+						? 'Pas encore tranché'
+						: 'Plateau vide'}
+				data-tip-side="bottom"
+				onclick={() => onselect(plate.id)}
+			>
+				{plate.name}
+				{#if done}<span class="text-success-text" aria-label="tranché">✓</span>{/if}
+			</button>
+		{/each}
+	</div>
+	{#if totals && totals.plates > 1}
+		<p class="text-xs text-content-muted tabular-nums" data-testid="preview-plates-totals">
+			<span class="text-content">Tous les plateaux ({totals.plates})</span> ·
+			{formatDuration(totals.timeSeconds)} ·
+			{totals.grams.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} g{#if totals.cost > 0}
+				· {formatMoney(totals.cost, currency)}{/if}
+		</p>
+	{/if}
+	{#if pending > 0 && onsliceall}
+		<button
+			type="button"
+			class="ws-link self-start text-xs"
+			data-testid="preview-plates-slice-all"
+			onclick={onsliceall}
+			>Trancher tout ({pending} plateau{pending > 1 ? 'x' : ''} restant{pending > 1
+				? 's'
+				: ''})</button
+		>
+	{/if}
+</section>

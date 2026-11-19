@@ -9,6 +9,7 @@ import {
 	nextFilamentColour,
 	parseProjectConfig,
 	resizeFlushMatrix,
+	sameProjectConfig,
 	setSlotColour,
 	setTowerPosition,
 	towerPosition
@@ -90,5 +91,20 @@ describe('couleur des filaments ajoutés (palette Orca)', () => {
 		const cfg = setSlotColour(afterSlotAdded({}, 2), 1, nextFilamentColour(1));
 		expect(cfg.filament_colour).toEqual(['', '#00c1ae']);
 		expect(compactProjectConfig(afterSlotRemoved(cfg, 1))).toBeNull();
+	});
+	it('comparaison avec la config enregistrée (sauvegarde avant tranchage)', () => {
+		expect(sameProjectConfig(undefined, {})).toBe(true);
+		expect(sameProjectConfig(null, { filament_colour: ['', ''] })).toBe(true);
+		expect(
+			sameProjectConfig(
+				{ flush_multiplier: 1, filament_colour: ['#FFFFFF', '#000000'] },
+				{ filament_colour: ['#ffffff', '#000000'], flush_multiplier: 1 }
+			)
+		).toBe(true);
+		const saved = { filament_colour: ['#ffffff', '#000000'] };
+		expect(sameProjectConfig(saved, { ...saved, flush_volumes_matrix: [0, 120, 300, 0] })).toBe(
+			false
+		);
+		expect(sameProjectConfig(saved, { filament_colour: ['#ffffff', '#ff0000'] })).toBe(false);
 	});
 });

@@ -88,6 +88,26 @@ function filterOptions(options: UiOption[], mode: DisplayMode, query: string): U
 }
 
 /**
+ * Page faite uniquement d'éditeurs de texte libre (G-code machine/filament,
+ * notes) : seule catégorie d'onglet masquée quand le mode courant n'en montre
+ * aucune option (phase 27, « G-code de la machine » en Simple, comme Orca
+ * Page::get_show). Les autres onglets restent stables d'un mode à l'autre
+ * (contrat UI : l'onglet « Vitesse » existe en Simple, ses options avancées
+ * sont masquées, pas l'onglet).
+ */
+export function isEditorOnlyPage(page: UiPage): boolean {
+	const options = page.sections.flatMap((section) => section.options);
+	return (
+		options.length > 0 &&
+		options.every((option) => {
+			if (typeof option !== 'string') return false;
+			const type = PARAMS[option]?.type;
+			return type === 'coString' || type === 'coStrings';
+		})
+	);
+}
+
+/**
  * Filtre l'arbre pages → sections → options selon le mode et la recherche.
  * Les sections devenues vides sont retirées ; les pages vides aussi, sauf
  * `keepEmptyPages` : hors recherche, les onglets restent stables d'un mode à

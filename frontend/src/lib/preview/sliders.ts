@@ -61,6 +61,17 @@ export function moveThumb(range: LayerRange, delta: number): LayerRange {
 }
 
 /**
+ * « Jump to Layer » d'Orca (IMSlider::show_go_to_layer, Maj+G) : place
+ * la poignée active sur la couche `layer` (0-based, bornée ; en mode une
+ * couche, la couche unique). La plage reste ordonnée (low ≤ high).
+ */
+export function jumpToLayer(range: LayerRange, layer: number): LayerRange {
+	if (!Number.isFinite(layer)) return range;
+	const current = range.oneLayerMode || range.active === 'high' ? range.high : range.low;
+	return moveThumb(range, Math.round(layer) - current);
+}
+
+/**
  * Bascule le mode une-couche. À l'activation, la plage se réduit à la couche
  * haute courante ; à la désactivation, la couche basse repart de 0.
  */
@@ -145,7 +156,9 @@ export type PreviewAction =
 	| { type: 'cursor-end' }
 	| { type: 'toggle-one-layer' }
 	| { type: 'toggle-gcode-window' }
-	| { type: 'switch-tab' };
+	| { type: 'switch-tab' }
+	/** Maj+G : « Aller à la couche » (GLCanvas3D → show_go_to_layer). */
+	| { type: 'go-to-layer' };
 
 /** Entrée clavier minimale (compatible `KeyboardEvent`). */
 export interface KeyLike {
@@ -176,6 +189,10 @@ export function resolvePreviewKey(e: KeyLike): PreviewAction | null {
 		case 'c':
 		case 'C':
 			return { type: 'toggle-gcode-window' };
+		case 'g':
+		case 'G':
+			// Ctrl+G reste « Exporter le G-code » (accélérateur de menu d'Orca, prioritaire).
+			return e.shiftKey && !e.ctrlKey ? { type: 'go-to-layer' } : null;
 		case 'Tab':
 			return { type: 'switch-tab' };
 		default:
@@ -233,6 +250,7 @@ export function applyPreviewKey(state: PreviewState, e: KeyLike): PreviewState {
 		case 'toggle-gcode-window':
 			return { ...state, gcodeWindow: !state.gcodeWindow };
 		case 'switch-tab':
+		case 'go-to-layer':
 			return state;
 	}
 }
