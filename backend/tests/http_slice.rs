@@ -792,6 +792,135 @@ async fn freezes_multi_filament_vectors_and_scene_at_enqueue() {
     );
 }
 
+/// Lot 31 : presets actifs affichés non enregistrés (filament ajouté sans
+/// sauvegarde) envoyés dans le corps — tranchés et validés tels quels, le
+/// projet enregistré n'est pas modifié (Orca tranche la config éditée).
+#[tokio::test]
+async fn slice_and_validate_use_unsaved_active_presets_from_the_body() {
+    let (_d, storage, app) = app().await;
+    let scene = scene_one_object();
+    let (project, owner, session) =
+        create_project(&storage, &app, "active@test.local", scene, json!({})).await;
+    let pla = make_filament(&storage, owner, "PLA", "PLA", 205, Some(0.8)).await;
+    let petg = make_filament(&storage, owner, "PETG", "PETG", 235, None).await;
+    set_active_presets(&storage, owner, &project, json!({ "filaments": [pla] })).await;
+
+    let unsaved = json!({ "filaments": [pla, petg] });
+    let resp = app
+        .clone()
+        .oneshot(slice_req(
+            &project,
+            &session,
+            json!({ "plate_index": 0, "active_presets": unsaved }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    let jobs = storage.jobs().list(owner).await.unwrap();
+    assert_eq!(
+        jobs[0].resolved_settings["filament_settings_id"],
+        json!(["PLA", "PETG"])
+    );
+    assert_eq!(
+        jobs[0].resolved_settings["nozzle_temperature"],
+        json!([205, 235])
+    );
+    // Projet enregistré inchangé.
+    let id = backend::domain::ProjectId(uuid::Uuid::parse_str(&project).unwrap());
+    let saved = storage.projects().get(owner, id).await.unwrap();
+    assert_eq!(saved.active_presets, json!({ "filaments": [pla] }));
+
+    // Validation : presets du corps résolus (plateau vide de la scène non
+    // enregistrée → 200 sans worker), pas de job créé.
+    let empty = json!({
+        "schema_version": 1,
+        "objects": [],
+        "plates": [{ "id": "p1", "objectIds": [] }]
+    });
+    let resp = app
+        .clone()
+        .oneshot(validate_req(
+            &project,
+            &session,
+            json!({ "plate_index": 0, "scene": empty, "active_presets": { "filaments": [pla, petg] } }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_json(resp).await;
+    assert_eq!(body["plates"][0]["errors"][0]["kind"], "empty_plate");
+    assert_eq!(storage.jobs().list(owner).await.unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn unsaved_active_presets_are_shape_checked_and_guarded() {
+    let (_d, storage, app) = app().await;
+    let (project, owner, session) = create_project(
+        &storage,
+        &app,
+        "active-bad@test.local",
+        scene_one_object(),
+        json!({}),
+    )
+    .await;
+    for bad in [
+        json!([1, 2]),
+        json!({ "filaments": "x" }),
+        json!({ "printer": "nope" }),
+    ] {
+        for req in [
+            slice_req(
+                &project,
+                &session,
+                json!({ "plate_index": 0, "active_presets": bad }),
+            ),
+            validate_req(
+                &project,
+                &session,
+                json!({ "plate_index": 0, "active_presets": bad }),
+            ),
+        ] {
+            let resp = app.clone().oneshot(req).await.unwrap();
+            assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY, "{bad}");
+            assert_eq!(body_json(resp).await["details"]["field"], "active_presets");
+        }
+    }
+    // Imprimante non possédée : même garde que pour le projet enregistré.
+    let machine = make_machine_preset(&storage, owner).await;
+    let resp = app
+        .clone()
+        .oneshot(slice_req(
+            &project,
+            &session,
+            json!({ "plate_index": 0, "active_presets": { "printer": machine } }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(body_json(resp).await["code"], "printer_not_owned");
+    // Preset d'un autre compte : invisible (404), aucun job.
+    let (_p2, other, _s2) = create_project(
+        &storage,
+        &app,
+        "active-other@test.local",
+        scene_one_object(),
+        json!({}),
+    )
+    .await;
+    let foreign = make_filament(&storage, other, "X", "PLA", 200, None).await;
+    let resp = app
+        .clone()
+        .oneshot(slice_req(
+            &project,
+            &session,
+            json!({ "plate_index": 0, "active_presets": { "filaments": [foreign] } }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    assert!(storage.jobs().list(owner).await.unwrap().is_empty());
+}
+
 #[tokio::test]
 async fn slices_all_plates_creates_one_job_each() {
     let (_d, storage, app) = app().await;

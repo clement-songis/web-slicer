@@ -16,4 +16,8 @@ draft?: SliceDraft,
 /**
  * Préférence « Remove mixed temperature restriction ».
  */
-allow_mixed_temperatures?: boolean, };
+allow_mixed_temperatures?: boolean, 
+/**
+ * Presets actifs affichés non enregistrés, comme pour POST …/slice.
+ */
+active_presets?: { printer?: string; process?: string; filaments?: Array<string> }, };

@@ -182,8 +182,29 @@ where
             get(preview::processed_moves),
         )
         .route(
+            "/api/gcodes/{id}/preview/processed/seams",
+            get(preview::processed_seams),
+        )
+        .route("/api/gcodes/plates-stats", post(preview::plates_stats))
+        .route(
             "/api/gcode/preview",
             post(gcode_open::preview).layer(DefaultBodyLimit::max(models::MAX_BODY_BYTES)),
+        )
+        .route(
+            "/api/gcode/process",
+            post(gcode_open::process).layer(DefaultBodyLimit::max(models::MAX_BODY_BYTES)),
+        )
+        .route(
+            "/api/gcode/opened/{token}/meta",
+            get(gcode_open::opened_meta),
+        )
+        .route(
+            "/api/gcode/opened/{token}/moves",
+            get(gcode_open::opened_moves),
+        )
+        .route(
+            "/api/gcode/opened/{token}/seams",
+            get(gcode_open::opened_seams),
         )
         .route("/api/ws", get(ws::ws))
         .route("/api/presets", get(presets::list).post(presets::create))

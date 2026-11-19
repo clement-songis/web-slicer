@@ -243,3 +243,164 @@ async fn other_accounts_preview_is_404() {
         assert_eq!(resp.status(), StatusCode::NOT_FOUND, "{suffix}");
     }
 }
+
+// ---------------------------------------------------------------------------
+// Lot 31 : statistiques « tous les plateaux » (render_all_plates_stats) et
+// coutures du moteur, sur deux plateaux tranchés par OrcaSlicer 2.4.1.
+// ---------------------------------------------------------------------------
+
+fn worker_built() -> bool {
+    if let Ok(p) = std::env::var("ENGINE_WORKER_BIN") {
+        return std::path::Path::new(&p).exists();
+    }
+    std::env::current_exe()
+        .ok()
+        .and_then(|e| e.parent()?.parent().map(|d| d.join("engine-worker")))
+        .is_some_and(|b| b.exists())
+}
+
+fn orca_fixture(name: &str) -> String {
+    let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../engine/tests/fixtures")
+        .join(name);
+    std::fs::read_to_string(p).unwrap()
+}
+
+#[tokio::test]
+async fn all_plates_stats_sum_the_plates_like_orca() {
+    if !worker_built() {
+        eprintln!("engine-worker absent : test ignoré (passe FFI)");
+        return;
+    }
+    let h = harness().await;
+    let email = "plates@test.local";
+    let session = register(&h.app, email).await;
+    let owner = user_id(&h.storage, email).await;
+    let mut ids = Vec::new();
+    let mut footer_time = 0u64;
+    let mut footer_cost = 0f64;
+    let mut footer_g = 0f64;
+    // Deux plateaux du même projet (un job par plateau).
+    let first_job = make_job(&h.storage, owner).await;
+    let project_id = h
+        .storage
+        .jobs()
+        .get(owner, first_job)
+        .await
+        .unwrap()
+        .project_id;
+    for (plate, name) in [
+        "gcode_3mf/plate_1.orca.gcode",
+        "gcode_3mf/plate_2.orca.gcode",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let text = orca_fixture(name);
+        let job = if plate == 0 {
+            first_job
+        } else {
+            h.storage
+                .jobs()
+                .enqueue(
+                    owner,
+                    NewJob {
+                        project_id,
+                        plate_index: plate as i64,
+                        resolved_settings: json!({}),
+                    },
+                )
+                .await
+                .unwrap()
+                .id
+        };
+        let g = backend::gcode::store_gcode(&h.files, h.storage.gcodes(), owner, job, &text)
+            .await
+            .unwrap();
+        let stats = backend::gcode::parse_stats(&text);
+        footer_time += stats.estimated_time_seconds.unwrap();
+        footer_cost += stats.total_filament_cost.unwrap_or(0.0);
+        footer_g += stats.total_filament_weight_g.unwrap();
+        ids.push(g.id.to_string());
+    }
+    let resp = h
+        .app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("POST")
+                .uri("/api/gcodes/plates-stats")
+                .header(header::COOKIE, &session)
+                .header(header::CONTENT_TYPE, "application/json")
+                .body(Body::from(json!({ "gcode_ids": ids }).to_string()))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body: Value = serde_json::from_slice(&body_bytes(resp).await).unwrap();
+    let plates = body["plates"].as_array().unwrap();
+    assert_eq!(plates.len(), 2);
+    let all = &body["all"];
+    assert_eq!(all["plate_count"], 2);
+    // Temps : somme des temps simulés des plateaux = somme des pieds d'Orca.
+    let t = all["time"][0].as_f64().unwrap();
+    assert!(
+        (t.round() - footer_time as f64).abs() <= 2.0,
+        "{t} vs {footer_time}"
+    );
+    let t_sum: f64 = plates.iter().map(|p| p["time"][0].as_f64().unwrap()).sum();
+    assert!((t - t_sum).abs() < 1e-6);
+    // Coût = PrintStatistics::total_cost figé de chaque plateau.
+    assert!((all["total_cost"].as_f64().unwrap() - footer_cost).abs() < 1e-9);
+    // Masse : modèle (+ support/purge/tour) cumulés = masse écrite par Orca.
+    let g = all["total"]["total"]["g"].as_f64().unwrap();
+    assert!(
+        (g - footer_g).abs() <= 0.01 * footer_g + 0.02,
+        "{g} g vs {footer_g} g"
+    );
+    let model_volume: f64 = plates
+        .iter()
+        .map(|p| {
+            p["filament_table"]["rows"][0]["model"]["volume"]
+                .as_f64()
+                .unwrap()
+        })
+        .sum();
+    assert!((all["rows"][0]["model"]["volume"].as_f64().unwrap() - model_volume).abs() < 1e-6);
+    assert_eq!(all["columns"]["model"], true);
+
+    // Coutures moteur du plateau 1 (une par couche pour ce cube).
+    let resp = get(
+        &h.app,
+        &format!("/api/gcodes/{}/preview/processed/seams?from=0&to=4", ids[0]),
+        &session,
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let seams: Value = serde_json::from_slice(&body_bytes(resp).await).unwrap();
+    assert!(!seams["seams"].as_array().unwrap().is_empty());
+
+    // Isolation : G-code d'un autre compte → 404 ; liste vide → 422.
+    let other = register(&h.app, "plates-other@test.local").await;
+    for (cookie, ids, status) in [
+        (&other, json!(ids), StatusCode::NOT_FOUND),
+        (&session, json!([]), StatusCode::UNPROCESSABLE_ENTITY),
+    ] {
+        let resp = h
+            .app
+            .clone()
+            .oneshot(
+                Request::builder()
+                    .method("POST")
+                    .uri("/api/gcodes/plates-stats")
+                    .header(header::COOKIE, cookie)
+                    .header(header::CONTENT_TYPE, "application/json")
+                    .body(Body::from(json!({ "gcode_ids": ids }).to_string()))
+                    .unwrap(),
+            )
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), status);
+    }
+}

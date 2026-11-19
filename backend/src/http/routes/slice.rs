@@ -93,7 +93,14 @@ pub async fn slice(
         resolved,
         warnings,
         allow_mixed,
-    } = resolve_slice_config(&state, user.id, scene, &project.active_presets, &body).await?;
+    } = resolve_slice_config(
+        &state,
+        user.id,
+        scene,
+        request_active_presets(&body, &project.active_presets)?,
+        &body,
+    )
+    .await?;
     // Instantané de scène du job : options de tranchage hors config Orca.
     let mut job_scene = scene.clone();
     if allow_mixed {
@@ -144,6 +151,40 @@ pub(crate) fn request_scene<'a>(body: &'a SliceRequest, saved: &'a Value) -> Api
             json!({ "field": "scene" }),
         )),
     }
+}
+
+/// Presets actifs à trancher : `active_presets` du corps (presets affichés non
+/// enregistrés) ou, à défaut, ceux enregistrés du projet. Objet JSON au format
+/// du projet ; autre chose → 422 `field = active_presets`. Les ids sont
+/// ensuite résolus parmi les presets visibles du compte
+/// (`resolve_active_config`) : même garde que pour le projet enregistré.
+pub(crate) fn request_active_presets<'a>(
+    body: &'a SliceRequest,
+    saved: &'a Value,
+) -> ApiResult<&'a Value> {
+    match &body.active_presets {
+        None => Ok(saved),
+        Some(active) if valid_active_presets(active) => Ok(active),
+        Some(_) => Err(ApiError::validation(
+            "active_presets doit être un objet { printer?, process?, filaments? } (ids de presets)",
+            json!({ "field": "active_presets" }),
+        )),
+    }
+}
+
+fn valid_active_presets(active: &Value) -> bool {
+    let Some(map) = active.as_object() else {
+        return false;
+    };
+    let id_ok = |v: &Value| v.as_str().is_some_and(|s| uuid::Uuid::parse_str(s).is_ok());
+    map.iter().all(|(k, v)| match k.as_str() {
+        "printer" | "process" => v.is_null() || id_ok(v),
+        "filaments" => v
+            .as_array()
+            .is_some_and(|a| a.iter().all(|f| f.is_null() || id_ok(f))),
+        // Clés annexes tolérées (même tolérance que l'enregistrement du projet).
+        _ => true,
+    })
 }
 
 /// Plateaux ciblés : `plate_index` (borné, 422 sinon) ou, pour « tout
@@ -293,6 +334,12 @@ pub struct FilamentCompatibilityRequest {
     /// Préférence « Remove mixed temperature restriction ».
     #[ts(optional)]
     pub allow_mixed_temperatures: Option<bool>,
+    /// Presets actifs affichés non enregistrés, comme pour POST …/slice.
+    #[ts(
+        optional,
+        type = "{ printer?: string; process?: string; filaments?: Array<string> }"
+    )]
+    pub active_presets: Option<serde_json::Value>,
 }
 
 /// Réponse : verdict d'Orca.
@@ -320,7 +367,15 @@ pub async fn filament_compatibility_check(
 ) -> ApiResult<Json<FilamentCompatibilityResponse>> {
     let project_id = parse_project_id(&project_raw)?;
     let project = state.storage.projects().get(user.id, project_id).await?;
-    let (mut merged, _) = resolve_active_config(&state, user.id, &project.active_presets).await?;
+    let active = match &body.active_presets {
+        Some(active) if valid_active_presets(active) => active,
+        Some(_) => return Err(ApiError::validation(
+            "active_presets doit être un objet { printer?, process?, filaments? } (ids de presets)",
+            json!({ "field": "active_presets" }),
+        )),
+        None => &project.active_presets,
+    };
+    let (mut merged, _) = resolve_active_config(&state, user.id, active).await?;
     if let Some(draft) = &body.draft {
         apply_draft(&mut merged, draft)?;
     }

@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use std::sync::{Arc, OnceLock};
 use std::time::Duration;
 
-use engine::api::gcode_process::{ProcessedGcode, META_VERSION};
+use engine::api::gcode_process::{ProcessedGcode, META_REVISION, META_VERSION};
 use tokio::sync::Mutex;
 
 use super::scene::{result_json, SceneWorkerError};
@@ -86,11 +86,12 @@ pub async fn processed_at(
             .await
             .map_err(|e| SceneWorkerError::Protocol(e.to_string()))?;
         match p {
-            Ok(p) if p.meta["version"].as_u64() == Some(META_VERSION) => {
+            Ok(p) if is_current(&p.meta) => {
                 parsed = Some(p);
                 break;
             }
-            // Cache d'un format antérieur (méta sans first_line / ranges) : retraité une fois.
+            // Cache d'un format antérieur (méta sans first_line / ranges, ou sans
+            // color_print / filament_table / elapsed) : retraité une fois.
             _ if attempt == 0 && fresh => fresh = false,
             Ok(_) => {
                 return Err(SceneWorkerError::Protocol(
@@ -114,6 +115,13 @@ pub async fn processed_at(
     }
     c.locks.remove(&key);
     Ok(parsed)
+}
+
+/// Méta au format courant : même version et révision additive à jour (un
+/// worker plus ancien que le backend produit une révision inférieure).
+fn is_current(meta: &serde_json::Value) -> bool {
+    meta["version"].as_u64() == Some(META_VERSION)
+        && meta["revision"].as_u64().unwrap_or(0) >= META_REVISION
 }
 
 /// `engine-worker gcode-process` → `<gcode>.wspg` (écriture atomique).
@@ -168,6 +176,26 @@ mod tests {
         std::fs::write(&g, "G1 X1\n").unwrap();
         let mut p = ProcessedGcode::from_columns(vec![], vec![], vec![], "{}").unwrap();
         p.meta["version"] = serde_json::json!(1);
+        std::fs::write(cache_path(&g), p.encode_file()).unwrap();
+        let err = processed_at(
+            Path::new("/nonexistent/engine-worker"),
+            &g,
+            Duration::from_secs(2),
+        )
+        .await;
+        assert!(err.is_err());
+    }
+
+    #[tokio::test]
+    async fn cache_without_current_revision_is_reprocessed() {
+        // Version 2 sans révision (worker antérieur au lot 31) : retraité.
+        let dir = tempfile::tempdir().unwrap();
+        let g = dir.path().join("rev.gcode");
+        std::fs::write(&g, "G1 X1\n").unwrap();
+        let mut p = ProcessedGcode::from_columns(vec![], vec![], vec![], "{}").unwrap();
+        assert!(is_current(&p.meta));
+        p.meta.as_object_mut().unwrap().remove("revision");
+        assert!(!is_current(&p.meta));
         std::fs::write(cache_path(&g), p.encode_file()).unwrap();
         let err = processed_at(
             Path::new("/nonexistent/engine-worker"),

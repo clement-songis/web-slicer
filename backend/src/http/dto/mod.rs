@@ -488,6 +488,18 @@ pub struct SliceRequest {
     /// modèles référencés doivent appartenir au projet (sinon refus explicite).
     #[ts(optional, type = "unknown")]
     pub scene: Option<serde_json::Value>,
+    /// Presets actifs affichés non enregistrés (même format que
+    /// `active_presets` du projet : `{ printer, process, filaments: [...] }`,
+    /// ids de presets) : filament ajouté / imprimante ou process changés sans
+    /// sauvegarde. Orca tranche la configuration éditée, pas celle du projet
+    /// enregistré. Absent ⇒ presets actifs enregistrés du projet. Mêmes gardes
+    /// (visibilité des presets, possession de l'imprimante) ; le brouillon
+    /// `draft` s'applique ensuite par-dessus.
+    #[ts(
+        optional,
+        type = "{ printer?: string; process?: string; filaments?: Array<string> }"
+    )]
+    pub active_presets: Option<serde_json::Value>,
 }
 
 /// Brouillon de presets appliqué au tranchage, par-dessus les presets actifs

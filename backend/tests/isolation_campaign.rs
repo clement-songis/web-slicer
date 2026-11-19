@@ -546,16 +546,25 @@ async fn every_id_route_of_the_router_is_isolated_between_accounts() {
         .unwrap();
     assert_eq!(aux.status(), StatusCode::CREATED);
 
+    // Lot 31 : G-code externe ouvert par Alice (jeton = empreinte du contenu).
+    let opened = "0123456789abcdef0123456789abcdef".to_string();
+    h.files
+        .write_opened_gcode(alice, &opened, b"; secret d'Alice\nG1 X1\n", 4)
+        .await
+        .unwrap();
+
     let alice_id = alice.to_string();
     let substitute = |path: &str, id: &str| -> String {
         path.replace("{id}", id)
+            .replace("{token}", id)
             .replace("{folder}", "Others")
             .replace("{name}", "mien.txt")
             .replace("{key}", "orca-cube")
             .replace("{index}", "0")
     };
     let owner_id = |path: &str| -> &str {
-        let prefixes: [(&str, &str); 8] = [
+        let prefixes: [(&str, &str); 9] = [
+            ("/api/gcode/opened/{token}", opened.as_str()),
             ("/api/projects/{id}", r.project.as_str()),
             ("/api/models/{id}", r.model.as_str()),
             ("/api/jobs/{id}", r.job.as_str()),

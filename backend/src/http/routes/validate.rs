@@ -24,8 +24,8 @@ use serde_json::{json, Value};
 use ts_rs::TS;
 
 use super::slice::{
-    off_bed_ids, plate_scene_ids, plate_targets, request_scene, resolve_slice_config,
-    with_plate_settings, SliceConfig,
+    off_bed_ids, plate_scene_ids, plate_targets, request_active_presets, request_scene,
+    resolve_slice_config, with_plate_settings, SliceConfig,
 };
 use crate::domain::{ProjectId, UserId};
 use crate::http::dto::{SliceRequest, SliceWarning};
@@ -130,8 +130,14 @@ pub async fn validate(
         targets if targets.is_empty() => vec![0],
         targets => targets,
     };
-    let config =
-        resolve_slice_config(&state, user.id, scene, &project.active_presets, &body).await?;
+    let config = resolve_slice_config(
+        &state,
+        user.id,
+        scene,
+        request_active_presets(&body, &project.active_presets)?,
+        &body,
+    )
+    .await?;
 
     let checks = targets
         .iter()

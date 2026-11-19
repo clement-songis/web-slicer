@@ -33,6 +33,9 @@ pub enum Space {
     Thumbnails,
     /// Maillages d'affichage « WSMh » produits par la conversion moteur (T123).
     Meshes,
+    /// G-code externes ouverts (« Open G-code… ») simulés par GCodeProcessor,
+    /// nommés par empreinte du contenu (lot 31).
+    OpenedGcodes,
 }
 
 impl Space {
@@ -42,6 +45,7 @@ impl Space {
             Space::Gcodes => "gcodes",
             Space::Thumbnails => "thumbnails",
             Space::Meshes => "meshes",
+            Space::OpenedGcodes => "opened-gcodes",
         }
     }
 }
@@ -110,6 +114,64 @@ impl FileStore {
         let name = format!("{gcode}.png");
         self.write_atomic(user, Space::Thumbnails, &name, bytes)
             .await
+    }
+
+    /// Chemin d'un G-code externe ouvert : `<uid>/opened-gcodes/<jeton>.gcode`.
+    /// Le jeton est une empreinte hexadécimale (32 caractères) ; tout autre
+    /// jeton est refusé (aucune donnée libre dans le chemin).
+    pub fn opened_gcode_path(&self, user: UserId, token: &str) -> FilesResult<PathBuf> {
+        if token.len() != 32 || !token.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return Err(FilesError::UnsafeName(token.to_string()));
+        }
+        Ok(self
+            .space_dir(user, Space::OpenedGcodes)
+            .join(format!("{}.gcode", token.to_ascii_lowercase())))
+    }
+
+    /// Écrit (si absent) le G-code externe ouvert de jeton `token` puis ne garde
+    /// que les `keep` plus récemment ouverts (avec leur cache `.wspg`).
+    pub async fn write_opened_gcode(
+        &self,
+        user: UserId,
+        token: &str,
+        bytes: &[u8],
+        keep: usize,
+    ) -> FilesResult<PathBuf> {
+        let path = self.opened_gcode_path(user, token)?;
+        let name = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or_default()
+            .to_string();
+        if fs::metadata(&path).await.is_ok() {
+            // Réouverture : rafraîchit la date (ordre de rétention) sans réécrire.
+            let f = std::fs::File::options().append(true).open(&path)?;
+            f.set_modified(std::time::SystemTime::now())?;
+        } else {
+            self.write_atomic(user, Space::OpenedGcodes, &name, bytes)
+                .await?;
+        }
+        let dir = self.space_dir(user, Space::OpenedGcodes);
+        let mut entries = Vec::new();
+        let mut rd = fs::read_dir(&dir).await?;
+        while let Some(e) = rd.next_entry().await? {
+            let p = e.path();
+            if p.extension().and_then(|x| x.to_str()) == Some("gcode") {
+                let modified = e.metadata().await?.modified()?;
+                entries.push((modified, p));
+            }
+        }
+        entries.sort_by_key(|e| std::cmp::Reverse(e.0));
+        for (_, old) in entries.into_iter().skip(keep.max(1)) {
+            if old == path {
+                continue;
+            }
+            let mut wspg = old.as_os_str().to_owned();
+            wspg.push(".wspg");
+            let _ = fs::remove_file(&old).await;
+            let _ = fs::remove_file(PathBuf::from(wspg)).await;
+        }
+        Ok(path)
     }
 
     /// Vignette de projet rendue côté serveur : `<uid>/thumbnails/project-<id>.png`.
