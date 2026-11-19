@@ -474,6 +474,12 @@ fn router_source_parsing_finds_the_known_routes() {
         ("DELETE", "/api/projects/{id}/auxiliaries/{folder}/{name}"),
         ("PATCH", "/api/projects/{id}/rename"),
         ("POST", "/api/printers/{id}/objects/exclude"),
+        ("PATCH", "/api/projects/{id}"),
+        ("POST", "/api/projects/{id}/validate"),
+        ("GET", "/api/projects/{id}/thumbnail"),
+        ("POST", "/api/models/{id}/cut"),
+        ("PUT", "/api/projects/{id}/plates/{index}/thumbnail"),
+        ("DELETE", "/api/projects/{id}/plates/{index}/thumbnail"),
     ] {
         assert!(
             routes
@@ -546,6 +552,7 @@ async fn every_id_route_of_the_router_is_isolated_between_accounts() {
             .replace("{folder}", "Others")
             .replace("{name}", "mien.txt")
             .replace("{key}", "orca-cube")
+            .replace("{index}", "0")
     };
     let owner_id = |path: &str| -> &str {
         let prefixes: [(&str, &str); 8] = [
@@ -580,6 +587,14 @@ async fn every_id_route_of_the_router_is_isolated_between_accounts() {
                 json!({ "expected_version": 0, "scene": {}, "active_presets": {} })
             }
             ("PATCH", "/api/projects/{id}/rename") => json!({ "name": "pwned" }),
+            // Lots 25-27 : mise à jour partielle, validation, découpe, vignette
+            // de plateau (le propriétaire est vérifié avant le contenu PNG).
+            ("PATCH", "/api/projects/{id}") => json!({ "name": "pwned" }),
+            ("POST", "/api/projects/{id}/validate") => json!({}),
+            ("POST", "/api/models/{id}/cut") => {
+                json!({ "plane": { "point": [0.0, 0.0, 2.5], "normal": [0.0, 0.0, 1.0] } })
+            }
+            ("PUT", "/api/projects/{id}/plates/{index}/thumbnail") => json!({}),
             ("POST", "/api/models/{id}/remap-paint") => json!({ "channels": {} }),
             ("POST", "/api/projects/{id}/emboss-svg") => {
                 json!({ "svg": "<svg xmlns='http://www.w3.org/2000/svg'/>", "width_mm": 10.0, "depth_mm": 1.0 })
