@@ -53,6 +53,32 @@ struct ArrangeRequest {
     instance_ids: Vec<String>,
 }
 
+/// `arrange-gui` : arrangement de la GUI d'Orca (ArrangeJob + ArrangeSettings).
+#[derive(Debug, Deserialize)]
+struct GuiArrangeRequest {
+    model: engine::api::Model,
+    bed: engine::api::BuildVolume,
+    config: engine::api::DynamicPrintConfig,
+    settings: engine::api::GuiArrangeSettings,
+    instance_ids: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct GuiArrangedInstance {
+    id: String,
+    plate_index: u32,
+    matrix: [f64; 16],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    print_order: Option<u32>,
+    unarranged: bool,
+}
+
+#[derive(Debug, Serialize)]
+struct GuiArrangeResponse {
+    placements: Vec<GuiArrangedInstance>,
+    plate_count: u32,
+}
+
 #[derive(Debug, Serialize)]
 struct ArrangedInstance {
     id: String,
@@ -132,6 +158,9 @@ struct Project3mfRequest {
     /// Fichiers auxiliaires à empaqueter (Auxiliaries/), optionnel.
     #[serde(default)]
     aux_dir: Option<PathBuf>,
+    /// Métadonnées du projet (Title, Designer, License…), optionnelles.
+    #[serde(default)]
+    metadata: Option<engine::threemf::ProjectMetadata>,
     output_path: PathBuf,
 }
 
@@ -392,6 +421,19 @@ fn main() {
                 std::process::exit(2);
             };
             match engine::adapters::ffi::validate_in_worker(&path) {
+                Ok(result) => emit_json_result(&result),
+                Err(e) => {
+                    emit_error(&code_slug(e.code), &e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
+        Some("arrange-gui") => {
+            let Some(path) = args.get(2).map(PathBuf::from) else {
+                eprintln!("usage: arrange-gui <request.json>");
+                std::process::exit(2);
+            };
+            match run_arrange_gui(&path) {
                 Ok(result) => emit_json_result(&result),
                 Err(e) => {
                     emit_error(&code_slug(e.code), &e.message);
@@ -812,6 +854,62 @@ fn run_arrange(path: &Path) -> engine::api::EngineResult<ArrangeResponse> {
     Ok(ArrangeResponse { placements })
 }
 
+fn run_arrange_gui(path: &Path) -> engine::api::EngineResult<GuiArrangeResponse> {
+    use engine::api::{EngineError, EngineErrorCode};
+    let mut request: GuiArrangeRequest = read_json_bounded(path)?;
+    let instance_count: usize = request
+        .model
+        .objects
+        .iter()
+        .map(|o| o.instances.len())
+        .sum();
+    if request.instance_ids.len() != instance_count
+        || request
+            .instance_ids
+            .iter()
+            .collect::<std::collections::HashSet<_>>()
+            .len()
+            != instance_count
+    {
+        return Err(EngineError::new(
+            EngineErrorCode::InvalidModel,
+            "identifiants d'instances invalides",
+        ));
+    }
+    let outcome = engine::adapters::ffi::arrange_gui(
+        &mut request.model,
+        &request.bed,
+        &request.config,
+        &request.settings,
+    )?;
+    let mut ids = request.instance_ids.into_iter();
+    let mut placements = Vec::with_capacity(instance_count);
+    let mut k = 0;
+    for object in request.model.objects {
+        for instance in object.instances {
+            let matrix = instance.matrix.to_cols_array();
+            if matrix.iter().any(|value| !value.is_finite()) {
+                return Err(EngineError::new(
+                    EngineErrorCode::Internal,
+                    "matrice non finie produite par l'arrangeur",
+                ));
+            }
+            placements.push(GuiArrangedInstance {
+                id: ids.next().expect("nombre d'identifiants validé"),
+                plate_index: instance.plate_index,
+                matrix,
+                print_order: outcome.print_orders.get(k).copied().flatten(),
+                unarranged: outcome.unarranged.get(k).copied().unwrap_or(false),
+            });
+            k += 1;
+        }
+    }
+    Ok(GuiArrangeResponse {
+        placements,
+        plate_count: outcome.plate_count,
+    })
+}
+
 fn run_repair(path: &Path) -> engine::api::EngineResult<RepairResponse> {
     let request: RepairRequest = read_json_bounded(path)?;
     let (repaired, repairs) = engine::adapters::ffi::repair_mesh(&request.mesh)?;
@@ -862,11 +960,12 @@ fn run_simplify(path: &Path) -> engine::api::EngineResult<SimplifyResponse> {
 
 fn run_export_project_3mf(path: &Path) -> engine::api::EngineResult<Gcode3mfResponse> {
     let request: Project3mfRequest = read_json_bounded(path)?;
-    engine::adapters::ffi::write_project_3mf_with_auxiliaries(
+    engine::adapters::ffi::write_project_3mf_full(
         &request.model,
         &request.config,
         &request.plates,
         request.aux_dir.as_deref().filter(|p| p.is_dir()),
+        request.metadata.as_ref(),
         &request.output_path,
     )?;
     Ok(Gcode3mfResponse {

@@ -257,6 +257,15 @@ impl FileStore {
             .join(project.to_string())
     }
 
+    /// Métadonnées 3MF d'un projet (Orca : Model::model_info / design_info) :
+    /// `<uid>/project-metadata/<projet>.json`, hors du dossier auxiliaire
+    /// (qui est empaqueté tel quel dans Auxiliaries/ à l'export).
+    pub fn project_metadata_path(&self, user: UserId, project: impl std::fmt::Display) -> PathBuf {
+        self.user_root(user)
+            .join("project-metadata")
+            .join(format!("{project}.json"))
+    }
+
     /// Valide un chemin auxiliaire relatif « <dossier>/<fichier> » : dossiers
     /// d'Orca (AuxiliaryDataViewModel), composants sûrs, pas de remontée.
     pub fn auxiliary_path(

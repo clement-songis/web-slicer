@@ -52,6 +52,39 @@ pub(crate) mod ffi {
         is_seq_print: bool,
     }
 
+    /// ArrangeSettings de la GUI d'Orca (GLCanvas3D) + contexte de plateaux
+    /// (ArrangeJob : « Tout arranger » si `plate_scope` < 0, sinon plateau).
+    #[derive(Debug, Default)]
+    struct RawGuiArrangeSettings {
+        /// Espacement (mm), 0 = automatique.
+        distance: f64,
+        enable_rotation: bool,
+        allow_multi_materials_on_same_plate: bool,
+        avoid_extrusion_cali_region: bool,
+        align_to_y_axis: bool,
+        is_seq_print: bool,
+        /// Imprimante Bambu (PresetBundle::is_bbl_vendor).
+        is_bbl_vendor: bool,
+        plate_scope: i32,
+        /// Plateau courant (Print du plateau pour object_skirt_offset).
+        current_plate: u32,
+        plate_count: u32,
+        /// Séquence du plateau ≠ séquence globale (espacement forcé à auto).
+        plate_seq_differs: bool,
+    }
+
+    /// Résultat de l'arrangement GUI : scène, plateau final et drapeau
+    /// « non arrangé » par instance (ordre objets/instances).
+    #[derive(Debug)]
+    struct RawGuiArrangeResult {
+        objects: Vec<RawObject>,
+        bed_idx: Vec<i32>,
+        unarranged: Vec<bool>,
+        arrange_order: Vec<i32>,
+        is_seq_print: bool,
+        plate_count: u32,
+    }
+
     /// STEP maillé (StepMeshDialog) : objets et triangles annoncés par le dialogue.
     #[derive(Debug)]
     struct RawStepMesh {
@@ -132,6 +165,9 @@ pub(crate) mod ffi {
         plates: Vec<RawProjectPlate>,
         /// Config au format project_settings.config d'Orca (vecteurs en tableaux).
         project_config_json: String,
+        /// Métadonnées du projet (Model::model_info / design_info /
+        /// profile_info) en JSON ; vide = aucune.
+        model_info_json: String,
     }
 
     /// Résultat de tranchage : chemin du G-code + statistiques minimales.
@@ -440,6 +476,7 @@ pub(crate) mod ffi {
             custom_gcodes_json: &str,
             plates: &Vec<RawProjectPlate>,
             aux_dir: &str,
+            model_info_json: &str,
             out_path: &str,
         ) -> Result<()>;
 
@@ -475,6 +512,16 @@ pub(crate) mod ffi {
             force_seq_print: bool,
             allow_rotations: bool,
         ) -> Result<RawArrangeResult>;
+
+        /// Arrangement de la GUI d'Orca (ArrangeJob + ArrangeSettings).
+        fn arrange_gui_raw(
+            objects: &Vec<RawObject>,
+            bed_xy: &Vec<f64>,
+            config_json: &str,
+            settings: &RawGuiArrangeSettings,
+            plate_of_instance: &Vec<u32>,
+            locked_plates: &Vec<u32>,
+        ) -> Result<RawGuiArrangeResult>;
 
         /// « Remplir le plateau avec des instances » d'Orca (FillBedJob) :
         /// renvoie la scène avec les copies ajoutées à l'objet `object_index`.

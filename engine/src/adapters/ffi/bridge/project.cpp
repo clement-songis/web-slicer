@@ -180,6 +180,75 @@ void raw_into_model(const rust::Vec<RawObject> &objects, Slic3r::Model &model)
     }
 }
 
+namespace {
+// Métadonnées du projet (bbs_3mf.cpp, _BBS_3MF_Importer::_handle_end_metadata :
+// Title, Origin, Designer, DesignerUserId, DesignerCover, Description,
+// Copyright/CopyRight, License, Profile* ; toutes les entrées dans
+// ModelInfo::metadata_items) ↔ JSON web-slicer.
+std::string model_info_to_json(const Slic3r::Model &model)
+{
+    if (model.model_info == nullptr && model.design_info == nullptr && model.profile_info == nullptr)
+        return {};
+    nlohmann::json j = nlohmann::json::object();
+    if (const auto &info = model.model_info) {
+        j["model_name"] = info->model_name;
+        j["origin"] = info->origin;
+        j["cover_file"] = info->cover_file;
+        j["description"] = info->description;
+        j["copyright"] = info->copyright;
+        j["license"] = info->license;
+        nlohmann::json items = nlohmann::json::object();
+        for (const auto &[key, value] : info->metadata_items)
+            items[key] = value;
+        j["metadata_items"] = items;
+    }
+    if (const auto &design = model.design_info) {
+        j["designer"] = design->Designer;
+        j["designer_user_id"] = design->DesignerUserId;
+    }
+    if (const auto &profile = model.profile_info) {
+        j["profile"] = {{"title", profile->ProfileTile},
+                        {"cover", profile->ProfileCover},
+                        {"description", profile->ProfileDescription},
+                        {"user_id", profile->ProfileUserId},
+                        {"user_name", profile->ProfileUserName}};
+    }
+    return j.dump();
+}
+
+void model_info_from_json(Slic3r::Model &model, const std::string &text)
+{
+    if (text.empty())
+        return;
+    const nlohmann::json j = nlohmann::json::parse(text, nullptr, false);
+    if (!j.is_object())
+        return;
+    auto str = [&j](const char *key) -> std::string {
+        auto it = j.find(key);
+        return it != j.end() && it->is_string() ? it->get<std::string>() : std::string();
+    };
+    auto info = std::make_shared<Slic3r::ModelInfo>();
+    info->model_name = str("model_name");
+    info->origin = str("origin");
+    info->cover_file = str("cover_file");
+    info->description = str("description");
+    info->copyright = str("copyright");
+    info->license = str("license");
+    if (auto it = j.find("metadata_items"); it != j.end() && it->is_object())
+        for (auto item = it->begin(); item != it->end(); ++item)
+            if (item.value().is_string())
+                info->metadata_items[item.key()] = item.value().get<std::string>();
+    model.model_info = std::move(info);
+    // Plater::export_3mf : design_info conservé seulement avec un Designer.
+    const std::string designer = str("designer");
+    if (!designer.empty()) {
+        model.design_info = std::make_shared<Slic3r::ModelDesignInfo>();
+        model.design_info->Designer = designer;
+        model.design_info->DesignerUserId = str("designer_user_id");
+    }
+}
+} // namespace
+
 RawProject read_project_3mf_raw(rust::Str path)
 {
     const std::string file(path);
@@ -267,6 +336,7 @@ RawProject read_project_3mf_raw(rust::Str path)
         }
         project.project_config_json = j.dump();
     }
+    project.model_info_json = model_info_to_json(model);
     return project;
 }
 
@@ -468,7 +538,8 @@ Slic3r::ThumbnailData thumbnail_from_png(const rust::Vec<uint8_t> &png)
 
 void write_project_plates_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
                               rust::Str custom_gcodes_json,
-                              const rust::Vec<RawProjectPlate> &plates, rust::Str aux_dir, rust::Str out_path)
+                              const rust::Vec<RawProjectPlate> &plates, rust::Str aux_dir,
+                              rust::Str model_info_json, rust::Str out_path)
 {
     using namespace Slic3r;
     Model model;
@@ -478,6 +549,9 @@ void write_project_plates_raw(const rust::Vec<RawObject> &objects, rust::Str con
     if (!aux_dir.empty())
         copy_tree(std::string(aux_dir), model.get_auxiliary_file_temp_path());
     custom_gcodes_from_json(model, std::string(custom_gcodes_json));
+    // Métadonnées du projet (Title, Designer, License…) écrites par
+    // store_bbs_3mf comme « Save project » d'Orca.
+    model_info_from_json(model, std::string(model_info_json));
     // Extrudeur de l'objet (ModelObject::config « extruder », celui qu'Orca
     // affiche et relit) : la scène le porte sur les volumes ; on le remonte
     // sur l'objet s'il n'y est pas déjà, comme l'onglet Objets d'Orca.

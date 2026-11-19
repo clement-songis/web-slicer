@@ -12,6 +12,11 @@
 #include "libslic3r/ClipperUtils.hpp"
 #include "libslic3r/ModelArrange.hpp"
 #include "libslic3r/Orient.hpp"
+#include "libslic3r/Print.hpp"
+
+#include <algorithm>
+#include <map>
+#include <set>
 
 #include <cmath>
 #include <stdexcept>
@@ -260,6 +265,315 @@ RawArrangeResult arrange_orca_raw(const rust::Vec<RawObject> &objects, const rus
     for (const ModelObject *mo : model.objects)
         for (const ModelInstance *minst : mo->instances)
             out.arrange_order.push_back(minst->arrange_order);
+    out.is_seq_print = params.is_seq_print;
+    return out;
+}
+
+
+// Arrangement de la GUI d'Orca (GUI/Jobs/ArrangeJob.cpp : init_arrange_params,
+// prepare_all / prepare_partplate, check_unprintable, process, finalize) avec
+// les ArrangeSettings du menu « Options d'arrangement »
+// (GLCanvas3D::_render_arrange_menu) : espacement (0 = auto), rotation
+// automatique, plusieurs matériaux par plateau, zone de calibration
+// d'extrusion, alignement sur Y. Plateaux : `plate_of_instance` (ordre
+// objets/instances) ; `settings.plate_scope` < 0 = « Tout arranger »
+// (PREPARE_STATE_DEFAULT), sinon « Arranger ce plateau » (PREPARE_STATE_MENU).
+// Les plateaux verrouillés (`locked_plates`, prepare_all : print_sequence du
+// plateau ≠ global) gardent leurs instances. Sortie : plateau final et
+// position locale de chaque instance (PartPlateList::postprocess_* sans la
+// translation de grille), drapeau « non arrangé » (bed_idx = -1, posé hors
+// plateau comme postprocess_arrange_polygon) et nombre de plateaux après
+// création (create_plate jusqu'à MAX_PLATES_COUNT = 36).
+// Écart documenté : la tour d'essuyage (prepare_wipe_tower,
+// estimate_wipe_tower_polygon : code GUI de PartPlate) n'est pas réservée.
+RawGuiArrangeResult arrange_gui_raw(const rust::Vec<RawObject> &objects, const rust::Vec<double> &bed_xy,
+                                    rust::Str config_json, const RawGuiArrangeSettings &settings,
+                                    const rust::Vec<uint32_t> &plate_of_instance,
+                                    const rust::Vec<uint32_t> &locked_plates)
+{
+    using namespace Slic3r;
+    using namespace Slic3r::arrangement;
+    constexpr int max_plates = 36; // MAX_NUM_PLATES (libnest2d) = MAX_PLATES_COUNT
+    size_t cursor = 0;
+    Points bed = take_polygon(bed_xy, cursor);
+    if (bed.size() < 3)
+        throw std::runtime_error("contour de plateau invalide");
+    if (!std::isfinite(settings.distance) || settings.distance < 0.)
+        throw std::runtime_error("espacement d'arrangement invalide");
+
+    DynamicPrintConfig config;
+    if (!config_json.empty())
+        config_from_json(config, std::string(config_json));
+    for (const std::string &key : FullPrintConfig::defaults().keys()) {
+        if (config.has(key))
+            continue;
+        const ConfigOptionDef *def = print_config_def.get(key);
+        if (def != nullptr && def->default_value)
+            config.set_key_value(key, def->default_value->clone());
+    }
+    {
+        Pointfs area;
+        for (const Point &p : bed)
+            area.emplace_back(unscaled(p.x()), unscaled(p.y()));
+        config.set_key_value("printable_area", new ConfigOptionPoints(area));
+    }
+    // Zones exclues : boîtes englobantes (PartPlate::m_exclude_bounding_box).
+    std::vector<Polygon> exclude_boxes;
+    while (cursor < bed_xy.size()) {
+        Points points = take_polygon(bed_xy, cursor);
+        if (points.size() < 3)
+            throw std::runtime_error("zone d'exclusion invalide");
+        exclude_boxes.push_back(BoundingBox(points).polygon());
+    }
+    Polygon wrapping_area;
+    if (const auto *wrap = config.option<ConfigOptionPoints>("wrapping_exclude_area"))
+        for (const Vec2d &p : wrap->values)
+            wrapping_area.append({scaled(p.x()), scaled(p.y())});
+    const bool enable_wrapping = config.has("enable_wrapping_detection") &&
+                                 config.opt_bool("enable_wrapping_detection");
+    // PartPlateList::preprocess_exclude_areas.
+    auto add_exclude_areas = [&](ArrangePolygons &out, int num_plates, coord_t inflation) {
+        if (enable_wrapping && !wrapping_area.empty())
+            for (int j = 0; j < num_plates; ++j) {
+                ArrangePolygon ret;
+                ret.poly.contour = wrapping_area;
+                ret.translation = Vec2crd(0, 0);
+                ret.rotation = 0.0f;
+                ret.is_virt_object = true;
+                ret.bed_idx = j;
+                ret.height = 1;
+                ret.name = "WrappingRegion";
+                ret.inflation = inflation;
+                out.emplace_back(std::move(ret));
+            }
+        for (size_t index = 0; index < exclude_boxes.size(); ++index)
+            for (int j = 0; j < num_plates; ++j) {
+                ArrangePolygon ret;
+                ret.poly.contour = exclude_boxes[index];
+                ret.translation = Vec2crd(0, 0);
+                ret.rotation = 0.0f;
+                ret.is_virt_object = true;
+                ret.bed_idx = j;
+                ret.height = 1;
+                ret.name = "ExcludedRegion" + std::to_string(index);
+                ret.inflation = inflation;
+                out.emplace_back(std::move(ret));
+            }
+    };
+
+    Model model;
+    raw_into_model(objects, model);
+    std::vector<ModelInstance *> flat;
+    for (ModelObject *mo : model.objects)
+        for (ModelInstance *mi : mo->instances)
+            flat.push_back(mi);
+    if (plate_of_instance.size() != flat.size())
+        throw std::runtime_error("plateaux d'instances incohérents");
+    const std::set<uint32_t> locked(locked_plates.begin(), locked_plates.end());
+    const bool only_on_partplate = settings.plate_scope >= 0;
+    const int current_plate = only_on_partplate ? settings.plate_scope : static_cast<int>(settings.current_plate);
+    int plate_count = std::max<int>(1, static_cast<int>(settings.plate_count));
+
+    // ArrangeJob::prepare : paramètres extrudeur et table de vitesses.
+    PrintConfig print_config;
+    print_config.apply(config, true);
+    {
+        int filaments = 1;
+        if (const auto *d = config.option<ConfigOptionFloats>("filament_diameter"))
+            filaments = std::max<int>(1, static_cast<int>(d->values.size()));
+        Model::setExtruderParams(config, filaments);
+        Model::setPrintSpeedTable(config, print_config);
+    }
+
+    // init_arrange_params : Print::object_skirt_offset du plateau courant.
+    float object_skirt_offset = 0.f;
+    try {
+        Model plate_model;
+        for (size_t o = 0, k = 0; o < model.objects.size(); ++o) {
+            ModelObject *copy = nullptr;
+            for (size_t i = 0; i < model.objects[o]->instances.size(); ++i, ++k) {
+                if (static_cast<int>(plate_of_instance[k]) != current_plate)
+                    continue;
+                if (copy == nullptr) {
+                    copy = plate_model.add_object(*model.objects[o]);
+                    copy->clear_instances();
+                }
+                copy->add_instance(*model.objects[o]->instances[i]);
+            }
+        }
+        if (!plate_model.objects.empty()) {
+            Print print;
+            DynamicPrintConfig print_cfg = config;
+            print_cfg.normalize_fdm();
+            print.apply(plate_model, print_cfg);
+            object_skirt_offset = std::get<0>(print.object_skirt_offset());
+        }
+    } catch (const std::exception &) {
+        object_skirt_offset = 0.f;
+    }
+
+    ArrangeParams params;
+    params.clearance_height_to_rod = config.opt_float("extruder_clearance_height_to_rod");
+    params.clearance_height_to_lid = config.opt_float("extruder_clearance_height_to_lid");
+    params.clearance_radius = config.opt_float("extruder_clearance_radius") + object_skirt_offset * 2;
+    params.object_skirt_offset = object_skirt_offset;
+    params.printable_height = config.opt_float("printable_height");
+    params.allow_rotations = settings.enable_rotation;
+    params.nozzle_height = config.opt_float("nozzle_height");
+    if (const auto *pos = config.option<ConfigOptionPoint>("best_object_pos"))
+        params.align_center = pos->value;
+    params.allow_multi_materials_on_same_plate = settings.allow_multi_materials_on_same_plate;
+    params.avoid_extrusion_cali_region = settings.avoid_extrusion_cali_region;
+    params.is_seq_print = settings.is_seq_print;
+    params.min_obj_distance = scaled(settings.distance);
+    params.align_to_y_axis = settings.align_to_y_axis;
+    if (only_on_partplate && settings.plate_seq_differs)
+        params.min_obj_distance = 0;
+    if (params.is_seq_print) {
+        params.bed_shrink_x = BED_SHRINK_SEQ_PRINT;
+        params.bed_shrink_y = BED_SHRINK_SEQ_PRINT;
+    }
+    params.progressind = [](unsigned, std::string) {};
+
+    // prepare_all / prepare_partplate.
+    // Plateau final et drapeau « non arrangé » par instance, relevés par le
+    // setter (l'arrangeur réécrit itemid avec l'ordre de placement).
+    std::vector<int32_t> bed_of(flat.size(), 0);
+    std::vector<bool> unarranged(flat.size(), false);
+    for (size_t k = 0; k < flat.size(); ++k)
+        bed_of[k] = static_cast<int32_t>(plate_of_instance[k]);
+    bool pending_unarranged = false;
+    ArrangePolygons selected, unselected, unprintable;
+    std::vector<int> locked_bed; // plateau des instances verrouillées
+    for (size_t k = 0; k < flat.size(); ++k) {
+        const int plate = static_cast<int>(plate_of_instance[k]);
+        ArrangePolygon ap = get_instance_arrange_poly(flat[k], config);
+        ap.name = flat[k]->get_object()->name;
+        ap.setter = [setter = ap.setter, k, &bed_of, &unarranged, &pending_unarranged](const ArrangePolygon &placed) {
+            if (setter)
+                setter(placed);
+            bed_of[k] = placed.bed_idx;
+            if (pending_unarranged)
+                unarranged[k] = true;
+        };
+        const bool is_locked = only_on_partplate ? plate != current_plate : locked.count(plate) > 0;
+        if (is_locked) {
+            locked_bed.push_back(plate);
+            continue;
+        }
+        if (flat[k]->printable) {
+            ap.itemid = static_cast<int>(selected.size());
+            selected.emplace_back(std::move(ap));
+        } else {
+            ap.itemid = static_cast<int>(unprintable.size());
+            unprintable.emplace_back(std::move(ap));
+        }
+    }
+    add_exclude_areas(unselected, only_on_partplate ? current_plate + 1 : max_plates, 0);
+
+    // check_unprintable : aire nulle ou plus haut que printable_height.
+    for (auto it = selected.begin(); it != selected.end();) {
+        if (it->poly.area() < 0.001 || it->height > params.printable_height) {
+            unprintable.push_back(*it);
+            it = selected.erase(it);
+        } else
+            ++it;
+    }
+
+    // process.
+    const bool scan_first_layer = config.has("scan_first_layer") && config.opt_bool("scan_first_layer");
+    if (settings.is_bbl_vendor && params.avoid_extrusion_cali_region && scan_first_layer) {
+        // PartPlateList::preprocess_nonprefered_areas (inflation 0).
+        const Polygon ap = scaled(BoundingBoxf(Vec2d{18, 0}, Vec2d{240, 15})).polygon();
+        for (int j = 0; j < max_plates; ++j) {
+            ArrangePolygon ret;
+            ret.poly.contour = ap;
+            ret.translation = Vec2crd(0, 0);
+            ret.rotation = 0.0f;
+            ret.is_virt_object = true;
+            ret.is_extrusion_cali_object = true;
+            ret.bed_idx = j;
+            ret.height = 1;
+            ret.name = "NonpreferedRegion0";
+            ret.inflation = 0;
+            unselected.emplace_back(std::move(ret));
+        }
+    }
+    update_arrange_params(params, &config, selected);
+    update_selected_items_inflation(selected, &config, params);
+    update_unselected_items_inflation(unselected, &config, params);
+    update_selected_items_axis_align(selected, &config, params);
+    const Points bedpts = get_shrink_bedpts(&config, params);
+    add_exclude_areas(params.excluded_regions, 1, scaled(1.));
+
+    if (!selected.empty())
+        arrange(selected, unselected, bedpts, params);
+    std::sort(selected.begin(), selected.end(), [](const auto &a, const auto &b) { return a.itemid < b.itemid; });
+
+    // finalize.
+    RawGuiArrangeResult out;
+    int beds = 0;
+    for (ArrangePolygon &ap : selected) {
+        if (only_on_partplate) {
+            // postprocess_bed_index_for_current_plate.
+            if (ap.bed_idx == 0)
+                ap.bed_idx += current_plate;
+            else if (ap.bed_idx != -1)
+                ap.bed_idx = plate_count;
+        } else if (ap.bed_idx != -1) {
+            // postprocess_bed_index_for_selected.
+            bool placed = false;
+            for (int i = 0; i < plate_count; ++i) {
+                if (locked.count(static_cast<uint32_t>(i)) > 0)
+                    ap.bed_idx += 1;
+                else if (ap.bed_idx <= i) {
+                    placed = true;
+                    break;
+                }
+            }
+            if (!placed) {
+                int plate_index = plate_count < max_plates ? plate_count++ : -1;
+                while (plate_index != -1) {
+                    if (ap.bed_idx <= plate_index)
+                        break;
+                    plate_index = plate_count < max_plates ? plate_count++ : -1;
+                }
+            }
+        }
+        beds = std::max(ap.bed_idx, beds);
+    }
+    for (int bed_of_locked : locked_bed)
+        beds = std::max(bed_of_locked, beds);
+    const BoundingBox bed_bb = Polygon(bed).bounding_box();
+    for (ArrangePolygon &ap : selected) {
+        pending_unarranged = ap.bed_idx == -1;
+        if (ap.bed_idx == -1) {
+            // postprocess_arrange_polygon : objet trop grand, posé sur un
+            // plateau supplémentaire, coin arrière gauche.
+            ap.bed_idx = plate_count;
+            const BoundingBox apbox = get_extents(ap.transformed_poly());
+            const auto size = apbox.size();
+            ap.translation(X) = 0.5 * size[0];
+            ap.translation(Y) = bed_bb.size().y() - 0.5 * size[1];
+        }
+        ap.apply();
+    }
+    pending_unarranged = false;
+    for (ArrangePolygon &ap : unprintable) {
+        ap.bed_idx = beds + 1;
+        ap.apply();
+    }
+    int max_bed = plate_count - 1;
+    for (int32_t b : bed_of)
+        max_bed = std::max<int>(max_bed, b);
+    for (size_t k = 0; k < flat.size(); ++k) {
+        out.bed_idx.push_back(bed_of[k]);
+        out.unarranged.push_back(unarranged[k]);
+    }
+    out.plate_count = static_cast<uint32_t>(std::min(max_bed + 1, max_plates));
+    out.objects = model_to_raw(model);
+    for (ModelInstance *mi : flat)
+        out.arrange_order.push_back(mi->arrange_order);
     out.is_seq_print = params.is_seq_print;
     return out;
 }

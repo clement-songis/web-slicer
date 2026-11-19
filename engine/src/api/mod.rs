@@ -24,7 +24,7 @@ pub use model::{
     ModelInstance, ModelObject, ModelVolume, PaintChannel, PlateCustomGcodes, VolumePaint,
     VolumeRole,
 };
-pub use presets::{ArrangeParams, RawPreset};
+pub use presets::{ArrangeParams, GuiArrangeOutcome, GuiArrangeSettings, RawPreset};
 pub use slice::{
     BuildVolume, CalibMode, CalibParams, CancelToken, ProgressSink, ShaperType, SliceRequest,
     SliceResult, SliceStats, ValidateIssue, ValidateIssueKind, ValidateResult,

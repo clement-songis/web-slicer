@@ -13,6 +13,7 @@ pub mod handy_models;
 pub mod harness;
 pub mod jobs;
 pub mod mesh_ops;
+pub mod metadata;
 pub mod models;
 pub mod paint;
 pub mod preferences;
@@ -135,6 +136,14 @@ where
         )
         .route("/api/emboss/fonts", get(mesh_ops::emboss_fonts))
         .route("/api/projects/{id}/arrange", post(scene::arrange))
+        .route(
+            "/api/projects/{id}/arrange/options",
+            get(scene::arrange_options),
+        )
+        .route(
+            "/api/projects/{id}/metadata",
+            get(metadata::get).put(metadata::put),
+        )
         .route("/api/projects/{id}/orient", post(scene::orient))
         .route("/api/projects/{id}/slice", post(slice::slice))
         .route("/api/projects/{id}/validate", post(validate::validate))

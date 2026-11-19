@@ -47,6 +47,59 @@ pub struct ArrangeParams {
     pub is_seq_print: bool,
 }
 
+/// Options d'arrangement de la GUI d'Orca (`GLCanvas3D::ArrangeSettings`,
+/// menu « Options d'arrangement ») + contexte de plateaux d'`ArrangeJob`.
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct GuiArrangeSettings {
+    /// Espacement entre objets (mm) ; 0 = automatique.
+    #[serde(default)]
+    pub distance: f64,
+    #[serde(default)]
+    pub enable_rotation: bool,
+    #[serde(default = "default_true")]
+    pub allow_multi_materials_on_same_plate: bool,
+    #[serde(default = "default_true")]
+    pub avoid_extrusion_cali_region: bool,
+    #[serde(default)]
+    pub align_to_y_axis: bool,
+    /// Impression séquentielle (réglages « _seq_print » d'Orca).
+    #[serde(default)]
+    pub is_seq_print: bool,
+    /// Imprimante Bambu (condition de la zone de calibration).
+    #[serde(default)]
+    pub is_bbl_vendor: bool,
+    /// `None` = « Tout arranger » ; `Some(p)` = « Arranger ce plateau ».
+    #[serde(default)]
+    pub plate_scope: Option<u32>,
+    /// Plateau courant (Print utilisé pour object_skirt_offset).
+    #[serde(default)]
+    pub current_plate: u32,
+    /// Nombre de plateaux existants.
+    #[serde(default)]
+    pub plate_count: u32,
+    /// Séquence d'impression du plateau ≠ séquence globale.
+    #[serde(default)]
+    pub plate_seq_differs: bool,
+    /// Plateaux verrouillés (instances non déplacées).
+    #[serde(default)]
+    pub locked_plates: Vec<u32>,
+}
+
+const fn default_true() -> bool {
+    true
+}
+
+/// Résultat de l'arrangement GUI (ordre objets/instances du modèle).
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+pub struct GuiArrangeOutcome {
+    /// Rang d'impression séquentielle (1-based par plateau) si séquentiel.
+    pub print_orders: Vec<Option<u32>>,
+    /// Instance trop grande pour un plateau (posée sur un plateau ajouté).
+    pub unarranged: Vec<bool>,
+    /// Nombre de plateaux après arrangement (plateaux créés compris).
+    pub plate_count: u32,
+}
+
 impl Default for ArrangeParams {
     fn default() -> Self {
         Self {

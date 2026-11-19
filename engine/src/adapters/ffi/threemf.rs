@@ -89,8 +89,13 @@ pub fn read_project_3mf_import(path: &Path) -> EngineResult<serde_json::Value> {
         .iter()
         .map(|p| json!({ "index": p.plate_index, "name": p.name, "settings": text_map(&p.config_json), "obj_inst": p.obj_inst }))
         .collect();
+    let metadata = if raw.model_info_json.trim().is_empty() {
+        Value::Null
+    } else {
+        serde_json::from_str::<Value>(&raw.model_info_json).unwrap_or(Value::Null)
+    };
     Ok(
-        json!({ "objects": objects, "config": text_map(&raw.project_config_json), "plates": plates }),
+        json!({ "objects": objects, "config": text_map(&raw.project_config_json), "plates": plates, "metadata": metadata }),
     )
 }
 
@@ -129,6 +134,22 @@ pub fn write_project_3mf_with_auxiliaries(
     aux_dir: Option<&Path>,
     out: &Path,
 ) -> EngineResult<()> {
+    write_project_3mf_full(model, config, plates, aux_dir, None, out)
+}
+
+/// Comme [`write_project_3mf_with_auxiliaries`] avec les métadonnées du projet
+/// (`Model::model_info` / `design_info`) écrites par store_bbs_3mf.
+pub fn write_project_3mf_full(
+    model: &Model,
+    config: &DynamicPrintConfig,
+    plates: &[crate::threemf::ProjectPlate],
+    aux_dir: Option<&Path>,
+    metadata: Option<&crate::threemf::ProjectMetadata>,
+    out: &Path,
+) -> EngineResult<()> {
+    let metadata_json = metadata
+        .map(|m| serde_json::to_string(m).expect("sérialisable"))
+        .unwrap_or_default();
     let plate_count = model
         .objects
         .iter()
@@ -178,6 +199,7 @@ pub fn write_project_3mf_with_auxiliaries(
         &aux_dir
             .map(|p| p.to_string_lossy().into_owned())
             .unwrap_or_default(),
+        &metadata_json,
         &out.to_string_lossy(),
     )
     .map_err(|e| EngineError::new(EngineErrorCode::Io, e.to_string()))

@@ -171,6 +171,52 @@ pub async fn fill_bed(
         .map_err(|e| SceneWorkerError::Protocol(e.to_string()))
 }
 
+/// Requête `engine-worker arrange-gui` (ArrangeJob + ArrangeSettings d'Orca).
+#[derive(Debug, Clone, Serialize)]
+pub struct GuiArrangeWorkerRequest {
+    pub model: Model,
+    pub bed: BuildVolume,
+    pub config: engine::api::DynamicPrintConfig,
+    pub settings: engine::api::GuiArrangeSettings,
+    /// Identifiants scène, dans l'ordre objets puis instances du modèle.
+    pub instance_ids: Vec<String>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GuiArrangedInstance {
+    pub id: String,
+    pub plate_index: u32,
+    pub matrix: [f64; 16],
+    #[serde(default)]
+    pub print_order: Option<u32>,
+    #[serde(default)]
+    pub unarranged: bool,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct GuiArrangeWorkerResponse {
+    pub placements: Vec<GuiArrangedInstance>,
+    pub plate_count: u32,
+}
+
+/// Arrangement de la GUI d'Orca sur toute la scène (plateaux multiples).
+pub async fn arrange_gui(
+    request: &GuiArrangeWorkerRequest,
+) -> Result<GuiArrangeWorkerResponse, SceneWorkerError> {
+    let dir = crate::workdir::tempdir()?;
+    let request_path = dir.path().join("arrange-gui.json");
+    write_json_bounded(&request_path, request)?;
+    let stdout = run_worker_at(
+        &super::worker::worker_binary(),
+        &["arrange-gui", &request_path.to_string_lossy()],
+        DEFAULT_TIMEOUT,
+    )
+    .await
+    .map_err(map_worker_error)?;
+    serde_json::from_str(result_json(&stdout)?)
+        .map_err(|e| SceneWorkerError::Protocol(e.to_string()))
+}
+
 /// Variante à binaire explicite pour les tests de protocole.
 pub async fn arrange_at(
     binary: &Path,

@@ -4,4 +4,8 @@ import type { Placement } from "./Placement";
 /**
  * Réponse de `POST /api/projects/{id}/arrange`.
  */
-export type ArrangeResponse = { placements: Array<Placement>, };
+export type ArrangeResponse = { placements: Array<Placement>, 
+/**
+ * Arrangement GUI : nombre de plateaux après arrangement (plateaux créés).
+ */
+plate_count?: number, };

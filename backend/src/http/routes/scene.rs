@@ -52,9 +52,10 @@ pub async fn arrange(
     let project_id = parse_project_id(&project_raw)?;
     let project = state.storage.projects().get(user.id, project_id).await?;
     validate_arrange_request(&req)?;
-    if req.items.is_empty() {
+    if req.options.is_none() && req.items.is_empty() {
         return Ok(Json(ArrangeResponse {
             placements: Vec::new(),
+            plate_count: None,
         }));
     }
 
@@ -99,9 +100,29 @@ pub async fn arrange(
         .unwrap_or_default();
     let plate_by_object = plate_indices(&project.scene);
     let mut engine_model = EngineModel::default();
-    let mut instance_ids = Vec::with_capacity(req.items.len());
+    // Arrangement GUI (ArrangeJob::prepare_all / prepare_partplate) : toutes
+    // les instances de la scène, les items absents de la scène restant des
+    // empreintes (compatibilité).
+    let mut items = req.items.clone();
+    if req.options.is_some() {
+        for object in &scene_objects {
+            let Some(id) = object.get("id").and_then(Value::as_str) else {
+                continue;
+            };
+            if object.get("modelId").and_then(Value::as_str).is_some()
+                && !items.iter().any(|item| item.id == id)
+            {
+                items.push(crate::http::dto::ArrangeItem {
+                    id: id.to_string(),
+                    width: 0.0,
+                    depth: 0.0,
+                });
+            }
+        }
+    }
+    let mut instance_ids = Vec::with_capacity(items.len());
 
-    for item in &req.items {
+    for item in &items {
         let scene_object = scene_objects
             .iter()
             .find(|object| object.get("id").and_then(Value::as_str) == Some(item.id.as_str()));
@@ -135,6 +156,20 @@ pub async fn arrange(
         object.instances[0].plate_index =
             plate_by_object.get(item.id.as_str()).copied().unwrap_or(0);
         if let Some(scene_object) = scene_object {
+            // ModelInstance::printable (instances non imprimables : dernier
+            // plateau virtuel d'ArrangeJob::finalize) et extrudeur de l'objet
+            // (ArrangePolygon::extrude_ids, multi-matériau par plateau).
+            object.instances[0].printable = scene_object
+                .get("printable")
+                .and_then(Value::as_bool)
+                .unwrap_or(true);
+            if let Some(extruder) = scene_object
+                .get("extruder")
+                .and_then(Value::as_u64)
+                .filter(|e| *e > 0)
+            {
+                object.volumes[0].extruder = u16::try_from(extruder).ok();
+            }
             object.settings = scene_object_settings(scene_object);
             object.layer_height_profile = scene_object
                 .get("layerProfile")
@@ -145,6 +180,106 @@ pub async fn arrange(
                 .collect();
         }
         instance_ids.push(item.id.clone());
+    }
+
+    if let Some(options) = req.options.as_ref() {
+        let plates = scene_plates(&project.scene);
+        let current_plate = req
+            .plate_index
+            .or_else(|| active_plate_index(&project.scene))
+            .unwrap_or(0);
+        let plate_count = u32::try_from(plates.len()).unwrap_or(u32::MAX).max(1);
+        let scope = req.scope.unwrap_or_default();
+        if scope == crate::http::dto::ArrangeScope::Plate && current_plate >= plate_count {
+            return Err(ApiError::validation(
+                "plateau inexistant",
+                serde_json::json!({ "plate_index": current_plate }),
+            ));
+        }
+        let global_seq = global_print_sequence(&active_config);
+        let real_seq = |plate: Option<&Value>| -> String {
+            plate
+                .and_then(|p| p.get("settings"))
+                .and_then(|s| s.get("print_sequence"))
+                .and_then(Value::as_str)
+                .filter(|s| !s.is_empty() && *s != "by default")
+                .map_or_else(|| global_seq.clone(), str::to_string)
+        };
+        // prepare_all : plateaux verrouillés + plateaux dont la séquence
+        // d'impression diffère de la séquence globale (m_uncompatible_plates).
+        let locked_plates: Vec<u32> = plates
+            .iter()
+            .enumerate()
+            .filter(|(_, plate)| {
+                plate.get("locked").and_then(Value::as_bool) == Some(true)
+                    || real_seq(Some(plate)) != global_seq
+            })
+            .map(|(index, _)| index as u32)
+            .collect();
+        let (is_seq_print, plate_seq_differs) = match scope {
+            // init_arrange_params, PREPARE_STATE_MENU : séquence réelle du plateau.
+            crate::http::dto::ArrangeScope::Plate => {
+                let seq = real_seq(plates.get(current_plate as usize).copied());
+                (seq == "by object", seq != global_seq)
+            }
+            crate::http::dto::ArrangeScope::All => (req.is_seq_print.unwrap_or(by_object), false),
+        };
+        if scope == crate::http::dto::ArrangeScope::Plate
+            && plates
+                .get(current_plate as usize)
+                .and_then(|p| p.get("locked"))
+                .and_then(Value::as_bool)
+                == Some(true)
+        {
+            return Err(ApiError::validation(
+                "plateau verrouillé : arrangement impossible",
+                serde_json::json!({ "plate_index": current_plate }),
+            ));
+        }
+        let is_bbl_vendor = active_printer_is_bbl(&state, user.id, &project.active_presets).await?;
+        let settings = engine::api::GuiArrangeSettings {
+            distance: options.spacing,
+            enable_rotation: options.enable_rotation,
+            allow_multi_materials_on_same_plate: options.allow_multi_materials_on_same_plate,
+            avoid_extrusion_cali_region: options.avoid_extrusion_cali_region,
+            // GLCanvas3D::_render_arrange_menu : alignement Y désactivé quand
+            // la rotation automatique est active.
+            align_to_y_axis: options.align_to_y_axis && !options.enable_rotation,
+            is_seq_print,
+            is_bbl_vendor,
+            plate_scope: (scope == crate::http::dto::ArrangeScope::Plate).then_some(current_plate),
+            current_plate,
+            plate_count,
+            plate_seq_differs,
+            locked_plates,
+        };
+        let result =
+            crate::engine::scene::arrange_gui(&crate::engine::scene::GuiArrangeWorkerRequest {
+                model: engine_model,
+                bed,
+                config: active_config,
+                settings,
+                instance_ids,
+            })
+            .await
+            .map_err(scene_worker_api_error)?;
+        let placements = result
+            .placements
+            .into_iter()
+            .map(|placement| Placement {
+                id: placement.id,
+                x: placement.matrix[12],
+                y: placement.matrix[13],
+                plate_index: Some(placement.plate_index),
+                matrix: Some(placement.matrix.to_vec()),
+                print_order: placement.print_order,
+                unarranged: placement.unarranged,
+            })
+            .collect();
+        return Ok(Json(ArrangeResponse {
+            placements,
+            plate_count: Some(result.plate_count),
+        }));
     }
 
     if let Some(fill_id) = req.fill_object_id.as_deref() {
@@ -196,9 +331,13 @@ pub async fn arrange(
                 plate_index: Some(plate_index),
                 matrix: Some(matrix.to_vec()),
                 print_order: None,
+                unarranged: false,
             })
             .collect();
-        return Ok(Json(ArrangeResponse { placements }));
+        return Ok(Json(ArrangeResponse {
+            placements,
+            plate_count: None,
+        }));
     }
 
     let result = crate::engine::scene::arrange(&ArrangeWorkerRequest {
@@ -235,9 +374,150 @@ pub async fn arrange(
             plate_index: Some(placement.plate_index),
             matrix: Some(placement.matrix.to_vec()),
             print_order: placement.print_order,
+            unarranged: false,
         })
         .collect();
-    Ok(Json(ArrangeResponse { placements }))
+    Ok(Json(ArrangeResponse {
+        placements,
+        plate_count: None,
+    }))
+}
+
+/// `GET /api/projects/{id}/arrange/options` — valeurs du bouton « Reset » du
+/// menu « Options d'arrangement » d'Orca et disponibilité des cases pour
+/// l'imprimante active (GLCanvas3D::_render_arrange_menu).
+pub async fn arrange_options(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(project_raw): Path<String>,
+) -> ApiResult<Json<crate::http::dto::ArrangeOptionsInfo>> {
+    let project_id = parse_project_id(&project_raw)?;
+    let project = state.storage.projects().get(user.id, project_id).await?;
+    let (config, _) =
+        super::slice::resolve_active_config(&state, user.id, &project.active_presets).await?;
+    let is_bbl = active_printer_is_bbl(&state, user.id, &project.active_presets).await?;
+    Ok(Json(arrange_options_info(&config, is_bbl)))
+}
+
+/// Réinitialisation des ArrangeSettings (bouton « Reset ») + disponibilité.
+pub(crate) fn arrange_options_info(
+    config: &engine::api::DynamicPrintConfig,
+    is_bbl_vendor: bool,
+) -> crate::http::dto::ArrangeOptionsInfo {
+    let is_seq_print = global_print_sequence(config) == "by object";
+    // Reset : align_to_y_axis = (printer_structure == i3).
+    let align_to_y_axis = matches!(
+        config.get("printer_structure"),
+        Some(ConfigValue::String(s)) if s == "i3"
+    );
+    let scan_first_layer = matches!(
+        config.get("scan_first_layer"),
+        Some(ConfigValue::Bool(true))
+    );
+    crate::http::dto::ArrangeOptionsInfo {
+        defaults: crate::http::dto::ArrangeOptions {
+            spacing: 0.0,
+            enable_rotation: false,
+            allow_multi_materials_on_same_plate: true,
+            avoid_extrusion_cali_region: true,
+            align_to_y_axis,
+        },
+        is_seq_print,
+        min_spacing: min_object_distance(config),
+        show_avoid_extrusion_cali_region: is_bbl_vendor && scan_first_layer,
+    }
+}
+
+/// `min_object_distance` (PrintConfig.cpp) : max(6, extruder_clearance_radius)
+/// en séquentiel, 6 sinon (FFF).
+fn min_object_distance(config: &engine::api::DynamicPrintConfig) -> f64 {
+    const DUPLICATE_DISTANCE: f64 = 6.0;
+    let ecr = match config.get("extruder_clearance_radius") {
+        Some(ConfigValue::Float(v)) => Some(*v),
+        Some(ConfigValue::Int(v)) => Some(*v as f64),
+        _ => None,
+    };
+    match (ecr, config.get("print_sequence")) {
+        (Some(ecr), Some(ConfigValue::String(seq))) => {
+            if seq == "by object" && ecr > DUPLICATE_DISTANCE {
+                ecr
+            } else {
+                DUPLICATE_DISTANCE
+            }
+        }
+        _ => 0.0,
+    }
+}
+
+/// `print_sequence` global du jeu de réglages résolu (défaut Orca : by layer).
+fn global_print_sequence(config: &engine::api::DynamicPrintConfig) -> String {
+    match config.get("print_sequence") {
+        Some(ConfigValue::String(s)) if !s.is_empty() => s.clone(),
+        _ => "by layer".to_string(),
+    }
+}
+
+/// Plateaux de la scène (document `{plates, activeId}` ou tableau historique).
+fn scene_plates(scene: &Value) -> Vec<&Value> {
+    match scene.get("plates") {
+        Some(Value::Array(plates)) => plates.iter().collect(),
+        Some(Value::Object(document)) => document
+            .get("plates")
+            .and_then(Value::as_array)
+            .map(|p| p.iter().collect())
+            .unwrap_or_default(),
+        _ => Vec::new(),
+    }
+}
+
+/// Index du plateau actif (`plates.activeId`).
+fn active_plate_index(scene: &Value) -> Option<u32> {
+    let active = scene.get("plates")?.get("activeId")?.as_str()?;
+    scene_plates(scene)
+        .iter()
+        .position(|p| p.get("id").and_then(Value::as_str) == Some(active))
+        .map(|i| i as u32)
+}
+
+/// `PresetBundle::is_bbl_vendor` : le preset imprimante actif (ou le preset
+/// système dont il hérite) appartient au fabricant « BBL ».
+async fn active_printer_is_bbl(
+    state: &AppState,
+    user: UserId,
+    active_presets: &Value,
+) -> ApiResult<bool> {
+    let Some(id) = active_presets.get("printer").and_then(Value::as_str) else {
+        return Ok(false);
+    };
+    let machines = state
+        .storage
+        .presets()
+        .list_by_kind(crate::domain::PresetKind::Machine, user)
+        .await?;
+    let Some(leaf) = machines.iter().find(|p| p.id.to_string() == id) else {
+        return Ok(false);
+    };
+    Ok(printer_vendor(&machines, leaf).as_deref() == Some("BBL"))
+}
+
+/// Fabricant d'un preset machine : le sien, sinon celui du plus proche
+/// ancêtre système de la chaîne d'héritage.
+pub(crate) fn printer_vendor(
+    visible: &[crate::domain::Preset],
+    leaf: &crate::domain::Preset,
+) -> Option<String> {
+    if let Some(vendor) = leaf.vendor.clone().filter(|v| !v.is_empty()) {
+        return Some(vendor);
+    }
+    super::presets::build_chain(visible, leaf)
+        .into_iter()
+        .rev()
+        .filter_map(|raw| {
+            visible
+                .iter()
+                .find(|p| p.name == raw.name && p.origin == crate::domain::PresetOrigin::System)
+        })
+        .find_map(|p| p.vendor.clone().filter(|v| !v.is_empty()))
 }
 
 /// `POST /api/projects/{id}/orient` — suggère la rotation posant la plus grande
@@ -439,6 +719,21 @@ fn validate_arrange_request(req: &ArrangeRequest) -> ApiResult<()> {
             "empreinte d'objet invalide",
             serde_json::json!({}),
         ));
+    }
+    if let Some(options) = &req.options {
+        // Orca : espacement ≥ 0 (« 0 means auto spacing »).
+        if !options.spacing.is_finite() || options.spacing < 0.0 || options.spacing > 1000.0 {
+            return Err(ApiError::validation(
+                "espacement d'arrangement invalide",
+                serde_json::json!({ "spacing": options.spacing }),
+            ));
+        }
+        if req.fill_object_id.is_some() {
+            return Err(ApiError::validation(
+                "options d'arrangement incompatibles avec le remplissage",
+                serde_json::json!({}),
+            ));
+        }
     }
     let unique = req
         .items
@@ -865,4 +1160,66 @@ async fn load_stl_mesh(state: &AppState, model: &Model) -> ApiResult<Mesh> {
         tracing::error!(error = %e, "décodage STL");
         ApiError::validation("STL illisible", serde_json::json!({}))
     })
+}
+
+#[cfg(test)]
+mod arrange_options_tests {
+    use super::*;
+
+    fn config(pairs: &[(&str, ConfigValue)]) -> engine::api::DynamicPrintConfig {
+        let mut c = engine::api::DynamicPrintConfig::new();
+        for (k, v) in pairs {
+            c.0.insert((*k).to_string(), v.clone());
+        }
+        c
+    }
+
+    #[test]
+    fn reset_values_and_visibility_like_orca() {
+        let c = config(&[
+            ("print_sequence", ConfigValue::String("by layer".into())),
+            ("extruder_clearance_radius", ConfigValue::Float(40.0)),
+            ("printer_structure", ConfigValue::String("i3".into())),
+            ("scan_first_layer", ConfigValue::Bool(true)),
+        ]);
+        let info = arrange_options_info(&c, true);
+        assert!(!info.is_seq_print);
+        assert_eq!(info.min_spacing, 6.0);
+        assert_eq!(info.defaults.spacing, 0.0);
+        assert!(!info.defaults.enable_rotation);
+        assert!(info.defaults.allow_multi_materials_on_same_plate);
+        assert!(info.defaults.avoid_extrusion_cali_region);
+        assert!(info.defaults.align_to_y_axis, "i3 → aligné sur Y");
+        assert!(info.show_avoid_extrusion_cali_region);
+        assert!(!arrange_options_info(&c, false).show_avoid_extrusion_cali_region);
+    }
+
+    #[test]
+    fn sequential_min_spacing_is_the_clearance_radius() {
+        let c = config(&[
+            ("print_sequence", ConfigValue::String("by object".into())),
+            ("extruder_clearance_radius", ConfigValue::Float(40.0)),
+        ]);
+        let info = arrange_options_info(&c, false);
+        assert!(info.is_seq_print);
+        assert_eq!(info.min_spacing, 40.0);
+        assert!(!info.defaults.align_to_y_axis);
+        assert_eq!(
+            min_object_distance(&engine::api::DynamicPrintConfig::new()),
+            0.0
+        );
+    }
+
+    #[test]
+    fn scene_plate_helpers() {
+        let scene = serde_json::json!({
+            "plates": { "plates": [ { "id": "a" }, { "id": "b", "locked": true } ], "activeId": "b" }
+        });
+        assert_eq!(scene_plates(&scene).len(), 2);
+        assert_eq!(active_plate_index(&scene), Some(1));
+        assert_eq!(
+            active_plate_index(&serde_json::json!({ "plates": [] })),
+            None
+        );
+    }
 }

@@ -39,3 +39,40 @@ pub struct ProjectPlate {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub thumbnail_png: Vec<u8>,
 }
+
+/// Métadonnées d'un projet 3MF (Orca : `Model::model_info`, `design_info`,
+/// `profile_info`, lues par `_BBS_3MF_Importer::_handle_end_metadata` et
+/// écrites par `_BBS_3MF_Exporter::_add_model_file_to_archive` : Title,
+/// Origin, Designer, DesignerCover, Description, Copyright, License + toutes
+/// les autres entrées `<metadata>` dans `metadata_items`).
+#[derive(Debug, Clone, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ProjectMetadata {
+    /// Titre (« Title », ModelInfo::model_name).
+    #[serde(default)]
+    pub model_name: String,
+    /// « Origin » (type de publication).
+    #[serde(default)]
+    pub origin: String,
+    /// Couverture (« DesignerCover ») : nom d'un fichier de « Model Pictures ».
+    #[serde(default)]
+    pub cover_file: String,
+    #[serde(default)]
+    pub description: String,
+    /// « Copyright » (JSON `[{"author": …}]` dans les projets MakerWorld).
+    #[serde(default)]
+    pub copyright: String,
+    /// Licence (Auxiliary.cpp : « », CC0, BY, BY-SA, BY-ND, BY-NC, BY-NC-SA, BY-NC-ND).
+    #[serde(default)]
+    pub license: String,
+    /// Auteur (« Designer », ModelDesignInfo::Designer).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub designer: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub designer_user_id: Option<String>,
+    /// Toutes les entrées `<metadata>` lues (réécrites à l'export comme Orca).
+    #[serde(default)]
+    pub metadata_items: std::collections::BTreeMap<String, String>,
+    /// ModelProfileInfo (lecture seule) : title, cover, description, user_id, user_name.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub profile: Option<std::collections::BTreeMap<String, String>>,
+}

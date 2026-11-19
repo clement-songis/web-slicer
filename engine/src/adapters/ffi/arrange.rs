@@ -155,6 +155,110 @@ pub fn arrange_ordered(
     Ok(orders)
 }
 
+/// Arrangement de la GUI d'Orca (ArrangeJob + ArrangeSettings) sur toute la
+/// scène : les instances portent leur plateau (`plate_index`) en entrée et le
+/// plateau final en sortie (plateaux créés au-delà de `settings.plate_count`),
+/// matrices dans le repère local du plateau.
+pub fn arrange_gui(
+    model: &mut Model,
+    bed: &BuildVolume,
+    print_config: &crate::api::DynamicPrintConfig,
+    settings: &crate::api::GuiArrangeSettings,
+) -> EngineResult<crate::api::GuiArrangeOutcome> {
+    validate_arrange_input(bed, &ArrangeParams::default())?;
+    if !settings.distance.is_finite() || settings.distance < 0.0 {
+        return Err(EngineError::new(
+            EngineErrorCode::OutOfBuildVolume,
+            "espacement d'arrangement invalide",
+        ));
+    }
+    let instance_total: usize = model.objects.iter().map(|o| o.instances.len()).sum();
+    if instance_total == 0 {
+        return Ok(crate::api::GuiArrangeOutcome {
+            plate_count: settings.plate_count.max(1),
+            ..Default::default()
+        });
+    }
+    let json = super::model::config_to_orca_json(print_config);
+    let plate_of_instance: Vec<u32> = model
+        .objects
+        .iter()
+        .flat_map(|o| o.instances.iter().map(|i| i.plate_index))
+        .collect();
+    let raw_settings = ffi::RawGuiArrangeSettings {
+        distance: settings.distance,
+        enable_rotation: settings.enable_rotation,
+        allow_multi_materials_on_same_plate: settings.allow_multi_materials_on_same_plate,
+        avoid_extrusion_cali_region: settings.avoid_extrusion_cali_region,
+        align_to_y_axis: settings.align_to_y_axis,
+        is_seq_print: settings.is_seq_print,
+        is_bbl_vendor: settings.is_bbl_vendor,
+        plate_scope: settings.plate_scope.map_or(-1, |p| p as i32),
+        current_plate: settings.current_plate,
+        plate_count: settings.plate_count.max(1),
+        plate_seq_differs: settings.plate_seq_differs,
+    };
+    let bed_xy = encode_bed_and_exclusions(bed);
+    let locked: Vec<u32> = settings.locked_plates.clone();
+    let _guard = ffi_guard();
+    let raw = to_raw_objects(model);
+    let result = ffi::arrange_gui_raw(
+        &raw,
+        &bed_xy,
+        &json,
+        &raw_settings,
+        &plate_of_instance,
+        &locked,
+    )
+    .map_err(|e| EngineError::new(EngineErrorCode::OutOfBuildVolume, e.to_string()))?;
+    if result.objects.len() != model.objects.len()
+        || result.bed_idx.len() != instance_total
+        || result.unarranged.len() != instance_total
+    {
+        return Err(EngineError::new(
+            EngineErrorCode::Internal,
+            "l'arrangeur a modifié la scène",
+        ));
+    }
+    // Rangs séquentiels par plateau final (comme arrange_ordered).
+    let mut print_orders = vec![None; instance_total];
+    if result.is_seq_print {
+        let mut by_plate: BTreeMap<i32, Vec<usize>> = BTreeMap::new();
+        for (k, bed) in result.bed_idx.iter().enumerate() {
+            by_plate.entry(*bed).or_default().push(k);
+        }
+        for indices in by_plate.values() {
+            let orders: Vec<i32> = indices
+                .iter()
+                .map(|&k| result.arrange_order.get(k).copied().unwrap_or(0))
+                .collect();
+            for (rank, &k) in print_ranks(&orders).iter().zip(indices) {
+                print_orders[k] = Some(*rank);
+            }
+        }
+    }
+    let mut k = 0;
+    for (object, raw_object) in model.objects.iter_mut().zip(result.objects.iter()) {
+        if raw_object.instances.len() != object.instances.len() {
+            return Err(EngineError::new(
+                EngineErrorCode::Internal,
+                "l'arrangeur a modifié le nombre d'instances",
+            ));
+        }
+        for (instance, raw_instance) in object.instances.iter_mut().zip(raw_object.instances.iter())
+        {
+            instance.matrix = glam::DMat4::from_cols_array(&raw_instance.matrix);
+            instance.plate_index = result.bed_idx[k].max(0) as u32;
+            k += 1;
+        }
+    }
+    Ok(crate::api::GuiArrangeOutcome {
+        print_orders,
+        unarranged: result.unarranged.to_vec(),
+        plate_count: result.plate_count,
+    })
+}
+
 /// Rangs 1-based croissants de `arrange_order` (ordre de placement du nester,
 /// trié comme GCode::_do_export / Print::sequential_print_clearance_valid).
 fn print_ranks(arrange_order: &[i32]) -> Vec<u32> {

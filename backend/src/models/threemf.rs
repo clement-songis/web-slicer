@@ -111,6 +111,8 @@ pub struct ImportedProject {
     pub plates: Vec<ImportedPlate>,
     /// Configuration Orca brute (chaînes ou tableaux de chaînes).
     pub config: Map<String, Value>,
+    /// Métadonnées du projet (Title, Designer, License…), `None` si aucune.
+    pub metadata: Option<engine::threemf::ProjectMetadata>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -190,6 +192,8 @@ struct ProjectView {
     config: Map<String, Value>,
     #[serde(default)]
     plates: Vec<ViewPlate>,
+    #[serde(default)]
+    metadata: Option<engine::threemf::ProjectMetadata>,
 }
 
 fn matrix4(values: &[f64]) -> ImportResult<DMat4> {
@@ -469,6 +473,7 @@ fn convert_view(view: ProjectView) -> ImportResult<ImportedProject> {
         objects,
         plates,
         config: view.config,
+        metadata: view.metadata,
     })
 }
 

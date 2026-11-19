@@ -17,4 +17,9 @@ matrix?: Array<number>,
  * Ordre d'impression (1-based, `ModelInstance::arrange_order` d'Orca),
  * présent seulement en arrangement séquentiel.
  */
-print_order?: number, };
+print_order?: number, 
+/**
+ * Arrangement GUI : objet trop grand pour un plateau, posé sur un plateau
+ * ajouté (« Arrangement ignored the following objects… »).
+ */
+unarranged?: boolean, };

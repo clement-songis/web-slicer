@@ -17,6 +17,8 @@ struct Request<'a> {
     plates: &'a [ProjectPlate],
     #[serde(skip_serializing_if = "Option::is_none")]
     aux_dir: Option<&'a Path>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    metadata: Option<&'a engine::threemf::ProjectMetadata>,
     output_path: PathBuf,
 }
 
@@ -37,6 +39,7 @@ pub async fn write_project_3mf(
         config,
         plates,
         None,
+        None,
         DEFAULT_TIMEOUT,
     )
     .await
@@ -48,6 +51,7 @@ pub async fn write_project_3mf_with_aux(
     config: &DynamicPrintConfig,
     plates: &[ProjectPlate],
     aux_dir: &Path,
+    metadata: Option<&engine::threemf::ProjectMetadata>,
 ) -> Result<Vec<u8>, SceneWorkerError> {
     write_project_3mf_at(
         &super::worker::worker_binary(),
@@ -55,6 +59,7 @@ pub async fn write_project_3mf_with_aux(
         config,
         plates,
         Some(aux_dir),
+        metadata,
         DEFAULT_TIMEOUT,
     )
     .await
@@ -94,6 +99,7 @@ pub async fn write_project_3mf_at(
     config: &DynamicPrintConfig,
     plates: &[ProjectPlate],
     aux_dir: Option<&Path>,
+    metadata: Option<&engine::threemf::ProjectMetadata>,
     timeout: Duration,
 ) -> Result<Vec<u8>, SceneWorkerError> {
     let dir = crate::workdir::tempdir()?;
@@ -106,6 +112,7 @@ pub async fn write_project_3mf_at(
             config,
             plates,
             aux_dir,
+            metadata,
             output_path: output_path.clone(),
         },
     )?;

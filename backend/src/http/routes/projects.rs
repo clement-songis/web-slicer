@@ -6,7 +6,7 @@
 //! (`schema_version`) ; la sauvegarde utilise un verrou optimiste (409 en cas
 //! de conflit multi-onglets).
 
-use axum::extract::{Multipart, Path, State};
+use axum::extract::{Multipart, Path, Query, State};
 use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -21,8 +21,8 @@ use crate::domain::{
     StorageError, UserId,
 };
 use crate::http::dto::{
-    CreateProjectRequest, PatchProjectRequest, ProjectResponse, RenameProjectRequest,
-    SaveProjectRequest,
+    CreateProjectRequest, GcodeWarning, ImportLoadMode, ImportQuery, ImportReport,
+    PatchProjectRequest, ProjectResponse, RenameProjectRequest, SaveProjectRequest,
 };
 use crate::http::error::{ApiError, ApiResult};
 use crate::http::extract::CurrentUser;
@@ -180,9 +180,18 @@ pub async fn create(
 /// alimente une conversion asynchrone, et les métadonnées Orca restaurent les
 /// transformations, plateaux, réglages d'objet et configuration globale. Les
 /// autres formats conservent le comportement d'import d'un modèle simple.
+///
+/// `?load=project|geometry` (Orca : « Ouvrir comme projet » / « Importer la
+/// géométrie seule », `LoadType`) ; absent → préférence du compte
+/// `project_load_behaviour` (`load_geometry_only` → géométrie, sinon projet ;
+/// les choix « demander » sont posés par le client qui transmet alors `load`).
+/// La réponse d'un 3MF porte `import` ([`ImportReport`]) : mode retenu,
+/// avertissement « G-code modifié » (`PresetBundle::validate_presets`) et
+/// présence de métadonnées.
 pub async fn import(
     CurrentUser(user): CurrentUser,
     State(state): State<AppState>,
+    Query(query): Query<ImportQuery>,
     multipart: Multipart,
 ) -> ApiResult<(StatusCode, Json<ProjectResponse>)> {
     // Validation avant toute création : aucun projet orphelin sur fichier
@@ -211,9 +220,36 @@ pub async fn import(
         return Ok((StatusCode::CREATED, Json(project.into())));
     }
 
-    let imported = crate::models::threemf::read_project(&bytes)
+    let mut imported = crate::models::threemf::read_project(&bytes)
         .await
         .map_err(|e| ApiError::validation(e.to_string(), details(&filename)))?;
+
+    let preferences = state.storage.users().get_preferences(user.id).await?;
+    let load = query
+        .load
+        .unwrap_or_else(|| preferred_load_mode(&preferences));
+    // Plater::priv::load_files : validate_presets seulement en ouvrant comme
+    // projet une config non vide, sauf « ne plus avertir ».
+    let gcode_warning = if load == ImportLoadMode::Project
+        && !imported.config.is_empty()
+        && !no_warn_when_modified_gcodes(&preferences)
+    {
+        let (machines, filaments) = trusted_preset_names(&state, user.id).await?;
+        validate_presets(
+            &imported.config,
+            |name| machines.contains(name),
+            |name| filaments.contains(name),
+        )
+    } else {
+        None
+    };
+    let metadata = match load {
+        ImportLoadMode::Project => imported.metadata.take(),
+        ImportLoadMode::Geometry => {
+            geometry_only(&mut imported);
+            None
+        }
+    };
 
     let project = create_unique_project(
         &state,
@@ -251,12 +287,27 @@ pub async fn import(
         .await?;
 
     // Fichiers auxiliaires du 3MF (Auxiliaries/), extraits par libslic3r comme à
-    // l'ouverture d'un projet dans Orca. Un échec n'empêche pas l'import.
-    let aux_dir = state.files.auxiliaries_dir(user.id, project.id);
-    if let Err(error) = crate::engine::project_3mf::read_project_auxiliaries(&bytes, &aux_dir).await
-    {
-        tracing::warn!(%error, "fichiers auxiliaires du 3MF ignorés");
+    // l'ouverture d'un projet dans Orca (LoadStrategy::LoadAuxiliary : pas en
+    // géométrie seule). Un échec n'empêche pas l'import.
+    if load == ImportLoadMode::Project {
+        let aux_dir = state.files.auxiliaries_dir(user.id, project.id);
+        if let Err(error) =
+            crate::engine::project_3mf::read_project_auxiliaries(&bytes, &aux_dir).await
+        {
+            tracing::warn!(%error, "fichiers auxiliaires du 3MF ignorés");
+        }
     }
+    // Métadonnées (Model::model_info / design_info) : copiées seulement à
+    // l'ouverture comme projet (`if (load_model && !load_config) ;`).
+    // libslic3r crée toujours un ModelInfo à la lecture : « présentes » =
+    // au moins un champ affiché par l'onglet Projet d'Orca.
+    let has_metadata = match &metadata {
+        Some(metadata) => {
+            super::metadata::store(&state, user.id, project.id, metadata).await?;
+            super::metadata::is_meaningful(metadata)
+        }
+        None => false,
+    };
 
     for (model, mesh) in models {
         let converter = state.converter.clone();
@@ -264,7 +315,150 @@ pub async fn import(
             converter.convert_mesh(model, mesh).await;
         });
     }
-    Ok((StatusCode::CREATED, Json(project.into())))
+    let mut response: ProjectResponse = project.into();
+    response.import = Some(ImportReport {
+        load,
+        gcode_warning,
+        has_metadata,
+    });
+    Ok((StatusCode::CREATED, Json(response)))
+}
+
+/// Préférence `project_load_behaviour` d'Orca (AppConfig.hpp,
+/// SETTING_PROJECT_LOAD_BEHAVIOUR) dans le document de préférences du compte
+/// (clé Orca ou camelCase du client).
+pub(crate) fn preferred_load_mode(preferences: &Value) -> ImportLoadMode {
+    let setting = ["project_load_behaviour", "projectLoadBehaviour"]
+        .iter()
+        .find_map(|key| preferences.get(*key).and_then(Value::as_str));
+    match setting {
+        Some("load_geometry_only") => ImportLoadMode::Geometry,
+        _ => ImportLoadMode::Project,
+    }
+}
+
+/// Préférence `no_warn_when_modified_gcodes` (case « Ne plus afficher » de la
+/// boîte « Modified G-code »).
+pub(crate) fn no_warn_when_modified_gcodes(preferences: &Value) -> bool {
+    ["no_warn_when_modified_gcodes", "noWarnWhenModifiedGcodes"]
+        .iter()
+        .filter_map(|key| preferences.get(*key))
+        .any(|value| value.as_bool() == Some(true) || value.as_str() == Some("true"))
+}
+
+/// Noms des presets « de confiance » d'Orca (`PresetCollection::validate_preset` :
+/// système, défaut ou bundle) : presets système machine et filament.
+async fn trusted_preset_names(
+    state: &AppState,
+    user_id: UserId,
+) -> ApiResult<(HashSet<String>, HashSet<String>)> {
+    let mut out = (HashSet::new(), HashSet::new());
+    for (kind, set) in [
+        (PresetKind::Machine, &mut out.0),
+        (PresetKind::Filament, &mut out.1),
+    ] {
+        for preset in state.storage.presets().list_by_kind(kind, user_id).await? {
+            if preset.origin == PresetOrigin::System {
+                set.insert(preset.name);
+            }
+        }
+    }
+    Ok(out)
+}
+
+/// Clés G-code surveillées par `PresetBundle::validate_presets`
+/// (PresetBundle.cpp, `gcodes_key_set`).
+pub(crate) const VALIDATED_GCODE_KEYS: &[&str] = &[
+    "filament_end_gcode",
+    "filament_start_gcode",
+    "change_filament_gcode",
+    "layer_change_gcode",
+    "machine_end_gcode",
+    "machine_pause_gcode",
+    "machine_start_gcode",
+    "template_custom_gcode",
+    "printing_by_object_gcode",
+    "before_layer_change_gcode",
+    "time_lapse_gcode",
+    "wrapping_detection_gcode",
+];
+
+/// `PresetBundle::validate_presets` d'Orca 2.4.1 sur la config d'un 3MF :
+/// 1. imprimante `printer_settings_id` (ou son `inherits_group` final) non
+///    système → `customized_presets` (VALIDATE_PRESETS_PRINTER_NOT_FOUND) ;
+/// 2. filament `filament_settings_id[i]` non vide, ni lui ni
+///    `inherits_group[i + 1]` système → `customized_presets` ;
+/// 3. sinon clés G-code de `different_settings_to_system[1 .. n - 1]` (boucle
+///    d'Orca `for index = 1; index < filament_count`, qui n'examine ni le
+///    dernier filament ni l'imprimante) → `modified_gcodes`.
+///
+/// Éléments triés et dédupliqués (`std::set`).
+pub(crate) fn validate_presets(
+    config: &Map<String, Value>,
+    printer_trusted: impl Fn(&str) -> bool,
+    filament_trusted: impl Fn(&str) -> bool,
+) -> Option<GcodeWarning> {
+    let filament_count = raw_items(config.get("filament_diameter")).len();
+    let mut inherits = raw_items(config.get("inherits_group"));
+    let mut different = raw_items(config.get("different_settings_to_system"));
+    let mut names = raw_items(config.get("filament_settings_id"));
+    inherits.resize(filament_count + 2, String::new());
+    different.resize(filament_count + 2, String::new());
+    names.resize(filament_count, String::new());
+    let printer = raw_text(config.get("printer_settings_id")).unwrap_or_default();
+    let trusted = |name: &str, parent: &str, check: &dyn Fn(&str) -> bool| {
+        check(name) || (!parent.is_empty() && check(parent))
+    };
+
+    let mut items = std::collections::BTreeSet::new();
+    let mut customized = false;
+    if !trusted(&printer, &inherits[filament_count + 1], &printer_trusted) {
+        items.insert(printer);
+        customized = true;
+    }
+    for (index, name) in names.iter().enumerate() {
+        if name.is_empty() {
+            continue;
+        }
+        if !trusted(name, &inherits[index + 1], &filament_trusted) {
+            items.insert(name.clone());
+            customized = true;
+        }
+    }
+    if customized {
+        return Some(GcodeWarning {
+            kind: "customized_presets".into(),
+            items: items.into_iter().collect(),
+        });
+    }
+    for keys in different.iter().take(filament_count).skip(1) {
+        for key in keys.split(';').map(str::trim) {
+            if VALIDATED_GCODE_KEYS.contains(&key) {
+                items.insert(key.to_string());
+            }
+        }
+    }
+    (!items.is_empty()).then(|| GcodeWarning {
+        kind: "modified_gcodes".into(),
+        items: items.into_iter().collect(),
+    })
+}
+
+/// « Importer la géométrie seule » (`LoadStrategy::LoadModel` sans
+/// `LoadConfig`) : ni configuration ni presets du projet, plateaux sans nom
+/// ni réglages (`partplate_list.reload_all_objects` au lieu de
+/// `load_from_3mf_structure`), sans métadonnées. Les réglages d'objet et de
+/// volume sont conservés : la remise à zéro (`else if (!load_config)`) suit
+/// la chaîne des `En3mfType` dont toutes les valeurs sont déjà traitées, elle
+/// est inatteignable dans Orca 2.4.1.
+pub(crate) fn geometry_only(imported: &mut crate::models::threemf::ImportedProject) {
+    imported.config.clear();
+    imported.metadata = None;
+    for plate in &mut imported.plates {
+        plate.name.clear();
+        plate.settings.clear();
+        plate.plate_type = crate::models::threemf::DEFAULT_PLATE_TYPE.to_string();
+    }
 }
 
 /// `POST /api/projects/{id}/import-3mf` — ajoute le contenu d'un 3MF à un projet
@@ -1238,6 +1432,7 @@ pub async fn delete(
 ) -> ApiResult<StatusCode> {
     let id = parse_project_id(&id)?;
     state.storage.projects().delete(user.id, id).await?;
+    super::metadata::remove(&state, user.id, id).await;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -1306,6 +1501,9 @@ pub async fn duplicate(
         }
     }
     let scene = remap_scene(source.scene, &id_map);
+    if let Some(metadata) = super::metadata::load(&state, user.id, id).await {
+        super::metadata::store(&state, user.id, copy.id, &metadata).await?;
+    }
     let copy = state
         .storage
         .projects()
@@ -1630,5 +1828,121 @@ mod name_tests {
         assert_eq!(next_free_name("Sans titre", &taken), "Sans titre (3)");
         assert_eq!(next_free_name("Sans titre (2)", &taken), "Sans titre (3)");
         assert_eq!(next_free_name("cube (copie)", &taken), "cube (copie) (2)");
+    }
+}
+
+#[cfg(test)]
+mod import_3mf_tests {
+    use super::*;
+
+    fn config(v: Value) -> Map<String, Value> {
+        v.as_object().unwrap().clone()
+    }
+
+    fn base() -> Value {
+        json!({
+            "filament_diameter": ["1.75", "1.75", "1.75"],
+            "printer_settings_id": "Bambu Lab X1 Carbon 0.4 nozzle",
+            "filament_settings_id": ["Bambu PLA Basic @BBL X1C", "Bambu PETG HF @BBL X1C", ""],
+            "inherits_group": ["", "", "", "", ""],
+            "different_settings_to_system": ["", "", "", "", ""]
+        })
+    }
+
+    fn trusted(name: &str) -> bool {
+        name.starts_with("Bambu")
+    }
+
+    #[test]
+    fn validate_presets_success_when_all_system() {
+        assert!(validate_presets(&config(base()), trusted, trusted).is_none());
+    }
+
+    #[test]
+    fn validate_presets_customized_printer_and_filament() {
+        let mut v = base();
+        v["printer_settings_id"] = json!("Mon imprimante");
+        v["filament_settings_id"][1] = json!("Mon PETG");
+        let w = validate_presets(&config(v.clone()), trusted, trusted).unwrap();
+        assert_eq!(w.kind, "customized_presets");
+        assert_eq!(
+            w.items,
+            vec!["Mon PETG".to_string(), "Mon imprimante".to_string()]
+        );
+        // Héritage d'un preset système (inherits_group[i + 1], imprimante en dernier).
+        v["inherits_group"] = json!(["", "", "Bambu PETG HF @BBL X1C", "", "Bambu Lab X1C"]);
+        assert!(validate_presets(&config(v), trusted, trusted).is_none());
+    }
+
+    #[test]
+    fn validate_presets_modified_gcodes_like_orca_loop() {
+        let mut v = base();
+        // Index 1 (filament 1) examiné ; index 3 (dernier filament) et 4
+        // (imprimante) ignorés par la boucle d'Orca (1 ≤ i < filament_count).
+        v["different_settings_to_system"] = json!([
+            "machine_start_gcode",
+            "filament_start_gcode;nozzle_temperature;filament_end_gcode",
+            "",
+            "change_filament_gcode",
+            "machine_end_gcode"
+        ]);
+        let w = validate_presets(&config(v), trusted, trusted).unwrap();
+        assert_eq!(w.kind, "modified_gcodes");
+        assert_eq!(
+            w.items,
+            vec![
+                "filament_end_gcode".to_string(),
+                "filament_start_gcode".to_string()
+            ]
+        );
+    }
+
+    #[test]
+    fn load_preferences() {
+        assert_eq!(preferred_load_mode(&json!({})), ImportLoadMode::Project);
+        assert_eq!(
+            preferred_load_mode(&json!({ "project_load_behaviour": "load_geometry_only" })),
+            ImportLoadMode::Geometry
+        );
+        assert_eq!(
+            preferred_load_mode(&json!({ "projectLoadBehaviour": "always_ask" })),
+            ImportLoadMode::Project
+        );
+        assert!(no_warn_when_modified_gcodes(
+            &json!({ "no_warn_when_modified_gcodes": "true" })
+        ));
+        assert!(no_warn_when_modified_gcodes(
+            &json!({ "noWarnWhenModifiedGcodes": true })
+        ));
+        assert!(!no_warn_when_modified_gcodes(&json!({})));
+    }
+
+    #[test]
+    fn geometry_only_drops_config_plates_and_metadata() {
+        let mut imported = crate::models::threemf::ImportedProject {
+            objects: Vec::new(),
+            plates: vec![crate::models::threemf::ImportedPlate {
+                name: "Plateau A".into(),
+                plate_type: "Textured PEI Plate".into(),
+                settings: config(json!({ "print_sequence": "by object" })),
+                instances: vec![("1".into(), 0)],
+            }],
+            config: config(base()),
+            metadata: Some(engine::threemf::ProjectMetadata::default()),
+        };
+        geometry_only(&mut imported);
+        assert!(imported.config.is_empty());
+        assert!(imported.metadata.is_none());
+        assert_eq!(imported.plates[0].name, "");
+        assert!(imported.plates[0].settings.is_empty());
+        assert_eq!(
+            imported.plates[0].instances.len(),
+            1,
+            "affectation conservée"
+        );
+        assert_eq!(
+            imported.plates[0].plate_type,
+            crate::models::threemf::DEFAULT_PLATE_TYPE
+        );
     }
 }

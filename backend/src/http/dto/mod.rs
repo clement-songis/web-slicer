@@ -326,6 +326,101 @@ pub struct ProjectResponse {
     /// Dates au format RFC 3339.
     pub created_at: String,
     pub updated_at: String,
+    /// Rapport d'ouverture d'un 3MF (`POST /api/projects/import` seulement).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub import: Option<ImportReport>,
+}
+
+/// Mode d'ouverture d'un 3MF (Orca : `LoadType` de `determine_load_type`,
+/// boîte « Ouvrir comme projet / Importer la géométrie seule »).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
+pub enum ImportLoadMode {
+    /// `LoadStrategy::LoadModel | LoadConfig` : géométrie, plateaux, config,
+    /// presets du projet, métadonnées.
+    #[default]
+    Project,
+    /// `LoadStrategy::LoadModel` seule : géométrie et réglages d'objet/volume
+    /// (la remise à zéro d'Orca est inatteignable en 2.4.1), sans config ni
+    /// presets, plateaux sans nom ni réglages, sans métadonnées ni auxiliaires.
+    Geometry,
+}
+
+/// Paramètres de requête de `POST /api/projects/import`.
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[ts(export)]
+pub struct ImportQuery {
+    #[serde(default)]
+    #[ts(optional)]
+    pub load: Option<ImportLoadMode>,
+}
+
+/// Résultat de `PresetBundle::validate_presets` à l'ouverture d'un projet
+/// 3MF (Plater::priv::load_files) : `modified_gcodes` = G-codes modifiés dans
+/// des presets filament/imprimante système (boîte « Modified G-code ») ;
+/// `customized_presets` = presets filament/imprimante ne dérivant d'aucun
+/// preset système (boîte « Customized Preset »).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct GcodeWarning {
+    /// `modified_gcodes` | `customized_presets`.
+    pub kind: String,
+    /// Clés G-code modifiées (`machine_start_gcode`…) ou noms de presets.
+    pub items: Vec<String>,
+}
+
+/// Rapport renvoyé par l'import d'un 3MF.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ImportReport {
+    pub load: ImportLoadMode,
+    /// Avertissement G-code (absent si aucun, en géométrie seule, sans config
+    /// projet ou si la préférence `no_warn_when_modified_gcodes` est vraie).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub gcode_warning: Option<GcodeWarning>,
+    /// Métadonnées (Title, Designer…) lues et conservées (`GET …/metadata`).
+    pub has_metadata: bool,
+}
+
+/// Métadonnées 3MF d'un projet (Orca : onglet « Projet », ModelInfo /
+/// ModelDesignInfo / ModelProfileInfo ; éditeur Auxiliary.cpp DesignerPanel).
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ProjectMetadataDto {
+    /// « Title » (nom du modèle).
+    #[serde(default)]
+    pub title: String,
+    /// « Designer » (auteur).
+    #[serde(default)]
+    pub designer: String,
+    /// « License » : ``, CC0, BY, BY-SA, BY-ND, BY-NC, BY-NC-SA, BY-NC-ND.
+    #[serde(default)]
+    pub license: String,
+    #[serde(default)]
+    pub description: String,
+    /// Couverture (« DesignerCover ») : nom d'un fichier de
+    /// `Model Pictures` (auxiliaires), `` = aucune.
+    #[serde(default)]
+    pub cover: String,
+    /// « Copyright » brut (JSON `[{"author": …}]` des projets MakerWorld).
+    #[serde(default)]
+    pub copyright: String,
+    /// « Origin » (type de publication).
+    #[serde(default)]
+    pub origin: String,
+    /// Auteur affiché par Orca (ProjectPanel::on_reload) : `author` du
+    /// Copyright sinon Designer. Lecture seule.
+    #[serde(default)]
+    #[ts(optional)]
+    pub display_author: Option<String>,
+    /// Profil d'impression publié (ModelProfileInfo) : title, cover,
+    /// description, user_id, user_name. Lecture seule.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional, type = "Record<string, string>")]
+    pub profile: Option<std::collections::BTreeMap<String, String>>,
 }
 
 impl From<Project> for ProjectResponse {
@@ -340,6 +435,7 @@ impl From<Project> for ProjectResponse {
             has_thumbnail: p.thumbnail_path.is_some(),
             created_at: p.created_at.format(&rfc3339).unwrap_or_default(),
             updated_at: p.updated_at.format(&rfc3339).unwrap_or_default(),
+            import: None,
         }
     }
 }
@@ -815,6 +911,74 @@ pub struct ArrangeRequest {
     #[serde(default)]
     #[ts(optional)]
     pub fill_object_id: Option<String>,
+    /// Options d'arrangement de la GUI d'Orca (menu « Options d'arrangement »,
+    /// ArrangeSettings). Présentes → arrangement d'ArrangeJob sur plusieurs
+    /// plateaux (`items` = toutes les instances de la scène, plateau lu dans la
+    /// scène ; plateaux créés au besoin) ; absentes → arrangement historique
+    /// plateau par plateau.
+    #[serde(default)]
+    #[ts(optional)]
+    pub options: Option<ArrangeOptions>,
+    /// Avec `options` : `all` (« Tout arranger », défaut) ou `plate`
+    /// (« Arranger ce plateau », plateau `plate_index`).
+    #[serde(default)]
+    #[ts(optional)]
+    pub scope: Option<ArrangeScope>,
+    /// Plateau courant (0-based) : cible de `scope = plate`, et plateau dont
+    /// le Print fournit object_skirt_offset (init_arrange_params).
+    #[serde(default)]
+    #[ts(optional)]
+    pub plate_index: Option<u32>,
+}
+
+/// Portée de l'arrangement GUI (Orca : PREPARE_STATE_DEFAULT / MENU).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize, Deserialize, TS)]
+#[serde(rename_all = "snake_case")]
+#[ts(export)]
+pub enum ArrangeScope {
+    #[default]
+    All,
+    Plate,
+}
+
+/// `GLCanvas3D::ArrangeSettings` d'Orca 2.4.1.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ArrangeOptions {
+    /// Espacement (mm), 0 = automatique (« 0 means auto spacing »), ≤ 100.
+    #[serde(default)]
+    pub spacing: f64,
+    /// « Auto rotate for arrangement ».
+    #[serde(default)]
+    pub enable_rotation: bool,
+    /// « Allow multiple materials on same plate » (défaut vrai).
+    #[serde(default = "default_true")]
+    pub allow_multi_materials_on_same_plate: bool,
+    /// « Avoid extrusion calibration region » (défaut vrai ; effectif seulement
+    /// sur imprimante Bambu avec `scan_first_layer`).
+    #[serde(default = "default_true")]
+    pub avoid_extrusion_cali_region: bool,
+    /// « Align to Y axis » (ignoré si la rotation automatique est active).
+    #[serde(default)]
+    pub align_to_y_axis: bool,
+}
+
+fn default_true() -> bool {
+    true
+}
+
+/// Réponse de `GET /api/projects/{id}/arrange/options` : valeurs d'Orca à la
+/// réinitialisation (bouton « Reset ») et disponibilité des cases.
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct ArrangeOptionsInfo {
+    pub defaults: ArrangeOptions,
+    /// Jeu de réglages séquentiel (`print_sequence` = by object) : l'espacement
+    /// affiché est au moins `min_spacing` (GLCanvas3D::get_arrange_settings).
+    pub is_seq_print: bool,
+    pub min_spacing: f64,
+    /// Case « Avoid extrusion calibration region » affichée (Bambu + scan_first_layer).
+    pub show_avoid_extrusion_cali_region: bool,
 }
 
 /// Position calculée du centre d'un objet (mm, repère plateau).
@@ -838,6 +1002,11 @@ pub struct Placement {
     #[serde(skip_serializing_if = "Option::is_none")]
     #[ts(optional)]
     pub print_order: Option<u32>,
+    /// Arrangement GUI : objet trop grand pour un plateau, posé sur un plateau
+    /// ajouté (« Arrangement ignored the following objects… »).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    #[ts(as = "Option<bool>", optional)]
+    pub unarranged: bool,
 }
 
 /// Réponse de `POST /api/projects/{id}/arrange`.
@@ -845,6 +1014,10 @@ pub struct Placement {
 #[ts(export)]
 pub struct ArrangeResponse {
     pub placements: Vec<Placement>,
+    /// Arrangement GUI : nombre de plateaux après arrangement (plateaux créés).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub plate_count: Option<u32>,
 }
 
 /// Corps de `POST /api/projects/{id}/orient`.

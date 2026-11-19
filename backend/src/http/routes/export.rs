@@ -67,13 +67,20 @@ pub async fn export_3mf(
     // Écrit par libslic3r (store_bbs_3mf) comme « Save project » d'Orca.
     // Fichiers auxiliaires du projet (Auxiliaries/), comme « Save project » d'Orca.
     let aux_dir = state.files.auxiliaries_dir(user.id, project.id);
-    let bytes =
-        crate::engine::project_3mf::write_project_3mf_with_aux(&model, &config, &plates, &aux_dir)
-            .await
-            .map_err(|e| {
-                tracing::error!(error = %e, "écriture du projet 3MF");
-                ApiError::internal()
-            })?;
+    // Métadonnées du projet (Title, Designer, License…) : store_bbs_3mf.
+    let metadata = super::metadata::load(&state, user.id, project.id).await;
+    let bytes = crate::engine::project_3mf::write_project_3mf_with_aux(
+        &model,
+        &config,
+        &plates,
+        &aux_dir,
+        metadata.as_ref(),
+    )
+    .await
+    .map_err(|e| {
+        tracing::error!(error = %e, "écriture du projet 3MF");
+        ApiError::internal()
+    })?;
 
     let filename = format!("{}.3mf", sanitize(&project.name));
     Ok((

@@ -49,7 +49,8 @@ RawCalibProject calib_project_raw(rust::Str kind, double start, double end, doub
 struct RawProjectPlate;
 void write_project_plates_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
                               rust::Str custom_gcodes_json,
-                              const rust::Vec<RawProjectPlate> &plates, rust::Str aux_dir, rust::Str out_path);
+                              const rust::Vec<RawProjectPlate> &plates, rust::Str aux_dir,
+                              rust::Str model_info_json, rust::Str out_path);
 rust::Vec<rust::String> read_project_auxiliaries_raw(rust::Str path, rust::Str out_dir);
 
 struct RawPlateGcode;
@@ -74,6 +75,13 @@ rust::Vec<RawObject> fill_bed_raw(const rust::Vec<RawObject> &objects, const rus
 struct RawArrangeResult;
 RawArrangeResult arrange_orca_raw(const rust::Vec<RawObject> &objects, const rust::Vec<double> &bed_xy,
                                   rust::Str config_json, bool force_seq_print, bool allow_rotations);
+
+struct RawGuiArrangeSettings;
+struct RawGuiArrangeResult;
+RawGuiArrangeResult arrange_gui_raw(const rust::Vec<RawObject> &objects, const rust::Vec<double> &bed_xy,
+                                    rust::Str config_json, const RawGuiArrangeSettings &settings,
+                                    const rust::Vec<uint32_t> &plate_of_instance,
+                                    const rust::Vec<uint32_t> &locked_plates);
 
 rust::Vec<RawObject> arrange_raw(const rust::Vec<RawObject> &objects,
                                  const rust::Vec<double> &bed_xy, double clearance_mm,

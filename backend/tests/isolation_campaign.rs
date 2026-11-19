@@ -623,9 +623,13 @@ async fn every_id_route_of_the_router_is_isolated_between_accounts() {
                 "k_value": 0.09,
                 "method": "manual"
             }),
-            ("POST", "/api/projects/{id}/arrange") => {
-                json!({ "bed_width": 200.0, "bed_depth": 200.0, "spacing": 2.0, "items": [] })
-            }
+            // Lot 34 : options d'arrangement d'Orca (ArrangeJob multi-plateaux).
+            ("POST", "/api/projects/{id}/arrange") => json!({
+                "bed_width": 200.0, "bed_depth": 200.0, "spacing": 2.0, "items": [],
+                "options": { "spacing": 0.0, "enable_rotation": true }, "scope": "all"
+            }),
+            // Lot 34 : métadonnées 3MF (corps valide → 404 strict).
+            ("PUT", "/api/projects/{id}/metadata") => json!({ "title": "pwned", "license": "CC0" }),
             _ => return None,
         })
     };
@@ -702,6 +706,7 @@ async fn every_id_route_of_the_router_is_isolated_between_accounts() {
         format!("/api/gcodes/{}/stats", r.gcode),
         format!("/api/jobs/{}", r.job),
         format!("/api/projects/{}/auxiliaries/Others/mien.txt", r.project),
+        format!("/api/projects/{}/metadata", r.project),
     ] {
         let resp = attempt(&h.app, "GET", &uri, &alice_session, None).await;
         assert_eq!(resp.status(), StatusCode::OK, "Alice garde {uri}");
