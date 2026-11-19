@@ -29,6 +29,8 @@ export interface ScenePalette {
 	/** Objet désigné par la validation (phase 29) : lueur erreur / avertissement. */
 	issueError: string;
 	issueWarning: string;
+	/** Contour du plateau actif quand plusieurs plateaux sont affichés (phase 30). */
+	plateActive: string;
 }
 
 const COMMON = {
@@ -43,7 +45,8 @@ const COMMON = {
 	measureFirst: '#40bfbf',
 	measureSecond: '#bf40bf',
 	issueError: '#ff1f1f',
-	issueWarning: '#ff8800'
+	issueWarning: '#ff8800',
+	plateActive: '#3b82f6'
 } as const;
 
 export const SCENE_PALETTES: Record<ResolvedTheme, ScenePalette> = {

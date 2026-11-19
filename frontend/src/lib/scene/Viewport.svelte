@@ -34,6 +34,7 @@
 	import type { PaintOverlay } from './gizmos/painting/paint-overlay';
 	import { sceneColors } from './scene-colors';
 	import { guideRotation, markerWorldRadius, MARKER_PX, type SceneGuides } from './guides';
+	import type { Footprint, PlateView } from './plate-layout';
 
 	interface Props {
 		bed: BedShape;
@@ -114,6 +115,16 @@
 		oncameradir?: (forward: [number, number, number]) => void;
 		/** Clic simple sur un objet : sélection de l'objet entier (pas d'une pièce). */
 		onpickobject?: (id: string) => void;
+		/** Autres plateaux, affichés côte à côte (vide = plateau unique). */
+		otherPlates?: PlateView[];
+		/** Plateau actif : nom et index (étiquette et cadre mis en évidence). */
+		activePlate?: { id: string; index: number; name: string } | null;
+		/** Clic sur un autre plateau (surface, étiquette ou objet posé dessus). */
+		onactivateplate?: (plateId: string, objectId: string | null) => void;
+		/** Fin d'un glisser de gizmo : emprise au sol de l'objet (dépôt sur un autre plateau). */
+		onobjectdrop?: (objectId: string, footprint: Footprint) => void;
+		/** Change à chaque changement de plateau actif : la caméra recadre ce plateau. */
+		recenterKey?: string | null;
 	}
 
 	let {
@@ -152,8 +163,50 @@
 		clipPlane = null,
 		guides = null,
 		oncameradir,
-		onpickobject
+		onpickobject,
+		otherPlates = [],
+		activePlate = null,
+		onactivateplate,
+		onobjectdrop,
+		recenterKey = null
 	}: Props = $props();
+
+	// Cadre du plateau actif (multi-plateaux) : contour légèrement surélevé.
+	const plateFrame = $derived.by(() => {
+		if (otherPlates.length === 0) return null;
+		const x0 = bed.center.x - bed.width / 2;
+		const x1 = bed.center.x + bed.width / 2;
+		const y0 = bed.center.y - bed.depth / 2;
+		const y1 = bed.center.y + bed.depth / 2;
+		const g = new BufferGeometry();
+		g.setAttribute(
+			'position',
+			new BufferAttribute(new Float32Array([x0, y0, 0.2, x1, y0, 0.2, x1, y1, 0.2, x0, y1, 0.2]), 3)
+		);
+		return g;
+	});
+	$effect(() => {
+		const g = plateFrame;
+		return () => g?.dispose();
+	});
+	// Étiquettes de plateau : milieu du bord arrière, juste derrière le plateau
+	// (nom de plateau d'Orca) — reste à l'écran au cadrage par défaut.
+	const labelAt = (offset: [number, number]): [number, number, number] => [
+		bed.center.x + offset[0],
+		bed.center.y + bed.depth / 2 + offset[1] + Math.max(4, bed.depth * 0.03),
+		0
+	];
+	// Les contrôles d'orbite capturent le pointeur sur le conteneur du canvas
+	// (qui héberge aussi les étiquettes HTML) : sans arrêt à l'appui, le clic
+	// serait reciblé sur le conteneur et l'étiquette ne le recevrait jamais.
+	function keepPointer(el: HTMLElement) {
+		const stop = (e: Event) => e.stopPropagation();
+		el.addEventListener('pointerdown', stop);
+		return () => el.removeEventListener('pointerdown', stop);
+	}
+	// Groupe des autres plateaux : masqué pendant la capture de vignette.
+	let othersGroup = $state<import('three').Group | undefined>();
+	let frameLine = $state<import('three').LineLoop | undefined>();
 
 	// Segment de mesure (deux points) : géométrie de ligne recréée à chaque mesure.
 	const measureLine = $derived.by(() => {
@@ -174,6 +227,8 @@
 	// Cadrage de la sélection : même direction de vue que la vue nommée active,
 	// recentrée et rapprochée sur la boîte (seule la distance change).
 	const pose = $derived.by(() => {
+		// Nouveau plateau actif : nouvelle pose (caméra recadrée sur ce plateau).
+		void recenterKey;
 		const base = viewPose(bed, view);
 		if (!focus) return zoomPose(base, zoom);
 		const boxPose = frameBox(focus.min, focus.max, 1.6);
@@ -244,7 +299,12 @@
 	const { scene } = useThrelte();
 	$effect(() => {
 		setCaptureSource(() => {
+			// Vignette du plateau actif seul (les voisins n'y figurent pas).
+			const hidden: Object3D[] = [];
+			for (const o of [othersGroup, frameLine]) if (o?.visible) hidden.push(o);
+			for (const o of hidden) o.visible = false;
 			renderer.render(scene, camera.current);
+			for (const o of hidden) o.visible = true;
 			return renderer.domElement;
 		});
 		return () => setCaptureSource(null);
@@ -572,6 +632,59 @@
 
 <Bed {bed} {showGrid} />
 
+{#if plateFrame}
+	<!-- Plateau actif mis en évidence (Orca : contour du plateau sélectionné). -->
+	<T.LineLoop geometry={plateFrame} renderOrder={2} bind:ref={frameLine}>
+		<T.LineBasicMaterial color={$sceneColors.plateActive} transparent depthTest={false} />
+	</T.LineLoop>
+	{#if activePlate}
+		<HTML position={labelAt([0, 0])} pointerEvents="none">
+			<span
+				class="inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-md bg-primary px-2 py-0.5 text-xs font-medium whitespace-nowrap text-primary-content shadow-sm"
+				data-testid="scene-plate-label"
+				data-plate-index={activePlate.index + 1}
+				data-active="true">{activePlate.name}</span
+			>
+		</HTML>
+	{/if}
+{/if}
+
+<T.Group bind:ref={othersGroup}>
+	{#each otherPlates as plate (plate.id)}
+		<T.Group position={[plate.offset[0], plate.offset[1], 0]}>
+			<Bed {bed} {showGrid} inactive onselect={() => onactivateplate?.(plate.id, null)} />
+			{#each plate.objects as obj (obj.id)}
+				<ModelObject
+					{extruderColors}
+					extruder={objectExtruders?.[obj.id] ?? 1}
+					mesh={obj.mesh}
+					position={obj.position}
+					rotation={obj.rotation}
+					scale={obj.scale}
+					volumes={obj.volumes}
+					volumeMeshes={obj.volumeMeshes}
+					printable={obj.printable}
+					issue={issueObjects?.[obj.id] ?? null}
+					onpick={() => onactivateplate?.(plate.id, obj.id)}
+				/>
+			{/each}
+		</T.Group>
+		<HTML position={labelAt(plate.offset)}>
+			<button
+				type="button"
+				class="inline-flex -translate-x-1/2 -translate-y-1/2 items-center rounded-md border border-border-strong bg-surface-raised/95 px-2 py-0.5 text-xs whitespace-nowrap text-content-muted shadow-sm hover:border-primary hover:text-content"
+				data-testid="scene-plate-label"
+				data-plate-index={plate.index + 1}
+				data-active="false"
+				title="Activer {plate.name}"
+				{@attach keepPointer}
+				onclick={() => onactivateplate?.(plate.id, null)}
+				>{plate.name}{plate.objects.length ? ` · ${plate.objects.length}` : ''}</button
+			>
+		</HTML>
+	{/each}
+</T.Group>
+
 {#if wipeTower}
 	<WipeTower {...wipeTower} {bed} onmove={onmovewipetower} ondragchange={(d) => (dragging = d)} />
 {/if}
@@ -768,6 +881,18 @@
 			dragging = true;
 			ontransform?.(targetId, transform);
 		}}
-		oncommit={endGesture}
+		oncommit={() => {
+			endGesture();
+			// Glisser vers un autre plateau (PartPlateList::notify_instance_update).
+			if (!onobjectdrop || otherPlates.length === 0 || !target) return;
+			worldBox.setFromObject(target);
+			if (worldBox.isEmpty()) return;
+			onobjectdrop(targetId, {
+				minX: worldBox.min.x,
+				minY: worldBox.min.y,
+				maxX: worldBox.max.x,
+				maxY: worldBox.max.y
+			});
+		}}
 	/>
 {/if}

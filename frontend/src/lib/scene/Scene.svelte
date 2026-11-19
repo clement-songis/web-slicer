@@ -13,6 +13,7 @@
 	import Viewport from './Viewport.svelte';
 	import type { PaintOverlay } from './gizmos/painting/paint-overlay';
 	import { overhangIndices } from './overhang';
+	import type { Footprint, PlateView } from './plate-layout';
 	import {
 		pointInBox,
 		rectFromDrag,
@@ -83,6 +84,12 @@
 		guides?: SceneGuides | null;
 		oncameradir?: (forward: [number, number, number]) => void;
 		onpickobject?: (id: string) => void;
+		/** Multi-plateaux (phase 30) : autres plateaux affichés côte à côte. */
+		otherPlates?: PlateView[];
+		activePlate?: { id: string; index: number; name: string } | null;
+		onactivateplate?: (plateId: string, objectId: string | null) => void;
+		onobjectdrop?: (objectId: string, footprint: Footprint) => void;
+		recenterKey?: string | null;
 	}
 
 	let {
@@ -118,7 +125,12 @@
 		clipPlane = null,
 		guides = null,
 		oncameradir,
-		onpickobject
+		onpickobject,
+		otherPlates = [],
+		activePlate = null,
+		onactivateplate,
+		onobjectdrop,
+		recenterKey = null
 	}: Props = $props();
 
 	// Emprises écran projetées (objets, et pièces « objet/volume »).
@@ -214,6 +226,10 @@
 	data-guide-connectors={guides?.plane?.connectors?.length ?? undefined}
 	data-guide-pickable={guides?.plane?.onclick ? 'true' : undefined}
 	data-testid="scene-canvas"
+	data-plates={otherPlates.length + 1}
+	data-plate-offsets={otherPlates.length
+		? otherPlates.map((p) => `${p.index}:${p.offset.map((n) => n.toFixed(1)).join(',')}`).join(';')
+		: undefined}
 	data-projection={projection}
 	data-camera-view={view}
 	data-camera-zoom={zoom.toFixed(3)}
@@ -285,6 +301,11 @@
 			{guides}
 			{oncameradir}
 			{onpickobject}
+			{otherPlates}
+			{activePlate}
+			{onactivateplate}
+			{onobjectdrop}
+			{recenterKey}
 		/>
 	</Canvas>
 	{#if dragRect}

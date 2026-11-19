@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import catalog from './validation-messages.fr.json';
 import {
 	buildNotices,
@@ -9,6 +9,8 @@ import {
 	optionKind,
 	optionPage,
 	plateBlocked,
+	resetInlineSceneProbe,
+	supportsInlineScene,
 	translateOrcaMessage,
 	type ValidateResponse
 } from './validation';
@@ -165,5 +167,35 @@ describe('conversionCause', () => {
 			'Échec du chargement du modèle : STL tronqué'
 		);
 		expect(conversionCause(undefined, catalog)).toMatch(/maillage/);
+	});
+});
+
+describe('supportsInlineScene (scène non enregistrée, lot 29)', () => {
+	const realFetch = globalThis.fetch;
+	afterEach(() => {
+		globalThis.fetch = realFetch;
+		resetInlineSceneProbe();
+	});
+	const stub = (status: number, body: unknown) => {
+		const calls: string[] = [];
+		globalThis.fetch = ((url: string, init: RequestInit) => {
+			calls.push(url + ' ' + String(init.body));
+			return Promise.resolve(new Response(JSON.stringify(body), { status }));
+		}) as unknown as typeof fetch;
+		return calls;
+	};
+	it('serveur compatible : 422 sur scene → oui, sondé une seule fois', async () => {
+		const calls = stub(422, { code: 'validation', message: 'scene', details: { field: 'scene' } });
+		expect(await supportsInlineScene('p1')).toBe(true);
+		expect(await supportsInlineScene('p1')).toBe(true);
+		expect(calls).toEqual(['/api/projects/p1/validate {"scene":0}']);
+	});
+	it('serveur antérieur : champ ignoré (200) → non (repli : enregistrement)', async () => {
+		stub(200, { valid: true, plates: [], warnings: [] });
+		expect(await supportsInlineScene('p1')).toBe(false);
+	});
+	it('autre 422 → non', async () => {
+		stub(422, { code: 'validation', message: 'plateau', details: { field: 'plate_index' } });
+		expect(await supportsInlineScene('p1')).toBe(false);
 	});
 });

@@ -94,6 +94,7 @@
 		optionPage,
 		plateBlocked,
 		validateProject,
+		supportsInlineScene,
 		type OrcaCatalog,
 		type ValidateResponse,
 		type ValidationNotice
@@ -171,6 +172,13 @@
 		type NamedView,
 		boundsOf
 	} from '$lib/scene';
+	import {
+		dropPlateIndex,
+		plateOffsets,
+		showDropHint,
+		type Footprint,
+		type PlateView
+	} from '$lib/scene/plate-layout';
 	import { planSceneRestore } from '$lib/scene/document';
 	import {
 		VOLUME_ACTIONS,
@@ -705,6 +713,39 @@
 		}));
 	});
 	const activeObjectIds = $derived(new Set(activePlate?.objectIds ?? []));
+	// Phase 30 : tous les plateaux côte à côte dans la vue 3D (PartPlateList
+	// d'Orca). Le plateau actif reste à l'origine ; les autres sont décalés et
+	// affichent leurs objets (clic = activer le plateau, et l'objet visé).
+	const plateViews = $derived.by((): PlateView[] => {
+		const list = plates.list();
+		if (list.length < 2) return [];
+		const activeIndex = Math.max(0, plates.plateIndex(plates.activeId ?? ''));
+		const offsets = plateOffsets(list.length, activeIndex, bed);
+		return list.flatMap((plate, index) =>
+			index === activeIndex
+				? []
+				: [
+						{
+							id: plate.id,
+							index,
+							name: plate.name,
+							offset: offsets[index],
+							objects: viewportObjects(sceneObjects, plate, (id) => tree.isHidden(id)).map((o) => ({
+								...o,
+								printable: tree.isPrintable(o.id),
+								...(volumesByObject[o.id]?.length
+									? { volumes: volumesByObject[o.id], volumeMeshes }
+									: {})
+							}))
+						}
+					]
+		);
+	});
+	const activePlateView = $derived(
+		activePlate
+			? { id: activePlate.id, index: plates.plateIndex(activePlate.id), name: activePlate.name }
+			: null
+	);
 	// Transformations sauvegardées, indexées par id d'objet (reconstruites à
 	// l'ouverture depuis `project.scene`, appliquées quand le maillage arrive).
 	// Transitoire (pas d'état réactif) : simple table de correspondance de montage.
@@ -944,6 +985,16 @@
 	const filamentModified = $derived(hasPresetChanges(filamentResolvedValues, filamentValues));
 	const machineModified = $derived(hasPresetChanges(machineResolvedValues, machineValues));
 	let saveMessage = $state<string | null>(null);
+	// Estompage de la barre de messages : 6 s après chaque message ; le texte
+	// reste dans le DOM jusqu'au suivant.
+	const MESSAGE_FADE_MS = 6000;
+	let messageFaded = $state(false);
+	$effect(() => {
+		if (!saveMessage) return;
+		messageFaded = false;
+		const timer = setTimeout(() => (messageFaded = true), MESSAGE_FADE_MS);
+		return () => clearTimeout(timer);
+	});
 
 	// Tranchage + aperçu G-code (T088) : machine à états pure `session` pilotée
 	// par les événements WebSocket ; le G-code prêt est chargé paresseusement.
@@ -2698,6 +2749,30 @@
 		}
 	}
 
+	// Clic dans la vue 3D sur un autre plateau (surface, étiquette ou objet).
+	function activatePlateFromScene(plateId: string, objectId: string | null) {
+		selectPlate(plateId);
+		if (objectId) selectObject(objectId, false);
+	}
+	// Fin d'un glisser de gizmo hors du plateau actif : l'objet rejoint le
+	// plateau qu'il touche (PartPlateList::notify_instance_update), position
+	// ramenée dans le repère de ce plateau ; le plateau actif ne change pas.
+	function dropObjectOnPlate(objectId: string, footprint: Footprint) {
+		const list = plates.list();
+		const activeIndex = plates.plateIndex(plates.activeId ?? '');
+		if (activeIndex < 0 || !tree.get(objectId)) return;
+		const index = dropPlateIndex(footprint, bed, list.length, activeIndex);
+		if (index === null) return;
+		const [dx, dy] = plateOffsets(list.length, activeIndex, bed)[index];
+		sceneObjects = sceneObjects.map((o) => {
+			if (o.id !== objectId) return o;
+			const [x, y, z] = o.position ?? [0, 0, 0];
+			return { ...o, position: [x - dx, y - dy, z] as [number, number, number] };
+		});
+		assignObjectToPlate(objectId, list[index].id);
+		saveMessage = `« ${tree.get(objectId)?.name ?? 'Objet'} » déplacé sur ${list[index].name}.`;
+	}
+
 	function assignObjectToPlate(id: string, plateId: string) {
 		if (!plates.get(plateId) || !tree.get(id)) return;
 		plates.assign(id, plateId);
@@ -4421,7 +4496,13 @@
 		validationBusy = true;
 		try {
 			orcaCatalog ??= await loadOrcaCatalog().catch(() => null);
-			if (saveSignature() !== savedSignature) {
+			// Phase 30 (lot 29) : la scène affichée part dans le corps — plus
+			// d'enregistrement silencieux, l'état « non enregistré » est conservé.
+			// Repli sur l'enregistrement si le serveur ignore `scene`.
+			const dirty = saveSignature() !== savedSignature;
+			const inline = dirty && (await supportsInlineScene(data.project.id));
+			if (seq !== validationSeq) return;
+			if (dirty && !inline) {
 				const saved = await save({ quiet: true });
 				if (seq !== validationSeq) return;
 				if (saved.status !== 'saved') {
@@ -4432,7 +4513,10 @@
 					return;
 				}
 			}
-			const res = await validateProject(data.project.id, sliceRequestWithDraft('all', 0));
+			const res = await validateProject(data.project.id, {
+				...sliceRequestWithDraft('all', 0),
+				...(inline ? { scene: buildSceneForSave() } : {})
+			});
 			if (seq !== validationSeq) return;
 			validation = res;
 			validationBlocked = null;
@@ -7592,10 +7676,18 @@
 		</div>
 	{/if}
 
+	<!-- Barre de messages (phase 30) : notification flottante hors du flux (aucun
+	     décalage de la mise en page), absente sans message, estompée après
+	     quelques secondes comme les notifications d'Orca. Transparente aux clics
+	     (ne masque jamais un bouton) ; le texte reste dans le DOM jusqu'au message
+	     suivant (lecteurs d'écran, tests). -->
 	{#if saveMessage}
 		<div
-			class="bg-overlay px-6 py-2 text-sm text-content-muted"
+			class="ws-floating pointer-events-none fixed bottom-4 left-1/2 z-40 max-w-[min(40rem,90vw)] -translate-x-1/2 px-4 py-2 text-sm text-content shadow-md transition-opacity duration-700 {messageFaded
+				? 'opacity-0'
+				: 'opacity-100'}"
 			data-testid="editor-message"
+			data-faded={messageFaded ? 'true' : undefined}
 			role="region"
 			aria-label="Messages"
 			aria-live="polite"
@@ -8422,6 +8514,11 @@
 							guides={sceneGuides}
 							oncameradir={(forward) => (cameraForward = forward)}
 							onpickobject={() => (selectedVolumeId = null)}
+							otherPlates={plateViews}
+							activePlate={activePlateView}
+							onactivateplate={activatePlateFromScene}
+							onobjectdrop={dropObjectOnPlate}
+							recenterKey={plates.activeId}
 						/>
 					{/await}
 				</div>
@@ -8596,7 +8693,7 @@
 					</div>
 				{/if}
 
-				{#if activeSceneObjects.length === 0}
+				{#if showDropHint(activeSceneObjects.length, imports, activePlate?.objectIds ?? [])}
 					<div class="pointer-events-none absolute inset-0 flex items-center justify-center p-6">
 						<div
 							class="ws-floating flex max-w-sm flex-col items-center gap-2 border-dashed px-6 py-5 text-center text-sm text-content-muted"
