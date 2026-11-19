@@ -38,8 +38,10 @@ pub async fn slice(
 ) -> ApiResult<(StatusCode, Json<SliceResponse>)> {
     let project_id = parse_project_id(&project_raw)?;
     let project = state.storage.projects().get(user.id, project_id).await?; // 404, SC-008
+                                                                            // Scène non enregistrée de l'éditeur, sinon scène enregistrée.
+    let scene = request_scene(&body, &project.scene)?;
 
-    let targets = match plate_targets(&project.scene, body.plate_index)? {
+    let targets = match plate_targets(scene, body.plate_index)? {
         targets if targets.is_empty() => {
             return Err(ApiError::validation(
                 "plateau vide (aucun objet à trancher)",
@@ -51,9 +53,9 @@ pub async fn slice(
 
     // Garde avant slice : chaque plateau ciblé doit contenir des objets, tous
     // sur le plateau (FR-032, « hors plateau → erreur avant slice »).
-    let off_bed = off_bed_ids(&project.scene);
+    let off_bed = off_bed_ids(scene);
     for &t in &targets {
-        let ids = plate_scene_ids(&project.scene, t);
+        let ids = plate_scene_ids(scene, t);
         if ids.is_empty() {
             return Err(ApiError::validation(
                 "plateau vide (aucun objet à trancher)",
@@ -68,20 +70,32 @@ pub async fn slice(
         }
     }
 
+    // Scène non enregistrée : chaque modèle référencé doit appartenir au
+    // projet, sinon le job échouerait plus tard (« modèle supprimé ») — refus
+    // immédiat, sans révéler si l'id existe ailleurs.
+    if body.scene.is_some() {
+        let models = state
+            .storage
+            .models()
+            .list(user.id, Some(project_id))
+            .await?;
+        let known: HashSet<String> = models.iter().map(|m| m.id.to_string()).collect();
+        let unknown = unknown_scene_models(scene, &known);
+        if !unknown.is_empty() {
+            return Err(ApiError::validation(
+                "la scène référence un modèle absent du projet",
+                json!({ "field": "scene", "model_ids": unknown }),
+            ));
+        }
+    }
+
     let SliceConfig {
         resolved,
         warnings,
         allow_mixed,
-    } = resolve_slice_config(
-        &state,
-        user.id,
-        &project.scene,
-        &project.active_presets,
-        &body,
-    )
-    .await?;
+    } = resolve_slice_config(&state, user.id, scene, &project.active_presets, &body).await?;
     // Instantané de scène du job : options de tranchage hors config Orca.
-    let mut job_scene = project.scene.clone();
+    let mut job_scene = scene.clone();
     if allow_mixed {
         if let Value::Object(map) = &mut job_scene {
             map.insert(
@@ -96,7 +110,7 @@ pub async fn slice(
         // Réglages par plateau (Orca « Plate settings » : type de plaque,
         // séquence d'impression, ordre de la 1re couche…) figés dans le
         // snapshot de ce plateau, par-dessus les presets.
-        let resolved = with_plate_settings(&resolved, &project.scene, t);
+        let resolved = with_plate_settings(&resolved, scene, t);
         let job = state
             .storage
             .jobs()
@@ -114,6 +128,22 @@ pub async fn slice(
     }
 
     Ok((StatusCode::CREATED, Json(SliceResponse { jobs, warnings })))
+}
+
+/// Scène à valider / trancher : `scene` du corps (état non enregistré de
+/// l'éditeur) ou, à défaut, la scène enregistrée du projet. Même format que
+/// la scène du projet (objet JSON) ; autre chose → 422. Les modèles qu'elle
+/// référence sont relus parmi ceux du projet de l'utilisateur
+/// (`build_scene_model`) : une scène ne peut pas désigner le modèle d'autrui.
+pub(crate) fn request_scene<'a>(body: &'a SliceRequest, saved: &'a Value) -> ApiResult<&'a Value> {
+    match &body.scene {
+        None => Ok(saved),
+        Some(scene) if scene.is_object() => Ok(scene),
+        Some(_) => Err(ApiError::validation(
+            "scene doit être un objet (même format que la scène du projet)",
+            json!({ "field": "scene" }),
+        )),
+    }
 }
 
 /// Plateaux ciblés : `plate_index` (borné, 422 sinon) ou, pour « tout
@@ -993,6 +1023,33 @@ fn all_object_ids(scene: &Value) -> Vec<String> {
                 .collect()
         })
         .unwrap_or_default()
+}
+
+/// `modelId` (objets et volumes maillés) de la scène absents de `known`,
+/// triés et dédoublonnés.
+pub(crate) fn unknown_scene_models(scene: &Value, known: &HashSet<String>) -> Vec<String> {
+    let mut unknown = std::collections::BTreeSet::new();
+    for object in scene
+        .get("objects")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        let volumes = object
+            .get("volumes")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten();
+        for id in std::iter::once(object)
+            .chain(volumes)
+            .filter_map(|node| node.get("modelId").and_then(Value::as_str))
+        {
+            if !known.contains(id) {
+                unknown.insert(id.to_string());
+            }
+        }
+    }
+    unknown.into_iter().collect()
 }
 
 /// Identifiants d'objets marqués hors plateau (`off_bed: true`) par le client.

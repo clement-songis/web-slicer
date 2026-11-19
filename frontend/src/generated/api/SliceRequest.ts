@@ -23,4 +23,11 @@ draft?: SliceDraft,
  * (enable_high_low_temp_mixed_printing, défaut false) : filaments haute /
  * basse température tranchés avec avertissement au lieu d'être refusés.
  */
-allow_mixed_temperatures?: boolean, };
+allow_mixed_temperatures?: boolean, 
+/**
+ * Scène non enregistrée de l'éditeur (même format que `scene` du projet) :
+ * valide / tranche l'état affiché sans forcer la sauvegarde, comme Orca
+ * tranche le plateau courant. Absente ⇒ scène enregistrée du projet. Les
+ * modèles référencés doivent appartenir au projet (sinon refus explicite).
+ */
+scene?: unknown, };

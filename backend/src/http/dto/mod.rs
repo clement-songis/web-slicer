@@ -482,6 +482,12 @@ pub struct SliceRequest {
     /// basse température tranchés avec avertissement au lieu d'être refusés.
     #[ts(optional)]
     pub allow_mixed_temperatures: Option<bool>,
+    /// Scène non enregistrée de l'éditeur (même format que `scene` du projet) :
+    /// valide / tranche l'état affiché sans forcer la sauvegarde, comme Orca
+    /// tranche le plateau courant. Absente ⇒ scène enregistrée du projet. Les
+    /// modèles référencés doivent appartenir au projet (sinon refus explicite).
+    #[ts(optional, type = "unknown")]
+    pub scene: Option<serde_json::Value>,
 }
 
 /// Brouillon de presets appliqué au tranchage, par-dessus les presets actifs

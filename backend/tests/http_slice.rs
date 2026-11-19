@@ -1293,7 +1293,209 @@ async fn validate_runs_orca_print_validate_per_object() {
             .contains("Smooth mode of timelapse is not supported"),
         "{body}"
     );
+
+    // Lot 29 : scène non enregistrée dans le corps — l'objet agrandi (600 mm)
+    // de l'éditeur est refusé par Orca alors que la scène enregistrée (deux
+    // objets de 6 mm, sans brouillon) est valide ; rien n'est sauvegardé.
+    let resp = app
+        .clone()
+        .oneshot(validate_req(
+            &project,
+            &session,
+            json!({ "plate_index": 0, "scene": scene_for(100.0) }),
+        ))
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    assert_eq!(body["valid"], false, "{body}");
+    assert_eq!(body["plates"][0]["errors"][0]["object_id"], "L", "{body}");
+    let resp = app
+        .clone()
+        .oneshot(validate_req(
+            &project,
+            &session,
+            json!({ "plate_index": 0 }),
+        ))
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    assert_eq!(body["valid"], true, "scène enregistrée inchangée : {body}");
+    let saved = storage.projects().get(owner, pid).await.unwrap();
+    assert_eq!(saved.version, 4);
+    assert_eq!(saved.scene["objects"].as_array().unwrap().len(), 2);
     assert!(storage.jobs().list(owner).await.unwrap().is_empty());
+}
+
+/// Lot 29 : POST …/validate et …/slice acceptent la scène non enregistrée de
+/// l'éditeur (`scene`, même format que le projet) sans la sauvegarder ; les
+/// gardes de scène, le plateau ciblé et l'instantané du job portent sur elle.
+#[tokio::test]
+async fn validate_and_slice_use_the_unsaved_scene_from_the_body() {
+    let (_d, storage, app) = app().await;
+    let empty =
+        json!({ "schema_version": 1, "objects": [], "plates": [{ "id": "p1", "objectIds": [] }] });
+    let (project, owner, session) = create_project(
+        &storage,
+        &app,
+        "unsaved@test.local",
+        empty.clone(),
+        json!({}),
+    )
+    .await;
+    let model = upload_l(&app, &project, &session).await;
+    let pid = backend::domain::ProjectId(uuid::Uuid::parse_str(&project).unwrap());
+    let version = storage.projects().get(owner, pid).await.unwrap().version;
+
+    // Validation : la scène non enregistrée a un objet hors plateau (la scène
+    // enregistrée est vide) → erreur rattachée à cet objet.
+    let off_bed = json!({
+        "schema_version": 1,
+        "objects": [{ "id": "o1", "modelId": model, "name": "Cube", "off_bed": true }],
+        "plates": [{ "id": "p1", "objectIds": ["o1"] }]
+    });
+    let resp = app
+        .clone()
+        .oneshot(validate_req(
+            &project,
+            &session,
+            json!({ "scene": off_bed }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = body_json(resp).await;
+    assert_eq!(
+        body["plates"][0]["errors"][0]["kind"], "object_outside_plate",
+        "{body}"
+    );
+    assert_eq!(body["plates"][0]["errors"][0]["object_id"], "o1");
+    // Sans `scene` : scène enregistrée (vide).
+    let resp = app
+        .clone()
+        .oneshot(validate_req(&project, &session, json!({})))
+        .await
+        .unwrap();
+    let body = body_json(resp).await;
+    assert_eq!(
+        body["plates"][0]["errors"][0]["kind"], "empty_plate",
+        "{body}"
+    );
+    // Même garde au tranchage (422 avant tout job).
+    let resp = app
+        .clone()
+        .oneshot(slice_req(
+            &project,
+            &session,
+            json!({ "plate_index": 0, "scene": off_bed }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+
+    // Tranchage de la scène non enregistrée sur 2 plateaux (la scène
+    // enregistrée n'en a qu'un, vide) : plate_index 1 accepté, job figé sur
+    // la scène du corps, projet non sauvegardé.
+    let unsaved = json!({
+        "schema_version": 1,
+        "objects": [{ "id": "o1", "modelId": model, "name": "Cube" }, { "id": "o2", "modelId": model }],
+        "plates": [{ "id": "p1", "objectIds": ["o1"] }, { "id": "p2", "objectIds": ["o2"] }]
+    });
+    let resp = app
+        .clone()
+        .oneshot(slice_req(
+            &project,
+            &session,
+            json!({ "plate_index": 1, "scene": unsaved }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(
+        resp.status(),
+        StatusCode::CREATED,
+        "{}",
+        body_json(resp).await
+    );
+    let jobs = storage.jobs().list(owner).await.unwrap();
+    assert_eq!(jobs.len(), 1);
+    assert_eq!(jobs[0].plate_index, 1);
+    assert_eq!(jobs[0].scene, Some(unsaved.clone()));
+    let saved = storage.projects().get(owner, pid).await.unwrap();
+    assert_eq!(saved.version, version, "aucune sauvegarde forcée");
+    assert_eq!(saved.scene, empty);
+    let resp = app
+        .clone()
+        .oneshot(slice_req(
+            &project,
+            &session,
+            json!({ "all": true, "scene": unsaved }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+    assert_eq!(body_json(resp).await["jobs"].as_array().unwrap().len(), 2);
+}
+
+/// Lot 29 : scène du corps invalide — pas un objet, ou modèle hors du projet
+/// (inconnu, d'un autre projet ou d'un autre compte) → 422, aucun job.
+#[tokio::test]
+async fn unsaved_scene_must_be_an_object_with_models_of_the_project() {
+    let (_d, storage, app) = app().await;
+    let (project, owner, session) = create_project(
+        &storage,
+        &app,
+        "alice@test.local",
+        scene_one_object(),
+        json!({}),
+    )
+    .await;
+    let (other_project, _bob, bob_session) =
+        create_project(&storage, &app, "bob@test.local", json!({}), json!({})).await;
+    let foreign = upload_l(&app, &other_project, &bob_session).await;
+    let own = upload_l(&app, &project, &session).await;
+
+    for scene in [json!([]), json!("x"), json!(3)] {
+        for req in [
+            slice_req(&project, &session, json!({ "scene": scene })),
+            validate_req(&project, &session, json!({ "scene": scene })),
+        ] {
+            let resp = app.clone().oneshot(req).await.unwrap();
+            assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        }
+    }
+    // `null` = champ absent : scène enregistrée.
+    let resp = app
+        .clone()
+        .oneshot(slice_req(
+            &project,
+            &session,
+            json!({ "plate_index": 0, "scene": null }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::CREATED);
+
+    for model in [foreign.as_str(), "inconnu"] {
+        let scene = json!({
+            "objects": [
+                { "id": "o1", "modelId": own },
+                { "id": "o2", "modelId": own, "volumes": [{ "type": "part", "modelId": model }] }
+            ],
+            "plates": [{ "id": "p1", "objectIds": ["o1", "o2"] }]
+        });
+        let resp = app
+            .clone()
+            .oneshot(slice_req(
+                &project,
+                &session,
+                json!({ "plate_index": 0, "scene": scene }),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+        let body = body_json(resp).await;
+        assert_eq!(body["details"]["model_ids"], json!([model]), "{body}");
+    }
+    assert_eq!(storage.jobs().list(owner).await.unwrap().len(), 1);
 }
 
 /// STL ASCII d'un prisme en L centré (40 × 40 mm, bras de 10 mm, hauteur 6 mm).

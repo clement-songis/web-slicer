@@ -24,8 +24,8 @@ use serde_json::{json, Value};
 use ts_rs::TS;
 
 use super::slice::{
-    off_bed_ids, plate_scene_ids, plate_targets, resolve_slice_config, with_plate_settings,
-    SliceConfig,
+    off_bed_ids, plate_scene_ids, plate_targets, request_scene, resolve_slice_config,
+    with_plate_settings, SliceConfig,
 };
 use crate::domain::{ProjectId, UserId};
 use crate::http::dto::{SliceRequest, SliceWarning};
@@ -111,7 +111,8 @@ impl ValidationIssue {
 }
 
 /// `POST /api/projects/{id}/validate` — erreurs et avertissements d'Orca avant
-/// tranchage, sans trancher (même corps que `POST …/slice`).
+/// tranchage, sans trancher (même corps que `POST …/slice`, scène non
+/// enregistrée comprise).
 pub async fn validate(
     CurrentUser(user): CurrentUser,
     State(state): State<AppState>,
@@ -122,7 +123,7 @@ pub async fn validate(
         .map(ProjectId)
         .map_err(|_| ApiError::not_found("Projet"))?;
     let project = state.storage.projects().get(user.id, project_id).await?; // 404, SC-008
-    let scene = &project.scene;
+    let scene = request_scene(&body, &project.scene)?;
 
     // Projet sans aucun objet : le plateau 0 est rapporté vide.
     let targets = match plate_targets(scene, body.plate_index)? {
