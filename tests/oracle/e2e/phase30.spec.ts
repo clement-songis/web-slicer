@@ -12,7 +12,7 @@ test.use({ locale: 'fr-FR' });
 
 const hint = (page: Page) => page.getByText('Glissez un modèle ici');
 
-test('plateaux côte à côte : actif mis en évidence, clic sur un autre plateau pour l’activer', async ({ page }) => {
+test('plateaux côte à côte : actif mis en évidence, clic sur un autre plateau pour l’activer @F:toolbar.addplate', async ({ page }) => {
 	test.setTimeout(180_000);
 	await bootstrap(page);
 	await importModel(page, 'cube20');
@@ -55,7 +55,7 @@ test('plateaux côte à côte : actif mis en évidence, clic sur un autre platea
 	await expect(hint(page)).toHaveCount(0);
 });
 
-test('glisser un objet sur un autre plateau le lui affecte (repère du plateau d’arrivée)', async ({ page }) => {
+test('glisser un objet sur un autre plateau le lui affecte (repère du plateau d’arrivée) @F:toolbar.addplate', async ({ page }) => {
 	test.setTimeout(180_000);
 	await bootstrap(page);
 	await importModel(page, 'cube20');
@@ -102,7 +102,7 @@ test('glisser un objet sur un autre plateau le lui affecte (repère du plateau d
 	expect(y).toBeLessThan(400);
 });
 
-test('barre de messages : aucun décalage, estompée ensuite, transparente aux clics', async ({ page }) => {
+test('barre de messages : aucun décalage, estompée ensuite, transparente aux clics @F:toolbar.arrange', async ({ page }) => {
 	test.setTimeout(120_000);
 	await bootstrap(page);
 	const aside = page.getByRole('complementary', { name: 'Configuration' });
@@ -122,7 +122,7 @@ test('barre de messages : aucun décalage, estompée ensuite, transparente aux c
 	await expect(msg).toContainText('Arrangement');
 });
 
-test('modèle en échec de conversion listé : l’indication « Glissez un modèle » disparaît', async ({ page }) => {
+test('modèle en échec de conversion listé : l’indication « Glissez un modèle » disparaît @F:core.import', async ({ page }) => {
 	test.setTimeout(120_000);
 	await bootstrap(page);
 	await expect(hint(page)).toBeVisible();

@@ -108,6 +108,8 @@
 	} from '$lib/editor/validation';
 	import { safeFileName } from '$lib/export/stl';
 	import { getJob, listJobs } from '$lib/api/jobs';
+	import { jobAsEvent, planResume, resumedProgress } from '$lib/editor/resume-job';
+	import { connection } from '$lib/api/connectivity';
 	import type { JobResponse } from '$lib/api/types';
 	import type { Projection } from '$lib/scene/camera';
 	import { cameraSpaceNudge, clampZoom } from '$lib/scene/camera';
@@ -298,8 +300,10 @@
 		createProject,
 		duplicateProject,
 		renameProject,
-		importProject
+		importProject,
+		listProjects
 	} from '$lib/api/projects';
+	import { isNameConflict, nameTakenMessage, uniqueProjectName } from '$lib/library/names';
 	import {
 		arrangeScene,
 		booleanModels,
@@ -620,7 +624,24 @@
 			savedName = name;
 			saveMessage = fromFile ? `Projet nommé « ${name} » d'après ${fromFile}.` : 'Projet renommé.';
 		} catch (e) {
-			saveMessage = e instanceof ApiError ? e.message : 'renommage impossible';
+			if (isNameConflict(e) && fromFile) {
+				// Phase 32 : nom de fichier déjà pris par un autre projet → « cube20 (2) ».
+				try {
+					const others = (await listProjects()).filter((p) => p.id !== data.project.id);
+					const free = uniqueProjectName(name, [...others.map((p) => p.name), name]);
+					await renameProject(data.project.id, free);
+					projectName = savedName = free;
+					saveMessage = `Projet nommé « ${free} » d'après ${fromFile}.`;
+					return;
+				} catch {
+					// repli : message ci-dessous
+				}
+			}
+			saveMessage = isNameConflict(e)
+				? nameTakenMessage(name)
+				: e instanceof ApiError
+					? e.message
+					: 'renommage impossible';
 		}
 	}
 
@@ -1351,7 +1372,13 @@
 			// l'ouverture (il attend `editorReady`) ne modifie la scène — sinon un
 			// premier import passait pour « enregistré » (ni pastille, ni
 			// sauvegarde avant la validation en direct, qui voyait un plateau vide).
-			if (!imports.some((item) => isPending(item))) savedSignature = saveSignature();
+			// Phase 32 : modèles orphelins restaurés (import jamais enregistré, onglet
+			// fermé ou rechargé) → la scène affichée n'est PAS celle du serveur.
+			// Référence volontairement différente (sans suffixe de presets) : la
+			// pastille « non enregistré » s'allume et « Trancher » enregistre d'abord,
+			// au lieu de trancher la scène serveur vide (« plateau vide »).
+			if (restoredOrphans) savedSignature = '\u0000orphelins-restaurés';
+			else if (!imports.some((item) => isPending(item))) savedSignature = saveSignature();
 			baselineReady = true;
 		});
 		// Restaure le dernier résultat réussi du projet : quitter l'éditeur pour
@@ -1359,9 +1386,20 @@
 		void listJobs()
 			.then((jobs) => {
 				if (!alive || session.phase !== 'prepare' || session.gcodeId) return;
-				const latest = jobs.find(
-					(job) => job.project_id === data.project.id && job.status === 'succeeded' && job.gcode_id
-				);
+				// Phase 32 : tranchage encore en cours (page rechargée pendant le
+				// tranchage) → reprise du suivi : progression, puis aperçu à la fin.
+				const plan = planResume(jobs, data.project.id);
+				if (plan?.kind === 'slicing') {
+					session = {
+						...startSlicing(plan.jobs.map((job) => job.id)),
+						progress: resumedProgress(plan.jobs)
+					};
+					saveMessage = 'Tranchage en cours repris après le rechargement de la page.';
+					// Fini entre la liste et l'abonnement : état relu une fois.
+					void resyncSessionJobs();
+					return;
+				}
+				const latest = plan?.kind === 'result' ? plan.job : null;
 				if (!latest?.gcode_id) return;
 				session = {
 					...prepareSession(),
@@ -1379,10 +1417,24 @@
 				// tranchage restent utilisables si ce chargement optionnel échoue.
 			});
 		// Flux d'événements du compte (T065) : progression et fin des jobs.
-		const sub: EventSubscription = subscribeEvents({ onEvent });
+		// Phase 32 : après une coupure (flux WS ou serveur), les événements émis
+		// entre-temps sont perdus → état des jobs suivis relu au retour.
+		const sub: EventSubscription = subscribeEvents({
+			onEvent,
+			onOpen: (reconnected) => {
+				if (reconnected) void resyncSessionJobs();
+			}
+		});
+		let lastRestored = 0;
+		const unsubConnection = connection.subscribe((c) => {
+			if (c.restored === lastRestored) return;
+			lastRestored = c.restored;
+			if (c.restored > 0) void resyncSessionJobs();
+		});
 		return () => {
 			alive = false;
 			sub.close();
+			unsubConnection();
 		};
 	});
 
@@ -1486,6 +1538,7 @@
 		for (const modelId of plan.orphanModelIds) {
 			const model = modelById.get(modelId);
 			if (!model) continue;
+			if (!baselineReady) restoredOrphans = true;
 			const objectId = tree.add(model.filename).id;
 			if (plates.activeId) plates.assign(objectId, plates.activeId);
 			track(objectId, model.id);
@@ -2133,6 +2186,22 @@
 
 	// G-code dont l'aperçu est déjà chargé : évite de recharger à chaque événement.
 	let previewLoadedFor: string | null = null;
+
+	/** Relit l'état des jobs de la session en cours et l'applique comme des
+	 *  événements (reprise après rechargement, retour de connexion). Les lots
+	 *  « Trancher tout » gardent leur propre suivi. */
+	async function resyncSessionJobs() {
+		if (session.phase !== 'slicing' || sliceBatch) return;
+		for (const id of [...session.jobIds]) {
+			try {
+				const job = await getJob(id);
+				if (session.phase !== 'slicing' || !session.jobIds.includes(id)) return;
+				onEvent(jobAsEvent(job));
+			} catch {
+				// hors ligne : nouvel essai au retour de la connexion
+			}
+		}
+	}
 
 	function onEvent(event: ServerEvent) {
 		const wasPreview = layout.tab === 'preview';
@@ -7182,6 +7251,8 @@
 		}, 300);
 	});
 	let baselineReady = $state(false);
+	/** Ouverture : objets restaurés depuis des modèles absents de la scène enregistrée. */
+	let restoredOrphans = false;
 	const profilesDirty = $derived(processModified || filamentModified || machineModified);
 	// Projet neuf et vide : rien à perdre (les presets par défaut ne comptent pas).
 	const hasContent = $derived(

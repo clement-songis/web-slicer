@@ -2,6 +2,7 @@
 // corps JSON, et traduction de l'enveloppe d'erreur `{ code, message, details }`
 // en `ApiError`. Aucune logique métier ici — juste le transport.
 import type { ErrorBody } from './types';
+import { reportReachable, reportUnreachable, unreachableMessage } from './connectivity';
 
 /** Préfixe des routes API (le proxy Vite renvoie vers le backend en dev). */
 export const API_BASE = '/api';
@@ -31,7 +32,60 @@ function bigIntReplacer(_key: string, value: unknown): unknown {
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
 	const hasBody = body !== undefined;
 	const json = hasBody ? JSON.stringify(body, bigIntReplacer) : undefined;
-	const res = await fetch(`${API_BASE}${path}`, {
+	let res: Response;
+	try {
+		res = await fetchApi(path, method, hasBody, json);
+	} catch (e) {
+		// Annulation volontaire (navigation, AbortController) : propagée telle quelle.
+		if (e instanceof DOMException && e.name === 'AbortError') throw e;
+		// Phase 32 : serveur injoignable / hors ligne → message clair (au lieu de
+		// « Failed to fetch » ou « Erreur inattendue ») + bandeau global.
+		reportUnreachable();
+		throw new ApiError(0, 'network', unreachableMessage());
+	}
+
+	// 204 (logout, delete) : pas de corps.
+	if (res.status === 204) {
+		reportReachable();
+		return undefined as T;
+	}
+
+	const text = await res.text();
+	let data: unknown;
+	try {
+		data = text ? JSON.parse(text) : undefined;
+	} catch {
+		// Corps non JSON : page d'erreur du proxy (502/503/504 quand le serveur
+		// est arrêté) ou réponse tronquée. Jamais d'« Unexpected token < ».
+		data = undefined;
+	}
+
+	if (!res.ok) {
+		const err = (data ?? {}) as Partial<ErrorBody>;
+		if (!err.message && GATEWAY_DOWN.has(res.status)) {
+			reportUnreachable();
+			throw new ApiError(res.status, 'unavailable', unreachableMessage(res.status));
+		}
+		reportReachable();
+		throw new ApiError(res.status, err.code ?? 'error', err.message ?? res.statusText, err.details);
+	}
+	reportReachable();
+	if (text && data === undefined) {
+		throw new ApiError(res.status, 'bad_response', 'Réponse illisible du serveur. Réessayez.');
+	}
+	return data as T;
+}
+
+/** Statuts renvoyés par le proxy quand le backend ne répond pas. */
+const GATEWAY_DOWN = new Set([502, 503, 504]);
+
+function fetchApi(
+	path: string,
+	method: string,
+	hasBody: boolean,
+	json: string | undefined
+): Promise<Response> {
+	return fetch(`${API_BASE}${path}`, {
 		method,
 		credentials: 'include',
 		headers: hasBody ? { 'content-type': 'application/json' } : undefined,
@@ -41,18 +95,6 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 		// annulée. keepalive limite les corps en vol à 64 Kio : petits corps seuls.
 		keepalive: (method === 'PUT' || method === 'PATCH') && (json?.length ?? 0) < 30_000
 	});
-
-	// 204 (logout, delete) : pas de corps.
-	if (res.status === 204) return undefined as T;
-
-	const text = await res.text();
-	const data: unknown = text ? JSON.parse(text) : undefined;
-
-	if (!res.ok) {
-		const err = (data ?? {}) as Partial<ErrorBody>;
-		throw new ApiError(res.status, err.code ?? 'error', err.message ?? res.statusText, err.details);
-	}
-	return data as T;
 }
 
 /** Verbes HTTP typés. */

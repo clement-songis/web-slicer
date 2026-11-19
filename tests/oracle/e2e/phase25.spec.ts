@@ -14,7 +14,7 @@ async function objectMenu(page: Page) {
 	return menu;
 }
 
-test('menu objet : sous-menus titrés, toutes les actions visibles sans défilement', async ({
+test('menu objet : sous-menus titrés, toutes les actions visibles sans défilement @F:ctx.add-instance', async ({
 	page
 }) => {
 	await bootstrap(page);
@@ -38,7 +38,7 @@ test('menu objet : sous-menus titrés, toutes les actions visibles sans défilem
 	await expect(menu).toHaveCount(0);
 });
 
-test('menu Calibration : description sous chaque entrée, libellés de parité inchangés', async ({
+test('menu Calibration : description sous chaque entrée, libellés de parité inchangés @F:menu.flow-ratio', async ({
 	page
 }) => {
 	await bootstrap(page);
@@ -55,7 +55,7 @@ test('menu Calibration : description sous chaque entrée, libellés de parité i
 
 test.describe('libellés français', () => {
 	test.use({ locale: 'fr-FR' });
-	test('Calibration : passes du ratio de débit nommées comme telles', async ({ page }) => {
+	test('Calibration : passes du ratio de débit nommées comme telles @F:menu.flow-ratio', async ({ page }) => {
 		await page.addInitScript(() => localStorage.setItem('PARAGLIDE_LOCALE', 'fr'));
 		await bootstrap(page);
 		await page.getByRole('button', { name: CALIBRATION }).first().click();
@@ -64,7 +64,7 @@ test.describe('libellés français', () => {
 	});
 });
 
-test('trancher tout : un aperçu par plateau, mémorisé au changement d’onglet', async ({ page }) => {
+test('trancher tout : un aperçu par plateau, mémorisé au changement d’onglet @F:editor.preview-plates', async ({ page }) => {
 	test.setTimeout(300_000);
 	await bootstrap(page);
 	await importModel(page, 'cube20');
@@ -115,7 +115,7 @@ test('trancher tout : un aperçu par plateau, mémorisé au changement d’ongle
 	expect(plate1).not.toBe(plate2);
 });
 
-test('assistant : filaments proposés pour l’imprimante cochée, défaut des nouveaux projets', async ({
+test('assistant : filaments proposés pour l’imprimante cochée, défaut des nouveaux projets @F:menu.setup-wizard', async ({
 	page
 }) => {
 	test.setTimeout(180_000);
@@ -152,7 +152,7 @@ test('assistant : filaments proposés pour l’imprimante cochée, défaut des n
 	});
 });
 
-test('aperçu : tranches téléchargées une seule fois, rendu logiciel en lignes, page réactive', async ({
+test('aperçu : tranches téléchargées une seule fois, rendu logiciel en lignes, page réactive @F:preview.engine', async ({
 	page
 }) => {
 	test.setTimeout(300_000);

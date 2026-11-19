@@ -9,7 +9,7 @@ import { bootstrap, importModel } from '../lib/app';
 
 test.use({ locale: 'fr-FR' });
 
-test('objet par objet : collision signalée en direct, objet surligné, « Disposer » corrige', async ({ page }) => {
+test('objet par objet : collision signalée en direct, objet surligné, « Disposer » corrige @F:editor.plate-settings', async ({ page }) => {
 	test.setTimeout(240_000);
 	await bootstrap(page);
 	await importModel(page, 'cube20');
@@ -40,7 +40,7 @@ test('objet par objet : collision signalée en direct, objet surligné, « Dispo
 	await expect(page.getByTestId('slice-button')).not.toHaveAttribute('data-blocked', 'true');
 });
 
-test('réglage invalide : erreur en direct, lien « Régler » vers l’option surlignée', async ({ page }) => {
+test('réglage invalide : erreur en direct, lien « Régler » vers l’option surlignée @F:core.settings-ui', async ({ page }) => {
 	test.setTimeout(240_000);
 	await bootstrap(page);
 	await importModel(page, 'cube20');
@@ -69,7 +69,7 @@ test('réglage invalide : erreur en direct, lien « Régler » vers l’option s
 	await expect(page.getByTestId('validation-notice')).toHaveCount(0, { timeout: 60_000 });
 });
 
-test('conversion : la cause du moteur est affichée (notification, puis liste à la réouverture)', async ({ page }) => {
+test('conversion : la cause du moteur est affichée (notification, puis liste à la réouverture) @F:core.import', async ({ page }) => {
 	test.setTimeout(180_000);
 	await bootstrap(page);
 	const dir = mkdtempSync(join(tmpdir(), 'p29-'));
@@ -91,7 +91,7 @@ test('conversion : la cause du moteur est affichée (notification, puis liste à
 	await expect(page.getByRole('alert').filter({ hasText: 'Conversion impossible de « casse.stl »' })).toBeVisible();
 });
 
-test('multi-filament : un objet affiche son n° de filament (pas « auto »)', async ({ page }) => {
+test('multi-filament : un objet affiche son n° de filament (pas « auto ») @F:editor.filament-slots', async ({ page }) => {
 	await bootstrap(page);
 	await importModel(page, 'cube20');
 	await page.getByTestId('add-filament-slot').click();

@@ -28,6 +28,7 @@
 		sortProjects,
 		type ProjectSort
 	} from '$lib/library/library';
+	import { isNameConflict, nameTakenMessage, uniqueProjectName } from '$lib/library/names';
 	import type { ProjectResponse } from '$lib/api/types';
 	import type { PageData } from './$types';
 	import IconNew from '~icons/lucide/file-plus';
@@ -95,8 +96,20 @@
 	// « Nouveau projet » : crée un projet par défaut et ouvre l'éditeur dessus.
 	function createAndOpen() {
 		return run(async () => {
-			const project = await createProject({ name: 'Sans titre' });
-			await goto(resolve('/projects/[id]', { id: project.id }));
+			// Nom unique par compte (phase 32) : « Sans titre », « Sans titre (2) »…
+			// Un projet créé ailleurs entre-temps (autre onglet) → nouvel essai.
+			const taken = projects.map((p) => p.name);
+			for (let attempt = 0; ; attempt++) {
+				const name = uniqueProjectName('Sans titre', taken);
+				try {
+					const project = await createProject({ name });
+					await goto(resolve('/projects/[id]', { id: project.id }));
+					return;
+				} catch (err) {
+					if (!isNameConflict(err) || attempt >= 4) throw err;
+					taken.push(name);
+				}
+			}
 		});
 	}
 
@@ -146,9 +159,15 @@
 			return;
 		}
 		return run(async () => {
-			const updated = await renameProject(id, name);
-			projects = sortByUpdated(projects.map((p) => (p.id === id ? updated : p)));
-			renamingId = null;
+			try {
+				const updated = await renameProject(id, name);
+				projects = sortByUpdated(projects.map((p) => (p.id === id ? updated : p)));
+				renamingId = null;
+			} catch (err) {
+				// Nom déjà pris : message clair, le champ reste ouvert pour corriger.
+				if (isNameConflict(err)) throw new ApiError(409, 'conflict', nameTakenMessage(name));
+				throw err;
+			}
 		});
 	}
 </script>

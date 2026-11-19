@@ -5,11 +5,23 @@
 	// cette page orchestre chargement, abonnement et actions.
 	import { onMount } from 'svelte';
 	import { ApiError } from '$lib/api/client';
-	import { cancelJob } from '$lib/api/jobs';
+	import { cancelJob, getJob, listJobs } from '$lib/api/jobs';
+	import { resolve } from '$app/paths';
+	import { connection } from '$lib/api/connectivity';
 	import { uploadToPrinter } from '$lib/api/printers';
 	import type { JobResponse, PrinterResponse } from '$lib/api/types';
 	import { subscribeEvents } from '$lib/queue/events';
-	import { applyEvent, partitionJobs, progressPercent, statusMeta } from '$lib/queue/queue';
+	import {
+		applyEvent,
+		jobErrorText,
+		partitionJobs,
+		phaseLabel,
+		progressPercent,
+		queuePositions,
+		statusMeta,
+		unknownJobId,
+		upsertJob
+	} from '$lib/queue/queue';
 	import type { PageData } from './$types';
 	import AppSidebar from '$lib/nav/AppSidebar.svelte';
 
@@ -26,13 +38,52 @@
 	let sent = $state<Record<string, string>>({});
 
 	const parts = $derived(partitionJobs(jobs));
+	const positions = $derived(queuePositions(jobs));
+	const projectNames = $derived(
+		Object.fromEntries((data.projects ?? []).map((p) => [p.id, p.name])) as Record<string, string>
+	);
+	const projectName = (id: string) => projectNames[id] ?? 'Projet';
+
+	// Phase 32 : resynchronisation après une coupure (événements perdus) et
+	// jobs inconnus (lancés depuis un autre onglet après le chargement).
+	async function refresh() {
+		try {
+			jobs = await listJobs();
+		} catch {
+			// hors ligne : le bandeau global l'indique, nouvel essai au retour
+		}
+	}
+	const fetching: Record<string, boolean> = {};
+	async function adopt(id: string) {
+		if (fetching[id]) return;
+		fetching[id] = true;
+		try {
+			jobs = upsertJob(jobs, await getJob(id));
+		} catch {
+			// job d'un autre compte ou déjà purgé : ignoré
+		} finally {
+			delete fetching[id];
+		}
+	}
 
 	onMount(() => {
 		jobs = data.jobs;
 		// Abonnement temps réel : chaque événement patche la liste ; un
 		// `job.finished` déclenche une notification éphémère (US7-AS1).
+		let lastRestored = 0;
+		const unsubConn = connection.subscribe((c) => {
+			if (c.restored !== lastRestored) {
+				lastRestored = c.restored;
+				if (c.restored > 0) void refresh();
+			}
+		});
 		const sub = subscribeEvents({
+			onOpen(reconnected) {
+				if (reconnected) void refresh();
+			},
 			onEvent(event) {
+				const unknown = unknownJobId(jobs, event);
+				if (unknown) void adopt(unknown);
 				jobs = applyEvent(jobs, event);
 				if (event.event === 'job.finished') {
 					justFinished = event.id;
@@ -42,7 +93,10 @@
 				}
 			}
 		});
-		return () => sub.close();
+		return () => {
+			sub.close();
+			unsubConn();
+		};
 	});
 
 	async function cancel(id: string) {
@@ -110,18 +164,39 @@
 				{:else}
 					{#each parts.active as job (job.id)}
 						<article class="flex items-center gap-3 rounded border border-border p-3">
-							<span class="rounded px-2 py-0.5 text-xs {statusMeta(job.status).badge}">
-								{statusMeta(job.status).label}
+							<span
+								class="rounded px-2 py-0.5 text-xs {statusMeta(job.status).badge}"
+								data-testid="queue-status"
+							>
+								{statusMeta(job.status).label}{#if positions[job.id]}&nbsp;· n°&nbsp;{positions[
+										job.id
+									]}{/if}
 							</span>
 							<div class="flex min-w-0 flex-1 flex-col gap-1">
-								<div class="flex justify-between text-sm">
-									<span class="truncate">Plateau {Number(job.plate_index) + 1}</span>
+								<div class="flex justify-between gap-2 text-sm">
+									<a
+										class="truncate hover:underline"
+										href={resolve('/projects/[id]', { id: job.project_id })}
+										data-testid="queue-job-project"
+										title={projectName(job.project_id)}
+										>{projectName(job.project_id)}
+										<span class="text-content-muted">· Plateau {Number(job.plate_index) + 1}</span
+										></a
+									>
 									<span class="tabular-nums text-content-muted">{progressPercent(job)}%</span>
 								</div>
 								<div class="h-1.5 overflow-hidden rounded bg-overlay">
 									<div class="h-full bg-primary" style:width="{progressPercent(job)}%"></div>
 								</div>
-								{#if job.phase}<span class="text-xs text-content-subtle">{job.phase}</span>{/if}
+								{#if job.status === 'queued'}
+									<span class="text-xs text-content-subtle"
+										>En attente : {positions[job.id] === 1
+											? 'démarre dès qu’un tranchage se termine'
+											: `${(positions[job.id] ?? 1) - 1} tranchage(s) avant celui-ci`}</span
+									>
+								{:else if job.phase}<span class="text-xs text-content-subtle"
+										>{phaseLabel(job.phase)}</span
+									>{/if}
 							</div>
 							<button
 								type="button"
@@ -150,6 +225,7 @@
 						<thead>
 							<tr class="text-left text-xs text-content-muted">
 								<th class="font-normal">État</th>
+								<th class="font-normal">Projet</th>
 								<th class="font-normal">Plateau</th>
 								<th class="font-normal">Date</th>
 								<th class="font-normal">Résultat</th>
@@ -162,6 +238,13 @@
 										<span class="rounded px-2 py-0.5 text-xs {statusMeta(job.status).badge}">
 											{statusMeta(job.status).label}
 										</span>
+									</td>
+									<td class="max-w-48 truncate" title={projectName(job.project_id)}>
+										<a
+											class="hover:underline"
+											href={resolve('/projects/[id]', { id: job.project_id })}
+											data-testid="queue-history-project">{projectName(job.project_id)}</a
+										>
 									</td>
 									<td class="tabular-nums">{Number(job.plate_index) + 1}</td>
 									<td class="text-content-muted">{formatDate(job.updated_at)}</td>
@@ -209,7 +292,9 @@
 												{/if}
 											</div>
 										{:else if job.status === 'failed'}
-											<span class="text-danger">Échec</span>
+											<span class="text-danger" data-testid="queue-job-error"
+												>Échec{jobErrorText(job.error) ? ` : ${jobErrorText(job.error)}` : ''}</span
+											>
 										{:else}
 											<span class="text-content-subtle">—</span>
 										{/if}

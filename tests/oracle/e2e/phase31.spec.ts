@@ -15,7 +15,7 @@ async function focusEditor(page: Page) {
   await page.locator("body").focus();
 }
 
-test("trancher envoie la scène affichée sans enregistrer ; aperçu : outil, aller à la couche", async ({
+test("trancher envoie la scène affichée sans enregistrer ; aperçu : outil, aller à la couche @F:core.slice-ui @F:shortcut.home @F:shortcut.end", async ({
   page,
 }) => {
   test.setTimeout(300_000);
@@ -88,7 +88,7 @@ test("trancher envoie la scène affichée sans enregistrer ; aperçu : outil, al
   await expect(form).toHaveCount(0);
 });
 
-test("un même message répété réapparaît (nouvelle notification)", async ({
+test("un même message répété réapparaît (nouvelle notification) @F:toolbar.arrange", async ({
   page,
 }) => {
   test.setTimeout(120_000);
@@ -111,7 +111,7 @@ test("un même message répété réapparaît (nouvelle notification)", async ({
   await expect(msg).toHaveText(text);
 });
 
-test("G-code externe : statistiques du pied de fichier ; plateaux listés dans l’aperçu", async ({
+test("G-code externe : statistiques du pied de fichier ; plateaux listés dans l’aperçu @F:editor.menu-open-gcode", async ({
   page,
 }) => {
   test.setTimeout(120_000);

@@ -23,7 +23,7 @@ async function clickObject(page: Page, dx = 0, dy = 0) {
 	await page.mouse.click(box.x + x + dx, box.y + y + dy);
 }
 
-test('texte en relief avec un objet sélectionné : pièce posée sur l’objet (gizmo Emboss)', async ({
+test('texte en relief avec un objet sélectionné : pièce posée sur l’objet (gizmo Emboss) @F:gizmo.emboss', async ({
 	page
 }) => {
 	test.setTimeout(240_000);
@@ -44,7 +44,7 @@ test('texte en relief avec un objet sélectionné : pièce posée sur l’objet 
 	);
 });
 
-test('forme SVG : bouton de choix de fichier, nom et aperçu de la forme', async ({ page }) => {
+test('forme SVG : bouton de choix de fichier, nom et aperçu de la forme @F:gizmo.svg', async ({ page }) => {
 	await bootstrap(page);
 	await page.getByTestId('tool-svg').click();
 	await expect(page.getByTestId('emboss-svg-pick')).toHaveText('Choisir un fichier SVG…');
@@ -59,7 +59,7 @@ test('forme SVG : bouton de choix de fichier, nom et aperçu de la forme', async
 	await expect(page.getByTestId('emboss-submit')).toBeEnabled();
 });
 
-test('coupe : plan dessiné dans la vue, position en hauteur depuis le plateau, pas de faux champ connecteurs', async ({
+test('coupe : plan dessiné dans la vue, position en hauteur depuis le plateau, pas de faux champ connecteurs @F:gizmo.cut', async ({
 	page
 }) => {
 	await bootstrap(page);
@@ -86,7 +86,7 @@ test('coupe : plan dessiné dans la vue, position en hauteur depuis le plateau, 
 	await expect(page.locator('[data-guide-plane]')).toHaveCount(0);
 });
 
-test('mesure : les deux points cliqués sont dessinés dans la vue', async ({ page }) => {
+test('mesure : les deux points cliqués sont dessinés dans la vue @F:gizmo.measure', async ({ page }) => {
 	await bootstrap(page);
 	await importModel(page, 'cube20');
 	await selectFirst(page);
@@ -98,7 +98,7 @@ test('mesure : les deux points cliqués sont dessinés dans la vue', async ({ pa
 	await expect(page.locator('[data-guide-points]')).toHaveAttribute('data-guide-points', '2');
 });
 
-test('« + Réglage » : résultats par pertinence et catégories traduites', async ({ page }) => {
+test('« + Réglage » : résultats par pertinence et catégories traduites @F:editor.object-panel', async ({ page }) => {
 	await bootstrap(page);
 	await importModel(page, 'cube20');
 	await selectFirst(page);
@@ -115,7 +115,7 @@ test('« + Réglage » : résultats par pertinence et catégories traduites', as
 	await expect(page.getByTestId('object-settings-result').first()).toContainText(/^Densité/);
 });
 
-test('liste d’objets : Espace (ou F2) renomme l’objet sélectionné', async ({ page }) => {
+test('liste d’objets : Espace (ou F2) renomme l’objet sélectionné @F:shortcut.space', async ({ page }) => {
 	await bootstrap(page);
 	await importModel(page, 'cube20');
 	const name = page.getByTestId('object-name').first();
@@ -130,7 +130,7 @@ test('liste d’objets : Espace (ou F2) renomme l’objet sélectionné', async 
 	await expect(page.getByTestId('object-rename-input')).toBeVisible();
 });
 
-test('aide « Raccourcis clavier » en français (textes Orca)', async ({ page }) => {
+test('aide « Raccourcis clavier » en français (textes Orca) @F:shortcut.x @F:menu.keyboard-shortcuts', async ({ page }) => {
 	await bootstrap(page);
 	await page.getByTestId('scene-canvas').click({ position: { x: 40, y: 40 } });
 	await page.keyboard.press('Shift+?');

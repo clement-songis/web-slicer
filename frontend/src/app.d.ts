@@ -2,7 +2,11 @@
 // for information about these interfaces
 declare global {
 	namespace App {
-		// interface Error {}
+		interface Error {
+			message: string;
+			/** Code stable de l'ApiError (`network`, `unavailable`…), cf. hooks.client.ts. */
+			code?: string;
+		}
 		// interface Locals {}
 		// interface PageData {}
 		// interface PageState {}

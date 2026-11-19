@@ -23,7 +23,7 @@ async function bootstrapWith(page: Page, printer: string, filament: string, proc
 	return project_id;
 }
 
-test('menus de la barre : le menu déroulant est réellement visible (non rogné)', async ({
+test('menus de la barre : le menu déroulant est réellement visible (non rogné) @F:menu.new-project', async ({
 	page
 }) => {
 	await bootstrap(page);
@@ -40,7 +40,7 @@ test('menus de la barre : le menu déroulant est réellement visible (non rogné
 	expect(onTop).toBe(true);
 });
 
-test('ouvrir un 3MF Bambu multi-filament : un slot par filament, extrudeurs conservés', async ({
+test('ouvrir un 3MF Bambu multi-filament : un slot par filament, extrudeurs conservés @F:ui.import-3mf-multi', async ({
 	page
 }) => {
 	await bootstrapWith(
@@ -65,7 +65,7 @@ test('ouvrir un 3MF Bambu multi-filament : un slot par filament, extrudeurs cons
 	await expect(page.getByLabel('Extrudeur de cylinder.stl')).toHaveValue('2');
 });
 
-test('filament ajouté : couleur distincte (palette Orca), pastilles de peinture multi-matériaux', async ({
+test('filament ajouté : couleur distincte (palette Orca), pastilles de peinture multi-matériaux @F:editor.filament-slots @F:gizmo.mmsegmentation', async ({
 	page
 }) => {
 	await bootstrap(page);
@@ -84,7 +84,7 @@ test('filament ajouté : couleur distincte (palette Orca), pastilles de peinture
 	await expect(page.getByTestId('paint-filament-1')).toHaveAttribute('aria-checked', 'false');
 });
 
-test('projet de calibration PA : hauteur mesurée → K, historique prérempli, appliqué au filament', async ({
+test('projet de calibration PA : hauteur mesurée → K, historique prérempli, appliqué au filament @F:menu.pressure-advance', async ({
 	page
 }) => {
 	const first = await bootstrap(page);
@@ -114,7 +114,7 @@ test('projet de calibration PA : hauteur mesurée → K, historique prérempli, 
 	await expect(page.getByTestId('settings-dialog')).toBeVisible();
 });
 
-test('aperçu : le plateau est affiché sous les parcours', async ({ page }) => {
+test('aperçu : le plateau est affiché sous les parcours @F:core.preview', async ({ page }) => {
 	await bootstrap(page);
 	await importModel(page, 'cube20');
 	await page.getByTestId('slice-button').click();
@@ -129,7 +129,7 @@ test('aperçu : le plateau est affiché sous les parcours', async ({ page }) => 
 	);
 });
 
-test('lot de préréglages : libellé français et import depuis le dialogue', async ({ page }) => {
+test('lot de préréglages : libellé français et import depuis le dialogue @F:menu.preset-bundle-2', async ({ page }) => {
 	await bootstrap(page);
 	await page.getByRole('button', { name: FILE }).first().click();
 	await page.getByRole('menuitem', { name: /^(Lot de préréglages|Preset Bundle)$/ }).click();

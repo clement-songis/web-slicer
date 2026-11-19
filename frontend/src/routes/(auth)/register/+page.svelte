@@ -16,6 +16,9 @@
 	// avec les champs du formulaire dans l'URL avant l'hydratation.
 	onMount(() => {
 		hydrated = true;
+		// Lien d'invitation (page Administration) : /register?invite=<jeton>.
+		const invite = new URLSearchParams(location.search).get('invite');
+		if (invite && !inviteToken) inviteToken = invite;
 	});
 
 	async function submit(event: SubmitEvent) {
@@ -83,6 +86,7 @@
 		<input
 			type="text"
 			bind:value={inviteToken}
+			data-testid="auth-invite"
 			autocomplete="off"
 			class="ws-field ws-field-lg w-full"
 		/>

@@ -24,7 +24,7 @@ function cutPost(page: Page) {
   );
 }
 
-test("coupe inclinée : angles du plan → plan dessiné incliné, rotation envoyée", async ({
+test("coupe inclinée : angles du plan → plan dessiné incliné, rotation envoyée @F:gizmo.cut", async ({
   page,
 }) => {
   await openCut(page);
@@ -49,7 +49,7 @@ test("coupe inclinée : angles du plan → plan dessiné incliné, rotation envo
   await expect(page.getByTestId("overlap-arrange")).toHaveCount(0);
 });
 
-test("connecteurs : clic sur la face de coupe, goujon carré, volumes renvoyés posés dans la scène", async ({
+test("connecteurs : clic sur la face de coupe, goujon carré, volumes renvoyés posés dans la scène @F:gizmo.cut", async ({
   page,
 }) => {
   test.setTimeout(240_000);
@@ -92,7 +92,7 @@ test("connecteurs : clic sur la face de coupe, goujon carré, volumes renvoyés 
   await expect(page.getByTestId("object-row")).toHaveCount(parts.length);
 });
 
-test("queue d’aronde et « couper en pièces »", async ({ page }) => {
+test("queue d’aronde et « couper en pièces » @F:gizmo.cut", async ({ page }) => {
   test.setTimeout(240_000);
   await openCut(page);
   await page.getByTestId("cut-mode-groove").click();
@@ -128,7 +128,7 @@ test("queue d’aronde et « couper en pièces »", async ({ page }) => {
   await expect(page.getByTestId("object-row")).toHaveCount(2);
 });
 
-test("export 3MF : capture du plateau envoyée avant l’export, présente dans le fichier", async ({
+test("export 3MF : capture du plateau envoyée avant l’export, présente dans le fichier @F:editor.export-3mf-paint-volumes", async ({
   page,
 }) => {
   await bootstrap(page);
@@ -152,7 +152,7 @@ test("export 3MF : capture du plateau envoyée avant l’export, présente dans 
   expect(bytes).toContain("Metadata/plate_1_small.png");
 });
 
-test("texte en relief ré-éditable : double-clic et menu « Modifier le texte »", async ({
+test("texte en relief ré-éditable : double-clic et menu « Modifier le texte » @F:gizmo.emboss", async ({
   page,
 }) => {
   test.setTimeout(240_000);
@@ -190,7 +190,7 @@ test("texte en relief ré-éditable : double-clic et menu « Modifier le texte �
   await expect(page.getByTestId("emboss-text")).toHaveValue("Ok");
 });
 
-test("frictions : imports côte à côte, séparateur décimal homogène, infobulle traduite", async ({
+test("frictions : imports côte à côte, séparateur décimal homogène, infobulle traduite @F:core.settings-ui", async ({
   page,
 }) => {
   await bootstrap(page);

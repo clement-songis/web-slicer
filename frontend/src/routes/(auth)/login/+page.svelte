@@ -4,12 +4,14 @@
 	import { resolve } from '$app/paths';
 	import { ApiError } from '$lib/api/client';
 	import { login } from '$lib/api/session';
+	import { safeNext } from '$lib/api/return-to';
 
 	let email = $state('');
 	let password = $state('');
 	let error = $state<string | null>(null);
 	let busy = $state(false);
 	let hydrated = $state(false);
+	let showForgot = $state(false);
 
 	// Évite une soumission HTML native si l'utilisateur clique pendant le
 	// chargement des modules, avant que le gestionnaire Svelte soit branché.
@@ -23,10 +25,20 @@
 		error = null;
 		try {
 			await login(email, password);
-			// Racine : page de démarrage choisie (préférence Orca default_page).
-			await goto(resolve('/'));
+			// Page demandée avant la connexion (?next=), sinon racine : page de
+			// démarrage choisie (préférence Orca default_page).
+			const next = safeNext(new URLSearchParams(location.search).get('next'));
+			// eslint-disable-next-line svelte/no-navigation-without-resolve -- chemin interne validé par safeNext
+			await goto(next ?? resolve('/'));
 		} catch (err) {
-			error = err instanceof ApiError ? err.message : 'Erreur inattendue';
+			// Phase 32 : le serveur répond « Session requise » (401 générique) à des
+			// identifiants faux ; on dit ce qui ne va pas, sans révéler lequel.
+			error =
+				err instanceof ApiError
+					? err.status === 401
+						? 'E-mail ou mot de passe incorrect.'
+						: err.message
+					: 'Erreur inattendue';
 		} finally {
 			busy = false;
 		}
@@ -61,6 +73,31 @@
 			class="ws-field ws-field-lg w-full"
 		/>
 	</label>
+
+	<div class="-mt-2 text-right">
+		<button
+			type="button"
+			class="text-xs text-primary hover:underline"
+			aria-expanded={showForgot}
+			aria-controls="forgot-help"
+			data-testid="auth-forgot"
+			onclick={() => (showForgot = !showForgot)}
+		>
+			Mot de passe oublié ?
+		</button>
+	</div>
+
+	{#if showForgot}
+		<p
+			id="forgot-help"
+			class="rounded border border-border bg-overlay px-3 py-2 text-xs text-content-muted"
+			data-testid="auth-forgot-help"
+		>
+			Cette instance n'envoie pas d'e-mails : demandez à son administrateur de réinitialiser votre
+			mot de passe (page Administration). Vous pourrez ensuite vous connecter avec le mot de passe
+			qu'il vous communiquera.
+		</p>
+	{/if}
 
 	{#if error}
 		<p class="text-sm text-danger" role="alert">{error}</p>

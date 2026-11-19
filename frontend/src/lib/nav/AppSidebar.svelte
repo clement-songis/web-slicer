@@ -4,7 +4,10 @@
 	// bibliothèque, la page imprimantes et la file pour garder le menu partout.
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { logout } from '$lib/api/session';
+	import { currentUser, logout } from '$lib/api/session';
+	import { deleteAccount } from '$lib/api/auth';
+	import { ApiError } from '$lib/api/client';
+	import IconShield from '~icons/lucide/shield';
 	import { ThemeToggle } from '$lib/theme';
 	import IconClock from '~icons/lucide/clock';
 	import IconPrinter from '~icons/lucide/printer';
@@ -16,7 +19,7 @@
 		/** Adresse e-mail du compte connecté (avatar + libellé). */
 		email: string;
 		/** Entrée active (surlignée), absente pendant l'onboarding. */
-		active?: 'recent' | 'printers' | 'queue';
+		active?: 'recent' | 'printers' | 'queue' | 'admin';
 	}
 
 	let { email, active }: Props = $props();
@@ -33,6 +36,32 @@
 			await goto(resolve('/login'));
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Erreur inattendue';
+		} finally {
+			busy = false;
+		}
+	}
+
+	// Suppression du compte (DELETE /api/auth/me, mot de passe exigé) — phase 32 :
+	// l'API existait sans interface.
+	let deleting = $state(false);
+	let deletePassword = $state('');
+	let deleteError = $state<string | null>(null);
+	async function removeAccount(event: SubmitEvent) {
+		event.preventDefault();
+		if (busy) return;
+		busy = true;
+		deleteError = null;
+		try {
+			await deleteAccount(deletePassword);
+			currentUser.set(null);
+			await goto(resolve('/register'));
+		} catch (err) {
+			deleteError =
+				err instanceof ApiError && err.status === 401
+					? 'Mot de passe incorrect.'
+					: err instanceof Error
+						? err.message
+						: 'Suppression impossible';
 		} finally {
 			busy = false;
 		}
@@ -70,6 +99,48 @@
 			{#if error}
 				<p class="px-3 py-2 text-xs text-danger" role="alert">{error}</p>
 			{/if}
+			{#if !deleting}
+				<button
+					type="button"
+					class="ws-menu-item rounded-md py-2 text-danger"
+					onclick={() => (deleting = true)}
+					data-testid="account-delete-open"
+				>
+					Supprimer mon compte…
+				</button>
+			{:else}
+				<form class="flex flex-col gap-2 px-2 py-2 text-xs" onsubmit={removeAccount}>
+					<p class="text-content-muted">
+						Supprime définitivement le compte, ses projets, modèles et G-code.
+					</p>
+					<input
+						type="password"
+						class="ws-field ws-field-sm w-full"
+						placeholder="Mot de passe"
+						aria-label="Mot de passe pour confirmer"
+						autocomplete="current-password"
+						bind:value={deletePassword}
+						required
+					/>
+					{#if deleteError}<p class="text-danger" role="alert">{deleteError}</p>{/if}
+					<div class="flex gap-1">
+						<button
+							type="submit"
+							class="ws-btn ws-btn-sm ws-btn-danger flex-1"
+							disabled={busy || !deletePassword}>Supprimer</button
+						>
+						<button
+							type="button"
+							class="ws-btn ws-btn-sm ws-btn-secondary"
+							onclick={() => {
+								deleting = false;
+								deletePassword = '';
+								deleteError = null;
+							}}>Annuler</button
+						>
+					</div>
+				</form>
+			{/if}
 		</div>
 	</details>
 	<nav class="flex flex-col gap-1 p-2 text-sm">
@@ -94,6 +165,16 @@
 		>
 			<IconQueue class="h-4 w-4" /> File de tranchage
 		</a>
+		{#if $currentUser?.role === 'admin'}
+			<a
+				href={resolve('/admin')}
+				class={active === 'admin' ? ACTIVE : IDLE}
+				aria-current={active === 'admin' ? 'page' : undefined}
+				data-testid="nav-admin"
+			>
+				<IconShield class="h-4 w-4" /> Administration
+			</a>
+		{/if}
 		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 		<a
 			href="https://github.com/clement-songis/web-slicer"

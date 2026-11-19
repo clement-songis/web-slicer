@@ -5,6 +5,7 @@
 	import { initLocale } from '$lib/i18n';
 	import { initTheme } from '$lib/theme';
 	import TooltipLayer from '$lib/ui/TooltipLayer.svelte';
+	import ConnectionBanner from '$lib/ui/ConnectionBanner.svelte';
 
 	let { children } = $props();
 
@@ -18,3 +19,4 @@
 <svelte:head><link rel="icon" href={favicon} /></svelte:head>
 {@render children()}
 <TooltipLayer />
+<ConnectionBanner />

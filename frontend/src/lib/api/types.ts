@@ -2,6 +2,11 @@
 // backend). Les composants et stores importent d'ici, jamais des chemins
 // profonds `src/generated/…`.
 export type { UserResponse } from '../../generated/api/UserResponse';
+// Administration de l'instance (phase 32).
+export type { AdminCreateUserRequest } from '../../generated/api/AdminCreateUserRequest';
+export type { InstanceResponse } from '../../generated/api/InstanceResponse';
+export type { InvitationResponse } from '../../generated/api/InvitationResponse';
+export type { PatchInstanceRequest } from '../../generated/api/PatchInstanceRequest';
 export type { LoginRequest } from '../../generated/api/LoginRequest';
 export type { RegisterRequest } from '../../generated/api/RegisterRequest';
 export type { ProjectResponse } from '../../generated/api/ProjectResponse';

@@ -3,13 +3,18 @@
 import { redirect } from '@sveltejs/kit';
 import { listPrinters } from '$lib/api/printers';
 import { refreshSession } from '$lib/api/session';
+import { loginUrl } from '$lib/api/return-to';
 import type { PrinterResponse, UserResponse } from '$lib/api/types';
 
 /** Garde de session simple : redirige vers `/login` si non connecté. */
 export async function requireUser(): Promise<UserResponse> {
 	const user = await refreshSession();
 	if (!user) {
-		redirect(302, '/login');
+		// Phase 32 : retour à la page demandée après connexion.
+		redirect(
+			302,
+			loginUrl(typeof location === 'undefined' ? null : location.pathname + location.search)
+		);
 	}
 	return user;
 }

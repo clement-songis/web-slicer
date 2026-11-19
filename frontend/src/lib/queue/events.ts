@@ -13,6 +13,9 @@ export function wsUrl(): string {
 /** Options de connexion. */
 export interface EventStreamOptions {
 	onEvent: (event: ServerEvent) => void;
+	/** Connexion ouverte ; `reconnected` = après une coupure (phase 32 : les
+	 *  événements émis pendant la coupure sont perdus, l'abonné resynchronise). */
+	onOpen?: (reconnected: boolean) => void;
 	/** Fabrique de socket (injectable pour les tests) ; défaut : `WebSocket`. */
 	socketFactory?: (url: string) => WebSocket;
 	/** Délai de reconnexion (ms) ; 0 désactive la reconnexion. */
@@ -34,10 +37,16 @@ export function subscribeEvents(options: EventStreamOptions): EventSubscription 
 	let closed = false;
 	let socket: WebSocket | null = null;
 	let timer: ReturnType<typeof setTimeout> | null = null;
+	let opened = false;
 
 	const connect = () => {
 		if (closed) return;
 		socket = factory(wsUrl());
+		socket.onopen = () => {
+			const reconnected = opened;
+			opened = true;
+			options.onOpen?.(reconnected);
+		};
 		socket.onmessage = (ev: MessageEvent) => {
 			const event = decodeEvent(ev.data);
 			if (event) options.onEvent(event);

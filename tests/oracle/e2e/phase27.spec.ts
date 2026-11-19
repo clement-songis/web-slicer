@@ -8,7 +8,7 @@ import { bootstrap, fixture, importModel } from "../lib/app";
 
 test.use({ locale: "fr-FR" });
 
-test("import : état de chargement explicite puis objet teinté à la couleur du filament", async ({
+test("import : état de chargement explicite puis objet teinté à la couleur du filament @F:core.import", async ({
   page,
 }) => {
   await bootstrap(page);
@@ -31,7 +31,7 @@ test("import : état de chargement explicite puis objet teinté à la couleur du
   await expect(page.getByLabel(/^Extrudeur de /)).toHaveCount(0);
 });
 
-test("liste d’objets : un nom long reste entier même avec badges et sélecteurs", async ({
+test("liste d’objets : un nom long reste entier même avec badges et sélecteurs @F:editor.rename", async ({
   page,
 }) => {
   await bootstrap(page);
@@ -58,7 +58,7 @@ test("liste d’objets : un nom long reste entier même avec badges et sélecteu
   );
 });
 
-test("réglages : onglets vides masqués en Simple, lien vers le mode qui les montre", async ({
+test("réglages : onglets vides masqués en Simple, lien vers le mode qui les montre @F:core.settings-ui", async ({
   page,
 }) => {
   await bootstrap(page);
@@ -84,7 +84,7 @@ test("réglages : onglets vides masqués en Simple, lien vers le mode qui les mo
   await expect(start).not.toContainText("Start G-code");
 });
 
-test("modificateur ajouté : sélectionné, ses réglages ouverts", async ({
+test("modificateur ajouté : sélectionné, ses réglages ouverts @F:editor.volume-transform", async ({
   page,
 }) => {
   await bootstrap(page);
@@ -116,7 +116,7 @@ test("modificateur ajouté : sélectionné, ses réglages ouverts", async ({
   );
 });
 
-test("objet par objet : objets trop proches signalés avant tranchage, « Disposer » corrige", async ({
+test("objet par objet : objets trop proches signalés avant tranchage, « Disposer » corrige @F:editor.plate-settings", async ({
   page,
 }) => {
   test.setTimeout(240_000);
@@ -148,7 +148,7 @@ test("objet par objet : objets trop proches signalés avant tranchage, « Dispos
   await expect(warning).toHaveCount(0, { timeout: 60_000 });
 });
 
-test("filament : afficher « Forçage des réglages » ne casse pas le tranchage", async ({
+test("filament : afficher « Forçage des réglages » ne casse pas le tranchage @F:core.slice-ui", async ({
   page,
 }) => {
   test.setTimeout(240_000);
@@ -183,7 +183,7 @@ test("filament : afficher « Forçage des réglages » ne casse pas le tranchage
   });
 });
 
-test("import illisible : message nommant le fichier, projet non renommé", async ({
+test("import illisible : message nommant le fichier, projet non renommé @F:core.import", async ({
   page,
 }) => {
   await bootstrap(page);
