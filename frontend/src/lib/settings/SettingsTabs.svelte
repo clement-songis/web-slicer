@@ -13,7 +13,7 @@
 		type UiPage,
 		type UiSection
 	} from '../../generated/ui-layout';
-	import { filterLayout, type DisplayMode } from './filter';
+	import { filterLayout, MODE_RANK, type DisplayMode } from './filter';
 	import { t, locale } from '$lib/i18n';
 	import { loadSettingsTranslations } from './i18n';
 	import OptionLine from './OptionLine.svelte';
@@ -40,6 +40,9 @@
 		/** Valeurs enregistrées / système par type (marqueurs et retours par option). */
 		savedByKind?: Partial<Record<PresetKind, Record<string, unknown> | null>>;
 		systemByKind?: Partial<Record<PresetKind, Record<string, unknown> | null>>;
+		/** Option à montrer (lien « Régler » d'une notification de validation) :
+		 *  onglet, mode suffisant, défilement et surbrillance (Orca activate_option). */
+		focusKey?: string | null;
 	}
 
 	type LinkedSection = UiSection & { kind: PresetKind };
@@ -53,8 +56,10 @@
 		valuesByKind,
 		initialPage,
 		savedByKind,
-		systemByKind
+		systemByKind,
+		focusKey = null
 	}: Props = $props();
+	let root = $state<HTMLDivElement | null>(null);
 
 	let query = $state('');
 
@@ -211,9 +216,48 @@
 	const activePage = $derived(
 		pages.find((page) => pageSlug(page.title) === activeSlug) ?? pages[0]
 	);
+
+	// Phase 29 : « Régler « option » » depuis une notification de validation
+	// (Orca Sidebar::jump_to_option → Tab::activate_option) : onglet de l'option,
+	// mode d'affichage relevé si besoin, recherche vidée, ligne centrée puis
+	// surlignée quelques secondes.
+	const FOCUS_CLASSES = ['rounded-md', 'ring-2', 'ring-primary', 'bg-primary/10'];
+	let focusSeq = 0;
+	$effect(() => {
+		const key = focusKey;
+		if (!key) return;
+		untrack(() => {
+			const def = PARAMS[key];
+			if (def && MODE_RANK[def.mode] > MODE_RANK[mode]) mode = def.mode;
+			query = '';
+			const holds = (p: LinkedPage) => p.sections.some((s) => s.options.includes(key));
+			const page = scoped.find((p) => p.kind === kind && holds(p)) ?? scoped.find(holds);
+			if (page) {
+				activeSlug = pageSlug(page.title);
+				pickedDuringSearch = true;
+			}
+		});
+		const seq = ++focusSeq;
+		const timer = setTimeout(() => {
+			if (seq !== focusSeq) return;
+			const el = root?.querySelector<HTMLElement>('[data-param="' + CSS.escape(key) + '"]');
+			if (!el) return;
+			el.scrollIntoView({ block: 'center' });
+			el.classList.add(...FOCUS_CLASSES);
+			el.dataset.focused = 'true';
+			el.querySelector<HTMLElement>('input, select, textarea, button')?.focus({
+				preventScroll: true
+			});
+			setTimeout(() => {
+				el.classList.remove(...FOCUS_CLASSES);
+				delete el.dataset.focused;
+			}, 2600);
+		}, 120);
+		return () => clearTimeout(timer);
+	});
 </script>
 
-<div class="flex flex-col gap-3">
+<div class="flex flex-col gap-3" bind:this={root}>
 	<div class="flex flex-col gap-2">
 		<div class="ws-seg flex w-full flex-wrap" role="group" aria-label="Mode d'affichage">
 			{#each MODES as m (m)}

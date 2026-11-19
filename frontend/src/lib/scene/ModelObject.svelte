@@ -49,6 +49,9 @@
 		extruder?: number;
 		/** Peinture visible (supports/couture/fuzzy/MMU), repère du maillage. */
 		paintOverlay?: PaintOverlay | null;
+		/** Objet désigné par la validation (phase 29) : lueur rouge (erreur) ou
+		 *  orange (avertissement), visible même sélectionné ou teinté filament. */
+		issue?: 'error' | 'warning' | null;
 	}
 
 	// Couleurs par rôle, proches du rendu Orca (GLVolume) : pièce opaque,
@@ -80,7 +83,8 @@
 		paintstroke = false,
 		extruderColors = null,
 		extruder = 1,
-		paintOverlay = null
+		paintOverlay = null,
+		issue = null
 	}: Props = $props();
 
 	// Peinture : triangles feuilles à couleur par sommet, posés sur la surface.
@@ -262,10 +266,20 @@
 					? $sceneColors.partSelected
 					: $sceneColors.part
 			: $sceneColors.partUnprintable}
-		emissive={tint && selected && printable
-			? $sceneColors.emissiveActive
-			: $sceneColors.emissiveNone}
-		emissiveIntensity={tint && selected && printable ? 0.35 : 0}
+		emissive={issue
+			? issue === 'error'
+				? $sceneColors.issueError
+				: $sceneColors.issueWarning
+			: tint && selected && printable
+				? $sceneColors.emissiveActive
+				: $sceneColors.emissiveNone}
+		emissiveIntensity={issue
+			? issue === 'error'
+				? 0.55
+				: 0.4
+			: tint && selected && printable
+				? 0.35
+				: 0}
 		transparent={!printable}
 		opacity={printable ? 1 : 0.45}
 		metalness={0.1}

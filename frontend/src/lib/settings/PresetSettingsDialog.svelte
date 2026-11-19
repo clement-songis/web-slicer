@@ -39,6 +39,8 @@
 		saveAsError?: string | null;
 		/** Onglet ouvert à l'ouverture (titre de page Orca). */
 		initialPage?: string;
+		/** Option mise en évidence à l'ouverture (notification de validation). */
+		focusKey?: string | null;
 		/** Valeurs enregistrées / système par type (marqueurs par option). */
 		savedByKind?: Partial<Record<PresetKind, Record<string, unknown> | null>>;
 		systemByKind?: Partial<Record<PresetKind, Record<string, unknown> | null>>;
@@ -69,6 +71,7 @@
 		saveAsName = $bindable(null),
 		saveAsError = null,
 		initialPage,
+		focusKey = null,
 		savedByKind,
 		systemByKind,
 		preset = null,
@@ -326,6 +329,7 @@
 					bind:values
 					{valuesByKind}
 					{initialPage}
+					{focusKey}
 					{savedByKind}
 					{systemByKind}
 					loading={Object.keys(values).length === 0}

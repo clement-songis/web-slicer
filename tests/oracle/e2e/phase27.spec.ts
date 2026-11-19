@@ -135,11 +135,17 @@ test("objet par objet : objets trop proches signalés avant tranchage, « Dispos
   const seq = page.getByTestId("plate-setting-print_sequence");
   await expect(seq.locator("option").first()).toHaveText(/^Profil \(.+\)$/);
   await seq.selectOption("by object");
-  const warning = page.getByTestId("sequence-warning");
-  await expect(warning).toContainText("trop près des objets imprimés avant");
-  await expect(warning).toContainText("cylinder.stl");
-  await warning.getByTestId("sequence-arrange").click();
-  await expect(warning).toHaveCount(0, { timeout: 30_000 });
+  // Phase 29 : l'estimation locale est remplacée par la validation serveur
+  // (Print::validate) — message d'Orca traduit, « Disposer » dans la notification.
+  const warning = page.locator(
+    '[data-testid=validation-notice][data-kind=object_collision_in_seq_print]',
+  );
+  await expect(warning.first()).toContainText("trop proche des autres", {
+    timeout: 60_000,
+  });
+  await expect(warning.first()).toContainText("cylinder.stl");
+  await warning.first().getByTestId("validation-arrange").click();
+  await expect(warning).toHaveCount(0, { timeout: 60_000 });
 });
 
 test("filament : afficher « Forçage des réglages » ne casse pas le tranchage", async ({
@@ -186,8 +192,9 @@ test("import illisible : message nommant le fichier, projet non renommé", async
     mimeType: "model/stl",
     buffer: Buffer.from("solid x\nfacet normal 0 0 1\n garbage\nendsolid"),
   });
+  // Phase 29 : la cause du moteur (lot 27) remplace le message générique.
   await expect(
-    page.getByText(/casse\.stl : fichier illisible ou corrompu/),
+    page.getByText(/casse\.stl : conversion impossible — .+/),
   ).toBeVisible({
     timeout: 60_000,
   });

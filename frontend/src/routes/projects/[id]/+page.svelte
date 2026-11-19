@@ -85,7 +85,19 @@
 		permuteInSlots,
 		sequentialArrangeFields
 	} from '$lib/scene/print-order';
-	import { clearanceItem, sequentialClearance } from '$lib/scene/sequential-clearance';
+	import ValidationPanel from '$lib/editor/ValidationPanel.svelte';
+	import {
+		buildNotices,
+		conversionCause,
+		issuesByObject,
+		loadOrcaCatalog,
+		optionPage,
+		plateBlocked,
+		validateProject,
+		type OrcaCatalog,
+		type ValidateResponse,
+		type ValidationNotice
+	} from '$lib/editor/validation';
 	import { safeFileName } from '$lib/export/stl';
 	import { getJob, listJobs } from '$lib/api/jobs';
 	import type { JobResponse } from '$lib/api/types';
@@ -1227,7 +1239,13 @@
 		})();
 		// Référence de l'indicateur « non enregistré » : prise après restauration.
 		void editorReady.then(() => {
-			if (alive) baselineReady = true;
+			if (!alive) return;
+			// Phase 29 : référence prise ICI, avant qu'un import lancé pendant
+			// l'ouverture (il attend `editorReady`) ne modifie la scène — sinon un
+			// premier import passait pour « enregistré » (ni pastille, ni
+			// sauvegarde avant la validation en direct, qui voyait un plateau vide).
+			if (!imports.some((item) => isPending(item))) savedSignature = saveSignature();
+			baselineReady = true;
 		});
 		// Restaure le dernier résultat réussi du projet : quitter l'éditeur pour
 		// déclarer Moonraker ne doit pas désactiver l'export/envoi au retour.
@@ -1286,6 +1304,8 @@
 		layerRangesByObject = {};
 		volumesByObject = {};
 		rollbackImportIds.clear();
+		persistedToLive.clear();
+		validation = null;
 		ws = setSelection(ws, new Set());
 		for (const id of Object.keys(savedTransformByObject)) delete savedTransformByObject[id];
 		for (const id of Object.keys(savedDocumentByObject)) delete savedDocumentByObject[id];
@@ -1331,6 +1351,7 @@
 			const model = modelById.get(doc.modelId);
 			if (!model) continue;
 			const objectId = tree.add(doc.name || model.filename).id;
+			persistedToLive.set(doc.id, objectId);
 			const savedPlate = plateByOldId[doc.id];
 			const plateId = (savedPlate && plates.get(savedPlate) ? savedPlate : null) ?? plates.activeId;
 			if (plateId) plates.assign(objectId, plateId);
@@ -1940,8 +1961,15 @@
 
 	// Onglet ouvert par le dialogue (raccourci « Tour d'essuyage » → Multimatériau).
 	let settingsInitialPage = $state<string | undefined>(undefined);
-	function openSettingsDialog(kind: 'process' | 'filament' | 'machine', page?: string) {
+	// Option mise en évidence à l'ouverture (lien « Régler » de la validation).
+	let settingsFocusKey = $state<string | null>(null);
+	function openSettingsDialog(
+		kind: 'process' | 'filament' | 'machine',
+		page?: string,
+		focusKey: string | null = null
+	) {
 		settingsInitialPage = page;
+		settingsFocusKey = focusKey;
 		settingsDialog = kind;
 		// Base déjà chargée pour ce preset : pas de rechargement (il écraserait
 		// une saisie en cours si la réponse arrivait après).
@@ -2032,6 +2060,11 @@
 		}
 		// Fin de conversion moteur (STEP…) : récupère le maillage et l'affiche.
 		if (event.event === 'model.converted') {
+			void resolveConversion(event.model_id);
+		}
+		// Échec de conversion (lot 27) : `/mesh` répond 422 avec la cause, traitée
+		// comme à l'ouverture (badge + cause dans la liste, notification).
+		if (event.event === 'model.conversion_failed') {
 			void resolveConversion(event.model_id);
 		}
 	}
@@ -2528,16 +2561,39 @@
 			if (generation !== sceneGeneration) return;
 			// 409 = pas encore prêt : rester en « conversion en cours ».
 			if (e instanceof ApiError && e.status === 409) return;
-			const message =
-				e instanceof ApiError && e.code === 'conversion_failed'
-					? 'fichier illisible ou corrompu, le moteur n’a pas pu en extraire un maillage'
-					: e instanceof ApiError
-						? e.message
-						: 'maillage converti indisponible';
+			// Cause du moteur (lot 27 : details.cause, traduite par le catalogue d'Orca).
+			const failed = e instanceof ApiError && e.code === 'conversion_failed';
+			if (failed) orcaCatalog ??= await loadOrcaCatalog().catch(() => null);
+			if (generation !== sceneGeneration) return;
+			const cause = failed
+				? conversionCause(
+						(e.details as { cause?: string } | undefined)?.cause ??
+							e.message.replace(/^.*?moteur\s*:\s*/, ''),
+						orcaCatalog
+					)
+				: null;
+			const message = cause
+				? 'conversion impossible — ' + cause
+				: e instanceof ApiError
+					? e.message
+					: 'maillage converti indisponible';
+			const kept: string[] = [];
 			for (const item of imports.filter((i) => i.modelId === modelId)) {
+				if (item.status === 'failed') continue;
 				if (rollbackImportIds.has(item.objectId)) failImport(item.objectId, message);
-				else patchImport(item.objectId, (i) => markFailed(i, message));
+				else {
+					patchImport(item.objectId, (i) => markFailed(i, cause ?? message));
+					kept.push(item.filename);
+				}
 			}
+			// Objets restaurés (projet rouvert) : restent listés avec leur cause ;
+			// notification comme pour un import raté.
+			if (kept.length)
+				importError =
+					'Conversion impossible de ' +
+					kept.map((f) => '« ' + f + ' »').join(', ') +
+					' : ' +
+					(cause ?? message);
 		}
 	}
 
@@ -4328,33 +4384,119 @@
 	});
 	// Valeurs des presets que suit un plateau sans surcharge (option « Profil (…) »).
 	const plateInherited = $derived({ ...machineValues, ...processValues });
-	// Objet par objet : contrôle de dégagement AVANT tranchage, comme la
-	// validation d'arrière-plan d'Orca (objets trop proches / trop hauts).
-	const sequenceConflicts = $derived.by(() => {
-		if (!sequentialPrint || layout.tab !== 'prepare') return null;
-		const byId = new Map(activeSceneObjects.map((o) => [o.id, o]));
-		const items = tree
-			.roots()
-			.filter((n) => n.kind === 'object' && byId.has(n.id) && tree.isPrintable(n.id))
-			.map((n) => clearanceItem(byId.get(n.id)!, [bed.center.x, bed.center.y]));
-		const f = sequentialArrangeFields(machineValues, processValues);
-		const printable = Number(machineValues.printable_height);
-		const r = sequentialClearance(items, {
-			radius: f.extruder_clearance_radius,
-			heightToRod: f.extruder_clearance_height_to_rod,
-			heightToLid: f.extruder_clearance_height_to_lid,
-			nozzleHeight: f.nozzle_height,
-			printableHeight: Number.isFinite(printable) && printable > 0 ? printable : 250
-		});
-		const names = (ids: string[]) => ids.map((id) => `« ${tree.get(id)?.name ?? id} »`).join(', ');
-		const parts = [
-			r.close.length
-				? `${names(r.close)} trop près des objets imprimés avant (dégagement de la tête : ${f.extruder_clearance_radius} mm)`
-				: '',
-			r.tall.length ? `${names(r.tall)} trop haut pour passer sous la tête ou le portique` : ''
-		].filter(Boolean);
-		return parts.length ? { ...r, message: `Objet par objet : ${parts.join(' ; ')}.` } : null;
+	// — Validation en direct (phase 29) : Print::validate côté serveur
+	//   (POST /validate), rejouée après chaque modification avec un délai comme
+	//   Plater::priv::update_background_process. Remplace l'estimation locale
+	//   « objet par objet » de la phase 27 : le moteur est l'autorité (enveloppes
+	//   convexes, jupe, zones d'exclusion, tour d'amorçage, hauteurs…). La route
+	//   valide la scène **persistée** : une scène modifiée est d'abord
+	//   enregistrée (comme avant chaque tranchage), sans message.
+	let validation = $state<ValidateResponse | null>(null);
+	let validationBusy = $state(false);
+	let validationBlocked = $state<string | null>(null);
+	let orcaCatalog = $state<OrcaCatalog | null>(null);
+	// Ids persistés (scene.objects[].id) → ids vivants : l'arbre régénère les
+	// ids à l'ouverture ; la première sauvegarde les aligne (carte vidée).
+	const persistedToLive = new SvelteMap<string, string>();
+	let validationTimer: ReturnType<typeof setTimeout> | undefined;
+	let validationSeq = 0;
+	$effect(() => {
+		const sig = currentSignature;
+		void JSON.stringify(currentDraft() ?? null);
+		void $appPreferences.mixedTemperature;
+		const tab = layout.tab;
+		const ready = baselineReady;
+		const pending = imports.some((item) => isPending(item));
+		clearTimeout(validationTimer);
+		if (!ready || pending || tab !== 'prepare' || sig === null) return;
+		validationTimer = setTimeout(() => void runValidation(), 900);
 	});
+	async function runValidation() {
+		const seq = ++validationSeq;
+		if (sceneObjects.length === 0) {
+			validation = null;
+			validationBlocked = null;
+			return;
+		}
+		validationBusy = true;
+		try {
+			orcaCatalog ??= await loadOrcaCatalog().catch(() => null);
+			if (saveSignature() !== savedSignature) {
+				const saved = await save({ quiet: true });
+				if (seq !== validationSeq) return;
+				if (saved.status !== 'saved') {
+					validationBlocked =
+						saved.status === 'conflict'
+							? 'Vérification suspendue : le projet a été modifié ailleurs. Rechargez-le.'
+							: 'Vérification suspendue : ' + saved.message;
+					return;
+				}
+			}
+			const res = await validateProject(data.project.id, sliceRequestWithDraft('all', 0));
+			if (seq !== validationSeq) return;
+			validation = res;
+			validationBlocked = null;
+		} catch (e) {
+			if (seq !== validationSeq) return;
+			validationBlocked =
+				'Vérification impossible : ' + (e instanceof ApiError ? e.message : 'serveur injoignable');
+		} finally {
+			if (seq === validationSeq) validationBusy = false;
+		}
+	}
+	const validationNotices = $derived(
+		validation
+			? buildNotices(validation, {
+					catalog: orcaCatalog,
+					liveId: (id) => persistedToLive.get(id) ?? (tree.get(id) ? id : undefined),
+					plateCount: plates.list().length
+				})
+			: []
+	);
+	const validationByObject = $derived(issuesByObject(validationNotices));
+	const sceneIssueObjects = $derived.by(() => {
+		const out: Record<string, 'error' | 'warning'> = {};
+		for (const [id, issue] of Object.entries(validationByObject)) out[id] = issue.level;
+		return Object.keys(out).length ? out : null;
+	});
+	// Liste d'objets : problèmes de validation + échecs de conversion (cause).
+	const objectIssues = $derived.by(() => {
+		const out: Record<string, { level: 'error' | 'warning'; text: string; inline?: boolean }> = {
+			...validationByObject
+		};
+		for (const item of imports)
+			if (item.status === 'failed')
+				out[item.objectId] = {
+					level: 'error',
+					text: 'Conversion impossible : ' + (item.error ?? 'fichier illisible'),
+					inline: true
+				};
+		return out;
+	});
+	const activePlateBlocked = $derived(
+		plateBlocked(validation, plates.plateIndex(plates.activeId ?? ''))
+	);
+	function gotoIssueObject(id: string) {
+		const plate = plates.list().find((p) => p.objectIds.includes(id));
+		if (plate && plate.id !== plates.activeId) selectPlate(plate.id);
+		ws = setSelection(ws, new Set([id]));
+		configTab = 'objects';
+	}
+	function gotoIssueOption(notice: ValidationNotice) {
+		if (!notice.optKey || !notice.optKind) return;
+		if (notice.objectId) gotoIssueObject(notice.objectId);
+		// Les dialogues de réglages vivent dans l'onglet « Traitement ».
+		configTab = 'settings';
+		openSettingsDialog(
+			notice.optKind,
+			optionPage(notice.optKey, notice.optKind) ?? undefined,
+			notice.optKey
+		);
+	}
+	function gotoIssuePlate(index: number) {
+		const plate = plates.list()[index];
+		if (plate) selectPlate(plate.id);
+	}
 	// — Tour d'essuyage sur le plateau (Préparer) : taille estimée comme Orca,
 	//   position par plateau dans la config projet (wipe_tower_x/y).
 	const firstNum = (v: unknown, d: number) => {
@@ -6848,7 +6990,16 @@
 		return saveSignature() !== savedSignature;
 	}
 
-	async function save(): Promise<SaveOutcome> {
+	// Sauvegardes sérialisées (phase 29) : la validation en direct enregistre la
+	// scène ; sans file, un « Trancher » pendant cet enregistrement partait avec
+	// la même version attendue et finissait en faux conflit 409.
+	let saveChain: Promise<unknown> = Promise.resolve();
+	function save(opts: { quiet?: boolean } = {}): Promise<SaveOutcome> {
+		const run = saveChain.then(() => saveNow(opts));
+		saveChain = run.catch(() => {});
+		return run;
+	}
+	async function saveNow(opts: { quiet?: boolean } = {}): Promise<SaveOutcome> {
 		if (arrangeInFlight) await arrangeInFlight;
 		const pending = imports.filter((item) => isPending(item));
 		if (pending.length > 0) {
@@ -6874,7 +7025,11 @@
 			data.project.scene = scene;
 			savedSignature = saveSignature(scene);
 			currentSignature = savedSignature;
+			// Les ids persistés sont désormais les ids vivants.
+			persistedToLive.clear();
 		}
+		// Enregistrement implicite de la validation en direct : sans message.
+		if (opts.quiet) return outcome;
 		saveMessage =
 			outcome.status === 'saved'
 				? 'Projet sauvegardé.'
@@ -6998,12 +7153,26 @@
 			<!-- Bouton Trancher + options (Orca : « Slice plate » / « Slice all »). -->
 			<div class="relative flex">
 				<button
-					class="ws-btn ws-btn-primary rounded-r-none"
+					class="ws-btn ws-btn-primary relative rounded-r-none"
 					data-testid="slice-button"
+					data-blocked={activePlateBlocked ? 'true' : undefined}
 					onclick={sliceActive}
 					disabled={!canSliceNow}
-					title={canSliceNow ? 'Trancher le plateau actif' : sliceBlocker}
+					title={!canSliceNow
+						? sliceBlocker
+						: activePlateBlocked
+							? 'Le plateau a des erreurs bloquantes : voir la barre de vérification en bas à droite'
+							: 'Trancher le plateau actif'}
 				>
+					{#if activePlateBlocked && canSliceNow}
+						<!-- Orca grise « Trancher » ; ici le bouton reste actif (le moteur
+						     redira pourquoi) mais signale les erreurs connues. -->
+						<span
+							class="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full border-2 border-surface-raised bg-danger"
+							data-testid="slice-blocked-dot"
+							aria-hidden="true"
+						></span>
+					{/if}
 					<span class="2xl:hidden">{$locale === 'fr' ? 'Trancher' : 'Slice'}</span>
 					<span class="hidden 2xl:inline">{$t('Slice plate')}</span>
 				</button>
@@ -7901,6 +8070,7 @@
 								title="Réglages d'impression"
 								kind="process"
 								initialPage={settingsInitialPage}
+								focusKey={settingsFocusKey}
 								savedByKind={{
 									process: processResolvedValues,
 									filament: filamentResolvedValues,
@@ -7931,6 +8101,7 @@
 									: 'Réglages du filament'}
 								kind="filament"
 								initialPage={settingsInitialPage}
+								focusKey={settingsFocusKey}
 								savedByKind={{
 									process: processResolvedValues,
 									filament: filamentResolvedValues,
@@ -7958,6 +8129,7 @@
 								open={settingsDialog === 'machine'}
 								title="Paramètres de l'imprimante"
 								kind="machine"
+								focusKey={settingsFocusKey}
 								savedByKind={{
 									process: processResolvedValues,
 									filament: filamentResolvedValues,
@@ -8007,6 +8179,7 @@
 						onreorder={reorderObject}
 						sequential={sequentialPrint}
 						bind:showOrderOnScene={showPrintOrder}
+						issues={objectIssues}
 					/>
 					{#if selId && (volumesByObject[selId]?.length ?? 0) > 0}
 						<ul class="mt-2 flex flex-col gap-1 text-sm" data-testid="object-volumes">
@@ -8193,24 +8366,21 @@
 						onclick={() => void arrangeActive()}>Disposer</button
 					>
 				</div>
-			{:else if sequenceConflicts}
-				<div
-					class="ws-floating absolute bottom-3 left-3 z-20 flex max-w-xl items-center gap-2 px-3 py-2 text-xs text-content"
-					role="status"
-					data-testid="sequence-warning"
-					data-close={sequenceConflicts.close.length}
-					data-tall={sequenceConflicts.tall.length}
-				>
-					<span class="h-2 w-2 shrink-0 rounded-full bg-warning" aria-hidden="true"></span>
-					<span>{sequenceConflicts.message}</span>
-					{#if sequenceConflicts.close.length}
-						<button
-							type="button"
-							class="ws-btn ws-btn-sm ws-btn-secondary shrink-0"
-							data-testid="sequence-arrange"
-							onclick={() => void arrangeActive()}>Disposer</button
-						>
-					{/if}
+			{/if}
+			{#if layout.tab === 'prepare'}
+				<!-- Phase 29 : barre de vérification (Print::validate serveur), en bas à
+				     droite de la vue comme les notifications d'Orca. -->
+				<div class="absolute right-3 bottom-3 z-20">
+					<ValidationPanel
+						notices={validationNotices}
+						busy={validationBusy}
+						blocked={validationBlocked}
+						activePlate={plates.plateIndex(plates.activeId ?? '')}
+						ongotoobject={gotoIssueObject}
+						ongotooption={gotoIssueOption}
+						ongotoplate={gotoIssuePlate}
+						onarrange={() => void arrangeActive()}
+					/>
 				</div>
 			{/if}
 			{#if layout.tab === 'prepare'}
@@ -8231,6 +8401,7 @@
 							{overhangNormalZ}
 							labels={objectLabels}
 							printOrder={scenePrintOrder}
+							issueObjects={sceneIssueObjects}
 							extruderColors={filamentSlotColors}
 							paintOverlays={scenePaintOverlays}
 							objectExtruders={sceneObjectExtruders}

@@ -58,6 +58,8 @@
 		/** Rang d'impression par objet (Orca, objet par objet : « Sequence #N »
 		 *  sous le nom de l'étiquette), null = masqué. */
 		printOrder?: Record<string, number> | null;
+		/** Objets désignés par la validation (phase 29), niveau le plus grave. */
+		issueObjects?: Record<string, 'error' | 'warning'> | null;
 		/** Multi-filament : couleur par extrudeur et extrudeur effectif par objet. */
 		extruderColors?: readonly string[] | null;
 		objectExtruders?: Record<string, number> | null;
@@ -127,6 +129,7 @@
 		overhangNormalZ = null,
 		labels = null,
 		printOrder = null,
+		issueObjects = null,
 		extruderColors = null,
 		objectExtruders = null,
 		paintOverlays = null,
@@ -589,6 +592,7 @@
 		{overhangNormalZ}
 		selected={selection.has(obj.id)}
 		printable={obj.printable}
+		issue={issueObjects?.[obj.id] ?? null}
 		clipPlane={selection.has(obj.id) ? clipPlane : null}
 		onpick={(additive) => pick(obj.id, additive)}
 		onmeshpick={onmeshpick ? (meshPick) => onmeshpick(obj.id, meshPick) : undefined}

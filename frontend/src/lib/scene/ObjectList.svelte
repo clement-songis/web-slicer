@@ -15,6 +15,8 @@
 	import IconLayers from '~icons/lucide/layers';
 	import IconBox from '~icons/lucide/box';
 	import IconHash from '~icons/lucide/hash';
+	import IconIssueError from '~icons/lucide/circle-alert';
+	import IconIssueWarning from '~icons/lucide/triangle-alert';
 	import type { Plate } from './plates.svelte';
 
 	interface Props {
@@ -53,6 +55,11 @@
 		sequential?: boolean;
 		/** Étiquettes de rang sur la scène 3D (objet par objet), masquables. */
 		showOrderOnScene?: boolean;
+		/** Problème par objet (phase 29) : erreur / avertissement de validation ou
+		 *  échec de conversion du modèle, avec son texte (pastille + infobulle). */
+		issues?: Readonly<
+			Record<string, { level: 'error' | 'warning'; text: string; inline?: boolean }>
+		>;
 	}
 
 	let {
@@ -76,7 +83,8 @@
 		overrides = {},
 		onreorder,
 		sequential = false,
-		showOrderOnScene = $bindable(true)
+		showOrderOnScene = $bindable(true),
+		issues = {}
 	}: Props = $props();
 
 	// Objets racines réordonnables, dans l'ordre (= ordre d'impression).
@@ -107,8 +115,13 @@
 	// Un extrudeur hors des slots existants (slot retiré, projet incohérent) est
 	// affiché « auto », comme il sera persisté à l'enregistrement.
 	function shownExtruder(node: SceneNode): number {
-		return node.extruder > 0 && node.extruder <= extruders.length ? node.extruder : 0;
+		const ex = node.extruder > 0 && node.extruder <= extruders.length ? node.extruder : 0;
+		// Phase 29 : un objet racine imprime toujours avec un filament ; comme la
+		// colonne « Fila. » d'Orca (pas de « default » pour un objet), on montre
+		// le n° et la pastille du filament 1 au lieu d'un « auto » énigmatique.
+		return ex === 0 && rootObject(node) ? 1 : ex;
 	}
+	const rootObject = (node: SceneNode) => node.kind === 'object' && node.parentId === null;
 
 	function isVisible(node: SceneNode): boolean {
 		if (!visibleIds || visibleIds.has(node.id)) return true;
@@ -239,6 +252,26 @@
 							>{/if}
 						{node.name}
 					</button>
+					{#if issues[node.id]}
+						{@const issue = issues[node.id]}
+						<span
+							class="inline-flex shrink-0 items-center {selected
+								? ''
+								: issue.level === 'error'
+									? 'text-danger'
+									: 'text-warning'}"
+							data-testid="object-issue"
+							data-level={issue.level}
+							data-tip={issue.text}
+							role="img"
+							aria-label="{issue.level === 'error' ? 'Erreur' : 'Avertissement'} : {issue.text}"
+						>
+							{#if issue.level === 'error'}<IconIssueError
+									class="h-3.5 w-3.5"
+									aria-hidden="true"
+								/>{:else}<IconIssueWarning class="h-3.5 w-3.5" aria-hidden="true" />{/if}
+						</span>
+					{/if}
 				{/if}
 
 				<!-- Commandes de la ligne : groupées à droite ; si le nom ne tient pas à côté,
@@ -288,7 +321,7 @@
 								value={ex}
 								onchange={(e) => onextruder(node.id, Number(e.currentTarget.value))}
 							>
-								<option value={0}>auto</option>
+								{#if !rootObject(node)}<option value={0}>auto</option>{/if}
 								{#each extruders as ex (ex)}
 									<option value={ex}>{ex}</option>
 								{/each}
@@ -353,6 +386,19 @@
 						<IconX class="h-3.5 w-3.5" aria-hidden="true" />
 					</button>
 				</div>
+				{#if issues[node.id]?.inline}
+					<!-- Cause lisible sans survol (ex. échec de conversion du modèle). -->
+					<p
+						class="w-full pb-0.5 text-2xs leading-snug {selected
+							? ''
+							: issues[node.id].level === 'error'
+								? 'text-danger'
+								: 'text-warning-content'}"
+						data-testid="object-issue-text"
+					>
+						{issues[node.id].text}
+					</p>
+				{/if}
 			</div>
 
 			{#if tree.children(node.id).length}

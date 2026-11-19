@@ -26,6 +26,9 @@ export interface ScenePalette {
 	/** Points de mesure : 1er / 2e point (GLGizmoMeasure SELECTED_1ST/2ND_COLOR). */
 	measureFirst: string;
 	measureSecond: string;
+	/** Objet désigné par la validation (phase 29) : lueur erreur / avertissement. */
+	issueError: string;
+	issueWarning: string;
 }
 
 const COMMON = {
@@ -38,7 +41,9 @@ const COMMON = {
 	volumeEnforcer: '#48c868',
 	// Contrastent avec la teinte filament des objets (souvent ambre/orange).
 	measureFirst: '#40bfbf',
-	measureSecond: '#bf40bf'
+	measureSecond: '#bf40bf',
+	issueError: '#ff1f1f',
+	issueWarning: '#ff8800'
 } as const;
 
 export const SCENE_PALETTES: Record<ResolvedTheme, ScenePalette> = {

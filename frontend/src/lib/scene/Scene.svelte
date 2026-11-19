@@ -43,6 +43,8 @@
 		labels?: Record<string, string> | null;
 		/** Rang d'impression par objet (objet par objet), null = masqué. */
 		printOrder?: Record<string, number> | null;
+		/** Objets désignés par la validation (phase 29), niveau le plus grave. */
+		issueObjects?: Record<string, 'error' | 'warning'> | null;
 		extruderColors?: readonly string[] | null;
 		objectExtruders?: Record<string, number> | null;
 		/** Peinture visible par objet (supports/couture/fuzzy/MMU). */
@@ -96,6 +98,7 @@
 		overhangNormalZ = null,
 		labels = null,
 		printOrder = null,
+		issueObjects = null,
 		extruderColors = null,
 		objectExtruders = null,
 		paintOverlays = null,
@@ -217,6 +220,11 @@
 	data-overhang-faces={overhangNormalZ === null ? undefined : overhangFaces}
 	data-labels={labels ? Object.keys(labels).length : undefined}
 	data-print-order={printOrder ? Object.keys(printOrder).length : undefined}
+	data-issue-objects={issueObjects
+		? Object.entries(issueObjects)
+				.map(([id, level]) => id + ':' + level)
+				.join(';') || undefined
+		: undefined}
 	data-extruder-colors={extruderColors ? extruderColors.length : undefined}
 	data-wipe-tower={wipeTower
 		? [wipeTower.x, wipeTower.y, wipeTower.size[0], wipeTower.size[1]]
@@ -253,6 +261,7 @@
 			{overhangNormalZ}
 			{labels}
 			{printOrder}
+			{issueObjects}
 			{extruderColors}
 			{objectExtruders}
 			{paintOverlays}
