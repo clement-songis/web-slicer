@@ -106,6 +106,12 @@ fn metadata_written_like_orca_and_read_back() {
         back.metadata_items.get("Title").map(String::as_str),
         Some(metadata.model_name.as_str())
     );
+    // Entrées volatiles retirées à l'import (« OrcaSlicer » régénéré par
+    // l'exporteur après « Application », « Thumbnail_* » dérivée des vignettes
+    // du fichier) : les conserver rendrait l'export → import → export non
+    // déterministe (entrées absentes du premier export au second).
+    assert!(back.metadata_items.get("Thumbnail_Middle").is_none());
+    assert!(back.metadata_items.get("OrcaSlicer").is_none());
 }
 
 #[test]

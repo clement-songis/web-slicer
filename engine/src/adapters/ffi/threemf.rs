@@ -24,6 +24,25 @@ pub fn read_project_3mf(path: &Path) -> EngineResult<(Model, DynamicPrintConfig)
     Ok((model, config))
 }
 
+/// Entrées `<metadata>` du projet 3MF dérivées de la lecture ou régénérées à
+/// l'écriture, à ne pas conserver comme métadonnées du projet :
+/// - « OrcaSlicer » (version) : l'exporteur la réécrit lui-même après
+///   « Application » (`_add_model_file_to_archive`) — la conserver ferait un
+///   doublon au second export ;
+/// - « Thumbnail », « Poster », « Thumbnail_Middle », « Thumbnail_Small » :
+///   synthétisées par l'importeur depuis les vignettes du fichier (fin de
+///   `load_bbs_3mf` / `load_3mf`, bbs_3mf.cpp) — jamais posées par la GUI
+///   d'Orca, qui ne les écrit donc pas à la sauvegarde d'un projet neuf.
+/// Les conserver rendrait l'export → import → export non déterministe (des
+/// entrées absentes du premier export apparaîtraient au second).
+pub const VOLATILE_METADATA_ITEMS: &[&str] = &[
+    "OrcaSlicer",
+    "Thumbnail",
+    "Poster",
+    "Thumbnail_Middle",
+    "Thumbnail_Small",
+];
+
 /// Vue d'import d'un projet 3MF lue par libslic3r (`Model::read_from_file`,
 /// `load_bbs_3mf` : Orca, PrusaSlicer, 3MF générique), réglages au format
 /// texte Orca (`opt_serialize`) tels qu'écrits dans le fichier :
@@ -92,7 +111,20 @@ pub fn read_project_3mf_import(path: &Path) -> EngineResult<serde_json::Value> {
     let metadata = if raw.model_info_json.trim().is_empty() {
         Value::Null
     } else {
-        serde_json::from_str::<Value>(&raw.model_info_json).unwrap_or(Value::Null)
+        match serde_json::from_str::<Value>(&raw.model_info_json) {
+            // Entrées volatiles retirées : elles reviendraient au prochain
+            // export comme des différences (cf. `VOLATILE_METADATA_ITEMS`).
+            Ok(mut value) => {
+                if let Some(items) = value
+                    .get_mut("metadata_items")
+                    .and_then(Value::as_object_mut)
+                {
+                    items.retain(|key, _| !VOLATILE_METADATA_ITEMS.contains(&key.as_str()));
+                }
+                value
+            }
+            Err(_) => Value::Null,
+        }
     };
     Ok(
         json!({ "objects": objects, "config": text_map(&raw.project_config_json), "plates": plates, "metadata": metadata }),
