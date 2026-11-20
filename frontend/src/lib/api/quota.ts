@@ -51,10 +51,37 @@ export function quotaMessage(
 			active !== null && max !== null
 				? ` (${active} sur ${max} autorisé${max > 1 ? 's' : ''})`
 				: '';
-		return `Trop de tranchages en cours${state}. Attendez la fin d'un tranchage dans la file, puis réessayez.`;
+		const retry = retryAfterSuffix(d);
+		return `Trop de tranchages en cours${state}. Attendez la fin d'un tranchage dans la file, puis réessayez.${retry}`;
 	}
-	if (status === 429) return 'Trop de requêtes : réessayez dans un instant.';
+	if (status === 429) {
+		const secs = retryAfterSeconds(d);
+		return secs !== null
+			? `Trop de requêtes : réessayez dans ${formatSeconds(secs)}.`
+			: 'Trop de requêtes : réessayez dans un instant.';
+	}
 	return null;
+}
+
+/**
+ * Secondes du `Retry-After` d'un 429 (`details.retry_after`, lot 35 : 30 s sur
+ * slice_quota) ; `null` si absent ou invalide.
+ */
+export function retryAfterSeconds(details: unknown): number | null {
+	const d = (details ?? {}) as Record<string, unknown>;
+	const secs = num(d.retry_after) ?? num(d.retry_after_secs);
+	return secs !== null && secs > 0 ? Math.round(secs) : null;
+}
+
+/** « N seconde(s) » sans déclinaison par appelant. */
+function formatSeconds(secs: number): string {
+	return `${secs} ${secs >= 2 ? 'secondes' : 'seconde'}`;
+}
+
+/** Suffixe « — réessayez dans N s » d'un message d'erreur complet. */
+export function retryAfterSuffix(details: unknown): string {
+	const secs = retryAfterSeconds(details);
+	return secs === null ? '' : ` — réessayez dans ${formatSeconds(secs)}`;
 }
 
 /**

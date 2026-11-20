@@ -18,6 +18,7 @@
 		type DefaultPage,
 		type DragAction,
 		type GraphicsPreferences,
+		type ProjectLoadBehaviour,
 		type Units
 	} from './preferences';
 	import { USER_GROUPINGS, type UserGrouping } from '$lib/presets/user-grouping';
@@ -270,6 +271,27 @@
 						recentCtl,
 						'max-recent'
 					)}
+					{#snippet loadCtl()}
+						<select
+							data-testid="pref-load-behaviour"
+							aria-labelledby="pref-load-behaviour-label"
+							class="ws-field ws-field-sm w-52"
+							value={prefs.projectLoadBehaviour}
+							onchange={(e) =>
+								update({ projectLoadBehaviour: e.currentTarget.value as ProjectLoadBehaviour })}
+						>
+							<option value="load_all">Tout charger</option>
+							<option value="ask_when_relevant">Demander si utile</option>
+							<option value="always_ask">Toujours demander</option>
+							<option value="load_geometry_only">Géométrie seule</option>
+						</select>
+					{/snippet}
+					{@render row(
+						'Ouverture d’un 3MF',
+						'Faut-il charger les réglages (imprimante, filament, processus) à l’ouverture d’un fichier 3MF ? « Demander si utile » : la question n’est posée que si un projet est déjà ouvert (préférence « Load behaviour » d’Orca).',
+						loadCtl,
+						'load-behaviour'
+					)}
 				{:else if tab === 'camera'}
 					{#snippet styleCtl()}
 						<div class="ws-seg" role="radiogroup" aria-labelledby="pref-camera-style-label">
@@ -407,6 +429,21 @@
 						>
 					</div>
 				{:else if tab === 'behaviour'}
+					{#snippet gcodeWarnCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-gcode-warn"
+							aria-labelledby="pref-gcode-warn-label"
+							checked={!prefs.noWarnWhenModifiedGcodes}
+							onchange={(e) => update({ noWarnWhenModifiedGcodes: !e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Avertir du G-code modifié',
+						'Boîte « G-code modifié / Presets personnalisés » à l’ouverture d’un 3MF contenant des presets système modifiés (case « ne plus afficher » du lot 34 ; le serveur ne renvoie plus l’avertissement).',
+						gcodeWarnCtl,
+						'gcode-warn'
+					)}
 					{#snippet arrangeCtl()}
 						<input
 							type="checkbox"

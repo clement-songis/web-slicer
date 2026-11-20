@@ -25,7 +25,11 @@ test("trancher envoie la scène affichée sans enregistrer ; aperçu : outil, al
     timeout: 60_000,
   });
   // Modification non enregistrée : objet déplacé par l'arrangement.
-  await page.getByTestId("toolbar-arrange").click();
+  // (Phase 35 : le bouton ouvre le menu d'options qui enregistre avant de
+  //  disposer ; ici il faut justement NE PAS enregistrer → touche A d'Orca,
+  //  qui dispose le plateau actif sans sauvegarde.)
+  await focusEditor(page);
+  await page.keyboard.press("a");
   await expect(page.getByTestId("editor-message")).toContainText(
     "Arrangement",
     { timeout: 30_000 },
@@ -99,11 +103,12 @@ test("un même message répété réapparaît (nouvelle notification) @F:toolbar
   });
   const msg = page.getByTestId("editor-message");
   await page.getByTestId("toolbar-arrange").click();
+  await page.getByTestId("arrange-all").click();
   await expect(msg).toContainText("Arrangement", { timeout: 30_000 });
   const text = (await msg.textContent())!.trim();
   const seq = Number(await msg.getAttribute("data-seq"));
   await expect(msg).toHaveAttribute("data-faded", "true", { timeout: 10_000 });
-  await page.getByTestId("toolbar-arrange").click();
+  await page.getByTestId("arrange-all").click();
   await expect(msg).toHaveAttribute("data-seq", String(seq + 1), {
     timeout: 30_000,
   });

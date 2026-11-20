@@ -4,7 +4,9 @@ import { apiErrorMessage } from './quota';
 import type {
 	CreateProjectRequest,
 	ErrorBody,
+	ImportLoadMode,
 	ModelResponse,
+	ProjectMetadataDto,
 	ProjectResponse,
 	SliceRequest,
 	SliceResponse
@@ -46,12 +48,15 @@ export const sliceProject = (id: string, body: SliceRequest) =>
 
 /**
  * Importe un fichier (`.3mf` projet ou modèle 3D) en un nouveau projet (T090,
- * `POST /api/projects/import`, multipart). Renvoie le projet créé.
+ * `POST /api/projects/import`, multipart). Renvoie le projet créé. Pour un
+ * 3MF, `load` (`project` | `geometry`) tranche « Ouvrir comme projet » /
+ * « Importer la géométrie seule » (lot 34) ; absent → préférence du compte.
+ * La réponse porte `import` (ImportReport : avertissement G-code, métadonnées).
  */
-export async function importProject(file: File): Promise<ProjectResponse> {
+export async function importProject(file: File, load?: ImportLoadMode): Promise<ProjectResponse> {
 	const form = new FormData();
 	form.append('file', file, file.name);
-	const res = await fetch(`${API_BASE}/projects/import`, {
+	const res = await fetch(`${API_BASE}/projects/import${load ? `?load=${load}` : ''}`, {
 		method: 'POST',
 		credentials: 'include',
 		body: form
@@ -77,3 +82,16 @@ export const duplicateProject = (id: string) =>
 
 export const renameProject = (id: string, name: string) =>
 	api.patch<ProjectResponse>(`/projects/${id}/rename`, { name });
+
+// — Métadonnées 3MF (onglet « Projet » d'Orca, lot 34) —
+
+/** Métadonnées du projet (champs vides si aucune) : titre, auteur, licence… */
+export const getProjectMetadata = (id: string) =>
+	api.get<ProjectMetadataDto>(`/projects/${id}/metadata`);
+
+/**
+ * Enregistre les champs éditables (titre, auteur, licence, description,
+ * couverture parmi les fichiers joints « Model Pictures »).
+ */
+export const putProjectMetadata = (id: string, body: ProjectMetadataDto) =>
+	api.put<ProjectMetadataDto>(`/projects/${id}/metadata`, body);

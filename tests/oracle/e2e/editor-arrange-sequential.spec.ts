@@ -16,17 +16,23 @@ test('objet par objet : Disposer applique l ordre du moteur et le tranchage pass
 	await page.getByRole('button', { name: 'Objets', exact: true }).click();
 	await page.getByTestId('plate-settings').getByTestId('plate-setting-print_sequence').selectOption('by object');
 
+	// Phase 35 : le bouton ouvre le menu « Options d'arrangement » ; le plateau
+	// courant est en « objet par objet » → « Ce plateau » range et ordonne.
+	await page.getByTestId('toolbar-arrange').click();
 	const [req, res] = await Promise.all([
 		page.waitForRequest((r) => /\/arrange$/.test(r.url())),
 		page.waitForResponse((r) => /\/arrange$/.test(r.url())),
-		page.getByRole('button', { name: /^(Disposer|Arranger)/ }).first().click()
+		page.getByTestId('arrange-plate').click()
 	]);
-	const body = req.postDataJSON() as { is_seq_print?: boolean; extruder_clearance_radius?: number };
-	expect(body.is_seq_print).toBe(true);
-	expect(body.extruder_clearance_radius).toBeGreaterThan(0);
+	const body = req.postDataJSON() as {
+		scope?: string;
+		options?: { spacing: number; enable_rotation: boolean }
+	};
+	expect(body.scope).toBe('plate');
+	expect(body.options).toBeDefined();
 	const placements = ((await res.json()) as { placements: { id: string; print_order?: number }[] }).placements;
 	expect(placements.map((p) => p.print_order).sort()).toEqual([1, 2, 3]);
-	await expect(page.getByTestId('editor-message')).toContainText('ordre d’impression mis à jour');
+	await expect(page.getByTestId('editor-message')).toContainText('Arrangement');
 
 	// Rangs de la liste = print_order ; une étiquette « #N » par objet sur la scène.
 	await expect(page.getByTestId('object-print-order')).toHaveText(['1', '2', '3']);

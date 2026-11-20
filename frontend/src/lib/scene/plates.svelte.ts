@@ -24,6 +24,12 @@ export interface Plate {
 	/** G-code par couche du curseur de l'Aperçu (changement de couleur, pause,
 	 *  code perso) — lus par le serveur au tranchage (`scene_custom_gcodes`). */
 	customGcodes?: PlateCustomGcode[];
+	/**
+	 * Plateau verrouillé (lot 34, Orca PartPlate verrouillé) : l'arrangement
+	 *  « tout » ne le déplace pas (l'arrangeur serveur lit `plates[].locked`),
+	 *  « ce plateau » est refusé (422) et ses objets ne se déplacent pas.
+	 */
+	locked?: boolean;
 }
 
 /** Copie profonde d'un plateau (objets, réglages, G-code par couche). */
@@ -32,7 +38,8 @@ function clonePlate(p: Plate): Plate {
 		...p,
 		objectIds: [...p.objectIds],
 		...(p.settings ? { settings: { ...p.settings } } : {}),
-		...(p.customGcodes ? { customGcodes: p.customGcodes.map((g) => ({ ...g })) } : {})
+		...(p.customGcodes ? { customGcodes: p.customGcodes.map((g) => ({ ...g })) } : {}),
+		...(p.locked ? { locked: true } : {})
 	};
 }
 
@@ -193,6 +200,14 @@ export class PlateSet {
 	setName(id: string, name: string): void {
 		const plate = this.get(id);
 		if (plate) plate.name = name;
+	}
+
+	/** Verrouille (ou déverrouille) un plateau : non déplacé à l'arrangement. */
+	setLocked(id: string, locked: boolean): void {
+		const plate = this.get(id);
+		if (!plate) return;
+		if (locked) plate.locked = true;
+		else delete plate.locked;
 	}
 
 	/**

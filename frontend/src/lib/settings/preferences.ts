@@ -22,6 +22,12 @@ export type DragAction = 'none' | 'pan' | 'rotate';
 export type AutoFlush = 'all' | 'color' | 'disabled';
 /** Orca `default_page` : 0 = Accueil, 1 = Préparer. */
 export type DefaultPage = 'home' | 'prepare';
+/**
+ * Orca `project_load_behaviour` (Preferences « Load behaviour ») :
+ * `load_all` (défaut), `ask_when_relevant`, `always_ask`, `load_geometry_only`.
+ */
+export type ProjectLoadBehaviour =
+	'load_all' | 'ask_when_relevant' | 'always_ask' | 'load_geometry_only';
 
 export interface CameraPreferences {
 	style: CameraStyle;
@@ -55,6 +61,32 @@ export const GRAPHICS_DEFAULTS: GraphicsPreferences = {
 	antialias: true,
 	fpsCap: 0,
 	showFps: false
+};
+
+/**
+ * Options d'arrangement mémorisées (Orca : AppConfig section « arrange »,
+ * clés min_object_distance_fff / enable_rotation_fff… ; lot 34). La zone de
+ * calibration n'est proposée que sur certaines imprimantes (GET …/arrange/options).
+ */
+export interface ArrangePreferences {
+	/** Espacement (mm), 0 = automatique (Orca ArrangeSettings::distance). */
+	spacing: number;
+	/** « Rotation automatique pour l'arrangement ». */
+	enableRotation: boolean;
+	/** « Plusieurs matériaux sur le même plateau ». */
+	allowMultiMaterialsOnSamePlate: boolean;
+	/** « Éviter la zone de calibration d'extrusion ». */
+	avoidExtrusionCaliRegion: boolean;
+	/** « Aligner sur l'axe Y » (ignoré si rotation automatique). */
+	alignToYAxis: boolean;
+}
+
+export const ARRANGE_DEFAULTS: ArrangePreferences = {
+	spacing: 0,
+	enableRotation: false,
+	allowMultiMaterialsOnSamePlate: true,
+	avoidExtrusionCaliRegion: true,
+	alignToYAxis: false
 };
 
 /** Plafond d'images/s borné (0 = illimité, sinon 10–240, entier). */
@@ -101,6 +133,19 @@ export interface AppPreferences {
 	 *  filament utilisateur dans le sélecteur. */
 	groupFilamentPresets: UserGrouping;
 	graphics: GraphicsPreferences;
+	/**
+	 * Orca `project_load_behaviour` : ouverture d'un 3MF (boîte « Ouvrir comme
+	 * projet / Importer la géométrie seule », lot 34). Le serveur lit la même
+	 * clé (camelCase accepté) quand la requête d'import ne porte pas `load`.
+	 */
+	projectLoadBehaviour: ProjectLoadBehaviour;
+	/**
+	 * Case « Ne plus afficher » de l'avertissement « G-code modifié » (Orca
+	 * `no_warn_when_modified_gcodes`) : le serveur ne renvoie plus l'avertissement.
+	 */
+	noWarnWhenModifiedGcodes: boolean;
+	/** Options d'arrangement mémorisées (menu « Options d'arrangement »). */
+	arrange: ArrangePreferences;
 }
 
 export const PREFERENCES_KEY = 'web-slicer.preferences';
@@ -133,7 +178,10 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
 	maxRecent: 18,
 	wizardFilaments: null,
 	groupFilamentPresets: 'none',
-	graphics: { ...GRAPHICS_DEFAULTS }
+	graphics: { ...GRAPHICS_DEFAULTS },
+	projectLoadBehaviour: 'load_all',
+	noWarnWhenModifiedGcodes: false,
+	arrange: { ...ARRANGE_DEFAULTS }
 };
 
 /** Bornes d'Orca (MainFrame::set_max_recent_count : 0–999). */
@@ -162,6 +210,30 @@ function parseGraphics(raw: unknown): GraphicsPreferences {
 		antialias: bool(g.antialias, GRAPHICS_DEFAULTS.antialias),
 		fpsCap: typeof g.fpsCap === 'number' ? clampFpsCap(g.fpsCap) : GRAPHICS_DEFAULTS.fpsCap,
 		showFps: bool(g.showFps, GRAPHICS_DEFAULTS.showFps)
+	};
+}
+
+/** Espacement d'arrangement borné (0 = automatique, sinon 0–100 mm ; slider d'Orca). */
+export function clampArrangeSpacing(value: number): number {
+	if (!Number.isFinite(value) || value <= 0) return 0;
+	return Math.round(Math.min(100, Math.max(0, value)) * 100) / 100;
+}
+
+function parseArrange(raw: unknown): ArrangePreferences {
+	const a = (raw && typeof raw === 'object' ? raw : {}) as Partial<ArrangePreferences>;
+	return {
+		spacing:
+			typeof a.spacing === 'number' ? clampArrangeSpacing(a.spacing) : ARRANGE_DEFAULTS.spacing,
+		enableRotation: bool(a.enableRotation, ARRANGE_DEFAULTS.enableRotation),
+		allowMultiMaterialsOnSamePlate: bool(
+			a.allowMultiMaterialsOnSamePlate,
+			ARRANGE_DEFAULTS.allowMultiMaterialsOnSamePlate
+		),
+		avoidExtrusionCaliRegion: bool(
+			a.avoidExtrusionCaliRegion,
+			ARRANGE_DEFAULTS.avoidExtrusionCaliRegion
+		),
+		alignToYAxis: bool(a.alignToYAxis, ARRANGE_DEFAULTS.alignToYAxis)
 	};
 }
 
@@ -212,7 +284,14 @@ export function parsePreferences(raw: string | null): AppPreferences {
 				['all', 'none', 'type', 'vendor'] as const,
 				d.groupFilamentPresets
 			),
-			graphics: parseGraphics(value.graphics)
+			graphics: parseGraphics(value.graphics),
+			projectLoadBehaviour: oneOf(
+				value.projectLoadBehaviour,
+				['load_all', 'ask_when_relevant', 'always_ask', 'load_geometry_only'] as const,
+				d.projectLoadBehaviour
+			),
+			noWarnWhenModifiedGcodes: bool(value.noWarnWhenModifiedGcodes, d.noWarnWhenModifiedGcodes),
+			arrange: parseArrange(value.arrange)
 		};
 	} catch {
 		return {

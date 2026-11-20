@@ -303,6 +303,7 @@ test("Assembly View et hauteur variable : éclaté visuel et profil persisté @F
   const id = await setup(page, ["cube20", "cube20"]);
   const canvas = page.getByTestId("scene-canvas");
   await page.getByTestId("toolbar-arrange").click();
+  await page.getByTestId("arrange-all").click();
   await expect(page.getByTestId("editor-message")).toContainText("Arrangement");
   const before = await canvas.getAttribute("data-object-positions");
   await page.getByTestId("toolbar-assembly_view").click();
@@ -366,9 +367,11 @@ test("Auto orient et Arrange : rotation et placements moteur appliqués @F:toolb
   await expect(page.getByLabel("Rotation (°) Z", { exact: true })).toHaveValue(
     "0",
   );
+  // Phase 35 : le bouton ouvre le menu d'options ; « Tout arranger » dispose.
+  await page.getByTestId("toolbar-arrange").click();
   const [arrange] = await Promise.all([
     page.waitForResponse((r) => /\/arrange$/.test(r.url())),
-    page.getByTestId("toolbar-arrange").click(),
+    page.getByTestId("arrange-all").click(),
   ]);
   expect(arrange.status()).toBe(200);
   const saved = await save(page, id);
@@ -619,7 +622,10 @@ test("Assembly : point à point puis face à face rapprochent l’objet mobile @
   page,
 }) => {
   const id = await setup(page, ["cube20", "cube20"]);
+  // (Espacement 8 mm pour écarter franchement les deux cubes avant l'assemblage.)
   await page.getByTestId("toolbar-arrange").click();
+  await page.getByTestId("arrange-spacing-input").fill("8");
+  await page.getByTestId("arrange-all").click();
   await expect(page.getByTestId("editor-message")).toContainText("Arrangement");
   const before = await save(page, id);
   const dist = (p: Project) => {
@@ -647,6 +653,7 @@ test("Assembly : point à point puis face à face rapprochent l’objet mobile @
 
   // Face à face : la face cliquée de B vient contre celle de A (normales opposées).
   await page.getByTestId("toolbar-arrange").click();
+  await page.getByTestId("arrange-all").click();
   await expect(page.getByTestId("editor-message")).toContainText("Arrangement");
   await page.getByTestId("assembly-mode").selectOption("face");
   await select(page, 0);

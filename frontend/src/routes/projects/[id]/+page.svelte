@@ -19,7 +19,8 @@
 		currentPreferences,
 		loadPreferences,
 		savePreferences,
-		type AppPreferences
+		type AppPreferences,
+		type ArrangePreferences
 	} from '$lib/settings/preferences';
 	// Phase 22 (audit Orca §10) : modèles pratiques, unités, À propos, purge auto.
 	import AboutDialog from '$lib/menus/AboutDialog.svelte';
@@ -332,6 +333,7 @@
 	} from '$lib/library/names';
 	import {
 		arrangeScene,
+		getArrangeOptions,
 		booleanModels,
 		cutModel,
 		orientModel,
@@ -359,6 +361,25 @@
 	import { CutSession } from '$lib/scene/tools/cut-session.svelte';
 	import { cutPartLabel } from '$lib/scene/tools/cut-plan';
 	import { nearestFreeCell } from '$lib/scene/arrange';
+	import { effectiveOptions, optionsBody } from '$lib/scene/arrange-options';
+	import { placedTransform, plateMoves, unarrangedIds } from '$lib/scene/arrange-gui';
+	import ArrangeOptionsPanel from '$lib/scene/ArrangeOptionsPanel.svelte';
+	import ProjectMetadataPanel from '$lib/scene/ProjectMetadataPanel.svelte';
+	import OpenProjectDialog from '$lib/projects/OpenProjectDialog.svelte';
+	import ImportReportDialog from '$lib/projects/ImportReportDialog.svelte';
+	import {
+		behaviourFromChoice,
+		decideLoadMode,
+		isProjectArchive,
+		stashImportReport,
+		takeImportReport
+	} from '$lib/projects/open-3mf';
+	import type {
+		ArrangeOptionsInfo,
+		ArrangeResponse,
+		ImportLoadMode,
+		ImportReport
+	} from '$lib/api/types';
 	import { measureGuides } from '$lib/scene/guides';
 	import { capturePlatePng, putPlateThumbnail } from '$lib/scene/plate-thumbnail';
 	import type { BooleanOp } from '$lib/scene/tools/BooleanTool.svelte';
@@ -992,8 +1013,9 @@
 		activePresets = next;
 	}
 
-	// Onglet de la colonne de configuration : liste d'objets/plateaux ou réglages.
-	let configTab = $state<'objects' | 'settings'>('settings');
+	// Onglet de la colonne de configuration : liste d'objets/plateaux, réglages
+	// ou métadonnées du projet (lot 34).
+	let configTab = $state<'objects' | 'settings' | 'project'>('settings');
 	let settingsMode = $state<DisplayMode>('simple');
 	// Portée des réglages affichés (T100/T101/T102) : process / filament / machine,
 	// chacun avec son propre jeu de valeurs éditées.
@@ -3174,10 +3196,21 @@
 		}
 	}
 
+	// Objet inerte : verrouillé dans la liste d'objets (Orca ObjectList) OU posé
+	// sur un plateau verrouillé (lot 34) — Orca bloque aussi le déplacement des
+	// objets d'un plateau verrouillé.
+	function plateLockOf(id: string): boolean {
+		const plateId = plates.plateOf(id);
+		return plateId !== null && plates.get(plateId)?.locked === true;
+	}
+	function objectLocked(id: string): boolean {
+		return tree.isLocked(id) || plateLockOf(id);
+	}
+
 	// Applique la transformation d'un objet manipulé par le gizmo (T103) : persiste
 	// position/rotation/échelle dans l'état de scène (survit au re-rendu).
 	function onTransform(id: string, transform: Transform) {
-		if (!canTransformObject(id, activePlate, (objectId) => tree.isLocked(objectId))) return;
+		if (!canTransformObject(id, activePlate, objectLocked)) return;
 		sceneObjects = sceneObjects.map((o) =>
 			o.id === id
 				? {
@@ -3194,7 +3227,7 @@
 	const selId = $derived(ws.selection.size === 1 ? [...ws.selection][0] : null);
 	const activeObject = $derived(selId ? (sceneObjects.find((o) => o.id === selId) ?? null) : null);
 	const activeGizmoMode = $derived(
-		selId && canTransformObject(selId, activePlate, (id) => tree.isLocked(id)) ? gizmoMode : null
+		selId && canTransformObject(selId, activePlate, objectLocked) ? gizmoMode : null
 	);
 	const activeTransform = $derived<Transform>({
 		position: activeObject?.position ?? [0, 0, 0],
@@ -4160,7 +4193,9 @@
 				plates.addPlate();
 				break;
 			case 'arrange':
-				await arrangeActive();
+				// Orca : le bouton Arrange ouvre le menu d'options (toggable),
+				// l'arrangement part des boutons « Tout arranger » / « Ce plateau ».
+				await toggleArrangePanel();
 				break;
 			case 'orient':
 				await orientActive();
@@ -4199,7 +4234,7 @@
 		return run;
 	}
 	async function arrangeActiveNow() {
-		const candidates = movableObjectsOnPlate(sceneObjects, activePlate, (id) => tree.isLocked(id));
+		const candidates = movableObjectsOnPlate(sceneObjects, activePlate, objectLocked);
 		if (candidates.length === 0) return;
 		try {
 			const res = await arrangeScene(data.project.id, {
@@ -4247,9 +4282,117 @@
 		}
 	}
 
+	// — Options d'arrangement GUI (lot 34, menu « Options d'arrangement » d'Orca) —
+	// Panneau ancré au bouton Arrange de la barre de plateau : options mémorisées
+	// dans les préférences du compte (section arrange d'Orca), bornes et valeurs
+	// de Réinitialiser fournies par GET /api/projects/{id}/arrange/options.
+	let arrangePanel = $state(false);
+	let arrangeInfo = $state<ArrangeOptionsInfo | null>(null);
+	let arrangeBusy = $state(false);
+	let arrangeSaved = $state<ArrangePreferences>(currentPreferences().arrange);
+	async function toggleArrangePanel() {
+		// Le bouton ouvre toujours le panneau (fermeture par ✕ ou Échap) : Orca
+		// rouvre son menu d'arrangement au bouton même s'il est déjà affiché.
+		arrangePanel = true;
+		if (arrangePanel && !arrangeInfo) {
+			try {
+				const info = await getArrangeOptions(data.project.id);
+				arrangeInfo = info;
+				arrangeSaved = effectiveOptions(arrangeSaved, info);
+			} catch {
+				// Serveur sans la route (déploiement antérieur) : bornes par défaut.
+				arrangeInfo = null;
+			}
+		}
+	}
+	function setArrangeOptions(next: ArrangePreferences) {
+		arrangeSaved = next;
+		savePreferences({ ...currentPreferences(), arrange: next });
+	}
+
+	// Arrangement GUI (ArrangeJob d'Orca) : enregistre la scène (l'arrangeur lit
+	// plateaux, verrouillages et objets côté serveur), POST /arrange avec options
+	// puis réapplique placements (matrice complète), réaffectations de plateau et
+	// ordre séquentiel. `scope` = all (bouton « Arrange ») | plate (menu plateau).
+	async function arrangeGui(scope: 'all' | 'plate') {
+		if (arrangeBusy) return;
+		arrangeBusy = true;
+		try {
+			// L'arrangeur GUI lit la scène persistée (plateaux, verrous, objets) :
+			// la sauvegarde doit réussir avant l'appel, sinon on arrête là.
+			const outcome = await save();
+			if (outcome.status === 'error') {
+				saveMessage = outcome.message;
+				return;
+			}
+			if (outcome.status === 'conflict') {
+				saveMessage =
+					'Conflit d’enregistrement (projet ouvert ailleurs ?) : rechargez avant d’arranger.';
+				return;
+			}
+			const list = plates.list();
+			const activeIndex = Math.max(
+				0,
+				list.findIndex((p) => p.id === plates.activeId)
+			);
+			const res = await arrangeScene(data.project.id, {
+				bed_width: bed.width,
+				bed_depth: bed.depth,
+				spacing: arrangeSaved.spacing,
+				items: [],
+				bed_shape: bed.polygon.map((point) => [point.x, point.y]),
+				excluded: ((pts) =>
+					pts.length >= 3 ? [pts.map((p) => [p.x, p.y] as [number, number])] : [])(
+					parseAreaPoints(machineValues.bed_exclude_area)
+				),
+				max_height: bed.height,
+				options: optionsBody(arrangeSaved),
+				scope,
+				plate_index: activeIndex
+			});
+			applyGuiArrangeResult(res);
+		} catch (e) {
+			saveMessage = e instanceof ApiError ? e.message : 'arrangement indisponible';
+		} finally {
+			arrangeBusy = false;
+		}
+	}
+
+	function applyGuiArrangeResult(res: ArrangeResponse) {
+		const byId = new Map(res.placements.map((pl) => [pl.id, pl]));
+		sceneObjects = sceneObjects.map((o) => {
+			const pl = byId.get(o.id);
+			if (!pl) return o;
+			const t = placedTransform(objectTransform(o), pl);
+			return { ...o, position: t.position, rotation: t.rotation, scale: t.scale };
+		});
+		// Plateaux créés par l'arrangeur puis réaffectation des objets déplacés.
+		const count = res.plate_count ?? plates.list().length;
+		while (plates.list().length < count) plates.addPlate();
+		for (const move of plateMoves(plates.list(), res.placements)) {
+			const target = plates.list()[move.plateIndex];
+			if (target) plates.assign(move.objectId, target.id);
+		}
+		// Ordre d'impression séquentiel (print_order 1..N d'Orca).
+		if (res.placements.some((p) => p.print_order !== undefined && p.print_order !== null)) {
+			const order = orderFromPlacements(res.placements.filter((p) => byId.has(p.id)));
+			if (order) {
+				tree.setOrder(order);
+				sceneObjects = permuteInSlots(sceneObjects, order, (o) => o.id);
+			}
+		}
+		const ignored = unarrangedIds(res.placements);
+		const placed = res.placements.length - ignored.length;
+		saveMessage =
+			`Arrangement : ${placed} objet(s) sur ${count} plateau${count > 1 ? 'x' : ''}.` +
+			(ignored.length > 0
+				? ` ${ignored.length} objet(s) trop grand(s) pour un plateau, laissé(s) en l’état.`
+				: '');
+	}
+
 	// Maj+Q : orientation auto de tous les objets mobiles du plateau actif.
 	async function orientAllOnPlate() {
-		const candidates = movableObjectsOnPlate(sceneObjects, activePlate, (id) => tree.isLocked(id));
+		const candidates = movableObjectsOnPlate(sceneObjects, activePlate, objectLocked);
 		let oriented = 0;
 		for (const object of candidates) {
 			const modelId = imports.find((i) => i.objectId === object.id)?.modelId;
@@ -4272,7 +4415,7 @@
 	// Orientation auto de l'objet sélectionné : rotation Euler renvoyée par le moteur.
 	async function orientActive() {
 		if (!selId) return;
-		if (!canTransformObject(selId, activePlate, (id) => tree.isLocked(id))) {
+		if (!canTransformObject(selId, activePlate, objectLocked)) {
 			saveMessage = 'Orientation : objet verrouillé ou hors du plateau actif.';
 			return;
 		}
@@ -5685,8 +5828,11 @@
 		return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || el.isContentEditable;
 	}
 	// Route une action de raccourci vers le bon dispatcher (menu / outil / plateau).
+	// « A » dispose directement (Orca : plater->arrange()), le bouton de la barre
+	// ouvre lui le menu d'options.
 	function dispatchShortcut(action: string) {
-		if (action === 'arrange' || action === 'orient') void onPlateAction(action);
+		if (action === 'arrange') void arrangeActive();
+		else if (action === 'orient') void onPlateAction(action);
 		else if (isToolAction(action)) selectTool(action as EditorTool);
 		else if (!dispatchEditorShortcut(action)) void onMenuAction(action);
 	}
@@ -5752,9 +5898,7 @@
 	// autour du centre de la sélection. Objets verrouillés / hors plateau exclus.
 	function rotateSelectionBy(deg: number) {
 		const movable = sceneObjects.filter(
-			(o) =>
-				ws.selection.has(o.id) &&
-				canTransformObject(o.id, activePlate, (objectId) => tree.isLocked(objectId))
+			(o) => ws.selection.has(o.id) && canTransformObject(o.id, activePlate, objectLocked)
 		);
 		if (movable.length === 0) return;
 		const poses = rotateSelectionZ(movable, deg);
@@ -6049,7 +6193,7 @@
 	}
 	// Déplace un objet de la scène (position absolue, mm).
 	function moveObject(id: string, position: [number, number, number]) {
-		if (!canTransformObject(id, activePlate, (objectId) => tree.isLocked(objectId))) return;
+		if (!canTransformObject(id, activePlate, objectLocked)) return;
 		sceneObjects = sceneObjects.map((o) => (o.id === id ? { ...o, position } : o));
 	}
 	// Remplit le plateau d'instances du même modèle, sur une grille sans collision.
@@ -6061,7 +6205,7 @@
 	async function fillBedWithInstances(id: string) {
 		const object = sceneObjects.find((o) => o.id === id);
 		if (!object) return;
-		const others = movableObjectsOnPlate(sceneObjects, activePlate, (oid) => tree.isLocked(oid));
+		const others = movableObjectsOnPlate(sceneObjects, activePlate, objectLocked);
 		const items = arrangeItems([object, ...others.filter((o) => o.id !== id)]);
 		let placements: Awaited<ReturnType<typeof arrangeScene>>['placements'];
 		try {
@@ -6646,6 +6790,9 @@
 	let preferences = $state<AppPreferences>(DEFAULT_PREFERENCES);
 	onMount(() => {
 		preferences = loadPreferences();
+		// Rapport d'import 3MF en attente (ouverture « comme projet ») : boîte
+		// « G-code modifié / Presets personnalisés » + renvoi vers l'onglet Projet.
+		importReport = takeImportReport(data.project.id);
 		// Préférences modifiées ailleurs (dialogue des purges…) : même état.
 		const unsubscribe = appPreferences.subscribe((p) => (preferences = p));
 		const warn = (event: BeforeUnloadEvent) => {
@@ -6771,14 +6918,49 @@
 		saveMessage = `Trajets exportés en OBJ — « ${file} ».`;
 	}
 
+	// — Ouverture d'un 3MF (lot 34) : « Ouvrir comme projet / Importer la
+	// géométrie seule » selon la préférence project_load_behaviour d'Orca
+	// (determine_load_type) ; le rapport d'import (avertissement G-code,
+	// métadonnées) passe par sessionStorage à la page du projet créé. —
+	let open3mf = $state<File | null>(null);
+	let importReport = $state<ImportReport | null>(null);
+
 	async function openProjectFile(file: File) {
+		let load: ImportLoadMode | undefined;
+		if (isProjectArchive(file.name)) {
+			const decision = decideLoadMode(
+				currentPreferences().projectLoadBehaviour,
+				sceneObjects.length > 0
+			);
+			if (decision === 'ask') {
+				open3mf = file;
+				return;
+			}
+			load = decision;
+		}
+		await openProjectWithLoad(file, load);
+	}
+
+	async function openProjectWithLoad(file: File, load?: ImportLoadMode) {
+		open3mf = null;
 		saveMessage = `Ouverture du projet « ${file.name} »…`;
 		try {
-			const project = await importProject(file);
+			const project = await importProject(file, load);
+			if (project.import) stashImportReport(project.id, project.import);
 			window.location.assign(resolve('/projects/[id]', { id: project.id }));
 		} catch (e) {
 			saveMessage = `Ouverture du projet : ${e instanceof ApiError ? e.message : 'échec'}`;
 		}
+	}
+
+	// « Se souvenir de mon choix » du dialogue : devient le comportement permanent.
+	function rememberLoadChoice(mode: ImportLoadMode) {
+		savePreferences({ ...currentPreferences(), projectLoadBehaviour: behaviourFromChoice(mode) });
+	}
+
+	// « Ne plus afficher » de l'avertissement G-code modifié (préférence du compte).
+	function ignoreModifiedGcodes() {
+		savePreferences({ ...currentPreferences(), noWarnWhenModifiedGcodes: true });
 	}
 
 	async function importZipFile(file: File) {
@@ -7871,6 +8053,44 @@
 		/>
 	{/if}
 
+	<!-- Options d'arrangement (lot 34) : panneau togglé par le bouton Arrange. -->
+	<ArrangeOptionsPanel
+		open={arrangePanel}
+		options={arrangeSaved}
+		info={arrangeInfo}
+		activePlateLocked={plates.get(plates.activeId ?? '')?.locked === true}
+		busy={arrangeBusy}
+		onchange={setArrangeOptions}
+		onarrange={(scope) => {
+			// Le panneau reste ouvert : Orca garde son menu d'arrangement actif
+			// tant que l'utilisateur ne le ferme pas (ré-arrangement en un clic).
+			void arrangeGui(scope);
+		}}
+		onclose={() => (arrangePanel = false)}
+	/>
+
+	<!-- Ouverture d'un 3MF : projet ou géométrie seule (lot 34). -->
+	<OpenProjectDialog
+		open={open3mf !== null}
+		filename={open3mf?.name ?? ''}
+		onconfirm={(mode, remember) => {
+			if (remember && open3mf) rememberLoadChoice(mode);
+			if (open3mf) void openProjectWithLoad(open3mf, mode);
+		}}
+		oncancel={() => (open3mf = null)}
+	/>
+
+	<!-- Avertissement « G-code modifié » du 3MF ouvert (lot 34). -->
+	<ImportReportDialog
+		report={importReport}
+		onignore={ignoreModifiedGcodes}
+		onshowmetadata={() => {
+			configTab = 'project';
+			importReport = null;
+		}}
+		onclose={() => (importReport = null)}
+	/>
+
 	<input
 		bind:this={projectFileInput}
 		type="file"
@@ -8206,6 +8426,12 @@
 					class="ws-tab flex-1 py-2.5 text-sm {configTab === 'objects' ? 'ws-tab-on' : ''}"
 					onclick={() => (configTab = 'objects')}>Objets</button
 				>
+				<button
+					class="ws-tab flex-1 py-2.5 text-sm {configTab === 'project' ? 'ws-tab-on' : ''}"
+					data-testid="config-tab-project"
+					aria-label="Fiche projet"
+					onclick={() => (configTab = 'project')}>Projet</button
+				>
 			</div>
 
 			<div class="min-h-0 flex-1 overflow-auto p-3">
@@ -8292,7 +8518,10 @@
 						inherited={plateInherited}
 						oncontext={(id, x, y) => (plateMenu = { open: true, x, y, plateId: id })}
 						sliced={Object.keys(plateResults)}
+						onlock={(id, locked) => plates.setLocked(id, locked)}
 					/>
+				{:else if configTab === 'project'}
+					<ProjectMetadataPanel projectId={data.project.id} />
 				{:else}
 					<div
 						class="flex flex-col gap-4 [&>section+section]:border-t [&>section+section]:border-border [&>section+section]:pt-4"

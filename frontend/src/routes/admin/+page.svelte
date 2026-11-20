@@ -12,7 +12,8 @@
 		deleteUser,
 		listUsers,
 		patchInstance,
-		resetPassword
+		resetPassword,
+		setUserStatus
 	} from '$lib/api/admin';
 	import { formatBytes } from '$lib/api/quota';
 	import type { AdminUserListResponse, AdminUserResponse } from '$lib/api/types';
@@ -227,6 +228,17 @@
 			};
 			resetFor = null;
 			resetValue = '';
+		} catch (e) {
+			rowMsg = { ...rowMsg, [user.id]: { ok: false, text: errorText(e, 'Échec.') } };
+		}
+	}
+	// Désactivation / réactivation (lot 35, PUT /admin/users/{id}/status) : un
+	// compte désactivé est déconnecté aussitôt (sessions → 401) et ne peut plus
+	// se connecter ; le dernier administrateur actif est protégé (403).
+	async function doToggleStatus(user: AdminUserResponse) {
+		try {
+			await setUserStatus(user.id, user.status === 'disabled' ? 'active' : 'disabled');
+			void loadUsers();
 		} catch (e) {
 			rowMsg = { ...rowMsg, [user.id]: { ok: false, text: errorText(e, 'Échec.') } };
 		}
@@ -475,7 +487,12 @@
 				{:else}
 					<ul class="flex flex-col divide-y divide-border rounded border border-border">
 						{#each rows as user (user.id)}
-							<li class="flex flex-col gap-1 p-2 text-sm" data-testid="admin-user-row">
+							<li
+								class="flex flex-col gap-1 p-2 text-sm {user.status === 'disabled'
+									? 'opacity-60'
+									: ''}"
+								data-testid="admin-user-row"
+							>
 								<div class="flex items-center gap-2">
 									<span class="min-w-0 flex-1 truncate" title={user.email}
 										>{user.email}{#if user.id === data.user.id}
@@ -491,6 +508,16 @@
 									<span class="text-xs text-content-muted"
 										>{user.role === 'admin' ? 'Administrateur' : 'Utilisateur'}</span
 									>
+									{#if user.status === 'disabled'}
+										<span
+											class="rounded bg-danger-bg px-1.5 py-0.5 text-xs text-danger-text"
+											data-testid="admin-user-status">Désactivé</span
+										>
+									{:else}
+										<span class="text-xs text-success-text" data-testid="admin-user-status"
+											>Actif</span
+										>
+									{/if}
 									<button
 										type="button"
 										class="ws-btn ws-btn-sm ws-btn-secondary"
@@ -499,6 +526,24 @@
 											resetValue = generatePassword();
 										}}>Réinitialiser le mot de passe</button
 									>
+									{#if user.status === 'disabled'}
+										<button
+											type="button"
+											class="ws-btn ws-btn-sm ws-btn-primary"
+											data-testid="admin-user-enable"
+											title="Autorise de nouveau la connexion du compte"
+											onclick={() => doToggleStatus(user)}>Réactiver</button
+										>
+									{:else}
+										<button
+											type="button"
+											class="ws-btn ws-btn-sm ws-btn-secondary"
+											data-testid="admin-user-disable"
+											title="Ferme ses sessions et refuse ses connexions (réversible)"
+											disabled={user.id === data.user.id}
+											onclick={() => doToggleStatus(user)}>Désactiver</button
+										>
+									{/if}
 									{#if confirmDelete === user.id}
 										<button
 											type="button"

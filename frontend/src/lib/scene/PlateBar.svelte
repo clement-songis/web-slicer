@@ -9,6 +9,8 @@
 	import type { Plate } from './plates.svelte';
 	import PlateSettings from './PlateSettings.svelte';
 	import IconX from '~icons/lucide/x';
+	import IconLock from '~icons/lucide/lock';
+	import IconLockOpen from '~icons/lucide/lock-open';
 
 	interface Props {
 		plates: readonly Plate[];
@@ -25,6 +27,11 @@
 		oncontext?: (id: string, x: number, y: number) => void;
 		/** Plateaux dont un résultat de tranchage est mémorisé (phase 25, « Slice all »). */
 		sliced?: readonly string[];
+		/**
+		 * Verrouillage d'un plateau (lot 34, Orca PartPlate) : un plateau verrouillé
+		 * n'est pas déplacé par « Tout arranger » et refuse « Arranger ce plateau ».
+		 */
+		onlock?: (id: string, locked: boolean) => void;
 		/** Valeurs des presets, affichées dans l'option « Profil (…) » des réglages. */
 		inherited?: Record<string, unknown>;
 	}
@@ -40,7 +47,8 @@
 		onsetting,
 		oncontext,
 		sliced = [],
-		inherited = {}
+		inherited = {},
+		onlock
 	}: Props = $props();
 
 	// Types de plaque traduits (dictionnaire des réglages chargé à la demande).
@@ -63,6 +71,7 @@
 				data-plate-id={plate.id}
 				data-active={plate.id === activeId ? 'true' : 'false'}
 				data-sliced={sliced.includes(plate.id) ? 'true' : 'false'}
+				data-locked={plate.locked ? 'true' : 'false'}
 				role="presentation"
 				oncontextmenu={(e) => {
 					if (!oncontext) return;
@@ -108,6 +117,24 @@
 								aria-hidden="true"
 								title="Plateau tranché : son aperçu est mémorisé">✓</span
 							>{/if}
+					</button>
+				{/if}
+				{#if onlock}
+					<button
+						type="button"
+						class="ws-icon-btn ws-icon-btn-xs {plate.locked ? 'text-accent' : 'hover:text-content'}"
+						aria-pressed={plate.locked}
+						data-testid="plate-lock"
+						title={plate.locked
+							? 'Plateau verrouillé : l’arrangement ne le déplace pas. Cliquez pour déverrouiller.'
+							: 'Verrouiller ce plateau (l’arrangement ne le déplacera pas)'}
+						onclick={() => onlock(plate.id, !plate.locked)}
+					>
+						{#if plate.locked}
+							<IconLock class="h-3.5 w-3.5" aria-hidden="true" />
+						{:else}
+							<IconLockOpen class="h-3.5 w-3.5" aria-hidden="true" />
+						{/if}
 					</button>
 				{/if}
 				{#if plates.length > 1}

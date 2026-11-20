@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { apiErrorMessage, formatBytes, gauge, quotaMessage, usageLines } from './quota';
+import {
+	apiErrorMessage,
+	formatBytes,
+	gauge,
+	quotaMessage,
+	retryAfterSeconds,
+	usageLines
+} from './quota';
 
 const MB = 1024 * 1024;
 
@@ -25,7 +32,38 @@ describe('quotas (lot 32)', () => {
 		expect(quotaMessage(413, undefined)).toMatch(/Fichier trop volumineux/);
 	});
 
-	it('429 slice_quota_exceeded', () => {
+	it('429 slice_quota_exceeded avec Retry-After (lot 35)', () => {
+		expect(
+			quotaMessage(429, 'slice_quota_exceeded', {
+				active: 2,
+				max: 2,
+				requested: 1,
+				retry_after: 30
+			})
+		).toBe(
+			"Trop de tranchages en cours (2 sur 2 autorisés). Attendez la fin d'un tranchage dans la file, puis réessayez. — réessayez dans 30 secondes"
+		);
+		// Sans Retry-After : message du lot 32 inchangé.
+		expect(quotaMessage(429, 'slice_quota_exceeded', { active: 1, max: 1 })).not.toContain(
+			'— réessayez'
+		);
+	});
+
+	it('429 générique : Retry-After affiché en secondes', () => {
+		expect(quotaMessage(429, 'rate_limited', { retry_after: 30 })).toBe(
+			'Trop de requêtes : réessayez dans 30 secondes.'
+		);
+		expect(quotaMessage(429, 'rate_limited', { retry_after_secs: 1 })).toBe(
+			'Trop de requêtes : réessayez dans 1 seconde.'
+		);
+		expect(quotaMessage(429, 'rate_limited', {})).toBe(
+			'Trop de requêtes : réessayez dans un instant.'
+		);
+		expect(retryAfterSeconds({ retry_after: 0 })).toBeNull();
+		expect(retryAfterSeconds(undefined)).toBeNull();
+	});
+
+	it('429 slice_quota_exceeded (lot 32, sans Retry-After)', () => {
 		expect(quotaMessage(429, 'slice_quota_exceeded', { active: 2, max: 2, requested: 1 })).toBe(
 			"Trop de tranchages en cours (2 sur 2 autorisés). Attendez la fin d'un tranchage dans la file, puis réessayez."
 		);

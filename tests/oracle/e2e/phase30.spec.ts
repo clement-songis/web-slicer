@@ -111,6 +111,7 @@ test('barre de messages : aucun décalage, estompée ensuite, transparente aux c
 	await importModel(page, 'cube20');
 	await expect(page.getByTestId('import-status')).toHaveCount(0, { timeout: 60_000 });
 	await page.getByTestId('toolbar-arrange').click();
+	await page.getByTestId('arrange-all').click();
 	const msg = page.getByTestId('editor-message');
 	await expect(msg).toContainText('Arrangement', { timeout: 30_000 });
 	const after = (await aside.boundingBox())!;

@@ -16,7 +16,14 @@
 		importProject
 	} from '$lib/api/projects';
 	import { isAccepted } from '$lib/editor';
-	import { appPreferences } from '$lib/settings/preferences';
+	import { appPreferences, currentPreferences, savePreferences } from '$lib/settings/preferences';
+	import OpenProjectDialog from '$lib/projects/OpenProjectDialog.svelte';
+	import {
+		behaviourFromChoice,
+		decideLoadMode,
+		isProjectArchive,
+		stashImportReport
+	} from '$lib/projects/open-3mf';
 	import AppSidebar from '$lib/nav/AppSidebar.svelte';
 	import {
 		sortByUpdated,
@@ -123,6 +130,12 @@
 	let importInput: HTMLInputElement | null = null;
 	const IMPORT_ACCEPT = '.stl,.obj,.3mf,.oltp,.step,.stp,.amf,.svg,.drc';
 
+	// Ouverture d'un 3MF (lot 34) : « Ouvrir comme projet / Importer la géométrie
+	// seule » selon project_load_behaviour. Depuis la bibliothèque il n'y a rien
+	// en cours : « Demander si utile » ouvre donc comme projet sans question
+	// (Orca : plateau vide → pas de ProjectDropDialog).
+	let open3mf = $state<File | null>(null);
+
 	function importFile(e: Event) {
 		const input = e.currentTarget as HTMLInputElement;
 		const file = input.files?.[0];
@@ -132,10 +145,22 @@
 			error = `Format non supporté : ${file.name}`;
 			return;
 		}
-		return run(async () => {
-			const project = await importProject(file);
-			await goto(resolve('/projects/[id]', { id: project.id }));
-		});
+		if (isProjectArchive(file.name)) {
+			const decision = decideLoadMode(currentPreferences().projectLoadBehaviour, false);
+			if (decision === 'ask') {
+				open3mf = file;
+				return;
+			}
+			return run(() => openProjectWithLoad(file, decision));
+		}
+		return run(() => openProjectWithLoad(file));
+	}
+
+	async function openProjectWithLoad(file: File, load?: 'project' | 'geometry') {
+		open3mf = null;
+		const project = await importProject(file, load);
+		if (project.import) stashImportReport(project.id, project.import);
+		await goto(resolve('/projects/[id]', { id: project.id }));
 	}
 
 	function duplicate(id: string) {
@@ -397,3 +422,16 @@
 		{/if}
 	</main>
 </div>
+
+<!-- Ouverture d'un 3MF : projet ou géométrie seule (lot 34). -->
+<OpenProjectDialog
+	open={open3mf !== null}
+	filename={open3mf?.name ?? ''}
+	onconfirm={(mode, remember) => {
+		if (remember)
+			savePreferences({ ...currentPreferences(), projectLoadBehaviour: behaviourFromChoice(mode) });
+		const file = open3mf;
+		if (file) void run(() => openProjectWithLoad(file, mode));
+	}}
+	oncancel={() => (open3mf = null)}
+/>

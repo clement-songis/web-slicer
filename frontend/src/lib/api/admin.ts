@@ -8,6 +8,7 @@ import type {
 	InstanceResponse,
 	InvitationResponse,
 	PatchInstanceRequest,
+	SetUserStatusRequest,
 	UserResponse
 } from './types';
 
@@ -28,5 +29,14 @@ export const createUser = (body: AdminCreateUserRequest) =>
 export const resetPassword = (id: string, newPassword: string) =>
 	api.post<void>(`/admin/users/${id}/reset-password`, { new_password: newPassword });
 export const deleteUser = (id: string) => api.del<void>(`/admin/users/${id}`);
+
+/**
+ * Désactive (`disabled`) ou réactive (`active`) un compte (lot 35) : les
+ * sessions ouvertes du compte sont refusées dès la requête suivante, le login
+ * d'un compte désactivé est refusé. 204 ; 422 statut invalide, 403 dernier
+ * administrateur actif.
+ */
+export const setUserStatus = (id: string, status: SetUserStatusRequest['status']) =>
+	api.put<void>(`/admin/users/${id}/status`, { status });
 export const createInvitation = (validDays: number) =>
 	api.post<InvitationResponse>('/admin/invitations', { valid_days: validDays });

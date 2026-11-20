@@ -11,11 +11,21 @@ export type { PatchInstanceRequest } from '../../generated/api/PatchInstanceRequ
 export type { AdminUserListResponse } from '../../generated/api/AdminUserListResponse';
 export type { AdminUserResponse } from '../../generated/api/AdminUserResponse';
 export type { AdminUsersQuery } from '../../generated/api/AdminUsersQuery';
+export type { SetUserStatusRequest } from '../../generated/api/SetUserStatusRequest';
 export type { ChangePasswordRequest } from '../../generated/api/ChangePasswordRequest';
 export type { UsageResponse } from '../../generated/api/UsageResponse';
 export type { LoginRequest } from '../../generated/api/LoginRequest';
 export type { RegisterRequest } from '../../generated/api/RegisterRequest';
 export type { ProjectResponse } from '../../generated/api/ProjectResponse';
+// Ouverture d'un 3MF, métadonnées de projet et arrangement GUI (lot 34-35).
+export type { GcodeWarning } from '../../generated/api/GcodeWarning';
+export type { ImportLoadMode } from '../../generated/api/ImportLoadMode';
+export type { ImportQuery } from '../../generated/api/ImportQuery';
+export type { ImportReport } from '../../generated/api/ImportReport';
+export type { ProjectMetadataDto } from '../../generated/api/ProjectMetadataDto';
+export type { ArrangeOptions } from '../../generated/api/ArrangeOptions';
+export type { ArrangeOptionsInfo } from '../../generated/api/ArrangeOptionsInfo';
+export type { ArrangeScope } from '../../generated/api/ArrangeScope';
 export type { CreateProjectRequest } from '../../generated/api/CreateProjectRequest';
 export type { ModelResponse } from '../../generated/api/ModelResponse';
 export type { ArrangeItem } from '../../generated/api/ArrangeItem';

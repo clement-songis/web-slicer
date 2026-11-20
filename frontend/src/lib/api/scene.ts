@@ -2,7 +2,13 @@
 // orientation, réparation et simplification (rapports). Typés sur les DTO
 // générés par ts-rs.
 import { api } from './client';
-import type { ArrangeRequest, ArrangeResponse, OrientResponse, RepairResponse } from './types';
+import type {
+	ArrangeOptionsInfo,
+	ArrangeRequest,
+	ArrangeResponse,
+	OrientResponse,
+	RepairResponse
+} from './types';
 import type { SimplifyRequest } from '../../generated/api/SimplifyRequest';
 import type { SimplifyResponse } from '../../generated/api/SimplifyResponse';
 
@@ -17,6 +23,13 @@ export type { CutRequest, BooleanRequest, MeshOpResponse, MeshOpPartResponse };
 /** Arrangement sans collision des empreintes fournies (FR-013). */
 export const arrangeScene = (projectId: string, body: ArrangeRequest) =>
 	api.post<ArrangeResponse>(`/projects/${projectId}/arrange`, body);
+
+/**
+ * Valeurs du bouton « Réinitialiser » du menu « Options d'arrangement » d'Orca
+ * et disponibilité des cases (lot 34) : GET /api/projects/{id}/arrange/options.
+ */
+export const getArrangeOptions = (projectId: string) =>
+	api.get<ArrangeOptionsInfo>(`/projects/${projectId}/arrange/options`);
 
 /** Suggestion d'orientation (plus grande facette vers le bas) d'un modèle. */
 export const orientModel = (projectId: string, modelId: string) =>
