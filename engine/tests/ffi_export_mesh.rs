@@ -52,6 +52,8 @@ fn volume(mesh: TriangleMesh, matrix: DMat4, role: VolumeRole) -> ModelVolume {
         paint: VolumePaint::default(),
         settings: DynamicPrintConfig::new(),
         emboss: None,
+        cut_info: None,
+        mesh_stats: None,
     }
 }
 
@@ -71,6 +73,7 @@ fn object(volumes: Vec<ModelVolume>, instances: Vec<ModelInstance>) -> ModelObje
         settings: DynamicPrintConfig::new(),
         layer_height_profile: Vec::new(),
         layer_config_ranges: Vec::new(),
+        cut_id: None,
     }
 }
 

@@ -38,6 +38,11 @@ pub struct ImportedObject {
     /// Nom du premier volume pièce (`<part>` de `model_settings.config`) quand
     /// il diffère du nom de l'objet (Orca `<nom>_1` après un split) → `meshName`.
     pub mesh_name: Option<String>,
+    /// `ModelObject::cut_id` (`Metadata/cut_information.xml`) → `cutId`.
+    pub cut_id: Option<engine::api::CutObjectId>,
+    /// Erreurs du maillage pièce lues par libslic3r (`<mesh_stat>` + arêtes
+    /// ouvertes), reportées dans le 3MF autonome du modèle.
+    pub mesh_stats: Option<engine::api::MeshErrorStats>,
 }
 
 /// Pièce d'un objet multi-pièces 3MF (volume `normal_part` distinct).
@@ -53,6 +58,10 @@ pub struct ImportedPart {
     pub settings: Map<String, Value>,
     /// Relief ré-éditable de la pièce (scène : `emboss` du volume maillé).
     pub emboss: Option<Value>,
+    /// Connecteur de coupe (`cut_information.xml`) → `cutInfo` du volume.
+    pub cut_info: Option<engine::api::VolumeCutInfo>,
+    /// Erreurs du maillage de la pièce (`<mesh_stat>`).
+    pub mesh_stats: Option<engine::api::MeshErrorStats>,
 }
 
 #[derive(Debug, Clone)]
@@ -152,6 +161,10 @@ struct ViewVolume {
     /// Relief ré-éditable (`text_configuration` / `emboss_shape` d'Orca).
     #[serde(default)]
     emboss: Option<Value>,
+    #[serde(default)]
+    cut_info: Option<engine::api::VolumeCutInfo>,
+    #[serde(default)]
+    mesh_stats: Option<engine::api::MeshErrorStats>,
 }
 
 #[derive(serde::Deserialize)]
@@ -177,6 +190,8 @@ struct ViewObject {
     layer_ranges: Vec<Value>,
     instances: Vec<ViewInstance>,
     volumes: Vec<ViewVolume>,
+    #[serde(default)]
+    cut_id: Option<engine::api::CutObjectId>,
 }
 
 #[derive(serde::Deserialize)]
@@ -371,6 +386,8 @@ fn convert_view(view: ProjectView) -> ImportResult<ImportedProject> {
                     extruder: volume.extruder,
                     settings: without_extruder(&volume.settings),
                     emboss: volume.emboss.clone().filter(|e| !e.is_null()),
+                    cut_info: volume.cut_info,
+                    mesh_stats: volume.mesh_stats.clone(),
                 });
                 continue;
             }
@@ -387,6 +404,9 @@ fn convert_view(view: ProjectView) -> ImportResult<ImportedProject> {
             });
             if volume.extruder > 0 {
                 doc["extruder"] = volume.extruder.into();
+            }
+            if let Some(info) = &volume.cut_info {
+                doc["cutInfo"] = crate::scene::cut_info_to_scene(info);
             }
             volumes.push(doc);
         }
@@ -423,6 +443,8 @@ fn convert_view(view: ProjectView) -> ImportResult<ImportedProject> {
                 parts: parts_out.clone(),
                 layer_ranges: layer_ranges.clone(),
                 mesh_name: mesh_name.clone(),
+                cut_id: object.cut_id.filter(|cut| cut.id != 0),
+                mesh_stats: first.mesh_stats.clone(),
             });
         }
     }

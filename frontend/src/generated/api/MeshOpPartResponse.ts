@@ -34,4 +34,13 @@ emboss?: Record<string, unknown>,
  * comme volumes maillés de la scène : `{ shape: "mesh", modelId, type,
  * name, offset, rotation: [0,0,0] }`.
  */
-volumes?: Array<MeshOpVolumeResponse>, };
+volumes?: Array<MeshOpVolumeResponse>, 
+/**
+ * Coupe : informations de coupe des pièces (`ModelObject::cut_id` d'Orca),
+ * à recopier telles quelles dans `cutId` de l'objet de scène créé. Absent
+ * si Orca n'en enregistre pas (coupe simple sans connecteur ni queue
+ * d'aronde d'un objet non coupé, ou une seule moitié conservée). Si l'id
+ * existait déjà (objet re-coupé), recopier aussi ce `cutId` sur les autres
+ * objets de même `cutId.id` (synchronize_model_after_cut).
+ */
+cut_id?: { id: number; checkSum: number; connectorsCnt: number }, };

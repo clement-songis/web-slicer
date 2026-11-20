@@ -54,6 +54,35 @@ pub async fn load(source: &Path, format: ModelFormat) -> Option<Model> {
     Some(model)
 }
 
+/// Comme [`load`], mais garantit les statistiques d'erreurs des volumes
+/// (`ModelVolume::mesh_stats`, lot 37) : une entrée de cache antérieure, sans
+/// ces statistiques, est relue par le worker puis remplacée.
+pub async fn load_with_stats(source: &Path, format: ModelFormat) -> Option<Model> {
+    let has_stats = |model: &Model| {
+        model
+            .objects
+            .iter()
+            .flat_map(|o| &o.volumes)
+            .all(|v| v.mesh_stats.is_some())
+    };
+    let model = load(source, format).await?;
+    if has_stats(&model) {
+        return Some(model);
+    }
+    let fmt = crate::models::convert::format_arg(format)?;
+    let fresh = load_uncached(source, fmt).await?;
+    if let (Ok(bytes), Ok(json)) = (tokio::fs::read(source).await, serde_json::to_vec(&fresh)) {
+        let cache = cache_path(source, &bytes);
+        let tmp = cache.with_extension(format!("{}.tmp", uuid::Uuid::new_v4()));
+        if tokio::fs::write(&tmp, json).await.is_ok()
+            && tokio::fs::rename(&tmp, &cache).await.is_err()
+        {
+            let _ = tokio::fs::remove_file(&tmp).await;
+        }
+    }
+    Some(fresh)
+}
+
 async fn load_uncached(source: &Path, fmt: &str) -> Option<Model> {
     let work = crate::workdir::tempdir().ok()?;
     let out = work.path().join("model-raw.json");
@@ -72,6 +101,19 @@ async fn load_uncached(source: &Path, fmt: &str) -> Option<Model> {
 /// indices sont ceux du maillage servi à l'éditeur (même ordre de lecture),
 /// donc compatibles avec la peinture.
 pub async fn centered_part_mesh(source: &Path, format: ModelFormat) -> Option<TriangleMesh> {
+    centered_part_volume(source, format)
+        .await
+        .map(|(mesh, _)| mesh)
+}
+
+/// Comme [`centered_part_mesh`], avec les erreurs du maillage lues par
+/// libslic3r (`TriangleMesh::stats()`, `None` pour un cache antérieur) :
+/// reportées sur le volume exporté, store_bbs_3mf les écrit dans `<mesh_stat>`
+/// comme Orca à l'enregistrement d'un projet.
+pub async fn centered_part_volume(
+    source: &Path,
+    format: ModelFormat,
+) -> Option<(TriangleMesh, Option<engine::api::MeshErrorStats>)> {
     let model = load(source, format).await?;
     let [object] = model.objects.as_slice() else {
         return None;
@@ -79,7 +121,7 @@ pub async fn centered_part_mesh(source: &Path, format: ModelFormat) -> Option<Tr
     let [volume] = object.volumes.as_slice() else {
         return None;
     };
-    (volume.role == VolumeRole::ModelPart).then(|| volume.mesh.clone())
+    (volume.role == VolumeRole::ModelPart).then(|| (volume.mesh.clone(), volume.mesh_stats.clone()))
 }
 
 #[cfg(test)]

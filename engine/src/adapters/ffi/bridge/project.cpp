@@ -59,7 +59,7 @@ void config_from_json(TConfig &config, const std::string &json_text)
     }
 }
 
-Slic3r::TriangleMesh raw_to_mesh(const RawMesh &raw)
+Slic3r::TriangleMesh raw_to_mesh(const RawMesh &raw, const Slic3r::RepairedMeshErrors &errors = {})
 {
     indexed_triangle_set its;
     its.vertices.reserve(raw.vertices.size() / 3);
@@ -70,7 +70,25 @@ Slic3r::TriangleMesh raw_to_mesh(const RawMesh &raw)
         its.indices.emplace_back(static_cast<int>(raw.indices[i]),
                                  static_cast<int>(raw.indices[i + 1]),
                                  static_cast<int>(raw.indices[i + 2]));
-    return Slic3r::TriangleMesh(std::move(its));
+    return Slic3r::TriangleMesh(std::move(its), errors);
+}
+
+// Erreurs réparées d'un volume (stats_json) : reportées dans les stats du
+// TriangleMesh comme le lecteur 3MF d'Orca (TriangleMesh(its, mesh_stats)),
+// d'où le <mesh_stat> écrit par store_bbs_3mf.
+Slic3r::RepairedMeshErrors raw_repaired_errors(const RawVolume &raw)
+{
+    Slic3r::RepairedMeshErrors errors;
+    if (raw.stats_json.empty())
+        return errors;
+    const auto stats = nlohmann::json::parse(std::string(raw.stats_json));
+    const auto repaired = stats.value("repaired", nlohmann::json::object());
+    errors.edges_fixed = repaired.value("edges_fixed", 0);
+    errors.degenerate_facets = repaired.value("degenerate_facets", 0);
+    errors.facets_removed = repaired.value("facets_removed", 0);
+    errors.facets_reversed = repaired.value("facets_reversed", 0);
+    errors.backwards_edges = repaired.value("backwards_edges", 0);
+    return errors;
 }
 
 Slic3r::Transform3d from_col_major(const std::array<double, 16> &m)
@@ -110,7 +128,7 @@ void raw_into_model(const rust::Vec<RawObject> &objects, Slic3r::Model &model)
         }
         for (const RawVolume &raw_volume : raw_object.volumes) {
             Slic3r::ModelVolume *volume =
-                object->add_volume(raw_to_mesh(raw_volume.mesh),
+                object->add_volume(raw_to_mesh(raw_volume.mesh, raw_repaired_errors(raw_volume)),
                                    Slic3r::ModelVolumeType::MODEL_PART,
                                    /*modify_to_center_geometry=*/false);
             volume->name = std::string(raw_volume.name);
@@ -122,6 +140,15 @@ void raw_into_model(const rust::Vec<RawObject> &objects, Slic3r::Model &model)
             volume->set_transformation(
                 Slic3r::Geometry::Transformation(from_col_major(raw_volume.matrix)));
             emboss_from_json(*volume, std::string(raw_volume.emboss_json));
+            // Connecteur de coupe déjà découpé (relecture de cut_information.xml
+            // par _BBS_3MF_Importer : CutInfo(type, r_tol, h_tol, processed=true)).
+            if (!raw_volume.cut_json.empty()) {
+                const auto cut = nlohmann::json::parse(std::string(raw_volume.cut_json));
+                volume->cut_info = Slic3r::ModelVolume::CutInfo(
+                    Slic3r::CutConnectorType(cut.value("connector_type", 0)),
+                    cut.value("radius_tolerance", 0.f), cut.value("height_tolerance", 0.f),
+                    /*processed=*/true);
+            }
             // Peintures (supports / couture / MMU / fuzzy) comme le lecteur 3MF
             // d'Orca : une chaîne hex par triangle, indices croissants par canal.
             const size_t painted = std::min({raw_volume.paint_channel.size(),
@@ -168,6 +195,17 @@ void raw_into_model(const rust::Vec<RawObject> &objects, Slic3r::Model &model)
                 if (!entries.empty())
                     facets.touch();
             }
+        }
+        // ModelObject::cut_id (CutObjectBase(ObjectID, check_sum, connectors_cnt),
+        // constructeur utilisé par le lecteur 3MF d'Orca) : écrit par
+        // store_bbs_3mf dans Metadata/cut_information.xml.
+        if (!raw_object.cut_json.empty()) {
+            const auto cut = nlohmann::json::parse(std::string(raw_object.cut_json));
+            const size_t id = cut.value("id", size_t(0));
+            if (id != 0)
+                object->cut_id = Slic3r::CutObjectBase(Slic3r::ObjectID(id),
+                                                       cut.value("check_sum", size_t(1)),
+                                                       cut.value("connectors_cnt", size_t(0)));
         }
         for (const RawInstance &raw_instance : raw_object.instances) {
             Slic3r::ModelInstance *instance = object->add_instance();

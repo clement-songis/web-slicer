@@ -162,7 +162,23 @@ pub(super) fn to_object(raw: ffi::RawObject) -> ModelObject {
         settings: config_from_orca_json(&raw.config_json),
         layer_height_profile: raw.layer_height_profile,
         layer_config_ranges: ranges_from_json(&raw.layer_ranges_json),
+        cut_id: cut_from_json(&raw.cut_json),
     }
+}
+
+/// JSON optionnel du bridge (`cut_json`, `stats_json`) : vide ou illisible =
+/// `None`.
+fn cut_from_json<T: serde::de::DeserializeOwned>(json: &str) -> Option<T> {
+    if json.trim().is_empty() {
+        return None;
+    }
+    serde_json::from_str(json).ok()
+}
+
+fn cut_to_json<T: serde::Serialize>(value: Option<&T>) -> String {
+    value
+        .and_then(|v| serde_json::to_string(v).ok())
+        .unwrap_or_default()
 }
 
 /// `layer_config_ranges` ↔ JSON du bridge (`[{min, max, config}]`).
@@ -229,6 +245,8 @@ fn to_volume(raw: ffi::RawVolume) -> ModelVolume {
         emboss: (!raw.emboss_json.trim().is_empty())
             .then(|| serde_json::from_str(&raw.emboss_json).ok())
             .flatten(),
+        cut_info: cut_from_json(&raw.cut_json),
+        mesh_stats: cut_from_json(&raw.stats_json),
     }
 }
 
@@ -314,6 +332,8 @@ pub(super) fn to_raw_objects(model: &Model) -> Vec<ffi::RawObject> {
                     paint_state: v.paint.facets.iter().map(|f| f.2.clone()).collect(),
                     config_json: config_to_orca_json(&v.settings),
                     emboss_json: v.emboss.as_ref().map(|e| e.to_string()).unwrap_or_default(),
+                    cut_json: cut_to_json(v.cut_info.as_ref()),
+                    stats_json: cut_to_json(v.mesh_stats.as_ref()),
                 })
                 .collect(),
             instances: o
@@ -327,6 +347,7 @@ pub(super) fn to_raw_objects(model: &Model) -> Vec<ffi::RawObject> {
             config_json: config_to_orca_json(&o.settings),
             layer_height_profile: o.layer_height_profile.clone(),
             layer_ranges_json: ranges_to_json(&o.layer_config_ranges),
+            cut_json: cut_to_json(o.cut_id.as_ref()),
         })
         .collect()
 }

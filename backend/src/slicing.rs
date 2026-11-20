@@ -300,6 +300,8 @@ struct SceneObjectSpec {
     mesh_volumes: Vec<MeshVolumeRef>,
     /// Plages de hauteur à réglages propres (`layerRanges`).
     layer_config_ranges: Vec<engine::api::LayerConfigRange>,
+    /// Informations de coupe (`cutId`, `ModelObject::cut_id` d'Orca).
+    cut_id: Option<engine::api::CutObjectId>,
 }
 
 pub(crate) async fn build_scene_model(
@@ -364,6 +366,7 @@ pub(crate) async fn build_scene_model_indexed(
                 volumes: Vec::new(),
                 mesh_volumes: Vec::new(),
                 layer_config_ranges: Vec::new(),
+                cut_id: None,
             })
             .collect()
     });
@@ -380,8 +383,10 @@ pub(crate) async fn build_scene_model_indexed(
         // du fichier source (pas le WSMh, dont le décalage cuit en f32 décale
         // les modèles non entiers d'~1 µm). Repli : WSMh recentré.
         let mut orca = None;
+        // Erreurs du maillage lu par libslic3r (`<mesh_stat>` à l'export, lot 37).
+        let mut mesh_stats = None;
         if spec.centered {
-            if let Some(mesh) = crate::engine::raw_model::centered_part_mesh(
+            if let Some((mesh, stats)) = crate::engine::raw_model::centered_part_volume(
                 FsPath::new(&source.file_path),
                 source.format,
             )
@@ -389,6 +394,13 @@ pub(crate) async fn build_scene_model_indexed(
             {
                 if mesh.indices.len() == load_triangle_count(state, source).await {
                     orca = Some(mesh);
+                    // Après « Réparer », Orca repart d'un maillage neuf (aucune
+                    // erreur réparée enregistrée).
+                    let repaired_by_user = source
+                        .repair_report
+                        .as_ref()
+                        .is_some_and(|report| report.get("repairs").is_some());
+                    mesh_stats = stats.filter(|_| !repaired_by_user);
                 }
             }
         }
@@ -413,6 +425,8 @@ pub(crate) async fn build_scene_model_indexed(
         object.settings = spec.settings;
         object.layer_height_profile = spec.layer_height_profile;
         object.layer_config_ranges = spec.layer_config_ranges;
+        object.cut_id = spec.cut_id;
+        object.volumes[0].mesh_stats = mesh_stats;
         object.instances = vec![engine::api::ModelInstance {
             matrix: spec.matrix,
             plate_index: spec.plate_index,
@@ -625,6 +639,7 @@ fn scene_object_specs(scene: &Value, requested_plate: Option<u32>) -> Option<Vec
                     volumes: scene_object_volumes(object),
                     mesh_volumes: scene_object_mesh_volumes(object),
                     layer_config_ranges: scene_object_layer_ranges(object),
+                    cut_id: crate::scene::scene_cut_id(object),
                 })
             })
             .collect(),
@@ -719,6 +734,8 @@ pub(crate) fn scene_object_volumes(object: &Value) -> Vec<engine::api::ModelVolu
                 paint: engine::api::VolumePaint::default(),
                 settings: scene_object_settings(volume),
                 emboss: None,
+                cut_info: crate::scene::scene_cut_info(volume),
+                mesh_stats: None,
             })
         })
         .collect()
@@ -825,6 +842,8 @@ pub(crate) fn scene_object_mesh_volumes(object: &Value) -> Vec<MeshVolumeRef> {
                     paint: engine::api::VolumePaint::default(),
                     settings: scene_object_settings(volume),
                     emboss: scene_emboss(volume),
+                    cut_info: crate::scene::scene_cut_info(volume),
+                    mesh_stats: None,
                 },
             })
         })

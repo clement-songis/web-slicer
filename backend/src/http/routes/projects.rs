@@ -691,9 +691,16 @@ pub async fn import_into(
 /// Archive 3MF autonome d'un objet/pièce importé (géométrie locale, instance
 /// identité), écrite par libslic3r (`store_bbs_3mf`) : une conversion ultérieure
 /// (notamment après duplication) ne recharge jamais toute l'archive d'origine.
-async fn source_3mf(name: &str, mesh: &engine::api::TriangleMesh) -> ApiResult<Vec<u8>> {
+/// 3MF autonome d'un objet importé. `stats` : erreurs du maillage lues dans le
+/// projet (`<mesh_stat>`), réécrites telles quelles pour que la liste d'objets
+/// (`GET …/mesh-errors`) affiche, comme Orca, les erreurs réparées d'origine.
+async fn source_3mf(
+    name: &str,
+    mesh: &engine::api::TriangleMesh,
+    stats: Option<&engine::api::MeshErrorStats>,
+) -> ApiResult<Vec<u8>> {
     let mut model = engine::api::Model::default();
-    model.add_object(name.to_string(), mesh.clone());
+    model.add_object(name.to_string(), mesh.clone()).volumes[0].mesh_stats = stats.cloned();
     crate::engine::project_3mf::write_project_3mf(
         &model,
         &engine::api::DynamicPrintConfig::new(),
@@ -765,7 +772,8 @@ pub(crate) async fn import_3mf_contents(
     let mut scene_objects = Vec::with_capacity(imported.objects.len());
     let mut object_ids = Vec::with_capacity(imported.objects.len());
     for object in &imported.objects {
-        let source_bytes = source_3mf(&object.name, &object.mesh).await?;
+        let source_bytes =
+            source_3mf(&object.name, &object.mesh, object.mesh_stats.as_ref()).await?;
         let model_name = if imported.objects.len() == 1 {
             filename.to_string()
         } else {
@@ -794,7 +802,7 @@ pub(crate) async fn import_3mf_contents(
         // maillé de la scène (`shape: "mesh"`).
         let mut mesh_volumes = Vec::with_capacity(object.parts.len());
         for part in &object.parts {
-            let part_source = source_3mf(&part.name, &part.mesh).await?;
+            let part_source = source_3mf(&part.name, &part.mesh, part.mesh_stats.as_ref()).await?;
             let part_model = match super::models::write_model_record(
                 state,
                 user_id,
@@ -833,6 +841,9 @@ pub(crate) async fn import_3mf_contents(
             }
             if let Some(emboss) = &part.emboss {
                 volume["emboss"] = super::mesh_ops::emboss_with_font_id(emboss.clone());
+            }
+            if let Some(info) = &part.cut_info {
+                volume["cutInfo"] = crate::scene::cut_info_to_scene(info);
             }
             mesh_volumes.push(volume);
             models.push((part_model, part.mesh.clone()));
@@ -984,6 +995,9 @@ fn imported_scene_object(
     }
     if let Some(emboss) = &object.emboss {
         document["emboss"] = super::mesh_ops::emboss_with_font_id(emboss.clone());
+    }
+    if let Some(cut) = &object.cut_id {
+        document["cutId"] = crate::scene::cut_id_to_scene(cut);
     }
     document
 }
@@ -2198,6 +2212,8 @@ mod import_3mf_tests {
             parts: Vec::new(),
             layer_ranges: Vec::new(),
             mesh_name: None,
+            cut_id: None,
+            mesh_stats: None,
         }
     }
 

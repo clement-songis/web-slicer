@@ -562,6 +562,7 @@ async fn every_id_route_of_the_router_is_isolated_between_accounts() {
             .replace("{name}", "mien.txt")
             .replace("{key}", "orca-cube")
             .replace("{index}", "0")
+            .replace("{object_id}", "obj-1")
     };
     let owner_id = |path: &str| -> &str {
         let prefixes: [(&str, &str); 9] = [
@@ -631,6 +632,8 @@ async fn every_id_route_of_the_router_is_isolated_between_accounts() {
             }),
             // Lot 34 : métadonnées 3MF (corps valide → 404 strict).
             ("PUT", "/api/projects/{id}/metadata") => json!({ "title": "pwned", "license": "CC0" }),
+            // Lot 37 : « Invalidate cut info » (corps valide → 404 strict).
+            ("POST", "/api/projects/{id}/objects/{object_id}/invalidate-cut") => json!({}),
             _ => return None,
         })
     };

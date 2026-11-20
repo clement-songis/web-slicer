@@ -14,6 +14,7 @@
 #include <boost/algorithm/string/predicate.hpp>
 #include <nlohmann/json.hpp>
 
+#include <algorithm>
 #include <stdexcept>
 #include <string>
 
@@ -178,6 +179,27 @@ rust::Vec<RawObject> model_to_raw(const Slic3r::Model &model)
                     volume_config[key] = volume->config.opt_serialize(key);
             raw_volume.config_json = volume_config.dump();
             raw_volume.emboss_json = emboss_to_json(*volume);
+            // Erreurs du maillage (TriangleMeshStats : restantes + réparées à la
+            // lecture, ou <mesh_stat> du 3MF), cf. ObjectList::get_mesh_errors_info.
+            {
+                const Slic3r::TriangleMeshStats &stats = volume->mesh().stats();
+                const Slic3r::RepairedMeshErrors &r = stats.repaired_errors;
+                raw_volume.stats_json =
+                    nlohmann::json{{"open_edges", std::max(stats.open_edges, 0)},
+                                   {"repaired",
+                                    {{"edges_fixed", std::max(r.edges_fixed, 0)},
+                                     {"degenerate_facets", std::max(r.degenerate_facets, 0)},
+                                     {"facets_removed", std::max(r.facets_removed, 0)},
+                                     {"facets_reversed", std::max(r.facets_reversed, 0)},
+                                     {"backwards_edges", std::max(r.backwards_edges, 0)}}}}
+                        .dump();
+            }
+            // Connecteur de coupe (cut_information.xml : is_cut_connector()).
+            if (volume->is_cut_connector())
+                raw_volume.cut_json = nlohmann::json{
+                    {"connector_type", int(volume->cut_info.connector_type)},
+                    {"radius_tolerance", volume->cut_info.radius_tolerance},
+                    {"height_tolerance", volume->cut_info.height_tolerance}}.dump();
             // Peintures (relecture 3MF) : même format hex que le writer d'Orca.
             const Slic3r::FacetsAnnotation *channels[4] = {
                 &volume->supported_facets, &volume->seam_facets,
@@ -197,6 +219,11 @@ rust::Vec<RawObject> model_to_raw(const Slic3r::Model &model)
             }
             raw_object.volumes.push_back(std::move(raw_volume));
         }
+        if (object->is_cut())
+            raw_object.cut_json = nlohmann::json{{"id", object->cut_id.id().id},
+                                                 {"check_sum", object->cut_id.check_sum()},
+                                                 {"connectors_cnt", object->cut_id.connectors_cnt()}}
+                                      .dump();
         for (const Slic3r::ModelInstance *instance : object->instances) {
             RawInstance raw_instance;
             raw_instance.matrix = to_col_major(instance->get_matrix());

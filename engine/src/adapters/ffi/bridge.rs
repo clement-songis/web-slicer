@@ -34,6 +34,12 @@ pub(crate) mod ffi {
         /// Paramètres de relief ré-éditables (`text_configuration` /
         /// `emboss_shape` d'Orca) en JSON ; vide = volume ordinaire.
         emboss_json: String,
+        /// Connecteur de coupe (`ModelVolume::cut_info`) en JSON
+        /// `{connector_type, radius_tolerance, height_tolerance}` ; vide = aucun.
+        cut_json: String,
+        /// Erreurs du maillage (`TriangleMesh::stats()`) en JSON
+        /// `{open_edges, repaired: {edges_fixed, …}}` ; vide = non renseigné.
+        stats_json: String,
     }
 
     /// Instance d'un objet sur le plateau.
@@ -150,6 +156,9 @@ pub(crate) mod ffi {
         layer_height_profile: Vec<f64>,
         /// `layer_config_ranges` : JSON `[{"min","max","config":{clé → valeur Orca}}]`.
         layer_ranges_json: String,
+        /// `ModelObject::cut_id` (CutObjectBase) en JSON
+        /// `{id, check_sum, connectors_cnt}` ; vide = objet non coupé.
+        cut_json: String,
     }
 
     /// Projet 3MF : scène + config embarquée (clé → valeur sérialisée Orca,

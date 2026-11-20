@@ -18,6 +18,11 @@ type: string,
  */
 connector: boolean, 
 /**
+ * Connecteur : `ModelVolume::cut_info` à recopier tel quel dans `cutInfo`
+ * du volume de scène (`cut_information.xml` du 3MF).
+ */
+cut_info?: { connectorType: 'plug' | 'dowel' | 'snap'; radiusTolerance: number; heightTolerance: number }, 
+/**
  * Centre de la boîte du volume moins celui du corps (repère recentré de
  * l'objet, = `offset` du volume de scène).
  */

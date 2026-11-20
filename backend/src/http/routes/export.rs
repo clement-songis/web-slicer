@@ -644,6 +644,9 @@ struct SceneObjectSpec {
     mesh_name: Option<String>,
     /// Relief ré-éditable de l'objet (`emboss`, texte ou SVG créé seul).
     emboss: Option<Value>,
+    /// Informations de coupe (`cutId` → `ModelObject::cut_id`,
+    /// cut_information.xml du 3MF).
+    cut_id: Option<engine::api::CutObjectId>,
 }
 
 /// Assemble le `Model` moteur depuis le document de scène et les maillages
@@ -701,6 +704,7 @@ pub(crate) async fn build_project_model_selected(
                 layer_config_ranges: Vec::new(),
                 mesh_name: None,
                 emboss: None,
+                cut_id: None,
             })
             .collect()
     });
@@ -725,10 +729,13 @@ pub(crate) async fn build_project_model_selected(
         if spec.centered {
             center_mesh(&mut mesh);
         }
+        let mesh_stats = imported_mesh_stats(m).await;
         let object = model.add_object(m.filename.clone(), mesh);
         object.settings = spec.settings;
         object.layer_height_profile = spec.layer_height_profile;
         object.layer_config_ranges = spec.layer_config_ranges;
+        object.cut_id = spec.cut_id;
+        object.volumes[0].mesh_stats = mesh_stats;
         object.instances = vec![engine::api::ModelInstance {
             matrix: spec.matrix,
             plate_index: spec.plate_index,
@@ -772,6 +779,31 @@ pub(crate) async fn build_project_model_selected(
         }
     }
     Ok(model)
+}
+
+/// Erreurs réparées d'un modèle issu d'un 3MF (`<mesh_stat>` lu par
+/// libslic3r), réécrites à l'export comme Orca. Les STL n'en portent jamais
+/// (Orca 2.4.1 : `TriangleMesh::from_stl` ne les reporte pas) et un modèle
+/// réparé par l'utilisateur repart d'un maillage neuf : rien à relire.
+async fn imported_mesh_stats(model: &crate::domain::Model) -> Option<engine::api::MeshErrorStats> {
+    let repaired_by_user = model
+        .repair_report
+        .as_ref()
+        .is_some_and(|report| report.get("repairs").is_some());
+    if model.format != ModelFormat::ThreeMf || repaired_by_user {
+        return None;
+    }
+    let raw = crate::engine::raw_model::load(FsPath::new(&model.file_path), model.format).await?;
+    let mut total = engine::api::MeshErrorStats::default();
+    for stats in raw
+        .objects
+        .iter()
+        .flat_map(|o| &o.volumes)
+        .filter_map(|v| v.mesh_stats.as_ref())
+    {
+        total.merge(stats);
+    }
+    total.repaired().then_some(total)
 }
 
 /// Charge le maillage moteur quel que soit le format source. Les anciens STL
@@ -908,6 +940,7 @@ fn scene_object_specs(scene: &Value, requested_plate: Option<u32>) -> Option<Vec
                         .and_then(Value::as_str)
                         .filter(|name| !name.trim().is_empty())
                         .map(str::to_string),
+                    cut_id: crate::scene::scene_cut_id(object),
                 })
             })
             .collect(),

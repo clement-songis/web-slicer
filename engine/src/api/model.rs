@@ -69,6 +69,89 @@ pub struct ModelVolume {
     /// JSON web-slicer `{ type: "text" | "svg", … }` ; `None` = volume ordinaire.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub emboss: Option<serde_json::Value>,
+    /// Connecteur de coupe (`ModelVolume::cut_info` d'Orca, connecteur déjà
+    /// découpé : `is_connector && is_processed`) ; écrit dans
+    /// `Metadata/cut_information.xml` du 3MF. `None` = volume ordinaire.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cut_info: Option<VolumeCutInfo>,
+    /// Statistiques d'erreurs du maillage lu par libslic3r
+    /// (`TriangleMesh::stats()` : arêtes ouvertes restantes + erreurs réparées à
+    /// la lecture, ou `mesh_stat` du 3MF) ; `None` = non renseigné.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mesh_stats: Option<MeshErrorStats>,
+}
+
+/// Erreurs d'un maillage (`TriangleMeshStats` d'Orca, partie erreurs) :
+/// `open_edges` = erreurs restantes (non-manifold), `repaired` = erreurs
+/// corrigées automatiquement (`RepairedMeshErrors`).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct MeshErrorStats {
+    pub open_edges: u32,
+    #[serde(default)]
+    pub repaired: crate::api::RepairedMeshErrors,
+}
+
+impl MeshErrorStats {
+    /// `TriangleMeshStats::manifold`.
+    pub fn manifold(&self) -> bool {
+        self.open_edges == 0
+    }
+
+    /// `TriangleMeshStats::repaired`.
+    pub fn repaired(&self) -> bool {
+        self.repaired.repaired_anything()
+    }
+
+    /// `ModelObject::get_repaired_errors_count` : somme des erreurs réparées.
+    pub fn repaired_errors_count(&self) -> u32 {
+        let r = &self.repaired;
+        r.degenerate_facets
+            + r.edges_fixed
+            + r.facets_removed
+            + r.facets_reversed
+            + r.backwards_edges
+    }
+
+    /// `RepairedMeshErrors::merge` + cumul des arêtes ouvertes
+    /// (`ModelObject::get_object_stl_stats`).
+    pub fn merge(&mut self, other: &MeshErrorStats) {
+        self.open_edges += other.open_edges;
+        let (a, b) = (&mut self.repaired, &other.repaired);
+        a.edges_fixed += b.edges_fixed;
+        a.degenerate_facets += b.degenerate_facets;
+        a.facets_removed += b.facets_removed;
+        a.facets_reversed += b.facets_reversed;
+        a.backwards_edges += b.backwards_edges;
+    }
+}
+
+/// `ModelVolume::CutInfo` d'un connecteur découpé (Orca 2.4.1, Model.hpp).
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct VolumeCutInfo {
+    /// `CutConnectorType` : 0 = Plug, 1 = Dowel, 2 = Snap.
+    pub connector_type: u8,
+    /// Tolérance de rayon `[0, 1]` (`radius_tolerance`).
+    pub radius_tolerance: f32,
+    /// Tolérance de hauteur `[0, 1]` (`height_tolerance`).
+    pub height_tolerance: f32,
+}
+
+/// `CutObjectBase` d'un objet issu d'une coupe (`ModelObject::cut_id`) : les
+/// pièces d'un même objet coupé partagent `id` ; `check_sum` = nombre de
+/// pièces de l'objet initial, `connectors_cnt` = connecteurs créés. Un
+/// `ModelObject` est « coupé » (`is_cut()`) si `id` est valide (≠ 0).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct CutObjectId {
+    pub id: u64,
+    pub check_sum: u64,
+    pub connectors_cnt: u64,
+}
+
+impl CutObjectId {
+    /// `CutObjectBase::is_equal` : même id, même check_sum, mêmes connecteurs.
+    pub fn is_equal(&self, other: &CutObjectId) -> bool {
+        self == other
+    }
 }
 
 /// Canal de peinture d'un volume (miroir des `FacetsAnnotation` de `ModelVolume`).
@@ -126,6 +209,9 @@ pub struct ModelObject {
     /// Plages de hauteur à réglages propres (`ModelObject::layer_config_ranges`).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub layer_config_ranges: Vec<LayerConfigRange>,
+    /// Informations de coupe (`ModelObject::cut_id`), `None` = objet non coupé.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub cut_id: Option<CutObjectId>,
 }
 
 /// Plage `[min_z, max_z]` (mm, objet posé) et ses surcharges de réglages,
@@ -230,6 +316,8 @@ impl Model {
                 paint: VolumePaint::default(),
                 settings: DynamicPrintConfig::new(),
                 emboss: None,
+                cut_info: None,
+                mesh_stats: None,
             }],
             instances: vec![ModelInstance {
                 matrix: DMat4::IDENTITY,
@@ -239,6 +327,7 @@ impl Model {
             settings: DynamicPrintConfig::new(),
             layer_height_profile: Vec::new(),
             layer_config_ranges: Vec::new(),
+            cut_id: None,
         });
         self.objects.last_mut().expect("objet tout juste ajouté")
     }

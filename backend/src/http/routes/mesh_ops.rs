@@ -103,6 +103,11 @@ pub struct CutRequest {
     #[serde(default)]
     #[ts(optional)]
     pub flip_lower: Option<bool>,
+    /// Id de l'objet de scène coupé : son `cutId` (objet déjà issu d'une
+    /// coupe) sert de base au `cut_id` des pièces (update_object_cut_id d'Orca).
+    #[serde(default)]
+    #[ts(optional)]
+    pub object_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, TS)]
@@ -240,6 +245,18 @@ pub struct MeshOpPartResponse {
     #[ts(optional)]
     #[serde(skip_serializing_if = "Option::is_none")]
     pub volumes: Option<Vec<MeshOpVolumeResponse>>,
+    /// Coupe : informations de coupe des pièces (`ModelObject::cut_id` d'Orca),
+    /// à recopier telles quelles dans `cutId` de l'objet de scène créé. Absent
+    /// si Orca n'en enregistre pas (coupe simple sans connecteur ni queue
+    /// d'aronde d'un objet non coupé, ou une seule moitié conservée). Si l'id
+    /// existait déjà (objet re-coupé), recopier aussi ce `cutId` sur les autres
+    /// objets de même `cutId.id` (synchronize_model_after_cut).
+    #[ts(
+        optional,
+        type = "{ id: number; checkSum: number; connectorsCnt: number }"
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cut_id: Option<serde_json::Value>,
 }
 
 /// Volume additionnel d'un objet coupé (nouveau modèle du projet).
@@ -255,6 +272,14 @@ pub struct MeshOpVolumeResponse {
     pub role: String,
     /// Volume issu d'un connecteur (`cut_info.is_connector`).
     pub connector: bool,
+    /// Connecteur : `ModelVolume::cut_info` à recopier tel quel dans `cutInfo`
+    /// du volume de scène (`cut_information.xml` du 3MF).
+    #[ts(
+        optional,
+        type = "{ connectorType: 'plug' | 'dowel' | 'snap'; radiusTolerance: number; heightTolerance: number }"
+    )]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cut_info: Option<serde_json::Value>,
     /// Centre de la boîte du volume moins celui du corps (repère recentré de
     /// l'objet, = `offset` du volume de scène).
     pub offset: [f64; 3],
@@ -722,6 +747,7 @@ pub async fn cut(
     let mut paints = Vec::with_capacity(parts.len());
     if let Some(channels) = req
         .keep_painting
+        .as_ref()
         .filter(|c| c.values().any(|f| !f.is_empty()))
     {
         for part in parts.iter().filter(|p| p.volume.is_none()) {
@@ -740,7 +766,71 @@ pub async fn cut(
     for (part, paint) in response.parts.iter_mut().zip(paints) {
         part.paint = paint;
     }
+    let scene = state
+        .storage
+        .projects()
+        .get(user.id, project_id)
+        .await?
+        .scene;
+    apply_cut_info(&req, &scene, &mut response);
     Ok((status, Json(response)))
+}
+
+/// Informations de coupe des pièces (GLGizmoCut3D::perform_cut d'Orca) :
+/// `cut_id` commun (apply_cut_connectors + update_object_cut_id) et
+/// `cut_info` de chaque connecteur ; les connecteurs d'un objet déjà coupé
+/// sont numérotés à la suite (`Connector-<connectors_cnt + k>`).
+fn apply_cut_info(req: &CutRequest, scene: &serde_json::Value, response: &mut MeshOpResponse) {
+    use crate::scene::{cut_id_after_cut, cut_id_to_scene, cut_info_to_scene, CutAttributes};
+    let connectors = req.connectors.as_deref().unwrap_or_default();
+    let source = req.object_id.as_deref().and_then(|id| {
+        scene
+            .get("objects")
+            .and_then(serde_json::Value::as_array)?
+            .iter()
+            .find(|o| o.get("id").and_then(serde_json::Value::as_str) == Some(id))
+            .and_then(crate::scene::scene_cut_id)
+    });
+    let attributes = CutAttributes {
+        keep_upper: req.keep_upper.unwrap_or(true),
+        keep_lower: req.keep_lower.unwrap_or(true),
+        connectors: connectors.len() as u64,
+        dowels: connectors
+            .iter()
+            .filter(|c| c.kind == engine::api::split::CutConnectorType::Dowel)
+            .count() as u64,
+        groove: req.groove.is_some(),
+    };
+    let cut_id = cut_id_after_cut(source, attributes, crate::scene::fresh_cut_id(scene));
+    let previous_connectors = source.map_or(0, |cut| cut.connectors_cnt);
+    for part in &mut response.parts {
+        part.cut_id = cut_id.as_ref().map(cut_id_to_scene);
+        for volume in part.volumes.iter_mut().flatten() {
+            if !volume.connector {
+                continue;
+            }
+            // `Connector-<k>`, suivi de `_A` / `_B` pour un goujon découpé.
+            let Some(rest) = volume.name.strip_prefix("Connector-") else {
+                continue;
+            };
+            let digits = rest.chars().take_while(char::is_ascii_digit).count();
+            let suffix = rest[digits..].to_string();
+            let Some(k) = rest[..digits].parse::<u64>().ok().filter(|k| *k >= 1) else {
+                continue;
+            };
+            if let Some(connector) = connectors.get((k - 1) as usize) {
+                volume.cut_info = Some(cut_info_to_scene(&engine::api::VolumeCutInfo {
+                    connector_type: connector.kind as u8,
+                    // CutConnector d'Orca (adapters/ffi/split.rs) : rayon = moitié.
+                    radius_tolerance: connector.size_tolerance_mm * 0.5,
+                    height_tolerance: connector.depth_tolerance_mm,
+                }));
+            }
+            if previous_connectors > 0 {
+                volume.name = format!("Connector-{}{suffix}", previous_connectors + k);
+            }
+        }
+    }
 }
 
 /// `POST /api/projects/{id}/boolean` — booléen mcut (outil Mesh Boolean)
@@ -970,6 +1060,7 @@ async fn persist_parts(
                             name: meta.name.clone(),
                             role: meta.role.clone(),
                             connector: meta.connector,
+                            cut_info: None,
                             offset: std::array::from_fn(|i| c[i] - b[i]),
                             triangles: response.triangles,
                             volume_mm3: response.volume_mm3,
@@ -1084,6 +1175,7 @@ async fn persist_part(
         paint: None,
         emboss: None,
         volumes: None,
+        cut_id: None,
     })
 }
 

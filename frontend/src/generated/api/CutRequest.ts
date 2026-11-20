@@ -46,4 +46,9 @@ groove?: CutGroove,
 /**
  * « Garder comme pièces » : un seul objet, deux volumes (_A, _B).
  */
-keep_as_parts?: boolean, place_on_cut_upper?: boolean, place_on_cut_lower?: boolean, flip_upper?: boolean, flip_lower?: boolean, };
+keep_as_parts?: boolean, place_on_cut_upper?: boolean, place_on_cut_lower?: boolean, flip_upper?: boolean, flip_lower?: boolean, 
+/**
+ * Id de l'objet de scène coupé : son `cutId` (objet déjà issu d'une
+ * coupe) sert de base au `cut_id` des pièces (update_object_cut_id d'Orca).
+ */
+object_id?: string, };

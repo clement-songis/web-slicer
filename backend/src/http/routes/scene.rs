@@ -837,8 +837,10 @@ fn scene_object_settings(object: &Value) -> engine::api::DynamicPrintConfig {
 }
 
 /// Même convention Transform Three.js que le runner de slicing : Euler XYZ en
-/// degrés, scale par composante et translation en mm.
-fn scene_transform_matrix(value: &Value) -> glam::DMat4 {
+/// degrés, scale par composante et translation en mm. Matrice d'instance
+/// T·R·S (Geometry::Transformation d'Orca) : la colonne j est la colonne j de
+/// la rotation multipliée par l'échelle s_j (Matrix4.compose de Three.js).
+pub(crate) fn scene_transform_matrix(value: &Value) -> glam::DMat4 {
     use glam::{DMat4, DVec3};
     let vector = |key: &str, default: [f64; 3]| -> [f64; 3] {
         let mut out = default;
@@ -852,35 +854,13 @@ fn scene_transform_matrix(value: &Value) -> glam::DMat4 {
         out
     };
     let [x, y, z] = vector("position", [0.0; 3]);
-    let [rx, ry, rz] = vector("rotation", [0.0; 3]).map(|v| v.to_radians());
-    let [sx, sy, sz] = vector("scale", [1.0; 3]);
-    let (s1, c1) = rx.sin_cos();
-    let (s2, c2) = ry.sin_cos();
-    let (s3, c3) = rz.sin_cos();
-    let rotation = [
-        [c2 * c3, -c2 * s3, s2],
-        [c1 * s3 + c3 * s1 * s2, c1 * c3 - s1 * s2 * s3, -c2 * s1],
-        [s1 * s3 - c1 * c3 * s2, c3 * s1 + c1 * s2 * s3, c1 * c2],
-    ];
+    let rotation = crate::scene::euler_xyz_deg_rotation(vector("rotation", [0.0; 3]));
+    let scale = vector("scale", [1.0; 3]);
+    let column = |j: usize| DVec3::new(rotation[0][j], rotation[1][j], rotation[2][j]) * scale[j];
     DMat4::from_cols(
-        DVec3::new(
-            rotation[0][0] * sx,
-            rotation[0][1] * sy,
-            rotation[0][2] * sx,
-        )
-        .extend(0.0),
-        DVec3::new(
-            rotation[1][0] * sx,
-            rotation[1][1] * sy,
-            rotation[1][2] * sz,
-        )
-        .extend(0.0),
-        DVec3::new(
-            rotation[2][0] * sz,
-            rotation[2][1] * sz,
-            rotation[2][2] * sz,
-        )
-        .extend(0.0),
+        column(0).extend(0.0),
+        column(1).extend(0.0),
+        column(2).extend(0.0),
         DVec3::new(x, y, z).extend(1.0),
     )
 }
@@ -1162,6 +1142,278 @@ async fn load_stl_mesh(state: &AppState, model: &Model) -> ApiResult<Mesh> {
     })
 }
 
+// --- Erreurs de maillage (GUI_ObjectList::get_mesh_errors_info) -------------
+
+/// Erreurs de maillage d'un modèle ou d'un objet, comme l'icône d'alerte et
+/// l'infobulle de la liste d'objets d'Orca (`ObjectList::get_mesh_errors_info`,
+/// `get_warning_icon_name`) : arêtes ouvertes restantes (non-manifold) et
+/// erreurs corrigées automatiquement à la lecture (`RepairedMeshErrors` :
+/// arêtes soudées, facettes dégénérées / retirées / inversées, arêtes à
+/// l'envers). Statistiques calculées par libslic3r (`TriangleMesh::stats()`
+/// du fichier lu comme Orca, `<mesh_stat>` d'un 3MF) ; après « Réparer »,
+/// maillage réparé (aucune erreur réparée, comme après fix_model_with_cgal).
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, TS)]
+#[ts(export)]
+pub struct MeshErrorsInfo {
+    /// Arêtes ouvertes restantes (`stats.open_edges`).
+    pub open_edges: u32,
+    pub edges_fixed: u32,
+    pub degenerate_facets: u32,
+    pub facets_removed: u32,
+    /// Facettes inversées (normales retournées) corrigées.
+    pub facets_reversed: u32,
+    pub backwards_edges: u32,
+    /// `get_repaired_errors_count` : somme des 5 compteurs ci-dessus.
+    pub repaired_errors: u32,
+    /// `stats.manifold()` : aucune arête ouverte.
+    pub manifold: bool,
+    /// `stats.repaired()` : au moins une erreur corrigée.
+    pub repaired: bool,
+    /// Icône d'alerte `obj_warning` affichée (non manifold ou réparé).
+    pub warning: bool,
+    /// Infobulle d'Orca (msgids anglais, à traduire côté client) ; vide si
+    /// aucune alerte.
+    pub tooltip: String,
+}
+
+impl MeshErrorsInfo {
+    pub(crate) fn from_stats(stats: &engine::api::MeshErrorStats) -> Self {
+        let r = &stats.repaired;
+        let manifold = stats.manifold();
+        let repaired = stats.repaired();
+        let errors = stats.repaired_errors_count();
+        let plural = |n: u32, one: &str, many: &str| {
+            if n == 1 {
+                one.replace("%1$d", &n.to_string())
+            } else {
+                many.replace("%1$d", &n.to_string())
+            }
+        };
+        let mut tooltip = String::new();
+        if repaired || !manifold {
+            if repaired {
+                tooltip += &plural(errors, "%1$d error repaired", "%1$d errors repaired");
+                tooltip += "\n";
+            }
+            if !manifold {
+                tooltip += "Remaining errors:\n\t";
+                tooltip += &plural(
+                    stats.open_edges,
+                    "%1$d non-manifold edge",
+                    "%1$d non-manifold edges",
+                );
+                tooltip += "\n";
+            }
+            tooltip += "\nClick the icon to repair model object";
+        }
+        Self {
+            open_edges: stats.open_edges,
+            edges_fixed: r.edges_fixed,
+            degenerate_facets: r.degenerate_facets,
+            facets_removed: r.facets_removed,
+            facets_reversed: r.facets_reversed,
+            backwards_edges: r.backwards_edges,
+            repaired_errors: errors,
+            manifold,
+            repaired,
+            warning: !manifold || repaired,
+            tooltip,
+        }
+    }
+}
+
+/// Statistiques d'erreurs d'un modèle (somme de ses volumes,
+/// `ModelObject::get_object_stl_stats`).
+pub(crate) async fn model_mesh_stats(
+    state: &AppState,
+    model: &Model,
+) -> ApiResult<engine::api::MeshErrorStats> {
+    let repaired_by_user = model
+        .repair_report
+        .as_ref()
+        .is_some_and(|report| report.get("repairs").is_some());
+    if !repaired_by_user {
+        if let Some(raw) =
+            crate::engine::raw_model::load_with_stats(FsPath::new(&model.file_path), model.format)
+                .await
+        {
+            let mut total = engine::api::MeshErrorStats::default();
+            for stats in raw
+                .objects
+                .iter()
+                .flat_map(|o| &o.volumes)
+                .filter_map(|v| v.mesh_stats.as_ref())
+            {
+                total.merge(stats);
+            }
+            return Ok(total);
+        }
+    }
+    // Maillage remplacé par « Réparer » (ou format non relu par le moteur) :
+    // TriangleMesh(its) neuf → arêtes ouvertes du maillage stocké, rien de réparé.
+    let mesh = load_converted_mesh(state, model).await?;
+    let report = analyze_mesh(&Mesh {
+        positions: mesh.vertices.iter().flatten().copied().collect(),
+        normals: Vec::new(),
+        indices: mesh.indices.iter().flatten().copied().collect(),
+    });
+    Ok(engine::api::MeshErrorStats {
+        open_edges: report.open_edges as u32,
+        repaired: Default::default(),
+    })
+}
+
+/// `GET /api/models/{id}/mesh-errors` — erreurs de maillage d'un modèle.
+pub async fn model_mesh_errors(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> ApiResult<Json<MeshErrorsInfo>> {
+    let model = state
+        .storage
+        .models()
+        .get(user.id, parse_model_id(&id)?)
+        .await?;
+    let stats = model_mesh_stats(&state, &model).await?;
+    Ok(Json(MeshErrorsInfo::from_stats(&stats)))
+}
+
+/// Erreurs de maillage d'un objet de la scène.
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct ObjectMeshErrors {
+    /// `objects[].id` de la scène.
+    pub object_id: String,
+    #[serde(flatten)]
+    #[ts(flatten)]
+    pub info: MeshErrorsInfo,
+}
+
+/// `GET /api/projects/{id}/mesh-errors` — alerte d'erreurs de maillage de
+/// chaque objet de la scène (liste d'objets d'Orca) : modèle de l'objet +
+/// volumes maillés (`shape: "mesh"`), cumulés comme get_object_stl_stats.
+/// Objets sans alerte inclus (`warning: false`).
+pub async fn project_mesh_errors(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(project_raw): Path<String>,
+) -> ApiResult<Json<Vec<ObjectMeshErrors>>> {
+    let project_id = parse_project_id(&project_raw)?;
+    let project = state.storage.projects().get(user.id, project_id).await?;
+    let models = state
+        .storage
+        .models()
+        .list(user.id, Some(project_id))
+        .await?;
+    let mut cache: std::collections::HashMap<String, engine::api::MeshErrorStats> =
+        std::collections::HashMap::new();
+    let mut out = Vec::new();
+    for object in project
+        .scene
+        .get("objects")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+    {
+        let (Some(id), Some(model_id)) = (
+            object.get("id").and_then(Value::as_str),
+            object.get("modelId").and_then(Value::as_str),
+        ) else {
+            continue;
+        };
+        let volume_models = object
+            .get("volumes")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter(|v| v.get("shape").and_then(Value::as_str) == Some("mesh"))
+            .filter_map(|v| v.get("modelId").and_then(Value::as_str));
+        let mut total = engine::api::MeshErrorStats::default();
+        for model_id in std::iter::once(model_id).chain(volume_models) {
+            let Some(model) = models.iter().find(|m| m.id.to_string() == model_id) else {
+                continue;
+            };
+            if !cache.contains_key(model_id) {
+                let stats = model_mesh_stats(&state, model).await?;
+                cache.insert(model_id.to_string(), stats);
+            }
+            total.merge(&cache[model_id]);
+        }
+        out.push(ObjectMeshErrors {
+            object_id: id.to_string(),
+            info: MeshErrorsInfo::from_stats(&total),
+        });
+    }
+    Ok(Json(out))
+}
+
+// --- Informations de coupe (« Invalidate cut info ») -------------------------
+
+/// Corps de `POST /api/projects/{id}/objects/{object_id}/invalidate-cut`.
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[serde(deny_unknown_fields)]
+#[ts(export)]
+pub struct InvalidateCutRequest {
+    /// Verrou optimiste (version courante si absent).
+    #[serde(default)]
+    #[ts(optional)]
+    pub expected_version: Option<i64>,
+}
+
+/// Réponse : objets dont les informations de coupe ont été retirées et projet
+/// sauvegardé (nouvelle version).
+#[derive(Debug, Clone, Serialize, TS)]
+#[ts(export)]
+pub struct InvalidateCutResponse {
+    pub object_ids: Vec<String>,
+    pub project: crate::http::dto::ProjectResponse,
+}
+
+/// `POST /api/projects/{id}/objects/{object_id}/invalidate-cut` — « Invalidate
+/// cut info » du menu contextuel d'Orca (MenuFactory::append_menu_item_
+/// invalidate_cut_info, ObjectList::invalidate_cut_info_for_object) : retire
+/// `cutId` de tous les objets liés (même cut_id) et `cutInfo` de leurs
+/// volumes ; les pièces redeviennent des objets indépendants (manipulation
+/// libre, plus de cut_information.xml). Objet non coupé → 422 (Orca n'affiche
+/// pas l'entrée) ; objet absent → 404.
+pub async fn invalidate_cut(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path((project_raw, object_id)): Path<(String, String)>,
+    body: Option<Json<InvalidateCutRequest>>,
+) -> ApiResult<Json<InvalidateCutResponse>> {
+    let project_id = parse_project_id(&project_raw)?;
+    let project = state.storage.projects().get(user.id, project_id).await?;
+    let expected = body
+        .and_then(|Json(b)| b.expected_version)
+        .unwrap_or(project.version);
+    let mut scene = project.scene.clone();
+    let changed = crate::scene::invalidate_cut_info(&mut scene, &object_id)
+        .ok_or_else(|| ApiError::not_found("Objet"))?;
+    if changed.is_empty() {
+        return Err(ApiError::validation(
+            "objet sans informations de coupe",
+            serde_json::json!({ "object_id": object_id }),
+        ));
+    }
+    let saved = state
+        .storage
+        .projects()
+        .update(
+            user.id,
+            project_id,
+            expected,
+            scene,
+            project.active_presets.clone(),
+            None,
+        )
+        .await?;
+    Ok(Json(InvalidateCutResponse {
+        object_ids: changed,
+        project: saved.into(),
+    }))
+}
+
 #[cfg(test)]
 mod arrange_options_tests {
     use super::*;
@@ -1207,6 +1459,78 @@ mod arrange_options_tests {
         assert_eq!(
             min_object_distance(&engine::api::DynamicPrintConfig::new()),
             0.0
+        );
+    }
+
+    /// Matrice d'instance de l'arrangeur = T·R·S de Three.js (Matrix4.compose,
+    /// quaternion Euler XYZ), implémentation indépendante via glam ; le point
+    /// transformé = rotation (rotate_vector_by_euler_deg) de l'échelle + position.
+    #[test]
+    fn scene_transform_matrix_is_translation_rotation_scale() {
+        let cases = [
+            ([10.0, -4.0, 3.0], [0.0, 0.0, 45.0], [1.0, 1.0, 1.0]),
+            ([0.0, 0.0, 0.0], [0.0, 0.0, 30.0], [1.5, 1.0, 1.0]),
+            ([5.0, 6.0, 7.0], [90.0, 0.0, 30.0], [1.0, 2.0, 0.5]),
+            ([1.0, 2.0, 3.0], [12.0, -35.0, 160.0], [0.7, 1.3, 2.1]),
+        ];
+        for (position, rotation, scale) in cases {
+            let m = scene_transform_matrix(&serde_json::json!({
+                "position": position, "rotation": rotation, "scale": scale
+            }));
+            let [rx, ry, rz] = rotation.map(f64::to_radians);
+            let expected = glam::DMat4::from_scale_rotation_translation(
+                glam::DVec3::from_array(scale),
+                glam::DQuat::from_euler(glam::EulerRot::XYZ, rx, ry, rz),
+                glam::DVec3::from_array(position),
+            );
+            assert!(
+                m.abs_diff_eq(expected, 1e-12),
+                "{rotation:?} {scale:?} : {m:?} ≠ {expected:?}"
+            );
+            let v = [3.0, -2.0, 1.5];
+            let scaled = [v[0] * scale[0], v[1] * scale[1], v[2] * scale[2]];
+            let rotated = crate::scene::rotate_vector_by_euler_deg(rotation, scaled);
+            let got = m.transform_point3(glam::DVec3::from_array(v));
+            for axis in 0..3 {
+                assert!((got[axis] - (rotated[axis] + position[axis])).abs() < 1e-9);
+            }
+        }
+        // Cas de la phase 36 (diag-arrange) : cube à +45° → colonne X = (cos, sin).
+        let m = scene_transform_matrix(&serde_json::json!({ "rotation": [0.0, 0.0, 45.0] }));
+        assert!(
+            (m.x_axis.y - std::f64::consts::FRAC_1_SQRT_2).abs() < 1e-12,
+            "{m:?}"
+        );
+    }
+
+    /// Infobulle et icône de GUI_ObjectList::get_mesh_errors_info.
+    #[test]
+    fn mesh_errors_info_like_object_list() {
+        use engine::api::{MeshErrorStats, RepairedMeshErrors};
+        let clean = MeshErrorsInfo::from_stats(&MeshErrorStats::default());
+        assert!(!clean.warning && clean.manifold && clean.tooltip.is_empty());
+        let stats = MeshErrorStats {
+            open_edges: 3,
+            repaired: RepairedMeshErrors {
+                facets_reversed: 1,
+                degenerate_facets: 1,
+                ..Default::default()
+            },
+        };
+        let info = MeshErrorsInfo::from_stats(&stats);
+        assert!(info.warning && !info.manifold && info.repaired);
+        assert_eq!(info.repaired_errors, 2);
+        assert_eq!(
+            info.tooltip,
+            "2 errors repaired\nRemaining errors:\n\t3 non-manifold edges\n\nClick the icon to repair model object"
+        );
+        let one = MeshErrorsInfo::from_stats(&MeshErrorStats {
+            open_edges: 1,
+            repaired: Default::default(),
+        });
+        assert_eq!(
+            one.tooltip,
+            "Remaining errors:\n\t1 non-manifold edge\n\nClick the icon to repair model object"
         );
     }
 

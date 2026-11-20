@@ -10,6 +10,9 @@
 
 use std::collections::HashMap;
 
+use engine::api::{CutObjectId, VolumeCutInfo};
+use serde_json::Value;
+
 use crate::mesh::Mesh;
 
 // --- Arrangement -------------------------------------------------------------
@@ -208,20 +211,28 @@ fn euler_deg_from_quaternion(q: Quat) -> Vec3 {
 /// Applique une rotation Euler XYZ (degrés) à un vecteur (matrice Three.js,
 /// ordre XYZ). Exposé pour les tests d'orientation.
 pub fn rotate_vector_by_euler_deg(euler: Vec3, v: Vec3) -> Vec3 {
+    let m = euler_xyz_deg_rotation(euler);
+    [
+        m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2],
+        m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2],
+        m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2],
+    ]
+}
+
+/// Matrice de rotation 3×3 (lignes) d'un Euler XYZ en degrés, convention
+/// Three.js `Matrix4.makeRotationFromEuler` (ordre « XYZ » : R = Rx·Ry·Rz),
+/// celle des transformations de la scène. `m[ligne][colonne]` : la colonne j
+/// est l'image de l'axe j du repère objet.
+pub fn euler_xyz_deg_rotation(euler: Vec3) -> [[f64; 3]; 3] {
     let rad = std::f64::consts::PI / 180.0;
     let (rx, ry, rz) = (euler[0] * rad, euler[1] * rad, euler[2] * rad);
     let (c1, s1) = (rx.cos(), rx.sin());
     let (c2, s2) = (ry.cos(), ry.sin());
     let (c3, s3) = (rz.cos(), rz.sin());
-    let m = [
+    [
         [c2 * c3, -c2 * s3, s2],
         [c1 * s3 + c3 * s1 * s2, c1 * c3 - s1 * s2 * s3, -c2 * s1],
         [s1 * s3 - c1 * c3 * s2, c3 * s1 + c1 * s2 * s3, c1 * c2],
-    ];
-    [
-        m[0][0] * v[0] + m[0][1] * v[1] + m[0][2] * v[2],
-        m[1][0] * v[0] + m[1][1] * v[1] + m[1][2] * v[2],
-        m[2][0] * v[0] + m[2][1] * v[1] + m[2][2] * v[2],
     ]
 }
 
@@ -258,6 +269,175 @@ pub fn suggest_orientation(mesh: &Mesh) -> Vec3 {
         ]);
     }
     euler_deg_from_quaternion(quaternion_from_unit_vectors(best_normal, [0.0, 0.0, -1.0]))
+}
+
+// --- Informations de coupe (cut_id / CutObjectBase) --------------------------
+
+/// `cutId` d'un objet de scène (`{ id, checkSum, connectorsCnt }`, miroir de
+/// `ModelObject::cut_id`) ; absent, nul ou d'id 0 (`ObjectID` invalide) = objet
+/// non coupé.
+pub fn scene_cut_id(object: &Value) -> Option<CutObjectId> {
+    let cut = object.get("cutId")?;
+    let id = cut.get("id")?.as_u64().filter(|id| *id != 0)?;
+    Some(CutObjectId {
+        id,
+        check_sum: cut.get("checkSum").and_then(Value::as_u64).unwrap_or(1),
+        connectors_cnt: cut
+            .get("connectorsCnt")
+            .and_then(Value::as_u64)
+            .unwrap_or(0),
+    })
+}
+
+/// Forme scène d'un `cutId`.
+pub fn cut_id_to_scene(cut: &CutObjectId) -> Value {
+    serde_json::json!({
+        "id": cut.id,
+        "checkSum": cut.check_sum,
+        "connectorsCnt": cut.connectors_cnt,
+    })
+}
+
+/// `CutConnectorType` d'Orca, même ordre (Plug, Dowel, Snap).
+const CONNECTOR_TYPES: [&str; 3] = ["plug", "dowel", "snap"];
+
+/// `cutInfo` d'un volume de scène (`{ connectorType: "plug" | "dowel" |
+/// "snap", radiusTolerance, heightTolerance }`, `ModelVolume::cut_info` d'un
+/// connecteur découpé) ; absent = volume ordinaire.
+pub fn scene_cut_info(volume: &Value) -> Option<VolumeCutInfo> {
+    let info = volume.get("cutInfo")?.as_object()?;
+    let kind = info
+        .get("connectorType")
+        .and_then(Value::as_str)
+        .unwrap_or("plug");
+    let connector_type = CONNECTOR_TYPES.iter().position(|k| *k == kind)? as u8;
+    let tolerance = |key: &str| {
+        info.get(key)
+            .and_then(Value::as_f64)
+            .filter(|v| v.is_finite())
+            .unwrap_or(0.0) as f32
+    };
+    Some(VolumeCutInfo {
+        connector_type,
+        radius_tolerance: tolerance("radiusTolerance"),
+        height_tolerance: tolerance("heightTolerance"),
+    })
+}
+
+/// Forme scène d'un `cutInfo`.
+pub fn cut_info_to_scene(info: &VolumeCutInfo) -> Value {
+    serde_json::json!({
+        "connectorType": CONNECTOR_TYPES
+            .get(usize::from(info.connector_type))
+            .copied()
+            .unwrap_or("plug"),
+        "radiusTolerance": info.radius_tolerance,
+        "heightTolerance": info.height_tolerance,
+    })
+}
+
+/// Attributs d'une coupe utiles au `cut_id` (GLGizmoCut3D::perform_cut).
+#[derive(Debug, Clone, Copy, Default)]
+pub struct CutAttributes {
+    pub keep_upper: bool,
+    pub keep_lower: bool,
+    /// Nombre de connecteurs posés (`apply_cut_connectors`).
+    pub connectors: u64,
+    /// Connecteurs de type goujon (`CreateDowels`, `dowels_count`).
+    pub dowels: u64,
+    /// Queue d'aronde (`cut_with_groove`).
+    pub groove: bool,
+}
+
+/// `cut_id` des pièces d'une coupe, à partir de celui de l'objet coupé
+/// (`source`) : `apply_cut_connectors` (`increase_connectors_cnt`) puis
+/// `update_object_cut_id` de GLGizmoCut.cpp (Orca 2.4.1). `fresh_id` remplace
+/// `CutObjectBase::init()` (id unique du processus Orca) : id libre du projet.
+/// Les pièces sont des clones de l'objet coupé (`clone_for_cut`) : toutes
+/// reçoivent ce même `cut_id` (goujons compris).
+pub fn cut_id_after_cut(
+    source: Option<CutObjectId>,
+    attributes: CutAttributes,
+    fresh_id: u64,
+) -> Option<CutObjectId> {
+    let has_connectors = attributes.connectors > 0;
+    // Avec connecteurs, Orca force les deux moitiés.
+    let keep_upper = has_connectors || attributes.keep_upper;
+    let keep_lower = has_connectors || attributes.keep_lower;
+    // only_if(!has_connectors && !cut_with_groove && cut_id.invalid(), InvalidateCutInfo)
+    let invalidate = !has_connectors && !attributes.groove && source.is_none();
+    // CutObjectBase invalide : check_sum 1, aucun connecteur.
+    let (id, check_sum, connectors_cnt) = match source {
+        Some(cut) => (cut.id, cut.check_sum, cut.connectors_cnt),
+        None => (0, 1, 0),
+    };
+    let connectors_cnt = connectors_cnt + attributes.connectors;
+    if !keep_upper || !keep_lower || invalidate {
+        // « we don't save cut information, if result will not contains all
+        // parts of initial object » : cut_id inchangé (invalide le cas échéant).
+        return (id != 0).then_some(CutObjectId {
+            id,
+            check_sum,
+            connectors_cnt,
+        });
+    }
+    let id = if id == 0 { fresh_id.max(1) } else { id };
+    // cut_obj_cnt = -1 + KeepUpper + KeepLower + dowels_count (> 0 ici).
+    Some(CutObjectId {
+        id,
+        check_sum: check_sum + 1 + attributes.dowels,
+        connectors_cnt,
+    })
+}
+
+/// Id libre pour une nouvelle coupe : plus grand `cutId.id` de la scène + 1.
+pub fn fresh_cut_id(scene: &Value) -> u64 {
+    scene
+        .get("objects")
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(scene_cut_id)
+        .map(|cut| cut.id)
+        .max()
+        .unwrap_or(0)
+        + 1
+}
+
+/// « Invalidate cut info » (ObjectList::invalidate_cut_info_for_object) : pour
+/// tous les objets dont le `cut_id` est égal (`is_equal`) à celui de
+/// `object_id`, `ModelObject::invalidate_cut` : `cutId` retiré et `cutInfo`
+/// retiré de chaque volume (`invalidate_cut_info`). Renvoie les ids des objets
+/// modifiés ; `None` si l'objet est absent, vide s'il n'est pas coupé (Orca :
+/// sans effet).
+pub fn invalidate_cut_info(scene: &mut Value, object_id: &str) -> Option<Vec<String>> {
+    let objects = scene.get_mut("objects")?.as_array_mut()?;
+    let target = objects
+        .iter()
+        .find(|o| o.get("id").and_then(Value::as_str) == Some(object_id))?;
+    let Some(cut) = scene_cut_id(target) else {
+        return Some(Vec::new());
+    };
+    let mut changed = Vec::new();
+    for object in objects.iter_mut() {
+        if !scene_cut_id(object).is_some_and(|other| other.is_equal(&cut)) {
+            continue;
+        }
+        if let Some(map) = object.as_object_mut() {
+            map.remove("cutId");
+        }
+        if let Some(volumes) = object.get_mut("volumes").and_then(Value::as_array_mut) {
+            for volume in volumes {
+                if let Some(map) = volume.as_object_mut() {
+                    map.remove("cutInfo");
+                }
+            }
+        }
+        if let Some(id) = object.get("id").and_then(Value::as_str) {
+            changed.push(id.to_string());
+        }
+    }
+    Some(changed)
 }
 
 #[cfg(test)]
@@ -375,5 +555,126 @@ mod tests {
             (down[2] + 1.0).abs() < 1e-6,
             "normale non ramenée vers -Z: {down:?}"
         );
+    }
+}
+
+#[cfg(test)]
+mod cut_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn cut(id: u64, check_sum: u64, connectors_cnt: u64) -> CutObjectId {
+        CutObjectId {
+            id,
+            check_sum,
+            connectors_cnt,
+        }
+    }
+
+    /// update_object_cut_id (GLGizmoCut.cpp) : cas d'Orca.
+    #[test]
+    fn cut_id_follows_update_object_cut_id() {
+        let both = CutAttributes {
+            keep_upper: true,
+            keep_lower: true,
+            ..Default::default()
+        };
+        // Coupe simple d'un objet non coupé : InvalidateCutInfo → aucun cut_id.
+        assert_eq!(cut_id_after_cut(None, both, 5), None);
+        // Queue d'aronde : cut_id créé, check_sum 1 + 1.
+        let groove = CutAttributes {
+            groove: true,
+            ..both
+        };
+        assert_eq!(cut_id_after_cut(None, groove, 5), Some(cut(5, 2, 0)));
+        // Connecteurs (2 dont 1 goujon) : moitiés forcées, check_sum 1 + 1 + 1.
+        let connectors = CutAttributes {
+            keep_upper: false,
+            keep_lower: true,
+            connectors: 2,
+            dowels: 1,
+            ..Default::default()
+        };
+        assert_eq!(cut_id_after_cut(None, connectors, 9), Some(cut(9, 3, 2)));
+        // Objet déjà coupé re-coupé sans connecteur : même id, +1 pièce.
+        assert_eq!(
+            cut_id_after_cut(Some(cut(4, 3, 2)), both, 9),
+            Some(cut(4, 4, 2))
+        );
+        // Une seule moitié conservée : cut_id inchangé.
+        let upper_only = CutAttributes {
+            keep_upper: true,
+            ..Default::default()
+        };
+        assert_eq!(
+            cut_id_after_cut(Some(cut(4, 3, 2)), upper_only, 9),
+            Some(cut(4, 3, 2))
+        );
+        assert_eq!(cut_id_after_cut(None, upper_only, 9), None);
+        // Id libre minimal 1.
+        assert_eq!(cut_id_after_cut(None, groove, 0), Some(cut(1, 2, 0)));
+    }
+
+    #[test]
+    fn scene_cut_fields_round_trip() {
+        let c = cut(3, 4, 1);
+        let object = json!({ "id": "a", "cutId": cut_id_to_scene(&c) });
+        assert_eq!(scene_cut_id(&object), Some(c));
+        assert_eq!(scene_cut_id(&json!({ "cutId": { "id": 0 } })), None);
+        assert_eq!(scene_cut_id(&json!({})), None);
+        let info = VolumeCutInfo {
+            connector_type: 2,
+            radius_tolerance: 0.5,
+            height_tolerance: 0.1,
+        };
+        let volume = json!({ "cutInfo": cut_info_to_scene(&info) });
+        assert_eq!(volume["cutInfo"]["connectorType"], "snap");
+        assert_eq!(scene_cut_info(&volume), Some(info));
+        assert_eq!(
+            scene_cut_info(&json!({ "cutInfo": { "connectorType": "x" } })),
+            None
+        );
+        let scene = json!({ "objects": [object, { "id": "b", "cutId": { "id": 8 } }] });
+        assert_eq!(fresh_cut_id(&scene), 9);
+        assert_eq!(fresh_cut_id(&json!({})), 1);
+    }
+
+    /// ObjectList::invalidate_cut_info_for_object : objets de cut_id égal
+    /// (is_equal : id, check_sum et connecteurs) seulement.
+    #[test]
+    fn invalidate_cut_info_like_orca() {
+        let linked = cut_id_to_scene(&cut(2, 3, 1));
+        let mut scene = json!({ "objects": [
+            { "id": "a", "cutId": linked, "volumes": [
+                { "id": "v", "cutInfo": { "connectorType": "plug" } }, { "id": "w" }
+            ] },
+            { "id": "b", "cutId": linked },
+            { "id": "c", "cutId": cut_id_to_scene(&cut(2, 2, 1)) },
+            { "id": "d" }
+        ] });
+        assert_eq!(
+            invalidate_cut_info(&mut scene, "b"),
+            Some(vec!["a".to_string(), "b".to_string()])
+        );
+        assert!(scene["objects"][0].get("cutId").is_none());
+        assert!(scene["objects"][0]["volumes"][0].get("cutInfo").is_none());
+        assert!(scene["objects"][1].get("cutId").is_none());
+        assert!(
+            scene["objects"][2].get("cutId").is_some(),
+            "check_sum différent"
+        );
+        assert_eq!(invalidate_cut_info(&mut scene, "d"), Some(Vec::new()));
+        assert_eq!(invalidate_cut_info(&mut scene, "zz"), None);
+    }
+
+    #[test]
+    fn euler_rotation_maps_axes_like_three() {
+        // Rz(90°) : X → Y.
+        let m = euler_xyz_deg_rotation([0.0, 0.0, 90.0]);
+        let x = [m[0][0], m[1][0], m[2][0]];
+        assert!((x[0]).abs() < 1e-12 && (x[1] - 1.0).abs() < 1e-12, "{x:?}");
+        // Rx(90°) : Y → Z.
+        let m = euler_xyz_deg_rotation([90.0, 0.0, 0.0]);
+        assert!((m[2][1] - 1.0).abs() < 1e-12);
     }
 }

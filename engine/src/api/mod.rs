@@ -20,9 +20,9 @@ pub use error::{EngineError, EngineErrorCode, EngineResult};
 pub use gcode::{GcodeLayer, GcodePreview, GcodeSegment, LineKind};
 pub use mesh::{DisplayMesh, DisplayMeshError, RepairedMeshErrors, TriangleMesh};
 pub use model::{
-    CustomGcodeItem, CustomGcodeKind, CustomGcodeMode, LayerConfigRange, Model, ModelFormat,
-    ModelInstance, ModelObject, ModelVolume, PaintChannel, PlateCustomGcodes, VolumePaint,
-    VolumeRole,
+    CustomGcodeItem, CustomGcodeKind, CustomGcodeMode, CutObjectId, LayerConfigRange,
+    MeshErrorStats, Model, ModelFormat, ModelInstance, ModelObject, ModelVolume, PaintChannel,
+    PlateCustomGcodes, VolumeCutInfo, VolumePaint, VolumeRole,
 };
 pub use presets::{ArrangeParams, GuiArrangeOutcome, GuiArrangeSettings, RawPreset};
 pub use slice::{
