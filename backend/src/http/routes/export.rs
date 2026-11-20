@@ -761,11 +761,28 @@ pub(crate) async fn build_project_model_selected(
 }
 
 /// Charge le maillage moteur quel que soit le format source. Les anciens STL
-/// sans conversion persistée restent lisibles via le parseur de secours.
+/// sans conversion persistée restent lisibles via le parseur de secours. Un
+/// modèle non-STL dont la conversion tourne encore (projet 3MF tout juste
+/// importé : conversion lancée après la réponse de l'import) est attendu comme
+/// `GET /api/models/{id}/mesh?wait` plutôt que de répondre 409 : dans Orca,
+/// l'export d'un projet chargé réussit toujours.
 async fn load_triangle_mesh(
     state: &AppState,
     model: &crate::domain::Model,
 ) -> ApiResult<engine::api::TriangleMesh> {
+    let converted;
+    let model = if model.mesh_path.is_none() && model.format != ModelFormat::Stl {
+        converted = super::models::wait_converted(
+            state,
+            model.user_id,
+            model.id,
+            std::time::Duration::from_secs(super::models::EXPORT_CONVERSION_WAIT_SECS),
+        )
+        .await?;
+        &converted
+    } else {
+        model
+    };
     if let Some(path) = model.mesh_path.as_deref() {
         let bytes = state.files.read(FsPath::new(path)).await.map_err(|e| {
             tracing::error!(error = %e, "lecture du maillage converti");
@@ -790,12 +807,6 @@ async fn load_triangle_mesh(
                 .map(|c| [c[0], c[1], c[2]])
                 .collect(),
         });
-    }
-    if model.format != ModelFormat::Stl {
-        return Err(ApiError::conflict(format!(
-            "Conversion du modèle « {} » encore indisponible",
-            model.filename
-        )));
     }
     let bytes = state
         .files

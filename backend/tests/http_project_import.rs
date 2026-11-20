@@ -515,3 +515,44 @@ async fn plate_filament_map_is_read_as_a_plate_setting() {
         "carte 1,1 : {text}"
     );
 }
+
+/// Export 3MF d'un projet tout juste importé (régression oracle
+/// editor.import-3mf-paint-volumes) : la conversion des objets tourne encore en
+/// tâche de fond à la réponse de l'import ; l'export l'attend (comme
+/// `GET /api/models/{id}/mesh?wait`) au lieu de répondre 409 « Conversion du
+/// modèle … encore indisponible ». Dans Orca, un projet ouvert s'exporte
+/// toujours.
+#[tokio::test]
+async fn exporting_a_just_imported_project_waits_for_its_conversions() {
+    let (_dir, app) = app().await;
+    let cookie = register(&app).await;
+    let response = import_project(&app, &cookie, "atelier.3mf", &two_plate_project()).await;
+    assert_eq!(response.status(), StatusCode::CREATED);
+    let project = json_body(response).await["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    // Aucune attente de `model.converted` : export immédiat.
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("GET")
+                .uri(format!("/api/projects/{project}/export/3mf"))
+                .header(header::COOKIE, &cookie)
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    let status = response.status();
+    let bytes = to_bytes(response.into_body(), usize::MAX).await.unwrap();
+    assert_eq!(
+        status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&bytes[..bytes.len().min(300)])
+    );
+    let archive = zip::ZipArchive::new(Cursor::new(bytes.to_vec())).expect("archive 3MF");
+    assert!(archive.file_names().any(|name| name.ends_with(".model")));
+}

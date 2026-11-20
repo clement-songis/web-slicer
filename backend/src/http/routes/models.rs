@@ -278,31 +278,7 @@ pub async fn mesh(
             .unwrap_or(MESH_WAIT_DEFAULT_SECS)
             .min(MESH_WAIT_MAX_SECS),
     );
-    let deadline = tokio::time::Instant::now() + wait;
-    let mut events = state.events.subscribe(user.id);
-    let model = loop {
-        let model = state.storage.models().get(user.id, id).await?; // 404 si autre compte
-        if model.mesh_path.is_some() {
-            break model;
-        }
-        if let Some(error) = model.conversion_error.as_deref() {
-            return Err(ApiError::conversion_failed_for(model.id, error));
-        }
-        let now = tokio::time::Instant::now();
-        if now >= deadline {
-            return Err(ApiError::conflict(
-                "conversion en cours (voir l'événement model.converted)",
-            ));
-        }
-        // Réveil sur tout événement du compte (model.converted…) ou, au plus
-        // tard, toutes les 250 ms (échec de conversion : pas d'événement dédié).
-        let tick = (deadline - now).min(std::time::Duration::from_millis(250));
-        if let Ok(Err(tokio::sync::broadcast::error::RecvError::Closed)) =
-            tokio::time::timeout(tick, events.recv()).await
-        {
-            tokio::time::sleep(tick).await;
-        }
-    };
+    let model = wait_converted(&state, user.id, id, wait).await?;
     let mesh_path = model.mesh_path.as_deref().expect("maillage prêt");
 
     let bytes = state
@@ -321,6 +297,53 @@ pub async fn mesh(
     )
         .into_response())
 }
+
+/// Attend (au plus `wait`) la fin de la conversion asynchrone du modèle `id`
+/// et le renvoie avec son `mesh_path`. Échec de conversion persisté → 422 ;
+/// délai dépassé → 409 « conversion en cours » ; modèle d'autrui → 404.
+///
+/// Partagé par `GET /api/models/{id}/mesh` et l'assemblage moteur des exports
+/// (`export::build_project_model`) : un projet tout juste importé (conversion
+/// lancée en tâche de fond après la réponse) s'exporte comme dans Orca, où le
+/// modèle chargé est immédiatement disponible.
+pub(crate) async fn wait_converted(
+    state: &AppState,
+    user: UserId,
+    id: ModelId,
+    wait: std::time::Duration,
+) -> ApiResult<Model> {
+    let deadline = tokio::time::Instant::now() + wait;
+    // Abonnement AVANT la première lecture : un `model.converted` publié entre
+    // la lecture et l'attente n'est pas perdu.
+    let mut events = state.events.subscribe(user);
+    loop {
+        let model = state.storage.models().get(user, id).await?; // 404 si autre compte
+        if model.mesh_path.is_some() {
+            return Ok(model);
+        }
+        if let Some(error) = model.conversion_error.as_deref() {
+            return Err(ApiError::conversion_failed_for(model.id, error));
+        }
+        let now = tokio::time::Instant::now();
+        if now >= deadline {
+            return Err(ApiError::conflict(
+                "conversion en cours (voir l'événement model.converted)",
+            ));
+        }
+        // Réveil sur tout événement du compte (model.converted…) ou, au plus
+        // tard, toutes les 250 ms (échec de conversion : pas d'événement dédié).
+        let tick = (deadline - now).min(std::time::Duration::from_millis(250));
+        if let Ok(Err(tokio::sync::broadcast::error::RecvError::Closed)) =
+            tokio::time::timeout(tick, events.recv()).await
+        {
+            tokio::time::sleep(tick).await;
+        }
+    }
+}
+
+/// Attente maximale de la conversion d'un modèle par les exports (s) : même
+/// borne que `?wait` de `/mesh`.
+pub(crate) const EXPORT_CONVERSION_WAIT_SECS: u64 = MESH_WAIT_MAX_SECS;
 
 /// `GET /api/projects/{id}/models` — modèles rattachés à un projet (T092), pour
 /// repeupler la scène à l'ouverture. Isolation : projet d'autrui → 404 (SC-008).
