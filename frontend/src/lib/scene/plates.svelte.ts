@@ -152,6 +152,21 @@ export class PlateSet {
 		return true;
 	}
 
+	/**
+	 * « Déplacer le plateau vers l'avant » (icône du plateau, Orca
+	 * PartPlateList::move_plate_to_index(i, 0)) : le plateau devient le premier,
+	 * les précédents reculent d'un rang ; il devient actif (select_plate(0)).
+	 * Les objets suivent leur plateau (positions relatives au plateau).
+	 */
+	moveToFront(id: string): boolean {
+		const idx = this.plateIndex(id);
+		if (idx <= 0) return false;
+		const [plate] = this.plates.splice(idx, 1);
+		this.plates.unshift(plate);
+		this.activeId = plate.id;
+		return true;
+	}
+
 	/** Affecte un objet à un plateau (le retire de tout autre plateau). */
 	assign(objectId: string, plateId: string): void {
 		const plate = this.get(plateId);

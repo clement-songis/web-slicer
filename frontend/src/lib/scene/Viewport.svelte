@@ -35,6 +35,7 @@
 	import { sceneColors } from './scene-colors';
 	import { guideRotation, markerWorldRadius, MARKER_PX, type SceneGuides } from './guides';
 	import type { Footprint, PlateView } from './plate-layout';
+	import { appPreferences } from '$lib/settings/preferences';
 
 	interface Props {
 		bed: BedShape;
@@ -630,7 +631,7 @@
 	castShadow
 />
 
-<Bed {bed} {showGrid} />
+<Bed {bed} {showGrid} showAxes={$appPreferences.showAxes} />
 
 {#if plateFrame}
 	<!-- Plateau actif mis en évidence (Orca : contour du plateau sélectionné). -->

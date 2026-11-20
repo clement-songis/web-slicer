@@ -162,6 +162,19 @@ export function remapExtruderAfterRemoval(extruder: number, removed: number): nu
 	return slot > removed ? extruder - 1 : extruder;
 }
 
+/**
+ * « Fusionner avec » (Orca create_filament_action_menu → Sidebar::change_filament
+ * → delete_filament(from, to)) : extrudeur (1-based, `0` = auto) après la
+ * fusion du slot `removed` dans le slot `target` (0-based, numérotation
+ * d'avant) — les objets du slot retiré passent au filament cible, les slots
+ * suivants descendent d'un cran.
+ */
+export function remapExtruderAfterMerge(extruder: number, removed: number, target: number): number {
+	if (extruder <= 0) return 0;
+	if (extruder - 1 === removed) return target > removed ? target : target + 1;
+	return remapExtruderAfterRemoval(extruder, removed);
+}
+
 /** Extrudeur hors des slots existants → auto (`0`) ; sinon inchangé. */
 export function clampExtruder(extruder: number, slotCount: number): number {
 	return extruder > 0 && extruder <= slotCount ? extruder : 0;

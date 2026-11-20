@@ -60,11 +60,17 @@
 	// Sans recherche : tous les réglages ajoutables, groupés par catégorie
 	// (« Ajouter des réglages » d'Orca, liste par catégorie) ; avec recherche :
 	// les 60 premiers résultats, groupés aussi.
-	const hits = $derived(
-		adding
+	// `$t` lu ici : la recherche compare aussi les libellés traduits (`tr`, non
+	// réactif) ; le dictionnaire des réglages arrive en différé — sans cette
+	// dépendance, une recherche saisie avant son chargement (« paroi ») restait
+	// figée sur les seules traductions Paraglide et omettait « Ratio de débit de
+	// la paroi extérieure ».
+	const hits = $derived.by(() => {
+		void $t;
+		return adding
 			? searchOverridable(query, mode, isPart, settings, query.trim() ? 60 : 1000, filamentCount)
-			: []
-	);
+			: [];
+	});
 	const groups = $derived(groupByCategory(hits));
 	const clip = $derived(settingsClipboard.value);
 	let confirmReset = $state(false);

@@ -54,6 +54,8 @@
 	"auto_perspective": "Auto Perspective",
 	"show_g_code_window": "Show G-code Window",
 	"show_gridlines": "Show Gridlines",
+	"show_3d_navigator": "Show 3D Navigator",
+	"show_axes": "Show Axes",
 	"show_labels": "Show Labels",
 	"show_overhang": "Show Overhang",
 	"show_selected_outline_beta": "Show Selected Outline (beta)",

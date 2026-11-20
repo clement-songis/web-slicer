@@ -118,6 +118,9 @@ const viewMenu: Menu = {
 		'separator',
 		{ label: 'Show G-code Window', shortcut: 'C', action: 'view.gcodeWindow' },
 		{ label: 'Show Gridlines', action: 'view.gridlines' },
+		// Orca MainFrame « Show 3D Navigator » ; menu du canevas « Axes » (show_axes).
+		{ label: 'Show 3D Navigator', action: 'view.navigator' },
+		{ label: 'Show Axes', action: 'view.axes' },
 		// Orca MainFrame : « Show &Labels\tCtrl+E ».
 		{ label: 'Show Labels', shortcut: 'Ctrl+E', action: 'view.labels' },
 		{ label: 'Show Overhang', action: 'view.overhang' },

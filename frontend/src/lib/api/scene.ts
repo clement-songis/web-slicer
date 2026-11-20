@@ -16,6 +16,8 @@ import type { CutRequest } from '../../generated/api/CutRequest';
 import type { BooleanRequest } from '../../generated/api/BooleanRequest';
 import type { MeshOpResponse } from '../../generated/api/MeshOpResponse';
 import type { MeshOpPartResponse } from '../../generated/api/MeshOpPartResponse';
+import type { ObjectMeshErrors } from '../../generated/api/ObjectMeshErrors';
+import type { InvalidateCutResponse } from '../../generated/api/InvalidateCutResponse';
 
 export type { SimplifyRequest, SimplifyResponse };
 export type { CutRequest, BooleanRequest, MeshOpResponse, MeshOpPartResponse };
@@ -65,6 +67,23 @@ export const smoothModel = (modelId: string) =>
 /** Coupe plane (`cut_mesh`, sections bouchées), plan dans le repère recentré. */
 export const cutModel = (modelId: string, body: CutRequest) =>
 	api.post<MeshOpResponse>(`/models/${modelId}/cut`, body);
+
+/**
+ * Lot 37 — erreurs de maillage par objet de la scène enregistrée (icône
+ * d'alerte de la liste d'objets d'Orca) : GET /api/projects/{id}/mesh-errors.
+ */
+export const projectMeshErrors = (projectId: string) =>
+	api.get<ObjectMeshErrors[]>(`/projects/${projectId}/mesh-errors`);
+
+/**
+ * Lot 37 — « Invalider les informations de découpe » (invalidate_cut_info_for_object) :
+ * les objets de même `cutId` le perdent ; projet sauvegardé côté serveur.
+ */
+export const invalidateCut = (projectId: string, objectId: string, expectedVersion: number) =>
+	api.post<InvalidateCutResponse>(
+		`/projects/${projectId}/objects/${encodeURIComponent(objectId)}/invalidate-cut`,
+		{ expected_version: expectedVersion }
+	);
 
 /** Booléen mcut entre deux modèles placés par leurs matrices monde. */
 export const booleanModels = (projectId: string, body: BooleanRequest) =>

@@ -8,6 +8,7 @@
 		CAMERA_DEFAULTS,
 		REMEMBERED_CHOICES,
 		clampFpsCap,
+		clampDracoBits,
 		clampOrbitSpeed,
 		clampRecentCount,
 		clearRememberedChoices,
@@ -553,6 +554,32 @@
 						stepCtl,
 						'step-dialog'
 					)}
+					{#snippet dracoCtl()}
+						<span class="flex items-center gap-1">
+							<input
+								type="number"
+								min="0"
+								max="30"
+								step="1"
+								class="ws-field ws-field-sm w-20 text-right tabular-nums"
+								data-testid="pref-draco-bits"
+								aria-labelledby="pref-draco-bits-label"
+								value={prefs.dracoBits}
+								onchange={(e) => {
+									const bits = clampDracoBits(Number(e.currentTarget.value));
+									e.currentTarget.value = String(bits);
+									update({ dracoBits: bits });
+								}}
+							/>
+							<span class="text-xs text-content-subtle">bits</span>
+						</span>
+					{/snippet}
+					{@render row(
+						'Niveau de qualité pour l’exportation Draco',
+						'Quantification du maillage à l’export DRC. 0 = sans perte (géométrie exacte) ; de 8 à 30 : fichier plus petit, détails réduits quand la valeur baisse.',
+						dracoCtl,
+						'draco-bits'
+					)}
 					{#snippet clearCtl()}
 						<button
 							type="button"
@@ -617,6 +644,36 @@
 						'Compteur en coin de la vue 3D. La vue ne se redessine que lorsqu’elle change : 0 au repos est normal.',
 						fpsCtl,
 						'show-fps'
+					)}
+					{#snippet navCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-3d-navigator"
+							aria-labelledby="pref-3d-navigator-label"
+							checked={prefs.show3dNavigator}
+							onchange={(e) => update({ show3dNavigator: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Afficher le navigateur 3D',
+						'Cube d’orientation en bas à gauche de la vue de préparation : cliquez une face pour regarder le plateau de ce côté (aussi dans le menu Vue).',
+						navCtl,
+						'3d-navigator'
+					)}
+					{#snippet axesCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-show-axes"
+							aria-labelledby="pref-show-axes-label"
+							checked={prefs.showAxes}
+							onchange={(e) => update({ showAxes: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Afficher les axes',
+						'Repère X (rouge), Y (vert), Z (bleu) à l’origine du plateau.',
+						axesCtl,
+						'show-axes'
 					)}
 				{:else}
 					{#snippet groupCtl()}

@@ -11,6 +11,7 @@
 	import IconX from '~icons/lucide/x';
 	import IconLock from '~icons/lucide/lock';
 	import IconLockOpen from '~icons/lucide/lock-open';
+	import IconFront from '~icons/lucide/arrow-left-to-line';
 
 	interface Props {
 		plates: readonly Plate[];
@@ -34,6 +35,8 @@
 		onlock?: (id: string, locked: boolean) => void;
 		/** Valeurs des presets, affichées dans l'option « Profil (…) » des réglages. */
 		inherited?: Record<string, unknown>;
+		/** « Déplacer le plateau vers l'avant » (icône du plateau d'Orca). */
+		onfront?: (id: string) => void;
 	}
 
 	let {
@@ -48,7 +51,8 @@
 		oncontext,
 		sliced = [],
 		inherited = {},
-		onlock
+		onlock,
+		onfront
 	}: Props = $props();
 
 	// Types de plaque traduits (dictionnaire des réglages chargé à la demande).
@@ -136,6 +140,17 @@
 							<IconLockOpen class="h-3.5 w-3.5" aria-hidden="true" />
 						{/if}
 					</button>
+				{/if}
+				{#if onfront && plates.length > 1 && plates[0]?.id !== plate.id}
+					<button
+						type="button"
+						class="ws-icon-btn ws-icon-btn-xs hover:text-content"
+						data-testid="plate-move-front"
+						aria-label={`Déplacer ${plate.name} en premier`}
+						title="Déplacer le plateau vers l’avant (premier plateau)"
+						onclick={() => onfront(plate.id)}
+						><IconFront class="h-3.5 w-3.5" aria-hidden="true" /></button
+					>
 				{/if}
 				{#if plates.length > 1}
 					<button

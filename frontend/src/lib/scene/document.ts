@@ -15,6 +15,7 @@ import { IDENTITY, type Transform } from './transform';
 import type { PlatesDocument } from './plates.svelte';
 import { parseVolumes, type SceneVolume } from './volumes';
 import { parseLayerRanges, type LayerRange } from './layer-ranges';
+import { parseCutId, type CutObjectId } from './cut-info';
 
 /** Version du schéma du document scène (aligné sur le backend). */
 export const SCENE_SCHEMA_VERSION = 1;
@@ -46,6 +47,8 @@ export interface SceneObjectDoc {
 	meshName?: string;
 	/** Phase 28 — objet texte / SVG en relief ré-éditable (objects[].emboss). */
 	emboss?: Record<string, unknown>;
+	/** Lot 37 — pièce issue d'une coupe (Orca `ModelObject::cut_id`). */
+	cutId?: CutObjectId;
 }
 
 /**
@@ -93,6 +96,7 @@ export interface SceneObjectState {
 	printable: boolean;
 	meshName?: string;
 	emboss?: Record<string, unknown>;
+	cutId?: CutObjectId | null;
 }
 
 /** Sérialise un objet vivant en document. */
@@ -111,6 +115,7 @@ export function serializeObject(o: SceneObjectState): SceneObjectDoc {
 		...(o.meshName ? { meshName: o.meshName } : {}),
 		// Copie JSON : l'objet peut être un proxy réactif (non clonable par structuredClone).
 		...(o.emboss ? { emboss: JSON.parse(JSON.stringify(o.emboss)) } : {}),
+		...(o.cutId ? { cutId: { ...o.cutId } } : {}),
 		...(o.volumes && o.volumes.length > 0 ? { volumes: structuredClone(o.volumes) } : {}),
 		...(o.layerRanges && o.layerRanges.length > 0
 			? { layerRanges: structuredClone(o.layerRanges) }
@@ -135,6 +140,7 @@ export function deserializeObject(doc: SceneObjectDoc): SceneObjectState {
 		...(doc.emboss && typeof doc.emboss === 'object' && !Array.isArray(doc.emboss)
 			? { emboss: { ...doc.emboss } }
 			: {}),
+		...(parseCutId(doc.cutId) ? { cutId: parseCutId(doc.cutId)! } : {}),
 		volumes: parseVolumes(doc.volumes),
 		layerRanges: parseLayerRanges(doc.layerRanges)
 	};

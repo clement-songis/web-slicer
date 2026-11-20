@@ -9,13 +9,15 @@
 		bed: BedShape;
 		/** Affiche la grille du plateau (menu Vue → Show Gridlines, T109). */
 		showGrid?: boolean;
+		/** Repère d'origine affiché (Orca `show_axes`, menu Vue / préférences). */
+		showAxes?: boolean;
 		/** Plateau non actif (phase 30) : surface atténuée, sans repère d'origine. */
 		inactive?: boolean;
 		/** Clic sur la surface (plateau non actif → l'activer, comme Orca). */
 		onselect?: () => void;
 	}
 
-	let { bed, showGrid = true, inactive = false, onselect }: Props = $props();
+	let { bed, showGrid = true, showAxes = true, inactive = false, onselect }: Props = $props();
 
 	// Clic franc uniquement : un glisser d'orbite qui finit sur le plateau
 	// n'active rien (même seuil que le picking Threlte).
@@ -66,6 +68,6 @@
 {/if}
 
 <!-- Repère d'origine (0,0,0) du plateau (plateau actif seulement). -->
-{#if !inactive}
+{#if !inactive && showAxes}
 	<T.AxesHelper args={[Math.min(bed.width, bed.depth) * 0.15]} />
 {/if}

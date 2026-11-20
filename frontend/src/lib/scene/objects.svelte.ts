@@ -6,6 +6,7 @@
 // (`.svelte.vitest.ts`), pas sous bun.
 
 import { moveToTarget, permuteInSlots } from './print-order';
+import type { CutObjectId } from './cut-info';
 
 /** Type de nœud : objet racine, pièce d'un objet, ou groupe d'objets. */
 export type NodeKind = 'object' | 'part' | 'group';
@@ -34,6 +35,8 @@ export interface SceneNode {
 	meshName?: string;
 	/** Phase 28 — objet texte / SVG en relief ré-éditable (objects[].emboss). */
 	emboss?: Record<string, unknown>;
+	/** Lot 37 — pièce issue d'une coupe (Orca `ModelObject::cut_id`). */
+	cutId?: CutObjectId;
 }
 
 function cloneNode(n: SceneNode): SceneNode {

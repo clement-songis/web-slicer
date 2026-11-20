@@ -146,6 +146,15 @@ export interface AppPreferences {
 	noWarnWhenModifiedGcodes: boolean;
 	/** Options d'arrangement mémorisées (menu « Options d'arrangement »). */
 	arrange: ArrangePreferences;
+	/** Orca `show_3d_navigator` (défaut vrai) : cube de navigation de la vue 3D. */
+	show3dNavigator: boolean;
+	/** Orca `show_axes` (défaut vrai) : axes du repère d'origine du plateau. */
+	showAxes: boolean;
+	/**
+	 * Orca `drc_bits` (« Niveau de qualité pour l'exportation Draco ») : bits de
+	 * quantification de l'export DRC ; 0 = sans perte, sinon 8 à 30.
+	 */
+	dracoBits: number;
 }
 
 export const PREFERENCES_KEY = 'web-slicer.preferences';
@@ -181,8 +190,26 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
 	graphics: { ...GRAPHICS_DEFAULTS },
 	projectLoadBehaviour: 'load_all',
 	noWarnWhenModifiedGcodes: false,
-	arrange: { ...ARRANGE_DEFAULTS }
+	arrange: { ...ARRANGE_DEFAULTS },
+	show3dNavigator: true,
+	showAxes: true,
+	dracoBits: 0
 };
+
+/** DRC.hpp d'Orca : DRC_BITS_MIN 8, DRC_BITS_MAX 30, défaut 0 (sans perte). */
+export const DRACO_BITS_MIN = 8;
+export const DRACO_BITS_MAX = 30;
+
+/**
+ * Bornes de PreferencesDialog::create_item_draco : > 30 → 30 ; 1 à 7 → 8 ;
+ * 0 (ou négatif / invalide) → 0, sans perte.
+ */
+export function clampDracoBits(value: number): number {
+	if (!Number.isFinite(value) || value <= 0) return 0;
+	const n = Math.round(value);
+	if (n > DRACO_BITS_MAX) return DRACO_BITS_MAX;
+	return n < DRACO_BITS_MIN ? DRACO_BITS_MIN : n;
+}
 
 /** Bornes d'Orca (MainFrame::set_max_recent_count : 0–999). */
 export function clampRecentCount(value: number): number {
@@ -291,7 +318,10 @@ export function parsePreferences(raw: string | null): AppPreferences {
 				d.projectLoadBehaviour
 			),
 			noWarnWhenModifiedGcodes: bool(value.noWarnWhenModifiedGcodes, d.noWarnWhenModifiedGcodes),
-			arrange: parseArrange(value.arrange)
+			arrange: parseArrange(value.arrange),
+			show3dNavigator: bool(value.show3dNavigator, d.show3dNavigator),
+			showAxes: bool(value.showAxes, d.showAxes),
+			dracoBits: typeof value.dracoBits === 'number' ? clampDracoBits(value.dracoBits) : d.dracoBits
 		};
 	} catch {
 		return {

@@ -30,6 +30,16 @@ export interface SceneVolume {
 	extruder?: number;
 	/** Phase 28 — texte / SVG en relief ré-éditable (parts[].emboss du serveur). */
 	emboss?: Record<string, unknown>;
+	/** Lot 37 — connecteur d'une coupe (Orca `ModelVolume::cut_info`), recopié
+	 *  de `parts[].volumes[].cut_info` de /cut ; écrit dans cut_information.xml. */
+	cutInfo?: VolumeCutInfo;
+}
+
+/** Informations de coupe d'un volume connecteur (forme scène du serveur). */
+export interface VolumeCutInfo {
+	connectorType: 'plug' | 'dowel' | 'snap';
+	radiusTolerance: number;
+	heightTolerance: number;
 }
 
 /** Action de menu → rôle (libellés de parité Orca). */
@@ -110,10 +120,54 @@ export function parseVolumes(raw: unknown): SceneVolume[] {
 					: {}),
 				...(o.emboss && typeof o.emboss === 'object' && !Array.isArray(o.emboss)
 					? { emboss: { ...o.emboss } }
-					: {})
+					: {}),
+				...(parseCutInfo(o.cutInfo) ? { cutInfo: parseCutInfo(o.cutInfo)! } : {})
 			}
 		];
 	});
+}
+
+/** `cutInfo` d'un volume lu d'un document (forme invalide → absent). */
+export function parseCutInfo(raw: unknown): VolumeCutInfo | null {
+	if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+	const c = raw as Partial<VolumeCutInfo>;
+	if (c.connectorType !== 'plug' && c.connectorType !== 'dowel' && c.connectorType !== 'snap')
+		return null;
+	const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : 0);
+	return {
+		connectorType: c.connectorType,
+		radiusTolerance: num(c.radiusTolerance),
+		heightTolerance: num(c.heightTolerance)
+	};
+}
+
+/**
+ * Choix de « Changer le type » (ObjectList::change_part_type d'Orca, dialogue
+ * « Choisissez le type de pièce ») : pièce, volume négatif, modificateur, et —
+ * sauf pour un texte / SVG en relief — bloqueur et forceur de supports. Mêmes
+ * noms que la liste des pièces et le menu « Ajouter » de l'application.
+ */
+export const PART_TYPE_CHOICES: { type: VolumeType; label: string }[] = (
+	['part', 'negative', 'modifier', 'blocker', 'enforcer'] as const
+).map((type) => ({ type, label: volumeTypeName(type) }));
+
+/** Types proposés pour un volume (relief : pas de bloqueur / générateur). */
+export function partTypeChoices(v: Pick<SceneVolume, 'emboss'>): typeof PART_TYPE_CHOICES {
+	return v.emboss ? PART_TYPE_CHOICES.slice(0, 3) : PART_TYPE_CHOICES;
+}
+
+/**
+ * Change le type d'un volume ajouté. Le maillage propre de l'objet (1er volume,
+ * toujours « pièce ») garantit qu'il reste une pièce solide : Orca refuse
+ * seulement de changer la dernière pièce solide, jamais un volume ajouté.
+ * Comme `ModelVolume::set_type`, réglages et extrudeur propres sont conservés
+ * (ignorés au tranchage hors pièces / modificateurs, retrouvés au retour).
+ * `null` si le type est inchangé ou interdit (relief en bloqueur/générateur).
+ */
+export function changeVolumeType(v: SceneVolume, type: VolumeType): SceneVolume | null {
+	if (v.type === type) return null;
+	if (!partTypeChoices(v).some((c) => c.type === type)) return null;
+	return { ...v, type };
 }
 
 /**

@@ -18,6 +18,8 @@
 	import IconIssueError from '~icons/lucide/circle-alert';
 	import IconIssueWarning from '~icons/lucide/triangle-alert';
 	import IconSearch from '~icons/lucide/search';
+	import IconScissors from '~icons/lucide/scissors';
+	import IconWrench from '~icons/lucide/wrench';
 	import type { Plate } from './plates.svelte';
 	import { searchObjects } from './object-search';
 
@@ -66,6 +68,14 @@
 		partNames?: Readonly<Record<string, readonly string[]>>;
 		/** Résultat de recherche sur un autre plateau : l'activer et y sélectionner l'objet. */
 		onlocate?: (plateId: string, id: string) => void;
+		/**
+		 * Lot 37 — erreurs de maillage par objet (Orca : icône obj_warning de la
+		 * liste d'objets, infobulle get_mesh_errors_info) ; clic → réparer.
+		 */
+		meshWarnings?: Readonly<Record<string, { tooltip: string; openEdges: number }>>;
+		onrepair?: (id: string) => void;
+		/** Lot 37 — pièces issues d'une coupe : nombre de pièces liées (cutId). */
+		cutLinks?: Readonly<Record<string, number>>;
 	}
 
 	let {
@@ -92,7 +102,10 @@
 		showOrderOnScene = $bindable(true),
 		issues = {},
 		partNames = {},
-		onlocate
+		onlocate,
+		meshWarnings = {},
+		onrepair,
+		cutLinks = {}
 	}: Props = $props();
 
 	// Phase 34 : recherche (Orca Plater m_search_bar). Filtre l'arbre du plateau
@@ -305,6 +318,35 @@
 									class="h-3.5 w-3.5"
 									aria-hidden="true"
 								/>{:else}<IconIssueWarning class="h-3.5 w-3.5" aria-hidden="true" />{/if}
+						</span>
+					{/if}
+					{#if meshWarnings[node.id]}
+						{@const mw = meshWarnings[node.id]}
+						<button
+							type="button"
+							class="inline-flex shrink-0 items-center rounded px-0.5 {selected
+								? ''
+								: 'text-warning'} hover:bg-overlay"
+							data-testid="object-mesh-warning"
+							data-open-edges={mw.openEdges}
+							data-tip={mw.tooltip}
+							aria-label="Erreurs de maillage de {node.name} : {mw.tooltip.replace(/\s+/g, ' ')}"
+							onclick={() => onrepair?.(node.id)}
+						>
+							<IconWrench class="h-3.5 w-3.5" aria-hidden="true" />
+						</button>
+					{/if}
+					{#if cutLinks[node.id]}
+						<span
+							class="inline-flex shrink-0 items-center opacity-80"
+							data-testid="object-cut-info"
+							data-tip="Pièce découpée, liée à {cutLinks[
+								node.id
+							]} pièce(s) : sélection groupée, échelle uniforme seulement. Menu objet › « Invalider les informations de découpe » pour la délier."
+							role="img"
+							aria-label="Pièce découpée liée à {cutLinks[node.id]} pièce(s)"
+						>
+							<IconScissors class="h-3.5 w-3.5" aria-hidden="true" />
 						</span>
 					{/if}
 				{/if}

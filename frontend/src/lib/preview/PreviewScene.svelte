@@ -88,7 +88,7 @@
 				</T.PerspectiveCamera>
 			{/key}
 			<!-- Plateau sous les parcours (Orca GCodeViewer : le lit reste affiché en aperçu). -->
-			<Bed {bed} />
+			<Bed {bed} showAxes={$appPreferences.showAxes} />
 			{#if renderMode === 'volumes'}
 				<!-- Éclairage des volumes : ambiant + lumière principale + contre-jour doux. -->
 				<T.AmbientLight intensity={0.85} />

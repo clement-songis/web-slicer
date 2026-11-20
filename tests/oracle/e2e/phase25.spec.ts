@@ -23,8 +23,9 @@ test('menu objet : sous-menus titrés, toutes les actions visibles sans défilem
 	await expect(menu).toHaveAttribute('data-layout', 'sections');
 	for (const id of ['object', 'instances', 'placement', 'mirror', 'parts', 'mesh', 'split', 'export'])
 		await expect(page.getByTestId(`menu-section-section.${id}`)).toBeVisible();
-	// 41 actions + 2 d'unités, chacune à un clic après le clic droit.
-	await expect(menu.getByRole('menuitem')).toHaveCount(43);
+	// 41 actions + 2 d'unités + « Edit in Parameter Table » (Orca append_menu_item_per_object_settings),
+	// chacune à un clic après le clic droit.
+	await expect(menu.getByRole('menuitem')).toHaveCount(44);
 	const fits = await menu.evaluate((el) => ({
 		scroll: el.scrollHeight > el.clientHeight + 1,
 		bottom: el.getBoundingClientRect().bottom <= window.innerHeight

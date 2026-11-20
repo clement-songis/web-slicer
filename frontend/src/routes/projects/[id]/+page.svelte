@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onMount, untrack } from 'svelte';
+	import { onMount, tick, untrack } from 'svelte';
 	// Perf : la scène 3D (three/threlte) et la vue d'aperçu sont chargées à la
 	// demande, hors du chunk initial de la page (≈1 Mo). La scène démarre son
 	// téléchargement dès l'évaluation de la page ; l'aperçu, à l'ouverture.
@@ -124,6 +124,33 @@
 		pendingTicks,
 		withAuthoredTypes
 	} from '$lib/preview/color-changes';
+	// Phase 37 : menu du curseur de couches (IMSlider), tableau des paramètres,
+	// fusion de filaments, navigateur 3D, débit de buse, coupe, erreurs de maillage.
+	import {
+		applyLayerCode,
+		codeAt,
+		layerCodeMenu,
+		remapCodesAfterFilamentRemoval,
+		type LayerCodeMenuItem
+	} from '$lib/preview/layer-code-menu';
+	import ObjectTable from '$lib/scene/ObjectTable.svelte';
+	import type { TableObjectSource, TableRow } from '$lib/scene/object-table';
+	import ViewCube from '$lib/scene/ViewCube.svelte';
+	import {
+		cutLinkedIds,
+		invalidatedIds,
+		parseCutId,
+		syncAfterCut,
+		uniformCutScale
+	} from '$lib/scene/cut-info';
+	import { meshWarnings as toMeshWarnings, type MeshWarning } from '$lib/scene/mesh-errors';
+	import { invalidateCut, projectMeshErrors } from '$lib/api/scene';
+	import {
+		NOZZLE_FLOW_LABELS,
+		nozzleFlowChoices,
+		setNozzleFlow,
+		type NozzleFlow
+	} from '$lib/settings/nozzle-flow';
 	import DevicePanel from '$lib/printers/DevicePanel.svelte';
 	import { MAIN_MENUS } from '$lib/menus/menus';
 	import { draftStore, type DraftRecord } from '$lib/stores/draft';
@@ -206,7 +233,11 @@
 		volumeTypeName,
 		volumeTransform,
 		applyVolumeTransform,
-		type SceneVolume
+		changeVolumeType,
+		parseCutInfo,
+		partTypeChoices,
+		type SceneVolume,
+		type VolumeType
 	} from '$lib/scene/volumes';
 	import ObjectSettingsPanel from '$lib/scene/ObjectSettingsPanel.svelte';
 	import LayerRangesPanel from '$lib/scene/LayerRangesPanel.svelte';
@@ -532,10 +563,12 @@
 		clampFilamentSlot,
 		filamentAt,
 		filamentSlotCount,
+		remapExtruderAfterMerge,
 		remapExtruderAfterRemoval,
 		removeFilamentSlot,
 		slotAfterRemoval
 	} from '$lib/editor/presets';
+	import Dialog from '$lib/ui/Dialog.svelte';
 	import { uniqueCopyName } from '$lib/editor/presets';
 	import type { PageData } from './$types';
 	import IconPencil from '~icons/lucide/pencil';
@@ -734,6 +767,24 @@
 		y: 0,
 		slot: 0
 	});
+	// Phase 37 — menu du curseur de couches (IMSlider) : couche visée au clic.
+	let layerMenu = $state<{ open: boolean; x: number; y: number; layer: number }>({
+		open: false,
+		x: 0,
+		y: 0,
+		layer: 0
+	});
+	// Fenêtre « G-code personnalisé » (IMSlider::render_input_custom_gcode).
+	let customGcodeEdit = $state<{ layer: number; z: number; text: string; edit: boolean } | null>(
+		null
+	);
+	// Tableau des paramètres d'objets (« Edit in Parameter Table »).
+	let objectTableOpen = $state(false);
+	let objectTableFocus = $state<string | null>(null);
+	// Erreurs de maillage par objet (GET …/mesh-errors, après enregistrement).
+	let meshWarningsByObject = $state<Record<string, MeshWarning>>({});
+	// Direction de vue (réactive) pour le navigateur 3D.
+	let navForward = $state<[number, number, number]>([0, 1, -0.6]);
 
 	// Modèle de scène (mutations en place → proxysées par `$state`, réactives).
 	let tree = $state(new ObjectTree());
@@ -1011,6 +1062,229 @@
 		projectFilament = afterSlotRemoved(projectFilament, slot);
 		filamentSlot = slotAfterRemoval(filamentSlot, slot, next.filaments.length);
 		activePresets = next;
+	}
+
+	// Phase 37 — « Fusionner avec » (Orca create_filament_action_menu →
+	// Sidebar::change_filament → delete_filament(from, to)) : objets, volumes et
+	// changements de filament du slot retiré passent au filament cible, puis le
+	// slot est supprimé (numérotation des suivants décalée d'un cran).
+	function mergeFilament(slot: number, target: number) {
+		if (slot === target || !canRemoveFilamentSlot(activePresets, slot)) return;
+		const next = removeFilamentSlot(activePresets, slot);
+		for (const node of tree.list()) {
+			const extruder = remapExtruderAfterMerge(node.extruder, slot, target);
+			if (extruder !== node.extruder) tree.setExtruder(node.id, extruder);
+		}
+		for (const [objectId, volumes] of Object.entries(volumesByObject))
+			for (const v of volumes) {
+				const ex = remapExtruderAfterMerge(v.extruder ?? 0, slot, target);
+				if (ex !== (v.extruder ?? 0))
+					updateVolume(objectId, v.id, { extruder: ex > 0 ? ex : undefined });
+			}
+		for (const plate of plates.list())
+			if (plate.customGcodes?.length)
+				plates.setCustomGcodes(
+					plate.id,
+					remapCodesAfterFilamentRemoval(plate.customGcodes, slot, target)
+				);
+		projectFilament = afterSlotRemoved(projectFilament, slot);
+		filamentSlot = slotAfterRemoval(filamentSlot, slot, next.filaments.length);
+		activePresets = next;
+		saveMessage = `Filament ${slot + 1} fusionné avec le filament ${target + 1} : objets et pièces réaffectés.`;
+	}
+
+	// Phase 37 — « Déplacer le plateau vers l'avant » (PartPlate, icône 7).
+	function movePlateToFront(id: string) {
+		const name = plates.get(id)?.name;
+		if (!plates.moveToFront(id)) return;
+		ws = setSelection(ws, new Set());
+		saveMessage = `« ${name} » est maintenant le premier plateau.`;
+	}
+
+	// Phase 37 — tableau des paramètres d'objets (ObjectGridTable).
+	const objectTableObjects = $derived.by((): TableObjectSource[] => {
+		if (!objectTableOpen) return [];
+		const list = plates.list();
+		return tree
+			.list()
+			.filter((n) => n.kind === 'object')
+			.map((n) => ({
+				id: n.id,
+				name: n.name,
+				plate: list.findIndex((p) => p.objectIds.includes(n.id)) + 1,
+				printable: n.printable,
+				extruder: n.extruder,
+				settings: n.settings,
+				volumes: volumesByObject[n.id] ?? []
+			}));
+	});
+	function openObjectTable(focus: string | null = null) {
+		objectTableFocus = focus;
+		objectTableOpen = true;
+	}
+	function onTableSetting(row: TableRow, key: string, value: unknown) {
+		if (row.volumeId) {
+			const v = (volumesByObject[row.objectId] ?? []).find((x) => x.id === row.volumeId);
+			if (!v) return;
+			const settings = { ...v.settings };
+			if (value === undefined) delete settings[key];
+			else settings[key] = value;
+			updateVolume(row.objectId, v.id, { settings });
+		} else if (key === 'extruder') tree.setExtruder(row.objectId, 0);
+		else tree.setSetting(row.objectId, key, value);
+	}
+	function onTableExtruder(row: TableRow, extruder: number) {
+		if (row.volumeId)
+			updateVolume(row.objectId, row.volumeId, { extruder: extruder > 0 ? extruder : undefined });
+		else tree.setExtruder(row.objectId, extruder);
+	}
+	function onTableRename(row: TableRow, name: string) {
+		if (row.volumeId) updateVolume(row.objectId, row.volumeId, { name });
+		else tree.rename(row.objectId, name);
+	}
+
+	// Phase 37 — « Changer le type » d'une pièce (ObjectList::change_part_type).
+	function setVolumeType(objectId: string, volumeId: string, type: VolumeType) {
+		const v = (volumesByObject[objectId] ?? []).find((x) => x.id === volumeId);
+		const next = v ? changeVolumeType(v, type) : null;
+		if (!v || !next) return;
+		replaceVolume(objectId, next);
+		saveMessage = `« ${v.name} » : ${volumeTypeName(v.type)} → ${volumeTypeName(type)}.`;
+	}
+	function openVolumeContext(objectId: string, volumeId: string, x: number, y: number) {
+		ws = setSelection(ws, new Set([objectId]));
+		selectedVolumeId = volumeId;
+		contextMenu = { open: true, x, y, targetId: objectId, part: false };
+	}
+	// Entrées ajoutées en tête du menu objet (phase 37).
+	const objectMenuExtras = $derived.by(() => {
+		const id = contextMenu.targetId;
+		if (!contextMenu.open || !id || contextMenu.part) return [];
+		const volume = (volumesByObject[id] ?? []).find((v) => v.id === selectedVolumeId);
+		const node = tree.get(id);
+		const extras: (
+			| {
+					label: string;
+					action: string;
+					section?: true;
+					items?: { label: string; action: string }[];
+			  }
+			| 'separator'
+		)[] = [];
+		if (volume)
+			extras.push(
+				{
+					label: `Changer le type de « ${volume.name} »`,
+					action: 'section.volumeType',
+					section: true,
+					items: partTypeChoices(volume)
+						.filter((c) => c.type !== volume.type)
+						.map((c) => ({ label: c.label, action: `volume.type:${c.type}` }))
+				},
+				'separator'
+			);
+		extras.push({
+			label: 'Modifier dans la Table des Paramètres',
+			action: 'object.parameterTable'
+		});
+		if (node?.cutId)
+			extras.push(
+				{ label: 'Sélectionner les pièces liées', action: 'object.selectCutParts' },
+				{ label: 'Invalider les informations de découpe', action: 'object.invalidateCut' }
+			);
+		extras.push('separator');
+		return extras;
+	});
+
+	// Phase 37 — informations de coupe : pièces liées (même cutId.id).
+	const cutLinks = $derived.by(() => {
+		const nodes = tree.list();
+		const out: Record<string, number> = {};
+		for (const n of nodes) if (n.cutId) out[n.id] = cutLinkedIds(nodes, n.id).length - 1;
+		return out;
+	});
+	function selectCutParts(id: string) {
+		const ids = cutLinkedIds(tree.list(), id).filter((x) => activePlate?.objectIds.includes(x));
+		ws = setSelection(ws, new Set(ids));
+		saveMessage = `${ids.length} pièce(s) de la même coupe sélectionnée(s).`;
+	}
+	async function invalidateCutInfo(id: string) {
+		if (!tree.get(id)?.cutId) return;
+		const saved = await save({ quiet: true });
+		if (saved.status !== 'saved') {
+			saveMessage = `Informations de découpe : ${saved.status === 'error' ? saved.message : 'sauvegarde impossible'}`;
+			return;
+		}
+		try {
+			const res = await invalidateCut(data.project.id, id, Number(data.project.version));
+			const expected = invalidatedIds(tree.list(), id);
+			for (const objectId of new Set([...res.object_ids, ...expected])) {
+				const node = tree.get(objectId);
+				if (node) delete node.cutId;
+				const vols = volumesByObject[objectId];
+				if (vols?.some((v) => v.cutInfo))
+					volumesByObject = {
+						...volumesByObject,
+						[objectId]: vols.map((v) => {
+							const { cutInfo: _drop, ...rest } = v;
+							void _drop;
+							return rest;
+						})
+					};
+			}
+			data.project.version = BigInt(res.project.version);
+			data.project.scene = res.project.scene;
+			savedSignature = saveSignature();
+			currentSignature = savedSignature;
+			saveMessage = `Informations de découpe retirées de ${res.object_ids.length} pièce(s) : elles se manipulent maintenant séparément.`;
+		} catch (e) {
+			saveMessage = `Informations de découpe : ${e instanceof ApiError ? e.message : 'échec'}`;
+		}
+	}
+
+	// Phase 37 — erreurs de maillage (icône d'alerte de la liste d'objets).
+	let meshErrorsSeq = 0;
+	async function refreshMeshErrors() {
+		const seq = ++meshErrorsSeq;
+		try {
+			const list = await projectMeshErrors(data.project.id);
+			if (seq !== meshErrorsSeq) return;
+			const byPersisted = toMeshWarnings(list);
+			const live: Record<string, MeshWarning> = {};
+			for (const [id, w] of Object.entries(byPersisted)) live[persistedToLive.get(id) ?? id] = w;
+			meshWarningsByObject = live;
+		} catch {
+			// Erreurs de maillage : indicatif, silencieux en cas d'échec.
+		}
+	}
+	async function repairFromWarning(id: string) {
+		await repairObject(id);
+		const { [id]: _done, ...rest } = meshWarningsByObject;
+		void _done;
+		meshWarningsByObject = rest;
+	}
+
+	// Phase 37 — navigateur 3D : vue nommée, rejouée même si déjà active.
+	async function selectNamedView(view: NamedView) {
+		if (cameraView === view) {
+			cameraView = view === 'default' ? 'top' : 'default';
+			await tick();
+		}
+		cameraView = view;
+		cameraFocus = null;
+	}
+
+	// Phase 37 — type de débit de buse par extrudeur (ExtruderGroup « Débit »).
+	const nozzleFlows = $derived.by(() => nozzleFlowChoices(machineValues));
+	function setExtruderFlow(index: number, flow: NozzleFlow) {
+		machineValues = {
+			...machineValues,
+			nozzle_volume_type: setNozzleFlow(machineValues, index, flow)
+		};
+		editTouched.machine.set('nozzle_volume_type', ++editTouchSeq);
+		const presetId = activePresetOf('machine')?.id;
+		if (presetId) editTouchedPreset.machine.set('nozzle_volume_type', presetId);
+		saveMessage = `Extrudeur ${index + 1} : débit ${NOZZLE_FLOW_LABELS[flow]} (réglage de l'imprimante modifié).`;
 	}
 
 	// Onglet de la colonne de configuration : liste d'objets/plateaux, réglages
@@ -1371,7 +1645,9 @@
 	const TICK_COLORS: Record<string, string> = {
 		color_change: '#da948b',
 		pause_print: '#52f083',
-		custom: '#5ed194'
+		custom: '#5ed194',
+		template: '#5ed194',
+		tool_change: '#e8b04a'
 	};
 	let goToLayerOpen = $state(false);
 	let goToLayerValue = $state('');
@@ -1566,6 +1842,9 @@
 			if (restoredOrphans) savedSignature = '\u0000orphelins-restaurés';
 			else if (!imports.some((item) => isPending(item))) savedSignature = saveSignature();
 			baselineReady = true;
+			// Phase 37 : alertes d'erreurs de maillage de la scène enregistrée.
+			if (((data.project.scene as { objects?: unknown[] } | null)?.objects?.length ?? 0) > 0)
+				void refreshMeshErrors();
 		});
 		// Restaure le dernier résultat réussi du projet : quitter l'éditeur pour
 		// déclarer Moonraker ne doit pas désactiver l'export/envoi au retour.
@@ -1710,6 +1989,7 @@
 				node.settings = { ...restored.settings };
 				if (restored.meshName) node.meshName = restored.meshName;
 				if (restored.emboss) node.emboss = restored.emboss;
+				if (restored.cutId) node.cutId = restored.cutId;
 			}
 			paintings[objectId] = restored.painting;
 			layerProfiles[objectId] = restored.layerProfile;
@@ -2831,6 +3111,7 @@
 				node.settings = { ...restored.settings };
 				if (restored.meshName) node.meshName = restored.meshName;
 				if (restored.emboss) node.emboss = restored.emboss;
+				if (restored.cutId) node.cutId = restored.cutId;
 			}
 			paintings[id] = restored.painting;
 			layerProfiles[id] = restored.layerProfile;
@@ -3211,6 +3492,12 @@
 	// position/rotation/échelle dans l'état de scène (survit au re-rendu).
 	function onTransform(id: string, transform: Transform) {
 		if (!canTransformObject(id, activePlate, objectLocked)) return;
+		// Phase 37 : pièce coupée → échelle uniforme seulement (comme Orca).
+		if (tree.get(id)?.cutId) {
+			const prev = sceneObjects.find((o) => o.id === id)?.scale ?? [1, 1, 1];
+			if (transform.scale.some((s, a) => Math.abs(s - prev[a]) > 1e-9))
+				transform = { ...transform, scale: uniformCutScale(prev, transform.scale) };
+		}
 		sceneObjects = sceneObjects.map((o) =>
 			o.id === id
 				? {
@@ -5586,6 +5873,16 @@
 			worldMatrix({ position: [0, 0, 0], rotation: source.rotation, scale: source.scale })
 		);
 		if (!body) return;
+		// Phase 37 : le serveur lit le cutId de l'objet dans la scène enregistrée
+		// (update_object_cut_id) et numérote après le plus grand id du projet.
+		if (tree.list().some((n) => n.cutId)) {
+			const saved = await save({ quiet: true });
+			if (saved.status !== 'saved') {
+				saveMessage = 'Coupe : enregistrez d’abord le projet (informations de découpe).';
+				return;
+			}
+		}
+		body.object_id = object.id;
 		const connectorCount = body.connectors?.length ?? 0;
 		const generation = sceneGeneration;
 		const plateId = plates.plateOf(object.id) ?? plates.activeId;
@@ -5617,6 +5914,16 @@
 				projectModelIds.add(part.model.id);
 				const objectId = tree.add(part.model.filename).id;
 				if (plateId) plates.assign(objectId, plateId);
+				// Phase 37 : cut_id recopié (pièces liées) + synchronize_model_after_cut.
+				const cut = parseCutId(part.cut_id);
+				if (cut) {
+					const node = tree.get(objectId);
+					if (node) node.cutId = cut;
+					for (const other of syncAfterCut(tree.list(), cut, [objectId, object.id])) {
+						const n = tree.get(other);
+						if (n) n.cutId = { ...cut };
+					}
+				}
 				imports = [
 					...imports,
 					markConverted(
@@ -5675,7 +5982,8 @@
 								Math.max(0.001, Math.round((b.max[a] - b.min[a]) * 1000) / 1000)
 							) as [number, number, number],
 							offset: [...v.offset] as [number, number, number],
-							settings: {}
+							settings: {},
+							...(parseCutInfo(v.cut_info) ? { cutInfo: parseCutInfo(v.cut_info)! } : {})
 						};
 					});
 					volumesByObject = { ...volumesByObject, [objectId]: sceneVolumes };
@@ -5965,6 +6273,78 @@
 		);
 		if (res.changed) plates.setCustomGcodes(plateId, res.list);
 		saveMessage = res.message;
+	}
+
+	// Phase 37 — menu du curseur de couches (Orca IMSlider render_add_menu /
+	// render_edit_menu) : couche de la poignée active ; codes du plateau.
+	function layerMenuContext(layer: number) {
+		const z = previewMeta?.layers[layer]?.z;
+		return {
+			z,
+			items:
+				z === undefined
+					? []
+					: layerCodeMenu({
+							codes: activePlate?.customGcodes ?? [],
+							z,
+							filamentColors: filamentSlotColors.slice(0, filamentSlots),
+							templateGcode: String(machineValues.template_custom_gcode ?? ''),
+							sequential: sequentialPrint
+						}).filter((item) => !item.disabled)
+		};
+	}
+	const layerMenuItems = $derived(
+		layerMenu.open ? layerMenuContext(layerMenu.layer).items : ([] as LayerCodeMenuItem[])
+	);
+	function activeThumbLayer(): number {
+		return layerRange.active === 'low' && !layerRange.oneLayerMode
+			? layerRange.low
+			: layerRange.high;
+	}
+	function openLayerMenu(x: number, y: number, layer = activeThumbLayer()) {
+		if (!session.gcodeId) {
+			saveMessage = 'G-code ouvert : les codes par couche se règlent sur un plateau tranché.';
+			return;
+		}
+		layerMenu = { open: true, x, y, layer };
+	}
+	function onLayerMenuAction(action: string) {
+		const index = Number(action.replace('layer.', ''));
+		const item = layerMenuItems[index];
+		const plateId = plates.activeId;
+		const layer = layerMenu.layer;
+		const z = previewMeta?.layers[layer]?.z;
+		if (!item || !plateId || z === undefined) return;
+		const codes = plates.get(plateId)?.customGcodes ?? [];
+		if (item.action === 'add-custom' || item.action === 'edit-custom') {
+			customGcodeEdit = {
+				layer,
+				z,
+				text: item.action === 'edit-custom' ? (codeAt(codes, z)?.extra ?? '') : '',
+				edit: item.action === 'edit-custom'
+			};
+			return;
+		}
+		const res = applyLayerCode(codes, item, z, String(layer + 1), {
+			filamentColors: filamentSlotColors
+		});
+		if (res.changed) plates.setCustomGcodes(plateId, res.list);
+		saveMessage = res.message;
+	}
+	function submitCustomGcode() {
+		const edit = customGcodeEdit;
+		const plateId = plates.activeId;
+		if (!edit || !plateId) return;
+		const res = applyLayerCode(
+			plates.get(plateId)?.customGcodes ?? [],
+			{ action: edit.edit ? 'edit-custom' : 'add-custom' },
+			edit.z,
+			String(edit.layer + 1),
+			{ extra: edit.text }
+		);
+		if (res.changed) plates.setCustomGcodes(plateId, res.list);
+		saveMessage = res.message;
+		if (res.changed || !edit.text.trim()) customGcodeEdit = null;
 	}
 	// Flèches : déplace la sélection dans le plan du plateau (objets verrouillés
 	// ou hors plateau actif exclus par `moveObject`).
@@ -6328,6 +6708,24 @@
 			openEmbossEdit(id);
 			return;
 		}
+		// Phase 37 : type de pièce, tableau des paramètres, informations de coupe.
+		if (action.startsWith('volume.type:')) {
+			if (selectedVolumeId)
+				setVolumeType(id, selectedVolumeId, action.slice('volume.type:'.length) as VolumeType);
+			return;
+		}
+		if (action === 'object.parameterTable') {
+			openObjectTable(id);
+			return;
+		}
+		if (action === 'object.selectCutParts') {
+			selectCutParts(id);
+			return;
+		}
+		if (action === 'object.invalidateCut') {
+			await invalidateCutInfo(id);
+			return;
+		}
 		switch (action) {
 			case 'object.hideShow':
 				tree.setHidden(id, !tree.isHidden(id));
@@ -6534,7 +6932,12 @@
 				method: 'POST',
 				credentials: 'include',
 				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({ split, object_ids: ids })
+				// Phase 37 : quantification Draco (préférence drc_bits d'Orca).
+				body: JSON.stringify({
+					split,
+					object_ids: ids,
+					...(format === 'drc' ? { bits: $appPreferences.dracoBits } : {})
+				})
 			});
 			if (!res.ok) {
 				const err = (await res.json().catch(() => ({}))) as { message?: string };
@@ -7093,9 +7496,15 @@
 					saveMessage = e instanceof ApiError ? e.message : 'création de projet impossible';
 				}
 				break;
-			case 'project.open':
-				projectFileInput?.click();
+			case 'project.open': {
+				// Sélecteur ouvert à la tâche suivante (activation utilisateur
+				// toujours valide) : depuis Ctrl+O, le clic synchrone dans le keydown
+				// précédait parfois l'interception du sélecteur par l'automate de
+				// test (dialogue natif aussitôt annulé, aucun « filechooser »).
+				const input = projectFileInput;
+				setTimeout(() => input?.click(), 0);
 				break;
+			}
 			case 'project.save':
 				await save();
 				break;
@@ -7248,6 +7657,19 @@
 			case 'view.gridlines':
 				showGrid = !showGrid;
 				break;
+			// Phase 37 : navigateur 3D et axes (préférences show_3d_navigator / show_axes).
+			case 'view.navigator': {
+				const show = !currentPreferences().show3dNavigator;
+				savePreferences({ ...currentPreferences(), show3dNavigator: show });
+				saveMessage = show ? 'Navigateur 3D affiché.' : 'Navigateur 3D masqué.';
+				break;
+			}
+			case 'view.axes': {
+				const show = !currentPreferences().showAxes;
+				savePreferences({ ...currentPreferences(), showAxes: show });
+				saveMessage = show ? 'Axes affichés.' : 'Axes masqués.';
+				break;
+			}
 			// — Aide (T111) —
 			case 'edit.undo':
 				undoScene();
@@ -7641,6 +8063,7 @@
 					name: tree.get(o.id)?.name,
 					meshName: tree.get(o.id)?.meshName,
 					emboss: tree.get(o.id)?.emboss,
+					cutId: tree.get(o.id)?.cutId,
 					printable: tree.isPrintable(o.id),
 					settings: { ...(tree.get(o.id)?.settings ?? {}) },
 					painting:
@@ -7777,6 +8200,8 @@
 			currentSignature = savedSignature;
 			// Les ids persistés sont désormais les ids vivants.
 			persistedToLive.clear();
+			// Phase 37 : erreurs de maillage de la scène enregistrée.
+			void refreshMeshErrors();
 		}
 		// Enregistrement implicite de la validation en direct : sans message.
 		if (opts.quiet) return outcome;
@@ -8256,6 +8681,7 @@
 						'separator' as const
 					]
 				: []),
+			...objectMenuExtras,
 			...(contextMenu.part
 				? PART_CONTEXT_ITEMS
 				: withUnitItems(
@@ -8302,16 +8728,98 @@
 					)),
 			...(projectFilament.filament_colour?.[filamentMenu.slot]
 				? [{ label: 'Couleur du preset', action: 'filament.resetColour' }]
+				: []),
+			// Phase 37 — « Fusionner avec » (create_filament_action_menu d'Orca).
+			...(filamentSlots > 1 && canRemoveFilamentSlot(activePresets, filamentMenu.slot)
+				? [
+						'separator' as const,
+						{
+							label: 'Fusionner avec',
+							action: 'filament.mergeMenu',
+							items: Array.from({ length: filamentSlots }, (_, i) => i)
+								.filter((i) => i !== filamentMenu.slot)
+								.map((i) => ({
+									label: `Filament ${i + 1}${filamentPresets.find((p) => p.id === filamentAt(activePresets, i))?.name ? ' — ' + filamentPresets.find((p) => p.id === filamentAt(activePresets, i))?.name : ''}`,
+									action: `filament.merge:${i}`
+								}))
+						}
+					]
 				: [])
 		]}
 		onaction={(action) => {
 			filamentSlot = filamentMenu.slot;
-			if (action === 'filament.edit') openSettingsDialog('filament');
+			if (action.startsWith('filament.merge:'))
+				mergeFilament(filamentMenu.slot, Number(action.slice('filament.merge:'.length)));
+			else if (action === 'filament.edit') openSettingsDialog('filament');
 			else if (action === 'filament.delete') removeFilament(filamentMenu.slot);
 			else if (action === 'filament.resetColour')
 				projectFilament = setSlotColour(projectFilament, filamentMenu.slot, null);
 		}}
 		onclose={() => (filamentMenu = { ...filamentMenu, open: false })}
+	/>
+
+	<!-- Phase 37 — menu du curseur de couches (IMSlider d'Orca). -->
+	<ContextMenu
+		open={layerMenu.open}
+		x={layerMenu.x}
+		y={layerMenu.y}
+		items={layerMenuItems.map((item, i) => ({ label: item.label, action: `layer.${i}` }))}
+		onaction={onLayerMenuAction}
+		onclose={() => (layerMenu = { ...layerMenu, open: false })}
+	/>
+	<Dialog
+		open={customGcodeEdit !== null}
+		label="G-code personnalisé"
+		title="G-code personnalisé"
+		size="md"
+		onclose={() => (customGcodeEdit = null)}
+		data-testid="custom-gcode-dialog"
+	>
+		{#if customGcodeEdit}
+			<label class="flex flex-col gap-1 text-sm">
+				<span
+					>Entrez le G-code personnalisé à utiliser sur la couche {customGcodeEdit.layer + 1}
+					({customGcodeEdit.z.toFixed(2)} mm) :</span
+				>
+				<textarea
+					class="ws-field min-h-32 font-mono text-xs"
+					data-testid="custom-gcode-input"
+					bind:value={customGcodeEdit.text}
+					onkeydown={(e) => {
+						e.stopPropagation();
+						if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submitCustomGcode();
+					}}></textarea>
+				<span class="text-xs text-content-subtle"
+					>Inséré au début de la couche ; appliqué au prochain tranchage. Ctrl+Entrée pour valider.</span
+				>
+			</label>
+		{/if}
+		{#snippet footer()}
+			<button type="button" class="ws-btn ws-btn-secondary" onclick={() => (customGcodeEdit = null)}
+				>Annuler</button
+			>
+			<button
+				type="button"
+				class="ws-btn ws-btn-primary"
+				data-testid="custom-gcode-ok"
+				disabled={!customGcodeEdit?.text.trim()}
+				onclick={submitCustomGcode}>OK</button
+			>
+		{/snippet}
+	</Dialog>
+
+	<!-- Phase 37 — tableau des paramètres d'objets (« Edit in Parameter Table »). -->
+	<ObjectTable
+		open={objectTableOpen}
+		objects={objectTableObjects}
+		inherited={processValues}
+		filamentColors={filamentSlotColors.slice(0, filamentSlots)}
+		focusId={objectTableFocus}
+		onclose={() => (objectTableOpen = false)}
+		onsetting={onTableSetting}
+		onextruder={onTableExtruder}
+		onrename={onTableRename}
+		onprintable={(id, printable) => tree.setPrintable(id, printable)}
 	/>
 
 	<!-- Suppression d'un preset utilisé par d'autres projets (lot 13). -->
@@ -8524,6 +9032,7 @@
 						oncontext={(id, x, y) => (plateMenu = { open: true, x, y, plateId: id })}
 						sliced={Object.keys(plateResults)}
 						onlock={(id, locked) => plates.setLocked(id, locked)}
+						onfront={movePlateToFront}
 					/>
 				{:else if configTab === 'project'}
 					{#if layout.tab === 'project'}
@@ -8558,6 +9067,33 @@
 									onadd={() => (showCatalog = true)}
 									onedit={() => openSettingsDialog('machine')}
 								/>
+							{/if}
+							{#if nozzleFlows.length}
+								<!-- Phase 37 — débit de buse par extrudeur (Orca ExtruderGroup « Débit »). -->
+								<div class="flex flex-wrap items-center gap-2 text-sm" data-testid="nozzle-flow">
+									{#each nozzleFlows as choice (choice.index)}
+										<label class="flex items-center gap-1">
+											<span class="text-content-muted"
+												>{nozzleFlows.length > 1
+													? `Débit buse ${nozzleFlows.length === 2 ? (choice.index === 0 ? 'gauche' : 'droite') : choice.index + 1}`
+													: 'Débit de la buse'}</span
+											>
+											<select
+												class="ws-field ws-field-sm"
+												data-testid="nozzle-flow-select"
+												data-index={choice.index}
+												value={choice.value}
+												disabled={choice.options.length < 2}
+												onchange={(e) =>
+													setExtruderFlow(choice.index, e.currentTarget.value as NozzleFlow)}
+											>
+												{#each choice.options as option (option)}
+													<option value={option}>{NOZZLE_FLOW_LABELS[option]}</option>
+												{/each}
+											</select>
+										</label>
+									{/each}
+								</div>
 							{/if}
 						</section>
 						<!-- Filament : un slot par filament (slot n ↔ extrudeur n de la liste
@@ -8988,7 +9524,23 @@
 					</div>
 				{/if}
 				<div class="mt-4 border-t border-border pt-4">
+					{#if tree.list().some((n) => n.kind === 'object')}
+						<!-- Phase 37 — Orca ParamsPanel « View all object's settings » :
+						     tableau des paramètres de tous les objets. -->
+						<div class="mb-1 flex justify-end">
+							<button
+								type="button"
+								class="ws-btn ws-btn-sm ws-btn-ghost"
+								data-testid="open-object-table"
+								data-tip="Voir et modifier les réglages de tous les objets dans un tableau"
+								onclick={() => openObjectTable(selId)}>Table des paramètres…</button
+							>
+						</div>
+					{/if}
 					<ObjectList
+						meshWarnings={meshWarningsByObject}
+						onrepair={(id) => void repairFromWarning(id)}
+						{cutLinks}
 						{tree}
 						selection={ws.selection}
 						visibleIds={activeObjectIds}
@@ -9045,6 +9597,11 @@
 									class="flex items-center gap-2 rounded px-2 py-0.5 hover:bg-surface-sunken"
 									data-testid="object-volume"
 									data-type={volume.type}
+									oncontextmenu={(e) => {
+										if (!selId) return;
+										e.preventDefault();
+										openVolumeContext(selId, volume.id, e.clientX, e.clientY);
+									}}
 								>
 									<span class="text-content-subtle">↳</span>
 									<button
@@ -9221,6 +9778,12 @@
 			{/if}
 			{#if layout.tab === 'prepare'}
 				<!-- Phase 28 : double-clic sur un texte / SVG en relief → ré-édition. -->
+				{#if $appPreferences.show3dNavigator}
+					<!-- Phase 37 — navigateur 3D (Orca : cube en bas à gauche de la vue). -->
+					<div class="absolute bottom-3 left-3 z-10">
+						<ViewCube forward={navForward} onselect={(v) => void selectNamedView(v)} />
+					</div>
+				{/if}
 				<!-- svelte-ignore a11y_no_static_element_interactions -->
 				<div class="contents" ondblclick={() => openEmbossEdit(selId)}>
 					{#await sceneModule then { default: SceneView }}
@@ -9256,7 +9819,10 @@
 							{sectionRatio}
 							clipPlane={cutClip ?? sectionClip}
 							guides={sceneGuides}
-							oncameradir={(forward) => (cameraForward = forward)}
+							oncameradir={(forward) => {
+								cameraForward = forward;
+								navForward = forward;
+							}}
 							onpickobject={() => (selectedVolumeId = null)}
 							otherPlates={plateViews}
 							activePlate={activePlateView}
@@ -9717,8 +10283,13 @@
 											? 'ws-chip-on'
 											: ''}"
 										onclick={() => (layerRange = setActiveThumb(layerRange, 'high'))}
+										oncontextmenu={(e) => {
+											e.preventDefault();
+											layerRange = setActiveThumb(layerRange, 'high');
+											openLayerMenu(e.clientX, e.clientY, layerRange.high);
+										}}
 										aria-label="Poignée haute"
-										data-tip="Poignée haute (↑/↓ quand active)"
+										data-tip="Poignée haute (↑/↓ quand active ; clic droit : codes de la couche)"
 										data-tip-side="left"
 									>
 										<span class="tabular-nums">▲ {layerRange.high + 1}</span>
@@ -9802,8 +10373,13 @@
 												? 'ws-chip-on'
 												: ''}"
 											onclick={() => (layerRange = setActiveThumb(layerRange, 'low'))}
+											oncontextmenu={(e) => {
+												e.preventDefault();
+												layerRange = setActiveThumb(layerRange, 'low');
+												openLayerMenu(e.clientX, e.clientY, layerRange.low);
+											}}
 											aria-label="Poignée basse"
-											data-tip="Poignée basse (↑/↓ quand active)"
+											data-tip="Poignée basse (↑/↓ quand active ; clic droit : codes de la couche)"
 											data-tip-side="left"
 										>
 											<span class="tabular-nums">▼ {layerRange.low + 1}</span>
@@ -9845,6 +10421,22 @@
 											data-tip-side="left"
 											onclick={() => editColorChangeKey(codeAtHighLayer ? '-' : '+')}
 											>{codeAtHighLayer ? '− couleur' : '+ couleur'}</button
+										>
+										<!-- Phase 37 — menu d'IMSlider : pause, G-code perso, modèle,
+										     changement de filament ; modifier / supprimer le code posé. -->
+										<button
+											type="button"
+											class="ws-chip w-full justify-center"
+											data-testid="layer-code-menu-open"
+											aria-haspopup="menu"
+											data-tip={'Codes de la couche ' +
+												(activeThumbLayer() + 1) +
+												' : pause, G-code, filament…'}
+											data-tip-side="left"
+											onclick={(e) => {
+												const rect = e.currentTarget.getBoundingClientRect();
+												openLayerMenu(rect.left, rect.bottom);
+											}}>Codes…</button
 										>
 									{/if}
 									<button

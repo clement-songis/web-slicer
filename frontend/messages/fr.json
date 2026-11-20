@@ -54,6 +54,8 @@
 	"auto_perspective": "Perspective automatique",
 	"show_g_code_window": "Afficher la fenêtre G-code",
 	"show_gridlines": "Afficher la grille",
+	"show_3d_navigator": "Afficher le navigateur 3D",
+	"show_axes": "Afficher les axes",
 	"show_labels": "Afficher les étiquettes",
 	"show_overhang": "Afficher les surplombs",
 	"show_selected_outline_beta": "Afficher le contour de la sélection (bêta)",
