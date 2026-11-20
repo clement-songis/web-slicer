@@ -44,6 +44,7 @@ pub fn to_system_preset(p: &ImportedPreset) -> Preset {
         instantiation: p.instantiation,
         setting_id: p.setting_id.clone(),
         filament_id: p.filament_id.clone(),
+        renamed_from: p.renamed_from.clone(),
         compatible_printers,
         values: Value::Object(p.values.clone()),
     }

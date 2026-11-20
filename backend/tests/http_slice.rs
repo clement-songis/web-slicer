@@ -112,6 +112,7 @@ async fn make_bad_process(storage: &AnyStorage, owner: UserId) -> String {
                 setting_id: None,
                 filament_id: None,
                 compatible_printers: None,
+                renamed_from: Vec::new(),
                 values: json!({
                     "layer_height": "-1",
                     "compatible_printers": ["Bench 0.4 nozzle"]
@@ -140,6 +141,7 @@ async fn make_valid_mirror_process(storage: &AnyStorage, owner: UserId) -> Strin
                 setting_id: None,
                 filament_id: None,
                 compatible_printers: None,
+                renamed_from: Vec::new(),
                 values: json!({
                     "layer_height": "0.2",
                     "use_relative_e_distances": false,
@@ -177,6 +179,7 @@ async fn make_filament(
                 setting_id: None,
                 filament_id: None,
                 compatible_printers: None,
+                renamed_from: Vec::new(),
                 values: json!({
                     "filament_type": [material],
                     "nozzle_temperature": [temperature.to_string()],
@@ -213,6 +216,7 @@ async fn make_named_machine_preset(storage: &AnyStorage, owner: UserId, name: &s
                 setting_id: None,
                 filament_id: None,
                 compatible_printers: None,
+                renamed_from: Vec::new(),
                 values: json!({}),
             },
         )
@@ -371,6 +375,7 @@ fn machine_preset(
         setting_id: None,
         filament_id: None,
         compatible_printers: None,
+        renamed_from: Vec::new(),
         values: json!({}),
     }
 }
@@ -617,6 +622,7 @@ async fn post_process_scripts_are_kept_and_reported_not_run() {
                 setting_id: None,
                 filament_id: None,
                 compatible_printers: None,
+                renamed_from: Vec::new(),
                 values: json!({ "post_process": ["/usr/bin/python3 /tmp/fix.py"] }),
             },
         )

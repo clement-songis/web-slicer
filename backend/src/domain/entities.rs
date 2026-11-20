@@ -184,6 +184,9 @@ pub struct Preset {
     pub setting_id: Option<String>,
     pub filament_id: Option<String>,
     pub compatible_printers: Option<Value>,
+    /// Anciens noms du preset système (`renamed_from` Orca, lot 35) — vide
+    /// pour les presets utilisateur.
+    pub renamed_from: Vec<String>,
     pub values: Value,
 }
 

@@ -125,15 +125,6 @@ export const UI_LAYOUT: UiPage[] = [
     ],
   },
   {
-    title: "Setting Overrides",
-    icon: "custom-gcode_setting_override",
-    kind: "filament",
-    sections: [
-      { title: "Retraction", options: ["filament_retraction_length","filament_z_hop","filament_z_hop_types","filament_retract_lift_above","filament_retract_lift_below","filament_retract_lift_enforce","filament_retraction_speed","filament_deretraction_speed","filament_retract_restart_extra","filament_retraction_minimum_travel","filament_retract_when_changing_layer","filament_wipe","filament_wipe_distance","filament_retract_before_wipe","filament_long_retractions_when_cut","filament_retraction_distances_when_cut"] },
-      { title: "Ironing", options: ["filament_ironing_flow","filament_ironing_spacing","filament_ironing_inset","filament_ironing_speed"] },
-    ],
-  },
-  {
     title: "Filament",
     icon: "custom-gcode_filament",
     kind: "filament",
@@ -155,6 +146,15 @@ export const UI_LAYOUT: UiPage[] = [
       { title: "Part cooling fan", options: ["reduce_fan_stop_start_freq","slow_down_for_layer_cooling","dont_slow_down_outer_wall","slow_down_min_speed","enable_overhang_bridge_fan","overhang_fan_threshold","overhang_fan_speed","internal_bridge_fan_speed","support_material_interface_fan_speed","ironing_fan_speed"] },
       { title: "Auxiliary part cooling fan", options: ["additional_cooling_fan_speed"] },
       { title: "Exhaust fan", options: ["activate_air_filtration"] },
+    ],
+  },
+  {
+    title: "Setting Overrides",
+    icon: "custom-gcode_setting_override",
+    kind: "filament",
+    sections: [
+      { title: "Retraction", options: ["filament_retraction_length","filament_z_hop","filament_z_hop_types","filament_retract_lift_above","filament_retract_lift_below","filament_retract_lift_enforce","filament_retraction_speed","filament_deretraction_speed","filament_retract_restart_extra","filament_retraction_minimum_travel","filament_retract_when_changing_layer","filament_wipe","filament_wipe_distance","filament_retract_before_wipe","filament_long_retractions_when_cut","filament_retraction_distances_when_cut"] },
+      { title: "Ironing", options: ["filament_ironing_flow","filament_ironing_spacing","filament_ironing_inset","filament_ironing_speed"] },
     ],
   },
   {

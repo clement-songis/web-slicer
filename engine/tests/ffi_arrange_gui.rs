@@ -213,3 +213,90 @@ fn invalid_spacing_is_rejected() {
         engine::adapters::ffi::arrange_gui(&mut model, &bed, &config, &settings(f64::NAN)).is_err()
     );
 }
+
+/// Lit au lit le Voron 350 mais avec un plateau 120 × 50 : deux cubes 20 mm
+/// y tiennent côte à côte, mais plus dès qu'une tour d'essuyage estimée
+/// (ArrangeJob::prepare_wipe_tower, lot 35) occupe la largeur — la tour est
+/// un obstacle fixe : profondeur minimale 20 mm (WipeTower::min_depth_per_height
+/// 100 → 20), largeur 100, brim 3, marge 1 → rectangle [7, 113] × [7, 33] et
+/// il ne reste aucune bande de 22 mm hors de la tour sur le plateau 0.
+fn wipe_tower_setup(prime_tower: bool) -> (Model, BuildVolume, DynamicPrintConfig) {
+    let (mut model, _, mut config) = setup(2, false);
+    config.0.insert(
+        "nozzle_diameter".into(),
+        ConfigValue::Floats(vec![0.4, 0.4]),
+    );
+    config.0.insert(
+        "filament_diameter".into(),
+        ConfigValue::Floats(vec![1.75, 1.75]),
+    );
+    config
+        .0
+        .insert("enable_prime_tower".into(), ConfigValue::Bool(prime_tower));
+    config
+        .0
+        .insert("wipe_tower_x".into(), ConfigValue::Floats(vec![10.0]));
+    config
+        .0
+        .insert("wipe_tower_y".into(), ConfigValue::Floats(vec![10.0]));
+    config
+        .0
+        .insert("prime_tower_width".into(), ConfigValue::Float(100.0));
+    // Deux matériaux différents (extrudeurs 1 et 2) de même température de
+    // plateau : allow_multi_materials_on_same_plate → tour requise.
+    model.objects[0].volumes[0].extruder = Some(1);
+    model.objects[1].volumes[0].extruder = Some(2);
+    let bed = BuildVolume {
+        bed_shape: vec![[0.0, 0.0], [120.0, 0.0], [120.0, 50.0], [0.0, 50.0]],
+        max_height: 340.0,
+        excluded: Vec::new(),
+    };
+    (model, bed, config)
+}
+
+#[test]
+fn wipe_tower_space_is_reserved() {
+    // Sans tour : les deux cubes tiennent sur le plateau.
+    let (mut model, bed, config) = wipe_tower_setup(false);
+    let out =
+        engine::adapters::ffi::arrange_gui(&mut model, &bed, &config, &settings(2.0)).unwrap();
+    assert_eq!(out.plate_count, 1, "contrôle sans tour");
+    assert!(plates(&model).iter().all(|&p| p == 0));
+
+    // Avec la tour réservée : plus aucun cube sur le plateau 0 (bande libre
+    // de 17 mm < 22 mm requis) — les objets débordent sur un plateau créé.
+    let (mut model, bed, config) = wipe_tower_setup(true);
+    let out =
+        engine::adapters::ffi::arrange_gui(&mut model, &bed, &config, &settings(2.0)).unwrap();
+    assert!(
+        out.plate_count >= 2,
+        "la tour réserve le plateau 0 : plate_count = {}",
+        out.plate_count
+    );
+    let bx = boxes(&model);
+    let p = plates(&model);
+    for (k, r) in bx.iter().enumerate() {
+        if p[k] == 0 {
+            // Éventuel objet resté sur le plateau 0 : hors du rectangle de la
+            // tour [7, 113] × [7, 33] (marge 1 mm d'inflation).
+            assert!(
+                r[3] < 6.0 || r[1] > 34.0 || r[2] < 6.0 || r[0] > 114.0,
+                "objet {k} dans l'emprise de la tour : {r:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn wipe_tower_is_not_estimated_in_plate_scope() {
+    // prepare_partplate n'estime pas de tour : même config, portée « ce
+    // plateau » → les deux cubes restent sur le plateau 0.
+    let (mut model, bed, config) = wipe_tower_setup(true);
+    let mut s = settings(2.0);
+    s.plate_count = 1;
+    s.plate_scope = Some(0);
+    s.current_plate = 0;
+    let out = engine::adapters::ffi::arrange_gui(&mut model, &bed, &config, &s).unwrap();
+    assert_eq!(out.plate_count, 1);
+    assert!(plates(&model).iter().all(|&p| p == 0));
+}

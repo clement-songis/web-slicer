@@ -73,12 +73,12 @@ pub async fn slice(
     // Scène non enregistrée : chaque modèle référencé doit appartenir au
     // projet, sinon le job échouerait plus tard (« modèle supprimé ») — refus
     // immédiat, sans révéler si l'id existe ailleurs.
+    let models = state
+        .storage
+        .models()
+        .list(user.id, Some(project_id))
+        .await?;
     if body.scene.is_some() {
-        let models = state
-            .storage
-            .models()
-            .list(user.id, Some(project_id))
-            .await?;
         let known: HashSet<String> = models.iter().map(|m| m.id.to_string()).collect();
         let unknown = unknown_scene_models(scene, &known);
         if !unknown.is_empty() {
@@ -113,9 +113,12 @@ pub async fn slice(
     }
 
     // Quotas du compte (lot 32) : tranchages simultanés (429) puis stockage
-    // (413, le G-code produit ne pourrait pas être gardé).
+    // (413, le G-code produit ne pourrait pas être gardé) — réservation
+    // estimée du G-code de chaque plateau ciblé avant création des jobs
+    // (lot 35 : plus de placeholder d'1 octet).
     crate::http::quota::ensure_slice_slots(&state, user.id, targets.len() as i64).await?;
-    crate::http::quota::ensure_storage_room(&state, user.id, 1).await?;
+    let reserved_gcode = estimated_gcode_bytes(scene, &models, &targets);
+    crate::http::quota::ensure_storage_room(&state, user.id, reserved_gcode).await?;
 
     let mut jobs = Vec::with_capacity(targets.len());
     for &t in &targets {
@@ -220,6 +223,39 @@ pub(crate) fn plate_scene_ids(scene: &Value, t: i64) -> Vec<String> {
         .get(t.max(0) as usize)
         .cloned()
         .unwrap_or_else(|| all_object_ids(scene))
+}
+
+/// Réservation de quota G-code (lot 35) : somme sur les plateaux ciblés de
+/// l'estimation par plateau ([`crate::http::quota::estimate_gcode_bytes`]) à
+/// partir des triangles des modèles des objets du plateau.
+fn estimated_gcode_bytes(scene: &Value, models: &[crate::domain::Model], targets: &[i64]) -> i64 {
+    let triangles_of = |model_id: &str| -> i64 {
+        models
+            .iter()
+            .find(|m| m.id.to_string() == model_id)
+            .map(|m| m.triangle_count)
+            .unwrap_or(0)
+    };
+    let mut total = 0i64;
+    for &t in targets {
+        let ids: HashSet<String> = plate_scene_ids(scene, t).into_iter().collect();
+        let triangles: i64 = scene
+            .get("objects")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter(|object| {
+                object
+                    .get("id")
+                    .and_then(Value::as_str)
+                    .is_some_and(|id| ids.contains(id))
+            })
+            .filter_map(|object| object.get("modelId").and_then(Value::as_str))
+            .map(triangles_of)
+            .sum();
+        total = total.saturating_add(crate::http::quota::estimate_gcode_bytes(triangles));
+    }
+    total
 }
 
 /// Configuration réellement tranchée (presets actifs + brouillon + projet).

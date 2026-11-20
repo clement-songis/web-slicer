@@ -152,6 +152,7 @@ async fn make_machine_preset(s: &dyn Storage, owner: UserId, name: &str) -> Pres
                 setting_id: None,
                 filament_id: None,
                 compatible_printers: None,
+                renamed_from: Vec::new(),
                 values: json!({ "nozzle_diameter": "0.4" }),
             },
         )
@@ -250,6 +251,7 @@ async fn unique_user_preset_name(s: &dyn Storage) {
                 setting_id: None,
                 filament_id: None,
                 compatible_printers: None,
+                renamed_from: Vec::new(),
                 values: json!({}),
             },
         )
@@ -365,6 +367,7 @@ async fn system_reseed_preserves_user_presets(s: &dyn Storage) {
         setting_id: None,
         filament_id: None,
         compatible_printers: None,
+        renamed_from: Vec::new(),
         values: json!({ "layer_height": "0.2" }),
     };
     let machine = system(PresetKind::Machine, "Machine stable");

@@ -218,6 +218,14 @@ pub struct ResetPasswordRequest {
     pub new_password: String,
 }
 
+/// Corps de `PUT /api/admin/users/{id}/status` (lot 35).
+#[derive(Debug, Clone, Deserialize, TS)]
+#[ts(export)]
+pub struct SetUserStatusRequest {
+    /// `active` | `disabled`.
+    pub status: String,
+}
+
 /// Corps de `POST /api/admin/invitations`.
 #[derive(Debug, Clone, Deserialize, TS)]
 #[ts(export)]

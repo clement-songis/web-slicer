@@ -113,6 +113,11 @@ pub struct ImportedProject {
     pub config: Map<String, Value>,
     /// Métadonnées du projet (Title, Designer, License…), `None` si aucune.
     pub metadata: Option<engine::threemf::ProjectMetadata>,
+    /// Couleurs de filaments à exposer (`scene.projectConfig.filament_colour`)
+    /// malgré l'absence de config — remplies par l'import « géométrie seule »
+    /// quand les objets utilisent des extrudeurs non déclarés (lot 35,
+    /// Orca `set_num_filaments` + `get_next_color_for_filament`).
+    pub filament_colours: Vec<String>,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -474,6 +479,7 @@ fn convert_view(view: ProjectView) -> ImportResult<ImportedProject> {
         plates,
         config: view.config,
         metadata: view.metadata,
+        filament_colours: Vec::new(),
     })
 }
 

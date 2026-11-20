@@ -10,5 +10,5 @@ pub use password::{hash_password, verify_password, PasswordError};
 pub use secrets::SecretBox;
 pub use service::{
     authenticate, change_password, create_invitation, create_managed_user, delete_account,
-    register, reset_password, session_stamp, AuthError,
+    register, reset_password, session_stamp, set_account_status, AuthError,
 };

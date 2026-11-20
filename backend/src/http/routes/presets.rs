@@ -725,6 +725,7 @@ fn new_user_preset(
         setting_id: None,
         filament_id: None,
         compatible_printers: None,
+        renamed_from: Vec::new(),
         values: match values {
             Value::Object(_) => values,
             _ => Value::Object(Map::new()),

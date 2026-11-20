@@ -184,6 +184,7 @@ async fn seed_alice(h: &Harness, owner: UserId) -> AliceResources {
                 setting_id: None,
                 filament_id: None,
                 compatible_printers: None,
+                renamed_from: Vec::new(),
                 values: json!({}),
             },
         )
@@ -852,6 +853,17 @@ async fn lot32_account_routes_and_quotas_are_scoped_per_account() {
     assert_eq!(resp.status(), StatusCode::CREATED, "quota de Bob intact");
 
     // Tranchages : le job en file d'Alice ne consomme pas la place de Bob.
+    // (Quota de stockage relâché : la réservation G-code estimée — 128 Kio
+    // par plateau, lot 35 — n'est pas l'objet de cette vérification.)
+    let resp = attempt(
+        &h.app,
+        "PATCH",
+        "/api/admin/instance",
+        &alice_session,
+        Some(json!({ "storage_quota_bytes": 0, "max_concurrent_slices": 1 })),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
     let scene = json!({
         "schema_version": 1,
         "objects": [{ "id": "o1" }],

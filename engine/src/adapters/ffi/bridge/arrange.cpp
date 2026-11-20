@@ -13,6 +13,7 @@
 #include "libslic3r/ModelArrange.hpp"
 #include "libslic3r/Orient.hpp"
 #include "libslic3r/Print.hpp"
+#include "libslic3r/GCode/WipeTower.hpp"
 
 #include <algorithm>
 #include <map>
@@ -35,6 +36,166 @@ static void config_from_json(Slic3r::DynamicPrintConfig &config, const std::stri
 }
 
 namespace {
+
+// ArrangeJob::prepare_wipe_tower (lot 35) : réserve la place de la tour
+// d'essuyage comme obstacle **fixe** sur chaque plateau potentiel (0..
+// MAX_NUM_PLATES, verrouillés sautés, indexés sur la séquence non verrouillée
+// comme les objets arrangés). Reproduit PartPlate::estimate_wipe_tower_size +
+// estimate_wipe_tower_polygon sans la GUI : volume de purge par extrudeur,
+// hauteur max des objets du plateau, marge WIPE_TOWER_MARGIN (1 mm) + brim,
+// position clampée depuis wipe_tower_x/wipe_tower_y. Une tour déjà tranchée
+// (GLVolume GUI) n'existe pas côté serveur : seule l'estimation est posée,
+// exactement comme la branche `else if (need_wipe_tower)` d'Orca.
+// `need_min_depth` = timelapse fluide ou wrapping (variable locale
+// `need_wipe_tower` d'estimate_wipe_tower_size).
+void prepare_wipe_towers(Slic3r::arrangement::ArrangePolygons &unselected,
+                         const Slic3r::Model &model,
+                         const Slic3r::DynamicPrintConfig &config,
+                         const Slic3r::Points &bed,
+                         const rust::Vec<uint32_t> &plate_of_instance,
+                         const std::vector<Slic3r::ModelInstance *> &flat,
+                         const std::set<uint32_t> &locked,
+                         int plate_count,
+                         bool need_min_depth)
+{
+    using namespace Slic3r;
+    using namespace Slic3r::arrangement;
+    constexpr int max_plates = 36; // MAX_NUM_PLATES = MAX_PLATES_COUNT
+
+    const BoundingBox bed_bb = Polygon(bed).bounding_box();
+    const double plate_width  = unscaled(bed_bb.size().x());
+    const double plate_depth = unscaled(bed_bb.size().y());
+
+    // PresetBundle::get_printer_extruder_count : nombre de buses.
+    int extruder_count = 1;
+    if (const auto *nozzle = config.option<ConfigOptionFloats>("nozzle_diameter"))
+        extruder_count = std::max<int>(1, static_cast<int>(nozzle->values.size()));
+
+    // PartPlateList::get_extruders(true) : extrude_ids des instances
+    // imprimables + surcharges globales murs/infill/support
+    // (PartPlate::get_extruders, replis objet → global omis : les extrudeurs
+    // par objet sont déjà dans extrude_ids).
+    std::set<int> extruder_ids;
+    for (size_t k = 0; k < flat.size(); ++k) {
+        if (!flat[k]->printable)
+            continue;
+        // Reconstruit les extrudeurs depuis le modèle (extrude_ids du polygone
+        // d'arrangement n'est pas conservé pour les instances verrouillées).
+        for (const ModelVolume *mv : flat[k]->get_object()->volumes)
+            for (int id : mv->get_extruders())
+                extruder_ids.insert(id);
+    }
+    for (const char *key : {"support_interface_filament", "support_filament",
+                            "outer_wall_filament_id", "inner_wall_filament_id",
+                            "sparse_infill_filament_id", "internal_solid_filament_id",
+                            "top_surface_filament_id", "bottom_surface_filament_id"}) {
+        const ConfigOption *o = config.option(key);
+        if (o != nullptr && o->getInt() > 0)
+            extruder_ids.insert(o->getInt());
+    }
+    const int extruder_size = static_cast<int>(extruder_ids.size());
+
+    // Hauteur max par plateau : estimate_wipe_tower_size ne prend que les
+    // objets dont l'instance 0 est sur le plateau (contain_instance_totally).
+    std::map<int, double> height_by_plate;
+    {
+        size_t k = 0;
+        for (const ModelObject *mo : model.objects) {
+            if (!mo->instances.empty() && k < flat.size()) {
+                const int plate = static_cast<int>(plate_of_instance[k]);
+                const double h  = mo->bounding_box_exact().size().z();
+                height_by_plate[plate] = std::max(height_by_plate[plate], h);
+            }
+            k += mo->instances.size();
+        }
+    }
+
+    // estimate_wipe_tower_size.
+    double layer_height = 0.08;
+    if (const ConfigOption *o = config.option("layer_height"))
+        layer_height = o->getFloat();
+    double filament_change_volume = 0.;
+    {
+        std::vector<double> lengths, diameters;
+        if (const auto *o = config.option<ConfigOptionFloats>("filament_change_length"))
+            lengths = o->values;
+        if (const auto *o = config.option<ConfigOptionFloats>("filament_diameter"))
+            diameters = o->values;
+        const double length   = lengths.empty() ? 0. : *std::max_element(lengths.begin(), lengths.end());
+        const double diameter = diameters.empty() ? 1.75 : *std::max_element(diameters.begin(), diameters.end());
+        filament_change_volume = length * PI * diameter * diameter / 4.;
+    }
+    const double wipe_volume = config.opt_float("prime_volume");
+    const double width = config.opt_float("prime_tower_width");
+    const double extra_spacing = config.opt_float("prime_tower_infill_gap") / 100.;
+    bool use_rib_wall = false;
+    if (const auto *o = config.option<ConfigOptionEnum<WipeTowerWallType>>("wipe_tower_wall_type"))
+        use_rib_wall = o->value == WipeTowerWallType::wtwRib;
+    double rib_width = config.opt_float("wipe_tower_rib_width");
+
+    const auto tower_x = config.option<ConfigOptionFloats>("wipe_tower_x");
+    const auto tower_y = config.option<ConfigOptionFloats>("wipe_tower_y");
+    if (tower_x == nullptr || tower_y == nullptr)
+        return;
+    const float tower_brim = static_cast<float>(config.opt_float("prime_tower_brim_width"));
+    const float margin = 1.f + tower_brim; // WIPE_TOWER_MARGIN = 1 mm
+
+    int bedid_unlocked = 0;
+    for (int bedid = 0; bedid < max_plates; ++bedid) {
+        const int plate_index_valid = std::min(bedid, plate_count - 1);
+        if (bedid < plate_count && locked.count(static_cast<uint32_t>(bedid)) > 0)
+            continue; // plateau verrouillé : ni tour, ni incrémentation
+
+        const double max_height = height_by_plate.count(plate_index_valid) != 0
+                                      ? height_by_plate[plate_index_valid]
+                                      : 0.;
+        double volume = wipe_volume * (extruder_count == 2 ? extruder_size : (extruder_size - 1));
+        if (extruder_count == 2)
+            volume += filament_change_volume * static_cast<int>(extruder_size / 2);
+        double depth;
+        if (use_rib_wall) {
+            depth = std::sqrt(volume / layer_height * extra_spacing);
+            if (need_min_depth || extruder_size > 1) {
+                const float min_depth = Slic3r::WipeTower::get_limit_depth_by_height(static_cast<float>(max_height));
+                const double volume_depth = depth;
+                depth = std::max<double>(min_depth, depth);
+                rib_width = std::min(rib_width, depth / 2);
+                depth = rib_width / std::sqrt(2.) + std::max(depth + config.opt_float("wipe_tower_extra_rib_length"), volume_depth);
+            }
+        } else {
+            depth = volume / (layer_height * width) * extra_spacing;
+            if (need_min_depth || depth > EPSILON) {
+                const float min_depth = Slic3r::WipeTower::get_limit_depth_by_height(static_cast<float>(max_height));
+                depth = std::max<double>(min_depth, depth);
+            }
+        }
+
+        // estimate_wipe_tower_polygon : position clampée dans le plateau.
+        float x = tower_x->get_at(bedid);
+        float y = tower_y->get_at(bedid);
+        float wp_brim_width = tower_brim;
+        if (wp_brim_width < 0)
+            wp_brim_width = Slic3r::WipeTower::get_auto_brim_by_height(static_cast<float>(max_height));
+        x = std::clamp(x, margin, static_cast<float>(plate_width) - static_cast<float>(width) - margin - wp_brim_width);
+        y = std::clamp(y, margin, static_cast<float>(plate_depth) - static_cast<float>(depth) - margin - wp_brim_width);
+
+        ArrangePolygon wipe_tower_ap;
+        wipe_tower_ap.poly.contour = Polygon({
+            {scaled(x - wp_brim_width), scaled(y - wp_brim_width)},
+            {scaled(x + width + wp_brim_width), scaled(y - wp_brim_width)},
+            {scaled(x + width + wp_brim_width), scaled(y + depth + wp_brim_width)},
+            {scaled(x - wp_brim_width), scaled(y + depth + wp_brim_width)},
+        });
+        wipe_tower_ap.bed_idx = bedid_unlocked;
+        wipe_tower_ap.setter = nullptr; // ne pas déplacer la tour
+        wipe_tower_ap.translation = Vec2crd(scaled(0.f), scaled(0.f));
+        wipe_tower_ap.name = "WipeTower";
+        wipe_tower_ap.is_virt_object = true;
+        wipe_tower_ap.is_wipe_tower = true;
+        unselected.emplace_back(std::move(wipe_tower_ap));
+        ++bedid_unlocked;
+    }
+}
 
 Slic3r::Points take_polygon(const rust::Vec<double> &xy, size_t &cursor)
 {
@@ -468,6 +629,45 @@ RawGuiArrangeResult arrange_gui_raw(const rust::Vec<RawObject> &objects, const r
             ap.itemid = static_cast<int>(unprintable.size());
             unprintable.emplace_back(std::move(ap));
         }
+    }
+
+    // ArrangeJob::prepare_wipe_tower (prepare_selected/prepare_all ; la
+    // portée « ce plateau » de prepare_partplate n'estime pas de tour) :
+    // besoin = timelapse fluide, objet multi-extrudeurs (peinture/support),
+    // ou plusieurs matériaux de même température de plateau autorisés
+    // ensemble. La tour est posée comme obstacle fixe sur chaque plateau
+    // potentiel (voir prepare_wipe_towers).
+    if (!only_on_partplate) {
+        const bool enable_prime_tower =
+            config.has("enable_prime_tower") && config.opt_bool("enable_prime_tower");
+        bool need_wipe_tower = false;
+        bool smooth_timelapse = false;
+        if (const auto *timelapse = config.option<ConfigOptionEnum<TimelapseType>>("timelapse_type"))
+            smooth_timelapse = timelapse->value == TimelapseType::tlSmooth;
+        if (smooth_timelapse)
+            need_wipe_tower = true;
+        if (!need_wipe_tower)
+            for (const ArrangePolygon &item : selected) {
+                std::set<int> obj_extruders(item.extrude_ids.begin(), item.extrude_ids.end());
+                if (obj_extruders.size() > 1) {
+                    need_wipe_tower = true;
+                    break;
+                }
+            }
+        if (!need_wipe_tower && params.allow_multi_materials_on_same_plate) {
+            std::map<int, std::set<int>> bedTemp2extruderIds;
+            for (const ArrangePolygon &item : selected)
+                for (auto id : item.extrude_ids)
+                    bedTemp2extruderIds[item.bed_temp].insert(id);
+            for (const auto &be : bedTemp2extruderIds)
+                if (be.second.size() > 1) {
+                    need_wipe_tower = true;
+                    break;
+                }
+        }
+        if (enable_prime_tower && !params.is_seq_print && need_wipe_tower)
+            prepare_wipe_towers(unselected, model, config, bed, plate_of_instance, flat, locked,
+                                plate_count, smooth_timelapse || enable_wrapping);
     }
     add_exclude_areas(unselected, only_on_partplate ? current_plate + 1 : max_plates, 0);
 

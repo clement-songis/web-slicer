@@ -11,6 +11,10 @@ use axum::Json;
 use serde::{Deserialize, Serialize};
 use ts_rs::TS;
 
+/// `Retry-After` (secondes) des 429 de quota de tranchage : délai indicatif
+/// après lequel un client peut retenter (un slot se sera probablement libéré).
+pub const SLICE_QUOTA_RETRY_AFTER_SECS: u64 = 30;
+
 /// Corps JSON de toute réponse d'erreur.
 #[derive(Debug, Clone, Serialize, Deserialize, TS)]
 #[ts(export)]
@@ -30,6 +34,8 @@ pub struct ErrorBody {
 pub struct ApiError {
     pub status: StatusCode,
     pub body: ErrorBody,
+    /// `Retry-After` (secondes) pour les 429 — absent sinon (lot 35).
+    pub retry_after_secs: Option<u64>,
 }
 
 impl ApiError {
@@ -41,6 +47,7 @@ impl ApiError {
                 message: message.into(),
                 details: None,
             },
+            retry_after_secs: None,
         }
     }
 
@@ -122,6 +129,9 @@ impl ApiError {
     }
 
     /// Trop de tranchages simultanés pour le compte (lot 32).
+    /// Porte `Retry-After` (lot 35) : délai indicatif avant qu'un slot se
+    /// libère — un tranchage se termine typiquement en quelques dizaines de
+    /// secondes à quelques minutes.
     pub fn slice_quota(active: i64, max: i64, requested: i64) -> Self {
         let mut e = Self::new(
             StatusCode::TOO_MANY_REQUESTS,
@@ -134,7 +144,9 @@ impl ApiError {
             "active": active,
             "max": max,
             "requested": requested,
+            "retry_after": SLICE_QUOTA_RETRY_AFTER_SECS,
         }));
+        e.retry_after_secs = Some(SLICE_QUOTA_RETRY_AFTER_SECS);
         e
     }
 
@@ -227,7 +239,15 @@ impl ApiError {
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        (self.status, Json(self.body)).into_response()
+        let mut response = (self.status, Json(self.body)).into_response();
+        if let Some(secs) = self.retry_after_secs {
+            if let Ok(value) = axum::http::HeaderValue::from_str(&secs.to_string()) {
+                response
+                    .headers_mut()
+                    .insert(axum::http::header::RETRY_AFTER, value);
+            }
+        }
+        response
     }
 }
 

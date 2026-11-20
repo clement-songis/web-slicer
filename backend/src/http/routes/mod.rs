@@ -76,6 +76,10 @@ where
             "/api/admin/users/{id}/reset-password",
             post(admin::reset_password),
         )
+        .route(
+            "/api/admin/users/{id}/status",
+            axum::routing::put(admin::set_user_status),
+        )
         .route("/api/admin/invitations", post(admin::create_invitation))
         .route("/api/admin/presets/reseed", post(admin::reseed_presets))
         .route("/api/projects", get(projects::list).post(projects::create))

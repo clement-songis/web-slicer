@@ -86,6 +86,8 @@ fn row_to_preset(row: &SqliteRow) -> StorageResult<Preset> {
         setting_id: row.get("setting_id"),
         filament_id: row.get("filament_id"),
         compatible_printers: opt_json(row, "compatible_printers")?,
+        renamed_from: serde_json::from_str(&row.get::<String, _>("renamed_from"))
+            .unwrap_or_default(),
         values: parse_json(&row.get::<String, _>("values_json"))?,
     })
 }
@@ -580,8 +582,8 @@ impl SqlitePresetRepo {
     async fn insert(&self, preset: &Preset) -> StorageResult<()> {
         sqlx::query(
             "INSERT INTO presets \
-             (id, kind, name, origin, user_id, vendor, inherits, instantiation, setting_id, filament_id, compatible_printers, values_json) \
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+             (id, kind, name, origin, user_id, vendor, inherits, instantiation, setting_id, filament_id, compatible_printers, renamed_from, values_json) \
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(id_str(preset.id))
         .bind(enum_str(&preset.kind))
@@ -594,6 +596,7 @@ impl SqlitePresetRepo {
         .bind(&preset.setting_id)
         .bind(&preset.filament_id)
         .bind(preset.compatible_printers.as_ref().map(json_text))
+        .bind(serde_json::to_string(&preset.renamed_from).unwrap_or_else(|_| "[]".into()))
         .bind(json_text(&preset.values))
         .execute(&self.pool)
         .await
@@ -646,7 +649,7 @@ impl PresetRepo for SqlitePresetRepo {
                 sqlx::query(
                     "UPDATE presets SET origin = 'system', user_id = NULL, vendor = ?, \
                      inherits = ?, instantiation = ?, setting_id = ?, filament_id = ?, \
-                     compatible_printers = ?, values_json = ? \
+                     compatible_printers = ?, renamed_from = ?, values_json = ? \
                      WHERE id = ? AND user_id IS NULL",
                 )
                 .bind(&p.vendor)
@@ -655,6 +658,7 @@ impl PresetRepo for SqlitePresetRepo {
                 .bind(&p.setting_id)
                 .bind(&p.filament_id)
                 .bind(p.compatible_printers.as_ref().map(json_text))
+                .bind(serde_json::to_string(&p.renamed_from).unwrap_or_else(|_| "[]".into()))
                 .bind(json_text(&p.values))
                 .bind(id_str(id))
                 .execute(&mut *tx)
@@ -663,8 +667,8 @@ impl PresetRepo for SqlitePresetRepo {
             } else {
                 sqlx::query(
                     "INSERT INTO presets \
-                     (id, kind, name, origin, user_id, vendor, inherits, instantiation, setting_id, filament_id, compatible_printers, values_json) \
-                     VALUES (?, ?, ?, 'system', NULL, ?, ?, ?, ?, ?, ?, ?)",
+                     (id, kind, name, origin, user_id, vendor, inherits, instantiation, setting_id, filament_id, compatible_printers, renamed_from, values_json) \
+                     VALUES (?, ?, ?, 'system', NULL, ?, ?, ?, ?, ?, ?, ?, ?)",
                 )
                 .bind(id_str(id))
                 .bind(enum_str(&p.kind))
@@ -675,6 +679,7 @@ impl PresetRepo for SqlitePresetRepo {
                 .bind(&p.setting_id)
                 .bind(&p.filament_id)
                 .bind(p.compatible_printers.as_ref().map(json_text))
+                .bind(serde_json::to_string(&p.renamed_from).unwrap_or_else(|_| "[]".into()))
                 .bind(json_text(&p.values))
                 .execute(&mut *tx)
                 .await

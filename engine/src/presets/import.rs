@@ -76,6 +76,7 @@ const META_FIELDS: &[&str] = &[
     "default_materials",
     "default_bed_type",
     "hotend_model",
+    "renamed_from",
 ];
 
 /// Preset importé depuis un profil vendeur.
@@ -91,6 +92,10 @@ pub struct ImportedPreset {
     pub filament_id: Option<String>,
     /// `true` si le preset est concret (`instantiation:"true"`).
     pub instantiation: bool,
+    /// Anciens noms du preset (clé JSON `renamed_from`,
+    /// `Preset::renamed_from` d'Orca) : le preset reste « de confiance » sous
+    /// ses anciens noms (`PresetCollection::find_preset_renamed`).
+    pub renamed_from: Vec<String>,
     pub compatible_printers: Vec<String>,
     /// Surcharges de configuration (méta exclus), au format JSON Orca.
     pub values: Map<String, Value>,
@@ -216,6 +221,29 @@ fn build_preset(
                 .collect()
         })
         .unwrap_or_default();
+    // `renamed_from` : chaîne unique (forme des profils vendés, décodée par
+    // `unescape_strings_cstyle` en un vecteur d'un élément) ou tableau.
+    let mut renamed_from = match data.get("renamed_from") {
+        Some(Value::Array(items)) => items
+            .iter()
+            .filter_map(Value::as_str)
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+            .collect(),
+        Some(Value::String(s)) if !s.is_empty() => vec![s.clone()],
+        _ => Vec::new(),
+    };
+    // PresetBundle.cpp (~5072) : alias dérivé du nom — un preset « A @B » sans
+    // renamed_from explicite accepte aussi « A B » (le « @ » retiré) comme
+    // ancien nom (find_preset_renamed).
+    if renamed_from.is_empty() {
+        if let Some(at) = name.find('@') {
+            let alias = format!("{}{}", &name[..at], &name[at + 1..]);
+            if !alias.trim().is_empty() {
+                renamed_from.push(alias);
+            }
+        }
+    }
     let values: Map<String, Value> = data
         .iter()
         .filter(|(k, _)| !META_FIELDS.contains(&k.as_str()))
@@ -232,6 +260,7 @@ fn build_preset(
         setting_id: str_field("setting_id"),
         filament_id: str_field("filament_id"),
         instantiation,
+        renamed_from,
         compatible_printers,
         values,
     }
@@ -276,6 +305,48 @@ mod tests {
         assert_eq!(out.count(PresetKind::Process), 3341, "process");
         assert_eq!(out.presets.len(), 11_895, "total");
         assert_eq!(out.vendor_count(), 65, "65 vendeurs (blacklist exclu)");
+    }
+
+    /// Lot 35 : `renamed_from` (anciens noms, `Preset::renamed_from` d'Orca)
+    /// est extrait des profils et sorti de `values` (champ méta) — 334 profils
+    /// vendés portent un renommage explicite, auxquels s'ajoutent les alias
+    /// dérivés du « @ » du nom (PresetBundle.cpp).
+    #[test]
+    fn renamed_from_is_extracted_as_meta() {
+        let out = outcome();
+        let with_renames = out
+            .presets
+            .iter()
+            .filter(|p| !p.renamed_from.is_empty())
+            .count();
+        assert!(
+            with_renames >= 334,
+            "profils avec renamed_from : {with_renames}"
+        );
+        // Renommage explicite (chaîne) : Wanhao D12-300 ← « Wanhao D12/300 ».
+        let wanhao = out
+            .presets
+            .iter()
+            .find(|p| p.name == "Wanhao D12-300")
+            .expect("preset Wanhao présent");
+        assert!(wanhao.renamed_from.contains(&"Wanhao D12/300".to_string()));
+        // Alias dérivé du « @ » : « Bambu PLA Basic @BBL X1C » ← « Bambu PLA
+        // Basic BBL X1C ».
+        let pla = out
+            .presets
+            .iter()
+            .find(|p| p.name == "Bambu PLA Basic @BBL X1C")
+            .expect("preset Bambu PLA Basic présent");
+        assert!(pla
+            .renamed_from
+            .contains(&"Bambu PLA Basic BBL X1C".to_string()));
+        for p in &out.presets {
+            assert!(
+                !p.values.contains_key("renamed_from"),
+                "{} : renamed_from est un méta, pas une valeur",
+                p.name
+            );
+        }
     }
 
     /// Comptages des presets concrets (instantiation=true), audit summary.

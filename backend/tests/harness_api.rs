@@ -59,6 +59,7 @@ fn imported(name: &str, kind: EnginePresetKind) -> ImportedPreset {
         setting_id: None,
         filament_id: None,
         instantiation: true,
+        renamed_from: vec![],
         compatible_printers: vec![],
         values: serde_json::Map::new(),
     }

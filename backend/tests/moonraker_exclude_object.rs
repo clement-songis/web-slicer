@@ -137,6 +137,7 @@ async fn seed_machine_preset(storage: &AnyStorage, owner: UserId) -> String {
                 setting_id: None,
                 filament_id: None,
                 compatible_printers: None,
+                renamed_from: Vec::new(),
                 values: json!({}),
             },
         )

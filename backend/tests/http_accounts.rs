@@ -1,7 +1,8 @@
 //! Lot 32 — comptes et quotas : liste paginée des comptes (admin), changement
 //! de mot de passe avec révocation des autres sessions, code
 //! `invalid_credentials` au login, quotas de stockage (413) et de tranchages
-//! simultanés (429), noms de projet uniques côté serveur.
+//! simultanés (429 + Retry-After, lot 35), noms de projet uniques côté serveur,
+//! désactivation/réactivation de compte (lot 35).
 
 use std::sync::Arc;
 
@@ -459,7 +460,8 @@ async fn quotas_are_configurable_and_enforced() {
     assert_eq!(s, StatusCode::PAYLOAD_TOO_LARGE, "{body}");
     assert_eq!(body["code"], "storage_quota_exceeded");
 
-    // Tranchage, stockage plein → 413.
+    // Tranchage, stockage plein → 413 (réservation estimée du G-code, lot 35 :
+    // 128 Kio de socle par plateau, objet sans modèle → 0 triangle).
     let scene = json!({
         "schema_version": 1,
         "objects": [{ "id": "o1" }, { "id": "o2" }],
@@ -480,9 +482,26 @@ async fn quotas_are_configurable_and_enforced() {
     let (s, _, body) = send(&a.app, slice(json!({ "plate_index": 0, "scene": scene }))).await;
     assert_eq!(s, StatusCode::PAYLOAD_TOO_LARGE, "{body}");
     assert_eq!(body["code"], "storage_quota_exceeded");
+    assert_eq!(
+        body["details"]["incoming_bytes"],
+        128 * 1024,
+        "estimation G-code réservée avant création des jobs"
+    );
     fill(a.dir.path(), bob_id, 10);
 
-    // Tranchages simultanés (max 1) : 2 plateaux d'un coup → 429.
+    // Tranchages simultanés (max 1) : 2 plateaux d'un coup → 429. Le quota de
+    // stockage (10 000) couvrirait tout juste les fichiers mais pas la
+    // réservation G-code (131 072) : repasse en illimité pour isoler le 429.
+    let (_, _, _) = send(
+        &a.app,
+        req(
+            "PATCH",
+            "/api/admin/instance",
+            Some(json!({ "storage_quota_bytes": 0 })),
+            Some(&admin),
+        ),
+    )
+    .await;
     let (s, _, body) = send(&a.app, slice(json!({ "all": true, "scene": scene }))).await;
     assert_eq!(s, StatusCode::TOO_MANY_REQUESTS, "{body}");
     assert_eq!(body["code"], "slice_quota_exceeded");
@@ -602,4 +621,136 @@ async fn duplicate_project_names_are_resolved_by_the_server() {
     let carol = register(&a.app, "carol@test.local").await;
     let c = create_project(&a.app, &carol, "Sans titre").await;
     assert_eq!(c["name"], "Sans titre");
+}
+
+/// Lot 35 — `PUT /api/admin/users/{id}/status` : désactivation (sessions
+/// ouvertes invalidées à la requête suivante, login refusé) puis réactivation ;
+/// le dernier administrateur actif ne peut pas être désactivé.
+#[tokio::test]
+async fn admin_can_disable_and_reenable_accounts() {
+    let a = app().await;
+    let admin = register(&a.app, "admin@test.local").await;
+    let bob = register(&a.app, "bob@test.local").await;
+    let bob_id = uid(&a.storage, "bob@test.local").await;
+    let admin_id = uid(&a.storage, "admin@test.local").await;
+    let status = |id: &UserId, value: &str| {
+        req(
+            "PUT",
+            &format!("/api/admin/users/{id}/status"),
+            Some(json!({ "status": value })),
+            Some(&admin),
+        )
+    };
+
+    // Statut visible dans la liste admin.
+    let (s, _, _) = send(&a.app, req("GET", "/api/me/usage", None, Some(&bob))).await;
+    assert_eq!(s, StatusCode::OK);
+
+    // Valeur invalide → 422.
+    let (s, _, body) = send(&a.app, status(&bob_id, "paused")).await;
+    assert_eq!(s, StatusCode::UNPROCESSABLE_ENTITY, "{body}");
+    assert_eq!(body["details"]["field"], "status");
+
+    // Non-admin → 403.
+    let (s, _, _) = send(
+        &a.app,
+        req(
+            "PUT",
+            &format!("/api/admin/users/{admin_id}/status"),
+            Some(json!({ "status": "disabled" })),
+            Some(&bob),
+        ),
+    )
+    .await;
+    assert_eq!(s, StatusCode::FORBIDDEN);
+
+    // Désactivation : 204, session de bob → 401, login → 403.
+    let (s, _, body) = send(&a.app, status(&bob_id, "disabled")).await;
+    assert_eq!(s, StatusCode::NO_CONTENT, "{body}");
+    let (s, _, _) = send(&a.app, req("GET", "/api/me/usage", None, Some(&bob))).await;
+    assert_eq!(s, StatusCode::UNAUTHORIZED, "session invalidée aussitôt");
+    let (s, _, body) = login(&a.app, "bob@test.local", "password123").await;
+    assert_eq!(s, StatusCode::FORBIDDEN, "{body}");
+    assert_eq!(body["code"], "forbidden");
+    assert_eq!(body["message"], "compte désactivé");
+
+    // La liste admin reflète le statut.
+    let (_, _, list) = send(
+        &a.app,
+        req("GET", "/api/admin/users?q=bob", None, Some(&admin)),
+    )
+    .await;
+    assert_eq!(list["users"][0]["status"], "disabled");
+
+    // Réactivation : login à nouveau possible.
+    let (s, _, _) = send(&a.app, status(&bob_id, "active")).await;
+    assert_eq!(s, StatusCode::NO_CONTENT);
+    let (s, _, _) = login(&a.app, "bob@test.local", "password123").await;
+    assert_eq!(s, StatusCode::OK);
+
+    // Dernier administrateur actif → 403 (même garde que la suppression).
+    let (s, _, body) = send(&a.app, status(&admin_id, "disabled")).await;
+    assert_eq!(s, StatusCode::FORBIDDEN, "{body}");
+    // Idempotent : désactiver un compte déjà désactivé reste sans effet.
+    let (s, _, _) = send(&a.app, status(&bob_id, "disabled")).await;
+    assert_eq!(s, StatusCode::NO_CONTENT);
+}
+
+/// Lot 35 — le 429 de quota de tranchage porte `Retry-After` (30 s) et
+/// `details.retry_after`.
+#[tokio::test]
+async fn slice_quota_429_carries_retry_after() {
+    let a = app().await;
+    let admin = register(&a.app, "admin@test.local").await;
+    let bob = register(&a.app, "bob@test.local").await;
+    let (s, _, _) = send(
+        &a.app,
+        req(
+            "PATCH",
+            "/api/admin/instance",
+            Some(json!({ "max_concurrent_slices": 1 })),
+            Some(&admin),
+        ),
+    )
+    .await;
+    assert_eq!(s, StatusCode::OK);
+
+    let project = create_project(&a.app, &bob, "Retry").await;
+    let pid = project["id"].as_str().unwrap();
+    let scene = json!({
+        "schema_version": 1,
+        "objects": [{ "id": "o1" }, { "id": "o2" }],
+        "plates": [
+            { "id": "p1", "objectIds": ["o1"] },
+            { "id": "p2", "objectIds": ["o2"] }
+        ]
+    });
+    let slice = |body: Value| {
+        req(
+            "POST",
+            &format!("/api/projects/{pid}/slice"),
+            Some(body),
+            Some(&bob),
+        )
+    };
+    let (s, _, _) = send(&a.app, slice(json!({ "plate_index": 0, "scene": scene }))).await;
+    assert_eq!(s, StatusCode::CREATED);
+
+    let resp: Response = a
+        .app
+        .clone()
+        .oneshot(slice(json!({ "plate_index": 1, "scene": scene })))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::TOO_MANY_REQUESTS);
+    assert_eq!(
+        resp.headers()
+            .get(header::RETRY_AFTER)
+            .and_then(|v| v.to_str().ok()),
+        Some("30"),
+        "Retry-After en secondes"
+    );
+    let bytes = to_bytes(resp.into_body(), usize::MAX).await.unwrap();
+    let body: Value = serde_json::from_slice(&bytes).unwrap();
+    assert_eq!(body["details"]["retry_after"], 30);
 }

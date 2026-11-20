@@ -243,6 +243,40 @@ pub async fn delete_account(storage: &dyn Storage, id: UserId) -> Result<(), Aut
     Ok(())
 }
 
+/// Désactive ou réactive un compte (lot 35). Refuse de désactiver le
+/// dernier administrateur **actif** (même garde que la suppression) ; une
+/// désactivation invalide immédiatement les sessions ouvertes (l'extracteur
+/// `CurrentUser` vérifie le statut à chaque requête).
+pub async fn set_account_status(
+    storage: &dyn Storage,
+    id: UserId,
+    status: UserStatus,
+) -> Result<(), AuthError> {
+    let target = storage.users().get(id).await.map_err(|e| match e {
+        StorageError::NotFound => AuthError::NotFound,
+        other => AuthError::Storage(other.to_string()),
+    })?;
+
+    if status == UserStatus::Disabled
+        && target.role == Role::Admin
+        && target.status == UserStatus::Active
+    {
+        let active_admins = storage
+            .users()
+            .list()
+            .await?
+            .into_iter()
+            .filter(|u| u.role == Role::Admin && u.status == UserStatus::Active)
+            .count();
+        if active_admins <= 1 {
+            return Err(AuthError::LastAdmin);
+        }
+    }
+
+    storage.users().set_status(id, status).await?;
+    Ok(())
+}
+
 /// Vérifie des identifiants et renvoie le compte si actif.
 pub async fn authenticate(
     storage: &dyn Storage,

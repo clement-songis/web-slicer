@@ -212,6 +212,45 @@ async fn open_as_geometry_vs_project_and_preference() {
     assert!(body["import"].get("gcode_warning").is_none());
 }
 
+/// Attend que la conversion moteur des modèles du projet soit terminée :
+/// l'import convertit les maillages en tâche de fond et l'export 3MF comme
+/// la lecture de scène répondent 409 « conversion en cours » tant qu'elle
+/// tourne (course visible seulement sur machine chargée — déflake lot 35).
+async fn await_conversion(app: &Router, project_id: &str, user: &str) {
+    let (_, project) = get(app, &format!("/api/projects/{project_id}"), user).await;
+    let models: Vec<String> = project["scene"]["objects"]
+        .as_array()
+        .map(|objects| {
+            objects
+                .iter()
+                .filter_map(|o| o["modelId"].as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default();
+    for model in models {
+        for _ in 0..600 {
+            // 200 = maillage prêt (corps binaire), 409 = conversion en cours,
+            // 422 = échec de conversion (échec réel du test).
+            let resp = send(
+                app,
+                request(
+                    "GET",
+                    &format!("/api/models/{model}/mesh"),
+                    json!({}),
+                    Some(user),
+                ),
+            )
+            .await;
+            let status = resp.status();
+            if status != StatusCode::CONFLICT {
+                assert_eq!(status, StatusCode::OK, "conversion de {model}");
+                break;
+            }
+            tokio::time::sleep(std::time::Duration::from_millis(100)).await;
+        }
+    }
+}
+
 #[tokio::test]
 async fn metadata_get_put_export_and_reopen() {
     if !backend::engine::worker_binary().exists() {
@@ -229,6 +268,7 @@ async fn metadata_get_put_export_and_reopen() {
     )
     .await;
     let id = body["id"].as_str().unwrap().to_string();
+    await_conversion(&app, &id, &user).await;
     let uri = format!("/api/projects/{id}/metadata");
 
     let (status, meta) = get(&app, &uri, &user).await;
@@ -288,6 +328,7 @@ async fn metadata_get_put_export_and_reopen() {
     .await;
     assert_eq!(body["import"]["has_metadata"], true);
     let reopened = body["id"].as_str().unwrap().to_string();
+    await_conversion(&app, &reopened, &user).await;
     let (_, meta) = get(&app, &format!("/api/projects/{reopened}/metadata"), &user).await;
     for key in ["title", "designer", "license", "description", "cover"] {
         assert_eq!(meta[key], edit[key], "{key} après réouverture");

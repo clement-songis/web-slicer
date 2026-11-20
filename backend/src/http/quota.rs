@@ -71,6 +71,21 @@ pub async fn ensure_slice_slots(state: &AppState, user: UserId, requested: i64) 
     Ok(())
 }
 
+/// Octets réservés pour le G-code d'un plateau avant `/slice` (lot 35) :
+/// heuristique déterministe à partir des triangles des modèles du plateau —
+/// environ 0,5 Ko par triangle (un G1 ≈ 30–60 octets, chaque triangle génère
+/// de l'ordre d'une dizaine de segments par couche qu'il traverse) plus un
+/// socle d'en-tête/brims/purges. Majorée plutôt que exacte : la réservation
+/// doit empêcher un 413 a posteriori, sans bloquer des scènes raisonnables.
+pub const GCODE_BASE_BYTES: i64 = 128 * 1024;
+/// Octets par triangle du maillage source (voir [`GCODE_BASE_BYTES`]).
+pub const GCODE_BYTES_PER_TRIANGLE: i64 = 512;
+
+/// Estimation de la taille du G-code d'un tranchage (octets).
+pub fn estimate_gcode_bytes(triangles: i64) -> i64 {
+    GCODE_BASE_BYTES.saturating_add(triangles.max(0).saturating_mul(GCODE_BYTES_PER_TRIANGLE))
+}
+
 /// Usage et quotas du compte (`GET /api/me/usage`).
 pub async fn usage(state: &AppState, user: UserId) -> ApiResult<UsageResponse> {
     let settings = state.storage.instance().settings().await?;

@@ -347,7 +347,10 @@ pub(crate) fn no_warn_when_modified_gcodes(preferences: &Value) -> bool {
 }
 
 /// Noms des presets « de confiance » d'Orca (`PresetCollection::validate_preset` :
-/// système, défaut ou bundle) : presets système machine et filament.
+/// système, défaut ou bundle) : presets système machine et filament, **et
+/// leurs anciens noms** (`renamed_from` → `find_preset_renamed`, lot 35) —
+/// un 3MF référençant un preset sous un nom renommé reste de confiance,
+/// pour le preset lui-même comme pour son `inherits_group`.
 async fn trusted_preset_names(
     state: &AppState,
     user_id: UserId,
@@ -360,6 +363,9 @@ async fn trusted_preset_names(
         for preset in state.storage.presets().list_by_kind(kind, user_id).await? {
             if preset.origin == PresetOrigin::System {
                 set.insert(preset.name);
+                for alias in preset.renamed_from {
+                    set.insert(alias);
+                }
             }
         }
     }
@@ -446,12 +452,28 @@ pub(crate) fn validate_presets(
 
 /// « Importer la géométrie seule » (`LoadStrategy::LoadModel` sans
 /// `LoadConfig`) : ni configuration ni presets du projet, plateaux sans nom
-/// ni réglages (`partplate_list.reload_all_objects` au lieu de
-/// `load_from_3mf_structure`), sans métadonnées. Les réglages d'objet et de
-/// volume sont conservés : la remise à zéro (`else if (!load_config)`) suit
-/// la chaîne des `En3mfType` dont toutes les valeurs sont déjà traitées, elle
-/// est inatteignable dans Orca 2.4.1.
+/// ni réglages, sans métadonnées. Les réglages d'objet et de volume sont
+/// conservés : la remise à zéro (`else if (!load_config)`) suit la chaîne des
+/// `En3mfType` dont toutes les valeurs sont déjà traitées, elle est
+/// inatteignable dans Orca 2.4.1.
+///
+/// Lot 35, deux écarts du lot 34 comblés comme Orca :
+/// - **Réaffectation des plateaux par position** (`partplate_list.
+///   reload_all_objects`, Plater.cpp `else { reload_all_objects(); }`) : le
+///   contenu `plate_data` du 3MF est ignoré, chaque instance rejoint le
+///   premier plateau dont le rectangle la croise — grille d'Orca `col ×
+///   stride` avec `stride = largeur × (1 + LOGICAL_PART_PLATE_GAP)`,`
+///   `LOGICAL_PART_PLATE_GAP = 1/5` (PartPlate.cpp). Les objets hors de
+///   toute cellule gardent leur plateau déclaré (Orca les met sur le plateau
+///   non imprimable, non représentable dans la scène web).
+/// - **Filaments manquants ajoutés** (Plater.cpp « add extruder … if only
+///   import geometry ») : les extrudeurs utilisés par les objets/volumes
+///   déterminent le nombre de filaments, jusqu'à
+///   `MAXIMUM_EXTRUDER_NUMBER` (16), avec la palette d'Orca
+///   (`Plater::get_next_color_for_filament`, depuis l'index 0 pour rester
+///   déterministe).
 pub(crate) fn geometry_only(imported: &mut crate::models::threemf::ImportedProject) {
+    let bed = bed_rect(&imported.config);
     imported.config.clear();
     imported.metadata = None;
     for plate in &mut imported.plates {
@@ -459,6 +481,164 @@ pub(crate) fn geometry_only(imported: &mut crate::models::threemf::ImportedProje
         plate.settings.clear();
         plate.plate_type = crate::models::threemf::DEFAULT_PLATE_TYPE.to_string();
     }
+    // Filaments manquants : à calculer avant d'oublier la géométrie (les
+    // extrudeurs vivent sur les objets, pas sur la config).
+    imported.filament_colours = missing_filament_colours(&imported.objects);
+    if let Some((width, depth)) = bed {
+        reassign_plates_by_position(imported, width, depth);
+    }
+}
+
+/// Rectangle du plateau (largeur, profondeur) depuis `printable_area` de la
+/// config Orca du 3MF (polygone `x,y;x,y;…` ou tableau). Orca utilise le
+/// plateau de l'imprimante courante ; au moment de l'import le projet n'a
+/// pas encore de preset — la zone du fichier est la meilleure estimation.
+fn bed_rect(config: &Map<String, Value>) -> Option<(f64, f64)> {
+    let points: Vec<(f64, f64)> = match config.get("printable_area") {
+        Some(Value::Array(items)) => items
+            .iter()
+            .filter_map(|v| v.as_str())
+            .filter_map(parse_point)
+            .collect(),
+        Some(Value::String(s)) => s.split([',', ';']).filter_map(parse_point).collect(),
+        _ => Vec::new(),
+    };
+    let (mut min_x, mut min_y) = (f64::INFINITY, f64::INFINITY);
+    let (mut max_x, mut max_y) = (f64::NEG_INFINITY, f64::NEG_INFINITY);
+    for (x, y) in points {
+        min_x = min_x.min(x);
+        min_y = min_y.min(y);
+        max_x = max_x.max(x);
+        max_y = max_y.max(y);
+    }
+    if !max_x.is_finite() || !max_y.is_finite() || max_x <= min_x || max_y <= min_y {
+        return None;
+    }
+    Some((max_x - min_x, max_y - min_y))
+}
+
+fn parse_point(part: &str) -> Option<(f64, f64)> {
+    let part = part.trim();
+    // Format Orca « 200x0 » (et tolérance « 200,0 »).
+    let (x, y) = part.split_once('x').or_else(|| part.split_once(','))?;
+    Some((x.trim().parse().ok()?, y.trim().parse().ok()?))
+}
+
+/// `PartPlateList::reload_all_objects` (grille mono-rangée d'Orca) : chaque
+/// instance rejoint le premier plateau dont le rectangle `[k × stride,
+/// k × stride + largeur] × [0, profondeur]` croise sa boîte englobante
+/// monde. `stride = largeur × 1,2` (`LOGICAL_PART_PLATE_GAP = 1/5`).
+fn reassign_plates_by_position(
+    imported: &mut crate::models::threemf::ImportedProject,
+    width: f64,
+    depth: f64,
+) {
+    let stride = width * (1.0 + LOGICAL_PART_PLATE_GAP);
+    let count = imported.plates.len();
+    let mut members: Vec<Vec<(String, usize)>> = vec![Vec::new(); count];
+    for object in &imported.objects {
+        let bbox = world_bbox_xy(object);
+        let target = (0..count).find(|&k| {
+            let x0 = k as f64 * stride;
+            bbox.is_none()
+                || (bbox.unwrap().0 < x0 + width
+                    && bbox.unwrap().1 > x0
+                    && bbox.unwrap().3 > 0.0
+                    && bbox.unwrap().2 < depth)
+        });
+        let key = (object.source_id.clone(), object.instance_index);
+        match target {
+            Some(k) => members[k].push(key),
+            // Hors grille : garde son plateau déclaré (voir doc `geometry_only`).
+            None => {
+                if let Some(k) = imported
+                    .plates
+                    .iter()
+                    .position(|p| p.instances.iter().any(|i| i == &key))
+                {
+                    members[k].push(key);
+                } else {
+                    members[0].push(key);
+                }
+            }
+        }
+    }
+    for (plate, instances) in imported.plates.iter_mut().zip(members) {
+        plate.instances = instances;
+    }
+}
+
+/// Boîte englobante monde XY d'un objet importé (8 coins du bbox local
+/// transformés par la matrice `<build>`), `(min_x, max_x, min_y, max_y)`.
+fn world_bbox_xy(object: &crate::models::threemf::ImportedObject) -> Option<(f64, f64, f64, f64)> {
+    let (min, max) = object.mesh.bounding_box()?;
+    let (mut x0, mut x1, mut y0, mut y1) = (
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+    );
+    for a in [min[0] as f64, max[0] as f64] {
+        for b in [min[1] as f64, max[1] as f64] {
+            for c in [min[2] as f64, max[2] as f64] {
+                let p = object.matrix.transform_point3(glam::DVec3::new(a, b, c));
+                x0 = x0.min(p.x);
+                x1 = x1.max(p.x);
+                y0 = y0.min(p.y);
+                y1 = y1.max(p.y);
+            }
+        }
+    }
+    Some((x0, x1, y0, y1))
+}
+
+/// Palette « couleurs système filament » d'Orca (`FILAMENT_SYSTEM_COLORS_NUM`
+/// = 16, `Plater::get_next_color_for_filament`).
+const FILAMENT_SYSTEM_COLORS: [&str; 16] = [
+    "#00C1AE", "#F4E2C1", "#ED1C24", "#00FF7F", "#F26722", "#FFEB31", "#7841CE", "#115877",
+    "#ED1E79", "#2EBDEF", "#345B2F", "#800080", "#FA8173", "#800000", "#F7B763", "#A4C41E",
+];
+
+/// `MAXIMUM_EXTRUDER_NUMBER` d'Orca.
+const MAXIMUM_EXTRUDER_NUMBER: usize = 16;
+/// `LOGICAL_PART_PLATE_GAP` d'Orca (PartPlate.cpp).
+const LOGICAL_PART_PLATE_GAP: f64 = 1.0 / 5.0;
+
+/// Filaments manquants (Plater.cpp, « add extruder … if only import
+/// geometry ») : le plus grand extrudeur utilisé par les objets, volumes et
+/// pièces détermine le nombre de filaments ; couleurs de la palette système
+/// d'Orca depuis l'index 0 (le compteur global de la GUI n'est pas
+/// reproductible serveur-side). Vide si un seul extrudeur (le défaut).
+fn missing_filament_colours(objects: &[crate::models::threemf::ImportedObject]) -> Vec<String> {
+    let mut max_extruder = 0usize;
+    let mut note = |value: u64| {
+        if value > 1 {
+            max_extruder = max_extruder.max(value.min(MAXIMUM_EXTRUDER_NUMBER as u64) as usize);
+        }
+    };
+    for object in objects {
+        note(object.extruder);
+        for part in &object.parts {
+            note(part.extruder);
+        }
+        for volume in &object.volumes {
+            if let Some(extruder) = volume.get("extruder").and_then(Value::as_u64) {
+                note(extruder);
+            }
+        }
+        for range in &object.layer_ranges {
+            if let Some(extruder) = range
+                .get("settings")
+                .and_then(|s| s.get("extruder"))
+                .and_then(Value::as_u64)
+            {
+                note(extruder);
+            }
+        }
+    }
+    (0..max_extruder.saturating_sub(1))
+        .map(|index| FILAMENT_SYSTEM_COLORS[index % FILAMENT_SYSTEM_COLORS.len()].to_string())
+        .collect()
 }
 
 /// `POST /api/projects/{id}/import-3mf` — ajoute le contenu d'un 3MF à un projet
@@ -540,8 +720,28 @@ pub(crate) async fn import_3mf_contents(
 )> {
     let mut active_presets = json!({});
     // Réglages du projet Orca (project_settings.config) → scene.projectConfig :
-    // couleurs des filaments, matrice et multiplicateur de purge.
-    let project_config = imported_project_config(&imported.config);
+    // couleurs des filaments, matrice et multiplicateur de purge. En « géométrie
+    // seule », la palette des filaments manquants remplace celle de la config
+    // (vide) pour que les extrudeurs des objets restent valides (lot 35).
+    let mut project_config = imported_project_config(&imported.config);
+    if project_config
+        .get("filament_colour")
+        .and_then(Value::as_array)
+        .is_none_or(Vec::is_empty)
+        && !imported.filament_colours.is_empty()
+    {
+        project_config.insert(
+            "filament_colour".into(),
+            Value::Array(
+                imported
+                    .filament_colours
+                    .iter()
+                    .cloned()
+                    .map(Value::String)
+                    .collect(),
+            ),
+        );
+    }
     if !imported.config.is_empty() {
         // Presets filament / imprimante du projet (lot 25, audit J2-a/J2-h),
         // avant le process qui consomme la configuration.
@@ -1164,6 +1364,7 @@ async fn create_user_preset_from_raw(
                 setting_id: None,
                 filament_id,
                 compatible_printers: None,
+                renamed_from: Vec::new(),
                 values: Value::Object(values),
             },
         )
@@ -1223,6 +1424,7 @@ async fn create_imported_preset(
                 setting_id: None,
                 filament_id: None,
                 compatible_printers: None,
+                renamed_from: Vec::new(),
                 values: Value::Object(values),
             },
         )
@@ -1929,6 +2131,7 @@ mod import_3mf_tests {
             }],
             config: config(base()),
             metadata: Some(engine::threemf::ProjectMetadata::default()),
+            filament_colours: Vec::new(),
         };
         geometry_only(&mut imported);
         assert!(imported.config.is_empty());
@@ -1944,5 +2147,117 @@ mod import_3mf_tests {
             imported.plates[0].plate_type,
             crate::models::threemf::DEFAULT_PLATE_TYPE
         );
+    }
+
+    /// Cube 20 mm centré sur (x, y) : matrice `<build>` d'un 3MF.
+    fn cube_object(
+        source: &str,
+        instance: usize,
+        x: f64,
+        y: f64,
+        extruder: u64,
+    ) -> crate::models::threemf::ImportedObject {
+        crate::models::threemf::ImportedObject {
+            name: source.into(),
+            mesh: engine::api::TriangleMesh {
+                vertices: vec![
+                    [-10.0, -10.0, 0.0],
+                    [10.0, -10.0, 0.0],
+                    [10.0, 10.0, 0.0],
+                    [-10.0, 10.0, 0.0],
+                    [-10.0, -10.0, 20.0],
+                    [10.0, -10.0, 20.0],
+                    [10.0, 10.0, 20.0],
+                    [-10.0, 10.0, 20.0],
+                ],
+                indices: vec![
+                    [0, 1, 2],
+                    [0, 2, 3],
+                    [4, 6, 5],
+                    [4, 7, 6],
+                    [0, 4, 5],
+                    [0, 5, 1],
+                    [1, 5, 6],
+                    [1, 6, 2],
+                    [2, 6, 7],
+                    [2, 7, 3],
+                    [3, 7, 4],
+                    [3, 4, 0],
+                ],
+            },
+            matrix: glam::DMat4::from_translation(glam::DVec3::new(x, y, 0.0)),
+            printable: true,
+            extruder,
+            settings: Map::new(),
+            layer_profile: Vec::new(),
+            source_id: source.into(),
+            instance_index: instance,
+            painting: Map::new(),
+            emboss: None,
+            volumes: Vec::new(),
+            parts: Vec::new(),
+            layer_ranges: Vec::new(),
+            mesh_name: None,
+        }
+    }
+
+    /// `reload_all_objects` d'Orca : l'affectation déclarée par le 3MF est
+    /// ignorée, chaque objet rejoint le plateau que croise sa position —
+    /// grille `stride = 200 × 1,2 = 240` → un cube à x = 250 est sur le
+    /// plateau 1 même si le fichier le déclarait sur le plateau 0.
+    #[test]
+    fn geometry_only_reassigns_plates_by_position() {
+        let mut cfg = base();
+        cfg["printable_area"] = json!(["0x0", "200x0", "200x200", "0x200"]);
+        let mut imported = crate::models::threemf::ImportedProject {
+            objects: vec![
+                cube_object("1", 0, 30.0, 30.0, 1),
+                cube_object("2", 0, 250.0, 30.0, 1),
+            ],
+            plates: vec![
+                crate::models::threemf::ImportedPlate {
+                    name: "Plateau 1".into(),
+                    plate_type: "Textured PEI Plate".into(),
+                    settings: Map::new(),
+                    // Les deux déclarés sur le plateau 0 (affectation fausse).
+                    instances: vec![("1".into(), 0), ("2".into(), 0)],
+                },
+                crate::models::threemf::ImportedPlate {
+                    name: "Plateau 2".into(),
+                    plate_type: "Cool Plate / PLA Plate".into(),
+                    settings: Map::new(),
+                    instances: Vec::new(),
+                },
+            ],
+            config: config(cfg),
+            metadata: None,
+            filament_colours: Vec::new(),
+        };
+        geometry_only(&mut imported);
+        assert_eq!(imported.plates[0].instances, vec![("1".into(), 0)]);
+        assert_eq!(imported.plates[1].instances, vec![("2".into(), 0)]);
+    }
+
+    /// Filaments manquants (Plater.cpp « add extruder … if only import
+    /// geometry ») : extrudeur 3 utilisé → 2 couleurs de la palette d'Orca ;
+    /// plafond `MAXIMUM_EXTRUDER_NUMBER` (16).
+    #[test]
+    fn geometry_only_adds_missing_filaments() {
+        let mut imported = crate::models::threemf::ImportedProject {
+            objects: vec![cube_object("1", 0, 30.0, 30.0, 3)],
+            plates: Vec::new(),
+            config: config(base()),
+            metadata: None,
+            filament_colours: Vec::new(),
+        };
+        geometry_only(&mut imported);
+        assert_eq!(
+            imported.filament_colours,
+            vec!["#00C1AE".to_string(), "#F4E2C1".to_string()]
+        );
+        imported.objects[0].extruder = 20;
+        imported.config = config(base());
+        geometry_only(&mut imported);
+        assert_eq!(imported.filament_colours.len(), 15, "plafond 16 filaments");
     }
 }

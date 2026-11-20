@@ -14,7 +14,7 @@ use crate::domain::{self, RegistrationPolicy, Role, UserId};
 use crate::http::dto::{
     AdminCreateUserRequest, AdminUserListResponse, AdminUserResponse, AdminUsersQuery,
     CreateInvitationRequest, InstanceResponse, InvitationResponse, PatchInstanceRequest,
-    ReseedResponse, ResetPasswordRequest, UserResponse,
+    ReseedResponse, ResetPasswordRequest, SetUserStatusRequest, UserResponse,
 };
 use crate::http::error::{ApiError, ApiResult};
 use crate::http::extract::AdminUser;
@@ -187,6 +187,21 @@ pub async fn reset_password(
 ) -> ApiResult<StatusCode> {
     let user_id = parse_user_id(&id)?;
     auth::reset_password(state.storage.as_ref(), user_id, &body.new_password).await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `PUT /api/admin/users/{id}/status` — désactive ou réactive un compte
+/// (lot 35). Refuse de désactiver le dernier administrateur actif (403) ;
+/// les sessions ouvertes du compte sont invalidées à leur prochaine requête.
+pub async fn set_user_status(
+    _admin: AdminUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<SetUserStatusRequest>,
+) -> ApiResult<StatusCode> {
+    let user_id = parse_user_id(&id)?;
+    let status: crate::domain::UserStatus = parse_enum("status", &body.status)?;
+    auth::set_account_status(state.storage.as_ref(), user_id, status).await?;
     Ok(StatusCode::NO_CONTENT)
 }
 

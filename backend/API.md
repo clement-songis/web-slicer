@@ -55,10 +55,51 @@ Toute réponse 4xx/5xx a le corps `application/json` :
 | 422 | `validation` | entrée invalide (type, bornes, enum, brouillon) — `details.key` si une option est en cause |
 | 422 | `conversion_failed` | conversion moteur du modèle échouée — `details: { model_id, cause }` |
 | 422 | `printer_not_owned` | preset imprimante d'un modèle non possédé |
-| 429 | `slice_quota_exceeded` | trop de tranchages simultanés pour le compte — `details: { active, max, requested }` (lot 32) |
+| 429 | `slice_quota_exceeded` | trop de tranchages simultanés pour le compte — `details: { active, max, requested, retry_after }`, en-tête **`Retry-After: 30`** (secondes, lot 35) |
 | 501 | `not_implemented` | fonctionnalité indisponible |
 | 502 | `printer_unreachable` | hôte d'impression (Moonraker, OctoPrint…) injoignable ou en erreur |
 | 500 | `internal` | erreur interne |
+
+## Nouveautés lot 35 — statut admin, réservation G-code, écarts lot 34
+
+### `PUT /api/admin/users/{id}/status` — désactiver / réactiver un compte (admin)
+
+Corps `SetUserStatusRequest = { status: "active" | "disabled" }`. **204** sans corps.
+
+- Valeur autre → 422 `validation` (`details.field = "status"`) ; compte inconnu → 404 ; non admin → 403.
+- Désactivation : les **sessions ouvertes du compte sont invalidées à leur requête suivante**
+  (401 `unauthorized`), et le login est refusé (403 `forbidden`, « compte désactivé »).
+- Réactivation : le login redevient possible (les sessions précédentes restent révoquées).
+- Garde : impossible de désactiver le **dernier administrateur actif** → 403 `forbidden`
+  (même garde que `DELETE /api/admin/users/{id}`). L'opération est idempotente.
+- Le statut est visible dans `GET /api/admin/users` (`status` de `AdminUserResponse`).
+
+### Réservation de quota G-code avant `/slice` (lot 35)
+
+Avant de créer les jobs, `POST /api/projects/{id}/slice` réserve une **estimation** de la taille du
+G-code de chaque plateau ciblé : `128 Kio + 512 octets × triangles des modèles du plateau`. Si le
+quota de stockage du compte ne couvre pas cette réservation → 413 `storage_quota_exceeded`
+(`details.incoming_bytes` = estimation totale). Heuristique documentée : majorante pour éviter un
+dépassement a posteriori, sans bloquer des scènes raisonnables.
+
+### Écarts lot 34 comblés (parité Orca 2.4.1)
+
+- **Arrangement — tour d'essuyage réservée** : `POST /api/projects/{id}/arrange` (portée `all`)
+  pose une tour estimée (`wipe_tower_x/y`, `prime_tower_width`, `prime_volume`, brim, marge 1 mm)
+  comme obstacle fixe sur chaque plateau potentiel quand `enable_prime_tower` est actif,
+  l'impression n'est pas séquentielle et un multi-matériau l'exige (objet multi-extrudeurs,
+  timelapse fluide, ou plusieurs matériaux de même température de plateau autorisés ensemble).
+  Sans changement d'API : les placements évitent simplement l'emprise de la tour. En portée
+  `plate`, pas de tour estimée (comme `prepare_partplate` d'Orca).
+- **Import « géométrie seule »** (`POST /api/projects/import?load=geometry`) : les objets sont
+  **réaffectés à leur plateau par position** (grille Orca, `printable_area` du 3MF) et les
+  **filaments manquants sont ajoutés** — `scene.projectConfig.filament_colour` couvre les
+  extrudeurs utilisés (palette système d'Orca, plafond 16).
+- **`import.gcode_warning`** : les presets renommés/alias (`renamed_from`, et l'alias dérivé du
+  « @ » du nom) sont reconnus comme de confiance — plus de fausse boîte « Customized Presets »
+  sur un 3MF référençant un ancien nom.
+
+Types TS nouveaux : `SetUserStatusRequest`.
 
 ## Nouveautés lot 32 — comptes, quotas, noms uniques
 
@@ -231,6 +272,7 @@ l'imprimante). Sur une option non nullable : 422 `validation`, `details.key`.
 | POST | `/api/admin/users` | `admin::create_user` | 201 |
 | DELETE | `/api/admin/users/{id}` | `admin::delete_user` | 204 |
 | POST | `/api/admin/users/{id}/reset-password` | `admin::reset_password` | 204 |
+| PUT | `/api/admin/users/{id}/status` | `admin::set_user_status` | 204 |
 | POST | `/api/admin/invitations` | `admin::create_invitation` | 201 |
 | POST | `/api/admin/presets/reseed` | `admin::reseed_presets` | 200 |
 | GET | `/api/projects` | `projects::list` | 200 |

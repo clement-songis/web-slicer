@@ -36,6 +36,7 @@ fn sys(
         setting_id: None,
         filament_id: None,
         compatible_printers: None,
+        renamed_from: Vec::new(),
         values,
     }
 }

@@ -92,6 +92,15 @@ fn row_to_preset(row: &PgRow) -> StorageResult<Preset> {
         setting_id: row.get("setting_id"),
         filament_id: row.get("filament_id"),
         compatible_printers: row.get("compatible_printers"),
+        renamed_from: row
+            .get::<serde_json::Value, _>("renamed_from")
+            .as_array()
+            .map(|a| {
+                a.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
+            .unwrap_or_default(),
         values: row.get("values_json"),
     })
 }
@@ -584,8 +593,8 @@ impl PgPresetRepo {
     async fn insert(&self, preset: &Preset) -> StorageResult<()> {
         sqlx::query(
             "INSERT INTO presets \
-             (id, kind, name, origin, user_id, vendor, inherits, instantiation, setting_id, filament_id, compatible_printers, values_json) \
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+             (id, kind, name, origin, user_id, vendor, inherits, instantiation, setting_id, filament_id, compatible_printers, renamed_from, values_json) \
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)",
         )
         .bind(uid(preset.id))
         .bind(enum_str(&preset.kind))
@@ -598,6 +607,7 @@ impl PgPresetRepo {
         .bind(&preset.setting_id)
         .bind(&preset.filament_id)
         .bind(preset.compatible_printers.clone())
+        .bind(serde_json::to_value(&preset.renamed_from).unwrap_or(serde_json::json!([])))
         .bind(preset.values.clone())
         .execute(&self.pool)
         .await
@@ -650,8 +660,8 @@ impl PresetRepo for PgPresetRepo {
                 sqlx::query(
                     "UPDATE presets SET origin = 'system', user_id = NULL, vendor = $1, \
                      inherits = $2, instantiation = $3, setting_id = $4, filament_id = $5, \
-                     compatible_printers = $6, values_json = $7 \
-                     WHERE id = $8 AND user_id IS NULL",
+                     compatible_printers = $6, renamed_from = $7, values_json = $8 \
+                     WHERE id = $9 AND user_id IS NULL",
                 )
                 .bind(&p.vendor)
                 .bind(&p.inherits)
@@ -659,6 +669,7 @@ impl PresetRepo for PgPresetRepo {
                 .bind(&p.setting_id)
                 .bind(&p.filament_id)
                 .bind(p.compatible_printers.clone())
+                .bind(serde_json::to_value(&p.renamed_from).unwrap_or(serde_json::json!([])))
                 .bind(p.values.clone())
                 .bind(uid(id))
                 .execute(&mut *tx)
@@ -667,8 +678,8 @@ impl PresetRepo for PgPresetRepo {
             } else {
                 sqlx::query(
                     "INSERT INTO presets \
-                     (id, kind, name, origin, user_id, vendor, inherits, instantiation, setting_id, filament_id, compatible_printers, values_json) \
-                     VALUES ($1, $2, $3, 'system', NULL, $4, $5, $6, $7, $8, $9, $10)",
+                     (id, kind, name, origin, user_id, vendor, inherits, instantiation, setting_id, filament_id, compatible_printers, renamed_from, values_json) \
+                     VALUES ($1, $2, $3, 'system', NULL, $4, $5, $6, $7, $8, $9, $10, $11)",
                 )
                 .bind(uid(id))
                 .bind(enum_str(&p.kind))
@@ -679,6 +690,7 @@ impl PresetRepo for PgPresetRepo {
                 .bind(&p.setting_id)
                 .bind(&p.filament_id)
                 .bind(p.compatible_printers.clone())
+                .bind(serde_json::to_value(&p.renamed_from).unwrap_or(serde_json::json!([])))
                 .bind(p.values.clone())
                 .execute(&mut *tx)
                 .await

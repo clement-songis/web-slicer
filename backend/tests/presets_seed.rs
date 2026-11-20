@@ -24,6 +24,7 @@ fn imported_vendor(name: &str, kind: EngineKind, vendor: &str) -> ImportedPreset
         setting_id: None,
         filament_id: None,
         instantiation: true,
+        renamed_from: vec![],
         compatible_printers: vec![],
         values: serde_json::Map::new(),
     }
@@ -125,6 +126,7 @@ async fn reseed_preserves_user_presets() {
         setting_id: None,
         filament_id: None,
         compatible_printers: None,
+        renamed_from: Vec::new(),
         values: serde_json::json!({ "filament_flow_ratio": "0.98" }),
     };
     let created = storage

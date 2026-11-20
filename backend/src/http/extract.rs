@@ -42,6 +42,12 @@ impl FromRequestParts<AppState> for CurrentUser {
             .get(user_id)
             .await
             .map_err(|_| ApiError::unauthorized())?;
+        // Désactivé par l'admin (lot 35) : session invalide immédiatement,
+        // pas seulement à la prochaine connexion.
+        if user.status == crate::domain::UserStatus::Disabled {
+            let _ = session.flush().await;
+            return Err(ApiError::unauthorized());
+        }
         // Mot de passe changé/réinitialisé depuis l'ouverture de la session →
         // session révoquée (lot 32). Une session antérieure au lot 32 (sans
         // empreinte) reçoit l'empreinte courante à sa première requête.
