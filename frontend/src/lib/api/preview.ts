@@ -3,7 +3,9 @@
 // `lib/preview/loader.ts` ; ici, seul le transport.
 import { decodePreview, type PreviewSegments } from '$lib/preview/decode';
 import { decodeEngineMoves, type EngineMeta, type EngineMoves } from '$lib/preview/engine-track';
+import type { EngineSeam, PlatesStatsResponse, ProcessedGcode } from '$lib/preview/engine-data';
 import { api, API_BASE, ApiError } from './client';
+import { apiErrorMessage } from './quota';
 import type { PreviewMeta } from './types';
 
 /** Méta-données de prévisualisation (couches, types, échelles). */
@@ -49,6 +51,86 @@ export async function fetchEngineMoves(
 	return decodeEngineMoves(await res.arrayBuffer());
 }
 
+/** Coutures EMoveType::Seam du moteur (lot 31), couches moteur [from, to]. */
+export async function getEngineSeams(gcodeId: string, from?: number, to?: number) {
+	const q = from === undefined ? '' : `?from=${from}&to=${to ?? from}`;
+	return (await api.get<{ seams: EngineSeam[] }>(`/gcodes/${gcodeId}/preview/processed/seams${q}`))
+		.seams;
+}
+
+/** Tableau « Filament » et totaux de plusieurs plateaux (render_all_plates_stats). */
+export const getPlatesStats = (gcodeIds: string[]) =>
+	api.post<PlatesStatsResponse>('/gcodes/plates-stats', { gcode_ids: gcodeIds });
+
+/**
+ * Source des données moteur d'un aperçu : G-code tranché (`/gcodes/{id}`) ou
+ * G-code externe simulé (`/gcode/opened/{token}`, lot 31). Même méta / WSPm.
+ */
+export interface EngineSource {
+	key: string;
+	meta(): Promise<EngineMeta>;
+	moves(from?: number, to?: number): Promise<EngineMoves>;
+	seams(): Promise<EngineSeam[]>;
+	/** Palette de la vue Couleur : `palette` (tranché) / `viewer_palette` (ouvert). */
+	viewer: boolean;
+}
+
+async function fetchMoves(path: string, from?: number, to?: number): Promise<EngineMoves> {
+	const q = from === undefined ? '' : `?from=${from}&to=${to ?? from}`;
+	const res = await fetch(`${API_BASE}${path}${q}`, { credentials: 'include' });
+	if (!res.ok) throw new ApiError(res.status, 'error', res.statusText);
+	return decodeEngineMoves(await res.arrayBuffer());
+}
+
+export function gcodeEngineSource(gcodeId: string): EngineSource {
+	return {
+		key: 'g:' + gcodeId,
+		meta: () => getEngineMeta(gcodeId),
+		moves: (from, to) => fetchEngineMoves(gcodeId, from, to),
+		seams: () => getEngineSeams(gcodeId),
+		viewer: false
+	};
+}
+
+export function openedEngineSource(token: string, meta?: EngineMeta): EngineSource {
+	const base = `/gcode/opened/${encodeURIComponent(token)}`;
+	return {
+		key: 'o:' + token,
+		meta: () => (meta ? Promise.resolve(meta) : api.get<EngineMeta>(`${base}/meta`)),
+		moves: (from, to) => fetchMoves(`${base}/moves`, from, to),
+		seams: async () => (await api.get<{ seams: EngineSeam[] }>(`${base}/seams`)).seams,
+		viewer: true
+	};
+}
+
+/**
+ * G-code externe simulé par le moteur (lot 31) : `POST /api/gcode/process`
+ * → jeton + statistiques GCodeProcessor + pied + méta d'aperçu.
+ */
+export async function processLocalGcode(file: Blob): Promise<ProcessedGcode> {
+	const res = await fetch(`${API_BASE}/gcode/process`, {
+		method: 'POST',
+		credentials: 'include',
+		headers: { 'content-type': 'text/plain' },
+		body: file
+	});
+	if (!res.ok) {
+		let body: { code?: string; message?: string; details?: unknown } = {};
+		try {
+			body = (await res.json()) as typeof body;
+		} catch {
+			// corps non JSON : statut seul
+		}
+		throw new ApiError(
+			res.status,
+			body.code ?? 'error',
+			apiErrorMessage(res.status, body, res.statusText),
+			body.details
+		);
+	}
+	return (await res.json()) as ProcessedGcode;
+}
+
 /**
  * G-code local (menu « Open G-code… ») : aperçu sans stockage via
  * `POST /api/gcode/preview` — le fichier est renvoyé à chaque requête.
@@ -61,13 +143,18 @@ async function postLocalGcode(file: Blob, query: string): Promise<Response> {
 		body: file
 	});
 	if (!res.ok) {
-		let message = res.statusText;
+		let body: { code?: string; message?: string; details?: unknown } = {};
 		try {
-			message = ((await res.json()) as { message?: string }).message ?? message;
+			body = (await res.json()) as typeof body;
 		} catch {
-			// corps non JSON : statut seul
+			// corps non JSON (413 du proxy…) : statut seul
 		}
-		throw new ApiError(res.status, 'error', message);
+		throw new ApiError(
+			res.status,
+			body.code ?? 'error',
+			apiErrorMessage(res.status, body, res.statusText),
+			body.details
+		);
 	}
 	return res;
 }

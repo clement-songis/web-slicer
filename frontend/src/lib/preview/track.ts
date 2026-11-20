@@ -12,6 +12,8 @@
 // sans accélérations) — Orca simule la cinématique ; l'ordre de grandeur et
 // les écarts entre couches restent fidèles, la valeur absolue est optimiste.
 
+import type { ColorPrintTrack } from './engine-data';
+
 /** Grandeurs portées par segment d'extrusion. */
 export type TrackChannel =
 	'fan' | 'temperature' | 'acceleration' | 'jerk' | 'pa' | 'actualSpeed' | 'actualFlow';
@@ -58,6 +60,12 @@ export interface TrackLayer {
 	lines: Uint32Array;
 	/** Ligne du changement de couche (début de la couche, 1-based). */
 	startLine: number;
+	/** Vue « Couleur » (lot 31, engine-data.ts) : cp_color_id par segment
+	 *  (255 = mouvement non chargé), couleur par extrudeur au début de la couche
+	 *  (repli) et couche à pause / G-code perso (grisée). */
+	colorIds?: Uint8Array;
+	colorByExtruder?: number[];
+	optionLayer?: boolean;
 }
 
 export interface PreviewTrack {
@@ -68,6 +76,10 @@ export interface PreviewTrack {
 	present: Record<TrackChannel, boolean>;
 	/** Origine : relecture texte (repli) ou simulation GCodeProcessor du moteur. */
 	source?: 'text' | 'engine';
+	/** Vue « Couleur » : palette (outils puis changements de couleur) et légende. */
+	colorPrint?: ColorPrintTrack;
+	/** Coutures : déduites du texte (défaut) ou EMoveType::Seam du moteur. */
+	seamSource?: 'text' | 'engine';
 }
 
 const f32 = Math.fround;

@@ -4,9 +4,33 @@ import {
 	generatePassword,
 	invitationLink,
 	mbToBytes,
-	parseManaged,
-	upsertManaged
+	pageLabel,
+	parseSliceLimit,
+	quotaMbToBytes
 } from './admin';
+
+describe('quotas et liste des comptes (lot 32)', () => {
+	it('quota de stockage : Mo → octets, 0 / vide = illimité', () => {
+		expect(quotaMbToBytes(500)).toBe(524288000);
+		expect(quotaMbToBytes(0)).toBe(0);
+		expect(quotaMbToBytes(null)).toBe(0);
+		expect(quotaMbToBytes(Number.NaN)).toBe(0);
+		expect(quotaMbToBytes(-1)).toBeNull();
+	});
+	it('tranchages simultanés : entier 0..=1000', () => {
+		expect(parseSliceLimit(2)).toBe(2);
+		expect(parseSliceLimit(0)).toBe(0);
+		expect(parseSliceLimit(null)).toBe(0);
+		expect(parseSliceLimit(1.5)).toBeNull();
+		expect(parseSliceLimit(1001)).toBeNull();
+		expect(parseSliceLimit(-1)).toBeNull();
+	});
+	it('libellé de pagination', () => {
+		expect(pageLabel(1, 25, 0)).toBe('Aucun compte');
+		expect(pageLabel(1, 25, 7)).toBe('1–7 sur 7');
+		expect(pageLabel(3, 50, 132)).toBe('101–132 sur 132');
+	});
+});
 
 describe('administration', () => {
 	it('convertit la limite d’upload', () => {
@@ -26,14 +50,5 @@ describe('administration', () => {
 		expect(pw).toHaveLength(14);
 		expect(pw).not.toMatch(/[0O1lI]/);
 		expect(generatePassword()).toHaveLength(14);
-	});
-	it('mémorise les comptes gérés', () => {
-		const a = { id: '1', email: 'a@x.fr', role: 'user' };
-		const list = upsertManaged(upsertManaged([], a), { id: '2', email: 'b@x.fr', role: 'admin' });
-		expect(list.map((u) => u.id)).toEqual(['2', '1']);
-		expect(upsertManaged(list, { ...a, role: 'admin' }).map((u) => u.id)).toEqual(['1', '2']);
-		expect(parseManaged(JSON.stringify(list))).toHaveLength(2);
-		expect(parseManaged('{oops')).toEqual([]);
-		expect(parseManaged(JSON.stringify([{ id: 3 }]))).toEqual([]);
 	});
 });

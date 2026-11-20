@@ -11,6 +11,9 @@
 	import type { SceneVolume } from './volumes';
 	import type { SceneGuides } from './guides';
 	import Viewport from './Viewport.svelte';
+	import FpsCounter from './FpsCounter.svelte';
+	import { FrameMeter, rendererFactory } from './render-settings';
+	import { appPreferences } from '$lib/settings/preferences';
 	import type { PaintOverlay } from './gizmos/painting/paint-overlay';
 	import { overhangIndices } from './overhang';
 	import type { Footprint, PlateView } from './plate-layout';
@@ -204,6 +207,8 @@
 					0
 				)
 	);
+	// Compteur d'images/s de cette vue (préférence Graphismes).
+	const frameMeter = new FrameMeter();
 </script>
 
 <div
@@ -263,51 +268,55 @@
 		? `${Math.round(volumeGizmo.anchor[0])},${Math.round(volumeGizmo.anchor[1])}`
 		: undefined}
 >
-	<Canvas>
-		<Viewport
-			{bed}
-			{objects}
-			bind:selection
-			{gizmoMode}
-			{view}
-			{showGrid}
-			{zoom}
-			{focus}
-			{projection}
-			{overhangNormalZ}
-			{labels}
-			{printOrder}
-			{issueObjects}
-			{extruderColors}
-			{objectExtruders}
-			{paintOverlays}
-			{wipeTower}
-			{onmovewipetower}
-			{selectedVolumeId}
-			{onpickvolume}
-			{onmeshpick}
-			{paintstroke}
-			{suspendcontrols}
-			{ontransform}
-			{onvolumechange}
-			{ondragchange}
-			onvolumegizmo={(g) => (volumeGizmo = g)}
-			onobjectanchor={(anchor) => (objectAnchor = anchor)}
-			{flattenMode}
-			{onflatten}
-			onflattenanchors={(anchors) => (flattenAnchors = anchors)}
-			onscreenboxes={(boxes) => (screenBoxes = boxes)}
-			{clipPlane}
-			{guides}
-			{oncameradir}
-			{onpickobject}
-			{otherPlates}
-			{activePlate}
-			{onactivateplate}
-			{onobjectdrop}
-			{recenterKey}
-		/>
-	</Canvas>
+	<!-- Phase 34 : MSAA fixé à la création du contexte → vue recréée s'il change. -->
+	{#key $appPreferences.graphics.antialias}
+		<Canvas createRenderer={rendererFactory($appPreferences.graphics.antialias, frameMeter)}>
+			<Viewport
+				{bed}
+				{objects}
+				bind:selection
+				{gizmoMode}
+				{view}
+				{showGrid}
+				{zoom}
+				{focus}
+				{projection}
+				{overhangNormalZ}
+				{labels}
+				{printOrder}
+				{issueObjects}
+				{extruderColors}
+				{objectExtruders}
+				{paintOverlays}
+				{wipeTower}
+				{onmovewipetower}
+				{selectedVolumeId}
+				{onpickvolume}
+				{onmeshpick}
+				{paintstroke}
+				{suspendcontrols}
+				{ontransform}
+				{onvolumechange}
+				{ondragchange}
+				onvolumegizmo={(g) => (volumeGizmo = g)}
+				onobjectanchor={(anchor) => (objectAnchor = anchor)}
+				{flattenMode}
+				{onflatten}
+				onflattenanchors={(anchors) => (flattenAnchors = anchors)}
+				onscreenboxes={(boxes) => (screenBoxes = boxes)}
+				{clipPlane}
+				{guides}
+				{oncameradir}
+				{onpickobject}
+				{otherPlates}
+				{activePlate}
+				{onactivateplate}
+				{onobjectdrop}
+				{recenterKey}
+			/>
+		</Canvas>
+	{/key}
+	<FpsCounter meter={frameMeter} />
 	{#if dragRect}
 		<div
 			class="pointer-events-none absolute border border-dashed border-accent bg-accent/10"

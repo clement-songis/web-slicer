@@ -4,6 +4,7 @@
 // serveur, le maillage arrive via l'événement `model.converted` puis `fetchMesh`.
 // `meshFromTriangleSoup` reste ici (assemblage de primitives/outils de scène).
 import { API_BASE, ApiError } from '../api/client';
+import { apiErrorMessage } from '../api/quota';
 import type { ModelResponse, ErrorBody } from '../api/types';
 import { decodeMesh, type SceneMesh } from './mesh';
 
@@ -71,7 +72,12 @@ export async function uploadModel(projectId: string, file: File): Promise<ModelR
 	const data: unknown = text ? JSON.parse(text) : undefined;
 	if (!res.ok) {
 		const err = (data ?? {}) as Partial<ErrorBody>;
-		throw new ApiError(res.status, err.code ?? 'error', err.message ?? res.statusText, err.details);
+		throw new ApiError(
+			res.status,
+			err.code ?? 'error',
+			apiErrorMessage(res.status, err, res.statusText),
+			err.details
+		);
 	}
 	return data as ModelResponse;
 }
@@ -96,7 +102,12 @@ export async function import3mfObjects(
 	const data: unknown = text ? JSON.parse(text) : undefined;
 	if (!res.ok) {
 		const err = (data ?? {}) as Partial<ErrorBody>;
-		throw new ApiError(res.status, err.code ?? 'error', err.message ?? res.statusText, err.details);
+		throw new ApiError(
+			res.status,
+			err.code ?? 'error',
+			apiErrorMessage(res.status, err, res.statusText),
+			err.details
+		);
 	}
 	return data as { objects: import('./document').SceneObjectDoc[]; models: ModelResponse[] };
 }
@@ -107,7 +118,12 @@ export async function fetchMesh(modelId: string): Promise<SceneMesh> {
 	if (!res.ok) {
 		const text = await res.text();
 		const err = (text ? JSON.parse(text) : {}) as Partial<ErrorBody>;
-		throw new ApiError(res.status, err.code ?? 'error', err.message ?? res.statusText, err.details);
+		throw new ApiError(
+			res.status,
+			err.code ?? 'error',
+			apiErrorMessage(res.status, err, res.statusText),
+			err.details
+		);
 	}
 	return decodeMesh(await res.arrayBuffer());
 }

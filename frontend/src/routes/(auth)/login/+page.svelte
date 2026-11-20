@@ -2,7 +2,7 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { resolve } from '$app/paths';
-	import { ApiError } from '$lib/api/client';
+	import { loginErrorMessage } from '$lib/api/account';
 	import { login } from '$lib/api/session';
 	import { safeNext } from '$lib/api/return-to';
 
@@ -31,14 +31,9 @@
 			// eslint-disable-next-line svelte/no-navigation-without-resolve -- chemin interne validé par safeNext
 			await goto(next ?? resolve('/'));
 		} catch (err) {
-			// Phase 32 : le serveur répond « Session requise » (401 générique) à des
-			// identifiants faux ; on dit ce qui ne va pas, sans révéler lequel.
-			error =
-				err instanceof ApiError
-					? err.status === 401
-						? 'E-mail ou mot de passe incorrect.'
-						: err.message
-					: 'Erreur inattendue';
+			// Lot 32 : 401 `invalid_credentials` (même réponse si l'e-mail est
+			// inconnu) ; repli 401 générique des serveurs antérieurs.
+			error = loginErrorMessage(err);
 		} finally {
 			busy = false;
 		}

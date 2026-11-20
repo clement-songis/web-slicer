@@ -7,6 +7,8 @@
 	import { filterPresetList, type ActivePrinter } from './search';
 	import { appPreferences } from '$lib/settings/preferences';
 	import { unsupportedPresets } from './unsupported';
+	import { groupUserPresets, loadUserPresetMeta, type UserPresetMeta } from './user-grouping';
+	import { getResolvedPreset } from '../api/presets';
 
 	interface Props {
 		/** Presets d'un type (déjà filtrés par compatibilité). */
@@ -49,6 +51,26 @@
 	}: Props = $props();
 
 	const groups = $derived(partitionByOrigin(presets));
+	// Orca group_filament_presets (phase 34) : regroupement des presets filament
+	// de l'utilisateur ; les autres types gardent un seul groupe « Mes presets ».
+	const grouping = $derived(
+		presets[0]?.kind === 'filament' ? $appPreferences.groupFilamentPresets : 'all'
+	);
+	let userMeta = $state<Record<string, UserPresetMeta>>({});
+	$effect(() => {
+		const ids = groups.user.map((p) => p.id);
+		if ((grouping !== 'type' && grouping !== 'vendor') || ids.length === 0) return;
+		let alive = true;
+		void loadUserPresetMeta(ids, async (id) => (await getResolvedPreset(id)).values).then(
+			(meta) => {
+				if (alive) userMeta = meta;
+			}
+		);
+		return () => {
+			alive = false;
+		};
+	});
+	const userGroups = $derived(groupUserPresets(groups.user, grouping, userMeta));
 	// Recherche (accents/casse ignorés) et filtre de compatibilité imprimante.
 	let query = $state('');
 	// Orca `show_unsupported_presets` : la préférence coche « Afficher les
@@ -75,9 +97,22 @@
 	// fabricant — Génériques en tête — au lieu d'une liste plate de centaines de noms.
 	const filtered = $derived(
 		searchable
-			? filterPresetList(presets, { query, printer, showAll, selectedId })
+			? filterPresetList(presets, {
+					query,
+					printer,
+					showAll,
+					selectedId,
+					userGrouping: grouping,
+					userMeta
+				})
 			: compact && printer
-				? filterPresetList(presets, { printer, showAll: true, selectedId })
+				? filterPresetList(presets, {
+						printer,
+						showAll: true,
+						selectedId,
+						userGrouping: grouping,
+						userMeta
+					})
 				: null
 	);
 	const selected = $derived(presets.find((p) => p.id === selectedId) ?? null);
@@ -106,11 +141,18 @@
 	<option value={null} disabled>Choisir…</option>
 	{#if filtered}
 		{#each filtered.groups as g (g.label)}
-			<optgroup label={g.label}>
+			{#if g.label}
+				<optgroup label={g.label}>
+					{#each g.presets as p (p.id)}
+						<option value={p.id}>{p.name}{isDerived(p) ? ' ✎' : ''}</option>
+					{/each}
+				</optgroup>
+			{:else}
+				<!-- Orca « None » : presets utilisateur sans sous-groupe. -->
 				{#each g.presets as p (p.id)}
 					<option value={p.id}>{p.name}{isDerived(p) ? ' ✎' : ''}</option>
 				{/each}
-			</optgroup>
+			{/if}
 		{/each}
 	{:else if groups.system.length}
 		<optgroup label="Système">
@@ -119,12 +161,20 @@
 			{/each}
 		</optgroup>
 	{/if}
-	{#if !filtered && groups.user.length}
-		<optgroup label="Mes presets">
-			{#each groups.user as p (p.id)}
-				<option value={p.id}>{p.name}{isDerived(p) ? ' ✎' : ''}</option>
-			{/each}
-		</optgroup>
+	{#if !filtered}
+		{#each userGroups as g (g.label)}
+			{#if g.label}
+				<optgroup label={g.label}>
+					{#each g.presets as p (p.id)}
+						<option value={p.id}>{p.name}{isDerived(p) ? ' ✎' : ''}</option>
+					{/each}
+				</optgroup>
+			{:else}
+				{#each g.presets as p (p.id)}
+					<option value={p.id}>{p.name}{isDerived(p) ? ' ✎' : ''}</option>
+				{/each}
+			{/if}
+		{/each}
 	{/if}
 	{@render unsupportedOptions()}
 {/snippet}

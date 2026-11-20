@@ -6,6 +6,7 @@
 // se re-rende à chaque mutation. Runes → testé sous vitest, pas sous bun.
 // Persisté dans le document scène.
 import { PLATE_TYPES } from '../settings/special/dialogs';
+import type { PlateCustomGcode } from '../preview/color-changes';
 
 /** Type de plaque par défaut (première entrée de la table des températures). */
 export const DEFAULT_PLATE_TYPE = PLATE_TYPES[0].label;
@@ -20,14 +21,18 @@ export interface Plate {
 	 *  côté moteur (curr_bed_type, print_sequence, spiral_mode…), appliquées
 	 *  par-dessus les presets au tranchage de ce plateau. Absent = suit le profil. */
 	settings?: Record<string, unknown>;
+	/** G-code par couche du curseur de l'Aperçu (changement de couleur, pause,
+	 *  code perso) — lus par le serveur au tranchage (`scene_custom_gcodes`). */
+	customGcodes?: PlateCustomGcode[];
 }
 
-/** Copie profonde d'un plateau (objets et réglages). */
+/** Copie profonde d'un plateau (objets, réglages, G-code par couche). */
 function clonePlate(p: Plate): Plate {
 	return {
 		...p,
 		objectIds: [...p.objectIds],
-		...(p.settings ? { settings: { ...p.settings } } : {})
+		...(p.settings ? { settings: { ...p.settings } } : {}),
+		...(p.customGcodes ? { customGcodes: p.customGcodes.map((g) => ({ ...g })) } : {})
 	};
 }
 
@@ -175,6 +180,14 @@ export class PlateSet {
 		else next[key] = value;
 		if (Object.keys(next).length) plate.settings = next;
 		else delete plate.settings;
+	}
+
+	/** Remplace les G-code par couche du plateau (liste vide = clé retirée). */
+	setCustomGcodes(id: string, list: PlateCustomGcode[]): void {
+		const plate = this.get(id);
+		if (!plate) return;
+		if (list.length) plate.customGcodes = list.map((g) => ({ ...g }));
+		else delete plate.customGcodes;
 	}
 
 	setName(id: string, name: string): void {

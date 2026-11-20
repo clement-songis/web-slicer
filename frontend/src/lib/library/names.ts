@@ -26,7 +26,16 @@ export function isNameConflict(err: unknown): boolean {
 	return err.status === 409 || /UNIQUE constraint failed: projects\./.test(err.message);
 }
 
+/** Nom libre proposé par le serveur (409 `name_taken`, details.suggestion — lot 32). */
+export function nameSuggestion(err: unknown): string | null {
+	if (!(err instanceof ApiError) || err.status !== 409) return null;
+	const s = (err.details as { suggestion?: unknown } | undefined)?.suggestion;
+	return typeof s === 'string' && s.trim() ? s : null;
+}
+
 /** Message lisible pour un renommage refusé car le nom est déjà pris. */
-export function nameTakenMessage(name: string): string {
-	return `Un autre projet s'appelle déjà « ${name} ». Choisissez un autre nom.`;
+export function nameTakenMessage(name: string, suggestion?: string | null): string {
+	return suggestion
+		? `Un autre projet s'appelle déjà « ${name} ». Nom libre proposé : « ${suggestion} ».`
+		: `Un autre projet s'appelle déjà « ${name} ». Choisissez un autre nom.`;
 }

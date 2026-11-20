@@ -141,6 +141,38 @@ export function rotateVectorByEulerDeg(euler: Vec3, v: Vec3): Vec3 {
 	];
 }
 
+/** Quaternion d'une rotation Euler XYZ en degrés (Three.js `setFromEuler`, ordre XYZ). */
+export function quaternionFromEulerDeg(euler: Vec3): Quat {
+	const [hx, hy, hz] = [(euler[0] * DEG) / 2, (euler[1] * DEG) / 2, (euler[2] * DEG) / 2];
+	const [c1, c2, c3] = [Math.cos(hx), Math.cos(hy), Math.cos(hz)];
+	const [s1, s2, s3] = [Math.sin(hx), Math.sin(hy), Math.sin(hz)];
+	return [
+		s1 * c2 * c3 + c1 * s2 * s3,
+		c1 * s2 * c3 - s1 * c2 * s3,
+		c1 * c2 * s3 + s1 * s2 * c3,
+		c1 * c2 * c3 - s1 * s2 * s3
+	];
+}
+
+/**
+ * Compose une rotation de `deg` degrés autour de l'axe Z du **plateau** (repère
+ * monde) avec une orientation Euler XYZ existante : R' = Rz(deg) · R. Ajouter
+ * `deg` à la composante Z ne vaut que si X = Y = 0 (ordre XYZ). Résultat
+ * arrondi (1e-6°) pour ne pas accumuler de bruit flottant.
+ */
+export function rotateEulerAboutWorldZ(euler: Vec3, deg: number): Vec3 {
+	const [bx, by, bz, bw] = quaternionFromEulerDeg(euler);
+	const az = Math.sin((deg * DEG) / 2);
+	const aw = Math.cos((deg * DEG) / 2);
+	// a = (0, 0, az, aw) ; produit a · b.
+	const q: Quat = [aw * bx - az * by, aw * by + az * bx, az * bw + aw * bz, aw * bw - az * bz];
+	const out = eulerDegFromQuaternion(q).map((v) => {
+		const r = Math.round(v * 1e6) / 1e6;
+		return Object.is(r, -0) ? 0 : r;
+	}) as Vec3;
+	return out;
+}
+
 /**
  * Rotation Euler (degrés) qui pose la facette de normale `normal` à plat sur le
  * plateau : la normale est amenée vers le bas (-Z, repère Z-up d'Orca).

@@ -81,7 +81,17 @@ function normalize([x, y, z]: [number, number, number]): [number, number, number
 }
 
 /** Vues nommées du menu Vue (parité OrcaSlicer, repère Z-up). */
-export type NamedView = 'default' | 'top' | 'bottom' | 'front' | 'rear' | 'left' | 'right';
+export type NamedView =
+	| 'default'
+	| 'top'
+	| 'bottom'
+	| 'front'
+	| 'rear'
+	| 'left'
+	| 'right'
+	/** Ctrl+7 : vue du plateau courant (Orca PartPlateList::select_plate_view →
+	 *  Camera::select_view("topfront") : dessus-avant à 45°, centrée sur le plateau). */
+	| 'plate';
 
 /** Distance d'observation cadrant le volume du plateau (mutualisée avec `frameBed`). */
 function bedDistance(bed: BedShape): number {
@@ -98,7 +108,9 @@ const VIEW_DIR: Record<NamedView, [number, number, number]> = {
 	front: [0, -1, 0],
 	rear: [0, 1, 0],
 	left: [-1, 0, 0],
-	right: [1, 0, 0]
+	right: [1, 0, 0],
+	// Orca « topfront » : m_target − 0,707·d·Y + 0,707·d·Z.
+	plate: normalize([0, -0.707, 0.707])
 };
 
 /**

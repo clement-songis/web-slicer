@@ -4,7 +4,9 @@
 	// les 92 raccourcis groupés, ouvert par « ? » ou le menu Aide. Présentational
 	// seulement : les données viennent de `shortcuts.ts`.
 	import { locale, t } from '$lib/i18n';
-	import { SHORTCUT_GROUPS, totalShortcuts } from './shortcuts';
+	import { EXTRA_SHORTCUT_GROUP, SHORTCUT_GROUPS, totalShortcuts } from './shortcuts';
+	// Liste d'Orca puis les raccourcis câblés hors de sa liste (phase 34).
+	const GROUPS = [...SHORTCUT_GROUPS, EXTRA_SHORTCUT_GROUP];
 	import { shortcutKeysText, shortcutText } from './shortcuts-fr';
 
 	let { open = false, onClose }: { open?: boolean; onClose: () => void } = $props();
@@ -44,7 +46,7 @@
 			</div>
 
 			<div class="grid gap-6 sm:grid-cols-2">
-				{#each SHORTCUT_GROUPS as group (group.group)}
+				{#each GROUPS as group (group.group)}
 					<section aria-label={shortcutText(group.group, $locale)}>
 						<h3 class="mb-2 text-sm font-semibold text-primary">
 							{shortcutText(group.group, $locale)}

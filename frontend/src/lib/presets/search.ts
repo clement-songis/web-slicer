@@ -5,6 +5,7 @@
 // Sans dépendance Svelte → testable isolément.
 
 import { parseNozzle } from './catalog';
+import { groupUserPresets, type UserGrouping, type UserPresetMeta } from './user-grouping';
 
 /** Forme minimale d'un preset listé. */
 export interface SearchablePreset {
@@ -35,6 +36,11 @@ export interface PresetFilterOptions {
 	showAll?: boolean;
 	/** Preset sélectionné : toujours conservé pour que le menu garde sa valeur. */
 	selectedId?: string | null;
+	/** Regroupement des presets utilisateur (préférence filament, phase 34) ;
+	 *  défaut « all » : un seul groupe « Mes presets ». */
+	userGrouping?: UserGrouping;
+	/** Type / fabricant des presets utilisateur (regroupement par type / fabricant). */
+	userMeta?: Readonly<Record<string, UserPresetMeta>>;
 }
 
 export interface PresetFilterResult<T> {
@@ -115,7 +121,14 @@ export function filterPresetList<T extends SearchablePreset>(
 	presets: T[],
 	options: PresetFilterOptions = {}
 ): PresetFilterResult<T> {
-	const { query = '', printer = null, showAll = false, selectedId = null } = options;
+	const {
+		query = '',
+		printer = null,
+		showAll = false,
+		selectedId = null,
+		userGrouping = 'all',
+		userMeta = {}
+	} = options;
 	const compatible = showAll ? presets : presets.filter((p) => isLikelyCompatible(p, printer));
 	const visible = compatible.filter((p) => matchesQuery(p, query));
 
@@ -143,7 +156,7 @@ export function filterPresetList<T extends SearchablePreset>(
 	if (selected && !visible.includes(selected)) {
 		groups.push({ label: SELECTED_GROUP, presets: [selected] });
 	}
-	if (user.length) groups.push({ label: USER_GROUP, presets: user });
+	groups.push(...groupUserPresets(user, userGrouping, userMeta));
 	groups.push(...vendorGroups);
 	return { groups, shown: visible.length, compatible: compatible.length, total: presets.length };
 }

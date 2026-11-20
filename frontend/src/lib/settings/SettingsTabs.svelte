@@ -18,6 +18,7 @@
 	import { loadSettingsTranslations } from './i18n';
 	import OptionLine from './OptionLine.svelte';
 	import { resolveDynamicOptions } from './dynamic-options';
+	import { variantLabels } from './filament-variants';
 
 	// Layout généré + lignes dynamiques Orca résolues (notes, vignettes).
 	const LAYOUT = resolveDynamicOptions(UI_LAYOUT);
@@ -60,6 +61,18 @@
 		focusKey = null
 	}: Props = $props();
 	let root = $state<HTMLDivElement | null>(null);
+
+	// Phase 34 : variante de buse du filament (Orca TabFilament m_variant_combo,
+	// masqué s'il n'y a qu'une variante) : les options par variante éditent la
+	// valeur de la variante choisie.
+	const variantSource = $derived(
+		valuesByKind ? valuesByKind.filament : kind === 'filament' ? values : null
+	);
+	const variants = $derived(variantLabels(variantSource?.filament_extruder_variant));
+	let variantIndex = $state(0);
+	const activeVariant = $derived(variantIndex < variants.length ? variantIndex : 0);
+	const variantFor = (sectionKind: PresetKind) =>
+		sectionKind === 'filament' && variants.length > 1 ? activeVariant : undefined;
 
 	let query = $state('');
 
@@ -300,6 +313,24 @@
 			aria-label="Rechercher un paramètre"
 			class="ws-field w-full px-3"
 		/>
+		{#if variants.length > 1 && (kind === 'filament' || activePage?.kind === 'filament')}
+			<div class="flex flex-col gap-1" data-testid="filament-variant-selector">
+				<span class="text-xs text-content-muted">
+					Variante de buse éditée — les réglages marqués « par buse » ont une valeur par variante.
+				</span>
+				<div class="ws-seg flex w-full flex-wrap" role="group" aria-label="Variante de buse">
+					{#each variants as label, i (i)}
+						<button
+							type="button"
+							class="ws-seg-item flex-1 {activeVariant === i ? 'ws-seg-on' : ''}"
+							aria-pressed={activeVariant === i}
+							data-testid={`filament-variant-${i}`}
+							onclick={() => (variantIndex = i)}>{label}</button
+						>
+					{/each}
+				</div>
+			</div>
+		{/if}
 	</div>
 
 	{#snippet pageSections(sections: LinkedPage['sections'])}
@@ -322,6 +353,7 @@
 									bind:value={valuesByKind[section.kind][option]}
 									saved={savedByKind?.[section.kind] ?? null}
 									system={systemByKind?.[section.kind] ?? null}
+									variantIndex={variantFor(section.kind)}
 								/>
 							{:else}
 								<OptionLine
@@ -329,6 +361,7 @@
 									bind:value={values[option]}
 									saved={savedByKind?.[kind] ?? null}
 									system={systemByKind?.[kind] ?? null}
+									variantIndex={variantFor(kind)}
 								/>
 							{/if}
 						{/if}

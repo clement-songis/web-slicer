@@ -28,7 +28,12 @@
 		sortProjects,
 		type ProjectSort
 	} from '$lib/library/library';
-	import { isNameConflict, nameTakenMessage, uniqueProjectName } from '$lib/library/names';
+	import {
+		isNameConflict,
+		nameSuggestion,
+		nameTakenMessage,
+		uniqueProjectName
+	} from '$lib/library/names';
 	import type { ProjectResponse } from '$lib/api/types';
 	import type { PageData } from './$types';
 	import IconNew from '~icons/lucide/file-plus';
@@ -164,8 +169,13 @@
 				projects = sortByUpdated(projects.map((p) => (p.id === id ? updated : p)));
 				renamingId = null;
 			} catch (err) {
-				// Nom déjà pris : message clair, le champ reste ouvert pour corriger.
-				if (isNameConflict(err)) throw new ApiError(409, 'conflict', nameTakenMessage(name));
+				// Nom déjà pris : message clair, le champ reste ouvert et reçoit le
+				// nom libre proposé par le serveur (lot 32, details.suggestion).
+				if (isNameConflict(err)) {
+					const suggestion = nameSuggestion(err);
+					if (suggestion) renameValue = suggestion;
+					throw new ApiError(409, 'conflict', nameTakenMessage(name, suggestion));
+				}
 				throw err;
 			}
 		});

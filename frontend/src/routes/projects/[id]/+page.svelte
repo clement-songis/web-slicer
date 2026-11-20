@@ -113,6 +113,16 @@
 	import type { JobResponse } from '$lib/api/types';
 	import type { Projection } from '$lib/scene/camera';
 	import { cameraSpaceNudge, clampZoom } from '$lib/scene/camera';
+	// Phase 34 : Page préc./suiv. (rotation ±45°), « + »/« − » (instances, ou
+	// changement de couleur en Aperçu).
+	import { rotationFromAction } from '$lib/editor/shortcuts';
+	import { rotateSelectionZ } from '$lib/scene/rotate-selection';
+	import {
+		codeIndexAtZ,
+		editColorChangeAt,
+		pendingTicks,
+		withAuthoredTypes
+	} from '$lib/preview/color-changes';
 	import DevicePanel from '$lib/printers/DevicePanel.svelte';
 	import { MAIN_MENUS } from '$lib/menus/menus';
 	import { draftStore, type DraftRecord } from '$lib/stores/draft';
@@ -285,6 +295,17 @@
 		type EngineMeta,
 		type EngineMoves
 	} from '$lib/preview/engine-track';
+	import {
+		estimatedTimeAtTool,
+		layerEndTime,
+		layerTicks,
+		statsFromProcessed,
+		withColorPrint,
+		withEngineSeams,
+		type EngineSeam,
+		type EstimatedTime,
+		type PlatesStatsResponse
+	} from '$lib/preview/engine-data';
 	import EngineSummary from '$lib/preview/EngineSummary.svelte';
 	import { formatDuration } from '$lib/preview/stats';
 	import {
@@ -303,7 +324,12 @@
 		importProject,
 		listProjects
 	} from '$lib/api/projects';
-	import { isNameConflict, nameTakenMessage, uniqueProjectName } from '$lib/library/names';
+	import {
+		isNameConflict,
+		nameSuggestion,
+		nameTakenMessage,
+		uniqueProjectName
+	} from '$lib/library/names';
 	import {
 		arrangeScene,
 		booleanModels,
@@ -348,10 +374,13 @@
 	import {
 		fetchPreviewLayers,
 		getPreviewMeta,
-		getEngineMeta,
-		fetchEngineMoves,
+		gcodeEngineSource,
+		openedEngineSource,
+		processLocalGcode,
+		getPlatesStats,
 		localGcodeLayers,
-		localGcodeMeta
+		localGcodeMeta,
+		type EngineSource
 	} from '$lib/api/preview';
 	import {
 		listPresets,
@@ -627,8 +656,13 @@
 			if (isNameConflict(e) && fromFile) {
 				// Phase 32 : nom de fichier déjà pris par un autre projet → « cube20 (2) ».
 				try {
-					const others = (await listProjects()).filter((p) => p.id !== data.project.id);
-					const free = uniqueProjectName(name, [...others.map((p) => p.name), name]);
+					// Lot 32 : nom libre proposé par le serveur ; sinon calculé ici.
+					const free =
+						nameSuggestion(e) ??
+						uniqueProjectName(name, [
+							...(await listProjects()).filter((p) => p.id !== data.project.id).map((p) => p.name),
+							name
+						]);
 					await renameProject(data.project.id, free);
 					projectName = savedName = free;
 					saveMessage = `Projet nommé « ${free} » d'après ${fromFile}.`;
@@ -638,7 +672,7 @@
 				}
 			}
 			saveMessage = isNameConflict(e)
-				? nameTakenMessage(name)
+				? nameTakenMessage(name, nameSuggestion(e))
 				: e instanceof ApiError
 					? e.message
 					: 'renommage impossible';
@@ -1082,7 +1116,8 @@
 		{ id: 'pa', label: 'Avance de pression' },
 		{ id: 'actual-speed', label: 'Vitesse réelle' },
 		{ id: 'actual-flow', label: 'Débit réel' },
-		{ id: 'filament', label: 'Filament' }
+		{ id: 'filament', label: 'Filament' },
+		{ id: 'color-print', label: 'Couleur d’impression' }
 	];
 
 	// Piste G-code complète (lib/preview/track.ts) : grandeurs absentes du modèle
@@ -1092,8 +1127,29 @@
 	// Simulation GCodeProcessor d'Orca (moteur) du G-code tranché affiché :
 	// valeurs réelles (vitesse, débit, temps de couche…) et vue Résumé. La piste
 	// texte (track.ts) reste le repli (G-code local, échec moteur).
-	let engineGcodeId: string | null = null;
+	// Source moteur : G-code tranché ou G-code externe simulé (lot 31).
+	let engineSource: EngineSource | null = null;
 	let engineMeta = $state<EngineMeta | null>(null);
+	// Coutures EMoveType::Seam du moteur (lot 31), chargées une fois par source.
+	let engineSeams: EngineSeam[] | null = null;
+	/** Lot 31 superposé à la piste moteur : vue « Couleur » et coutures. */
+	function decorateEngine(
+		track: PreviewTrack,
+		meta: EngineMeta,
+		chunks: readonly EngineMoves[]
+	): PreviewTrack {
+		const cp = meta.color_print;
+		let out = cp
+			? withColorPrint(
+					track,
+					meta,
+					chunks,
+					engineSource?.viewer ? (cp.viewer_palette ?? cp.palette) : cp.palette
+				)
+			: track;
+		if (engineSeams) out = withEngineSeams(out, meta, engineSeams);
+		return out;
+	}
 	let engineTimeMode = $state(0);
 	// Piste texte de référence (alignée WSPv) et données moteur sur lesquelles
 	// la piste affichée est recalculée (fenêtre de couches, mode N/S).
@@ -1110,7 +1166,8 @@
 		'jerk',
 		'pa',
 		'actual-speed',
-		'actual-flow'
+		'actual-flow',
+		'color-print'
 	]);
 	/** Recalcule la piste moteur pour les couches affichées et le mode N/S. */
 	async function syncEngineTrack() {
@@ -1123,16 +1180,19 @@
 		if (engineCache) {
 			const [from, to] = engineLayersFor(base, meta, layerRange.low, layerRange.high);
 			// Rendu immédiat avec les blocs déjà là, puis complet une fois chargés.
-			previewTrack = applyEngine(base, meta, engineCache.loaded(), engineTimeMode);
+			const loaded = engineCache.loaded();
+			previewTrack = decorateEngine(applyEngine(base, meta, loaded, engineTimeMode), meta, loaded);
 			if (!ENGINE_SEGMENT_COLORATIONS.has(coloration)) {
 				void refreshGeometry();
 				return;
 			}
 			const chunks = await engineCache.ensure(from, to);
 			if (ticket !== engineSync || base !== engineBase) return;
-			track = applyEngine(base, meta, chunks, engineTimeMode);
+			track = decorateEngine(applyEngine(base, meta, chunks, engineTimeMode), meta, chunks);
 		} else if (engineFullMoves) {
-			track = withEngine(base, engineFullMoves, engineTimeMode);
+			track = decorateEngine(withEngine(base, engineFullMoves, engineTimeMode), meta, [
+				engineFullMoves
+			]);
 		} else return;
 		previewTrack = track;
 		void refreshGeometry();
@@ -1215,6 +1275,82 @@
 	// Phase 31 : sommet courant du curseur horizontal (marqueur + fenêtre
 	// « position de l'outil » d'Orca) et « Aller à la couche » (Maj+G).
 	let previewTool = $state<ToolPosition | null>(null);
+	// Phase 33 (lot 31) : temps estimé au sommet courant (get_estimated_time_at
+	// d'Orca : layers[].elapsed + temps des mouvements simulés) et repères du
+	// curseur de couches (changements de couleur, pauses, G-code perso).
+	let previewToolTime = $state<EstimatedTime | null>(null);
+	let toolTimeSeq = 0;
+	$effect(() => {
+		const tool = previewTool;
+		const meta = engineMeta;
+		const mode = engineTimeMode;
+		const atEnd = moveCursor.position >= moveCursor.total;
+		untrack(() => void updateToolTime(tool, meta, mode, atEnd));
+	});
+	async function updateToolTime(
+		tool: ToolPosition | null,
+		meta: EngineMeta | null,
+		mode: number,
+		atEnd: boolean
+	) {
+		const seq = ++toolTimeSeq;
+		const base = engineBase;
+		if (!tool || !meta || !base) {
+			previewToolTime = null;
+			return;
+		}
+		// Fin de couche (position par défaut) : méta seule, aucun mouvement chargé
+		// (les colorations par type / temps restent sans téléchargement WSPm).
+		if (atEnd && tool.index >= 0) {
+			previewToolTime = layerEndTime(base, meta, tool.layer, mode);
+			return;
+		}
+		const loaded = engineFullMoves ? [engineFullMoves] : (engineCache?.loaded() ?? []);
+		let time = estimatedTimeAtTool(base, meta, loaded, tool.layer, tool.index, mode);
+		if (!time && engineCache && tool.index >= 0) {
+			// Mouvements de la couche pas encore chargés : un bloc suffit.
+			const [from, to] = engineLayersFor(base, meta, tool.layer, tool.layer);
+			try {
+				const chunks = await engineCache.ensure(from, to);
+				if (seq !== toolTimeSeq) return;
+				time = estimatedTimeAtTool(base, meta, chunks, tool.layer, tool.index, mode);
+			} catch {
+				time = null;
+			}
+		}
+		if (seq === toolTimeSeq) previewToolTime = time;
+	}
+	const previewLayerTicks = $derived(
+		engineMeta && previewTrack
+			? withAuthoredTypes(
+					layerTicks(previewTrack, engineMeta),
+					activePlate?.customGcodes ?? [],
+					previewMeta?.layers ?? []
+				)
+			: []
+	);
+	// Phase 34 : noms des pièces par objet (recherche de la liste d'objets).
+	const objectPartNames = $derived(
+		Object.fromEntries(
+			Object.entries(volumesByObject).map(([id, list]) => [id, (list ?? []).map((v) => v.name)])
+		)
+	);
+	// Phase 34 : codes du plateau ajoutés depuis le tranchage (« + » en Aperçu),
+	// en pointillé sur le curseur jusqu'au prochain tranchage.
+	const pendingLayerTicks = $derived(
+		previewMeta
+			? pendingTicks(activePlate?.customGcodes ?? [], previewMeta.layers, previewLayerTicks)
+			: []
+	);
+	const codeAtHighLayer = $derived.by(() => {
+		const z = previewMeta?.layers[layerRange.high]?.z;
+		return z !== undefined && codeIndexAtZ(activePlate?.customGcodes ?? [], z) >= 0;
+	});
+	const TICK_COLORS: Record<string, string> = {
+		color_change: '#da948b',
+		pause_print: '#52f083',
+		custom: '#5ed194'
+	};
 	let goToLayerOpen = $state(false);
 	let goToLayerValue = $state('');
 	function openGoToLayer() {
@@ -1247,6 +1383,34 @@
 				(id === plates.activeId && session.phase === 'preview' ? rawStats : null)
 		)
 	);
+
+	// Statistiques serveur de tous les plateaux tranchés (lot 31,
+	// render_all_plates_stats : filament par usage cumulé, temps, coût).
+	let platesStats = $state<PlatesStatsResponse | null>(null);
+	let platesStatsKey = '';
+	$effect(() => {
+		const ids = previewSlicedPlates
+			.map(
+				(id) =>
+					plateResults[id]?.gcodeId ??
+					(id === plates.activeId && session.phase === 'preview' ? session.gcodeId : null)
+			)
+			.filter((g): g is string => typeof g === 'string' && g.length > 0);
+		const key = [...new Set(ids)].join(',');
+		if (key === platesStatsKey) return;
+		platesStatsKey = key;
+		if (ids.length < 2) {
+			platesStats = null;
+			return;
+		}
+		getPlatesStats([...new Set(ids)])
+			.then((r) => {
+				if (platesStatsKey === key) platesStats = r;
+			})
+			.catch(() => {
+				if (platesStatsKey === key) platesStats = null;
+			});
+	});
 
 	const previewStats = $derived(
 		rawStats
@@ -4418,6 +4582,7 @@
 			const draft = untrack(currentDraft);
 			checkFilamentCompatibility(data.project.id, {
 				...(draft ? { draft } : {}),
+				active_presets: untrack(activePresetsBody),
 				allow_mixed_temperatures: allow
 			})
 				.then((r) => {
@@ -4638,11 +4803,8 @@
 			// d'enregistrement silencieux, l'état « non enregistré » est conservé.
 			// Repli sur l'enregistrement si le serveur ignore `scene`.
 			const dirty = saveSignature() !== savedSignature;
-			const inline =
-				dirty &&
-				activePresetsSaved() &&
-				projectConfigSaved() &&
-				(await supportsInlineScene(data.project.id));
+			// Phase 33 (lot 31) : presets actifs envoyés aussi (`active_presets`).
+			const inline = dirty && projectConfigSaved() && (await supportsInlineScene(data.project.id));
 			if (seq !== validationSeq) return;
 			if (dirty && !inline) {
 				const saved = await save({ quiet: true });
@@ -4657,7 +4819,7 @@
 			}
 			const res = await validateProject(data.project.id, {
 				...sliceRequestWithDraft('all', 0),
-				...(inline ? { scene: buildSceneForSave() } : {})
+				...(inline ? { scene: buildSceneForSave(), active_presets: activePresetsBody() } : {})
 			});
 			if (seq !== validationSeq) return;
 			validation = res;
@@ -5537,7 +5699,23 @@
 			if (extruder <= filamentSlots) for (const id of selectedIds) tree.setExtruder(id, extruder);
 			return true;
 		}
+		const turn = rotationFromAction(action);
+		if (turn !== null) {
+			if (layout.tab === 'prepare') rotateSelectionBy(turn);
+			return true;
+		}
 		switch (action) {
+			case 'view.plate':
+				cameraView = 'plate';
+				cameraFocus = null;
+				return true;
+			case 'object.increaseInstances':
+			case 'object.decreaseInstances': {
+				const key = action === 'object.increaseInstances' ? '+' : '-';
+				if (layout.tab === 'preview') editColorChangeKey(key);
+				else changeInstances(key);
+				return true;
+			}
 			case 'plate.orientAll':
 				void orientAllOnPlate();
 				return true;
@@ -5568,6 +5746,77 @@
 				return true;
 		}
 		return false;
+	}
+	// Page préc./suiv. (Orca on_key → _do_rotate(±π/4)) : rotation de la
+	// sélection autour du Z du plateau ; plusieurs objets tournent ensemble
+	// autour du centre de la sélection. Objets verrouillés / hors plateau exclus.
+	function rotateSelectionBy(deg: number) {
+		const movable = sceneObjects.filter(
+			(o) =>
+				ws.selection.has(o.id) &&
+				canTransformObject(o.id, activePlate, (objectId) => tree.isLocked(objectId))
+		);
+		if (movable.length === 0) return;
+		const poses = rotateSelectionZ(movable, deg);
+		sceneObjects = sceneObjects.map((o) => {
+			const pose = poses.get(o.id);
+			return pose ? { ...o, position: pose.position, rotation: pose.rotation } : o;
+		});
+	}
+	// « + » / « − » en Préparer (Orca Plater::increase/decrease_instances) : un
+	// seul objet sélectionné ; « + » ajoute une instance décalée (sélectionnée,
+	// sans réarranger), « − » retire la dernière instance du modèle — jamais la
+	// seule (can_decrease_instances).
+	function changeInstances(key: '+' | '-') {
+		if (!selId || !sceneObjects.some((o) => o.id === selId)) {
+			if (selectedIds.length > 1)
+				saveMessage = 'Instances : sélectionnez un seul objet pour utiliser « + » / « − ».';
+			return;
+		}
+		if (key === '+') {
+			if (!tree.isPrintable(selId)) {
+				saveMessage = 'Ajouter une instance : l’objet est marqué non imprimable.';
+				return;
+			}
+			duplicateObject(selId);
+			return;
+		}
+		const modelId = imports.find((i) => i.objectId === selId)?.modelId;
+		const instances = modelId
+			? imports.filter((i) => i.modelId === modelId && tree.get(i.objectId)).map((i) => i.objectId)
+			: [selId];
+		if (instances.length < 2) {
+			saveMessage = 'Retirer une instance : c’est la seule instance de ce modèle.';
+			return;
+		}
+		const last = instances[instances.length - 1];
+		removeObject(last);
+		const remaining = instances.filter((id) => id !== last);
+		ws = setSelection(ws, new Set([remaining[remaining.length - 1]]));
+	}
+	// « + » / « − » en Aperçu (Orca EVT_GLCANVAS_EDIT_COLOR_CHANGE) : ajoute un
+	// changement de couleur à la couche haute du curseur, ou retire le code de
+	// cette couche. Stocké dans le plateau, appliqué au prochain tranchage.
+	function editColorChangeKey(key: '+' | '-') {
+		const plateId = plates.activeId;
+		const layers = previewMeta?.layers;
+		if (!plateId || !layers?.length) return;
+		// G-code ouvert (pas de résultat de tranchage) : rien à retrancher.
+		if (!session.gcodeId) {
+			saveMessage = 'G-code ouvert : les changements de couleur se règlent sur un plateau tranché.';
+			return;
+		}
+		const z = layers[layerRange.high]?.z;
+		if (z === undefined) return;
+		const res = editColorChangeAt(
+			plates.get(plateId)?.customGcodes ?? [],
+			key,
+			z,
+			String(layerRange.high + 1),
+			filamentSlotColors[0] ?? '#00AE42'
+		);
+		if (res.changed) plates.setCustomGcodes(plateId, res.list);
+		saveMessage = res.message;
 	}
 	// Flèches : déplace la sélection dans le plan du plateau (objets verrouillés
 	// ou hors plateau actif exclus par `moveObject`).
@@ -5652,6 +5901,20 @@
 	function onEditorKeydown(e: KeyboardEvent) {
 		// Laisse les dialogues modaux gérer leurs propres touches.
 		if (showShortcuts) return;
+		// « + » / « − » sur le curseur de couches focalisé (champ range, sinon
+		// ignoré comme éditable) : changement de couleur, comme sur l'IMSlider d'Orca.
+		if (
+			layout.tab === 'preview' &&
+			(e.key === '+' || e.key === '-') &&
+			!e.ctrlKey &&
+			!e.metaKey &&
+			!e.altKey &&
+			(e.target as HTMLElement | null)?.closest?.('.preview-vslider')
+		) {
+			e.preventDefault();
+			editColorChangeKey(e.key);
+			return;
+		}
 		if (isEditableTarget(e.target)) return;
 		// Tab ne bascule Préparer/Aperçu que depuis la zone 3D (ou sans focus) ;
 		// ailleurs il garde la navigation clavier native.
@@ -6331,18 +6594,28 @@
 	// parseur que les tranchages), sans stockage ni tranchage.
 	let gcodeFileInput: HTMLInputElement | undefined = $state();
 	let loadedGcodeFile: File | null = null;
+	// Temps écrit dans le pied du G-code ouvert (comparé à la simulation).
+	let openedDeclaredTime = $state<string | null>(null);
 	async function openLocalGcode(file: File) {
 		try {
-			const meta = await localGcodeMeta(file);
+			// Lot 31 : le fichier est aussi simulé par GCodeProcessor (comme la
+			// visionneuse d'Orca) → statistiques réelles, méta moteur, mouvements
+			// et coutures par jeton. Repli : pied de G-code relu côté client.
+			const [meta, processed] = await Promise.all([
+				localGcodeMeta(file),
+				processLocalGcode(file).catch(() => null)
+			]);
 			loadedGcodeFile = file;
 			previewMeta = meta;
 			loader = new LazyPreviewLoader({
 				layerCount: meta.layer_count,
 				fetchRange: (from, to) => localGcodeLayers(file, from, to)
 			});
-			engineGcodeId = null;
-			// Pas de stats serveur pour un fichier local : pied de G-code relu.
-			rawStats = parseGcodeFooterStats(await file.text());
+			engineSource = processed ? openedEngineSource(processed.token, processed.meta) : null;
+			openedDeclaredTime = processed?.footer?.estimated_time_text ?? null;
+			rawStats = processed
+				? statsFromProcessed(processed)
+				: parseGcodeFooterStats(await file.text());
 			setGcodeSource(() => file.text());
 			layerRange = makeLayerRange(meta.layer_count);
 			session = { ...prepareSession(), phase: 'preview', progress: 1 };
@@ -6439,25 +6712,29 @@
 			engineBase = null;
 			engineCache = null;
 			engineFullMoves = null;
-			const gid = engineGcodeId;
-			if (gid) {
+			engineSeams = null;
+			const src = engineSource;
+			if (src) {
 				try {
-					const meta = await getEngineMeta(gid);
+					const meta = await src.meta();
+					if (gcodeSource !== source) return;
+					// Coutures du moteur (lot 31, révision 3) ; repli : coutures du texte.
+					if (meta.seam_count !== undefined) engineSeams = await src.seams().catch(() => null);
 					if (gcodeSource !== source) return;
 					const windowed = meta.ranges && meta.layers.every((l) => l.first_line !== undefined);
 					if (windowed) {
 						// Gros G-code : mouvements par fenêtre de couches (méta v2).
-						engineCache = new EngineMoveCache(meta.layer_count, (from, to) =>
-							fetchEngineMoves(gid, from, to)
-						);
+						engineCache = new EngineMoveCache(meta.layer_count, (from, to) => src.moves(from, to));
 						const [from, to] = engineLayersFor(track, meta, layerRange.low, layerRange.high);
 						const chunks = ENGINE_SEGMENT_COLORATIONS.has(coloration)
 							? await engineCache.ensure(from, to)
 							: [];
-						track = applyEngine(track, meta, chunks, engineTimeMode);
+						track = decorateEngine(applyEngine(track, meta, chunks, engineTimeMode), meta, chunks);
 					} else {
-						engineFullMoves = await fetchEngineMoves(gid);
-						track = withEngine(track, engineFullMoves, engineTimeMode);
+						engineFullMoves = await src.moves();
+						track = decorateEngine(withEngine(track, engineFullMoves, engineTimeMode), meta, [
+							engineFullMoves
+						]);
 					}
 					if (gcodeSource !== source) return;
 					engineBase = textTrack;
@@ -6864,8 +7141,9 @@
 	// enregistrer). Replis : serveur antérieur (champ ignoré, cf.
 	// supportsInlineScene) ou modèle pas encore rattaché au projet (422
 	// field=scene) → enregistrement puis tranchage de la scène enregistrée.
-	// Presets actifs ou config projet modifiés : enregistrés d'abord
-	// (activePresetsSaved, projectConfigSaved).
+	// Presets actifs modifiés : envoyés dans `active_presets` (lot 31, plus
+	// d'enregistrement forcé) ; config projet modifiée : enregistrée d'abord
+	// (projectConfigSaved).
 	const SLICE_CONFLICT = 'Conflit : le projet a été modifié ailleurs. Rechargez avant de trancher.';
 	async function requestSlice(
 		req: ReturnType<typeof sliceRequestWithDraft>
@@ -6876,15 +7154,15 @@
 			if (saved.status === 'error') throw new SliceSaveError(saved.message);
 		};
 		const dirty = saveSignature() !== savedSignature;
-		const inline =
-			dirty &&
-			activePresetsSaved() &&
-			projectConfigSaved() &&
-			(await supportsInlineScene(data.project.id));
+		const inline = dirty && projectConfigSaved() && (await supportsInlineScene(data.project.id));
 		if (dirty && !inline) await saveFirst();
 		if (!inline) return sliceProject(data.project.id, req);
 		try {
-			return await sliceProject(data.project.id, { ...req, scene: buildSceneForSave() });
+			return await sliceProject(data.project.id, {
+				...req,
+				scene: buildSceneForSave(),
+				active_presets: activePresetsBody()
+			});
 		} catch (e) {
 			const field =
 				e instanceof ApiError ? (e.details as { field?: unknown } | undefined)?.field : null;
@@ -6894,15 +7172,16 @@
 		}
 	}
 	class SliceSaveError extends Error {}
-	// Presets actifs (filaments ajoutés, imprimante…) : persistés par la seule
-	// sauvegarde — `scene` ne les transporte pas. Modifiés → enregistrement
-	// avant validation / tranchage (sinon « filament 2 mais le projet n'en
-	// définit que 1 »). savedSignature = scène + presets (saveSignature).
-	function activePresetsSaved(): boolean {
-		return (
-			savedSignature !== null &&
-			savedSignature.endsWith(JSON.stringify(serializeActivePresets(activePresets)))
-		);
+	// Presets actifs affichés (filaments ajoutés, imprimante…) : `scene` ne les
+	// transporte pas ; lot 31 → champ `active_presets` de /slice, /validate et
+	// /filament-compatibility (même format que le projet). Remplace la
+	// sauvegarde forcée de la phase 31 (activePresetsSaved).
+	function activePresetsBody(): { printer?: string; process?: string; filaments?: string[] } {
+		return serializeActivePresets(activePresets) as {
+			printer?: string;
+			process?: string;
+			filaments?: string[];
+		};
 	}
 	// Config projet hors objets (`scene.projectConfig` : couleurs des slots,
 	// matrice et multiplicateur de purge, position de la tour) : même règle que
@@ -6983,14 +7262,15 @@
 
 	// Charge la méta d'aperçu puis prépare le chargeur paresseux (T084).
 	async function loadPreview(gcodeId: string) {
-		engineGcodeId = gcodeId;
+		engineSource = gcodeEngineSource(gcodeId);
+		openedDeclaredTime = null;
 		// Projet rouvert (pas d'événement job.finished dans cette session) : les
 		// statistiques du G-code alimentent le « Résultat du tranchage ».
 		if (!rawStats) {
 			void fetch(`/api/gcodes/${gcodeId}/stats`, { credentials: 'include' })
 				.then((r) => (r.ok ? r.json() : null))
 				.then((stats) => {
-					if (stats && engineGcodeId === gcodeId && !rawStats) rawStats = stats;
+					if (stats && engineSource?.key === 'g:' + gcodeId && !rawStats) rawStats = stats;
 				})
 				.catch(() => {});
 		}
@@ -7939,6 +8219,7 @@
 						activeId={plates.activeId}
 						sliced={previewSlicedPlates}
 						totals={previewPlatesTotals}
+						all={platesStats?.all ?? null}
 						currency={preferences.currency}
 						onselect={selectPlate}
 						onsliceall={session.phase === 'slicing' ? undefined : () => void sliceAll()}
@@ -7979,6 +8260,7 @@
 							currency={preferences.currency}
 							hidden={new Set(hiddenTypes)}
 							ontoggletype={coloration === 'type' ? toggleType : undefined}
+							declared={openedDeclaredTime}
 						/>
 					</section>
 				{/if}
@@ -8487,6 +8769,11 @@
 						sequential={sequentialPrint}
 						bind:showOrderOnScene={showPrintOrder}
 						issues={objectIssues}
+						partNames={objectPartNames}
+						onlocate={(plateId, id) => {
+							selectPlate(plateId);
+							selectObject(id, false);
+						}}
 					/>
 					{#if selId && (volumesByObject[selId]?.length ?? 0) > 0}
 						<ul class="mt-2 flex flex-col gap-1 text-sm" data-testid="object-volumes">
@@ -9068,7 +9355,7 @@
 								<div
 									class="absolute bottom-16 left-1/2 z-10 max-w-[calc(100%-16rem)] -translate-x-1/2"
 								>
-									<ToolPositionCard tool={previewTool} {coloration} />
+									<ToolPositionCard tool={previewTool} {coloration} time={previewToolTime} />
 								</div>
 							{/if}
 							<!-- Curseur horizontal intra-couche (←/→, Home/End). -->
@@ -9089,6 +9376,15 @@
 									}}
 								/>
 								<span class="tabular-nums">{moveCursor.position}/{moveCursor.total}</span>
+								{#if previewToolTime}
+									<!-- Temps estimé à la position de l'outil (simulation Orca). -->
+									<span
+										class="tabular-nums text-content"
+										data-testid="preview-move-time"
+										data-tip="Temps estimé écoulé à la position de l’outil"
+										data-tip-side="top">{formatDuration(previewToolTime.time)}</span
+									>
+								{/if}
 							</div>
 
 							<!-- Sélecteur de coloration (T116, FR-041). -->
@@ -9205,6 +9501,29 @@
 											data-testid="layer-range-highlight"
 											aria-hidden="true"
 										></div>
+										<!-- Repères d'Orca (IMSlider) : changement de couleur, pause, G-code perso. -->
+										{#each previewLayerTicks as tick, i (i)}
+											<div
+												class="absolute -right-1 -left-1 h-0.5 rounded-full"
+												style:bottom="calc(0.25rem + {layerPct(tick.layer)} * (100% - 0.5rem))"
+												style:background-color={TICK_COLORS[tick.type] ?? '#9ca3af'}
+												data-testid="layer-tick"
+												data-type={tick.type}
+												data-layer={tick.layer}
+												aria-hidden="true"
+											></div>
+										{/each}
+										{#each pendingLayerTicks as tick, i (i)}
+											<div
+												class="absolute -right-1.5 -left-1.5 h-0 border-t-2 border-dashed"
+												style:bottom="calc(0.25rem + {layerPct(tick.layer)} * (100% - 0.5rem))"
+												style:border-color={TICK_COLORS[tick.type] ?? '#9ca3af'}
+												data-testid="layer-tick-pending"
+												data-type={tick.type}
+												data-layer={tick.layer}
+												aria-hidden="true"
+											></div>
+										{/each}
 										<input
 											type="range"
 											class="preview-vslider {layerRange.active === 'high' ? 'is-active' : ''}"
@@ -9269,6 +9588,23 @@
 											onclick={() => moveLayerThumb(1)}>+</button
 										>
 									</div>
+									{#if session.gcodeId}
+										<!-- Orca IMSlider : icône « + » de la poignée = changement de
+										     couleur à cette couche ; ici un bouton explicite (et + / −). -->
+										<button
+											type="button"
+											class="ws-chip w-full justify-center"
+											data-testid="layer-color-change"
+											data-active={codeAtHighLayer ? 'true' : 'false'}
+											aria-keyshortcuts={codeAtHighLayer ? '-' : '+'}
+											data-tip={codeAtHighLayer
+												? 'Retirer le code de la couche ' + (layerRange.high + 1) + ' (−)'
+												: 'Changement de couleur à la couche ' + (layerRange.high + 1) + ' (+)'}
+											data-tip-side="left"
+											onclick={() => editColorChangeKey(codeAtHighLayer ? '-' : '+')}
+											>{codeAtHighLayer ? '− couleur' : '+ couleur'}</button
+										>
+									{/if}
 									<button
 										class="ws-chip w-full justify-center {layerRange.oneLayerMode
 											? 'ws-chip-on'

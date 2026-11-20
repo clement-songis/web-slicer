@@ -27,7 +27,9 @@ export type Coloration =
 	| 'pa'
 	/** Vitesse / débit réels simulés par GCodeProcessor (moteur). */
 	| 'actual-speed'
-	| 'actual-flow';
+	| 'actual-flow'
+	/** Vue « Couleur » d'Orca (ColorPrint) : couleur des changements de couleur. */
+	| 'color-print';
 
 const rgb = (r: number, g: number, b: number): Rgb => [r / 255, g / 255, b / 255];
 

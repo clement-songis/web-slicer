@@ -14,12 +14,15 @@
 	} from './colorations';
 	import { formatDuration } from './stats';
 	import type { ToolPosition } from './tool-position';
+	import type { EstimatedTime } from './engine-data';
 
 	interface Props {
 		tool: ToolPosition;
 		coloration: Coloration;
+		/** Temps estimé au sommet (simulation Orca, lot 31) ; null = inconnu. */
+		time?: EstimatedTime | null;
 	}
-	let { tool, coloration }: Props = $props();
+	let { tool, coloration, time = null }: Props = $props();
 	let open = $state(false);
 
 	const NA = 'N/D';
@@ -27,6 +30,13 @@
 		v === null || v === undefined || !Number.isFinite(v)
 			? NA
 			: `${v.toLocaleString('fr-FR', { minimumFractionDigits: digits, maximumFractionDigits: digits })}${unit ? ' ' + unit : ''}`;
+	// « Temps : 1h2m (0.123s) » comme get_estimated_time_at d'Orca.
+	const timeText = $derived(
+		time
+			? formatDuration(time.time) +
+					(time.moveTime !== null ? ` (${num(time.moveTime, 3, 's')})` : '')
+			: NA
+	);
 	const css = ([r, g, b]: Rgb) =>
 		`rgb(${Math.round(r * 255)} ${Math.round(g * 255)} ${Math.round(b * 255)})`;
 	const roleName = $derived(
@@ -85,7 +95,8 @@
 		['Température', num(tool.channels.temperature, 0, '°C')],
 		['Avance de pression', num(tool.channels.pa, 4)],
 		['Outil', tool.extruder === null ? NA : String(tool.extruder + 1)],
-		['Temps de couche', tool.layerTime === null ? NA : formatDuration(tool.layerTime)]
+		['Temps de couche', tool.layerTime === null ? NA : formatDuration(tool.layerTime)],
+		['Temps estimé', timeText]
 	]);
 </script>
 
@@ -135,6 +146,11 @@
 			)}</span
 		>
 		<span class="tabular-nums">Vitesse : {num(tool.speed, 0, 'mm/s')}</span>
+		{#if time}<span
+				class="tabular-nums"
+				data-testid="preview-tool-time"
+				data-time={time.time.toFixed(3)}>Temps : {timeText}</span
+			>{/if}
 		{#if detail && coloration !== 'speed'}<span class="truncate">{detail}</span>{/if}
 	</div>
 </div>

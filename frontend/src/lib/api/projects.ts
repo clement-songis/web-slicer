@@ -1,5 +1,6 @@
 // Appels de la bibliothèque de projets, typés sur les DTO générés.
 import { api, API_BASE, ApiError } from './client';
+import { apiErrorMessage } from './quota';
 import type {
 	CreateProjectRequest,
 	ErrorBody,
@@ -59,7 +60,12 @@ export async function importProject(file: File): Promise<ProjectResponse> {
 	const data: unknown = text ? JSON.parse(text) : undefined;
 	if (!res.ok) {
 		const err = (data ?? {}) as Partial<ErrorBody>;
-		throw new ApiError(res.status, err.code ?? 'error', err.message ?? res.statusText, err.details);
+		throw new ApiError(
+			res.status,
+			err.code ?? 'error',
+			apiErrorMessage(res.status, err, res.statusText),
+			err.details
+		);
 	}
 	return data as ProjectResponse;
 }

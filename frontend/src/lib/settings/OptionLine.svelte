@@ -9,6 +9,8 @@
 	import { untrack } from 'svelte';
 	import IconUndo from '~icons/lucide/undo-2';
 	import IconLockOpen from '~icons/lucide/lock-open';
+	import { wikiUrl } from './wiki';
+	import { variantSlot } from './filament-variants';
 
 	interface Props {
 		def: ParamDef;
@@ -25,6 +27,9 @@
 		/** Valeurs du preset système parent : option différente → cadenas ouvert,
 		 *  retour à la valeur système (cadenas d'Orca). */
 		system?: Record<string, unknown> | null;
+		/** Variante de buse éditée (filament multi-buses, Orca m_variant_combo) :
+		 *  index du vecteur pour les options par variante ; 0 sinon. */
+		variantIndex?: number;
 	}
 
 	let {
@@ -33,8 +38,16 @@
 		disabled = false,
 		compact = false,
 		saved = null,
-		system = null
+		system = null,
+		variantIndex
 	}: Props = $props();
+
+	// Phase 34 : clic sur le libellé → wiki d'Orca (OptionsGroup::get_url).
+	const wiki = $derived(wikiUrl(def.key));
+	// Valeur éditée : celle de la variante choisie pour une option par variante.
+	const vi = $derived(variantSlot(def.key, value, variantIndex ?? 0));
+	// Badge seulement quand le sélecteur de variante est actif (onglet Filament).
+	const perVariant = $derived(variantIndex !== undefined && variantSlot(def.key, value, 1) === 1);
 
 	const markers = $derived(saved !== null || system !== null);
 	const modified = $derived(saved !== null && settingChanged(def.key, saved, value));
@@ -82,6 +95,12 @@
 	});
 
 	function hasOverride(current: unknown): boolean {
+		// Variante choisie (filament multi-buses) : seule sa valeur compte.
+		const slot = variantSlot(def.key, current, variantIndex ?? 0);
+		if (Array.isArray(current) && slot > 0) {
+			const entry = current[slot];
+			return entry !== null && entry !== undefined;
+		}
 		if (Array.isArray(current))
 			return current.some((entry) => entry !== null && entry !== undefined);
 		return current !== null && current !== undefined;
@@ -91,7 +110,11 @@
 		overrideEnabled = !overrideEnabled;
 		if (overrideEnabled && !hasOverride(value)) {
 			const fallback = def.default ?? (def.type.startsWith('coBool') ? false : 0);
-			value = scalarVector || pointVector ? [fallback] : fallback;
+			if (vi > 0 && Array.isArray(value)) {
+				const next = [...value];
+				next[vi] = fallback;
+				value = next;
+			} else value = scalarVector || pointVector ? [fallback] : fallback;
 		}
 	}
 </script>
@@ -99,6 +122,7 @@
 <div
 	class="flex min-h-9 items-center py-1 {compact ? 'gap-2' : 'gap-3'}"
 	data-param={def.key}
+	data-variant={perVariant ? vi : undefined}
 	data-modified={modified ? 'true' : undefined}
 	data-from-system={fromSystem ? 'true' : undefined}
 >
@@ -106,9 +130,32 @@
 		class="min-w-0 flex-1 text-sm text-content-muted"
 		title={def.tooltip ? $t(def.tooltip) : undefined}
 	>
-		{$t(def.label)}
+		{#if wiki}
+			<!-- Orca : libellé cliquable → page du wiki de l'option (nouvel onglet). -->
+			<!-- Lien externe (wiki d'Orca) : pas une route de l'application. -->
+			<!-- eslint-disable svelte/no-navigation-without-resolve -->
+			<a
+				href={wiki}
+				target="_blank"
+				rel="noopener noreferrer"
+				class="underline-offset-2 hover:text-primary hover:underline focus-visible:text-primary focus-visible:underline"
+				data-testid="option-wiki-link"
+				aria-label={`${$t(def.label)} — aide du wiki OrcaSlicer (nouvel onglet)`}>{$t(def.label)}</a
+			>
+			<!-- eslint-enable svelte/no-navigation-without-resolve -->
+		{:else}
+			{$t(def.label)}
+		{/if}
 		{#if def.tooltip}
 			<span class="ml-1 cursor-help text-content-subtle" aria-hidden="true">ⓘ</span>
+		{/if}
+		{#if perVariant}
+			<span
+				class="ws-badge ml-1 normal-case"
+				data-testid="option-variant-badge"
+				title="Valeur propre à chaque variante de buse : choisissez la variante en haut de l’onglet Filament."
+				>par buse</span
+			>
 		{/if}
 	</span>
 	{#if def.nullable}
@@ -157,12 +204,12 @@
 			     sa valeur neutre (false, 0…) dans un vecteur « nil ». -->
 			<Widget
 				{def}
-				value={Array.isArray(value) ? value[0] : value}
+				value={Array.isArray(value) ? value[vi] : value}
 				index={indexed}
 				disabled={true}
 			/>
 		{:else if (scalarVector || pointVector) && Array.isArray(value)}
-			<Widget {def} bind:value={value[0]} index={indexed} disabled={controlDisabled} />
+			<Widget {def} bind:value={value[vi]} index={indexed} disabled={controlDisabled} />
 		{:else if !scalarVector && !pointVector}
 			<Widget {def} bind:value index={indexed} disabled={controlDisabled} />
 		{/if}

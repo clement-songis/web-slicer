@@ -17,7 +17,9 @@
 	import IconHash from '~icons/lucide/hash';
 	import IconIssueError from '~icons/lucide/circle-alert';
 	import IconIssueWarning from '~icons/lucide/triangle-alert';
+	import IconSearch from '~icons/lucide/search';
 	import type { Plate } from './plates.svelte';
+	import { searchObjects } from './object-search';
 
 	interface Props {
 		tree: ObjectTree;
@@ -60,6 +62,10 @@
 		issues?: Readonly<
 			Record<string, { level: 'error' | 'warning'; text: string; inline?: boolean }>
 		>;
+		/** Noms des pièces par objet (recherche « plateau, objet et pièce » d'Orca). */
+		partNames?: Readonly<Record<string, readonly string[]>>;
+		/** Résultat de recherche sur un autre plateau : l'activer et y sélectionner l'objet. */
+		onlocate?: (plateId: string, id: string) => void;
 	}
 
 	let {
@@ -84,8 +90,24 @@
 		onreorder,
 		sequential = false,
 		showOrderOnScene = $bindable(true),
-		issues = {}
+		issues = {},
+		partNames = {},
+		onlocate
 	}: Props = $props();
+
+	// Phase 34 : recherche (Orca Plater m_search_bar). Filtre l'arbre du plateau
+	// actif ; les résultats des autres plateaux sont proposés en liens.
+	let query = $state('');
+	const search = $derived(searchObjects(tree.list(), query, plates, partNames));
+	const elsewhere = $derived(
+		search
+			? search.hits.filter((hit) => {
+					const node = tree.get(hit.id);
+					return !!node && !inPlate(node) && !!hit.plateId;
+				})
+			: []
+	);
+	const shownHere = $derived(search ? tree.roots().filter((n) => isVisible(n)).length : 0);
 
 	// Objets racines réordonnables, dans l'ordre (= ordre d'impression).
 	const orderable = (node: SceneNode) => node.kind === 'object' && node.parentId === null;
@@ -93,7 +115,7 @@
 		const rank: Record<string, number> = {};
 		let n = 0;
 		for (const node of tree.roots())
-			if (orderable(node) && isVisible(node) && tree.isPrintable(node.id)) rank[node.id] = ++n;
+			if (orderable(node) && inPlate(node) && tree.isPrintable(node.id)) rank[node.id] = ++n;
 		return rank;
 	});
 	let dragId = $state<string | null>(null);
@@ -102,7 +124,7 @@
 	function neighbour(id: string, delta: -1 | 1): string | null {
 		const ids = tree
 			.roots()
-			.filter((n) => orderable(n) && isVisible(n))
+			.filter((n) => orderable(n) && inPlate(n))
 			.map((n) => n.id);
 		const at = ids.indexOf(id);
 		return at < 0 ? null : (ids[at + delta] ?? null);
@@ -123,9 +145,20 @@
 	}
 	const rootObject = (node: SceneNode) => node.kind === 'object' && node.parentId === null;
 
-	function isVisible(node: SceneNode): boolean {
+	/** Nœud du plateau actif (ou groupe contenant un objet du plateau). */
+	function inPlate(node: SceneNode): boolean {
 		if (!visibleIds || visibleIds.has(node.id)) return true;
-		return tree.children(node.id).some(isVisible);
+		return tree.children(node.id).some(inPlate);
+	}
+	/** Affiché : du plateau actif et, en recherche, résultat, ancêtre ou descendant d'un résultat. */
+	function isVisible(node: SceneNode): boolean {
+		if (!inPlate(node)) return false;
+		if (!search || search.shown.has(node.id)) return true;
+		for (let p = node.parentId ? tree.get(node.parentId) : undefined; p;) {
+			if (search.matched.has(p.id)) return true;
+			p = p.parentId ? tree.get(p.parentId) : undefined;
+		}
+		return false;
 	}
 </script>
 
@@ -141,6 +174,8 @@
 					: 'hover:bg-overlay'}"
 				data-testid="object-row"
 				data-printable={node.printable}
+				data-match={search?.matched.has(node.id) ? 'true' : undefined}
+				class:ws-search-hit={!selected && !!search?.matched.has(node.id)}
 				style="padding-left: {depth * 1 + 0.25}rem"
 				role="presentation"
 				class:ws-drop-target={dropId === node.id && dragId !== node.id}
@@ -442,6 +477,29 @@
 			onclick={() => ongroup()}>Grouper</button
 		>
 	</div>
+	{#if tree.roots().length > 0}
+		<!-- Orca « Search plate, object and part. » (Plater m_search_bar). -->
+		<label class="relative block">
+			<span class="sr-only">Rechercher un plateau, un objet ou une pièce</span>
+			<IconSearch
+				class="pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-content-subtle"
+				aria-hidden="true"
+			/>
+			<input
+				type="search"
+				bind:value={query}
+				placeholder="Plateau, objet ou pièce…"
+				class="ws-field ws-field-sm w-full pl-7"
+				data-testid="object-search"
+				onkeydown={(e) => {
+					if (e.key === 'Escape' && query) {
+						e.stopPropagation();
+						query = '';
+					}
+				}}
+			/>
+		</label>
+	{/if}
 	<ul>
 		{#each tree.roots() as node (node.id)}
 			{#if isVisible(node)}
@@ -449,11 +507,41 @@
 			{/if}
 		{/each}
 	</ul>
+	{#if search}
+		{#if shownHere === 0 && elsewhere.length === 0}
+			<p class="px-1 text-xs text-content-subtle" data-testid="object-search-empty">
+				Aucun plateau, objet ou pièce ne correspond à « {query.trim()} ».
+			</p>
+		{/if}
+		{#if elsewhere.length > 0}
+			<div class="flex flex-col gap-0.5" data-testid="object-search-elsewhere">
+				<span class="px-1 text-2xs text-content-subtle">Sur d'autres plateaux</span>
+				{#each elsewhere as hit (hit.id)}
+					<button
+						type="button"
+						class="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-left text-sm hover:bg-overlay"
+						data-testid="object-search-hit"
+						disabled={!onlocate}
+						onclick={() => hit.plateId && onlocate?.(hit.plateId, hit.id)}
+					>
+						<span class="truncate">{hit.name}</span>
+						{#if hit.part}<span class="truncate text-xs text-content-subtle">› {hit.part}</span
+							>{/if}
+						<span class="ws-badge ml-auto shrink-0 normal-case">{hit.plateName}</span>
+					</button>
+				{/each}
+			</div>
+		{/if}
+	{/if}
 </div>
 
 <style>
 	/* Cible de dépôt pendant le glisser-déposer d'ordre d'impression. */
 	.ws-drop-target {
 		box-shadow: inset 0 0 0 2px var(--color-accent);
+	}
+	/* Résultat de recherche (hors sélection). */
+	.ws-search-hit {
+		box-shadow: inset 2px 0 0 0 var(--color-primary);
 	}
 </style>

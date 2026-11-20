@@ -7,6 +7,7 @@
 	import {
 		CAMERA_DEFAULTS,
 		REMEMBERED_CHOICES,
+		clampFpsCap,
 		clampOrbitSpeed,
 		clampRecentCount,
 		clearRememberedChoices,
@@ -16,8 +17,10 @@
 		type CameraPreferences,
 		type DefaultPage,
 		type DragAction,
+		type GraphicsPreferences,
 		type Units
 	} from './preferences';
+	import { USER_GROUPINGS, type UserGrouping } from '$lib/presets/user-grouping';
 	import { loadStepPrefs, saveStepPrefs } from '$lib/editor/step-mesh';
 	import { dialogFocus } from '$lib/ui/dialog-focus';
 
@@ -30,13 +33,16 @@
 
 	let { open, prefs, onchange, onclose }: Props = $props();
 
-	type TabId = 'general' | 'camera' | 'behaviour' | 'presets';
+	type TabId = 'general' | 'camera' | 'behaviour' | 'presets' | 'graphics';
 	const TABS: { id: TabId; label: string }[] = [
 		{ id: 'general', label: 'Général' },
 		{ id: 'camera', label: 'Caméra et souris' },
 		{ id: 'behaviour', label: 'Comportement' },
-		{ id: 'presets', label: 'Presets' }
+		{ id: 'presets', label: 'Presets' },
+		// Orca Preferences › Graphismes, réduit à ce qui a un sens dans un navigateur.
+		{ id: 'graphics', label: 'Graphismes' }
 	];
+	const FPS_CAPS = [0, 30, 60, 120];
 	let tab = $state<TabId>('general');
 
 	const themeLabels: Record<ThemePref, string> = {
@@ -67,6 +73,9 @@
 	}
 	function updateCamera(patch: Partial<CameraPreferences>) {
 		update({ camera: { ...prefs.camera, ...patch } });
+	}
+	function updateGraphics(patch: Partial<GraphicsPreferences>) {
+		update({ graphics: { ...prefs.graphics, ...patch } });
 	}
 
 	const cam = $derived(prefs.camera);
@@ -521,7 +530,78 @@
 						clearCtl,
 						'clear-choices'
 					)}
+				{:else if tab === 'graphics'}
+					{#snippet aaCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-antialias"
+							aria-labelledby="pref-antialias-label"
+							checked={prefs.graphics.antialias}
+							onchange={(e) => updateGraphics({ antialias: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Anticrénelage (MSAA)',
+						'Lisse les arêtes des modèles et des parcours. Désactivé : rendu plus rapide sur un ordinateur ou une carte graphique modeste. La vue 3D est recréée.',
+						aaCtl,
+						'antialias'
+					)}
+					{#snippet fpsCapCtl()}
+						<select
+							data-testid="pref-fps-cap"
+							aria-labelledby="pref-fps-cap-label"
+							class="ws-field ws-field-sm w-44"
+							value={prefs.graphics.fpsCap}
+							onchange={(e) =>
+								updateGraphics({ fpsCap: clampFpsCap(Number(e.currentTarget.value)) })}
+						>
+							{#each FPS_CAPS as cap (cap)}
+								<option value={cap}>{cap === 0 ? 'Illimité (écran)' : `${cap} images/s`}</option>
+							{/each}
+						</select>
+					{/snippet}
+					{@render row(
+						'Images par seconde maximum',
+						'Plafonne le rafraîchissement de la vue 3D pendant les mouvements (Orca « FPS max ») : moins de chauffe et de batterie consommée sur un portable.',
+						fpsCapCtl,
+						'fps-cap'
+					)}
+					{#snippet fpsCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-show-fps"
+							aria-labelledby="pref-show-fps-label"
+							checked={prefs.graphics.showFps}
+							onchange={(e) => updateGraphics({ showFps: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Afficher le compteur d’images/s',
+						'Compteur en coin de la vue 3D. La vue ne se redessine que lorsqu’elle change : 0 au repos est normal.',
+						fpsCtl,
+						'show-fps'
+					)}
 				{:else}
+					{#snippet groupCtl()}
+						<select
+							data-testid="pref-group-filament-presets"
+							aria-labelledby="pref-group-filament-presets-label"
+							class="ws-field ws-field-sm w-44"
+							value={prefs.groupFilamentPresets}
+							onchange={(e) =>
+								update({ groupFilamentPresets: e.currentTarget.value as UserGrouping })}
+						>
+							{#each USER_GROUPINGS as g (g.value)}
+								<option value={g.value}>{g.label}</option>
+							{/each}
+						</select>
+					{/snippet}
+					{@render row(
+						'Grouper mes presets filament',
+						'Rangement de vos presets filament dans la liste des filaments : un seul groupe « Mes presets », sans sous-groupe, par type (PLA, PETG…) ou par fabricant.',
+						groupCtl,
+						'group-filament-presets'
+					)}
 					{#snippet unsupportedCtl()}
 						<input
 							type="checkbox"

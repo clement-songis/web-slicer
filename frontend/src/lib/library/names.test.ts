@@ -1,6 +1,24 @@
 import { describe, expect, it } from 'vitest';
 import { ApiError } from '$lib/api/client';
-import { isNameConflict, nameTakenMessage, uniqueProjectName } from './names';
+import { isNameConflict, nameSuggestion, nameTakenMessage, uniqueProjectName } from './names';
+
+describe('409 name_taken (lot 32)', () => {
+	it('lit details.suggestion et le propose dans le message', () => {
+		const err = new ApiError(409, 'name_taken', 'pris', {
+			field: 'name',
+			name: 'cube',
+			suggestion: 'cube (2)'
+		});
+		expect(isNameConflict(err)).toBe(true);
+		expect(nameSuggestion(err)).toBe('cube (2)');
+		expect(nameTakenMessage('cube', nameSuggestion(err))).toBe(
+			"Un autre projet s'appelle déjà « cube ». Nom libre proposé : « cube (2) »."
+		);
+		expect(nameSuggestion(new ApiError(409, 'conflict', 'x'))).toBeNull();
+		expect(nameSuggestion(new ApiError(422, 'name_taken', 'x', { suggestion: 'a' }))).toBeNull();
+		expect(nameSuggestion(new Error('x'))).toBeNull();
+	});
+});
 
 describe('noms de projet uniques', () => {
 	it('garde le nom libre, suffixe sinon', () => {

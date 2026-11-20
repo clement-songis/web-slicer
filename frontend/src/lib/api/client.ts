@@ -3,6 +3,7 @@
 // en `ApiError`. Aucune logique métier ici — juste le transport.
 import type { ErrorBody } from './types';
 import { reportReachable, reportUnreachable, unreachableMessage } from './connectivity';
+import { apiErrorMessage } from './quota';
 
 /** Préfixe des routes API (le proxy Vite renvoie vers le backend en dev). */
 export const API_BASE = '/api';
@@ -67,7 +68,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 			throw new ApiError(res.status, 'unavailable', unreachableMessage(res.status));
 		}
 		reportReachable();
-		throw new ApiError(res.status, err.code ?? 'error', err.message ?? res.statusText, err.details);
+		throw new ApiError(
+			res.status,
+			err.code ?? 'error',
+			apiErrorMessage(res.status, err, res.statusText),
+			err.details
+		);
 	}
 	reportReachable();
 	if (text && data === undefined) {

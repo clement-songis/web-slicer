@@ -1,18 +1,21 @@
 <script lang="ts">
-	// Administration de l'instance (phase 32). Le serveur expose déjà politique
-	// d'inscription, limite d'upload, création / réinitialisation / suppression
-	// de comptes et invitations (/api/admin/*) ; aucune interface n'y donnait
-	// accès. Pas de liste des comptes côté serveur : les comptes créés ici sont
-	// mémorisés dans ce navigateur pour pouvoir les gérer ensuite.
+	// Administration de l'instance (phase 32). Politique d'inscription, limite
+	// d'upload, quotas par compte (lot 32), invitations, création /
+	// réinitialisation / suppression de comptes (/api/admin/*). Liste des
+	// comptes : GET /admin/users (lot 32, recherche + pages), seule source (la
+	// liste locale « comptes créés depuis ce navigateur » de la phase 32 est retirée).
 	import { onMount } from 'svelte';
 	import { ApiError } from '$lib/api/client';
 	import {
 		createInvitation,
 		createUser,
 		deleteUser,
+		listUsers,
 		patchInstance,
 		resetPassword
 	} from '$lib/api/admin';
+	import { formatBytes } from '$lib/api/quota';
+	import type { AdminUserListResponse, AdminUserResponse } from '$lib/api/types';
 	import AppSidebar from '$lib/nav/AppSidebar.svelte';
 	import {
 		POLICIES,
@@ -20,9 +23,9 @@
 		generatePassword,
 		invitationLink,
 		mbToBytes,
-		parseManaged,
-		upsertManaged,
-		type ManagedUser,
+		pageLabel,
+		parseSliceLimit,
+		quotaMbToBytes,
 		type RegistrationPolicy
 	} from '$lib/admin/admin';
 	import type { PageData } from './$types';
@@ -39,11 +42,24 @@
 	let savedMb = $state(500);
 	let instanceMsg = $state<{ ok: boolean; text: string } | null>(null);
 	let savingInstance = $state(false);
+	// Quotas par compte (lot 32) : 0 = illimité. Absents d'un serveur antérieur.
+	const quotasSupported = $derived(data.instance.storage_quota_bytes !== undefined);
+	let storageMb = $state(0);
+	let savedStorageMb = $state(0);
+	let sliceLimit = $state(0);
+	let savedSliceLimit = $state(0);
 	onMount(() => {
 		policy = savedPolicy = (data.instance.registration_policy as RegistrationPolicy) ?? 'open';
 		uploadMb = savedMb = bytesToMb(data.instance.upload_limit_bytes);
+		storageMb = savedStorageMb = bytesToMb(data.instance.storage_quota_bytes ?? 0);
+		sliceLimit = savedSliceLimit = data.instance.max_concurrent_slices ?? 0;
 	});
-	const instanceDirty = $derived(policy !== savedPolicy || uploadMb !== savedMb);
+	const instanceDirty = $derived(
+		policy !== savedPolicy ||
+			uploadMb !== savedMb ||
+			storageMb !== savedStorageMb ||
+			sliceLimit !== savedSliceLimit
+	);
 
 	async function saveInstance() {
 		const bytes = mbToBytes(uploadMb);
@@ -51,15 +67,33 @@
 			instanceMsg = { ok: false, text: "La limite d'upload doit être un nombre de Mo positif." };
 			return;
 		}
+		const storageBytes = quotaMbToBytes(storageMb);
+		const slices = parseSliceLimit(sliceLimit);
+		if (quotasSupported && storageBytes === null) {
+			instanceMsg = { ok: false, text: 'Le quota de stockage doit être un nombre de Mo ≥ 0.' };
+			return;
+		}
+		if (quotasSupported && slices === null) {
+			instanceMsg = {
+				ok: false,
+				text: 'Les tranchages simultanés doivent être un entier entre 0 et 1000.'
+			};
+			return;
+		}
 		savingInstance = true;
 		instanceMsg = null;
 		try {
 			const res = await patchInstance({
 				registration_policy: policy,
-				upload_limit_bytes: BigInt(bytes)
+				upload_limit_bytes: BigInt(bytes),
+				...(quotasSupported
+					? { storage_quota_bytes: storageBytes ?? 0, max_concurrent_slices: slices ?? 0 }
+					: {})
 			});
 			policy = savedPolicy = res.registration_policy as RegistrationPolicy;
 			uploadMb = savedMb = bytesToMb(res.upload_limit_bytes);
+			storageMb = savedStorageMb = bytesToMb(res.storage_quota_bytes ?? 0);
+			sliceLimit = savedSliceLimit = res.max_concurrent_slices ?? 0;
 			instanceMsg = { ok: true, text: 'Réglages de l’instance enregistrés.' };
 		} catch (e) {
 			instanceMsg = { ok: false, text: errorText(e, 'Enregistrement impossible.') };
@@ -96,16 +130,46 @@
 		}
 	}
 
-	// — Comptes gérés
-	const STORE_KEY = $derived(`web-slicer.admin.managed.${data.user.id}`);
-	let managed = $state<ManagedUser[]>([]);
-	onMount(() => {
-		managed = parseManaged(localStorage.getItem(STORE_KEY));
-	});
-	function persist(list: ManagedUser[]) {
-		managed = list;
-		localStorage.setItem(STORE_KEY, JSON.stringify(list));
+	// — Comptes (GET /admin/users, lot 32). null = pas encore chargée / erreur.
+	const PER_PAGE = 25;
+	let serverList = $state<AdminUserListResponse | null>(null);
+	let listError = $state<string | null>(null);
+	let search = $state('');
+	let page = $state(1);
+	let searchTimer: ReturnType<typeof setTimeout> | undefined;
+	let listSeq = 0;
+	async function loadUsers() {
+		const seq = ++listSeq;
+		try {
+			const res = await listUsers({ page, per_page: PER_PAGE, q: search });
+			if (seq !== listSeq) return;
+			serverList = res;
+			listError = null;
+		} catch (e) {
+			if (seq !== listSeq) return;
+			serverList = null;
+			listError =
+				e instanceof ApiError && (e.status === 404 || e.status === 405)
+					? 'Ce serveur ne fournit pas la liste des comptes (mise à jour du serveur requise).'
+					: errorText(e, 'Liste des comptes indisponible.');
+		}
 	}
+	onMount(() => void loadUsers());
+	function onSearch() {
+		clearTimeout(searchTimer);
+		searchTimer = setTimeout(() => {
+			page = 1;
+			void loadUsers();
+		}, 300);
+	}
+	function goPage(delta: number) {
+		page = Math.max(1, page + delta);
+		void loadUsers();
+	}
+	const rows = $derived<AdminUserResponse[]>(serverList?.users ?? []);
+	const lastPage = $derived(
+		serverList ? Math.max(1, Math.ceil(serverList.total / serverList.per_page)) : 1
+	);
 
 	let newEmail = $state('');
 	let newPassword = $state('');
@@ -130,7 +194,7 @@
 				password: newPassword,
 				role: newRole
 			});
-			persist(upsertManaged(managed, { id: user.id, email: user.email, role: user.role }));
+			void loadUsers();
 			createMsg = {
 				ok: true,
 				text: `Compte ${user.email} créé. Communiquez-lui son mot de passe : ${newPassword}`
@@ -145,12 +209,12 @@
 		}
 	}
 
-	// Réinitialisation / suppression d'un compte géré (ou saisi par identifiant).
+	// Réinitialisation / suppression d'un compte de la liste.
 	let rowMsg = $state<Record<string, { ok: boolean; text: string }>>({});
 	let resetFor = $state<string | null>(null);
 	let resetValue = $state('');
 	let confirmDelete = $state<string | null>(null);
-	async function doReset(user: ManagedUser) {
+	async function doReset(user: AdminUserResponse) {
 		if (resetValue.length < 8) {
 			rowMsg = { ...rowMsg, [user.id]: { ok: false, text: '8 caractères minimum.' } };
 			return;
@@ -167,15 +231,14 @@
 			rowMsg = { ...rowMsg, [user.id]: { ok: false, text: errorText(e, 'Échec.') } };
 		}
 	}
-	async function doDelete(user: ManagedUser) {
+	async function doDelete(user: AdminUserResponse) {
 		try {
 			await deleteUser(user.id);
-			persist(managed.filter((u) => u.id !== user.id));
 			confirmDelete = null;
+			void loadUsers();
 		} catch (e) {
-			// Compte déjà supprimé ailleurs : on l'oublie aussi.
-			if (e instanceof ApiError && e.status === 404)
-				persist(managed.filter((u) => u.id !== user.id));
+			// Compte déjà supprimé ailleurs : la liste rechargée ne l'affiche plus.
+			if (e instanceof ApiError && e.status === 404) void loadUsers();
 			else rowMsg = { ...rowMsg, [user.id]: { ok: false, text: errorText(e, 'Échec.') } };
 			confirmDelete = null;
 		}
@@ -219,6 +282,34 @@
 					/>
 					<span>Mo</span>
 				</label>
+				{#if quotasSupported}
+					<label class="flex items-center gap-2 text-sm">
+						<span class="text-content-muted">Stockage maximal par compte</span>
+						<input
+							type="number"
+							min="0"
+							step="1"
+							class="ws-field ws-field-sm w-24"
+							bind:value={storageMb}
+							data-testid="admin-storage-quota"
+						/>
+						<span>Mo</span>
+						<span class="text-xs text-content-subtle">0 = illimité</span>
+					</label>
+					<label class="flex items-center gap-2 text-sm">
+						<span class="text-content-muted">Tranchages simultanés par compte</span>
+						<input
+							type="number"
+							min="0"
+							max="1000"
+							step="1"
+							class="ws-field ws-field-sm w-20"
+							bind:value={sliceLimit}
+							data-testid="admin-slice-quota"
+						/>
+						<span class="text-xs text-content-subtle">0 = illimité</span>
+					</label>
+				{/if}
 				<div class="flex items-center gap-3">
 					<button
 						type="button"
@@ -234,10 +325,12 @@
 						>
 					{/if}
 				</div>
-				<p class="text-xs text-content-subtle">
-					Pas de quota de stockage ni de tranchages par compte pour l'instant : seule la taille des
-					fichiers importés est limitée.
-				</p>
+				{#if !quotasSupported}
+					<p class="text-xs text-content-subtle">
+						Ce serveur ne gère pas encore de quota de stockage ni de tranchages par compte : seule
+						la taille des fichiers importés est limitée.
+					</p>
+				{/if}
 			</section>
 
 			<section class="flex flex-col gap-3" aria-labelledby="admin-invite">
@@ -338,16 +431,63 @@
 					</p>
 				{/if}
 
-				{#if managed.length === 0}
+				{#if serverList}
+					<div class="flex flex-wrap items-center gap-2 text-sm">
+						<input
+							type="search"
+							class="ws-field ws-field-sm w-64"
+							placeholder="Rechercher un e-mail"
+							aria-label="Rechercher un compte par e-mail"
+							bind:value={search}
+							oninput={onSearch}
+							data-testid="admin-user-search"
+						/>
+						<span class="text-xs text-content-muted tabular-nums" data-testid="admin-user-count"
+							>{pageLabel(serverList.page, serverList.per_page, serverList.total)}</span
+						>
+						{#if lastPage > 1}
+							<span class="ml-auto flex gap-1">
+								<button
+									type="button"
+									class="ws-btn ws-btn-sm ws-btn-secondary"
+									disabled={page <= 1}
+									onclick={() => goPage(-1)}>Précédents</button
+								>
+								<button
+									type="button"
+									class="ws-btn ws-btn-sm ws-btn-secondary"
+									disabled={page >= lastPage}
+									onclick={() => goPage(1)}>Suivants</button
+								>
+							</span>
+						{/if}
+					</div>
+				{/if}
+				{#if listError}<p class="text-sm text-danger" role="alert">{listError}</p>{/if}
+				{#if !serverList}
+					{#if !listError}
+						<p class="text-sm text-content-muted">Chargement des comptes…</p>
+					{/if}
+				{:else if rows.length === 0}
 					<p class="ws-empty rounded-lg border border-dashed border-border py-4 text-sm">
-						Aucun compte créé depuis cette page.
+						{search.trim() ? 'Aucun compte ne correspond.' : 'Aucun compte.'}
 					</p>
 				{:else}
 					<ul class="flex flex-col divide-y divide-border rounded border border-border">
-						{#each managed as user (user.id)}
+						{#each rows as user (user.id)}
 							<li class="flex flex-col gap-1 p-2 text-sm" data-testid="admin-user-row">
 								<div class="flex items-center gap-2">
-									<span class="min-w-0 flex-1 truncate" title={user.email}>{user.email}</span>
+									<span class="min-w-0 flex-1 truncate" title={user.email}
+										>{user.email}{#if user.id === data.user.id}
+											<span class="text-xs text-content-subtle">(vous)</span>{/if}</span
+									>
+									<span
+										class="text-xs text-content-muted tabular-nums"
+										title={'Créé le ' + new Date(user.created_at).toLocaleDateString()}
+										>{user.project_count} projet{user.project_count === 1 ? '' : 's'} · {formatBytes(
+											user.storage_bytes
+										)}</span
+									>
 									<span class="text-xs text-content-muted"
 										>{user.role === 'admin' ? 'Administrateur' : 'Utilisateur'}</span
 									>
@@ -408,10 +548,6 @@
 						{/each}
 					</ul>
 				{/if}
-				<p class="text-xs text-content-subtle">
-					Le serveur ne fournit pas encore la liste de tous les comptes : seuls ceux créés depuis ce
-					navigateur sont listés ici.
-				</p>
 			</section>
 		</main>
 	</div>

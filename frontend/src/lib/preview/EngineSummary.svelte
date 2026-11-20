@@ -13,6 +13,8 @@
 	import { formatDuration, type PreviewStats } from './stats';
 	import { summaryView, type EngineMeta } from './engine-track';
 	import { OPTION_COLORS, SEGMENT_ROLE_COLORS, type Rgb } from './colorations';
+	import { hasFilamentBreakdown } from './engine-data';
+	import FilamentTable from './FilamentTable.svelte';
 
 	interface Props {
 		/** Méta du moteur (simulation Orca) ; null → repli sur `fallback`. */
@@ -27,9 +29,20 @@
 		/** Types de ligne masqués et bascule (mode « type de ligne »). */
 		hidden?: Set<number>;
 		ontoggletype?: (kind: number) => void;
+		/** G-code externe : temps annoncé par son pied (affiché s'il diffère). */
+		declared?: string | null;
 	}
 
-	let { meta, fallback, mode = 0, onmode, currency = '€', hidden, ontoggletype }: Props = $props();
+	let {
+		meta,
+		fallback,
+		mode = 0,
+		onmode,
+		currency = '€',
+		hidden,
+		ontoggletype,
+		declared = null
+	}: Props = $props();
 
 	// Noms des rôles Orca (ExtrusionRole, mêmes ids que SEGMENT_ROLE_COLORS).
 	const ORCA_ROLES: Record<number, string> = {
@@ -177,6 +190,18 @@
 			>
 				{view ? formatDuration(view.total[mode]) : fallback.totalTimeText}
 			</dd>
+			{#if view && declared && declared !== formatDuration(view.total[mode])}
+				<dt
+					class="text-content-muted"
+					data-tip="Durée écrite dans le pied du fichier par le trancheur d’origine"
+					data-tip-side="right"
+				>
+					Annoncé par le G-code
+				</dt>
+				<dd class="text-right whitespace-nowrap tabular-nums" data-testid="engine-declared-time">
+					{declared}
+				</dd>
+			{/if}
 			{#if view}
 				{#if view.hasStealth}
 					<dt class="text-content-muted">{mode === 0 ? 'Mode silencieux' : 'Mode normal'}</dt>
@@ -327,6 +352,15 @@
 					</tfoot>
 				{/if}
 			</table>
+		</div>
+	{/if}
+
+	<!-- Répartition par usage (lot 31 : tableau « Filament » d'Orca, modèle /
+	     support / purge / tour) — seulement s'il y a plus que le modèle. -->
+	{#if meta?.filament_table && hasFilamentBreakdown(meta.filament_table)}
+		<div class="flex flex-col gap-1">
+			<h3 class="ws-section-title">Filament par usage</h3>
+			<FilamentTable table={meta.filament_table} testid="engine-filament-table" />
 		</div>
 	{/if}
 

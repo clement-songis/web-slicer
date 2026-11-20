@@ -7,18 +7,32 @@
 	import { formatMoney } from '$lib/settings/preferences';
 	import { formatDuration } from './stats';
 	import type { PlatesTotals } from './plates-summary';
+	import type { PlatesStatsResponse } from './engine-data';
+	import FilamentTable from './FilamentTable.svelte';
 
 	interface Props {
 		plates: { id: string; name: string; objects: number }[];
 		activeId: string | null;
 		sliced: readonly string[];
 		totals: PlatesTotals | null;
+		/** Statistiques serveur de tous les plateaux (POST /gcodes/plates-stats, lot 31). */
+		all?: PlatesStatsResponse['all'] | null;
 		currency?: string;
 		onselect: (id: string) => void;
 		/** « Trancher tout » proposé tant qu'un plateau non vide n'est pas tranché. */
 		onsliceall?: () => void;
 	}
-	let { plates, activeId, sliced, totals, currency = '€', onselect, onsliceall }: Props = $props();
+	let {
+		plates,
+		activeId,
+		sliced,
+		totals,
+		all = null,
+		currency = '€',
+		onselect,
+		onsliceall
+	}: Props = $props();
+	let detail = $state(false);
 	const pending = $derived(plates.filter((p) => p.objects > 0 && !sliced.includes(p.id)).length);
 </script>
 
@@ -51,7 +65,29 @@
 			</button>
 		{/each}
 	</div>
-	{#if totals && totals.plates > 1}
+	{#if all && all.plate_count > 1}
+		<!-- render_all_plates_stats : temps sommés, filament cumulé par filament
+		     (modèle / support / purge / tour), coût figé des tranchages. -->
+		<div class="flex flex-col gap-1" data-testid="preview-plates-all">
+			<p class="text-xs text-content-muted tabular-nums" data-testid="preview-plates-totals">
+				<span class="text-content">Tous les plateaux ({all.plate_count})</span> ·
+				{formatDuration(all.time[0])} ·
+				{all.total.total.g.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} g{#if all.total_cost > 0}
+					· {formatMoney(all.total_cost, currency)}{/if}
+			</p>
+			<button
+				type="button"
+				class="ws-link self-start text-xs"
+				aria-expanded={detail}
+				data-testid="preview-plates-detail"
+				onclick={() => (detail = !detail)}
+				>{detail ? 'Masquer le détail par filament' : 'Détail par filament'}</button
+			>
+			{#if detail}
+				<FilamentTable table={all} testid="preview-plates-filaments" />
+			{/if}
+		</div>
+	{:else if totals && totals.plates > 1}
 		<p class="text-xs text-content-muted tabular-nums" data-testid="preview-plates-totals">
 			<span class="text-content">Tous les plateaux ({totals.plates})</span> ·
 			{formatDuration(totals.timeSeconds)} ·

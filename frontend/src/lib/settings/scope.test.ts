@@ -23,10 +23,13 @@ describe('groupes de réglages par type', () => {
 	});
 
 	test('filament : 7 pages (T101)', () => {
+		// Ordre d'exécution d'Orca (TabFilament::build puis
+		// add_filament_overrides_page appelé après Cooling, Tab.cpp) :
+		// Setting Overrides n'est pas première malgré sa définition plus haute.
 		expect(pagesOf('filament')).toEqual([
-			'Setting Overrides',
 			'Filament',
 			'Cooling',
+			'Setting Overrides',
 			'Advanced',
 			'Multimaterial',
 			'Dependencies',

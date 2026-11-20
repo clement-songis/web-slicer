@@ -32,7 +32,10 @@ function normKey(key: string): string {
 		arrowup: 'up',
 		arrowdown: 'down',
 		arrowleft: 'left',
-		arrowright: 'right'
+		arrowright: 'right',
+		// Pavé numérique sans Verr. Num : mêmes touches qu'Orca (WXK_NUMPAD_PAGEUP…).
+		pageup: 'pageup',
+		pagedown: 'pagedown'
 	};
 	return special[k] ?? k;
 }
@@ -89,6 +92,13 @@ const MODIFIER_CHORDS: Record<string, string> = {
 	'ctrl+4': 'view.rear',
 	'ctrl+5': 'view.left',
 	'ctrl+6': 'view.right',
+	// Ctrl+7 : vue du plateau courant (Orca select_plate_view : « topfront »
+	// centrée sur le plateau). Ctrl+1…8 changent d'onglet dans le navigateur
+	// mais ne sont pas réservés : interceptés comme Ctrl+0…6.
+	'ctrl+7': 'view.plate',
+	// Ctrl+E : étiquettes d'objets (Orca on_char WXK_CONTROL_E, menu « Show
+	// Labels »). Intercepté avant « rechercher dans la barre d'adresse ».
+	'ctrl+e': 'view.labels',
 	// Ctrl+R (Slice plate) : intercepté avant le rechargement du navigateur.
 	'ctrl+r': 'slice.plate',
 	// Tab : bascule Préparer ↔ Aperçu (l'Aperçu a son propre gestionnaire).
@@ -121,6 +131,13 @@ const CANVAS_CHORDS: Record<string, string> = {
 	i: 'view.zoomIn',
 	o: 'view.zoomOut',
 	v: 'object.togglePrintable',
+	// Orca on_key : Page préc./suiv. = rotation de la sélection de ±45° (axe Z).
+	pageup: 'selection.rotate+45',
+	pagedown: 'selection.rotate-45',
+	// Orca on_char « + » / « − » : ajouter / retirer une instance ; en Aperçu,
+	// ajouter / supprimer un changement de couleur à la couche courante.
+	'+': 'object.increaseInstances',
+	'-': 'object.decreaseInstances',
 	// Plateau (groupe Plater).
 	a: 'arrange',
 	q: 'orient',
@@ -139,6 +156,12 @@ const CANVAS_CHORDS: Record<string, string> = {
 /** Extrudeur visé par une action `object.extruder.N` (1–9), sinon `null`. */
 export function extruderFromAction(action: string): number | null {
 	const m = /^object\.extruder\.([1-9])$/.exec(action);
+	return m ? Number(m[1]) : null;
+}
+
+/** Angle (degrés, axe Z) d'une action `selection.rotate±45` (Page préc./suiv.), sinon `null`. */
+export function rotationFromAction(action: string): number | null {
+	const m = /^selection\.rotate([+-]\d+)$/.exec(action);
 	return m ? Number(m[1]) : null;
 }
 

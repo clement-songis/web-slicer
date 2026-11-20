@@ -6,6 +6,7 @@
 // segment d'extrusion reçoit la valeur du `MoveVertex` de la même ligne. La
 // piste texte reste le repli si le moteur échoue. Module pur (testé).
 import type { PreviewTrack, TrackChannel, TrackLayer } from './track';
+import type { EngineColorPrint, FilamentTable } from './engine-data';
 import { TRACK_CHANNELS } from './track';
 
 /** Colonnes par mouvement (miroir de BYTES/FLOATS/INTS_PER_MOVE). */
@@ -63,6 +64,8 @@ export interface EngineLayer {
 	/** Ligne G-code du premier mouvement (méta v2). */
 	first_line?: number;
 	time: [number, number];
+	/** Temps écoulé avant le 1er mouvement de la couche [N, S] (lot 31). */
+	elapsed?: [number, number];
 }
 
 export interface EngineCustomGcode {
@@ -95,6 +98,14 @@ export interface EngineMeta {
 	max_actual_volumetric_rate: number;
 	/** Bornes globales des grandeurs par segment d'extrusion (méta v2). */
 	ranges?: Partial<Record<TrackChannel, [number, number]>>;
+	/** Révision du cache (3 = lot 31 : couleurs, temps écoulé, coutures). */
+	revision?: number;
+	/** Vue « Couleur » (ColorPrint) — lot 31. */
+	color_print?: EngineColorPrint;
+	/** Tableau « Filament » (modèle / support / purge / tour) — lot 31. */
+	filament_table?: FilamentTable;
+	/** Nombre de coutures EMoveType::Seam — lot 31. */
+	seam_count?: number;
 	summary: {
 		modes: EngineMode[];
 		total_volumes_per_extruder: Record<string, number>;

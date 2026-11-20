@@ -7,6 +7,12 @@ export type { AdminCreateUserRequest } from '../../generated/api/AdminCreateUser
 export type { InstanceResponse } from '../../generated/api/InstanceResponse';
 export type { InvitationResponse } from '../../generated/api/InvitationResponse';
 export type { PatchInstanceRequest } from '../../generated/api/PatchInstanceRequest';
+// Comptes, mot de passe, quotas (lot 32).
+export type { AdminUserListResponse } from '../../generated/api/AdminUserListResponse';
+export type { AdminUserResponse } from '../../generated/api/AdminUserResponse';
+export type { AdminUsersQuery } from '../../generated/api/AdminUsersQuery';
+export type { ChangePasswordRequest } from '../../generated/api/ChangePasswordRequest';
+export type { UsageResponse } from '../../generated/api/UsageResponse';
 export type { LoginRequest } from '../../generated/api/LoginRequest';
 export type { RegisterRequest } from '../../generated/api/RegisterRequest';
 export type { ProjectResponse } from '../../generated/api/ProjectResponse';

@@ -11,6 +11,7 @@
 // passent par le store `appPreferences`.
 
 import { get, writable } from 'svelte/store';
+import type { UserGrouping } from '$lib/presets/user-grouping';
 
 export type Units = 'mm' | 'in';
 /** Orca `camera_navigation_style` : 0 = Default, 1 = Touchpad. */
@@ -35,6 +36,31 @@ export interface CameraPreferences {
 	leftDrag: DragAction;
 	middleDrag: DragAction;
 	rightDrag: DragAction;
+}
+
+/**
+ * Orca Preferences › Graphismes, version navigateur (phase 34) : MSAA du
+ * contexte WebGL (anticrénelage), plafond d'images/s (Orca `max_fps`, 0 =
+ * illimité) et compteur d'images/s. La vue « réaliste » (Phong, SSAO, ombres)
+ * d'Orca n'a pas d'équivalent dans le rendu three.js.
+ */
+export interface GraphicsPreferences {
+	antialias: boolean;
+	/** 0 = illimité ; sinon 10–240. */
+	fpsCap: number;
+	showFps: boolean;
+}
+
+export const GRAPHICS_DEFAULTS: GraphicsPreferences = {
+	antialias: true,
+	fpsCap: 0,
+	showFps: false
+};
+
+/** Plafond d'images/s borné (0 = illimité, sinon 10–240, entier). */
+export function clampFpsCap(value: number): number {
+	if (!Number.isFinite(value) || value <= 0) return 0;
+	return Math.round(Math.min(240, Math.max(10, value)));
 }
 
 export interface AppPreferences {
@@ -71,6 +97,10 @@ export interface AppPreferences {
 	/** Filaments cochés à l'assistant (Orca : section « filaments » d'AppConfig,
 	 *  noms de presets). `null` : assistant jamais passé (phase 25). */
 	wizardFilaments: string[] | null;
+	/** Orca `group_filament_presets` (défaut « None ») : regroupement des presets
+	 *  filament utilisateur dans le sélecteur. */
+	groupFilamentPresets: UserGrouping;
+	graphics: GraphicsPreferences;
 }
 
 export const PREFERENCES_KEY = 'web-slicer.preferences';
@@ -101,7 +131,9 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
 	filamentMapPopup: false,
 	defaultPage: 'home',
 	maxRecent: 18,
-	wizardFilaments: null
+	wizardFilaments: null,
+	groupFilamentPresets: 'none',
+	graphics: { ...GRAPHICS_DEFAULTS }
 };
 
 /** Bornes d'Orca (MainFrame::set_max_recent_count : 0–999). */
@@ -123,6 +155,15 @@ const bool = (v: unknown, d: boolean) => (typeof v === 'boolean' ? v : d);
 const oneOf = <T extends string>(v: unknown, allowed: readonly T[], d: T): T =>
 	allowed.includes(v as T) ? (v as T) : d;
 const DRAGS = ['none', 'pan', 'rotate'] as const;
+
+function parseGraphics(raw: unknown): GraphicsPreferences {
+	const g = (raw && typeof raw === 'object' ? raw : {}) as Partial<GraphicsPreferences>;
+	return {
+		antialias: bool(g.antialias, GRAPHICS_DEFAULTS.antialias),
+		fpsCap: typeof g.fpsCap === 'number' ? clampFpsCap(g.fpsCap) : GRAPHICS_DEFAULTS.fpsCap,
+		showFps: bool(g.showFps, GRAPHICS_DEFAULTS.showFps)
+	};
+}
 
 function parseCamera(raw: unknown): CameraPreferences {
 	const c = (raw && typeof raw === 'object' ? raw : {}) as Partial<CameraPreferences>;
@@ -165,10 +206,20 @@ export function parsePreferences(raw: string | null): AppPreferences {
 				typeof value.maxRecent === 'number' ? clampRecentCount(value.maxRecent) : d.maxRecent,
 			wizardFilaments: Array.isArray(value.wizardFilaments)
 				? value.wizardFilaments.filter((n): n is string => typeof n === 'string').slice(0, 500)
-				: d.wizardFilaments
+				: d.wizardFilaments,
+			groupFilamentPresets: oneOf(
+				value.groupFilamentPresets,
+				['all', 'none', 'type', 'vendor'] as const,
+				d.groupFilamentPresets
+			),
+			graphics: parseGraphics(value.graphics)
 		};
 	} catch {
-		return { ...DEFAULT_PREFERENCES, camera: { ...CAMERA_DEFAULTS } };
+		return {
+			...DEFAULT_PREFERENCES,
+			camera: { ...CAMERA_DEFAULTS },
+			graphics: { ...GRAPHICS_DEFAULTS }
+		};
 	}
 }
 

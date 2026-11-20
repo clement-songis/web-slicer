@@ -140,6 +140,25 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
 		]
 	}
 ];
+/**
+ * Phase 34 : raccourcis câblés dans GLCanvas3D (on_char / on_key) et dans le
+ * menu Vue d'Orca, mais absents de sa liste KBShortcutsDialog — affichés à part
+ * (le compte de parité ci-dessous reste celui de la liste d'Orca).
+ */
+export const EXTRA_SHORTCUT_GROUP: ShortcutGroup = {
+	group: 'More shortcuts',
+	shortcuts: [
+		{ keys: 'Ctrl+E', action: 'Show/Hide object labels' },
+		{ keys: 'Ctrl+7', action: 'Camera view - Current plate' },
+		{ keys: 'Page Up', action: 'Rotate selection 45° counterclockwise' },
+		{ keys: 'Page Down', action: 'Rotate selection 45° clockwise' },
+		{ keys: '+', action: 'Add an instance of the selected object' },
+		{ keys: '-', action: 'Remove an instance of the selected object' },
+		{ keys: '+', action: 'Preview: add a color change at the current layer' },
+		{ keys: '-', action: 'Preview: delete the code at the current layer' }
+	]
+};
+
 /** Nombre total de raccourcis répertoriés (parité : 92, Annexe B §B.6). */
 export function totalShortcuts(): number {
 	return SHORTCUT_GROUPS.reduce((n, g) => n + g.shortcuts.length, 0);

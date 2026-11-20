@@ -1,6 +1,6 @@
 // Logique pure de la page Administration (phase 32) : politique d'inscription,
-// limite d'upload en Mo, lien d'invitation, mot de passe généré, liste locale des
-// comptes gérés (le serveur n'expose pas encore la liste des comptes).
+// limite d'upload et quotas en Mo, lien d'invitation, mot de passe généré,
+// pagination de la liste des comptes (GET /admin/users, lot 32).
 
 export type RegistrationPolicy = 'open' | 'invite' | 'closed';
 
@@ -28,6 +28,27 @@ export function mbToBytes(mb: number): number | null {
 	return Math.round(mb * MB);
 }
 
+/** Quota en Mo saisi → octets ; 0 (ou vide) = illimité ; null si invalide. */
+export function quotaMbToBytes(mb: number | null | undefined): number | null {
+	if (mb === null || mb === undefined || (typeof mb === 'number' && Number.isNaN(mb))) return 0;
+	if (!Number.isFinite(mb) || mb < 0) return null;
+	return Math.round(mb * MB);
+}
+
+/** Tranchages simultanés saisis (0 = illimité, 0..=1000) ; null si invalide. */
+export function parseSliceLimit(v: number | null | undefined): number | null {
+	if (v === null || v === undefined || Number.isNaN(v)) return 0;
+	return Number.isInteger(v) && v >= 0 && v <= 1000 ? v : null;
+}
+
+/** Libellé de pagination : « 51–100 sur 132 ». */
+export function pageLabel(page: number, perPage: number, total: number): string {
+	if (total === 0) return 'Aucun compte';
+	const from = (page - 1) * perPage + 1;
+	const to = Math.min(total, page * perPage);
+	return `${from}–${to} sur ${total}`;
+}
+
 /** Lien d'inscription porteur du jeton (lu par /register?invite=). */
 export function invitationLink(origin: string, token: string): string {
 	return `${origin.replace(/\/$/, '')}/register?invite=${encodeURIComponent(token)}`;
@@ -43,31 +64,4 @@ function defaultRandom(n: number): Uint8Array {
 	const out = new Uint8Array(n);
 	crypto.getRandomValues(out);
 	return out;
-}
-
-/** Compte géré depuis cette page (mémorisé dans le navigateur de l'admin). */
-export interface ManagedUser {
-	id: string;
-	email: string;
-	role: string;
-}
-
-/** Ajoute ou remplace un compte (par id), le plus récent en tête. */
-export function upsertManaged(list: readonly ManagedUser[], user: ManagedUser): ManagedUser[] {
-	return [user, ...list.filter((u) => u.id !== user.id)];
-}
-
-/** Relit la liste mémorisée (tolère une valeur absente ou corrompue). */
-export function parseManaged(raw: string | null): ManagedUser[] {
-	if (!raw) return [];
-	try {
-		const v = JSON.parse(raw) as unknown;
-		return Array.isArray(v)
-			? v.filter(
-					(u): u is ManagedUser => !!u && typeof u.id === 'string' && typeof u.email === 'string'
-				)
-			: [];
-	} catch {
-		return [];
-	}
 }

@@ -2,6 +2,7 @@
 // GET /api/projects/{id}/auxiliaries → [{ path, size }] ;
 // PUT / GET / DELETE /api/projects/{id}/auxiliaries/{dossier}/{fichier}.
 import { api, API_BASE, ApiError } from './client';
+import { apiErrorMessage } from './quota';
 import type { ErrorBody } from './types';
 import type { ObjColorsResponse } from '$lib/editor/obj-colors';
 
@@ -29,9 +30,7 @@ async function failure(res: Response): Promise<never> {
 	} catch {
 		/* corps non JSON (413 du proxy…) */
 	}
-	const message =
-		err.message ??
-		(res.status === 413 ? 'fichier trop volumineux pour le serveur' : res.statusText);
+	const message = apiErrorMessage(res.status, err, res.statusText);
 	throw new ApiError(res.status, err.code ?? 'error', message, err.details);
 }
 

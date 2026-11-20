@@ -21,6 +21,7 @@ import {
 	type Rgb
 } from './colorations';
 import type { PreviewTrack, TrackChannel, TrackMarker } from './track';
+import { colorPrintColor } from './engine-data';
 
 /** Bornes (min,max) des attributs continus (issues de `PreviewMeta`). */
 export interface PreviewRanges {
@@ -141,6 +142,15 @@ function segmentColor(
 		if (!track || !layer) return NO_DATA_COLOR;
 		const [lo, hi] = track.ranges.layerTime;
 		return rangeColor(layer.time, lo, hi, coloration === 'layer-time-log');
+	}
+	if (coloration === 'color-print') {
+		const c = track
+			? colorPrintColor(track, segments.layer[i], ordinal, segments.extruder[i])
+			: null;
+		if (c) return c;
+		// Méta moteur absente : couleur du filament (comme Orca sans changement).
+		const palette = options.filamentColors ?? DEFAULT_FILAMENT_COLORS;
+		return palette[segments.extruder[i] % palette.length] ?? NO_DATA_COLOR;
 	}
 	switch (coloration) {
 		case 'type':
@@ -267,6 +277,18 @@ export function buildLegend(
 			};
 		const [lo, hi] = ctx.track.ranges[channel];
 		return scaleLegend(lo, hi, TRACK_LEGEND[channel].unit);
+	}
+	if (coloration === 'color-print') {
+		if (ctx.track?.colorPrint?.legend.length)
+			return { kind: 'list', entries: ctx.track.colorPrint.legend };
+		const palette = ctx.filamentColors ?? DEFAULT_FILAMENT_COLORS;
+		return {
+			kind: 'list',
+			entries: ctx.extrudersPresent.map((e) => ({
+				label: `Filament ${e + 1}`,
+				color: palette[e % palette.length] ?? NO_DATA_COLOR
+			}))
+		};
 	}
 	if (coloration === 'layer-time' || coloration === 'layer-time-log') {
 		if (!ctx.track)

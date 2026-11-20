@@ -122,7 +122,21 @@ export const SHORTCUTS_FR: Record<string, string> = {
 		'Barre de défilement verticale - Déplacer le curseur actif vers le Haut',
 	'Zoom View': 'Zoom de la vue',
 	'Zoom in': 'Zoom avant',
-	'Zoom out': 'Zoom arrière'
+	'Zoom out': 'Zoom arrière',
+	// Phase 34 : groupe « Autres raccourcis » (hors liste KBShortcutsDialog d'Orca).
+	'More shortcuts': 'Autres raccourcis',
+	'Show/Hide object labels': 'Afficher/masquer les étiquettes d’objets',
+	'Camera view - Current plate': 'Vue caméra - Plateau courant',
+	'Page Up': 'Page préc.',
+	'Page Down': 'Page suiv.',
+	'Rotate selection 45° counterclockwise': 'Tourner la sélection de 45° (sens antihoraire)',
+	'Rotate selection 45° clockwise': 'Tourner la sélection de 45° (sens horaire)',
+	'Add an instance of the selected object': 'Ajouter une instance de l’objet sélectionné',
+	'Remove an instance of the selected object': 'Retirer une instance de l’objet sélectionné',
+	'Preview: add a color change at the current layer':
+		'Aperçu : ajouter un changement de couleur à la couche courante',
+	'Preview: delete the code at the current layer':
+		'Aperçu : supprimer le code de la couche courante'
 };
 
 /** Description, groupe ou nom de touche traduit (repli : texte d'origine). */

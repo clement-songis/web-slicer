@@ -118,7 +118,8 @@ const viewMenu: Menu = {
 		'separator',
 		{ label: 'Show G-code Window', shortcut: 'C', action: 'view.gcodeWindow' },
 		{ label: 'Show Gridlines', action: 'view.gridlines' },
-		{ label: 'Show Labels', action: 'view.labels' },
+		// Orca MainFrame : « Show &Labels\tCtrl+E ».
+		{ label: 'Show Labels', shortcut: 'Ctrl+E', action: 'view.labels' },
 		{ label: 'Show Overhang', action: 'view.overhang' },
 		{ label: 'Show Selected Outline (beta)', action: 'view.selectedOutline' }
 	]

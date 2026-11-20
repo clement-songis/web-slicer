@@ -61,6 +61,34 @@ def extract_tabs() -> list[dict]:
             events.append((m.start(), "option", {"key": key}))
     events.sort(key=lambda e: e[0])
 
+    # Ordre d'exécution d'Orca : une page créée dans une fonction auxiliaire
+    # (ex. TabFilament::add_filament_overrides_page, définie AVANT build)
+    # n'existe à l'exécution qu'au point d'APPEL de cette fonction dans build.
+    # Les évènements d'une telle fonction (appel unique) sont ordonnés à la
+    # position de l'appel — seuls les types posés (defined_in, line) restent
+    # pris à la définition.
+    extents = [
+        (start, spans[i + 1][0] if i + 1 < len(spans) else len(code), name)
+        for i, (start, name) in enumerate(spans)
+    ]
+
+    def order_key(e: tuple[int, str, dict]) -> int:
+        pos = e[0]
+        for start, end, name in extents:
+            if start <= pos < end:
+                short = name.split("::")[-1]
+                if short.startswith("build"):
+                    return pos
+                calls = [
+                    m.start()
+                    for m in re.finditer(rf"\b{re.escape(short)}\s*\(\s*\)", code)
+                    if not (start <= m.start() < end)
+                ]
+                return calls[0] if len(calls) == 1 else pos
+        return pos
+
+    events.sort(key=order_key)
+
     pages: list[dict] = []
     current_page = None
     current_group = None
