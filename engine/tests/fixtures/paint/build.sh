@@ -17,4 +17,5 @@ clang++ -std=c++17 -O1 -w $EIGEN $OCCT -I gen -I "$LIBSLIC3R_DIR/include" -I "$L
 ./paint_ref bucket > bucket.txt
 ./paint_ref smart1 > smart1.txt
 ./paint_ref bucket1 > bucket1.txt
-wc -l circle.txt sphere.txt smart.txt bucket.txt smart1.txt bucket1.txt
+for m in pointer height height_z gap gap0 remap remap_input bucket_noedge; do ./paint_ref $m > $m.txt; done
+wc -l circle.txt sphere.txt smart.txt bucket.txt smart1.txt bucket1.txt pointer.txt height.txt height_z.txt gap.txt gap0.txt remap.txt remap_input.txt bucket_noedge.txt

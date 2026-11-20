@@ -3,7 +3,10 @@
 
 use cxx::UniquePtr;
 
-use crate::api::paint::{CursorShape, PaintFacets, PaintStroke, MAX_SESSION_TRIANGLES};
+use crate::api::paint::{
+    validate_extruder_map, validate_gap_area, PaintFacets, PaintStroke, PaintTool,
+    MAX_PREVIEW_TRIANGLES, MAX_SESSION_TRIANGLES,
+};
 use crate::api::{EngineError, EngineErrorCode, EngineResult, PaintChannel, TriangleMesh};
 
 use super::bridge::ffi;
@@ -57,24 +60,54 @@ impl PaintSession {
             .map_err(|e| invalid(e.to_string()))
     }
 
-    /// Applique un trait (`select_patch`).
+    /// Applique un trait (`select_patch`, remplissages, triangle, plage de hauteur).
     pub fn stroke(&mut self, channel: PaintChannel, stroke: &PaintStroke) -> EngineResult<()> {
         stroke.validate().map_err(invalid)?;
-        let raw = ffi::RawPaintStroke {
-            points: stroke.points.iter().flatten().copied().collect(),
-            facets: stroke.facets.clone(),
-            camera_pos: stroke.camera_pos,
-            radius: stroke.radius,
-            sphere: stroke.cursor == CursorShape::Sphere,
-            state: stroke.state,
-            trafo: stroke.trafo,
-            splitting: stroke.splitting,
-            highlight_deg: stroke.highlight_deg,
-            tool: stroke.tool.code(),
-            fill_angle: stroke.fill_angle,
-        };
-        ffi::paint_session_stroke(self.inner.pin_mut(), channel_code(channel), &raw)
+        ffi::paint_session_stroke(
+            self.inner.pin_mut(),
+            channel_code(channel),
+            &raw_stroke(stroke),
+        )
+        .map_err(|e| invalid(e.to_string()))
+    }
+
+    /// Comblement des interstices (outil Gap fill) : aire seuil en mm².
+    pub fn gap_fill(&mut self, channel: PaintChannel, area: f32) -> EngineResult<()> {
+        validate_gap_area(area).map_err(invalid)?;
+        ffi::paint_session_gap_fill(self.inner.pin_mut(), channel_code(channel), area)
             .map_err(|e| invalid(e.to_string()))
+    }
+
+    /// Remappage des filaments MMU : `map[i]` = destination de l'extrudeur `i + 1`.
+    pub fn remap_states(&mut self, channel: PaintChannel, map: &[u8]) -> EngineResult<()> {
+        validate_extruder_map(map).map_err(invalid)?;
+        ffi::paint_session_remap_states(self.inner.pin_mut(), channel_code(channel), map)
+            .map_err(|e| invalid(e.to_string()))
+    }
+
+    /// Aperçu au survol d'un outil à propagation (premier point du trait) :
+    /// sommets des triangles sélectionnés + drapeau de troncature.
+    pub fn preview(
+        &mut self,
+        channel: PaintChannel,
+        stroke: &PaintStroke,
+    ) -> EngineResult<(Vec<f32>, bool)> {
+        stroke.validate().map_err(invalid)?;
+        let propagating = stroke.tool != PaintTool::Brush
+            || stroke.cursor == crate::api::paint::CursorShape::Pointer;
+        if !propagating {
+            return Err(invalid(
+                "aperçu réservé au smart fill, au pot de peinture et au curseur triangle",
+            ));
+        }
+        let raw = ffi::paint_session_preview(
+            self.inner.pin_mut(),
+            channel_code(channel),
+            &raw_stroke(stroke),
+            MAX_PREVIEW_TRIANGLES,
+        )
+        .map_err(|e| invalid(e.to_string()))?;
+        Ok((raw.vertices, raw.truncated))
     }
 
     /// État du canal en chaînes 3MF.
@@ -82,6 +115,25 @@ impl PaintSession {
         let raw = ffi::paint_session_export(&self.inner, channel_code(channel))
             .map_err(|e| invalid(e.to_string()))?;
         Ok(raw.triangles.into_iter().zip(raw.states).collect())
+    }
+}
+
+fn raw_stroke(stroke: &PaintStroke) -> ffi::RawPaintStroke {
+    ffi::RawPaintStroke {
+        points: stroke.points.iter().flatten().copied().collect(),
+        facets: stroke.facets.clone(),
+        camera_pos: stroke.camera_pos,
+        radius: stroke.radius,
+        cursor: stroke.cursor.code(),
+        state: stroke.state,
+        trafo: stroke.trafo,
+        splitting: stroke.splitting,
+        highlight_deg: stroke.highlight_deg,
+        tool: stroke.tool.code(),
+        fill_angle: stroke.fill_angle,
+        height: stroke.height,
+        has_z_world: stroke.z_world.is_some(),
+        z_world: stroke.z_world.unwrap_or(0.0),
     }
 }
 

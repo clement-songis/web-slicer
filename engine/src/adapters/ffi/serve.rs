@@ -56,6 +56,21 @@ impl Server {
         }
     }
 
+    /// Exécute `f` sur une session existante (erreur moteur → réponse d'erreur).
+    fn with_session(
+        &mut self,
+        id: u64,
+        now: u64,
+        session: &str,
+        f: impl FnOnce(&mut PaintSession) -> crate::api::EngineResult<ServeResponse>,
+    ) -> ServeResponse {
+        let Some(slot) = self.sessions.get_mut(session) else {
+            return ServeResponse::err(id, "session de peinture inconnue (expirée ?)");
+        };
+        slot.last_use = now;
+        f(&mut slot.session).unwrap_or_else(|e| ServeResponse::err(id, e.message))
+    }
+
     pub fn handle(&mut self, req: ServeRequest) -> ServeResponse {
         self.clock += 1;
         let id = req.id;
@@ -112,6 +127,52 @@ impl Server {
                     Err(e) => ServeResponse::err(id, e.message),
                 }
             }
+            ServeOp::PaintGapFill {
+                session,
+                channel,
+                facets,
+                area,
+            } => self.with_session(id, now, &session, |s| {
+                if let Some(facets) = &facets {
+                    s.load(channel, facets)?;
+                }
+                s.gap_fill(channel, area)?;
+                Ok(ServeResponse {
+                    facets: Some(s.export(channel)?),
+                    ..ServeResponse::ok(id)
+                })
+            }),
+            ServeOp::PaintRemap {
+                session,
+                channel,
+                facets,
+                map,
+            } => self.with_session(id, now, &session, |s| {
+                if let Some(facets) = &facets {
+                    s.load(channel, facets)?;
+                }
+                s.remap_states(channel, &map)?;
+                Ok(ServeResponse {
+                    facets: Some(s.export(channel)?),
+                    ..ServeResponse::ok(id)
+                })
+            }),
+            ServeOp::PaintPreview {
+                session,
+                channel,
+                facets,
+                stroke,
+            } => self.with_session(id, now, &session, |s| {
+                if let Some(facets) = &facets {
+                    s.load(channel, facets)?;
+                }
+                let (selection, truncated) = s.preview(channel, &stroke)?;
+                Ok(ServeResponse {
+                    selection: Some(selection),
+                    truncated: Some(truncated),
+                    ..ServeResponse::ok(id)
+                })
+            }),
             ServeOp::LayerProfile { request } => match super::layer_profile(&request) {
                 Ok(profile) => ServeResponse {
                     profile: Some(profile),

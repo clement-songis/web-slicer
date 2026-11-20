@@ -12,6 +12,16 @@
 //! Messages client → serveur (JSON texte, `seq` renvoyé tel quel) :
 //! - `{type:"open", seq, object_id, model_id}` → `{type:"opened", seq, object_id, triangles}`
 //! - `{type:"stroke", seq, object_id, channel, facets, stroke}` → `{type:"facets", seq, object_id, channel, facets}`
+//!   (`stroke.cursor` : circle | sphere | pointer (« Triangles ») | height_range,
+//!   avec `height` et, sur les autres pièces, `z_world` sans point ;
+//!   `stroke.tool` : brush | smart_fill | bucket_fill, `fill_angle` -1 = sans arêtes)
+//! - `{type:"gap_fill", seq, object_id, channel, facets, area}` → `{type:"facets", …}`
+//!   (comblement des interstices, aire 0–5 mm²)
+//! - `{type:"remap", seq, object_id, channel, facets, map}` → `{type:"facets", …}`
+//!   (remappage des filaments MMU, `map[i]` = extrudeur destination de `i + 1`)
+//! - `{type:"preview", seq, object_id, channel, facets, stroke}`
+//!   → `{type:"preview", seq, object_id, channel, vertices, truncated}` (survol des
+//!   outils à propagation : 9 flottants par triangle, repère maillage)
 //! - `{type:"layer_adjust", seq, model_id, values, matrix?, profile, z, delta, band_width, action}`
 //!   → `{type:"profile", seq, profile}`
 //! - erreur : `{type:"error", seq, message}`.
@@ -22,7 +32,9 @@ use axum::extract::ws::{Message, WebSocket, WebSocketUpgrade};
 use axum::extract::{Path, State};
 use axum::response::Response;
 use engine::api::layer_profile::{LayerEditAction, LayerProfileOp, LayerProfileRequest};
-use engine::api::paint::{PaintFacets, PaintStroke, ServeOp};
+use engine::api::paint::{
+    validate_extruder_map, validate_gap_area, PaintFacets, PaintStroke, ServeOp, ServeResponse,
+};
 use engine::api::PaintChannel;
 use serde::Deserialize;
 use serde_json::{json, Value};
@@ -45,6 +57,30 @@ enum ClientMsg {
         model_id: String,
     },
     Stroke {
+        seq: u64,
+        object_id: String,
+        channel: PaintChannel,
+        #[serde(default)]
+        facets: PaintFacets,
+        stroke: PaintStroke,
+    },
+    GapFill {
+        seq: u64,
+        object_id: String,
+        channel: PaintChannel,
+        #[serde(default)]
+        facets: PaintFacets,
+        area: f32,
+    },
+    Remap {
+        seq: u64,
+        object_id: String,
+        channel: PaintChannel,
+        #[serde(default)]
+        facets: PaintFacets,
+        map: Vec<u8>,
+    },
+    Preview {
         seq: u64,
         object_id: String,
         channel: PaintChannel,
@@ -143,23 +179,17 @@ impl Ctx {
         Ok(resp.triangles.unwrap_or(0))
     }
 
-    async fn stroke(
+    /// Opération de session (l'état client `facets` est renvoyé à chaque
+    /// requête) ; session évincée/expirée → réouverture transparente, une fois.
+    async fn session_call(
         &mut self,
         object_id: &str,
-        channel: PaintChannel,
-        facets: PaintFacets,
-        stroke: PaintStroke,
-    ) -> Result<PaintFacets, String> {
-        stroke.validate()?;
+        make_op: impl Fn(String) -> ServeOp,
+    ) -> Result<ServeResponse, String> {
         for attempt in 0..2 {
-            let op = ServeOp::PaintStroke {
-                session: self.session(object_id),
-                channel,
-                facets: Some(facets.clone()),
-                stroke: stroke.clone(),
-            };
+            let op = make_op(self.session(object_id));
             match ServePool::global().call(&self.pool_key(), op).await {
-                Ok(resp) if resp.ok => return Ok(resp.facets.unwrap_or_default()),
+                Ok(resp) if resp.ok => return Ok(resp),
                 Ok(resp) => {
                     let message = resp.error.unwrap_or_default();
                     // Session évincée/expirée : on rouvre une fois (l'état
@@ -182,6 +212,85 @@ impl Ctx {
             }
         }
         Err("session de peinture inconnue".into())
+    }
+
+    async fn stroke(
+        &mut self,
+        object_id: &str,
+        channel: PaintChannel,
+        facets: PaintFacets,
+        stroke: PaintStroke,
+    ) -> Result<PaintFacets, String> {
+        stroke.validate()?;
+        let resp = self
+            .session_call(object_id, |session| ServeOp::PaintStroke {
+                session,
+                channel,
+                facets: Some(facets.clone()),
+                stroke: stroke.clone(),
+            })
+            .await?;
+        Ok(resp.facets.unwrap_or_default())
+    }
+
+    async fn gap_fill(
+        &mut self,
+        object_id: &str,
+        channel: PaintChannel,
+        facets: PaintFacets,
+        area: f32,
+    ) -> Result<PaintFacets, String> {
+        validate_gap_area(area)?;
+        let resp = self
+            .session_call(object_id, |session| ServeOp::PaintGapFill {
+                session,
+                channel,
+                facets: Some(facets.clone()),
+                area,
+            })
+            .await?;
+        Ok(resp.facets.unwrap_or_default())
+    }
+
+    async fn remap(
+        &mut self,
+        object_id: &str,
+        channel: PaintChannel,
+        facets: PaintFacets,
+        map: Vec<u8>,
+    ) -> Result<PaintFacets, String> {
+        validate_extruder_map(&map)?;
+        let resp = self
+            .session_call(object_id, |session| ServeOp::PaintRemap {
+                session,
+                channel,
+                facets: Some(facets.clone()),
+                map: map.clone(),
+            })
+            .await?;
+        Ok(resp.facets.unwrap_or_default())
+    }
+
+    async fn preview(
+        &mut self,
+        object_id: &str,
+        channel: PaintChannel,
+        facets: PaintFacets,
+        stroke: PaintStroke,
+    ) -> Result<(Vec<f32>, bool), String> {
+        stroke.validate()?;
+        let resp = self
+            .session_call(object_id, |session| ServeOp::PaintPreview {
+                session,
+                channel,
+                facets: Some(facets.clone()),
+                stroke: stroke.clone(),
+            })
+            .await?;
+        Ok((
+            resp.selection.unwrap_or_default(),
+            resp.truncated.unwrap_or(false),
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -263,6 +372,43 @@ impl Ctx {
                 Ok(facets) => {
                     json!({ "type": "facets", "seq": seq, "object_id": object_id, "channel": channel, "facets": facets })
                 }
+                Err(message) => json!({ "type": "error", "seq": seq, "message": message }),
+            },
+            ClientMsg::GapFill {
+                seq,
+                object_id,
+                channel,
+                facets,
+                area,
+            } => match self.gap_fill(&object_id, channel, facets, area).await {
+                Ok(facets) => {
+                    json!({ "type": "facets", "seq": seq, "object_id": object_id, "channel": channel, "facets": facets })
+                }
+                Err(message) => json!({ "type": "error", "seq": seq, "message": message }),
+            },
+            ClientMsg::Remap {
+                seq,
+                object_id,
+                channel,
+                facets,
+                map,
+            } => match self.remap(&object_id, channel, facets, map).await {
+                Ok(facets) => {
+                    json!({ "type": "facets", "seq": seq, "object_id": object_id, "channel": channel, "facets": facets })
+                }
+                Err(message) => json!({ "type": "error", "seq": seq, "message": message }),
+            },
+            ClientMsg::Preview {
+                seq,
+                object_id,
+                channel,
+                facets,
+                stroke,
+            } => match self.preview(&object_id, channel, facets, stroke).await {
+                Ok((vertices, truncated)) => json!({
+                    "type": "preview", "seq": seq, "object_id": object_id, "channel": channel,
+                    "vertices": vertices, "truncated": truncated
+                }),
                 Err(message) => json!({ "type": "error", "seq": seq, "message": message }),
             },
             ClientMsg::LayerAdjust {
@@ -363,5 +509,23 @@ mod tests {
                 ..
             }
         ));
+        let m: ClientMsg = serde_json::from_value(json!({
+            "type": "gap_fill", "seq": 4, "object_id": "o", "channel": "mmu", "area": 1.5
+        }))
+        .unwrap();
+        assert!(matches!(m, ClientMsg::GapFill { area, .. } if area == 1.5));
+        let m: ClientMsg = serde_json::from_value(json!({
+            "type": "remap", "seq": 5, "object_id": "o", "channel": "mmu", "map": [2, 1]
+        }))
+        .unwrap();
+        assert!(matches!(m, ClientMsg::Remap { ref map, .. } if map == &[2, 1]));
+        let m: ClientMsg = serde_json::from_value(json!({
+            "type": "preview", "seq": 6, "object_id": "o", "channel": "mmu",
+            "stroke": { "points": [[0,0,0]], "facets": [0], "camera_pos": [0,0,10], "radius": 2,
+                        "cursor": "pointer", "state": 2, "trafo": [1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1],
+                        "tool": "bucket_fill", "fill_angle": -1 }
+        }))
+        .unwrap();
+        assert!(matches!(m, ClientMsg::Preview { .. }));
     }
 }

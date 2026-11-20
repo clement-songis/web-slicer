@@ -57,6 +57,8 @@ fn stroke(cursor: CursorShape) -> PaintStroke {
         highlight_deg: 0.0,
         tool: PaintTool::Brush,
         fill_angle: 30.0,
+        height: 0.2,
+        z_world: None,
     }
 }
 
@@ -322,4 +324,320 @@ fn remap_painting_follows_geometry_not_triangle_indices() {
             .unwrap()
             .is_empty()
     );
+}
+
+// ---------------------------------------------------------------------------
+// Lot 38 : curseur triangle, plage de hauteur, comblement, pot sans arêtes,
+// remappage MMU, aperçu au survol — références paint_ref.cpp (modes pointer,
+// height, height_z, gap, gap0, remap, remap_input, bucket_noedge).
+// ---------------------------------------------------------------------------
+
+/// En-tête « # facet N hit x y z » / « # z_world z facet N » d'une référence.
+fn header(name: &str) -> Vec<f32> {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("tests/fixtures/paint")
+        .join(name);
+    std::fs::read_to_string(&path)
+        .unwrap()
+        .lines()
+        .next()
+        .unwrap()
+        .split_whitespace()
+        .filter_map(|t| t.parse().ok())
+        .collect()
+}
+
+fn cylinder() -> TriangleMesh {
+    use engine::adapters::ffi::run_mesh_op;
+    use engine::api::split::{MeshOp, PrimitiveShape};
+    run_mesh_op(
+        &MeshOp::Primitive {
+            shape: PrimitiveShape::Cylinder,
+            side_mm: 20.0,
+        },
+        &[],
+    )
+    .unwrap()
+    .remove(0)
+    .1
+}
+
+/// Scène du cube de la référence : trait (3 points, rayon 3) à `state` puis,
+/// si `dot > 0`, tampon de rayon `dot` en (12, 8) à `dot_state`.
+fn cube_scene(
+    session: &mut PaintSession,
+    channel: PaintChannel,
+    state: u8,
+    dot: f32,
+    dot_state: u8,
+) {
+    session
+        .stroke(
+            channel,
+            &PaintStroke {
+                state,
+                ..stroke(CursorShape::Circle)
+            },
+        )
+        .unwrap();
+    if dot > 0.0 {
+        session
+            .stroke(
+                channel,
+                &PaintStroke {
+                    points: vec![[12.0, 8.0, 20.0]],
+                    facets: vec![2],
+                    radius: dot,
+                    state: dot_state,
+                    ..stroke(CursorShape::Circle)
+                },
+            )
+            .unwrap();
+    }
+}
+
+#[test]
+fn pointer_cursor_matches_isolated_orca_reference() {
+    let mut session = PaintSession::new(&cube(20.0)).unwrap();
+    cube_scene(&mut session, PaintChannel::Supports, 1, 0.0, 0);
+    let before = session.export(PaintChannel::Supports).unwrap();
+    session
+        .stroke(
+            PaintChannel::Supports,
+            &PaintStroke {
+                points: vec![[6.0, 4.5, 20.0]],
+                facets: vec![2],
+                cursor: CursorShape::Pointer,
+                state: 2,
+                ..stroke(CursorShape::Circle)
+            },
+        )
+        .unwrap();
+    let got = session.export(PaintChannel::Supports).unwrap();
+    assert_eq!(got, reference("pointer.txt"));
+    // Un seul sous-triangle change : seule la facette 2 diffère.
+    let changed: Vec<_> = got.keys().filter(|k| before.get(k) != got.get(k)).collect();
+    assert_eq!(changed, vec![&2], "{changed:?}");
+}
+
+#[test]
+fn height_range_matches_isolated_orca_reference() {
+    let h = header("height.txt");
+    let mut session = PaintSession::new(&cylinder()).unwrap();
+    session
+        .stroke(
+            PaintChannel::Mmu,
+            &PaintStroke {
+                points: vec![[h[1], h[2], h[3]]],
+                facets: vec![h[0] as u32],
+                camera_pos: [100.0, 0.0, 10.0],
+                cursor: CursorShape::HeightRange,
+                height: 2.0,
+                state: 2,
+                ..stroke(CursorShape::Circle)
+            },
+        )
+        .unwrap();
+    let got = session.export(PaintChannel::Mmu).unwrap();
+    eprintln!("height range: {} triangles", got.len());
+    assert!(
+        got.len() > 100,
+        "toute la ceinture du cylindre : {}",
+        got.len()
+    );
+    assert_eq!(got, reference("height.txt"));
+}
+
+#[test]
+fn height_range_on_other_part_matches_isolated_orca_reference() {
+    let h = header("height_z.txt");
+    assert_eq!(h[0], 8.0);
+    let trafo = glam::DMat4::from_translation(glam::DVec3::new(0.0, 0.0, 3.0)).to_cols_array();
+    let mut session = PaintSession::new(&cylinder()).unwrap();
+    session
+        .stroke(
+            PaintChannel::Mmu,
+            &PaintStroke {
+                points: vec![],
+                facets: vec![],
+                camera_pos: [100.0, 0.0, 10.0],
+                cursor: CursorShape::HeightRange,
+                height: 2.0,
+                z_world: Some(8.0),
+                state: 2,
+                trafo,
+                ..stroke(CursorShape::Circle)
+            },
+        )
+        .unwrap();
+    assert_eq!(
+        session.export(PaintChannel::Mmu).unwrap(),
+        reference("height_z.txt")
+    );
+    // Plage hors de l'objet : rien.
+    let mut empty = PaintSession::new(&cylinder()).unwrap();
+    empty
+        .stroke(
+            PaintChannel::Mmu,
+            &PaintStroke {
+                points: vec![],
+                facets: vec![],
+                cursor: CursorShape::HeightRange,
+                z_world: Some(500.0),
+                state: 2,
+                ..stroke(CursorShape::Circle)
+            },
+        )
+        .unwrap();
+    assert!(empty.export(PaintChannel::Mmu).unwrap().is_empty());
+}
+
+#[test]
+fn gap_fill_matches_orca_triangle_selector_patch() {
+    for (area, name) in [(4.0, "gap.txt"), (0.0, "gap0.txt")] {
+        let mut session = PaintSession::new(&cube(20.0)).unwrap();
+        cube_scene(&mut session, PaintChannel::Mmu, 1, 0.8, 2);
+        session.gap_fill(PaintChannel::Mmu, area).unwrap();
+        let got = session.export(PaintChannel::Mmu).unwrap();
+        assert_eq!(got, reference(name), "{name}");
+    }
+    // Le tampon (≈ 2 mm²) disparaît à 4 mm² : l'état 2 n'est plus encodé
+    // (chiffre hex « 8 » des feuilles d'état 2 absent), il reste à 0 mm².
+    let filled = reference("gap.txt");
+    let kept = reference("gap0.txt");
+    assert_ne!(filled, kept);
+    let mut session = PaintSession::new(&cube(20.0)).unwrap();
+    assert!(session.gap_fill(PaintChannel::Mmu, 5.5).is_err());
+}
+
+#[test]
+fn mmu_remap_matches_isolated_orca_reference() {
+    let mut session = PaintSession::new(&cube(20.0)).unwrap();
+    cube_scene(&mut session, PaintChannel::Mmu, 1, 2.0, 2);
+    assert_eq!(
+        session.export(PaintChannel::Mmu).unwrap(),
+        reference("remap_input.txt")
+    );
+    session.remap_states(PaintChannel::Mmu, &[3, 1]).unwrap();
+    assert_eq!(
+        session.export(PaintChannel::Mmu).unwrap(),
+        reference("remap.txt")
+    );
+    // Identité : inchangé ; table invalide refusée.
+    let before = session.export(PaintChannel::Mmu).unwrap();
+    session.remap_states(PaintChannel::Mmu, &[1, 2, 3]).unwrap();
+    assert_eq!(session.export(PaintChannel::Mmu).unwrap(), before);
+    assert!(session.remap_states(PaintChannel::Mmu, &[0]).is_err());
+    assert!(session.remap_states(PaintChannel::Mmu, &[17]).is_err());
+}
+
+#[test]
+fn bucket_without_edge_detection_matches_isolated_orca_reference() {
+    let h = header("bucket_noedge.txt");
+    let mut session = PaintSession::new(&cylinder()).unwrap();
+    session
+        .stroke(
+            PaintChannel::Mmu,
+            &PaintStroke {
+                points: vec![[h[1], h[2], h[3]]],
+                facets: vec![h[0] as u32],
+                tool: PaintTool::BucketFill,
+                fill_angle: -1.0,
+                state: 3,
+                ..stroke(CursorShape::Circle)
+            },
+        )
+        .unwrap();
+    let got = session.export(PaintChannel::Mmu).unwrap();
+    let want = reference("bucket_noedge.txt");
+    assert_eq!(got, want);
+    // Sans arêtes : tout le cylindre (parois + capots), pas seulement la paroi.
+    assert!(got.len() > 360, "{}", got.len());
+}
+
+/// Aperçu au survol : smart fill à 30° sur la paroi = les 360 triangles de
+/// smart.txt (9 flottants chacun), état inchangé ; pinceau refusé.
+#[test]
+fn fill_preview_selects_what_the_click_paints() {
+    let h = header("smart.txt");
+    let mut session = PaintSession::new(&cylinder()).unwrap();
+    let s = PaintStroke {
+        points: vec![[h[1], h[2], h[3]]],
+        facets: vec![h[0] as u32],
+        tool: PaintTool::SmartFill,
+        fill_angle: 30.0,
+        ..stroke(CursorShape::Circle)
+    };
+    let (vertices, truncated) = session.preview(PaintChannel::Supports, &s).unwrap();
+    assert!(!truncated);
+    assert_eq!(vertices.len(), reference("smart.txt").len() * 9);
+    assert!(session.export(PaintChannel::Supports).unwrap().is_empty());
+    // Triangle : un seul.
+    let (one, _) = session
+        .preview(
+            PaintChannel::Supports,
+            &PaintStroke {
+                tool: PaintTool::Brush,
+                cursor: CursorShape::Pointer,
+                ..s.clone()
+            },
+        )
+        .unwrap();
+    assert_eq!(one.len(), 9);
+    assert!(session
+        .preview(PaintChannel::Supports, &stroke(CursorShape::Circle))
+        .is_err());
+}
+
+#[test]
+fn serve_session_gap_fill_remap_and_preview() {
+    let mut server = Server::new();
+    let open = server.handle(ServeRequest {
+        id: 1,
+        op: ServeOp::PaintOpen {
+            session: "p/o".into(),
+            mesh: cube(20.0),
+        },
+    });
+    assert!(open.ok);
+    let input = reference("remap_input.txt");
+    let r = server.handle(ServeRequest {
+        id: 2,
+        op: ServeOp::PaintRemap {
+            session: "p/o".into(),
+            channel: PaintChannel::Mmu,
+            facets: Some(input.clone()),
+            map: vec![3, 1],
+        },
+    });
+    assert!(r.ok, "{r:?}");
+    assert_eq!(r.facets.unwrap(), reference("remap.txt"));
+    let r = server.handle(ServeRequest {
+        id: 3,
+        op: ServeOp::PaintGapFill {
+            session: "p/o".into(),
+            channel: PaintChannel::Mmu,
+            facets: Some(input),
+            area: 9.0,
+        },
+    });
+    assert!(!r.ok, "aire hors plage refusée");
+    let r = server.handle(ServeRequest {
+        id: 4,
+        op: ServeOp::PaintPreview {
+            session: "p/o".into(),
+            channel: PaintChannel::Supports,
+            facets: Some(PaintFacets::new()),
+            stroke: PaintStroke {
+                points: vec![[5.0, 5.0, 20.0]],
+                facets: vec![2],
+                tool: PaintTool::BucketFill,
+                ..stroke(CursorShape::Circle)
+            },
+        },
+    });
+    assert!(r.ok, "{r:?}");
+    // Pot à 30° sur le cube : la face du dessus (2 triangles).
+    assert_eq!(r.selection.unwrap().len(), 18);
+    assert_eq!(r.truncated, Some(false));
 }

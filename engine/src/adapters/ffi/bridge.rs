@@ -349,15 +349,17 @@ pub(crate) mod ffi {
 
     /// Trait de pinceau (repère du maillage) : points xyz + facette touchée par
     /// point, position caméra (repère maillage), rayon (mm monde), curseur
-    /// sphère/cercle, état (1 enforcer, 2 blocker, n extrudeur MMU), matrice
-    /// monde colonne-major, subdivision, « peindre surplombs seulement » (°).
+    /// (`TriangleSelector::CursorType` : 0 cercle, 1 sphère, 2 triangle,
+    /// 3 plage de hauteur), état (1 enforcer, 2 blocker, n extrudeur MMU),
+    /// matrice monde colonne-major, subdivision, « peindre surplombs
+    /// seulement » (°).
     #[derive(Debug)]
     struct RawPaintStroke {
         points: Vec<f32>,
         facets: Vec<u32>,
         camera_pos: [f32; 3],
         radius: f32,
-        sphere: bool,
+        cursor: u8,
         state: u8,
         trafo: [f64; 16],
         splitting: bool,
@@ -365,8 +367,20 @@ pub(crate) mod ffi {
         /// 0 = pinceau (`select_patch`), 1 = smart fill (`seed_fill_select_triangles`),
         /// 2 = pot de peinture (`bucket_fill_select_triangles`, propagation).
         tool: u8,
-        /// Angle d'arrêt des remplissages (°, `m_smart_fill_angle`).
+        /// Angle d'arrêt des remplissages (°, `m_smart_fill_angle`, < 0 = sans arêtes).
         fill_angle: f32,
+        /// Plage de hauteur : hauteur (mm monde, `m_cursor_height`).
+        height: f32,
+        /// Plage de hauteur sans point touché : cote monde imposée.
+        has_z_world: bool,
+        z_world: f32,
+    }
+
+    /// Aperçu de sélection par propagation : 9 flottants par triangle.
+    #[derive(Debug, Default)]
+    struct RawPaintPreview {
+        vertices: Vec<f32>,
+        truncated: bool,
     }
 
     /// Résultat de `GCodeProcessor` en colonnes (une ligne par `MoveVertex`) :
@@ -434,6 +448,26 @@ pub(crate) mod ffi {
         ) -> Result<()>;
         /// État du canal en chaînes 3MF (`FacetsAnnotation::get_triangle_as_string`).
         fn paint_session_export(session: &PaintSession, channel: u8) -> Result<RawPaintFacets>;
+        /// Comblement des interstices (TriangleSelectorPatch : zones < `area` mm²
+        /// prennent l'état voisin).
+        fn paint_session_gap_fill(
+            session: Pin<&mut PaintSession>,
+            channel: u8,
+            area: f32,
+        ) -> Result<()>;
+        /// Remappage des filaments (`TriangleSelector::remap_triangle_state`).
+        fn paint_session_remap_states(
+            session: Pin<&mut PaintSession>,
+            channel: u8,
+            map: &[u8],
+        ) -> Result<()>;
+        /// Aperçu au survol (sélection par propagation, état inchangé).
+        fn paint_session_preview(
+            session: Pin<&mut PaintSession>,
+            channel: u8,
+            stroke: &RawPaintStroke,
+            max_triangles: usize,
+        ) -> Result<RawPaintPreview>;
         /// « Garder la peinture » d'Orca (préférence keep_painting) : reporte
         /// la peinture d'un canal de `source` sur `target` après changement de
         /// maillage (simplifier, réparer…) — ModelVolume::save_painting /
