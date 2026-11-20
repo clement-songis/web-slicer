@@ -194,6 +194,9 @@ struct ExportMeshesRequest {
 struct DrcExportRequest {
     meshes: Vec<engine::api::TriangleMesh>,
     output_dir: PathBuf,
+    /// Quantification Draco (`drc_bits` d'Orca, 0 = aucune).
+    #[serde(default)]
+    bits: i32,
 }
 
 #[derive(Debug, Serialize)]
@@ -1004,7 +1007,7 @@ fn run_export_drc(path: &Path) -> engine::api::EngineResult<DrcExportResponse> {
     let mut files = Vec::with_capacity(request.meshes.len());
     for (index, mesh) in request.meshes.iter().enumerate() {
         let file = request.output_dir.join(format!("part-{index}.drc"));
-        engine::adapters::ffi::store_drc(mesh, &file)?;
+        engine::adapters::ffi::store_drc_bits(mesh, &file, request.bits)?;
         files.push(file);
     }
     Ok(DrcExportResponse { files })

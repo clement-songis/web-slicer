@@ -255,6 +255,11 @@ pub struct DrcExportRequest {
     /// Objets de scène à exporter (menu objet) ; absent = toute la scène.
     #[serde(default)]
     pub object_ids: Option<Vec<String>>,
+    /// DRC seulement : préférence « Quality level for Draco export » d'Orca
+    /// (`drc_bits`, bits de quantification ; 0 ou absent = aucune). Normalisée
+    /// comme la préférence (> 30 → 30, 1–7 → 8) ; négative → 422. Ignorée en STL.
+    #[serde(default)]
+    pub bits: Option<i64>,
 }
 
 /// `POST /api/projects/{id}/export/drc` — export Draco d'Orca
@@ -307,6 +312,15 @@ async fn export_meshes_as(
 ) -> ApiResult<Response> {
     let project_id = parse_project_id(&project_raw)?;
     let project = state.storage.projects().get(user.id, project_id).await?; // 404, SC-008
+    let drc_bits = match body.bits {
+        None => crate::engine::drc::DRC_BITS_DEFAULT,
+        Some(bits) => crate::engine::drc::normalize_drc_bits(bits).ok_or_else(|| {
+            ApiError::validation(
+                "Quantification Draco invalide (0 ou 8 à 30 bits)",
+                serde_json::json!({ "field": "bits" }),
+            )
+        })?,
+    };
     let model = build_project_model_selected(
         &state,
         user.id,
@@ -351,7 +365,7 @@ async fn export_meshes_as(
         vec![merge_meshes(named.iter().map(|(_, mesh)| mesh))]
     };
     let files = match format {
-        MeshExportFormat::Drc => crate::engine::drc::export_drc(&meshes)
+        MeshExportFormat::Drc => crate::engine::drc::export_drc(&meshes, drc_bits)
             .await
             .map_err(worker_error)?,
         MeshExportFormat::Stl => meshes

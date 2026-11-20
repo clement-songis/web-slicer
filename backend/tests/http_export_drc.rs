@@ -383,6 +383,51 @@ async fn split_drcs_zip_one_file_per_object_and_selection() {
     assert_eq!(resp.status(), StatusCode::NOT_FOUND);
 }
 
+/// Préférence « Quality level for Draco export » d'Orca (`drc_bits`) : 0 =
+/// aucune quantification (défaut), sinon bits de quantification transmis à
+/// `store_drc` ; normalisée comme `PreferencesDialog::create_item_draco`.
+#[tokio::test]
+async fn drc_bits_quantize_like_orca_preference() {
+    let Some((_dir, app, user, project)) = setup().await else {
+        return;
+    };
+    async fn drc(app: &Router, user: &str, project: &str, body: serde_json::Value) -> Vec<u8> {
+        let resp = export(app, user, project, body).await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        to_bytes(resp.into_body(), usize::MAX)
+            .await
+            .unwrap()
+            .to_vec()
+    }
+    let default = drc(&app, &user, &project, serde_json::json!({})).await;
+    let zero = drc(&app, &user, &project, serde_json::json!({"bits": 0})).await;
+    assert_eq!(default, zero, "absent = drc_bits 0 (défaut d'Orca)");
+    let eight = drc(&app, &user, &project, serde_json::json!({"bits": 8})).await;
+    assert_ne!(eight, zero, "la quantification change l'encodage");
+    // 1–7 → 8 et > 30 → 30, comme la préférence d'Orca.
+    let five = drc(&app, &user, &project, serde_json::json!({"bits": 5})).await;
+    assert_eq!(five, eight);
+    let thirty = drc(&app, &user, &project, serde_json::json!({"bits": 30})).await;
+    let huge = drc(&app, &user, &project, serde_json::json!({"bits": 99})).await;
+    assert_eq!(huge, thirty);
+    // Chaque variante se relit : deux cubes, plage x conservée à la quantification près.
+    for bytes in [&eight, &thirty] {
+        let mesh = decode_drc(bytes);
+        assert_eq!(mesh.indices.len() / 3, 24);
+        let (lo, hi) = x_range(&mesh);
+        assert!(
+            (lo + 10.0).abs() < 0.5 && (hi - 60.0).abs() < 0.5,
+            "x ∈ [{lo}, {hi}]"
+        );
+    }
+    // Négatif → 422 (champ « bits ») ; l'export STL ignore le champ.
+    let resp = export(&app, &user, &project, serde_json::json!({"bits": -1})).await;
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(json_body(resp).await["details"]["field"], "bits");
+    let resp = export_stl(&app, &user, &project, serde_json::json!({"bits": 12})).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+}
+
 // --- Export STL (`POST /export/stl`) : mêmes maillages libslic3r que le DRC
 // (`Plater::export_stl` → `store_stl`), encodés en STL binaire.
 

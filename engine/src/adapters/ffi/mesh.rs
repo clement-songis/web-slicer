@@ -64,9 +64,29 @@ pub fn simplify_mesh(
 
 /// Bits de quantification Draco d'Orca par défaut (`drc_bits` = 0 : aucune).
 pub const DRC_BITS_DEFAULT: i32 = 0;
+/// Bornes de la préférence « Quality level for Draco export » d'Orca
+/// (`Format/DRC.hpp` : `DRC_BITS_MIN` / `DRC_BITS_MAX`, 0 = sans quantification).
+pub const DRC_BITS_MIN: i32 = 8;
+pub const DRC_BITS_MAX: i32 = 30;
 
-/// Écrit `mesh` au format Draco (`Slic3r::store_drc`, export DRC d'Orca).
+/// Écrit `mesh` au format Draco (`Slic3r::store_drc`, export DRC d'Orca),
+/// quantification par défaut (`drc_bits` = 0).
 pub fn store_drc(mesh: &TriangleMesh, path: &std::path::Path) -> EngineResult<()> {
+    store_drc_bits(mesh, path, DRC_BITS_DEFAULT)
+}
+
+/// Comme [`store_drc`] avec la quantification `bits` d'Orca (`drc_bits` :
+/// 0 = aucune, sinon `DRC_BITS_MIN..=DRC_BITS_MAX`) — `Plater::export_stl`
+/// passe la préférence telle quelle à `store_drc(path, mesh, bits)`.
+pub fn store_drc_bits(mesh: &TriangleMesh, path: &std::path::Path, bits: i32) -> EngineResult<()> {
+    if bits != 0 && !(DRC_BITS_MIN..=DRC_BITS_MAX).contains(&bits) {
+        return Err(EngineError::new(
+            EngineErrorCode::InvalidModel,
+            format!(
+                "quantification Draco hors bornes : {bits} (0 ou {DRC_BITS_MIN}–{DRC_BITS_MAX})"
+            ),
+        ));
+    }
     if mesh.is_empty() {
         return Err(EngineError::new(
             EngineErrorCode::InvalidModel,
@@ -77,7 +97,7 @@ pub fn store_drc(mesh: &TriangleMesh, path: &std::path::Path) -> EngineResult<()
         .to_str()
         .ok_or_else(|| EngineError::new(EngineErrorCode::Io, "chemin d'export Draco non UTF-8"))?;
     let _guard = ffi_guard();
-    ffi::store_drc_raw(&to_raw(mesh), path, DRC_BITS_DEFAULT)
+    ffi::store_drc_raw(&to_raw(mesh), path, bits)
         .map_err(|e| EngineError::new(EngineErrorCode::InvalidModel, e.to_string()))
 }
 

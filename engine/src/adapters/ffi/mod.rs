@@ -28,7 +28,10 @@ pub use export_mesh::export_meshes;
 pub use flush::{flush_volumes, min_flush_volumes};
 pub use gcode_process::process_gcode;
 pub use layer_profile::layer_profile;
-pub use mesh::{repair_mesh, simplify_mesh, store_drc};
+pub use mesh::{
+    repair_mesh, simplify_mesh, store_drc, store_drc_bits, DRC_BITS_DEFAULT, DRC_BITS_MAX,
+    DRC_BITS_MIN,
+};
 pub use model::{
     convert_to_mesh, convert_to_mesh_model, load_model, load_step, model_triangle_count,
     print_config_option_count, StepMeshOptions,

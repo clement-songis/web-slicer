@@ -33,6 +33,7 @@ pub fn read_project_3mf(path: &Path) -> EngineResult<(Model, DynamicPrintConfig)
 ///   synthétisées par l'importeur depuis les vignettes du fichier (fin de
 ///   `load_bbs_3mf` / `load_3mf`, bbs_3mf.cpp) — jamais posées par la GUI
 ///   d'Orca, qui ne les écrit donc pas à la sauvegarde d'un projet neuf.
+///
 /// Les conserver rendrait l'export → import → export non déterministe (des
 /// entrées absentes du premier export apparaîtraient au second).
 pub const VOLATILE_METADATA_ITEMS: &[&str] = &[
@@ -90,6 +91,10 @@ pub fn read_project_3mf_import(path: &Path) -> EngineResult<serde_json::Value> {
                         "indices": v.mesh.indices,
                         "paint": paint,
                         "emboss": if v.emboss_json.trim().is_empty() { Value::Null } else { serde_json::from_str::<Value>(&v.emboss_json).unwrap_or(Value::Null) },
+                        // Connecteur de coupe (cut_information.xml) et erreurs du
+                        // maillage (<mesh_stat> + arêtes ouvertes) lus par libslic3r.
+                        "cut_info": serde_json::from_str::<Value>(&v.cut_json).unwrap_or(Value::Null),
+                        "mesh_stats": serde_json::from_str::<Value>(&v.stats_json).unwrap_or(Value::Null),
                     })
                 })
                 .collect();
@@ -100,6 +105,8 @@ pub fn read_project_3mf_import(path: &Path) -> EngineResult<serde_json::Value> {
                 "layer_ranges": if o.layer_ranges_json.trim().is_empty() { json!([]) } else { serde_json::from_str::<Value>(&o.layer_ranges_json).unwrap_or(json!([])) },
                 "instances": o.instances.iter().map(|i| json!({ "matrix": i.matrix.to_vec(), "printable": i.printable })).collect::<Vec<_>>(),
                 "volumes": volumes,
+                // ModelObject::cut_id (cut_information.xml), null = non coupé.
+                "cut_id": serde_json::from_str::<Value>(&o.cut_json).unwrap_or(Value::Null),
             })
         })
         .collect();
