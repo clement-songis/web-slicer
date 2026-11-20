@@ -493,8 +493,10 @@
 									: ''}"
 								data-testid="admin-user-row"
 							>
-								<div class="flex items-center gap-2">
-									<span class="min-w-0 flex-1 truncate" title={user.email}
+								<!-- L'e-mail garde au moins 14rem ; les boutons passent à la ligne
+								     plutôt que de réduire l'adresse à « a36mw… ». -->
+								<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
+									<span class="min-w-[14rem] flex-1 truncate" title={user.email}
 										>{user.email}{#if user.id === data.user.id}
 											<span class="text-xs text-content-subtle">(vous)</span>{/if}</span
 									>

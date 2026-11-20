@@ -139,18 +139,20 @@
 				aria-hidden="true"
 			></span>
 		{/if}
-		<span class="tabular-nums text-content"
+		<!-- Insécables : coordonnées, vitesse et temps ne se coupent jamais en
+		     deux lignes (seul le type de ligne, en dernier, s'abrège). -->
+		<span class="whitespace-nowrap tabular-nums text-content"
 			>X {num(tool.position[0], 3)}&nbsp;&nbsp;Y {num(tool.position[1], 3)}&nbsp;&nbsp;Z {num(
 				tool.position[2],
 				3
 			)}</span
 		>
-		<span class="tabular-nums">Vitesse : {num(tool.speed, 0, 'mm/s')}</span>
+		<span class="whitespace-nowrap tabular-nums">Vitesse : {num(tool.speed, 0, 'mm/s')}</span>
 		{#if time}<span
-				class="tabular-nums"
+				class="whitespace-nowrap tabular-nums"
 				data-testid="preview-tool-time"
 				data-time={time.time.toFixed(3)}>Temps : {timeText}</span
 			>{/if}
-		{#if detail && coloration !== 'speed'}<span class="truncate">{detail}</span>{/if}
+		{#if detail && coloration !== 'speed'}<span class="min-w-0 truncate">{detail}</span>{/if}
 	</div>
 </div>

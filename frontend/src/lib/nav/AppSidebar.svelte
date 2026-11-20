@@ -183,7 +183,7 @@
 					{/if}
 					<div class="flex justify-between gap-2">
 						<span class="text-content-muted">Tranchages</span>
-						<span class="tabular-nums text-content" data-testid="account-usage-slices"
+						<span class="text-right tabular-nums text-content" data-testid="account-usage-slices"
 							>{lines.slices}</span
 						>
 					</div>
@@ -206,30 +206,41 @@
 					data-testid="account-password-form"
 					novalidate
 				>
-					<input
-						type="password"
-						class="ws-field ws-field-sm w-full"
-						placeholder="Mot de passe actuel"
-						aria-label="Mot de passe actuel"
-						autocomplete="current-password"
-						bind:value={currentPassword}
-					/>
-					<input
-						type="password"
-						class="ws-field ws-field-sm w-full"
-						placeholder="Nouveau mot de passe (8 caractères min.)"
-						aria-label="Nouveau mot de passe"
-						autocomplete="new-password"
-						bind:value={nextPassword}
-					/>
-					<input
-						type="password"
-						class="ws-field ws-field-sm w-full"
-						placeholder="Confirmer le nouveau mot de passe"
-						aria-label="Confirmer le nouveau mot de passe"
-						autocomplete="new-password"
-						bind:value={confirmPassword}
-					/>
+					<!-- Libellés visibles (le menu est étroit : un texte indicatif serait
+					     tronqué et disparaîtrait à la saisie). -->
+					<label class="flex flex-col gap-0.5 text-content-muted">
+						Mot de passe actuel
+						<input
+							type="password"
+							class="ws-field ws-field-sm w-full"
+							aria-label="Mot de passe actuel"
+							autocomplete="current-password"
+							bind:value={currentPassword}
+						/>
+					</label>
+					<label class="flex flex-col gap-0.5 text-content-muted">
+						<span
+							>Nouveau mot de passe <span class="text-content-subtle">(8 caractères min.)</span
+							></span
+						>
+						<input
+							type="password"
+							class="ws-field ws-field-sm w-full"
+							aria-label="Nouveau mot de passe"
+							autocomplete="new-password"
+							bind:value={nextPassword}
+						/>
+					</label>
+					<label class="flex flex-col gap-0.5 text-content-muted">
+						Confirmer le nouveau mot de passe
+						<input
+							type="password"
+							class="ws-field ws-field-sm w-full"
+							aria-label="Confirmer le nouveau mot de passe"
+							autocomplete="new-password"
+							bind:value={confirmPassword}
+						/>
+					</label>
 					<div class="flex gap-1">
 						<button type="submit" class="ws-btn ws-btn-sm ws-btn-primary flex-1" disabled={busy}
 							>Changer</button

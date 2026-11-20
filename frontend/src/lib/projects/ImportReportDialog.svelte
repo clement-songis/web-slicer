@@ -5,7 +5,8 @@
 	// préférences du compte — le serveur ne renvoie plus l'avertissement). Si le
 	// rapport porte des métadonnées, un renvoi vers l'onglet Projet est proposé.
 	import Dialog from '$lib/ui/Dialog.svelte';
-	import { warningContent } from '$lib/projects/open-3mf';
+	import { gcodeItemLabel, warningContent } from '$lib/projects/open-3mf';
+	import { t } from '$lib/i18n';
 	import type { ImportReport } from '$lib/api/types';
 
 	interface Props {
@@ -48,7 +49,15 @@
 			data-testid="import-report-items"
 		>
 			{#each warning.items as item (item)}
-				<li class="font-mono text-xs">{item}</li>
+				{@const label = warning.kind === 'modified_gcodes' ? gcodeItemLabel(item) : null}
+				<li class="text-xs" data-key={item}>
+					{#if label}
+						<span class="text-content">{$t(label)}</span>
+						<span class="font-mono text-content-muted">({item})</span>
+					{:else}
+						<span class="font-mono">{item}</span>
+					{/if}
+				</li>
 			{/each}
 		</ul>
 		<label class="flex items-center gap-2 text-sm">

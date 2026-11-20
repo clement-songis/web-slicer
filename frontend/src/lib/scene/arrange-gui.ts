@@ -55,23 +55,49 @@ export function transformFromMatrix(matrix: readonly number[]): Transform {
 		y = (r12 + r21) / s;
 		z = s / 4;
 	}
+	const rotation = eulerDegFromQuaternion([x, y, z, w]);
 	return {
-		position: [matrix[12], matrix[13], matrix[14]],
-		rotation: eulerDegFromQuaternion([x, y, z, w]),
-		scale: [sx || 1, sy || 1, sz || 1]
+		position: [clean(matrix[12]), clean(matrix[13]), clean(matrix[14])],
+		rotation: [clean(rotation[0]), clean(rotation[1]), clean(rotation[2])],
+		scale: [clean(sx) || 1, clean(sy) || 1, clean(sz) || 1]
 	};
+}
+
+/**
+ * Bruit flottant de la décomposition (−9,9e-15°, 0,9999999999999998…) ramené
+ * à la valeur ronde la plus proche : les champs du panneau Outils affichent
+ * sinon « -45.00000000000001 ». Seuil 1e-9 (bien sous la précision d'affichage).
+ */
+function clean(value: number): number {
+	const rounded = Math.round(value * 1e6) / 1e6;
+	const out = Math.abs(value - rounded) < 1e-9 ? rounded : value;
+	return out === 0 ? 0 : out;
 }
 
 function safeDiv(a: number, b: number): number {
 	return b > 1e-12 || b < -1e-12 ? a / b : 0;
 }
 
-/** Nouvelle transformation d'un objet après arrangement (matrice > x,y). */
-export function placedTransform(current: Transform, placement: Placement): Transform {
-	if (placement.matrix && placement.matrix.length >= 16) {
+/**
+ * Nouvelle transformation d'un objet après arrangement (matrice > x,y).
+ * `rotates` = l'arrangement peut tourner les objets (rotation auto ou
+ * alignement sur Y). Sinon, comme l'arrangement d'Orca (translation seule),
+ * rotation, échelle et Z de l'objet sont conservés tels quels : seule la
+ * position XY de la matrice est reprise (évite qu'un écart de convention de
+ * rotation ou un arrondi ne modifie un objet que l'arrangement n'a pas tourné).
+ */
+export function placedTransform(
+	current: Transform,
+	placement: Placement,
+	rotates = true
+): Transform {
+	if (rotates && placement.matrix && placement.matrix.length >= 16) {
 		return transformFromMatrix(placement.matrix);
 	}
-	return { ...current, position: [placement.x, placement.y, current.position[2]] };
+	const m = placement.matrix;
+	const x = m && m.length >= 16 ? clean(m[12]) : placement.x;
+	const y = m && m.length >= 16 ? clean(m[13]) : placement.y;
+	return { ...current, position: [x, y, current.position[2]] };
 }
 
 /**

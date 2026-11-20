@@ -440,7 +440,7 @@
 					{/snippet}
 					{@render row(
 						'Avertir du G-code modifié',
-						'Boîte « G-code modifié / Presets personnalisés » à l’ouverture d’un 3MF contenant des presets système modifiés (case « ne plus afficher » du lot 34 ; le serveur ne renvoie plus l’avertissement).',
+						'À l’ouverture d’un 3MF dont les presets imprimante ou filament contiennent du G-code modifié (démarrage, fin, changement de filament…), une boîte liste ces G-code pour que vous vérifiiez qu’ils sont sans danger pour la machine. Décoché : le 3MF s’ouvre sans avertissement.',
 						gcodeWarnCtl,
 						'gcode-warn'
 					)}

@@ -74,6 +74,30 @@ export function takeImportReport(projectId: string): ImportReport | null {
 }
 
 /**
+ * Libellé (anglais d'Orca, traduit par le catalogue des réglages) d'une clé
+ * G-code listée par l'avertissement « G-code modifié ». Orca n'affiche que la
+ * clé brute (`-machine_start_gcode`) ; ici le nom de la page de réglages
+ * accompagne la clé. `null` = clé inconnue (affichée seule).
+ */
+const GCODE_ITEM_LABELS: Record<string, string> = {
+	machine_start_gcode: 'Machine start G-code',
+	machine_end_gcode: 'Machine end G-code',
+	filament_start_gcode: 'Filament start G-code',
+	filament_end_gcode: 'Filament end G-code',
+	change_filament_gcode: 'Change filament G-code',
+	layer_change_gcode: 'Layer change G-code',
+	before_layer_change_gcode: 'Before layer change G-code',
+	machine_pause_gcode: 'Pause G-code',
+	template_custom_gcode: 'Template Custom G-code',
+	printing_by_object_gcode: 'Printing by object G-code',
+	time_lapse_gcode: 'Timelapse G-code',
+	wrapping_detection_gcode: 'Clumping Detection G-code'
+};
+export function gcodeItemLabel(key: string): string | null {
+	return GCODE_ITEM_LABELS[key] ?? null;
+}
+
+/**
  * Titre et corps de l'avertissement `validate_presets` (boîtes « Modified
  * G-code » / « Customized Preset » d'Orca, Plater.cpp) ; les items sont
  * listés à part par le dialogue.

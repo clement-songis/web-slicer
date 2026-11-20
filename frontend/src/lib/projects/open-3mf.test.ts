@@ -20,6 +20,7 @@ if (!('sessionStorage' in globalThis)) {
 import {
 	behaviourFromChoice,
 	decideLoadMode,
+	gcodeItemLabel,
 	isProjectArchive,
 	stashImportReport,
 	takeImportReport,
@@ -78,5 +79,13 @@ describe('ouverture d’un 3MF (lot 34)', () => {
 	it('rapport illisible ignoré', () => {
 		sessionStorage.setItem('web-slicer.import-report:p2', '{pas du json');
 		expect(takeImportReport('p2')).toBeNull();
+	});
+
+	it('clés G-code de l’avertissement : libellé de la page de réglages (phase 36)', () => {
+		expect(gcodeItemLabel('machine_start_gcode')).toBe('Machine start G-code');
+		expect(gcodeItemLabel('filament_end_gcode')).toBe('Filament end G-code');
+		expect(gcodeItemLabel('wrapping_detection_gcode')).toBe('Clumping Detection G-code');
+		// Nom de preset (avertissement « Presets personnalisés ») : pas de libellé.
+		expect(gcodeItemLabel('Mon PLA')).toBeNull();
 	});
 });

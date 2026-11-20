@@ -4363,7 +4363,11 @@
 		sceneObjects = sceneObjects.map((o) => {
 			const pl = byId.get(o.id);
 			if (!pl) return o;
-			const t = placedTransform(objectTransform(o), pl);
+			const t = placedTransform(
+				objectTransform(o),
+				pl,
+				arrangeSaved.enableRotation || arrangeSaved.alignToYAxis
+			);
 			return { ...o, position: t.position, rotation: t.rotation, scale: t.scale };
 		});
 		// Plateaux créés par l'arrangeur puis réaffectation des objets déplacés.
@@ -7879,10 +7883,10 @@
 				disabled={!plates.activeId}
 				onclick={() => (plateSettingsOpen = true)}
 			>
-				<!-- Libellé dès 1536 px : la flèche « Trancher tout » (phase 25) prend sa
-				     place à 1280 px sans masquer les onglets de vue. -->
-				<IconPlateSettings class="h-4 w-4" aria-hidden="true" /><span class="hidden 2xl:inline"
-					>Plateau</span
+				<!-- Libellés longs des actions dès 1920 px seulement : de 1536 à ~1800 px
+				     ils recouvraient les onglets « Appareil » et « Projet » (phase 36). -->
+				<IconPlateSettings class="h-4 w-4" aria-hidden="true" /><span
+					class="hidden min-[1920px]:inline">Plateau</span
 				>
 			</button>
 			<PlateSettingsDialog
@@ -7919,8 +7923,8 @@
 							aria-hidden="true"
 						></span>
 					{/if}
-					<span class="2xl:hidden">{$locale === 'fr' ? 'Trancher' : 'Slice'}</span>
-					<span class="hidden 2xl:inline">{$t('Slice plate')}</span>
+					<span class="min-[1920px]:hidden">{$locale === 'fr' ? 'Trancher' : 'Slice'}</span>
+					<span class="hidden min-[1920px]:inline">{$t('Slice plate')}</span>
 				</button>
 				<button
 					type="button"
@@ -7981,8 +7985,8 @@
 				disabled={!session.gcodeId}
 				onclick={() => session.gcodeId && downloadUrl(`/api/gcodes/${session.gcodeId}/download`)}
 			>
-				<span class="2xl:hidden">G-code…</span>
-				<span class="hidden 2xl:inline">{$t('Export G-code…')}</span>
+				<span class="min-[1920px]:hidden">G-code…</span>
+				<span class="hidden min-[1920px]:inline">{$t('Export G-code…')}</span>
 			</button>
 			<SendToPrinter
 				gcodeId={session.gcodeId}
@@ -8054,8 +8058,9 @@
 	{/if}
 
 	<!-- Options d'arrangement (lot 34) : panneau togglé par le bouton Arrange. -->
+	<!-- Préparer seulement : l'Aperçu d'Orca n'a pas de menu d'arrangement. -->
 	<ArrangeOptionsPanel
-		open={arrangePanel}
+		open={arrangePanel && layout.tab === 'prepare'}
 		options={arrangeSaved}
 		info={arrangeInfo}
 		activePlateLocked={plates.get(plates.activeId ?? '')?.locked === true}
@@ -8521,7 +8526,15 @@
 						onlock={(id, locked) => plates.setLocked(id, locked)}
 					/>
 				{:else if configTab === 'project'}
-					<ProjectMetadataPanel projectId={data.project.id} />
+					{#if layout.tab === 'project'}
+						<!-- Une seule fiche montée à la fois (sinon deux brouillons divergents). -->
+						<p class="text-xs text-content-muted" data-testid="project-metadata-elsewhere">
+							La fiche du modèle (titre, auteur, licence, description, couverture) est affichée dans
+							la page Projet, à droite.
+						</p>
+					{:else}
+						<ProjectMetadataPanel projectId={data.project.id} />
+					{/if}
 				{:else}
 					<div
 						class="flex flex-col gap-4 [&>section+section]:border-t [&>section+section]:border-border [&>section+section]:pt-4"
@@ -9582,7 +9595,7 @@
 							{#if previewTool}
 								<!-- Position de l'outil (fenêtre ToolPosition d'Orca, bas de la vue). -->
 								<div
-									class="absolute bottom-16 left-1/2 z-10 max-w-[calc(100%-16rem)] -translate-x-1/2"
+									class="absolute bottom-16 left-1/2 z-10 w-max max-w-[calc(100%-16rem)] -translate-x-1/2"
 								>
 									<ToolPositionCard tool={previewTool} {coloration} time={previewToolTime} />
 								</div>
@@ -9980,6 +9993,12 @@
 							<dt class="text-content-muted">Modifié le</dt>
 							<dd class="text-content">{new Date(data.project.updated_at).toLocaleString()}</dd>
 						</dl>
+						<!-- Fiche du modèle (ProjectPanel d'Orca : informations du modèle avant
+						     les fichiers joints) — même panneau que l'onglet Projet de la colonne. -->
+						<section class="flex flex-col gap-2" aria-labelledby="project-page-meta-title">
+							<h3 id="project-page-meta-title" class="ws-section-title">Fiche du modèle</h3>
+							<ProjectMetadataPanel projectId={data.project.id} />
+						</section>
 						<AuxiliariesPanel projectId={data.project.id} />
 					</div>
 				</div>

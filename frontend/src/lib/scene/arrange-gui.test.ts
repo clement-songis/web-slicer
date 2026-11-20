@@ -58,6 +58,32 @@ describe('application de l’arrangement GUI (lot 34)', () => {
 		expect(t.rotation).toEqual([0, 0, 0]);
 	});
 
+	it('arrangement sans rotation : rotation, échelle et Z conservés (phase 36)', () => {
+		// Réponse réelle de la pile pour un cube tourné de +45° : la matrice porte
+		// −45° (convention transposée) — l'objet ne doit pas tourner.
+		const s = Math.SQRT1_2;
+		const matrix = [s, -s, 0, 0, s, s, 0, 0, 0, 0, 1, 0, 180.707106, 180.707107, 10, 1];
+		const t = placedTransform(
+			{ position: [175, 175, 10], rotation: [0, 0, 45], scale: [1.5, 1, 1] },
+			{ id: 'a', x: 180.707106, y: 180.707107, matrix },
+			false
+		);
+		expect(t.position).toEqual([180.707106, 180.707107, 10]);
+		expect(t.rotation).toEqual([0, 0, 45]);
+		expect(t.scale).toEqual([1.5, 1, 1]);
+	});
+
+	it('matrice : bruit flottant arrondi (pas de « -45.00000000000001 »)', () => {
+		const t = transformFromMatrix([
+			0.7071067811865472, 0.7071067811865475, -1.2e-16, 0, -0.7071067811865475, 0.7071067811865472,
+			1.2e-16, 0, 3.7e-32, 1.7e-16, 1, 0, 10, 20, 5, 1
+		]);
+		expect(t.rotation[0]).toBe(0);
+		expect(t.rotation[1]).toBe(0);
+		expect(t.rotation[2]).toBe(45);
+		expect(t.scale).toEqual([1, 1, 1]);
+	});
+
 	it('réaffectations : seuls les objets changés de plateau', () => {
 		const plates = [plate('p1', ['a', 'b']), plate('p2', ['c'])];
 		const moves = plateMoves(plates, [
