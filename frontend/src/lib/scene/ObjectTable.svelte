@@ -6,7 +6,7 @@
 	// profil est sur la cellule, les valeurs héritées sont en gris.
 	// Présentationnel : les mutations passent par des callbacks.
 	import Dialog from '$lib/ui/Dialog.svelte';
-	import { t, tr } from '$lib/i18n';
+	import { fmtDec, t, tr } from '$lib/i18n';
 	import IconReset from '~icons/lucide/rotate-ccw';
 	import {
 		TABLE_CATEGORIES,
@@ -88,7 +88,7 @@
 		warning =
 			cellWarning(column, value, maxLayer) && maxLayer !== null
 				? tr('Too large layer height: the printer recommends at most {max} mm.', {
-						max: String(maxLayer)
+						max: fmtDec(maxLayer)
 					})
 				: null;
 		onsetting(row, column.key, value);

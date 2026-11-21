@@ -158,6 +158,18 @@ export function fmtNum(value: number, digits = 2, loc: Locale = get(locale)): st
 	});
 }
 
+/**
+ * Nombre sans zéros superflus, séparateur de la langue (audit 41 V5) :
+ * « 0,32 », « 0,002 », « 1,7 » en français ; « 0.32 » en anglais.
+ */
+export function fmtDec(value: number, maxDigits = 4, loc: Locale = get(locale)): string {
+	if (!Number.isFinite(value)) return String(value);
+	return value.toLocaleString(numberLocale(loc), {
+		maximumFractionDigits: maxDigits,
+		useGrouping: false
+	});
+}
+
 /** Change la locale (persistée par la stratégie Paraglide) sans recharger la page. */
 export function setLocale(next: Locale): void {
 	setParaglideLocale(next, { reload: false });

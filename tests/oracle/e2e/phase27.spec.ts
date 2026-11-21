@@ -42,6 +42,8 @@ test("liste d’objets : un nom long reste entier même avec badges et sélecteu
     .first()
     .click();
   await page.getByRole("button", { name: "Objets", exact: true }).click();
+  // R1 (Orca select_plate) : le plateau ajouté devient actif ; revenir au plateau 1.
+  await page.getByTestId("plate-tab").nth(0).getByRole("button").first().click();
   await page.getByTestId("object-name").first().dblclick();
   const input = page.getByTestId("object-rename-input");
   await input.fill("support-de-telephone-articule-v3-final.stl");

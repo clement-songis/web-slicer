@@ -351,6 +351,8 @@ test.describe("menu d’un plateau", () => {
     await setup(page, ["cube20", "cylinder"]);
     await page.getByRole("button", { name: "Objets", exact: true }).click();
     await page.getByRole("button", { name: "Ajouter un plateau" }).click();
+    // R1 (Orca select_plate) : le plateau ajouté devient actif ; revenir au plateau 1.
+    await page.getByTestId("plate-tab").nth(0).getByRole("button").first().click();
     // Le second objet part sur le plateau 2.
     await page
       .getByLabel(/^Plateau de /)

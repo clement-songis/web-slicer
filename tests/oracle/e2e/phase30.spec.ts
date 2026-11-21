@@ -23,6 +23,8 @@ test('plateaux côte à côte : actif mis en évidence, clic sur un autre platea
 	await expect(canvas).toHaveAttribute('data-plates', '1');
 	await expect(page.getByTestId('scene-plate-label')).toHaveCount(0);
 	await page.getByRole('button', { name: 'Ajouter un plateau' }).first().click();
+	// R1 (Orca select_plate) : le plateau ajouté devient actif ; revenir au plateau 1.
+	await page.getByTestId('plate-tab').first().click();
 	await expect(canvas).toHaveAttribute('data-plates', '2');
 	// Grille d'Orca : 2 plateaux → 2 colonnes, pas = largeur × 1,2.
 	await expect(canvas).toHaveAttribute('data-plate-offsets', /^1:\d+(\.\d)?,0\.0$/);
@@ -62,6 +64,8 @@ test('glisser un objet sur un autre plateau le lui affecte (repère du plateau d
 	await expect(page.getByTestId('import-status')).toHaveCount(0, { timeout: 60_000 });
 	await page.getByRole('button', { name: 'Objets', exact: true }).click();
 	await page.getByRole('button', { name: 'Ajouter un plateau' }).first().click();
+	// R1 (Orca select_plate) : le plateau ajouté devient actif ; revenir au plateau 1.
+	await page.getByTestId('plate-tab').first().click();
 	const canvas = page.getByTestId('scene-canvas');
 	await expect(canvas).toHaveAttribute('data-plates', '2');
 	// Vue de dessus, dézoomée : les deux plateaux sont à l'écran.

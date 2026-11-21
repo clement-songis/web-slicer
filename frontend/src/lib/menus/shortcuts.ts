@@ -21,7 +21,8 @@ export const SHORTCUT_GROUPS: ShortcutGroup[] = [
 	{
 		group: 'Global shortcuts',
 		shortcuts: [
-			{ keys: 'Ctrl+N', action: 'New Project' },
+			// Orca : Ctrl+N (réservé par le navigateur) → Alt+N (audit 41 S1).
+			{ keys: 'Alt+N', action: 'New Project' },
 			{ keys: 'Ctrl+O', action: 'Open Project' },
 			{ keys: 'Ctrl+S', action: 'Save Project' },
 			{ keys: 'Ctrl+Shift+S', action: 'Save Project as' },

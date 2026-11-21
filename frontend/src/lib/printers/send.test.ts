@@ -52,6 +52,24 @@ describe('normalizeMoonrakerUrl', () => {
 		expect(normalizeMoonrakerUrl('ftp://x')).toBeNull();
 		expect(normalizeMoonrakerUrl('http://')).toBeNull();
 	});
+	it('audit 41 M1 : refuse un hôte avec espaces ou caractères invalides', () => {
+		expect(normalizeMoonrakerUrl('pas une url')).toBeNull();
+		expect(normalizeMoonrakerUrl('http://pas une url')).toBeNull();
+		expect(normalizeMoonrakerUrl('http://voron!/')).toBeNull();
+		expect(normalizeMoonrakerUrl('192.168.1')).toBeNull();
+		expect(normalizeMoonrakerUrl('192.168.1.300:7125')).toBeNull();
+		expect(normalizeMoonrakerUrl('voron.local:99999')).toBeNull();
+		expect(normalizeMoonrakerUrl('http://a..b')).toBeNull();
+	});
+	it('audit 41 M1 : accepte noms, IPv4, IPv6, port, utilisateur et chemin', () => {
+		expect(normalizeMoonrakerUrl('voron')).toBe('http://voron');
+		expect(normalizeMoonrakerUrl('my_printer.lan:7125')).toBe('http://my_printer.lan:7125');
+		expect(normalizeMoonrakerUrl('http://[fe80::1]:7125')).toBe('http://[fe80::1]:7125');
+		expect(normalizeMoonrakerUrl('https://u:p@host.example/octo/')).toBe(
+			'https://u:p@host.example/octo'
+		);
+		expect(normalizeMoonrakerUrl('127.0.0.1:17125')).toBe('http://127.0.0.1:17125');
+	});
 });
 
 describe('sendSuccessMessage', () => {

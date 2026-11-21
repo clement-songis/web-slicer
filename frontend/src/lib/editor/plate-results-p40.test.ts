@@ -1,6 +1,12 @@
 // Phase 40 (audit B1) : signature de tranchage par plateau et résultats périmés.
 import { describe, expect, test } from 'vitest';
-import { applyBatchEvent, makeBatch, plateSceneSignature, staleResults } from './plate-results';
+import {
+	applyBatchEvent,
+	makeBatch,
+	plateSceneSignature,
+	stableStringify,
+	staleResults
+} from './plate-results';
 import { prepareSession } from './session';
 
 const scene = (
@@ -80,5 +86,25 @@ describe('staleResults / makeBatch par plateau', () => {
 			{ event: 'job.finished', id: 'j1', gcode_id: 'g', stats: null } as never
 		);
 		expect(step.results.p2.signature).toBe('b');
+	});
+});
+
+describe('stableStringify (audit 41 V1)', () => {
+	test('ordre des clés indifférent, ordre des tableaux conservé', () => {
+		expect(stableStringify({ b: 1, a: { d: [2, 1], c: null } })).toBe(
+			stableStringify({ a: { c: null, d: [2, 1] }, b: 1 })
+		);
+		expect(stableStringify([1, 2])).not.toBe(stableStringify([2, 1]));
+	});
+	test('plateau relu du serveur (clés dans un autre ordre) : même signature', () => {
+		const a = {
+			plates: { plates: [{ id: 'p1', plateType: 'Cool Plate', objectIds: ['o1'] }] },
+			objects: [{ id: 'o1', transform: { position: [1, 2, 3] } }]
+		};
+		const b = {
+			plates: { plates: [{ objectIds: ['o1'], id: 'p1', plateType: 'Cool Plate' }] },
+			objects: [{ transform: { position: [1, 2, 3] }, id: 'o1' }]
+		};
+		expect(plateSceneSignature(b as never, 'p1')).toBe(plateSceneSignature(a as never, 'p1'));
 	});
 });

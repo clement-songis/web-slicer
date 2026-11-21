@@ -41,6 +41,8 @@
 	import AppSidebar from '$lib/nav/AppSidebar.svelte';
 	import Dialog from '$lib/ui/Dialog.svelte';
 	import PrinterHostFields from '$lib/printers/PrinterHostFields.svelte';
+	import UploadQueue from '$lib/printers/UploadQueue.svelte';
+	import { hostUrlError } from '$lib/printers/send';
 	import {
 		emptyHostForm,
 		hasLiveControls,
@@ -114,7 +116,8 @@
 			}
 			return saved.id;
 		} catch (e) {
-			connectError = e instanceof ApiError ? e.message : tr('Could not save');
+			// Lot 42 M1 : refus de l'adresse par le serveur (422 details.reason) traduit.
+			connectError = hostUrlError(e) ?? (e instanceof ApiError ? e.message : tr('Could not save'));
 			return null;
 		}
 	}
@@ -232,8 +235,12 @@
 	});
 
 	function fail(e: unknown, fallback: string) {
-		error = e instanceof ApiError ? e.message : fallback;
+		error = hostUrlError(e) ?? (e instanceof ApiError ? e.message : fallback);
 	}
+
+	// Lot 42 M3 : file d'envoi (Orca « Print host upload queue »), toutes les
+	// imprimantes ou une seule.
+	let queueFor = $state<PrinterResponse | 'all' | null>(null);
 
 	/** Nom par défaut : hôte de l'URL Moonraker, sinon libellé générique. */
 	function defaultName(rawUrl: string): string {
@@ -432,10 +439,20 @@
 			<section class="flex flex-col gap-3" aria-label={$t('Added printers')}>
 				<div class="flex items-center justify-between">
 					<h2 class="ws-section-title">{$t('Added ({n})', { n: printers.length })}</h2>
-					<button type="button" class="ws-btn ws-btn-sm ws-btn-ghost" onclick={reload}>
-						<IconRefresh class="h-3.5 w-3.5" aria-hidden="true" />
-						{$t('Refresh')}
-					</button>
+					<div class="flex gap-1">
+						<button
+							type="button"
+							class="ws-btn ws-btn-sm ws-btn-ghost"
+							data-testid="printers-upload-queue"
+							onclick={() => (queueFor = 'all')}
+						>
+							{$t('Print host upload queue')}
+						</button>
+						<button type="button" class="ws-btn ws-btn-sm ws-btn-ghost" onclick={reload}>
+							<IconRefresh class="h-3.5 w-3.5" aria-hidden="true" />
+							{$t('Refresh')}
+						</button>
+					</div>
 				</div>
 
 				{#if creating}
@@ -594,6 +611,14 @@
 										>{$t('No Moonraker URL or other host: settings and slicing only.')}</span
 									>
 								{/if}
+								<button
+									type="button"
+									class="ws-btn ws-btn-sm ws-btn-ghost"
+									data-testid="printer-uploads"
+									onclick={() => (queueFor = printer)}
+								>
+									{$t('Uploads')}
+								</button>
 								<!-- Commandes d'impression : seulement quand l'état est connu
 								     (au lieu de trois boutons grisés en permanence). -->
 								{#if st && hasLiveControls(printer)}
@@ -731,6 +756,13 @@
 		>
 	{/snippet}
 </Dialog>
+
+<UploadQueue
+	open={queueFor !== null}
+	printerId={queueFor && queueFor !== 'all' ? queueFor.id : null}
+	printerName={queueFor && queueFor !== 'all' ? queueFor.name : null}
+	onclose={() => (queueFor = null)}
+/>
 
 <!-- Réglages complets d'une imprimante (dialogue réutilisé de l'éditeur). -->
 <PresetSettingsDialog

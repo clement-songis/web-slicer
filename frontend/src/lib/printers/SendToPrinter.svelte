@@ -9,16 +9,27 @@
 	import {
 		getHostPrinters,
 		getPrinterStorages,
+		getUploadName,
 		listPrinters,
 		updatePrinter,
 		uploadToPrinter,
 		type UploadSlicedResponse
 	} from '$lib/api/printers';
+	import UploadQueue from './UploadQueue.svelte';
+	import {
+		joinUploadName,
+		uploadNameErrorReason,
+		uploadNameProblem,
+		uploadNameReasonMessage,
+		uploadNameStem
+	} from './uploads';
 	import type { PrinterResponse } from '$lib/api/types';
 	import {
 		normalizeMoonrakerUrl,
 		printerOptionLabel,
 		connectionHint,
+		hostUrlError,
+		isPrinterNotConnected,
 		sendChoices,
 		sendErrorMessage,
 		sendSuccessMessage
@@ -38,7 +49,9 @@
 			printerId: string,
 			startNow: boolean,
 			progress: (message: string) => void,
-			queue?: boolean
+			queue?: boolean,
+			/** Nom choisi (base commune des plateaux, lot 42 M2). */
+			filename?: string
 		) => Promise<UploadSlicedResponse>;
 	}
 
@@ -62,7 +75,11 @@
 	// Imprimante choisie sans URL Moonraker (ex. celle créée à l'inscription) :
 	// l'URL se saisit ici, sans quitter l'éditeur (Orca : bouton de connexion
 	// à côté du choix d'imprimante, Plater.cpp `m_printer_connect`).
-	const needsUrl = $derived(!!selected && !selected.moonraker_url?.trim());
+	// Audit 41 M1 : « Modifier l'URL » rouvre le champ pour l'imprimante choisie.
+	let editingUrl = $state<string | null>(null);
+	const needsUrl = $derived(
+		!!selected && (!selected.moonraker_url?.trim() || editingUrl === selected.id)
+	);
 	// Destination sur l'hôte (Orca PrintHostSendDialog : stockage PrusaLink /
 	// PrusaConnect, groupe Repetier), chargée à la sélection de l'imprimante.
 	let storages = $state<{ kind: string; items: { path: string; name: string }[] } | null>(null);
@@ -132,6 +149,81 @@
 		}
 	}
 
+	// Lot 42 M2 — nom du fichier envoyé (Orca PrintHostSendDialog : nom
+	// proposé pré-rempli et modifiable, extension imposée affichée à part).
+	// Pré-rempli par POST …/upload-name, validé en direct (contrôle local
+	// immédiat puis serveur), transmis dans `filename`. Plusieurs plateaux :
+	// base commune (suffixes _2, _3… côté serveur) ; vide = noms proposés.
+	let nameStem = $state('');
+	let nameExt = $state('.gcode');
+	let nameEdited = $state(false);
+	let nameServerReason = $state<string | null>(null);
+	let nameFor = '';
+	let nameTimer: ReturnType<typeof setTimeout> | undefined;
+	$effect(() => {
+		const p = selected;
+		const g = gcodeId;
+		const key = open && p && p.moonraker_url?.trim() && !needsUrl ? `${p.id}:${g ?? ''}` : '';
+		if (key === nameFor) return;
+		nameFor = key;
+		nameServerReason = null;
+		if (!key || !p || !g) return;
+		void getUploadName(p.id, { gcode_id: g })
+			.then((res) => {
+				if (nameFor !== key) return;
+				nameExt = res.extension || '.gcode';
+				if (!nameEdited) nameStem = uploadNameStem(res.filename, nameExt);
+			})
+			.catch(() => {
+				// Nom proposé indisponible : champ vide = nom proposé par le serveur.
+			});
+	});
+	/** Raison de refus affichée (contrôle local d'abord, sinon verdict serveur). */
+	const nameReason = $derived.by(() => {
+		if (!nameEdited && !nameServerReason) return null;
+		if (scope === 'all' && !nameStem.trim()) return null;
+		return uploadNameProblem(nameStem, nameExt) ?? nameServerReason;
+	});
+	function onNameInput() {
+		nameEdited = true;
+		nameServerReason = null;
+		clearTimeout(nameTimer);
+		const p = selected;
+		const g = gcodeId;
+		if (!p || !g || uploadNameProblem(nameStem, nameExt)) return;
+		const value = joinUploadName(nameStem, nameExt);
+		nameTimer = setTimeout(() => {
+			void getUploadName(p.id, { gcode_id: g, filename: value })
+				.then(() => {
+					if (joinUploadName(nameStem, nameExt) === value) nameServerReason = null;
+				})
+				.catch((e) => {
+					const reason = uploadNameErrorReason(e);
+					if (reason !== null && joinUploadName(nameStem, nameExt) === value)
+						nameServerReason = reason;
+				});
+		}, 250);
+	}
+	/** Nom transmis (`undefined` = nom proposé par le serveur). */
+	const chosenName = $derived(nameStem.trim() ? joinUploadName(nameStem, nameExt) : undefined);
+
+	// Lot 42 M3 — file d'envoi (Orca « Print host upload queue »), ouverte
+	// après un envoi avec la ou les lignes correspondantes en évidence.
+	let queueOpen = $state(false);
+	let queuePrinter = $state<PrinterResponse | null>(null);
+	let lastUploadIds = $state<string[]>([]);
+	function showQueue() {
+		queuePrinter = selected ?? null;
+		queueOpen = true;
+	}
+	/** 409 printer_not_connected : adresse enregistrée inutilisable → la redemander. */
+	function askAddress(e: unknown) {
+		if (!selected) return;
+		editingUrl = selected.id;
+		urlDraft = selected.moonraker_url ?? '';
+		urlError = hostUrlError(e);
+	}
+
 	let urlDraft = $state('');
 	let savingUrl = $state(false);
 	let urlError = $state<string | null>(null);
@@ -154,6 +246,7 @@
 			targets = targets.map((p) => (p.id === saved.id ? saved : p));
 			printerId = saved.id;
 			urlDraft = '';
+			editingUrl = null;
 		} catch (e) {
 			urlError = sendErrorMessage(e, selected.name);
 		} finally {
@@ -168,6 +261,10 @@
 		progressMessage = null;
 		success = null;
 		error = null;
+		nameEdited = false;
+		nameServerReason = null;
+		nameFor = '';
+		lastUploadIds = [];
 		loading = true;
 		try {
 			targets = sendChoices(await listPrinters());
@@ -202,14 +299,24 @@
 			await saveUrl();
 			if (needsUrl) return;
 		}
+		if (nameReason) return;
 		sending = true;
 		lastQueued = queue;
 		success = null;
 		error = null;
+		lastUploadIds = [];
 		const start = queue ? false : startNow;
+		const filename = chosenName;
 		try {
 			if (scope === 'all' && sendAll) {
-				const res = await sendAll(selected.id, start, (m) => (progressMessage = m), queue);
+				const res = await sendAll(
+					selected.id,
+					start,
+					(m) => (progressMessage = m),
+					queue,
+					filename
+				);
+				lastUploadIds = res.files.map((f) => f.upload_id).filter((id): id is string => !!id);
 				success =
 					res.files.length === 1
 						? sendSuccessMessage(selected.name, res.files[0], queue)
@@ -228,11 +335,23 @@
 					gcode_id: gcodeId,
 					start_now: start,
 					...(queue ? { queue: true } : {}),
-					...(storage ? { storage } : {})
+					...(storage ? { storage } : {}),
+					...(filename ? { filename } : {})
 				});
+				lastUploadIds = result.upload_id ? [result.upload_id] : [];
 				success = sendSuccessMessage(selected.name, result, queue);
 			}
 		} catch (e) {
+			const reason = uploadNameErrorReason(e);
+			if (reason !== null) {
+				nameEdited = true;
+				nameServerReason = reason;
+			}
+			if (isPrinterNotConnected(e)) {
+				// Lot 42 M1 : adresse enregistrée inutilisable → saisie proposée.
+				askAddress(e);
+				return;
+			}
 			error = sendErrorMessage(e, selected.name);
 		} finally {
 			sending = false;
@@ -346,6 +465,17 @@
 							: meta.id === 'flashair'
 								? $t('file upload only')
 								: $t('upload and start, without live monitoring')}
+						·
+						<button
+							type="button"
+							class="underline"
+							data-testid="send-edit-url"
+							onclick={() => {
+								editingUrl = selected?.id ?? null;
+								urlDraft = selected?.moonraker_url ?? '';
+								urlError = null;
+							}}>{$t('Change URL')}</button
+						>
 					</p>
 				{/if}
 				{#if selected && !needsUrl && meta.printerSlug}
@@ -424,14 +554,28 @@
 									>{$t('Printers page')}</a
 								>.</span
 							>
-							<button
-								type="submit"
-								class="ws-btn ws-btn-sm ws-btn-secondary shrink-0"
-								disabled={savingUrl || !urlDraft.trim()}
-								data-testid="send-save-url"
-							>
-								{savingUrl ? $t('Saving…') : $t('Save URL')}
-							</button>
+							<div class="flex gap-2">
+								{#if editingUrl && editingUrl === selected?.id}
+									<button
+										type="button"
+										class="ws-btn ws-btn-sm ws-btn-ghost shrink-0"
+										data-testid="send-edit-url-cancel"
+										onclick={() => {
+											editingUrl = null;
+											urlDraft = '';
+											urlError = null;
+										}}>{$t('Cancel')}</button
+									>
+								{/if}
+								<button
+									type="submit"
+									class="ws-btn ws-btn-sm ws-btn-secondary shrink-0"
+									disabled={savingUrl || !urlDraft.trim()}
+									data-testid="send-save-url"
+								>
+									{savingUrl ? $t('Saving…') : $t('Save URL')}
+								</button>
+							</div>
 						</div>
 						{#if selected && hintFor(selected)}
 							<p class="text-xs text-warning-text" data-testid="send-connection-hint">
@@ -469,6 +613,51 @@
 						</select>
 					</label>
 				{/if}
+				{#if selected && !needsUrl}
+					<!-- Lot 42 M2 : nom du fichier envoyé (Orca PrintHostSendDialog). -->
+					<div class="flex flex-col gap-1 text-sm">
+						<label class="text-content-muted" for="send-filename-input"
+							>{$t('Upload to Printer Host with the following filename:')}</label
+						>
+						<div class="flex items-stretch">
+							<input
+								id="send-filename-input"
+								class="ws-field min-w-0 flex-1 rounded-r-none"
+								bind:value={nameStem}
+								oninput={onNameInput}
+								disabled={sending}
+								spellcheck="false"
+								autocomplete="off"
+								placeholder={scope === 'all' ? $t('Proposed names') : ''}
+								aria-invalid={!!nameReason}
+								aria-describedby={nameReason ? 'send-filename-error' : undefined}
+								data-testid="send-filename"
+							/>
+							<span
+								class="flex items-center rounded-r-md border border-l-0 border-border bg-surface-sunken px-2 text-xs text-content-muted"
+								title={$t('Extension required by the printer host')}
+								data-testid="send-filename-ext">{nameExt}</span
+							>
+						</div>
+						{#if nameReason}
+							<p
+								id="send-filename-error"
+								class="text-xs text-danger-text"
+								role="alert"
+								data-testid="send-filename-error"
+								data-reason={nameReason}
+							>
+								{uploadNameReasonMessage(nameReason)}
+							</p>
+						{:else if scope === 'all'}
+							<p class="text-xs text-content-subtle" data-testid="send-filename-hint">
+								{$t(
+									'Common base name for all plates (suffixes _2, _3… when several files are sent); empty = proposed names.'
+								)}
+							</p>
+						{/if}
+					</div>
+				{/if}
 				<label class="flex items-center gap-2 text-sm">
 					<input
 						type="checkbox"
@@ -492,6 +681,12 @@
 					data-testid="send-success"
 				>
 					{success}
+					<button
+						type="button"
+						class="ml-1 underline"
+						data-testid="send-show-queue"
+						onclick={showQueue}>{$t('Print host upload queue')}</button
+					>
 				</p>
 			{/if}
 			{#if error}
@@ -501,6 +696,14 @@
 					data-testid="send-error"
 				>
 					{error}
+					{#if selected?.moonraker_url}
+						<button
+							type="button"
+							class="ml-1 underline"
+							data-testid="send-error-queue"
+							onclick={showQueue}>{$t('Print host upload queue')}</button
+						>
+					{/if}
 				</p>
 			{/if}
 
@@ -533,6 +736,7 @@
 					data-testid="send-confirm"
 					disabled={!selected ||
 						(needsUrl && !urlDraft.trim()) ||
+						!!nameReason ||
 						(scope === 'plate' && !gcodeId) ||
 						sending ||
 						savingUrl ||
@@ -547,3 +751,11 @@
 		</div>
 	</div>
 {/if}
+
+<UploadQueue
+	open={queueOpen}
+	printerId={queuePrinter?.id ?? null}
+	printerName={queuePrinter?.name ?? null}
+	highlight={lastUploadIds}
+	onclose={() => (queueOpen = false)}
+/>

@@ -39,7 +39,7 @@ test('texte en relief avec un objet sélectionné : pièce posée sur l’objet 
 	});
 	// Toujours un seul objet ; le texte est une pièce de cet objet.
 	await expect(page.getByTestId('object-row')).toHaveCount(1);
-	await expect(page.getByTestId('object-volume').filter({ hasText: 'Texte « Web »' })).toHaveCount(
+	await expect(page.getByTestId('object-volume').filter({ has: page.getByRole('button', { name: 'Web', exact: true }) })).toHaveCount(
 		1
 	);
 });

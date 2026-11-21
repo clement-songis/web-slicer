@@ -6,10 +6,13 @@ import type {
 	PrinterCatalogVendor,
 	PrinterResponse,
 	PrinterStatusResponse,
+	PrinterUploadEntry,
 	PrinterUploadResponse,
 	SavePrinterRequest,
 	TestPrinterResponse,
 	UploadToPrinterRequest,
+	UploadNameRequest,
+	UploadNameResponse,
 	BonjourReply,
 	ExcludeObjectStatus
 } from './types';
@@ -53,8 +56,32 @@ export interface UploadSlicedResponse {
 /** Envoie tous les plateaux tranchés d'un projet (jobs réussis de `POST /slice`). */
 export const uploadSliced = (
 	id: string,
-	body: { project_id: string; job_ids: string[]; start_now: boolean; queue?: boolean }
+	body: {
+		project_id: string;
+		job_ids: string[];
+		start_now: boolean;
+		queue?: boolean;
+		/** Nom choisi (base commune des plateaux, lot 42 M2) ; absent = noms proposés. */
+		filename?: string;
+	}
 ) => api.post<UploadSlicedResponse>(`/printers/${id}/upload-sliced`, body);
+
+/** Nom proposé pour un envoi et validation du nom saisi, sans envoyer (lot 42 M2,
+ *  Orca PrintHostSendDialog : nom pré-rempli et modifiable). */
+export const getUploadName = (id: string, body: UploadNameRequest) =>
+	api.post<UploadNameResponse>(`/printers/${id}/upload-name`, body);
+
+/** Historique des envois d'une imprimante, plus récents d'abord (lot 42 M3,
+ *  Orca « Print host upload queue »). */
+export const listPrinterUploads = (id: string, limit = 50) =>
+	api.get<PrinterUploadEntry[]>(`/printers/${id}/uploads?limit=${limit}`);
+
+/** Historique des envois de toutes les imprimantes du compte (`printer_name`). */
+export const listAllUploads = (limit = 50) =>
+	api.get<PrinterUploadEntry[]>(`/printer-uploads?limit=${limit}`);
+
+/** Vide l'historique des envois d'une imprimante (204). */
+export const clearPrinterUploads = (id: string) => api.del<void>(`/printers/${id}/uploads`);
 
 /** Met l'impression en pause. */
 export const pausePrinter = (id: string) => api.post<void>(`/printers/${id}/pause`);

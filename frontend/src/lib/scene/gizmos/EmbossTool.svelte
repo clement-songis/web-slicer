@@ -131,6 +131,7 @@
 					if (file) {
 						params.svg = await file.text();
 						svgFileName = file.name;
+						params.svgFileName = file.name;
 					}
 				}}
 			/>

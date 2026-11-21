@@ -664,7 +664,10 @@ test("Assembly : point à point puis face à face rapprochent l’objet mobile @
     "Assemblage appliqué",
   );
   const faced = await save(page, id);
-  // Faces en contact : centres à 20 mm (cubes de 20 mm), B retourné.
-  expect(dist(faced)).toBeGreaterThan(19);
-  expect(dist(faced)).toBeLessThan(21.5);
+  // Faces en contact puis reposée sur le plateau (auto_drop d'Orca, GLCanvas3D
+  // do_rotate/do_move) : B rejoint A et est retourné.
+  expect(dist(faced)).toBeLessThan(dist(pointed) + 1);
+  expect(faced.scene.objects[1].transform.rotation).not.toEqual(
+    pointed.scene.objects[1].transform.rotation,
+  );
 });

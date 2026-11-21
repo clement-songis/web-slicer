@@ -24,6 +24,8 @@ export interface MenuItem {
 	 * reste la clé de parité ciblée par les tests) et exposée en `aria-description`.
 	 */
 	hint?: string;
+	/** Libellé de données (nom de projet) : affiché tel quel, jamais traduit. */
+	raw?: boolean;
 }
 
 /** Séparateur visuel entre groupes d'items. */
@@ -38,8 +40,12 @@ export interface Menu {
 const fileMenu: Menu = {
 	title: 'File',
 	entries: [
-		{ label: 'New Project', shortcut: 'Ctrl+N', action: 'project.new' },
+		// Orca : Ctrl+N, réservé par le navigateur → Alt+N (audit 41 S1, exclusions.md).
+		{ label: 'New Project', shortcut: 'Alt+N', action: 'project.new' },
 		{ label: 'Open Project…', shortcut: 'Ctrl+O', action: 'project.open' },
+		// Audit 41 P2 : sous-menu « Recent files » d'Orca (MainFrame.cpp:2703,
+		// max_recent_count) ; rempli à l'ouverture du menu (withRecentProjects).
+		{ label: 'Recent files', action: 'file.recent', items: [] },
 		{ label: 'Save Project', shortcut: 'Ctrl+S', action: 'project.save' },
 		{ label: 'Save Project as…', shortcut: 'Ctrl+Shift+S', action: 'project.saveAs' },
 		'separator',
@@ -236,6 +242,35 @@ const helpMenu: Menu = {
 
 /** Barre de menus principale (Annexe B §B.2, adaptée au navigateur). */
 export const MAIN_MENUS: Menu[] = [fileMenu, editMenu, viewMenu, calibrationMenu, helpMenu];
+
+/** Préfixe des actions « ouvrir le projet récent <id> ». */
+export const RECENT_ACTION = 'project.openRecent:';
+
+/**
+ * Menus avec le sous-menu « Recent files » rempli : projets les plus récemment
+ * modifiés (hors projet courant), bornés à `max` (Orca max_recent_count) ;
+ * liste vide → entrée « No recent projects » sans effet.
+ */
+export function withRecentProjects(
+	menus: readonly Menu[],
+	recent: readonly { id: string; name: string }[],
+	max: number
+): Menu[] {
+	const items: MenuItem[] = recent
+		.slice(0, Math.max(0, max))
+		.map((p) => ({ label: p.name, action: RECENT_ACTION + p.id, raw: true }));
+	if (items.length === 0) items.push({ label: 'No recent projects', action: 'file.recent.none' });
+	return menus.map((menu) =>
+		menu.entries.some((e) => e !== 'separator' && e.action === 'file.recent')
+			? {
+					...menu,
+					entries: menu.entries.map((e) =>
+						e !== 'separator' && e.action === 'file.recent' ? { ...e, items } : e
+					)
+				}
+			: menu
+	);
+}
 
 /** Aplati les libellés d'un menu (items + sous-items) — utile aux tests. */
 export function menuLabels(menu: Menu): string[] {

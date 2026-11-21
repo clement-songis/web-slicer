@@ -218,7 +218,7 @@
 					<label class="flex items-center justify-between gap-2 text-sm">
 						<span>{$t('Test model')}</span>
 						<select class="{FIELD} w-36" data-testid="calib-test-model" bind:value={testModel}>
-							{#each testModels(kind) as m (m.id)}<option value={m.id}>{m.label}</option>{/each}
+							{#each testModels(kind) as m (m.id)}<option value={m.id}>{$t(m.label)}</option>{/each}
 						</select>
 					</label>
 				{/if}
@@ -226,7 +226,9 @@
 					<label class="flex items-center justify-between gap-2 text-sm">
 						<span>{$t('Shaper type')}</span>
 						<select class="{FIELD} w-36" data-testid="calib-shaper-type" bind:value={shaperType}>
-							{#each SHAPER_TYPES as s (s)}<option value={s}>{s}</option>{/each}
+							{#each SHAPER_TYPES as s (s)}<option value={s}
+									>{s === 'Default' ? $t('Default') : s}</option
+								>{/each}
 						</select>
 					</label>
 				{/if}

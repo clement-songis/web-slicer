@@ -57,6 +57,7 @@
 		makeBatch,
 		plateSceneSignature,
 		resultFor,
+		stableStringify,
 		staleResults,
 		type PlateResults,
 		type SliceBatch
@@ -112,6 +113,13 @@
 	import { getJob, listJobs } from '$lib/api/jobs';
 	import { EarlyJobEvents } from '$lib/editor/early-job-events';
 	import { jobAsEvent, planResume, resumedProgress } from '$lib/editor/resume-job';
+	import {
+		localSignatureVerdict,
+		rememberSliceSignature,
+		serverJobFreshness,
+		serverSliceFreshness,
+		shouldRestore
+	} from '$lib/editor/slice-signature-store';
 	import { connection } from '$lib/api/connectivity';
 	import type { JobResponse, SliceRequest } from '$lib/api/types';
 	import type { Projection } from '$lib/scene/camera';
@@ -161,7 +169,8 @@
 		type NozzleFlow
 	} from '$lib/settings/nozzle-flow';
 	import DevicePanel from '$lib/printers/DevicePanel.svelte';
-	import { MAIN_MENUS } from '$lib/menus/menus';
+	import { MAIN_MENUS, RECENT_ACTION, withRecentProjects } from '$lib/menus/menus';
+	import { sortByUpdated } from '$lib/library/library';
 	import { draftStore, type DraftRecord } from '$lib/stores/draft';
 	import {
 		ObjectList,
@@ -197,6 +206,8 @@
 		TrianglePainting,
 		trianglesInRadius,
 		measurePoints,
+		measureFaces,
+		type MeasureFace,
 		type MeshPick,
 		type PaintChannel,
 		ObjectTree,
@@ -258,6 +269,8 @@
 		worldTriangleNormal
 	} from '$lib/scene/tools/assembly-align';
 	import { restingZ } from '$lib/scene/mesh';
+	import { autoDrop } from '$lib/scene/auto-drop';
+	import { svgVolumeName, textVolumeName } from '$lib/scene/gizmos/emboss-names';
 	import { fitScaleFactor, mirrorScale, scaleBy, worldSize } from '$lib/scene/transform-ops';
 	import { sectionNormal, sectionPlane, stepSectionRatio } from '$lib/scene/screen-select';
 	import {
@@ -665,6 +678,9 @@
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const volumeMeshRequests = new Set<string>();
 	let measuredPoints = $state<[number, number, number][]>([]);
+	// Audit 41 T2 : mode Face (Orca GLGizmoMeasure : plans → distance / angle).
+	let measureMode = $state<'point' | 'face'>('point');
+	let measuredFaces = $state<MeasureFace[]>([]);
 	// Repères 3D des outils (phase 26) : plan de l'outil Coupe, points de Mesure.
 	// Phase 28 : état de l'outil Coupe complet (plan incliné, connecteurs, queue
 	// d'aronde) partagé entre le panneau, la vue 3D et la requête serveur.
@@ -707,6 +723,15 @@
 	const measurement = $derived(
 		measuredPoints.length === 2 ? measurePoints(measuredPoints[0], measuredPoints[1]) : null
 	);
+	const featureMeasurement = $derived(
+		measureMode === 'face' && measuredFaces.length === 2
+			? measureFaces(measuredFaces[0], measuredFaces[1])
+			: null
+	);
+	function clearMeasure() {
+		measuredPoints = [];
+		measuredFaces = [];
+	}
 	// Vue d'assemblage : déplacement purement visuel, jamais persisté.
 	let assemblyExploded = $state(false);
 	let assemblyFactor = $state(0.5);
@@ -2051,15 +2076,25 @@
 		// Restaure le dernier résultat réussi du projet : quitter l'éditeur pour
 		// déclarer Moonraker ne doit pas désactiver l'export/envoi au retour.
 		void listJobs()
-			.then((jobs) => {
+			.then(async (jobs) => {
 				if (!alive || session.phase !== 'prepare' || session.gcodeId) return;
 				// Phase 32 : tranchage encore en cours (page rechargée pendant le
 				// tranchage) → reprise du suivi : progression, puis aperçu à la fin.
 				const plan = planResume(jobs, data.project.id);
 				if (plan?.kind === 'slicing') {
+					// Phase 42c : suivi repris seulement pour les jobs dont la signature
+					// (figée au lancement) est encore celle du plateau ; les autres sont
+					// ignorés (Préparer), comme un résultat périmé.
+					await editorReady;
+					await presetSwitches;
+					const followed: JobResponse[] = [];
+					for (const job of plan.jobs)
+						if (await resumeMatches(job, Number(job.plate_index))) followed.push(job);
+					if (!followed.length || !alive) return;
+					if (session.phase !== 'prepare' || session.gcodeId) return;
 					session = {
-						...startSlicing(plan.jobs.map((job) => job.id)),
-						progress: resumedProgress(plan.jobs)
+						...startSlicing(followed.map((job) => job.id)),
+						progress: resumedProgress(followed)
 					};
 					saveMessage = tr('Slicing in progress resumed after the page reload.');
 					// Fini entre la liste et l'abonnement : état relu une fois.
@@ -2068,6 +2103,17 @@
 				}
 				const latest = plan?.kind === 'result' ? plan.job : null;
 				if (!latest?.gcode_id) return;
+				// Audit 41 V1 : restauré seulement si le plateau n'a pas changé depuis
+				// le tranchage (signature B1 mémorisée par G-code) ; sinon Préparer,
+				// export / envoi désactivés (Orca ne rouvre jamais un résultat périmé).
+				await editorReady;
+				await presetSwitches;
+				const ownerId = plates.list()[Number(latest.plate_index)]?.id;
+				const signature = ownerId ? plateSliceSignature(ownerId) : null;
+				if (signature === null) return;
+				const fresh = await resumeMatches(latest, Number(latest.plate_index), signature);
+				if (!fresh || !alive || session.phase !== 'prepare' || session.gcodeId) return;
+				shownSliceSignature = { gcodeId: latest.gcode_id, signature };
 				session = {
 					...prepareSession(),
 					phase: 'preview',
@@ -3627,6 +3673,14 @@
 		ws = pick(ws, id, additive);
 	}
 
+	/**
+	 * Audit 41 R1 : « Nouveau plateau » sélectionne le plateau créé ; l'import
+	 * suivant y va (Orca Plater::priv::on_action_add_plate → select_plate).
+	 */
+	function addAndSelectPlate() {
+		selectPlate(plates.addPlate().id);
+	}
+
 	function selectPlate(id: string) {
 		if (!plates.get(id)) return;
 		plates.activeId = id;
@@ -3683,7 +3737,8 @@
 	/** Réglages lus par le tranchage : presets actifs + brouillon non enregistré. */
 	function sliceSettingsSignature(): string {
 		return (
-			JSON.stringify(serializeActivePresets(activePresets)) + JSON.stringify(currentDraft() ?? null)
+			stableStringify(serializeActivePresets(activePresets)) +
+			stableStringify(currentDraft() ?? null)
 		);
 	}
 	/** Signature de tranchage d'UN plateau (phase 40) : sa part de scène + réglages. */
@@ -3709,6 +3764,15 @@
 	//   coche ✓ tombent jusqu'au prochain tranchage.
 	/** Résultat affiché sans signature (restauré à l'ouverture) : référence prise à la première vérification. */
 	let shownSliceSignature: { gcodeId: string; signature: string } | null = null;
+	// Audit 41 V1 : signature de chaque G-code produit, relue à la réouverture.
+	$effect(() => {
+		const results = plateResults;
+		untrack(() => {
+			for (const r of Object.values(results))
+				if (r.gcodeId && r.signature !== null)
+					rememberSliceSignature(data.project.id, r.gcodeId, r.signature);
+		});
+	});
 	let freshnessTimer: ReturnType<typeof setTimeout> | undefined;
 	$effect(() => {
 		void currentSignature;
@@ -3867,8 +3931,18 @@
 	}
 
 	function selectTool(tool: EditorTool) {
+		// Audit 41 T4 : T / bouton Texte sur un texte (ou SVG) en relief existant →
+		// édition (Orca GLGizmoEmboss::on_set_state charge sa TextConfiguration).
+		// Outil déjà ouvert (création, ou édition d'un autre texte) : bascule sur
+		// l'édition du texte sélectionné au lieu de refermer l'outil.
+		if (
+			tool === 'emboss' &&
+			(tools.active !== 'emboss' || (selId !== null && embossEdit?.objectId !== selId)) &&
+			openEmbossEdit(selId)
+		)
+			return;
 		tools = setTool(tools, tool);
-		if (tools.active === 'measure') measuredPoints = [];
+		if (tools.active === 'measure') clearMeasure();
 		// Peinture : un objet de 20 mm sur un plateau de 350 mm est minuscule ;
 		// cadrer la sélection rend le pinceau utilisable dès l'ouverture.
 		if (tools.active && PAINT_TOOLS.has(tools.active)) frameSelection();
@@ -3936,6 +4010,10 @@
 				transform = { ...transform, scale: uniformCutScale(prev, transform.scale) };
 			}
 		}
+		// Audit 41 V2 : échelle / rotation (panneau, gizmo, miroir…) → reposé sur le
+		// plateau comme GLCanvas3D::do_scale / do_rotate (objet enfoncé laissé enfoncé).
+		const current = sceneObjects.find((o) => o.id === id);
+		if (current) transform = autoDrop(current.mesh, objectTransform(current), transform);
 		sceneObjects = sceneObjects.map((o) =>
 			o.id === id
 				? {
@@ -4065,6 +4143,9 @@
 	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const meshCache = new Map<string, SceneObject['mesh']>();
 	let historyRestores = $state(0);
+	// Audit 41 R2 : opération composée en cours (clone + arrangement) — une seule
+	// entrée d'historique à la fin (Orca : une entrée « Clone »).
+	let historyHold = $state(0);
 	let historyTimer: ReturnType<typeof setTimeout> | undefined;
 	// Geste de gizmo en cours (objet ou volume) : l'historique attend sa fin
 	// pour n'empiler qu'une étape, même si le glisser marque des pauses.
@@ -4094,7 +4175,11 @@
 
 	$effect(() => {
 		const snap = currentSnapshot();
-		const busy = historyRestores > 0 || gizmoDragging || imports.some((item) => isPending(item));
+		const busy =
+			historyRestores > 0 ||
+			historyHold > 0 ||
+			gizmoDragging ||
+			imports.some((item) => isPending(item));
 		clearTimeout(historyTimer);
 		if (busy) return;
 		historyTimer = setTimeout(() => {
@@ -4245,11 +4330,8 @@
 							params as PressureAdvanceParams,
 							(params as PressureAdvanceParams).method ?? 'tower'
 						);
-			const id = await createServerCalibration(
-				request,
-				serializeActivePresets(activePresets),
-				calibKind === 'temperature' ? 'Calibration température' : 'Calibration PA'
-			);
+			// Lot 42 K1 : projet nommé par le serveur (nom unique du modèle d'Orca).
+			const { id } = await createServerCalibration(request, serializeActivePresets(activePresets));
 			showCalibration = false;
 			// Navigation complète : même route projet, SvelteKit réutiliserait ce
 			// composant (onMount non rejoué) et garderait la scène du projet source.
@@ -4301,10 +4383,9 @@
 				flowCalibError = tr('Select a printer, a filament and a process.');
 				return;
 			}
-			const id = await createServerCalibration(
+			const { id } = await createServerCalibration(
 				flowRequest(pass, linear, pattern),
-				serializeActivePresets(activePresets),
-				`Calibration du débit (passe ${pass})`
+				serializeActivePresets(activePresets)
 			);
 			flowCalibOpen = false;
 			window.location.assign(resolve('/projects/[id]', { id }));
@@ -4336,10 +4417,9 @@
 			}
 			// Les 7 calibrations « mode moteur » (rétraction, VFA, débit max, motif
 			// PA, input shaping, virages) sont construites par le serveur (lot 14).
-			const id = await createServerCalibration(
+			const { id } = await createServerCalibration(
 				engineRequest(engineCalibKind, params),
-				serializeActivePresets(activePresets),
-				`Calibration ${engineCalibKind}`
+				serializeActivePresets(activePresets)
 			);
 			engineCalibOpen = false;
 			window.location.assign(resolve('/projects/[id]', { id }));
@@ -4380,7 +4460,8 @@
 					? await embossSvg(data.project.id, {
 							svg: params.svg,
 							width_mm: params.svgWidth,
-							depth_mm: depth
+							depth_mm: depth,
+							...(params.svgFileName ? { file_name: params.svgFileName } : {})
 						})
 					: await embossText(data.project.id, {
 							text: params.text,
@@ -4432,7 +4513,7 @@
 					number
 				];
 				const name =
-					params.source === 'svg' ? 'Forme SVG' : `Texte « ${params.text.trim().slice(0, 24)} »`;
+					params.source === 'svg' ? svgVolumeName(params.svgFileName) : textVolumeName(params.text);
 				const volume: SceneVolume = {
 					id: crypto.randomUUID(),
 					type: 'part',
@@ -4458,17 +4539,38 @@
 			}
 			const ids = await applyMeshOpParts(res, null, []);
 			// Phase 28 : paramètres ré-éditables portés par l'objet (objects[].emboss).
+			// Audit 41 V4 : objet nommé d'après le texte / le fichier SVG (Orca).
+			const objectName =
+				params.source === 'svg' ? svgVolumeName(params.svgFileName) : textVolumeName(params.text);
 			ids.forEach((id, i) => {
 				const node = tree.get(id);
 				const e = res.parts[i]?.emboss;
 				if (node && e) node.emboss = e;
+				tree.rename(id, objectName);
 			});
-			// Posé au centre du plateau (le maillage part de l'origine).
-			sceneObjects = sceneObjects.map((o) =>
-				ids.includes(o.id)
-					? { ...o, position: [bed.center.x, bed.center.y, o.position?.[2] ?? 0] }
-					: o
-			);
+			// Audit 41 T3 : posé dans la cellule libre la plus proche du centre du
+			// plateau (comme un import), jamais dans un objet existant.
+			const taken = activeSceneObjects
+				.filter((o) => !ids.includes(o.id))
+				.map((o) => objectFootprint(o, [bed.center.x, bed.center.y]));
+			const spots: Record<string, [number, number]> = {};
+			for (const id of ids) {
+				const o = sceneObjects.find((s) => s.id === id);
+				if (!o) continue;
+				const fp = objectFootprint({ ...o, position: undefined }, [0, 0]);
+				const [x, y] = nearestFreeCell(fp, taken, {
+					x: bed.origin.x,
+					y: bed.origin.y,
+					width: bed.width,
+					depth: bed.depth
+				});
+				taken.push({ ...fp, x, y });
+				spots[id] = [x, y];
+			}
+			sceneObjects = sceneObjects.map((o) => {
+				const spot = spots[o.id];
+				return spot ? { ...o, position: [spot[0], spot[1], o.position?.[2] ?? 0] } : o;
+			});
 			saveMessage = tr('{label}: object created.', { label });
 		} catch (e) {
 			saveMessage = tr('{label}: {msg}', {
@@ -4562,10 +4664,7 @@
 										v.offset[1],
 										Math.round((base + size[2] / 2) * 10000) / 10000
 									],
-									name:
-										params.source === 'svg'
-											? v.name
-											: 'Texte « ' + params.text.trim().slice(0, 24) + ' »',
+									name: params.source === 'svg' ? v.name : textVolumeName(params.text),
 									...(part.emboss ? { emboss: part.emboss } : {})
 								}
 							: v
@@ -4820,6 +4919,17 @@
 			return;
 		}
 		if (tools.active === 'measure') {
+			if (measureMode === 'face' && pick.triangle !== null) {
+				const t = objectTransform(object);
+				const face: MeasureFace = {
+					point: worldFaceCenter(object.mesh, pick.triangle, t.position, t.rotation, t.scale),
+					normal: worldTriangleNormal(object.mesh, pick.triangle, t.rotation, t.scale)
+				};
+				measuredFaces = [...measuredFaces, face].slice(-2);
+				measuredPoints = measuredFaces.map((f) => f.point);
+				return;
+			}
+			measuredFaces = [];
 			measuredPoints = [...measuredPoints, pick.point].slice(-2);
 			return;
 		}
@@ -5199,7 +5309,7 @@
 				addMenu = { open: true, x: Math.max(12, window.innerWidth / 2 - 380), y: 96 };
 				break;
 			case 'addplate':
-				plates.addPlate();
+				addAndSelectPlate();
 				break;
 			case 'arrange':
 				// Orca : le bouton Arrange ouvre le menu d'options (toggable),
@@ -6114,8 +6224,8 @@
 		const [cx, cy] = clampTowerPosition(x, y, sceneWipeTower.size, bed, sceneWipeTower.brim);
 		projectFilament = setTowerPosition(projectFilament, activePlateIndex, cx, cy, towerDefault);
 		saveMessage = tr('Prime tower moved to X {x} · Y {y} mm.', {
-			x: cx.toFixed(1),
-			y: cy.toFixed(1)
+			x: fmtNum(cx, 1),
+			y: fmtNum(cy, 1)
 		});
 	}
 
@@ -6874,7 +6984,10 @@
 			duplicateObject(id);
 		}
 		// Orca auto_arrange : « Arranger automatiquement après clonage ».
-		if (currentPreferences().autoArrange) void arrangeActive();
+		if (currentPreferences().autoArrange) {
+			historyHold++;
+			void Promise.resolve(arrangeActive()).finally(() => historyHold--);
+		}
 	}
 	function selectAllObjects() {
 		ws = setSelection(ws, new Set(activeSceneObjects.map((o) => o.id)));
@@ -6903,6 +7016,13 @@
 	// Raccourcis d'éditeur sans entrée de menu (groupes Plater / Objects List
 	// d'Orca). Renvoie `false` si l'action relève du dispatcher de menus.
 	function dispatchEditorShortcut(action: string): boolean {
+		// Audit 41 T1 : Suppr dans l'outil Mesure recommence la mesure, sans
+		// supprimer l'objet (Orca GLGizmoMeasure : « Delete — Restart selection »).
+		if (action === 'edit.deleteSelected' && tools.active === 'measure') {
+			measuredPoints = [];
+			measuredFaces = [];
+			return true;
+		}
 		const extruder = extruderFromAction(action);
 		if (extruder !== null) {
 			// Orca ignore un numéro au-delà des filaments du projet.
@@ -7920,7 +8040,8 @@
 		printerId: string,
 		startNow: boolean,
 		progress: (message: string) => void,
-		queue = false
+		queue = false,
+		filename?: string
 	) {
 		const { succeeded, missed, firstError } = await sliceAllPlatesJobs(tr('Sending'), progress);
 		if (succeeded.length === 0)
@@ -7940,7 +8061,9 @@
 			project_id: data.project.id,
 			job_ids: succeeded.map((j) => j.id),
 			start_now: startNow,
-			...(queue ? { queue: true } : {})
+			...(queue ? { queue: true } : {}),
+			// Lot 42 M2 : nom choisi dans la boîte d'envoi (base commune des plateaux).
+			...(filename ? { filename } : {})
 		});
 	}
 
@@ -8302,7 +8425,29 @@
 
 	// Dispatch de la barre de menus (T107 : menu Fichier). Édition/Vue/Aide sont
 	// câblés par T108/T109/T111 ; les items sans objet renvoient un message.
+	// Audit 41 P2 : Fichier › Fichiers récents (Orca MainFrame « Recent files ») —
+	// projets du compte les plus récemment modifiés, relus à l'ouverture du menu.
+	let recentProjects = $state<{ id: string; name: string }[]>([]);
+	async function refreshRecentProjects() {
+		try {
+			recentProjects = sortByUpdated(await listProjects())
+				.filter((p) => p.id !== data.project.id)
+				.map((p) => ({ id: p.id, name: p.name }));
+		} catch {
+			// Liste de confort : le menu garde la dernière liste connue.
+		}
+	}
+	const mainMenus = $derived(
+		withRecentProjects(MAIN_MENUS, recentProjects, $appPreferences.maxRecent)
+	);
+
 	async function onMenuAction(action: string) {
+		if (action.startsWith(RECENT_ACTION)) {
+			const id = action.slice(RECENT_ACTION.length);
+			window.location.assign(resolve('/projects/[id]', { id }));
+			return;
+		}
+		if (action === 'file.recent.none') return;
 		switch (action) {
 			// — Fichier —
 			case 'project.new':
@@ -8584,6 +8729,50 @@
 	// (projectConfigSaved).
 	const SLICE_CONFLICT = 'Conflict: the project was modified elsewhere. Reload before slicing.';
 	async function requestSlice(
+		req: ReturnType<typeof sliceRequestWithDraft>
+	): Promise<Awaited<ReturnType<typeof sliceProject>>> {
+		// Phase 42c : signature de chaque plateau au lancement, mémorisée sous l'id
+		// du job — un rechargement pendant le tranchage (G-code pas encore produit,
+		// résultat jamais reçu par cet onglet) la retrouve à la réouverture.
+		const launch = plateSliceSignatures();
+		const res = await sendSliceRequest(req);
+		for (const job of res.jobs) {
+			const plateId = plates.list()[Number(job.plate_index)]?.id;
+			if (plateId && launch[plateId] !== undefined)
+				rememberSliceSignature(data.project.id, job.id, launch[plateId]);
+		}
+		return res;
+	}
+	/**
+	 * Job (en cours ou réussi) encore à jour pour le plateau `plateIndex` (phase
+	 * 42c, audit 41 / lot 42 V1) : verdict du serveur (signature du projet
+	 * **enregistré**) s'il s'applique, sinon empreinte mémorisée par ce navigateur
+	 * (sous l'id du G-code, ou du job depuis son lancement). Lot 42 V1 : depuis un
+	 * autre navigateur (aucune empreinte locale), le verdict serveur suffit ; une
+	 * empreinte locale différente (brouillon non enregistré) l'emporte sur un
+	 * « à jour » serveur. Modèles orphelins restaurés (import tranché sans être
+	 * enregistré) : la scène affichée n'est pas celle du serveur, son verdict ne
+	 * s'applique pas — seule l'empreinte locale de la scène affichée décide.
+	 */
+	async function resumeMatches(
+		job: JobResponse,
+		plateIndex: number,
+		signature: string | null = null
+	): Promise<boolean> {
+		const ownerId = plates.list()[plateIndex]?.id;
+		const current = signature ?? (ownerId ? plateSliceSignature(ownerId) : null);
+		if (current === null) return false;
+		const server = restoredOrphans
+			? null
+			: job.status === 'succeeded' && job.gcode_id
+				? await serverSliceFreshness(data.project.id, plateIndex, job.gcode_id)
+				: await serverJobFreshness(data.project.id, plateIndex, job.slice_signature);
+		return shouldRestore(
+			server,
+			localSignatureVerdict(data.project.id, [job.gcode_id, job.id], current)
+		);
+	}
+	async function sendSliceRequest(
 		req: ReturnType<typeof sliceRequestWithDraft>
 	): Promise<Awaited<ReturnType<typeof sliceProject>>> {
 		const saveFirst = async () => {
@@ -9164,7 +9353,11 @@
 				title={$t('Library')}>←</a
 			>
 			<!-- Barre de menus principale (T107–T111) : Fichier/Édition/Vue/Aide. -->
-			<MenuBar menus={MAIN_MENUS} onaction={onMenuAction} />
+			<MenuBar
+				menus={mainMenus}
+				onaction={onMenuAction}
+				onopen={(title) => title === 'File' && void refreshRecentProjects()}
+			/>
 			<nav
 				class="flex shrink-0 items-center gap-1 whitespace-nowrap"
 				aria-label={$t('Editor views')}
@@ -9945,7 +10138,7 @@
 						plates={plates.list()}
 						activeId={plates.activeId}
 						onselect={selectPlate}
-						onadd={() => plates.addPlate()}
+						onadd={addAndSelectPlate}
 						onremove={removePlate}
 						ontype={(id, plateType) => plates.setPlateType(id, plateType)}
 						onrename={(id, name) => plates.rename(id, name)}
@@ -10609,6 +10802,7 @@
 									<TransformPanel
 										transform={volumeTransform(volume)}
 										onchange={(t) => replaceVolume(objectId, applyVolumeTransform(volume, t))}
+										units={$appPreferences.units === 'in' ? 'in' : 'mm'}
 									/>
 								</div>
 								<div class="grid grid-cols-4 items-center gap-1 text-xs" data-testid="volume-size">
@@ -10874,6 +11068,7 @@
 										])
 									: null}
 								onchange={(tr) => selId && onTransform(selId, tr)}
+								units={$appPreferences.units === 'in' ? 'in' : 'mm'}
 								canLayFlat={tools.active === 'flatten'}
 								onlayflat={layActiveFlat}
 							/>
@@ -10913,7 +11108,18 @@
 								}}
 							/>
 						{:else if tools.active === 'measure'}
-							<MeasureTool {measurement} onclear={() => (measuredPoints = [])} />
+							<MeasureTool
+								measurement={measureMode === 'point' ? measurement : null}
+								feature={featureMeasurement}
+								mode={measureMode}
+								onmode={(m) => {
+									measureMode = m;
+									clearMeasure();
+								}}
+								lengthFactor={$appPreferences.units === 'in' ? 1 / 25.4 : 1}
+								lengthUnit={$appPreferences.units === 'in' ? 'in' : 'mm'}
+								onclear={clearMeasure}
+							/>
 						{:else if tools.active === 'emboss'}
 							{#key embossEdit}
 								<EmbossTool
@@ -11429,7 +11635,7 @@
 												: $t('Color change at layer {n} (+)', { n: layerRange.high + 1 })}
 											data-tip-side="left"
 											onclick={() => editColorChangeKey(codeAtHighLayer ? '-' : '+')}
-											>{codeAtHighLayer ? '− couleur' : '+ couleur'}</button
+											>{codeAtHighLayer ? $t('− color') : $t('+ color')}</button
 										>
 										<!-- Phase 37 — menu d'IMSlider : pause, G-code perso, modèle,
 										     changement de filament ; modifier / supprimer le code posé. -->

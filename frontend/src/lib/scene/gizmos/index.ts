@@ -13,6 +13,8 @@ export {
 	angleDeg,
 	angleBetweenNormals,
 	measurePoints,
+	measureFaces,
+	type MeasureFace,
 	type PointMeasurement
 } from './measure';
 export { BrimEars, BRIM_EARS_KEYS, type BrimEarPoint, type BrimEarsDocument } from './brim-ears';

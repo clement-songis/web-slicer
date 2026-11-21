@@ -51,22 +51,22 @@
 								bind:group={type}
 								data-testid={`flow-type-${i}`}
 							/>
-							{label}
+							{$t(label)}
 						</label>
 					{/each}
 				</fieldset>
 				<label class="flex items-center justify-between gap-3 text-sm">
 					<span>{$t('Top surface pattern')}</span>
 					<select bind:value={pattern} data-testid="flow-pattern" class="ws-field">
-						<option value="archimedeanchords">Archimedean Chords</option>
-						<option value="monotonic">Monotonic</option>
+						<option value="archimedeanchords">{$t('Archimedean Chords')}</option>
+						<option value="monotonic">{$t('Monotonic')}</option>
 					</select>
 				</label>
 				<a
 					class="text-sm text-accent underline"
 					href="https://www.orcaslicer.com/wiki/flow_ratio_calib"
 					target="_blank"
-					rel="noreferrer">Wiki Guide</a
+					rel="noreferrer">{$t('Wiki Guide')}</a
 				>
 				{#if error}<p class="text-sm text-danger" role="alert">{error}</p>{/if}
 				<div class="flex justify-end gap-2">

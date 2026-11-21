@@ -3,7 +3,7 @@
 	// sur le modèle et permet de les retirer. Présentationnel — le gizmo place les
 	// points par raycast ; les paramètres (`brim_ears_*`) vivent dans les réglages.
 	import type { BrimEarPoint } from './brim-ears';
-	import { t } from '$lib/i18n';
+	import { fmtNum, locale, t } from '$lib/i18n';
 	import IconX from '~icons/lucide/x';
 
 	interface Props {
@@ -22,7 +22,7 @@
 		<ul class="flex flex-col gap-1">
 			{#each points as p, i (i)}
 				<li class="flex items-center justify-between rounded bg-surface-sunken px-2 py-0.5">
-					<span>{p.x.toFixed(1)}, {p.y.toFixed(1)}</span>
+					<span>X {fmtNum(p.x, 1, $locale)} · Y {fmtNum(p.y, 1, $locale)}</span>
 					<button
 						type="button"
 						class="ws-icon-btn ws-icon-btn-xs"

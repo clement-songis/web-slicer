@@ -25,9 +25,24 @@
 		onlayflat?: () => void;
 		/** Actif seulement si une facette est sélectionnée. */
 		canLayFlat?: boolean;
+		/**
+		 * Audit 41 P1 : unité de longueur des Préférences (Orca ObjectManipulation,
+		 * m_imperial_units) : position et taille affichées et saisies en pouces.
+		 */
+		units?: 'mm' | 'in';
 	}
 
-	let { transform, onchange, baseSize = null, onlayflat, canLayFlat = false }: Props = $props();
+	let {
+		transform,
+		onchange,
+		baseSize = null,
+		onlayflat,
+		canLayFlat = false,
+		units = 'mm'
+	}: Props = $props();
+	/** mm → unité affichée (Orca : in = mm / 25,4, 4 décimales arrondies). */
+	const factor = $derived(units === 'in' ? 1 / 25.4 : 1);
+	const toShown = (mm: number) => (factor === 1 ? mm : Math.round(mm * factor * 10000) / 10000);
 
 	type Field = 'position' | 'rotation' | 'scale' | 'size';
 	// `name` : nom accessible des champs (« Échelle X », inchangé) ; `label` : libellé
@@ -35,10 +50,20 @@
 	const rows = $derived(
 		(
 			[
-				{ field: 'position', label: $t('Position (mm)'), name: $t('Position (mm)'), step: 1 },
+				{
+					field: 'position',
+					label: units === 'in' ? $t('Position (in)') : $t('Position (mm)'),
+					name: $t('Position (mm)'),
+					step: units === 'in' ? 0.1 : 1
+				},
 				{ field: 'rotation', label: $t('Rotation (°)'), name: $t('Rotation (°)'), step: 1 },
 				{ field: 'scale', label: $t('Scale (%)'), name: $t('Scale||transform'), step: 1 },
-				{ field: 'size', label: $t('Size (mm)'), name: $t('Size||transform'), step: 0.1 }
+				{
+					field: 'size',
+					label: units === 'in' ? $t('Size (in)') : $t('Size (mm)'),
+					name: $t('Size||transform'),
+					step: units === 'in' ? 0.01 : 0.1
+				}
 			] as { field: Field; label: string; name: string; step: number }[]
 		).filter((r) => r.field !== 'size' || !!baseSize)
 	);
@@ -48,13 +73,17 @@
 
 	function shown(field: Field, i: number): number {
 		if (field === 'scale') return scalePercent(transform.scale[i]);
-		if (field === 'size') return baseSize ? scaledSize(baseSize, transform.scale as Vec3)[i] : 0;
+		if (field === 'size')
+			return baseSize ? toShown(scaledSize(baseSize, transform.scale as Vec3)[i]) : 0;
+		if (field === 'position') return toShown(transform.position[i]);
 		return transform[field][i];
 	}
 
 	function setAxis(field: Field, index: number, raw: string) {
-		const n = Number(raw.replace(',', '.'));
-		if (!Number.isFinite(n) || raw.trim() === '') return;
+		const typed = Number(raw.replace(',', '.'));
+		if (!Number.isFinite(typed) || raw.trim() === '') return;
+		// Longueurs saisies dans l'unité affichée, appliquées en mm.
+		const n = field === 'position' || field === 'size' ? typed / factor : typed;
 		const next: Transform = {
 			position: [...transform.position],
 			rotation: [...transform.rotation],

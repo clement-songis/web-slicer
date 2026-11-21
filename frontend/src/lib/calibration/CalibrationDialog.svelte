@@ -12,7 +12,7 @@
 		type PressureAdvanceParams,
 		type TemperatureParams
 	} from './calibration';
-	import { t } from '$lib/i18n';
+	import { fmtDec, locale, t } from '$lib/i18n';
 
 	interface Props {
 		open: boolean;
@@ -50,8 +50,8 @@
 					})
 				: $t('{height} mm tower: PA = {start} + {step} × height (mm).', {
 						height: pressureAdvanceTowerHeight({ start: paStart, end: paEnd, step: paStep }),
-						start: paStart,
-						step: paStep
+						start: fmtDec(paStart, 4, $locale),
+						step: fmtDec(paStep, 4, $locale)
 					})
 	);
 

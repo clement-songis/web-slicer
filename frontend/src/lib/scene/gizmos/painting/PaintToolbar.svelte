@@ -10,7 +10,7 @@
 	import { CHANNELS, type PaintChannel } from './painting';
 	import { ENFORCER, BLOCKER } from './facets';
 	import { CHANNEL_LABELS } from './types';
-	import { t } from '$lib/i18n';
+	import { fmtNum, locale, t } from '$lib/i18n';
 	import {
 		FILL_ANGLE_MAX,
 		FILL_ANGLE_MIN,
@@ -230,7 +230,7 @@
 				data-testid="paint-radius"
 			/>
 			<span class="w-16 text-right whitespace-nowrap text-content-muted tabular-nums"
-				>{radius.toFixed(1)} mm</span
+				>{fmtNum(radius, 1, $locale)} mm</span
 			>
 		</label>
 	{:else if tool === 'height'}
@@ -246,7 +246,7 @@
 				data-testid="paint-height"
 			/>
 			<span class="w-16 text-right whitespace-nowrap text-content-muted tabular-nums"
-				>{height.toFixed(1)} mm</span
+				>{fmtNum(height, 1, $locale)} mm</span
 			>
 		</label>
 	{:else if tool === 'fill'}
@@ -290,7 +290,7 @@
 				data-testid="paint-gap-area"
 			/>
 			<span class="w-16 text-right whitespace-nowrap text-content-muted tabular-nums"
-				>{gapArea.toFixed(1)} mm²</span
+				>{fmtNum(gapArea, 1, $locale)} mm²</span
 			>
 		</label>
 		<div class="flex items-center justify-between gap-2 pl-18">

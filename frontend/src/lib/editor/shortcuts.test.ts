@@ -87,6 +87,11 @@ describe('shortcuts', () => {
 		expect(resolveShortcut({ key: 'n', ctrl: true }, false)).toBeNull(); // réservé navigateur
 	});
 
+	test('audit 41 S1 : Alt+N = Nouveau projet (remplace Ctrl+N, réservé)', () => {
+		expect(resolveShortcut({ key: 'n', alt: true }, false)).toBe('project.new');
+		expect(resolveShortcut({ key: 'n', alt: true }, true)).toBeNull();
+	});
+
 	test('isToolAction distingue outils et actions de menu/plateau', () => {
 		expect(isToolAction('move')).toBe(true);
 		expect(isToolAction('cut')).toBe(true);

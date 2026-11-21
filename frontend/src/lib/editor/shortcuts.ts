@@ -69,6 +69,10 @@ const MODIFIER_CHORDS: Record<string, string> = {
 	// `ctrl+s` volontairement absent : géré par SaveControls (isSaveChord).
 	'ctrl+shift+s': 'project.saveAs',
 	'ctrl+o': 'project.open',
+	// Audit 41 S1 : Ctrl+N (Orca « New Project ») est réservé par le navigateur
+	// (nouvelle fenêtre, non interceptable) → Alt+N, libre dans Chrome/Firefox/
+	// Safari, affiché à la place dans le menu Fichier et la liste « ? ».
+	'alt+n': 'project.new',
 	'ctrl+i': 'import.geometry',
 	// Affichés dans le menu Fichier : interceptés pour ne pas laisser le
 	// navigateur ouvrir « Rechercher le suivant » / « Imprimer ».

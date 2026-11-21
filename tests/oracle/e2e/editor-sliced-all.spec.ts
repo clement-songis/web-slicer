@@ -29,6 +29,8 @@ async function twoPlates(page: Page) {
 	await expect(page.getByTestId('import-status')).toHaveCount(0, { timeout: 60_000 });
 	await page.getByRole('button', { name: 'Objets', exact: true }).click();
 	await page.getByRole('button', { name: 'Ajouter un plateau' }).click();
+	// R1 (Orca select_plate) : le plateau ajouté devient actif ; revenir au plateau 1.
+	await page.getByTestId('plate-tab').first().click();
 	await page.getByLabel(/^Plateau de /).nth(1).selectOption({ index: 1 });
 	await expect(page.getByTestId('plate-tab')).toHaveCount(2);
 }

@@ -19,7 +19,7 @@
 		type PaMethod,
 		type PaRecord
 	} from './pa-history';
-	import { t, tr } from '$lib/i18n';
+	import { fmtDec, locale, t, tr } from '$lib/i18n';
 
 	interface Props {
 		open: boolean;
@@ -165,7 +165,7 @@
 		<p class="text-content-muted">
 			{$t(
 				'{printer} · nozzle {nozzle} mm — K values kept after a PA calibration. The active filament is “{filament}”.',
-				{ printer, nozzle: nozzleMm, filament }
+				{ printer, nozzle: fmtDec(nozzleMm, 2, $locale), filament }
 			)}
 		</p>
 		<form class="flex flex-wrap items-end gap-2" onsubmit={(e) => (e.preventDefault(), add())}>

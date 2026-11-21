@@ -52,10 +52,13 @@
 	import type { PrinterResponse } from '$lib/api/types';
 	import PrintObjectsPanel from './PrintObjectsPanel.svelte';
 	import HostWebUi from './HostWebUi.svelte';
+	import UploadQueue from './UploadQueue.svelte';
 	import { webuiUrl } from './webui';
 	import { locale, numberLocale, t, tr } from '$lib/i18n';
 
 	type Cap = 'unknown' | 'yes' | 'no';
+	// Lot 42 M3 : file d'envoi de l'imprimante affichée (Orca « Print host upload queue »).
+	let queueOpen = $state(false);
 	interface Live {
 		view: PrinterStatusView;
 		ext: ExtendedStatus;
@@ -313,9 +316,19 @@
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-4 p-6" data-testid="device-panel">
 	<div class="flex flex-wrap items-center justify-between gap-3">
 		<h2 class="ws-page-title">{$t('Device')}</h2>
-		<a href={resolve('/printers')} class="ws-btn ws-btn-sm ws-btn-secondary"
-			>{$t('Manage printers')}</a
-		>
+		<div class="flex flex-wrap gap-2">
+			{#if printers.length > 0}
+				<button
+					type="button"
+					class="ws-btn ws-btn-sm ws-btn-secondary"
+					data-testid="device-upload-queue"
+					onclick={() => (queueOpen = true)}>{$t('Print host upload queue')}</button
+				>
+			{/if}
+			<a href={resolve('/printers')} class="ws-btn ws-btn-sm ws-btn-secondary"
+				>{$t('Manage printers')}</a
+			>
+		</div>
 	</div>
 
 	{#if loading}
@@ -831,3 +844,10 @@
 		{/if}
 	{/if}
 </div>
+
+<UploadQueue
+	open={queueOpen}
+	printerId={printer?.id ?? null}
+	printerName={printer?.name ?? null}
+	onclose={() => (queueOpen = false)}
+/>

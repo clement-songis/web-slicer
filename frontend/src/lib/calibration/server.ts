@@ -4,7 +4,8 @@
 // toucher au projet d'origine), un NOUVEAU projet est créé avec les presets
 // actifs, puis la calibration y est construite par le serveur.
 import { api } from '$lib/api/client';
-import { createProject, renameProject } from '$lib/api/projects';
+import { createProject, deleteProject } from '$lib/api/projects';
+import { tr } from '$lib/i18n';
 import type { EngineCalibKind, RangeParams } from './engine-calib';
 import type { FlowPattern } from './flowrate';
 
@@ -154,19 +155,30 @@ export function engineRequest(kind: EngineCalibKind, p: RangeParams): CalibReque
 }
 
 export interface ServerCalibResult {
+	/** Nom final du projet, rendu unique par le serveur (« Pressure Advance Test (2) »). */
 	name: string;
+	/** Nom brut du modèle d'Orca (lot 42 K1). */
+	calibration_name?: string;
 	version: number;
 }
 
-/** Crée le projet de calibration ; renvoie son id. */
+/**
+ * Crée le projet de calibration ; renvoie son id et son nom. Lot 42 K1 : le
+ * serveur nomme lui-même le projet (nom du modèle d'Orca, rendu unique comme
+ * les projets) — plus de renommage côté client. Le nom de création n'est qu'un
+ * libellé générique traduit, remplacé par le serveur ; le projet est retiré si
+ * la construction de la calibration échoue (pas de projet vide orphelin).
+ */
 export async function createServerCalibration(
 	request: CalibRequest,
-	activePresets: unknown,
-	label: string
-): Promise<string> {
-	const project = await createProject({ name: label, active_presets: activePresets });
-	const res = await api.post<ServerCalibResult>(`/projects/${project.id}/calibration`, request);
-	if (res.name && res.name !== label)
-		await renameProject(project.id, res.name).catch(() => undefined);
-	return project.id;
+	activePresets: unknown
+): Promise<{ id: string; name: string }> {
+	const project = await createProject({ name: tr('Calibration'), active_presets: activePresets });
+	try {
+		const res = await api.post<ServerCalibResult>(`/projects/${project.id}/calibration`, request);
+		return { id: project.id, name: res.name || project.name };
+	} catch (e) {
+		await deleteProject(project.id).catch(() => undefined);
+		throw e;
+	}
 }

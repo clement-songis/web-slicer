@@ -57,8 +57,8 @@ export const TEST_MODEL_KINDS: readonly EngineCalibKind[] = [
 /** Modèles de tour d'Orca (Input_Shaping_*_Test_Dlg, Cornering_Test_Dlg). */
 export function testModels(kind: EngineCalibKind): { id: number; label: string }[] {
 	const base = [
-		{ id: 0, label: 'Ringing tower' },
-		{ id: 1, label: 'Fast tower' }
+		{ id: 0, label: 'Ringing Tower' },
+		{ id: 1, label: 'Fast Tower' }
 	];
 	return kind === 'cornering' ? [...base, { id: 2, label: 'SCV-V2' }] : base;
 }

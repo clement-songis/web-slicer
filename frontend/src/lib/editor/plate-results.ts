@@ -95,7 +95,23 @@ export function plateSceneSignature(scene: SignatureScene, plateId: string): str
 	void plates;
 	void all;
 	void knownModels;
-	return JSON.stringify({ index, plate, objects, rest });
+	return stableStringify({ index, plate, objects, rest });
+}
+
+/**
+ * JSON canonique (clés d'objets triées, ordre des tableaux conservé). Audit 41
+ * V1 : un plateau relu du serveur (ou restauré par l'historique) peut avoir ses
+ * clés dans un autre ordre (« objectIds » / « plateType ») ; la signature ne
+ * doit dépendre que du contenu.
+ */
+export function stableStringify(value: unknown): string {
+	return JSON.stringify(value, (_key, v: unknown) => {
+		if (!v || typeof v !== 'object' || Array.isArray(v)) return v;
+		const out: Record<string, unknown> = {};
+		for (const k of Object.keys(v as Record<string, unknown>).sort())
+			out[k] = (v as Record<string, unknown>)[k];
+		return out;
+	});
 }
 
 /**

@@ -9,9 +9,11 @@
 	interface Props {
 		menus: Menu[];
 		onaction: (action: string) => void;
+		/** Menu ouvert (titre) : la page peut rafraîchir un contenu dynamique (récents). */
+		onopen?: (title: string) => void;
 	}
 
-	let { menus, onaction }: Props = $props();
+	let { menus, onaction, onopen }: Props = $props();
 
 	// Menu ouvert (par titre) et sous-menu déplié (par libellé), locaux à la barre.
 	let openTitle = $state<string | null>(null);
@@ -20,6 +22,7 @@
 	function toggle(title: string) {
 		openTitle = openTitle === title ? null : title;
 		openSub = null;
+		if (openTitle) onopen?.(openTitle);
 	}
 	function close() {
 		openTitle = null;
@@ -99,7 +102,9 @@
 										role="menuitem"
 										onclick={() => pick(sub.action)}
 									>
-										<span>{$t(sub.label)}</span>
+										<span class={sub.raw ? 'truncate' : ''}
+											>{sub.raw ? sub.label : $t(sub.label)}</span
+										>
 										{#if sub.shortcut}<span class="ml-4 text-xs text-content-subtle"
 												>{sub.shortcut}</span
 											>{/if}

@@ -54,6 +54,11 @@ export type { SavePrinterRequest } from '../../generated/api/SavePrinterRequest'
 export type { TestPrinterResponse } from '../../generated/api/TestPrinterResponse';
 export type { UploadToPrinterRequest } from '../../generated/api/UploadToPrinterRequest';
 export type { PrinterUploadResponse } from '../../generated/api/PrinterUploadResponse';
+export type { PrinterUploadEntry } from '../../generated/api/PrinterUploadEntry';
+export type { UploadNameRequest } from '../../generated/api/UploadNameRequest';
+export type { UploadNameResponse } from '../../generated/api/UploadNameResponse';
+export type { SliceSignatureResponse } from '../../generated/api/SliceSignatureResponse';
+export type { PlateSliceSignature } from '../../generated/api/PlateSliceSignature';
 export type { PrinterStatusResponse } from '../../generated/api/PrinterStatusResponse';
 export type { PrinterCatalogVendor } from '../../generated/api/PrinterCatalogVendor';
 export type { PrinterCatalogModel } from '../../generated/api/PrinterCatalogModel';

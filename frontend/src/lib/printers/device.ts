@@ -2,7 +2,7 @@
 // Moonraker) : temps restant estimé, scripts G-code des contrôles manuels,
 // URL de webcam mémorisée, détection des routes backend absentes.
 import { ApiError } from '$lib/api/client';
-import { tr } from '$lib/i18n';
+import { fmtDec, tr } from '$lib/i18n';
 
 /** Champs d'état facultatifs qu'un backend enrichi peut renvoyer
  *  (`print_stats.info`, `fan`, `toolhead` de Moonraker). */
@@ -91,7 +91,7 @@ export function saveWebcamUrl(printerId: string, url: string): void {
 
 /** Taille de fichier lisible. */
 export function formatSize(bytes: number): string {
-	if (bytes >= 1048576) return tr('{n} MB', { n: (bytes / 1048576).toFixed(1) });
+	if (bytes >= 1048576) return tr('{n} MB', { n: fmtDec(bytes / 1048576, 1) });
 	return tr('{n} kB', { n: Math.max(1, Math.round(bytes / 1024)) });
 }
 

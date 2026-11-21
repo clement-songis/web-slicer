@@ -8,6 +8,7 @@
 	import * as THREE from 'three';
 	import { sceneColors } from './scene-colors';
 	import { clampTowerPosition } from './wipe-tower';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		/** Coin min (repère plateau, mm). */
@@ -129,7 +130,7 @@
 				data-grab={grabPoint}
 				data-dragging={drag ? 'true' : undefined}
 				data-hover={hover ? 'true' : undefined}
-				>Tour d'essuyage{drag ? ` · X ${px.toFixed(0)} Y ${py.toFixed(0)}` : ''}</span
+				>{$t('Prime tower')}{drag ? ` · X ${px.toFixed(0)} Y ${py.toFixed(0)}` : ''}</span
 			>
 		</HTML>
 		<T.MeshStandardMaterial

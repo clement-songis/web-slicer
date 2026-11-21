@@ -65,6 +65,8 @@ export {
 	BrimEarsTool,
 	EmbossTool,
 	measurePoints,
+	measureFaces,
+	type MeasureFace,
 	angleDeg,
 	BrimEars,
 	defaultEmbossParams,

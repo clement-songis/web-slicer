@@ -2,7 +2,7 @@
 import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { MAIN_MENUS, allMenuLabels, menuLabels } from './menus';
+import { MAIN_MENUS, RECENT_ACTION, allMenuLabels, menuLabels, withRecentProjects } from './menus';
 import { SHORTCUT_GROUPS, totalShortcuts } from './shortcuts';
 import type { MenuItem } from './menus';
 import { isSaveChord, resolveShortcut, type KeyChord } from '../editor/shortcuts';
@@ -34,7 +34,8 @@ function itemsWithShortcut(): MenuItem[] {
 
 // Accélérateurs affichés mais non interceptables (exclusions.md) : le navigateur
 // les capte ; l'item de menu reste fonctionnel au clic.
-const BROWSER_RESERVED = new Set(['Ctrl+N']);
+// Audit 41 S1 : plus aucun (Ctrl+N affiché comme Alt+N, intercepté).
+const BROWSER_RESERVED = new Set<string>([]);
 // `C` (fenêtre G-code) n'existe qu'en Aperçu, résolu par preview/sliders.ts.
 const PREVIEW_ONLY = new Set(['C']);
 
@@ -175,3 +176,25 @@ describe('menu Calibration : libellés clarifiés (phase 25)', () => {
 	});
 });
 
+describe('Fichier › Fichiers récents (audit 41 P2, Orca MainFrame « Recent files »)', () => {
+	const recentItems = (menus: ReturnType<typeof withRecentProjects>) => {
+		const file = menus.find((m) => m.title === 'File')!;
+		const entry = file.entries.find((e) => e !== 'separator' && e.action === 'file.recent');
+		return (entry as MenuItem).items ?? [];
+	};
+	test('sous-menu présent après « Open Project… »', () => {
+		const labels = menuLabels(MAIN_MENUS[0]);
+		expect(labels.indexOf('Recent files')).toBe(labels.indexOf('Open Project…') + 1);
+	});
+	test('projets bornés à max_recent_count, libellés bruts, actions dédiées', () => {
+		const projects = Array.from({ length: 5 }, (_, i) => ({ id: 'p' + i, name: 'Undo ' + i }));
+		const items = recentItems(withRecentProjects(MAIN_MENUS, projects, 3));
+		expect(items.map((i) => i.label)).toEqual(['Undo 0', 'Undo 1', 'Undo 2']);
+		expect(items.every((i) => i.raw)).toBe(true);
+		expect(items[0].action).toBe(RECENT_ACTION + 'p0');
+	});
+	test('liste vide → « No recent projects »', () => {
+		const items = recentItems(withRecentProjects(MAIN_MENUS, [], 18));
+		expect(items.map((i) => i.label)).toEqual(['No recent projects']);
+	});
+});
