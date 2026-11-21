@@ -634,6 +634,8 @@ async fn every_id_route_of_the_router_is_isolated_between_accounts() {
             ("PUT", "/api/projects/{id}/metadata") => json!({ "title": "pwned", "license": "CC0" }),
             // Lot 37 : « Invalidate cut info » (corps valide → 404 strict).
             ("POST", "/api/projects/{id}/objects/{object_id}/invalidate-cut") => json!({}),
+            // Lot 39 : erreurs de maillage d'une scène non enregistrée.
+            ("POST", "/api/projects/{id}/mesh-errors") => json!({ "objects": [] }),
             _ => return None,
         })
     };

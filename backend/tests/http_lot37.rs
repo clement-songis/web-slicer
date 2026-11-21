@@ -982,3 +982,154 @@ async fn mesh_errors_per_model_and_object() {
         StatusCode::NOT_FOUND
     );
 }
+
+// --- Lot 39 : erreurs de maillage avant le premier enregistrement -------------
+
+/// Orca affiche l'icône d'erreurs dès le chargement (ObjectList::
+/// add_object_to_list → get_mesh_errors_info), avant tout enregistrement :
+/// GET /api/models/{id}/mesh-errors répond sans attendre la conversion ni la
+/// scène, et POST /api/projects/{id}/mesh-errors calcule les objets de la
+/// scène COURANTE du client (volumes maillés cumulés), scène enregistrée vide.
+#[tokio::test]
+async fn mesh_errors_before_first_save() {
+    if !worker_available() {
+        eprintln!("engine-worker absent — ignoré");
+        return;
+    }
+    let (_d, app) = app().await;
+    let user = register(&app, "mesh39@test.local").await;
+    let project = create_project(&app, &user, "maillage lot 39").await;
+
+    // Import SANS attendre la conversion (pas de wait_mesh) ni enregistrer.
+    let mut open = box_triangles([10.0; 3]);
+    open.pop();
+    let resp = send(
+        &app,
+        multipart(
+            &format!("/api/projects/{project}/models"),
+            "open.stl",
+            &binary_stl(&open),
+            &user,
+        ),
+    )
+    .await;
+    let (status, body) = json_of(resp).await;
+    assert_eq!(status, StatusCode::CREATED, "{body}");
+    let holed = body["id"].as_str().unwrap().to_string();
+    let (status, info) = call(
+        &app,
+        "GET",
+        &format!("/api/models/{holed}/mesh-errors"),
+        None,
+        &user,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{info}");
+    assert_eq!(info["open_edges"], 3, "{info}");
+    assert_eq!(info["warning"], true, "{info}");
+    let clean = upload(
+        &app,
+        &project,
+        &user,
+        "clean.stl",
+        &binary_stl(&box_triangles([10.0; 3])),
+    )
+    .await;
+
+    // La scène enregistrée est vide : le GET projet ne voit rien…
+    let (_, saved) = call(
+        &app,
+        "GET",
+        &format!("/api/projects/{project}/mesh-errors"),
+        None,
+        &user,
+    )
+    .await;
+    assert_eq!(saved, json!([]), "{saved}");
+    // … le POST calcule la scène courante du client.
+    let scene = json!({ "objects": [
+        { "id": "a", "modelId": clean, "name": "propre" },
+        { "id": "b", "modelId": clean, "volumes": [
+            { "id": "vb", "shape": "mesh", "modelId": holed, "type": "part", "name": "trou", "offset": [0, 0, 0] },
+            { "id": "vc", "shape": "box", "modelId": holed }
+        ] },
+        { "id": "c", "modelId": holed },
+        { "id": "d" },
+        { "id": "e", "modelId": uuid::Uuid::new_v4().to_string() }
+    ] });
+    let (status, list) = call(
+        &app,
+        "POST",
+        &format!("/api/projects/{project}/mesh-errors"),
+        Some(scene.clone()),
+        &user,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{list}");
+    let list = list.as_array().unwrap();
+    let ids: Vec<_> = list
+        .iter()
+        .map(|e| e["object_id"].as_str().unwrap())
+        .collect();
+    assert_eq!(ids, ["a", "b", "c", "e"], "{list:?}");
+    assert_eq!(list[0]["warning"], false);
+    // Volume maillé seulement (shape \"box\" ignoré), cumulé au modèle.
+    assert_eq!(list[1]["open_edges"], 3, "{list:?}");
+    assert_eq!(list[2]["open_edges"], 3, "{list:?}");
+    assert!(list[2]["tooltip"]
+        .as_str()
+        .unwrap()
+        .contains("3 non-manifold edges"));
+    // Modèle inconnu du projet : aucune statistique (pas de fuite).
+    assert_eq!(list[3]["warning"], false, "{list:?}");
+    // Mêmes valeurs qu'après enregistrement (GET).
+    save_scene(
+        &app,
+        &project,
+        &user,
+        json!({ "schemaVersion": 1, "objects": [
+            { "id": "a", "modelId": clean },
+            { "id": "b", "modelId": clean, "volumes": [
+                { "id": "vb", "shape": "mesh", "modelId": holed, "type": "part", "name": "trou", "offset": [0, 0, 0] }
+            ] },
+            { "id": "c", "modelId": holed }
+        ], "plates": { "plates": [{ "id": "p", "objectIds": ["a", "b", "c"] }], "activeId": "p" } }),
+    )
+    .await;
+    let (_, after) = call(
+        &app,
+        "GET",
+        &format!("/api/projects/{project}/mesh-errors"),
+        None,
+        &user,
+    )
+    .await;
+    assert_eq!(after.as_array().unwrap()[..], list[..3], "{after}");
+
+    // Isolation : modèles d'Alice dans le projet de Bob → ignorés ; projet
+    // d'Alice → 404.
+    let bob = register(&app, "bob-mesh39@test.local").await;
+    let bob_project = create_project(&app, &bob, "bob 39").await;
+    let (status, list) = call(
+        &app,
+        "POST",
+        &format!("/api/projects/{bob_project}/mesh-errors"),
+        Some(json!({ "objects": [{ "id": "x", "modelId": holed }] })),
+        &bob,
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK, "{list}");
+    assert_eq!(list[0]["open_edges"], 0, "{list}");
+    assert_eq!(
+        call(
+            &app,
+            "POST",
+            &format!("/api/projects/{project}/mesh-errors"),
+            Some(json!({ "objects": [] })),
+            &bob
+        )
+        .await
+        .0,
+        StatusCode::NOT_FOUND
+    );
+}

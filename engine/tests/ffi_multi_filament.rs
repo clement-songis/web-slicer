@@ -238,6 +238,103 @@ fn bambu_h2d_manual_filament_map_matches_orca() {
     check_printer_scene("bambu_h2d_manual");
 }
 
+/// Débit de buse High Flow (lot 39, barre latérale d'Orca « Nozzle flow » par
+/// extrudeur) : `nozzle_volume_type` = High Flow,Standard sur H2D
+/// (make_highflow.py). Orca réduit les vecteurs par variante à la variante
+/// « Direct Drive High Flow » de l'extrudeur 1 : débit volumique max 40 au lieu
+/// de 25, volume de buse 133, jeu de purge 2 → trajectoires différentes de la
+/// référence Standard, identiques à Orca.
+#[test]
+fn bambu_h2d_high_flow_nozzle_matches_orca() {
+    let orca =
+        std::fs::read_to_string(fixture("bambu_h2d_highflow.orca.gcode")).unwrap_or_default();
+    assert!(
+        orca.contains("; nozzle_volume_type = High Flow,Standard")
+            && orca.contains("; filament_max_volumetric_speed = 25,40"),
+        "référence : extrudeur 1 en High Flow"
+    );
+    check_printer_scene("bambu_h2d_highflow");
+}
+
+/// X1C en High Flow (une buse, deux variantes) : G-code identique à Orca.
+#[test]
+fn bambu_x1c_high_flow_nozzle_matches_orca() {
+    let orca =
+        std::fs::read_to_string(fixture("bambu_x1c_highflow.orca.gcode")).unwrap_or_default();
+    assert!(
+        orca.contains("; nozzle_volume_type = High Flow"),
+        "référence : buse High Flow"
+    );
+    check_printer_scene("bambu_x1c_highflow");
+}
+
+/// Variante choisie rendue visible (make_highflow.py --set) : vecteurs par
+/// variante à valeurs distinctes. Orca réduit retraction_length, z_hop_types,
+/// nozzle_type à la variante de chaque buse, mais PAS machine_max_* (2 ×
+/// extrudeurs premières valeurs, M203 compris) ni nozzle_type sur H2D.
+#[test]
+fn bambu_h2d_high_flow_variant_vectors_match_orca() {
+    let orca = std::fs::read_to_string(fixture("bambu_h2d_highflow_variants.orca.gcode"))
+        .unwrap_or_default();
+    assert!(
+        orca.contains("; retraction_length = 0.81,0.82"),
+        "référence : variantes High Flow (1) et Standard (2)"
+    );
+    check_printer_scene("bambu_h2d_highflow_variants");
+}
+
+#[test]
+fn bambu_x1c_high_flow_variant_vectors_match_orca() {
+    let orca = std::fs::read_to_string(fixture("bambu_x1c_highflow_variants.orca.gcode"))
+        .unwrap_or_default();
+    assert!(
+        orca.contains("; retraction_length = 0.9"),
+        "référence : variante High Flow"
+    );
+    check_printer_scene("bambu_x1c_highflow_variants");
+}
+
+/// Valeurs par (filament × variante) : X1C High Flow, filament 1 à 220/221 °C,
+/// filament 2 à 230/231 °C (Standard/High Flow). Print::apply
+/// (update_values_to_printer_extruders_for_multiple_filaments) prend, pour
+/// CHAQUE filament, l'entrée High Flow repérée par `filament_self_index`
+/// (1,1,2,2) : M104 S221 et S231, identique à Orca. Sans `filament_self_index`
+/// (chemin de production d'avant le lot 39, presets fusionnés), libslic3r
+/// retombe sur la première entrée High Flow — celle du filament 1 — pour tous
+/// les filaments : le filament 2 serait imprimé à 221 °C.
+#[test]
+fn filament_self_index_selects_each_filament_variant_like_orca() {
+    let orca =
+        std::fs::read_to_string(fixture("bambu_x1c_highflow_temps.orca.gcode")).unwrap_or_default();
+    assert!(
+        orca.contains("; nozzle_temperature = 221,231") && orca.contains("\nM104 S231\n"),
+        "référence : températures High Flow propres à chaque filament"
+    );
+    check_printer_scene("bambu_x1c_highflow_temps");
+
+    let (model, mut config) =
+        engine::adapters::ffi::read_project_3mf(&fixture("bambu_x1c_highflow_temps.3mf"))
+            .expect("3MF");
+    assert!(config.0.remove("filament_self_index").is_some());
+    let work = tempfile::tempdir().unwrap();
+    let req = SliceRequest {
+        allow_mixed_temperatures: false,
+        model,
+        config,
+        plate_index: 0,
+        work_dir: work.path().to_path_buf(),
+        calib: None,
+    };
+    let progress: ProgressSink = Box::new(|_, _| {});
+    let result =
+        engine::adapters::ffi::slice(req, progress, CancelToken::new()).expect("tranchage");
+    let text = std::fs::read_to_string(result.gcode_path).unwrap();
+    assert!(
+        !text.contains("\nM104 S231\n"),
+        "sans filament_self_index, le filament 2 prend les valeurs du filament 1"
+    );
+}
+
 /// SeeMeCNC Artemis : SEMM avec change_filament_gcode (T[next_extruder]) et
 /// tour d'essuyage type2, réglages du constructeur.
 #[test]

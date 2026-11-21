@@ -811,6 +811,7 @@ fn merge_filament_configs(merged: &mut DynamicPrintConfig, filaments: Vec<Dynami
         .collect();
     vector_keys.extend(ALWAYS_PER_FILAMENT.iter().map(|k| k.to_string()));
     let multi = filaments.len() > 1;
+    let mut variant_counts = Vec::with_capacity(filaments.len());
     for (index, mut filament) in filaments.into_iter().enumerate() {
         if multi {
             for key in &vector_keys {
@@ -821,8 +822,41 @@ fn merge_filament_configs(merged: &mut DynamicPrintConfig, filaments: Vec<Dynami
                 }
             }
         }
+        variant_counts.push(match filament.0.get("filament_extruder_variant") {
+            Some(ConfigValue::Strings(values)) if !values.is_empty() => values.len(),
+            _ => 1,
+        });
         merge_filament_config(merged, filament, index);
     }
+    set_filament_self_index(merged, &variant_counts);
+}
+
+/// `filament_self_index` comme PresetBundle::construct_full_config d'Orca : une
+/// entrée par élément de `filament_extruder_variant` (filament × variante de
+/// buse), valant le n° du filament (1-based). Print::apply s'en sert
+/// (update_values_to_printer_extruders_for_multiple_filaments) pour prendre,
+/// pour CHAQUE filament, ses propres valeurs de la variante de sa buse
+/// (Standard / High Flow). Sans lui, libslic3r prend la première entrée de la
+/// variante, celle du filament 1, pour tous les filaments. Mono-filament :
+/// tout à 1 (resize(index_size, 1)).
+fn set_filament_self_index(merged: &mut DynamicPrintConfig, variant_counts: &[usize]) {
+    let Some(ConfigValue::Strings(variants)) = merged.0.get("filament_extruder_variant") else {
+        return;
+    };
+    let size = variants.len();
+    let mut indices: Vec<i64> = if variant_counts.len() > 1 {
+        variant_counts
+            .iter()
+            .enumerate()
+            .flat_map(|(i, n)| std::iter::repeat_n(i as i64 + 1, *n))
+            .collect()
+    } else {
+        Vec::new()
+    };
+    indices.resize(size, 1);
+    merged
+        .0
+        .insert("filament_self_index".into(), ConfigValue::Ints(indices));
 }
 
 /// Valeur par défaut d'Orca (`print_config_def`, via le registre) d'une clé.
@@ -1235,6 +1269,51 @@ mod tests {
         let bad: crate::http::dto::SliceDraft =
             serde_json::from_value(json!({ "process": { "layer_height": "abc" } })).unwrap();
         assert!(super::apply_draft(&mut merged, &bad).is_err());
+    }
+
+    /// filament_self_index comme PresetBundle::construct_full_config (lot 39) :
+    /// une entrée par (filament × variante), n° du filament ; mono-filament → 1.
+    #[test]
+    fn filament_self_index_follows_each_filament_variants() {
+        let variants = |names: &[&str]| {
+            let mut c = DynamicPrintConfig::new();
+            c.0.insert(
+                "filament_extruder_variant".into(),
+                ConfigValue::Strings(names.iter().map(|s| s.to_string()).collect()),
+            );
+            c.0.insert(
+                "nozzle_temperature".into(),
+                ConfigValue::Ints(vec![220; names.len()]),
+            );
+            c
+        };
+        let both = ["Direct Drive Standard", "Direct Drive High Flow"];
+        let mut merged = DynamicPrintConfig::new();
+        merge_filament_configs(&mut merged, vec![variants(&both), variants(&both)]);
+        assert_eq!(
+            merged.get("filament_self_index"),
+            Some(&ConfigValue::Ints(vec![1, 1, 2, 2]))
+        );
+        // Filament sans la clé : défaut d'Orca (une variante Standard).
+        let mut merged = DynamicPrintConfig::new();
+        merge_filament_configs(
+            &mut merged,
+            vec![variants(&both), DynamicPrintConfig::new(), variants(&both)],
+        );
+        assert_eq!(
+            merged.get("filament_self_index"),
+            Some(&ConfigValue::Ints(vec![1, 1, 2, 3, 3]))
+        );
+        let mut merged = DynamicPrintConfig::new();
+        merge_filament_configs(&mut merged, vec![variants(&both)]);
+        assert_eq!(
+            merged.get("filament_self_index"),
+            Some(&ConfigValue::Ints(vec![1, 1]))
+        );
+        // Aucune variante déclarée : clé non posée (défaut du moteur).
+        let mut merged = DynamicPrintConfig::new();
+        merge_filament_configs(&mut merged, vec![DynamicPrintConfig::new()]);
+        assert_eq!(merged.get("filament_self_index"), None);
     }
 
     #[test]

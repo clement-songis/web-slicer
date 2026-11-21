@@ -123,7 +123,7 @@ where
         )
         .route(
             "/api/projects/{id}/mesh-errors",
-            get(scene::project_mesh_errors),
+            get(scene::project_mesh_errors).post(scene::project_mesh_errors_for_scene),
         )
         .route(
             "/api/projects/{id}/objects/{object_id}/invalidate-cut",

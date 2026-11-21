@@ -1300,21 +1300,67 @@ pub async fn project_mesh_errors(
 ) -> ApiResult<Json<Vec<ObjectMeshErrors>>> {
     let project_id = parse_project_id(&project_raw)?;
     let project = state.storage.projects().get(user.id, project_id).await?;
+    let objects = project
+        .scene
+        .get("objects")
+        .and_then(Value::as_array)
+        .cloned()
+        .unwrap_or_default();
+    objects_mesh_errors(&state, user.id, project_id, &objects).await
+}
+
+/// Corps de `POST /api/projects/{id}/mesh-errors` : objets de la scène COURANTE
+/// du client (même forme que `scene.objects`), y compris ceux importés et pas
+/// encore enregistrés. Seuls `id`, `modelId` et `volumes[].shape/modelId` sont lus.
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[ts(export)]
+pub struct MeshErrorsRequest {
+    #[serde(default)]
+    #[ts(
+        type = "Array<{ id: string; modelId?: string; volumes?: Array<{ shape?: string; modelId?: string }> }>"
+    )]
+    pub objects: Vec<Value>,
+}
+
+/// `POST /api/projects/{id}/mesh-errors` — comme le GET, mais sur les objets
+/// fournis (scène non enregistrée) : Orca affiche l'icône d'erreurs dès le
+/// chargement du modèle (ObjectList::add_object_to_list → get_mesh_errors_info),
+/// avant tout enregistrement du projet. Modèles hors du projet ou d'un autre
+/// compte ignorés (aucune fuite) ; projet inconnu → 404.
+pub async fn project_mesh_errors_for_scene(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(project_raw): Path<String>,
+    Json(body): Json<MeshErrorsRequest>,
+) -> ApiResult<Json<Vec<ObjectMeshErrors>>> {
+    let project_id = parse_project_id(&project_raw)?;
+    state.storage.projects().get(user.id, project_id).await?;
+    if body.objects.len() > 10_000 {
+        return Err(ApiError::validation(
+            "trop d'objets",
+            serde_json::json!({ "field": "objects" }),
+        ));
+    }
+    objects_mesh_errors(&state, user.id, project_id, &body.objects).await
+}
+
+/// Erreurs de maillage par objet de scène (modèle + volumes maillés cumulés,
+/// get_object_stl_stats) ; seuls les modèles du projet du compte sont lus.
+async fn objects_mesh_errors(
+    state: &AppState,
+    user_id: UserId,
+    project_id: ProjectId,
+    objects: &[Value],
+) -> ApiResult<Json<Vec<ObjectMeshErrors>>> {
     let models = state
         .storage
         .models()
-        .list(user.id, Some(project_id))
+        .list(user_id, Some(project_id))
         .await?;
     let mut cache: std::collections::HashMap<String, engine::api::MeshErrorStats> =
         std::collections::HashMap::new();
     let mut out = Vec::new();
-    for object in project
-        .scene
-        .get("objects")
-        .and_then(Value::as_array)
-        .into_iter()
-        .flatten()
-    {
+    for object in objects {
         let (Some(id), Some(model_id)) = (
             object.get("id").and_then(Value::as_str),
             object.get("modelId").and_then(Value::as_str),
@@ -1334,7 +1380,7 @@ pub async fn project_mesh_errors(
                 continue;
             };
             if !cache.contains_key(model_id) {
-                let stats = model_mesh_stats(&state, model).await?;
+                let stats = model_mesh_stats(state, model).await?;
                 cache.insert(model_id.to_string(), stats);
             }
             total.merge(&cache[model_id]);

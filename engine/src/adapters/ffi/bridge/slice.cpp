@@ -220,10 +220,17 @@ void restore_export_metadata(const std::string &path,
         if (raw.contains(key) && raw[key].is_string()) {
             std::string text = raw[key].get<std::string>();
             if (reduce_variants) {
-                // machine_max_* : [normal, silencieux] par variante.
+                // machine_max_* : [normal, silencieux] par extrudeur. Orca 2.4.1
+                // N'applique PAS la variante de buse à ces limites : le bloc de
+                // configuration (et M201/M203) porte les 2 × extrudeurs PREMIÈRES
+                // valeurs du vecteur, quelle que soit la variante (sondes lot 39 :
+                // X1C High Flow [500,200,300,100] → 500,200 ; H2D High Flow,Standard
+                // [1000..1007] → 1000,1001,1002,1003).
                 std::vector<std::string> parts;
                 boost::split(parts, text, boost::is_any_of(","));
-                text = join(pick_variant(parts, 2));
+                if (parts.size() > variant_indices.size() * 2)
+                    parts.resize(variant_indices.size() * 2);
+                text = join(parts);
             }
             set(key, text);
         }
@@ -287,9 +294,29 @@ void restore_export_metadata(const std::string &path,
             std::vector<int> self;
             if (const auto *opt = source.option<Slic3r::ConfigOptionInts>("filament_self_index"))
                 self = opt->values;
+            // Affectation FINALE filament → buse (Print::update_filament_maps_to_config :
+            // en mode auto, la carte calculée au pré-tranchage remplace celle du
+            // projet) : celle écrite par libslic3r dans le bloc de configuration,
+            // sinon celle de la requête. H2D High Flow,Standard en auto (2,1) :
+            // filament 1 sur la buse 2 (Standard), filament 2 sur la buse 1 (High Flow).
             std::vector<int> maps;
-            if (const auto *opt = source.option<Slic3r::ConfigOptionInts>("filament_map"))
-                maps = opt->values;
+            if (const auto entry = std::find_if(entries.begin(), entries.end(),
+                                                [](const Entry &e) { return e.key == "filament_map"; });
+                entry != entries.end()) {
+                std::vector<std::string> parts;
+                const std::string text = entry->text.substr(entry->text.find(" = ") + 3);
+                boost::split(parts, text, boost::is_any_of(","));
+                for (const auto &part : parts)
+                    try {
+                        maps.push_back(std::stoi(part));
+                    } catch (...) {
+                        maps.clear();
+                        break;
+                    }
+            }
+            if (maps.empty())
+                if (const auto *opt = source.option<Slic3r::ConfigOptionInts>("filament_map"))
+                    maps = opt->values;
             std::vector<std::string> reduced;
             for (int f = 0; f < filaments; ++f) {
                 const int extruder = maps.empty() ? 1 : maps[std::min<size_t>(f, maps.size() - 1)];
