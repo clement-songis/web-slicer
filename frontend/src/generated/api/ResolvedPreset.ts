@@ -7,4 +7,15 @@ export type ResolvedPreset = { id: string,
 /**
  * Valeurs effectives aplaties (clé → valeur au format JSON simple).
  */
-values: Record<string, unknown>, };
+values: Record<string, unknown>, 
+/**
+ * Preset machine seulement (lot 44b) : type de plaque par défaut de
+ * l'imprimante, libellé WebSlicer (`Plate.plateType`, ex. « Smooth High
+ * Temp Plate ») — Orca `Preset::get_default_bed_type`, posé sur un nouveau
+ * projet / à la sélection de l'imprimante.
+ */
+default_plate_type?: string, 
+/**
+ * Même valeur au format Orca (`curr_bed_type`, ex. « High Temp Plate »).
+ */
+default_bed_type?: string, };

@@ -47,6 +47,9 @@ pub async fn export_3mf(
         super::slice::resolve_active_config(&state, user.id, &project.active_presets).await?;
     // Réglages du projet (couleurs, purges) par-dessus les presets, comme au tranchage.
     super::slice::apply_project_config(&mut config, &project.scene);
+    // Lot 44 (X-d) : matrice de purge purgée au tranchage (n² × buses), pas la
+    // 4×4 du registre complétée plus bas.
+    super::flush::complete_flush_matrix(&mut config).await?;
     // G-code personnalisés par couche (Metadata/custom_gcode_per_layer.xml).
     let mode = crate::slicing::custom_gcode_mode(&config);
     model.custom_gcodes = crate::slicing::scene_custom_gcodes(&project.scene)
@@ -65,6 +68,11 @@ pub async fn export_3mf(
     // Presets « modifiés » : clés surchargées dans different_settings_to_system.
     let overrides = super::overrides::overrides_of(&project.active_presets)?;
     super::overrides::apply_different_settings(&mut config, overrides.as_ref());
+    // Lot 44 (audit 43 M1-b) : `project_settings.config` d'Orca est
+    // `PresetBundle::full_fff_config()` — aucune option SLA (`pad_enable`,
+    // `material_*`…), que les défauts du registre ajoutaient (la CLI les
+    // recopiait ensuite dans l'en-tête du G-code).
+    strip_sla_options(&mut config);
 
     let mut plates = scene_project_plates(&project.scene);
     attach_plate_thumbnails(&state, user.id, project_id, &model, &config, &mut plates).await;
@@ -477,9 +485,17 @@ pub(crate) fn plate_explicit_settings(plate: &Value) -> engine::api::DynamicPrin
     .unwrap_or_else(|_| engine::api::DynamicPrintConfig::new())
 }
 
+/// Retire les options propres au SLA (`init_sla_params`, groupe `Sla` du
+/// registre) d'une config exportée, comme `full_fff_config` d'Orca.
+pub(crate) fn strip_sla_options(config: &mut engine::api::DynamicPrintConfig) {
+    config.0.retain(|key, _| {
+        engine::params::get(key).is_none_or(|def| def.group != engine::params::ParamGroup::Sla)
+    });
+}
+
 /// Réglages d'export d'un plateau : réglages explicites + `plateType` →
 /// `curr_bed_type` s'il n'est pas déjà fixé explicitement.
-fn plate_settings_config(plate: &Value) -> engine::api::DynamicPrintConfig {
+pub(crate) fn plate_settings_config(plate: &Value) -> engine::api::DynamicPrintConfig {
     let mut settings = plate_explicit_settings(plate);
     if !settings.0.contains_key("curr_bed_type") {
         if let Some(bed) = plate
@@ -641,7 +657,7 @@ pub(crate) fn to_orca_world(
     }
 }
 
-fn scene_project_plates(scene: &Value) -> Vec<engine::threemf::ProjectPlate> {
+pub(crate) fn scene_project_plates(scene: &Value) -> Vec<engine::threemf::ProjectPlate> {
     let plates = match scene.get("plates") {
         Some(Value::Array(plates)) => plates,
         Some(Value::Object(document)) => match document.get("plates").and_then(Value::as_array) {
@@ -694,6 +710,10 @@ struct SceneObjectSpec {
     /// Informations de coupe (`cutId` → `ModelObject::cut_id`,
     /// cut_information.xml du 3MF).
     cut_id: Option<engine::api::CutObjectId>,
+    /// Nom de l'objet dans l'éditeur (`objects[].name`, lot 44b I2).
+    object_name: Option<String>,
+    /// Groupe d'instances (`instanceGroup`, lot 44b F-a).
+    instance_group: Option<String>,
 }
 
 /// Assemble le `Model` moteur depuis le document de scène et les maillages
@@ -752,10 +772,16 @@ pub(crate) async fn build_project_model_selected(
                 mesh_name: None,
                 emboss: None,
                 cut_id: None,
+                object_name: None,
+                instance_group: None,
             })
             .collect()
     });
 
+    // Lot 44b (F-a) : un `ModelObject` par groupe d'instances, ses membres en
+    // `ModelInstance` (`<object>` unique + N `<item>` du 3MF, comme Orca).
+    let mut grouped: std::collections::HashMap<(String, String), usize> =
+        std::collections::HashMap::new();
     for spec in specs {
         if let Some(selection) = selection {
             if !spec
@@ -765,6 +791,18 @@ pub(crate) async fn build_project_model_selected(
             {
                 continue;
             }
+        }
+        let group_key =
+            crate::slicing::instance_group_key(spec.instance_group.as_deref(), &spec.model_id);
+        if let Some(&index) = group_key.as_ref().and_then(|key| grouped.get(key)) {
+            model.objects[index]
+                .instances
+                .push(engine::api::ModelInstance {
+                    matrix: spec.matrix,
+                    plate_index: spec.plate_index,
+                    printable: spec.printable,
+                });
+            continue;
         }
         let Some(m) = models.iter().find(|m| m.id.to_string() == spec.model_id) else {
             return Err(ApiError::validation(
@@ -777,7 +815,13 @@ pub(crate) async fn build_project_model_selected(
             center_mesh(&mut mesh);
         }
         let mesh_stats = imported_mesh_stats(m).await;
-        let object = model.add_object(m.filename.clone(), mesh);
+        if let Some(key) = group_key {
+            grouped.insert(key, model.objects.len());
+        }
+        // Lot 44b (I2) : `ModelObject::name` = nom de l'objet de l'éditeur
+        // (metadata « name » de l'`<object>` du 3MF écrit), comme Orca.
+        let object_name = spec.object_name.unwrap_or_else(|| m.filename.clone());
+        let object = model.add_object(object_name, mesh);
         object.settings = spec.settings;
         object.layer_height_profile = spec.layer_height_profile;
         object.layer_config_ranges = spec.layer_config_ranges;
@@ -988,6 +1032,13 @@ fn scene_object_specs(scene: &Value, requested_plate: Option<u32>) -> Option<Vec
                         .filter(|name| !name.trim().is_empty())
                         .map(str::to_string),
                     cut_id: crate::scene::scene_cut_id(object),
+                    object_name: object
+                        .get("name")
+                        .and_then(Value::as_str)
+                        .map(str::trim)
+                        .filter(|name| !name.is_empty())
+                        .map(str::to_string),
+                    instance_group: crate::slicing::scene_instance_group(object),
                 })
             })
             .collect(),
@@ -1156,6 +1207,32 @@ mod tests {
         center_mesh(&mut mesh);
         assert_eq!(mesh.vertices[0], [-2.0, -2.0, -4.0]);
         assert_eq!(mesh.vertices[1], [2.0, 2.0, 4.0]);
+    }
+
+    #[test]
+    fn exported_config_has_no_sla_option() {
+        let mut config = engine::api::DynamicPrintConfig::new();
+        super::super::presets::fill_registry_defaults(&mut config);
+        assert!(config.0.contains_key("pad_enable"));
+        strip_sla_options(&mut config);
+        assert!(!config.0.contains_key("pad_enable"));
+        assert!(!config.0.contains_key("material_density"));
+        assert!(config.0.contains_key("layer_height"));
+        // Défauts FloatOrPercent (lot 44) : écrits comme Orca.
+        assert_eq!(
+            config.0.get("skin_infill_line_width"),
+            Some(&engine::api::ConfigValue::FloatOrPercent {
+                value: 100.0,
+                percent: true
+            })
+        );
+        assert_eq!(
+            config.0.get("seam_slope_start_height"),
+            Some(&engine::api::ConfigValue::FloatOrPercent {
+                value: 0.0,
+                percent: false
+            })
+        );
     }
 
     #[test]

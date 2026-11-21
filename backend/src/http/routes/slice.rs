@@ -637,8 +637,30 @@ fn set_filament_value(
     key: String,
     incoming: ConfigValue,
 ) {
+    let existing_len = match merged.0.get(&key) {
+        Some(ConfigValue::Bools(v)) => v.len(),
+        Some(ConfigValue::BoolsNullable(v)) => v.len(),
+        Some(ConfigValue::Ints(v)) => v.len(),
+        Some(ConfigValue::Floats(v)) => v.len(),
+        Some(ConfigValue::FloatsNullable(v)) => v.len(),
+        Some(ConfigValue::Strings(v)) => v.len(),
+        Some(ConfigValue::Points(v)) => v.len(),
+        _ => 0,
+    };
+    let slots = variant_slots(merged, &key, index, existing_len);
+    // Lot 44 : option par variante (vecteur filament × variante) — les cases
+    // du filament `index` reçoivent ses valeurs (une par variante, sinon la
+    // première), au lieu de la case `index` qui appartient à un autre filament.
     macro_rules! put {
         ($out:expr, $vals:expr, $fill:expr) => {{
+            if let Some(slots) = slots.clone() {
+                for (n, position) in slots.into_iter().enumerate() {
+                    if let Some(v) = $vals.get(n).or($vals.first()).cloned() {
+                        $out[position] = v;
+                    }
+                }
+                return;
+            }
             if let Some(v) = $vals.first().cloned() {
                 if $out.len() <= index {
                     let pad = $out.last().cloned().unwrap_or($fill);
@@ -939,6 +961,8 @@ fn merge_filament_configs(merged: &mut DynamicPrintConfig, filaments: Vec<Dynami
                 }
             }
         }
+        // Après les défauts : toutes les options par variante du filament.
+        extend_variant_values(&mut filament);
         variant_counts.push(match filament.0.get("filament_extruder_variant") {
             Some(ConfigValue::Strings(values)) if !values.is_empty() => values.len(),
             _ => 1,
@@ -946,6 +970,109 @@ fn merge_filament_configs(merged: &mut DynamicPrintConfig, filaments: Vec<Dynami
         merge_filament_config(merged, filament, index);
     }
     set_filament_self_index(merged, &variant_counts);
+}
+
+/// Options filament « par variante de buse » d'Orca 2.4.1
+/// (`filament_options_with_variant`, PrintConfig.cpp:8375) : une valeur par
+/// élément de `filament_extruder_variant`.
+const FILAMENT_OPTIONS_WITH_VARIANT: [&str; 37] = [
+    "filament_flow_ratio",
+    "filament_max_volumetric_speed",
+    "filament_extruder_variant",
+    "filament_retraction_length",
+    "filament_z_hop",
+    "filament_z_hop_types",
+    "filament_retract_lift_above",
+    "filament_retract_lift_below",
+    "filament_retract_lift_enforce",
+    "filament_retract_restart_extra",
+    "filament_retraction_speed",
+    "filament_deretraction_speed",
+    "filament_retraction_minimum_travel",
+    "filament_retract_when_changing_layer",
+    "filament_wipe",
+    "filament_wipe_distance",
+    "filament_retract_before_wipe",
+    "filament_long_retractions_when_cut",
+    "filament_retraction_distances_when_cut",
+    "long_retractions_when_ec",
+    "retraction_distances_when_ec",
+    "nozzle_temperature_initial_layer",
+    "nozzle_temperature",
+    "filament_flush_volumetric_speed",
+    "filament_flush_temp",
+    "filament_cooling_before_tower",
+    "volumetric_speed_coefficients",
+    "filament_adaptive_volumetric_speed",
+    "filament_ironing_flow",
+    "filament_ironing_spacing",
+    "filament_ironing_inset",
+    "filament_ironing_speed",
+    "activate_air_filtration",
+    "activate_air_filtration_during_print",
+    "activate_air_filtration_on_completion",
+    "during_print_exhaust_fan_speed",
+    "complete_print_exhaust_fan_speed",
+];
+
+/// Lot 44 (audit 43 I3-bis) : `extend_default_config_length` d'Orca
+/// (Preset.cpp:231, appliqué à chaque preset chargé) — chaque option par
+/// variante d'un filament a exactement autant de valeurs que son
+/// `filament_extruder_variant` (`ConfigOptionVector::resize` : complétée par
+/// la **première** valeur, tronquée au-delà). Sans cela, un preset qui ne
+/// donne qu'une valeur (ex. `during_print_exhaust_fan_speed` hérité de
+/// `fdm_filament_common`) pour 2 variantes (Bambu PLA Basic : Standard / High
+/// Flow) décale la lecture par `filament_self_index` de libslic3r : le 2ᵉ
+/// filament lisait une case absente (« 70,0 » au lieu de « 70,70 »).
+fn extend_variant_values(filament: &mut DynamicPrintConfig) {
+    let length = match filament.0.get("filament_extruder_variant") {
+        Some(ConfigValue::Strings(values)) if !values.is_empty() => values.len(),
+        _ => return,
+    };
+    fn fit<T: Clone>(values: &mut Vec<T>, length: usize) {
+        if let Some(first) = values.first().cloned() {
+            values.resize(length, first);
+        }
+    }
+    for key in FILAMENT_OPTIONS_WITH_VARIANT {
+        match filament.0.get_mut(key) {
+            Some(ConfigValue::Bools(v)) => fit(v, length),
+            Some(ConfigValue::BoolsNullable(v)) => fit(v, length),
+            Some(ConfigValue::Ints(v)) => fit(v, length),
+            Some(ConfigValue::Floats(v)) => fit(v, length),
+            Some(ConfigValue::FloatsNullable(v)) => fit(v, length),
+            Some(ConfigValue::Strings(v)) => fit(v, length),
+            Some(ConfigValue::Points(v)) => fit(v, length),
+            _ => {}
+        }
+    }
+}
+
+/// Cases du filament `index` dans un vecteur par variante (positions où
+/// `filament_self_index` vaut `index + 1`), si le vecteur a bien une valeur
+/// par élément de `filament_self_index`.
+fn variant_slots(
+    merged: &DynamicPrintConfig,
+    key: &str,
+    index: usize,
+    len: usize,
+) -> Option<Vec<usize>> {
+    if !FILAMENT_OPTIONS_WITH_VARIANT.contains(&key) {
+        return None;
+    }
+    let Some(ConfigValue::Ints(self_index)) = merged.0.get("filament_self_index") else {
+        return None;
+    };
+    if self_index.len() != len {
+        return None;
+    }
+    let slots: Vec<usize> = self_index
+        .iter()
+        .enumerate()
+        .filter(|(_, owner)| **owner == index as i64 + 1)
+        .map(|(position, _)| position)
+        .collect();
+    (!slots.is_empty()).then_some(slots)
 }
 
 /// `filament_self_index` comme PresetBundle::construct_full_config d'Orca : une
@@ -1212,8 +1339,18 @@ pub(crate) fn apply_project_config(config: &mut engine::api::DynamicPrintConfig,
 
 /// Liste des `objectIds` par plateau (deux formes de scène tolérées : tableau de
 /// plateaux, ou document `{ plates: [...], activeId }`). Vide si aucun plateau.
-/// Snapshot `resolved` + surcharges explicites du plateau `index`
-/// (`plates[index].settings`, clés Orca par plateau uniquement).
+/// Snapshot `resolved` + réglages du plateau `index` (`plates[index].settings`,
+/// clés Orca par plateau uniquement) + type de plaque du plateau.
+///
+/// Lot 44 (audit 43 B-1) : Orca tranche un plateau avec
+/// `PartPlate::get_bed_type()` (réglage `curr_bed_type` du plateau, ou celui
+/// du projet si le plateau est « par défaut ») ; `bed_temperature` en découle
+/// (`*_plate_temp*` du type). Le type choisi dans la barre du plateau
+/// (`plateType`) est donc appliqué comme `curr_bed_type` — exactement ce que
+/// l'export 3MF écrit dans `bed_type` du plateau (`plate_settings_config`) ;
+/// une surcharge explicite `settings.curr_bed_type` (dialogue « Réglages du
+/// plateau ») prime ; libellé absent ou inconnu (`Default Plate`) → valeur du
+/// projet (snapshot inchangé).
 pub(crate) fn with_plate_settings(resolved: &Value, scene: &Value, index: i64) -> Value {
     let plates = match scene.get("plates") {
         Some(Value::Array(plates)) => Some(plates),
@@ -1223,7 +1360,7 @@ pub(crate) fn with_plate_settings(resolved: &Value, scene: &Value, index: i64) -
     let Some(plate) = plates.and_then(|plates| plates.get(index.max(0) as usize)) else {
         return resolved.clone();
     };
-    let overrides = super::export::plate_explicit_settings(plate);
+    let overrides = super::export::plate_settings_config(plate);
     if overrides.0.is_empty() {
         return resolved.clone();
     }
@@ -1352,9 +1489,85 @@ mod tests {
         assert_eq!(b["print_sequence"], json!("by object"));
         assert_eq!(b["first_layer_sequence_choice"], json!("Customize"));
         assert_eq!(b["other_layers_sequence_choice"], json!("Customize"));
-        // Clé hors PLATE_SETTING_KEYS ignorée ; plateType seul ne fige rien.
+        // Clé hors PLATE_SETTING_KEYS ignorée.
         assert_eq!(b["layer_height"], json!(0.2));
-        assert!(b.get("curr_bed_type").is_none());
+        // Lot 44 (B-1) : le type de plaque du plateau est tranché (Orca
+        // PartPlate::get_bed_type), comme l'export 3MF l'écrit.
+        assert_eq!(b["curr_bed_type"], json!("Engineering Plate"));
+    }
+
+    #[test]
+    fn plate_type_sets_the_sliced_bed_type_unless_overridden_or_default() {
+        let resolved = json!({ "curr_bed_type": "Cool Plate", "layer_height": 0.2 });
+        let scene = json!({ "plates": { "plates": [
+            { "id": "a", "objectIds": [], "plateType": "Textured PEI Plate" },
+            { "id": "b", "objectIds": [], "plateType": "Smooth High Temp Plate",
+              "settings": { "curr_bed_type": "Engineering Plate" } },
+            { "id": "c", "objectIds": [], "plateType": "Default Plate" },
+            { "id": "d", "objectIds": [] }
+        ] } });
+        let bed = |i| super::with_plate_settings(&resolved, &scene, i)["curr_bed_type"].clone();
+        assert_eq!(bed(0), json!("Textured PEI Plate"));
+        // Surcharge explicite du dialogue « Réglages du plateau ».
+        assert_eq!(bed(1), json!("Engineering Plate"));
+        // Plateau « par défaut » : type du projet.
+        assert_eq!(bed(2), json!("Cool Plate"));
+        assert_eq!(bed(3), json!("Cool Plate"));
+    }
+
+    #[test]
+    fn variant_options_follow_the_filament_variants_and_overrides_hit_their_filament() {
+        // Lot 44 (audit 43 I3-bis) : Bambu PLA Basic (Standard / High Flow).
+        let filament = || {
+            let mut config = DynamicPrintConfig::new();
+            config.0.insert(
+                "filament_extruder_variant".into(),
+                ConfigValue::Strings(vec![
+                    "Direct Drive Standard".into(),
+                    "Direct Drive High Flow".into(),
+                ]),
+            );
+            config.0.insert(
+                "during_print_exhaust_fan_speed".into(),
+                ConfigValue::Ints(vec![70]),
+            );
+            config.0.insert(
+                "nozzle_temperature".into(),
+                ConfigValue::Ints(vec![220, 230]),
+            );
+            config
+        };
+        let mut merged = DynamicPrintConfig::new();
+        merge_filament_configs(&mut merged, vec![filament(), filament()]);
+        assert_eq!(
+            merged.get("during_print_exhaust_fan_speed"),
+            Some(&ConfigValue::Ints(vec![70, 70, 70, 70]))
+        );
+        assert_eq!(
+            merged.get("filament_self_index"),
+            Some(&ConfigValue::Ints(vec![1, 1, 2, 2]))
+        );
+        // Surcharge du filament 2 : ses deux cases, pas la case 1 du filament 1.
+        set_filament_value(
+            &mut merged,
+            1,
+            "nozzle_temperature".into(),
+            ConfigValue::Ints(vec![240, 250]),
+        );
+        assert_eq!(
+            merged.get("nozzle_temperature"),
+            Some(&ConfigValue::Ints(vec![220, 230, 240, 250]))
+        );
+        set_filament_value(
+            &mut merged,
+            0,
+            "during_print_exhaust_fan_speed".into(),
+            ConfigValue::Ints(vec![50]),
+        );
+        assert_eq!(
+            merged.get("during_print_exhaust_fan_speed"),
+            Some(&ConfigValue::Ints(vec![50, 50, 70, 70]))
+        );
     }
 
     #[test]

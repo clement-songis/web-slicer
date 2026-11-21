@@ -250,7 +250,7 @@ pub async fn import(
 
     let mut imported = crate::models::threemf::read_project(&bytes)
         .await
-        .map_err(|e| ApiError::validation(e.to_string(), details(&filename)))?;
+        .map_err(|e| project_3mf_error(&bytes, &filename, e))?;
 
     let preferences = state.storage.users().get_preferences(user.id).await?;
     let load = query
@@ -526,6 +526,35 @@ pub(crate) fn geometry_only(imported: &mut crate::models::threemf::ImportedProje
     }
 }
 
+/// Erreur d'ouverture d'un 3MF comme projet. Lot 44 (audit 43 X-f) : un
+/// **.gcode.3mf** (fichier tranché d'Orca / de web-slicer, `store_bbs_3mf` en
+/// `SkipModel` : G-code des plateaux sans géométrie) n'a aucun objet à
+/// importer ; Orca le rouvre en aperçu du G-code (`Plater::is_gcode_3mf`).
+/// Message explicite + `details.kind = "gcode_3mf"` et `details.plates`
+/// (plateaux tranchés) pour que le client l'ouvre par
+/// `POST /api/gcode/process?plate=<n>` (qui accepte l'archive telle quelle).
+fn project_3mf_error(
+    bytes: &[u8],
+    filename: &str,
+    error: crate::models::threemf::ThreeMfImportError,
+) -> ApiError {
+    let plates = zip::ZipArchive::new(std::io::Cursor::new(bytes))
+        .map(|zip| super::gcode_open::archive_gcode_plates(&zip))
+        .unwrap_or_default();
+    if plates.is_empty() {
+        return ApiError::validation(error.to_string(), details(filename));
+    }
+    ApiError::validation(
+        format!(
+            "« {filename} » est un fichier tranché (.gcode.3mf) : il contient le G-code \
+             de {} plateau(x) mais aucun modèle à importer — ouvrez-le avec « Ouvrir un \
+             G-code… » pour l'aperçu",
+            plates.len()
+        ),
+        json!({ "filename": filename, "kind": "gcode_3mf", "plates": plates }),
+    )
+}
+
 /// Lot 43 (audit 42 I3) : `curr_bed_type` est une option **projet** d'Orca
 /// (project_settings.config), pas une option de preset : un plateau sans type
 /// propre (PartPlate « btDefault ») suit celui du projet. Sans cette reprise,
@@ -766,7 +795,7 @@ pub async fn import_into(
     }
     let mut imported = crate::models::threemf::read_project(&bytes)
         .await
-        .map_err(|e| ApiError::validation(e.to_string(), details(&filename)))?;
+        .map_err(|e| project_3mf_error(&bytes, &filename, e))?;
     imported.config.clear();
     let name = project_name_from(&filename);
     let (scene, _, models) =
@@ -946,10 +975,45 @@ pub(crate) async fn import_3mf_contents(
         Vec::with_capacity(imported.objects.len());
     let mut scene_objects = Vec::with_capacity(imported.objects.len());
     let mut object_ids = Vec::with_capacity(imported.objects.len());
+    // Lot 44b (F-a) : un `<object>` du 3MF à N instances (`<item>` / plateaux)
+    // donne N objets de scène liés par `instanceGroup`, qui partagent le modèle
+    // (maillage) et les pièces de l'objet — un seul ModelObject à N
+    // ModelInstance au tranchage et à l'export, comme Orca.
+    let mut instances_per_source: std::collections::HashMap<&str, usize> =
+        std::collections::HashMap::new();
     for object in &imported.objects {
+        *instances_per_source
+            .entry(object.source_id.as_str())
+            .or_default() += 1;
+    }
+    let source_count = instances_per_source.len();
+    // Par objet source : (modèle, volumes maillés, groupe d'instances).
+    let mut shared: std::collections::HashMap<&str, (String, Vec<Value>, Option<String>)> =
+        std::collections::HashMap::new();
+    for object in &imported.objects {
+        if let Some((model_id, mesh_volumes, group)) = shared.get(object.source_id.as_str()) {
+            let object_id = Uuid::new_v4().to_string();
+            let mut scene_object = imported_scene_object(&object_id, model_id, object);
+            if !object.name.is_empty() {
+                scene_object["name"] = object.name.clone().into();
+            }
+            if let Some(group) = group {
+                scene_object["instanceGroup"] = group.clone().into();
+            }
+            if let Some(volumes) = scene_object["volumes"].as_array_mut() {
+                // Mêmes pièces (mêmes modèles), identifiants de volume propres.
+                volumes.extend(mesh_volumes.iter().cloned().map(|mut volume| {
+                    volume["id"] = Uuid::new_v4().to_string().into();
+                    volume
+                }));
+            }
+            scene_objects.push(scene_object);
+            object_ids.push(object_id);
+            continue;
+        }
         let source_bytes =
             source_3mf(&object.name, &object.mesh, object.mesh_stats.as_ref()).await?;
-        let model_name = if imported.objects.len() == 1 {
+        let model_name = if source_count == 1 {
             filename.to_string()
         } else {
             format!("{} — {}.3mf", project_name, object.name)
@@ -1026,10 +1090,24 @@ pub(crate) async fn import_3mf_contents(
         let object_id = Uuid::new_v4().to_string();
         let mut scene_object = imported_scene_object(&object_id, &model.id.to_string(), object);
         // Orca crée un objet par `<object>` du 3MF, avec son nom
-        // (bbs_3mf.cpp, metadata « name ») ; un objet unique garde le nom du fichier.
-        if imported.objects.len() > 1 && !object.name.is_empty() {
+        // (bbs_3mf.cpp, metadata « name » → ModelObject::name) — lot 44b (I2) :
+        // aussi pour un 3MF à objet unique (le nom du fichier n'est qu'un repli).
+        if !object.name.is_empty() {
             scene_object["name"] = object.name.clone().into();
         }
+        let group = (instances_per_source
+            .get(object.source_id.as_str())
+            .copied()
+            .unwrap_or(1)
+            > 1)
+        .then(|| Uuid::new_v4().to_string());
+        if let Some(group) = &group {
+            scene_object["instanceGroup"] = group.clone().into();
+        }
+        shared.insert(
+            object.source_id.as_str(),
+            (model.id.to_string(), mesh_volumes.clone(), group),
+        );
         if let Some(volumes) = scene_object["volumes"].as_array_mut() {
             volumes.extend(mesh_volumes);
         }
@@ -1120,6 +1198,26 @@ fn imported_project_config(config: &Map<String, Value>) -> Map<String, Value> {
     if let Some(matrix) = config.get("flush_volumes_matrix").map(strings) {
         let values: Option<Vec<f64>> = matrix.iter().map(|s| s.parse().ok()).collect();
         if let Some(values) = values.filter(|v| !v.is_empty()) {
+            let numbers = |key: &str| -> Vec<f64> {
+                config
+                    .get(key)
+                    .map(strings)
+                    .unwrap_or_default()
+                    .iter()
+                    .filter_map(|s| s.parse().ok())
+                    .collect()
+            };
+            let filaments = config
+                .get("filament_colour")
+                .map(strings)
+                .map_or(0, |c| c.len());
+            let values = resized_flush_matrix(
+                values,
+                filaments,
+                numbers("nozzle_diameter").len().max(1),
+                numbers("flush_multiplier").len().max(1),
+                &numbers("flush_volumes_vector"),
+            );
             out.insert("flush_volumes_matrix".into(), json!(values));
         }
     }
@@ -1131,6 +1229,72 @@ fn imported_project_config(config: &Map<String, Value>) -> Map<String, Value> {
         out.insert("flush_multiplier".into(), json!(first));
     }
     out
+}
+
+/// Lot 44 (audit 43 X-d) : `PresetBundle::update_multi_material_filament_presets`
+/// d'Orca à l'ouverture d'un projet — une matrice de purge dont la taille ne
+/// vaut pas filaments² (par buse) est reconstruite : valeurs existantes
+/// recopiées pour i, j < ancien nombre de filaments, sinon
+/// `flush_volumes_vector[2i] + flush_volumes_vector[2j+1]` (140 par défaut),
+/// diagonale nulle. Sans cela un 3MF multi-filament à matrice 4×4 (exporté
+/// par les versions précédentes) ne se tranchait plus (« Flush volumes matrix
+/// do not match to the correct size! », refus de la CLI). Projet
+/// mono-filament : inchangé (Orca garde la 4×4 du preset, riche.3mf).
+fn resized_flush_matrix(
+    old: Vec<f64>,
+    filaments: usize,
+    nozzles: usize,
+    old_nozzles: usize,
+    vector: &[f64],
+) -> Vec<f64> {
+    let per_nozzle = old.len() / old_nozzles.max(1);
+    if filaments < 2 || per_nozzle == filaments * filaments {
+        return old;
+    }
+    let old_n = ((per_nozzle as f64).sqrt() + 1e-9) as usize;
+    let mut volumes = vector.to_vec();
+    while volumes.len() < 2 * filaments {
+        let first = if volumes.len() > 1 { volumes[0] } else { 140.0 };
+        volumes.push(first);
+        let second = if volumes.len() > 1 { volumes[1] } else { 140.0 };
+        volumes.push(second);
+    }
+    let old_size = old_n * old_n;
+    let new_size = filaments * filaments;
+    let mut next = vec![0.0; new_size * nozzles];
+    for i in 0..filaments {
+        for j in 0..filaments {
+            for nozzle in 0..nozzles {
+                let at = i * filaments + j + new_size * nozzle;
+                let from = i * old_n + j + old_size * nozzle;
+                next[at] = if i < old_n && j < old_n && nozzle < old_nozzles && from < old.len() {
+                    old[from]
+                } else if i == j {
+                    0.0
+                } else {
+                    volumes[2 * i] + volumes[2 * j + 1]
+                };
+            }
+        }
+    }
+    next
+}
+
+/// Lot 44 (audit 43 X-c) : la matrice d'un 3MF est écrite en simple précision ;
+/// sa décomposition donne 29,999999917° pour 30°. Orca n'arrondit que
+/// l'**affichage** (ObjectManipulation, 2 décimales) : la matrice de
+/// l'instance reste exacte. Lot 44b : l'arrondi au 1/10 000° du lot 44
+/// déplaçait la géométrie tranchée (riche.3mf, cylindre tourné de
+/// −137,8125° : 1 164 lignes d'écart d'extrusion avec la CLI Orca, 0 sans
+/// arrondi) — angle exact conservé, seul −0 devient 0 ; l'arrondi
+/// d'affichage revient à l'interface.
+fn rounded_degrees(radians: f64) -> f64 {
+    let value = radians.to_degrees();
+    if value == 0.0 {
+        0.0
+    } else {
+        value
+    }
 }
 
 fn imported_scene_object(
@@ -1155,12 +1319,13 @@ fn imported_scene_object(
     let matrix = object.matrix * DMat4::from_translation(center);
     let (scale, rotation, translation) = matrix.to_scale_rotation_translation();
     let (rx, ry, rz) = rotation.to_euler(EulerRot::XYZ);
+    let degrees = rounded_degrees;
     let mut document = json!({
         "id": object_id,
         "modelId": model_id,
         "transform": {
             "position": [translation.x, translation.y, translation.z],
-            "rotation": [rx.to_degrees(), ry.to_degrees(), rz.to_degrees()],
+            "rotation": [degrees(rx), degrees(ry), degrees(rz)],
             "scale": [scale.x, scale.y, scale.z],
         },
         "extruder": object.extruder,
@@ -2577,5 +2742,210 @@ mod import_3mf_tests {
         imported.config = config(base());
         geometry_only(&mut imported);
         assert_eq!(imported.filament_colours.len(), 15, "plafond 16 filaments");
+    }
+}
+
+#[cfg(test)]
+mod lot44_tests {
+    use super::*;
+
+    #[test]
+    fn multi_filament_flush_matrix_is_resized_like_orca_on_open() {
+        // 3MF exporté avant le lot 44 : 4×4 du registre pour 2 filaments.
+        let mut old = vec![280.0; 16];
+        for i in 0..4 {
+            old[i * 4 + i] = 0.0;
+        }
+        old[1] = 297.0;
+        old[4] = 433.0;
+        assert_eq!(
+            resized_flush_matrix(old.clone(), 2, 1, 1, &[140.0; 8]),
+            vec![0.0, 297.0, 433.0, 0.0]
+        );
+        // Taille correcte ou mono-filament : inchangée.
+        assert_eq!(
+            resized_flush_matrix(vec![0.0, 1.0, 2.0, 0.0], 2, 1, 1, &[]).len(),
+            4
+        );
+        assert_eq!(resized_flush_matrix(old.clone(), 1, 1, 1, &[]), old);
+        // Agrandissement : nouvelles cases = vector[2i] + vector[2j+1].
+        let grown = resized_flush_matrix(vec![0.0, 5.0, 6.0, 0.0], 3, 1, 1, &[10.0, 20.0]);
+        assert_eq!(grown, vec![0.0, 5.0, 30.0, 6.0, 0.0, 30.0, 30.0, 30.0, 0.0]);
+    }
+
+    #[test]
+    fn imported_rotation_keeps_the_exact_angle() {
+        // Lot 44b : angle exact (parité de géométrie avec Orca), seul −0 → 0.
+        let noisy = 29.999_999_917_430_255_f64;
+        assert!((rounded_degrees(noisy.to_radians()) - noisy).abs() < 1e-9);
+        assert_eq!(rounded_degrees(-0.0), 0.0);
+        assert!(rounded_degrees(-0.0).is_sign_positive());
+    }
+}
+
+#[cfg(test)]
+mod lot44b_tests {
+    //! Lot 44b : à l'ouverture d'un 3MF, objets nommés d'après l'`<object>`
+    //! (I2) et instances d'un même objet liées par `instanceGroup` (F-a).
+    use super::*;
+    use std::sync::Arc;
+
+    fn worker_available() -> bool {
+        std::env::var("ENGINE_WORKER_BIN").is_ok()
+            || std::env::current_exe()
+                .ok()
+                .and_then(|exe| Some(exe.parent()?.parent()?.join("engine-worker")))
+                .is_some_and(|bin| bin.exists())
+    }
+
+    fn object(source: &str, instance: usize, x: f64) -> crate::models::threemf::ImportedObject {
+        crate::models::threemf::ImportedObject {
+            name: format!("{source}.stl"),
+            mesh: engine::api::TriangleMesh {
+                vertices: vec![
+                    [0.0, 0.0, 0.0],
+                    [10.0, 0.0, 0.0],
+                    [0.0, 10.0, 0.0],
+                    [0.0, 0.0, 10.0],
+                ],
+                indices: vec![[0, 2, 1], [0, 1, 3], [1, 2, 3], [0, 3, 2]],
+            },
+            matrix: glam::DMat4::from_translation(glam::DVec3::new(x, 0.0, 0.0)),
+            printable: true,
+            extruder: 1,
+            settings: Map::new(),
+            layer_profile: Vec::new(),
+            source_id: source.into(),
+            instance_index: instance,
+            painting: Map::new(),
+            emboss: None,
+            volumes: Vec::new(),
+            parts: Vec::new(),
+            layer_ranges: Vec::new(),
+            mesh_name: None,
+            cut_id: None,
+            mesh_stats: None,
+        }
+    }
+
+    async fn state() -> (tempfile::TempDir, AppState, UserId, ProjectId) {
+        let dir = tempfile::tempdir().unwrap();
+        let url = format!("sqlite://{}", dir.path().join("p.db").display());
+        let storage = Arc::new(
+            crate::adapters::storage::sqlite::SqliteStorage::connect(&url)
+                .await
+                .unwrap(),
+        );
+        let state = AppState::new(
+            storage as Arc<dyn crate::domain::Storage>,
+            crate::adapters::files::FileStore::new(dir.path().join("data")),
+        );
+        let user = state
+            .storage
+            .users()
+            .create(crate::domain::repo::NewUser {
+                email: "i2@harness.local".into(),
+                password_hash: "x".into(),
+                role: crate::domain::Role::User,
+            })
+            .await
+            .unwrap();
+        let project = state
+            .storage
+            .projects()
+            .create(
+                user.id,
+                crate::domain::NewProject {
+                    name: "projet".into(),
+                    scene: json!({}),
+                    active_presets: json!({}),
+                    thumbnail_path: None,
+                },
+            )
+            .await
+            .unwrap();
+        (dir, state, user.id, project.id)
+    }
+
+    fn project(
+        objects: Vec<crate::models::threemf::ImportedObject>,
+    ) -> crate::models::threemf::ImportedProject {
+        let instances = objects
+            .iter()
+            .map(|o| (o.source_id.clone(), o.instance_index))
+            .collect();
+        crate::models::threemf::ImportedProject {
+            objects,
+            plates: vec![crate::models::threemf::ImportedPlate {
+                name: String::new(),
+                plate_type: crate::models::threemf::DEFAULT_PLATE_TYPE.into(),
+                settings: Map::new(),
+                instances,
+            }],
+            config: Map::new(),
+            metadata: None,
+            filament_colours: Vec::new(),
+        }
+    }
+
+    #[tokio::test]
+    async fn instances_of_one_3mf_object_share_a_group_and_a_model() {
+        if !worker_available() {
+            return;
+        }
+        let (_dir, state, user, project_id) = state().await;
+        let imported = project(vec![
+            object("cube", 0, 0.0),
+            object("cube", 1, 30.0),
+            object("cyl", 0, 60.0),
+        ]);
+        let (scene, _, models) =
+            import_3mf_contents(&state, user, project_id, "projet", "projet.3mf", imported)
+                .await
+                .unwrap();
+        let objects = scene["objects"].as_array().unwrap();
+        assert_eq!(objects.len(), 3);
+        assert_eq!(
+            models.len(),
+            2,
+            "un modèle par objet du 3MF, pas par instance"
+        );
+        assert_eq!(objects[0]["name"], "cube.stl");
+        assert_eq!(objects[1]["name"], "cube.stl");
+        assert_eq!(objects[2]["name"], "cyl.stl");
+        assert_eq!(objects[0]["modelId"], objects[1]["modelId"]);
+        assert_ne!(objects[0]["modelId"], objects[2]["modelId"]);
+        let group = objects[0]["instanceGroup"].as_str().expect("groupe");
+        assert_eq!(objects[1]["instanceGroup"], group);
+        assert!(objects[2].get("instanceGroup").is_none());
+        assert_eq!(
+            scene["plates"]["plates"][0]["objectIds"]
+                .as_array()
+                .unwrap()
+                .len(),
+            3
+        );
+    }
+
+    #[tokio::test]
+    async fn a_single_object_3mf_keeps_the_object_name() {
+        if !worker_available() {
+            return;
+        }
+        let (_dir, state, user, project_id) = state().await;
+        let (scene, _, models) = import_3mf_contents(
+            &state,
+            user,
+            project_id,
+            "arbre",
+            "arbre.3mf",
+            project(vec![object("cube20", 0, 0.0)]),
+        )
+        .await
+        .unwrap();
+        // ModelObject::name d'Orca (metadata « name »), pas « arbre.3mf ».
+        assert_eq!(scene["objects"][0]["name"], "cube20.stl");
+        assert!(scene["objects"][0].get("instanceGroup").is_none());
+        assert_eq!(models[0].0.filename, "arbre.3mf");
     }
 }

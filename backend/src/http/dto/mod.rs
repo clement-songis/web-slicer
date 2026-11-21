@@ -578,6 +578,17 @@ pub struct ResolvedPreset {
     /// Valeurs effectives aplaties (clé → valeur au format JSON simple).
     #[ts(type = "Record<string, unknown>")]
     pub values: serde_json::Value,
+    /// Preset machine seulement (lot 44b) : type de plaque par défaut de
+    /// l'imprimante, libellé WebSlicer (`Plate.plateType`, ex. « Smooth High
+    /// Temp Plate ») — Orca `Preset::get_default_bed_type`, posé sur un nouveau
+    /// projet / à la sélection de l'imprimante.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[ts(optional)]
+    pub default_plate_type: Option<String>,
+    /// Même valeur au format Orca (`curr_bed_type`, ex. « High Temp Plate »).
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    #[ts(optional)]
+    pub default_bed_type: Option<String>,
 }
 
 /// Corps de `POST /api/presets` — crée un preset utilisateur.

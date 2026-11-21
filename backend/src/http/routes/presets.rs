@@ -369,10 +369,81 @@ pub async fn resolved(
         ApiError::internal()
     })?;
     fill_registry_defaults(&mut config);
+    let values = config_to_json(&config);
+    let default_bed_type = (leaf.kind == crate::domain::PresetKind::Machine)
+        .then(|| printer_default_bed_type(&values));
     Ok(Json(ResolvedPreset {
         id: leaf.id.to_string(),
-        values: Value::Object(config_to_json(&config)),
+        values: Value::Object(values),
+        default_plate_type: default_bed_type.map(crate::models::threemf::bed_type_to_plate_type),
+        default_bed_type: default_bed_type.map(str::to_string),
     }))
+}
+
+/// Modèles d'imprimante dont le `model_id` (fichiers `machine_model` du
+/// vendeur BBL d'Orca 2.4.1 : X1 Carbon « BL-P001 », X1 « BL-P002 », X1E
+/// « C13 ») donne une plaque froide par défaut. Le seed des presets ne garde
+/// pas `model_id` (engine::presets::import) : table recopiée des profils.
+const COOL_PLATE_PRINTER_MODELS: &[&str] =
+    &["Bambu Lab X1 Carbon", "Bambu Lab X1", "Bambu Lab X1E"];
+
+/// Clés Orca de `BedType` (enum : btDefault = 0, btPC, btEP, btPEI, btPTE,
+/// btPCT, btSuperTack), indexées par valeur.
+const BED_TYPE_KEYS: &[&str] = &[
+    "Default Plate",
+    "Cool Plate",
+    "Engineering Plate",
+    "High Temp Plate",
+    "Textured PEI Plate",
+    "Textured Cool Plate",
+    "Supertack Plate",
+];
+
+/// `Preset::get_default_bed_type` (Orca 2.4.1, Preset.cpp:966) sur les valeurs
+/// résolues d'un preset machine : `default_bed_type` non vide → `atoi` > 0 =
+/// ce type, sinon (y compris un libellé texte comme « Textured PEI Plate »,
+/// que `atoi` lit 0) High Temp ; absent → X1 / X1 Carbon / X1E = Cool Plate,
+/// toute autre imprimante = High Temp (btPEI). Renvoie la clé Orca.
+pub(crate) fn printer_default_bed_type(values: &serde_json::Map<String, Value>) -> &'static str {
+    let text = |key: &str| match values.get(key) {
+        Some(Value::String(s)) => s.clone(),
+        Some(Value::Array(items)) => items
+            .first()
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
+        Some(Value::Number(n)) => n.to_string(),
+        _ => String::new(),
+    };
+    let configured = text("default_bed_type");
+    if !configured.is_empty() {
+        return match c_atoi(&configured) {
+            value if value > 0 => BED_TYPE_KEYS
+                .get(value as usize)
+                .copied()
+                // Hors de l'enum : Orca renverrait un BedType invalide ;
+                // le sélecteur retombe sur le premier choix utile.
+                .unwrap_or("High Temp Plate"),
+            _ => "High Temp Plate",
+        };
+    }
+    if COOL_PLATE_PRINTER_MODELS.contains(&text("printer_model").as_str()) {
+        "Cool Plate"
+    } else {
+        "High Temp Plate"
+    }
+}
+
+/// `atoi` du C : espaces initiaux, signe facultatif, chiffres ; 0 sinon.
+fn c_atoi(text: &str) -> i64 {
+    let trimmed = text.trim_start();
+    let (sign, digits) = match trimmed.as_bytes().first() {
+        Some(b'-') => (-1, &trimmed[1..]),
+        Some(b'+') => (1, &trimmed[1..]),
+        _ => (1, trimmed),
+    };
+    let number: String = digits.chars().take_while(char::is_ascii_digit).collect();
+    number.parse::<i64>().map_or(0, |n| sign * n)
 }
 
 /// Complète les clés absentes de la chaîne avec les défauts du registre, comme
@@ -392,10 +463,25 @@ pub(crate) fn fill_registry_defaults(config: &mut engine::api::DynamicPrintConfi
         let Ok(json) = serde_json::from_str::<Value>(raw) else {
             continue;
         };
+        // Lot 44 (audit 43 I3) : les défauts FloatOrPercent du registre sont
+        // des objets `{ "value": 100.0, "percent": true }` (36 options :
+        // initial_layer_travel_acceleration, skin_infill_line_width…) — ils
+        // étaient ignorés, si bien qu'une valeur de projet 3MF différente du
+        // défaut d'Orca n'était pas reconnue comme modifiée (imported_overrides).
         let scalar = |v: &Value| match v {
             Value::String(s) => Some(s.clone()),
             Value::Bool(b) => Some(if *b { "1" } else { "0" }.to_string()),
             Value::Number(n) => Some(n.to_string()),
+            Value::Object(map) => {
+                let number = map.get("value").and_then(Value::as_f64)?;
+                let percent = map.get("percent").and_then(Value::as_bool).unwrap_or(false);
+                let text = if number.fract() == 0.0 && number.abs() < 1e15 {
+                    format!("{}", number as i64)
+                } else {
+                    number.to_string()
+                };
+                Some(if percent { format!("{text}%") } else { text })
+            }
             _ => None,
         };
         let text = match &json {
@@ -1332,5 +1418,58 @@ mod cache_tests {
         assert!(!after.iter().any(|n| n.ends_with("@Voron")), "{after:?}");
         assert_same(&state, user, &small).await;
         assert_plain_same(&state, user, &plain).await;
+    }
+}
+
+#[cfg(test)]
+mod lot44b_tests {
+    use super::*;
+    use serde_json::json;
+
+    fn values(v: Value) -> serde_json::Map<String, Value> {
+        v.as_object().unwrap().clone()
+    }
+
+    /// Preset::get_default_bed_type (Orca 2.4.1, Preset.cpp:966).
+    #[test]
+    fn printer_default_bed_type_follows_orca() {
+        // Sans default_bed_type : X1 / X1 Carbon / X1E → Cool Plate, sinon High Temp.
+        for model in ["Bambu Lab X1 Carbon", "Bambu Lab X1", "Bambu Lab X1E"] {
+            assert_eq!(
+                printer_default_bed_type(&values(json!({ "printer_model": model }))),
+                "Cool Plate"
+            );
+        }
+        for model in [
+            "Bambu Lab P1S",
+            "Bambu Lab P1P",
+            "Bambu Lab A1 mini",
+            "Voron 2.4 350",
+        ] {
+            assert_eq!(
+                printer_default_bed_type(&values(
+                    json!({ "printer_model": model, "default_bed_type": "" })
+                )),
+                "High Temp Plate"
+            );
+        }
+        // Valeur numérique (atoi > 0) : ce BedType ; libellé texte (atoi = 0) : btPEI.
+        assert_eq!(
+            printer_default_bed_type(&values(
+                json!({ "default_bed_type": "4", "printer_model": "Bambu Lab X1" })
+            )),
+            "Textured PEI Plate"
+        );
+        assert_eq!(
+            printer_default_bed_type(&values(json!({ "default_bed_type": "Textured PEI Plate" }))),
+            "High Temp Plate"
+        );
+        assert_eq!(c_atoi("  12abc"), 12);
+        assert_eq!(c_atoi("-3"), -3);
+        assert_eq!(c_atoi("x1"), 0);
+        assert_eq!(
+            crate::models::threemf::bed_type_to_plate_type("High Temp Plate"),
+            "Smooth High Temp Plate"
+        );
     }
 }

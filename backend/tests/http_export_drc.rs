@@ -497,7 +497,9 @@ async fn split_stls_zip_one_file_per_object_and_selection() {
         assert_eq!(decode_stl(data).0, 12);
     }
     // Menu objet « Export as one STL » sur « b » : fichier nommé d'après l'objet
-    // (nom du ModelObject = fichier importé, comme Orca).
+    // — lot 44b : nom du ModelObject = nom de l'objet dans l'éditeur (« Cube B »),
+    // comme Orca (`ModelObject::get_export_filename` remplace le nom de fichier
+    // par `name`) ; espaces assainis par l'export web.
     let resp = export_stl(
         &app,
         &user,
@@ -511,7 +513,7 @@ async fn split_stls_zip_one_file_per_object_and_selection() {
         .unwrap()
         .to_string();
     assert!(
-        disposition.ends_with("filename=\"cube.stl\""),
+        disposition.ends_with("filename=\"Cube_B.stl\""),
         "{disposition}"
     );
     let (count, (lo, hi)) = decode_stl(&to_bytes(resp.into_body(), usize::MAX).await.unwrap());

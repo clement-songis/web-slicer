@@ -302,6 +302,28 @@ struct SceneObjectSpec {
     layer_config_ranges: Vec<engine::api::LayerConfigRange>,
     /// Informations de coupe (`cutId`, `ModelObject::cut_id` d'Orca).
     cut_id: Option<engine::api::CutObjectId>,
+    /// Groupe d'instances (`instanceGroup`, phase 44) : les objets de scène
+    /// d'un même groupe sont les `ModelInstance` d'un seul `ModelObject`.
+    instance_group: Option<String>,
+}
+
+/// Lot 44b (F-a) : clé de regroupement des objets de scène en un
+/// `ModelObject` à N instances (Orca `ModelObject::instances`) — même groupe
+/// et même modèle source (un groupe ne partage qu'un maillage).
+pub(crate) fn instance_group_key(group: Option<&str>, model_id: &str) -> Option<(String, String)> {
+    group
+        .filter(|group| !group.trim().is_empty())
+        .map(|group| (group.to_string(), model_id.to_string()))
+}
+
+/// `objects[].instanceGroup` d'un objet de scène (absent / vide = None).
+pub(crate) fn scene_instance_group(object: &Value) -> Option<String> {
+    object
+        .get("instanceGroup")
+        .and_then(Value::as_str)
+        .map(str::trim)
+        .filter(|group| !group.is_empty())
+        .map(str::to_string)
 }
 
 pub(crate) async fn build_scene_model(
@@ -367,11 +389,29 @@ pub(crate) async fn build_scene_model_indexed(
                 mesh_volumes: Vec::new(),
                 layer_config_ranges: Vec::new(),
                 cut_id: None,
+                instance_group: None,
             })
             .collect()
     });
 
+    // Lot 44b (F-a) : objet du modèle déjà créé pour chaque groupe d'instances.
+    let mut grouped: std::collections::HashMap<(String, String), usize> =
+        std::collections::HashMap::new();
     for spec in specs {
+        let group_key = instance_group_key(spec.instance_group.as_deref(), &spec.model_id);
+        if let Some(&index) = group_key.as_ref().and_then(|key| grouped.get(key)) {
+            // Instance supplémentaire du ModelObject du groupe (Orca
+            // `ModelObject::add_instance`) : seule la transformation, le
+            // plateau et « imprimable » sont propres à l'instance.
+            model.objects[index]
+                .instances
+                .push(engine::api::ModelInstance {
+                    matrix: spec.matrix,
+                    plate_index: spec.plate_index,
+                    printable: spec.printable,
+                });
+            continue;
+        }
         let Some(source) = models.iter().find(|m| m.id.to_string() == spec.model_id) else {
             anyhow::bail!(
                 "la scène figée référence un modèle supprimé : {}",
@@ -421,7 +461,18 @@ pub(crate) async fn build_scene_model_indexed(
                 .clone()
                 .unwrap_or_else(|| source.filename.clone()),
         });
-        let object = model.add_object(source.filename.clone(), mesh);
+        if let Some(key) = group_key {
+            grouped.insert(key, model.objects.len());
+        }
+        // Lot 44b (I2) : `ModelObject::name` = nom de l'objet dans l'éditeur
+        // (`objects[].name` : nom de l'objet du 3MF, nom du fichier pour un
+        // STL, renommage) — il nomme les objets du G-code (EXCLUDE_OBJECT,
+        // M486) comme Orca ; repli : nom du fichier.
+        let object_name = spec
+            .scene_name
+            .clone()
+            .unwrap_or_else(|| source.filename.clone());
+        let object = model.add_object(object_name, mesh);
         object.settings = spec.settings;
         object.layer_height_profile = spec.layer_height_profile;
         object.layer_config_ranges = spec.layer_config_ranges;
@@ -755,6 +806,7 @@ fn scene_object_specs(scene: &Value, requested_plate: Option<u32>) -> Option<Vec
                     mesh_volumes: scene_object_mesh_volumes(object),
                     layer_config_ranges: scene_object_layer_ranges(object),
                     cut_id: crate::scene::scene_cut_id(object),
+                    instance_group: scene_instance_group(object),
                 })
             })
             .collect(),
@@ -1790,5 +1842,166 @@ mod custom_gcode_tests {
             custom_gcode_mode(&c),
             engine::api::CustomGcodeMode::MultiExtruder
         );
+    }
+}
+
+#[cfg(test)]
+mod lot44b_tests {
+    //! Lot 44b : nom du ModelObject (I2) et objets de scène d'un même
+    //! `instanceGroup` assemblés en un ModelObject à N instances (F-a), au
+    //! tranchage (`build_scene_model`) comme à l'export 3MF
+    //! (`export::build_project_model`).
+    use super::*;
+    use std::sync::Arc;
+
+    fn cube_stl() -> Vec<u8> {
+        let v = |x: f32, y: f32, z: f32| [x, y, z];
+        let vertices = vec![
+            v(0.0, 0.0, 0.0),
+            v(10.0, 0.0, 0.0),
+            v(10.0, 10.0, 0.0),
+            v(0.0, 10.0, 0.0),
+            v(0.0, 0.0, 10.0),
+            v(10.0, 0.0, 10.0),
+            v(10.0, 10.0, 10.0),
+            v(0.0, 10.0, 10.0),
+        ];
+        let indices = vec![
+            [0, 2, 1],
+            [0, 3, 2],
+            [4, 5, 6],
+            [4, 6, 7],
+            [0, 1, 5],
+            [0, 5, 4],
+            [1, 2, 6],
+            [1, 6, 5],
+            [2, 3, 7],
+            [2, 7, 6],
+            [3, 0, 4],
+            [3, 4, 7],
+        ];
+        engine::api::split::encode_binary_stl(&TriangleMesh { vertices, indices })
+    }
+
+    #[tokio::test]
+    async fn instance_groups_become_one_model_object_named_like_the_editor() {
+        let dir = tempfile::tempdir().unwrap();
+        let url = format!("sqlite://{}", dir.path().join("p.db").display());
+        let storage = Arc::new(
+            crate::adapters::storage::sqlite::SqliteStorage::connect(&url)
+                .await
+                .unwrap(),
+        );
+        let state = AppState::new(
+            storage as Arc<dyn crate::domain::Storage>,
+            crate::adapters::files::FileStore::new(dir.path().join("data")),
+        );
+        let user = state
+            .storage
+            .users()
+            .create(crate::domain::repo::NewUser {
+                email: "i@harness.local".into(),
+                password_hash: "x".into(),
+                role: crate::domain::Role::User,
+            })
+            .await
+            .unwrap();
+        let project = state
+            .storage
+            .projects()
+            .create(
+                user.id,
+                crate::domain::NewProject {
+                    name: "p".into(),
+                    scene: serde_json::json!({}),
+                    active_presets: serde_json::json!({}),
+                    thumbnail_path: None,
+                },
+            )
+            .await
+            .unwrap();
+        let model = crate::http::routes::models::write_model_record(
+            &state,
+            user.id,
+            project.id,
+            ModelFormat::Stl,
+            "projet — cube.3mf".into(),
+            &cube_stl(),
+        )
+        .await
+        .unwrap();
+        let m = model.id.to_string();
+        // a, c : deux instances d'un même objet (groupe g) ; b : objet seul,
+        // sans nom (repli : nom du fichier du modèle).
+        let scene = serde_json::json!({
+            "objects": [
+                {"id": "a", "modelId": m, "name": "cube20.stl", "instanceGroup": "g"},
+                {"id": "b", "modelId": m},
+                {"id": "c", "modelId": m, "name": "cube20.stl", "instanceGroup": "g", "printable": false},
+            ],
+            "plates": { "plates": [
+                { "id": "p1", "objectIds": ["a", "b"] },
+                { "id": "p2", "objectIds": ["c"] }
+            ], "activeId": "p1" }
+        });
+        let (built, refs) = build_scene_model_indexed(&state, user.id, project.id, &scene, None)
+            .await
+            .unwrap();
+        assert_eq!(built.objects.len(), 2, "un ModelObject par groupe");
+        assert_eq!(built.objects[0].name, "cube20.stl");
+        assert_eq!(built.objects[0].instances.len(), 2);
+        assert_eq!(built.objects[0].instances[1].plate_index, 1);
+        assert!(!built.objects[0].instances[1].printable);
+        assert_eq!(built.objects[1].name, "projet — cube.3mf");
+        assert_eq!(built.objects[1].instances.len(), 1);
+        assert_eq!(refs.len(), 2, "une référence par ModelObject");
+        assert_eq!(refs[0].id.as_deref(), Some("a"));
+
+        // Plateau 2 seul : l'instance c, dans un ModelObject à 1 instance.
+        let plate2 = build_scene_model(&state, user.id, project.id, &scene, Some(1))
+            .await
+            .unwrap();
+        assert_eq!(plate2.objects.len(), 1);
+        assert_eq!(plate2.objects[0].instances.len(), 1);
+
+        // Export 3MF : même regroupement, même nom.
+        let saved = state
+            .storage
+            .projects()
+            .update(
+                user.id,
+                project.id,
+                project.version,
+                scene.clone(),
+                serde_json::json!({}),
+                None,
+            )
+            .await
+            .unwrap();
+        assert_eq!(saved.scene, scene);
+        let exported =
+            crate::http::routes::export::build_project_model(&state, user.id, project.id, None)
+                .await
+                .unwrap();
+        assert_eq!(exported.objects.len(), 2);
+        assert_eq!(exported.objects[0].name, "cube20.stl");
+        assert_eq!(exported.objects[0].instances.len(), 2);
+        assert_eq!(exported.objects[1].name, "projet — cube.3mf");
+    }
+
+    #[test]
+    fn instance_group_key_needs_a_group_and_the_model() {
+        assert_eq!(instance_group_key(None, "m"), None);
+        assert_eq!(instance_group_key(Some(" "), "m"), None);
+        assert_eq!(
+            instance_group_key(Some("g"), "m"),
+            Some(("g".to_string(), "m".to_string()))
+        );
+        let scene = serde_json::json!({
+            "objects": [{"id": "o", "modelId": "m", "instanceGroup": "g"}, {"id": "p", "modelId": "m"}],
+        });
+        let specs = scene_object_specs(&scene, None).unwrap();
+        assert_eq!(specs[0].instance_group.as_deref(), Some("g"));
+        assert_eq!(specs[1].instance_group, None);
     }
 }

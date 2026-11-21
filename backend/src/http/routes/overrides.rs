@@ -914,10 +914,13 @@ mod tests {
             "thumbnails".into(),
             ConfigValue::String("48x48/PNG,300x300/PNG".into()),
         );
+        // Lot 44 : défaut FloatOrPercent du registre connu (50 %) — égal au
+        // défaut : rien ; différent : surcharge même non listée (comme Orca,
+        // qui compare au preset complet).
         project.0.insert(
             "bridge_acceleration".into(),
             ConfigValue::FloatOrPercent {
-                value: 60.0,
+                value: 50.0,
                 percent: true,
             },
         );
@@ -925,8 +928,24 @@ mod tests {
             "bed_custom_model".into(),
             ConfigValue::String(String::new()),
         );
-        // `bridge_acceleration` : sans défaut connu → seulement si listée.
         assert!(imported_overrides(&project, &presets, true, &[], &[]).is_none());
+        project.0.insert(
+            "bridge_acceleration".into(),
+            ConfigValue::FloatOrPercent {
+                value: 60.0,
+                percent: true,
+            },
+        );
+        let unlisted = imported_overrides(&project, &presets, true, &[], &[]).unwrap();
+        assert_eq!(
+            unlisted.process,
+            Some(
+                json!({ "bridge_acceleration": "60%" })
+                    .as_object()
+                    .unwrap()
+                    .clone()
+            )
+        );
         let listed = imported_overrides(
             &project,
             &presets,

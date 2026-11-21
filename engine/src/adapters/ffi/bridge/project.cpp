@@ -699,6 +699,10 @@ void write_gcode_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
         for (size_t i = 0; i + 1 < raw.obj_inst.size(); i += 2)
             plate->objects_and_instances.emplace_back(static_cast<int>(raw.obj_inst[i]),
                                                       static_cast<int>(raw.obj_inst[i + 1]));
+        // Réglages du plateau (PartPlate::config : bed_type, print_sequence…),
+        // écrits dans model_settings.config comme la GUI (lot 44).
+        if (!raw.config_json.empty())
+            config_from_json(plate->config, std::string(raw.config_json));
         const std::string gcode(raw.gcode_path);
         const bool exported = export_plate_idx < 0 || export_plate_idx == plate->plate_index;
         if (gcode.empty() || !exported)

@@ -271,6 +271,20 @@ pub fn write_gcode_3mf(
     export_plate: Option<u32>,
     out: &Path,
 ) -> EngineResult<()> {
+    write_gcode_3mf_with_settings(model, config, gcodes, &[], export_plate, out)
+}
+
+/// `write_gcode_3mf` avec les réglages de chaque plateau (`plate_settings[k]`
+/// = plateau k, 0-based) écrits dans `model_settings.config` comme les
+/// `PartPlate` d'Orca (lot 44 : `bed_type` du plateau tranché).
+pub fn write_gcode_3mf_with_settings(
+    model: &Model,
+    config: &DynamicPrintConfig,
+    gcodes: &[PlateGcode],
+    plate_settings: &[DynamicPrintConfig],
+    export_plate: Option<u32>,
+    out: &Path,
+) -> EngineResult<()> {
     if gcodes.is_empty() {
         return Err(EngineError::new(
             EngineErrorCode::InvalidModel,
@@ -299,10 +313,16 @@ pub fn write_gcode_3mf(
                 .find(|g| g.plate_index == plate)
                 .map(|g| g.gcode_path.to_string_lossy().into_owned())
                 .unwrap_or_default();
+            let config_json = plate_settings
+                .get(plate as usize)
+                .filter(|settings| !settings.0.is_empty())
+                .map(config_to_orca_json)
+                .unwrap_or_default();
             ffi::RawPlateGcode {
                 plate_index: plate,
                 gcode_path,
                 obj_inst,
+                config_json,
             }
         })
         .collect();

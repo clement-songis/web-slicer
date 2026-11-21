@@ -171,6 +171,9 @@ struct Gcode3mfRequest {
     model: engine::api::Model,
     config: engine::api::DynamicPrintConfig,
     gcodes: Vec<engine::adapters::ffi::PlateGcode>,
+    /// Réglages par plateau (index = plateau, 0-based) ; absent = aucun.
+    #[serde(default)]
+    plate_settings: Vec<engine::api::DynamicPrintConfig>,
     #[serde(default)]
     export_plate: Option<u32>,
     output_path: PathBuf,
@@ -978,10 +981,11 @@ fn run_export_project_3mf(path: &Path) -> engine::api::EngineResult<Gcode3mfResp
 
 fn run_export_gcode_3mf(path: &Path) -> engine::api::EngineResult<Gcode3mfResponse> {
     let request: Gcode3mfRequest = read_json_bounded(path)?;
-    engine::adapters::ffi::write_gcode_3mf(
+    engine::adapters::ffi::write_gcode_3mf_with_settings(
         &request.model,
         &request.config,
         &request.gcodes,
+        &request.plate_settings,
         request.export_plate,
         &request.output_path,
     )?;

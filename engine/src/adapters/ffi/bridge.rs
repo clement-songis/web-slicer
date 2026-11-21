@@ -142,6 +142,9 @@ pub(crate) mod ffi {
         plate_index: u32,
         gcode_path: String,
         obj_inst: Vec<u32>,
+        /// Réglages du plateau (`PartPlate` : curr_bed_type, print_sequence…)
+        /// au format JSON {clé → texte Orca} ; vide = aucun.
+        config_json: String,
     }
 
     /// Objet complet de la scène.

@@ -22,6 +22,9 @@ struct Request<'a> {
     model: &'a Model,
     config: &'a DynamicPrintConfig,
     gcodes: &'a [PlateGcode],
+    /// Réglages de chaque plateau (index = plateau) : `bed_type`… dans
+    /// `model_settings.config` (lot 44).
+    plate_settings: &'a [DynamicPrintConfig],
     export_plate: Option<u32>,
     output_path: PathBuf,
 }
@@ -36,6 +39,7 @@ pub async fn write_gcode_3mf(
     model: &Model,
     config: &DynamicPrintConfig,
     gcodes: &[PlateGcode],
+    plate_settings: &[DynamicPrintConfig],
     export_plate: Option<u32>,
 ) -> Result<Vec<u8>, SceneWorkerError> {
     write_gcode_3mf_at(
@@ -43,6 +47,7 @@ pub async fn write_gcode_3mf(
         model,
         config,
         gcodes,
+        plate_settings,
         export_plate,
         DEFAULT_TIMEOUT,
     )
@@ -54,6 +59,7 @@ pub async fn write_gcode_3mf_at(
     model: &Model,
     config: &DynamicPrintConfig,
     gcodes: &[PlateGcode],
+    plate_settings: &[DynamicPrintConfig],
     export_plate: Option<u32>,
     timeout: Duration,
 ) -> Result<Vec<u8>, SceneWorkerError> {
@@ -71,6 +77,7 @@ pub async fn write_gcode_3mf_at(
             model,
             config,
             gcodes,
+            plate_settings,
             export_plate,
             output_path: output_path.clone(),
         },

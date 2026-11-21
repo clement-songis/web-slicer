@@ -90,18 +90,26 @@ pub async fn flush_volumes(
             Some(config)
         }
     };
+    let matrix = worker_flush_matrix(serde_json::json!({
+        "colours": body.colours,
+        "is_support": body.is_support,
+        "min_flush": body.min_flush,
+        "flush_dataset": body.nozzle_flush_dataset,
+        "config": config,
+    }))
+    .await?;
+    Ok(Json(FlushVolumesResponse { matrix, multiplier }))
+}
+
+/// `engine-worker flush-volumes` sur une requête `{ colours, is_support,
+/// min_flush, flush_dataset, config? }` → matrice N×N (mm³, sans
+/// multiplicateur).
+async fn worker_flush_matrix(request: serde_json::Value) -> ApiResult<Vec<f64>> {
     let dir = crate::workdir::tempdir().map_err(|_| ApiError::internal())?;
     let path = dir.path().join("flush.json");
     std::fs::write(
         &path,
-        serde_json::to_vec(&serde_json::json!({
-            "colours": body.colours,
-            "is_support": body.is_support,
-            "min_flush": body.min_flush,
-            "flush_dataset": body.nozzle_flush_dataset,
-            "config": config,
-        }))
-        .map_err(|_| ApiError::internal())?,
+        serde_json::to_vec(&request).map_err(|_| ApiError::internal())?,
     )
     .map_err(|_| ApiError::internal())?;
     let stdout = crate::engine::run_worker(
@@ -120,7 +128,89 @@ pub async fn flush_volumes(
         .find_map(|l| l.strip_prefix("R "))
         .ok_or_else(ApiError::internal)?;
     let value: serde_json::Value = serde_json::from_str(line).map_err(|_| ApiError::internal())?;
-    let matrix: Vec<f64> =
-        serde_json::from_value(value["matrix"].clone()).map_err(|_| ApiError::internal())?;
-    Ok(Json(FlushVolumesResponse { matrix, multiplier }))
+    serde_json::from_value(value["matrix"].clone()).map_err(|_| ApiError::internal())
+}
+
+/// Lot 44 (audit 43 X-d) : matrice de purge d'une config **sans** matrice
+/// valide (n filaments ≥ 2, taille ≠ n² × buses — typiquement les 4×4 du
+/// registre complétés à l'export), calculée comme au tranchage : le moteur
+/// applique alors `cli_update_flush_volumes` (OrcaSlicer.cpp, « compute the
+/// flush volume » : FlushVolCalculator depuis `filament_colour`, minimum
+/// `nozzle_volume[0]`, jeu de données `nozzle_flush_dataset`, filaments
+/// support), une sous-matrice n × n par buse. Le 3MF exporté porte donc la
+/// matrice réellement purgée par web-slicer, de la taille qu'Orca exige
+/// (`PresetBundle::update_multi_material_filament_presets` ; la CLI refuse
+/// sinon « Flush volumes matrix do not match to the correct size! »).
+/// Matrice déjà de la bonne taille (projet, preset) ou un seul filament :
+/// inchangée (Orca garde la 4×4 d'un projet mono-filament).
+pub(crate) async fn complete_flush_matrix(
+    config: &mut engine::api::DynamicPrintConfig,
+) -> ApiResult<()> {
+    use engine::api::ConfigValue;
+    let colours = match config.get("filament_colour") {
+        Some(ConfigValue::Strings(v)) => v.clone(),
+        _ => return Ok(()),
+    };
+    let n = colours.len();
+    if n < 2 {
+        return Ok(());
+    }
+    let nozzles = match config.get("nozzle_diameter") {
+        Some(ConfigValue::Floats(v)) => v.len().max(1),
+        _ => 1,
+    };
+    if let Some(ConfigValue::Floats(m)) = config.get("flush_volumes_matrix") {
+        if m.len() == n * n * nozzles || (nozzles > 1 && m.len() == n * n) {
+            return Ok(());
+        }
+    }
+    let first_float = |key: &str| match config.get(key) {
+        Some(ConfigValue::Floats(v)) => v.first().copied(),
+        Some(ConfigValue::FloatsNullable(v)) => v.first().copied().flatten(),
+        Some(ConfigValue::Float(f)) => Some(*f),
+        _ => None,
+    };
+    let min_flush = first_float("nozzle_volume").unwrap_or(0.0) as i32;
+    let datasets: Vec<i64> = match config.get("nozzle_flush_dataset") {
+        Some(ConfigValue::Ints(v)) => v.clone(),
+        _ => Vec::new(),
+    };
+    let is_support = match config.get("filament_is_support") {
+        Some(ConfigValue::Bools(v)) => v.clone(),
+        _ => Vec::new(),
+    };
+    let mut matrix = Vec::with_capacity(n * n * nozzles);
+    for nozzle in 0..nozzles {
+        let dataset = datasets
+            .get(nozzle)
+            .or(datasets.first())
+            .copied()
+            .unwrap_or(0);
+        let sub = worker_flush_matrix(serde_json::json!({
+            "colours": colours,
+            "is_support": is_support,
+            "min_flush": vec![min_flush; n],
+            "flush_dataset": dataset,
+        }))
+        .await?;
+        if sub.len() != n * n {
+            return Err(ApiError::internal());
+        }
+        matrix.extend(sub);
+    }
+    config
+        .0
+        .insert("flush_volumes_matrix".into(), ConfigValue::Floats(matrix));
+    let mut multipliers = match config.get("flush_multiplier") {
+        Some(ConfigValue::Floats(v)) => v.clone(),
+        _ => Vec::new(),
+    };
+    if multipliers.len() != nozzles {
+        // cli_update_flush_volumes : complété à 1 par buse.
+        multipliers.resize(nozzles, 1.0);
+        config
+            .0
+            .insert("flush_multiplier".into(), ConfigValue::Floats(multipliers));
+    }
+    Ok(())
 }

@@ -71,6 +71,8 @@ struct SlicedBundle {
     model: engine::api::Model,
     config: engine::api::DynamicPrintConfig,
     gcodes: Vec<PlateGcode>,
+    /// Réglages de chaque plateau (index = plateau), lot 44.
+    plate_settings: Vec<engine::api::DynamicPrintConfig>,
     /// `gcodes.stats` de chaque plateau (même ordre que `gcodes`) : nom Orca.
     stats: Vec<serde_json::Value>,
     /// G-code stocké de chaque plateau (même ordre que `gcodes`).
@@ -235,10 +237,13 @@ async fn sliced_bundle(
             tracing::error!(error = %e, "modèle des plateaux tranchés");
             ApiError::internal()
         })?;
-    let config = crate::slicing::config_from_snapshot(&newest.resolved_settings).map_err(|e| {
-        tracing::error!(error = %e, "config figée des plateaux tranchés");
-        ApiError::internal()
-    })?;
+    let mut config =
+        crate::slicing::config_from_snapshot(&newest.resolved_settings).map_err(|e| {
+            tracing::error!(error = %e, "config figée des plateaux tranchés");
+            ApiError::internal()
+        })?;
+    // Lot 44 (X-d) : matrice de purge réellement purgée (n² × buses).
+    super::flush::complete_flush_matrix(&mut config).await?;
     // Positions monde d'Orca dans le 3MF (plateau k décalé), lot 43.
     super::export::to_orca_world(
         &mut model,
@@ -259,10 +264,17 @@ async fn sliced_bundle(
             )
         })
         .unzip();
+    // Lot 44 (B-1) : type de plaque et réglages de chaque plateau, comme les
+    // PartPlate d'Orca dans model_settings.config du .gcode.3mf.
+    let plate_settings = super::export::scene_project_plates(&scene)
+        .into_iter()
+        .map(|plate| plate.settings)
+        .collect();
     Ok(SlicedBundle {
         model,
         config,
         gcodes,
+        plate_settings,
         stats,
         gcode_ids,
         project_name: project.name,
@@ -278,15 +290,21 @@ async fn gcode_3mf_bytes(bundle: &SlicedBundle, plate: Option<u32>) -> ApiResult
             ));
         }
     }
-    crate::engine::gcode_3mf::write_gcode_3mf(&bundle.model, &bundle.config, &bundle.gcodes, plate)
-        .await
-        .map_err(|error| {
-            if error.is_invalid_input() {
-                return validation(&error.to_string(), serde_json::json!({}));
-            }
-            tracing::error!(error = %error, "écriture du .gcode.3mf dans engine-worker");
-            ApiError::internal()
-        })
+    crate::engine::gcode_3mf::write_gcode_3mf(
+        &bundle.model,
+        &bundle.config,
+        &bundle.gcodes,
+        &bundle.plate_settings,
+        plate,
+    )
+    .await
+    .map_err(|error| {
+        if error.is_invalid_input() {
+            return validation(&error.to_string(), serde_json::json!({}));
+        }
+        tracing::error!(error = %error, "écriture du .gcode.3mf dans engine-worker");
+        ApiError::internal()
+    })
 }
 
 fn parse_project_id(raw: &str) -> ApiResult<ProjectId> {
