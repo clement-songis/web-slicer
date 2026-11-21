@@ -5,6 +5,7 @@
 // Statistiques calculées par libslic3r côté serveur
 // (GET /api/projects/{id}/mesh-errors, scène enregistrée). Pur.
 import type { ObjectMeshErrors } from '../../generated/api/ObjectMeshErrors';
+import type { MeshErrorsRequest } from '../../generated/api/MeshErrorsRequest';
 
 /** Alerte affichée pour un objet. */
 export interface MeshWarning {
@@ -46,4 +47,37 @@ export function meshWarnings(list: readonly ObjectMeshErrors[]): Record<string, 
 		};
 	}
 	return out;
+}
+
+/** Objet de scène minimal lu par `POST /api/projects/{id}/mesh-errors`. */
+export interface MeshErrorsSceneObject {
+	id: string;
+	modelId?: string;
+	volumes?: readonly { shape?: string; modelId?: string }[];
+}
+
+/**
+ * Lot 39 — corps de `POST /api/projects/{id}/mesh-errors` : objets de la scène
+ * COURANTE (ids vivants, y compris ceux importés et pas encore enregistrés,
+ * comme Orca qui calcule l'alerte dès ObjectList::add_object_to_list). Seuls
+ * `id`, `modelId` et les volumes maillés sont transmis.
+ */
+export function meshErrorsRequest(objects: readonly MeshErrorsSceneObject[]): MeshErrorsRequest {
+	return {
+		objects: objects.map((o) => {
+			const volumes = (o.volumes ?? [])
+				.filter((v) => v.shape === 'mesh' && typeof v.modelId === 'string')
+				.map((v) => ({ shape: 'mesh', modelId: v.modelId }));
+			return {
+				id: o.id,
+				...(o.modelId ? { modelId: o.modelId } : {}),
+				...(volumes.length ? { volumes } : {})
+			};
+		})
+	};
+}
+
+/** Clé de la requête : on ne relance la statistique que si les maillages changent. */
+export function meshErrorsKey(req: MeshErrorsRequest): string {
+	return JSON.stringify(req.objects);
 }

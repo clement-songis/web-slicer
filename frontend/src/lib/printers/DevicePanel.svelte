@@ -51,6 +51,8 @@
 	} from './device';
 	import type { PrinterResponse } from '$lib/api/types';
 	import PrintObjectsPanel from './PrintObjectsPanel.svelte';
+	import HostWebUi from './HostWebUi.svelte';
+	import { webuiUrl } from './webui';
 
 	type Cap = 'unknown' | 'yes' | 'no';
 	interface Live {
@@ -392,18 +394,31 @@
 						class="ws-btn ws-btn-sm ws-btn-secondary"
 						onclick={() => refresh(printer.id)}>Rafraîchir</button
 					>
+					<!-- Phase 39 : interface web de l'hôte (Mainsail / Fluidd), comme Orca. -->
+					<!-- eslint-disable svelte/no-navigation-without-resolve -->
+					<a
+						href={webuiUrl({ host: printer.moonraker_url })}
+						target="_blank"
+						rel="noopener noreferrer"
+						class="ws-btn ws-btn-sm ws-btn-ghost"
+						data-testid="device-webui-link">Interface web</a
+					>
+					<!-- eslint-enable svelte/no-navigation-without-resolve -->
 				{/if}
 			</section>
 
 			{#if !hasLiveControls(printer)}
-				<p
-					class="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-content-muted"
-					data-testid="device-no-live"
-				>
-					{printer.moonraker_url
-						? `${hostMeta(printer.host_type).label} : envoi des fichiers seulement. Le suivi en direct, la webcam et les commandes sont disponibles avec Moonraker.`
-						: 'Aucune connexion déclarée : ajoutez-la depuis la page Imprimantes (« Connexion… »).'}
-				</p>
+				{#if printer.moonraker_url}
+					<!-- Phase 39 : interface web de l'hôte (onglet Device d'Orca). -->
+					<HostWebUi {printer} />
+				{:else}
+					<p
+						class="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-content-muted"
+						data-testid="device-no-live"
+					>
+						Aucune connexion déclarée : ajoutez-la depuis la page Imprimantes (« Connexion… »).
+					</p>
+				{/if}
 			{:else}
 				<div class="grid gap-4 lg:grid-cols-[minmax(0,1fr)_22rem]">
 					<div class="flex min-w-0 flex-col gap-4">

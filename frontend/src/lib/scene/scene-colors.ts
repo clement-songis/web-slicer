@@ -81,5 +81,18 @@ export const SCENE_PALETTES: Record<ResolvedTheme, ScenePalette> = {
 /** Palette sombre (compatibilité : référence statique historique). */
 export const SCENE_COLORS = SCENE_PALETTES.dark;
 
+/**
+ * Couleur des arêtes du fil de fer de peinture (phase 39) : getWireframeColor
+ * du shader mm_gouraud d'Orca — luminance (Rec. 709) > 0,75 → arêtes sombres
+ * (0,11 ; 0,165 ; 0,208), sinon presque blanches (0,988).
+ */
+export function wireframeColor(fill: string): string {
+	const m = /^#?([0-9a-f]{6})$/i.exec(fill.trim());
+	if (!m) return '#fcfcfc';
+	const n = parseInt(m[1], 16);
+	const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((c) => c / 255);
+	return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.75 ? '#1c2a35' : '#fcfcfc';
+}
+
 /** Palette de la vue 3D pour le thème effectivement appliqué. */
 export const sceneColors = derived(resolvedTheme, (t) => SCENE_PALETTES[t]);

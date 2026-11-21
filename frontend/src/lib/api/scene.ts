@@ -17,6 +17,7 @@ import type { BooleanRequest } from '../../generated/api/BooleanRequest';
 import type { MeshOpResponse } from '../../generated/api/MeshOpResponse';
 import type { MeshOpPartResponse } from '../../generated/api/MeshOpPartResponse';
 import type { ObjectMeshErrors } from '../../generated/api/ObjectMeshErrors';
+import type { MeshErrorsRequest } from '../../generated/api/MeshErrorsRequest';
 import type { InvalidateCutResponse } from '../../generated/api/InvalidateCutResponse';
 
 export type { SimplifyRequest, SimplifyResponse };
@@ -74,6 +75,13 @@ export const cutModel = (modelId: string, body: CutRequest) =>
  */
 export const projectMeshErrors = (projectId: string) =>
 	api.get<ObjectMeshErrors[]>(`/projects/${projectId}/mesh-errors`);
+
+/**
+ * Lot 39 — erreurs de maillage des objets de la scène COURANTE (avant le
+ * premier enregistrement) : POST /api/projects/{id}/mesh-errors.
+ */
+export const sceneMeshErrors = (projectId: string, body: MeshErrorsRequest) =>
+	api.post<ObjectMeshErrors[]>(`/projects/${projectId}/mesh-errors`, body);
 
 /**
  * Lot 37 — « Invalider les informations de découpe » (invalidate_cut_info_for_object) :

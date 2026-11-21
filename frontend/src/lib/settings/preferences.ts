@@ -49,7 +49,7 @@ export interface CameraPreferences {
  * contexte WebGL (anticrénelage), plafond d'images/s (Orca `max_fps`, 0 =
  * illimité) et compteur d'images/s ; vue réaliste (phase 38, Orca « Realistic
  * View » : opengl_realistic_mode / _phong / phong_basic_plate_shadows /
- * phong_smooth_normals, mêmes défauts). Le SSAO d'Orca n'est pas repris.
+ * phong_smooth_normals, mêmes défauts) ; SSAO (phase 39, opengl_phong_ssao).
  */
 export interface GraphicsPreferences {
 	antialias: boolean;
@@ -60,6 +60,8 @@ export interface GraphicsPreferences {
 	realisticView: boolean;
 	/** Orca opengl_realistic_phong (défaut vrai) : Phong, sinon Gouraud. */
 	realisticPhong: boolean;
+	/** Orca opengl_phong_ssao (défaut faux) : occlusion ambiante SSAO (phase 39). */
+	realisticSsao: boolean;
 	/** Orca opengl_phong_basic_plate_shadows (défaut faux) : ombres sur le plateau. */
 	realisticShadows: boolean;
 	/** Orca opengl_phong_smooth_normals (défaut faux) : normales lissées sous 5°. */
@@ -72,6 +74,7 @@ export const GRAPHICS_DEFAULTS: GraphicsPreferences = {
 	showFps: false,
 	realisticView: false,
 	realisticPhong: true,
+	realisticSsao: false,
 	realisticShadows: false,
 	realisticSmoothNormals: false
 };
@@ -252,6 +255,7 @@ function parseGraphics(raw: unknown): GraphicsPreferences {
 		showFps: bool(g.showFps, GRAPHICS_DEFAULTS.showFps),
 		realisticView: bool(g.realisticView, GRAPHICS_DEFAULTS.realisticView),
 		realisticPhong: bool(g.realisticPhong, GRAPHICS_DEFAULTS.realisticPhong),
+		realisticSsao: bool(g.realisticSsao, GRAPHICS_DEFAULTS.realisticSsao),
 		realisticShadows: bool(g.realisticShadows, GRAPHICS_DEFAULTS.realisticShadows),
 		realisticSmoothNormals: bool(g.realisticSmoothNormals, GRAPHICS_DEFAULTS.realisticSmoothNormals)
 	};

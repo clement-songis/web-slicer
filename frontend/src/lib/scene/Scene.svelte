@@ -101,6 +101,12 @@
 		hoverPreviews?: Record<string, HoverPreview | null> | null;
 		/** Vue réaliste effective (null = rendu standard). */
 		realistic?: RealisticOptions | null;
+		/** Phase 39 — coupe appliquée à tous les objets (vue en coupe de l'assemblage). */
+		clipAll?: boolean;
+		/** Phase 39 — mode de sélection « Pièce » : le clic choisit la pièce. */
+		partSelect?: boolean;
+		/** Phase 39 — fil de fer de la peinture (Alt+Maj+Entrée) sur l'objet peint. */
+		wireframe?: boolean;
 	}
 
 	let {
@@ -144,7 +150,10 @@
 		recenterKey = null,
 		paintAssist = null,
 		hoverPreviews = null,
-		realistic = null
+		realistic = null,
+		clipAll = false,
+		partSelect = false,
+		wireframe = false
 	}: Props = $props();
 
 	// Emprises écran projetées (objets, et pièces « objet/volume »).
@@ -242,12 +251,16 @@
 	data-guide-connectors={guides?.plane?.connectors?.length ?? undefined}
 	data-guide-pickable={guides?.plane?.onclick ? 'true' : undefined}
 	data-testid="scene-canvas"
+	data-wireframe={wireframe ? 'on' : undefined}
+	data-clip-all={clipAll ? 'on' : undefined}
+	data-part-select={partSelect ? 'on' : undefined}
 	data-realistic={realistic
 		? [
 				'realistic',
 				realistic.phong ? 'phong' : 'gouraud',
 				realistic.shadows ? 'shadows' : '',
-				realistic.smoothNormals ? 'smooth' : ''
+				realistic.smoothNormals ? 'smooth' : '',
+				realistic.ssao ? 'ssao' : ''
 			]
 				.filter(Boolean)
 				.join(' ')
@@ -341,6 +354,9 @@
 				{paintAssist}
 				{hoverPreviews}
 				{realistic}
+				{clipAll}
+				{partSelect}
+				{wireframe}
 			/>
 		</Canvas>
 	{/key}

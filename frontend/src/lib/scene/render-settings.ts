@@ -69,6 +69,8 @@ export function rendererFactory(antialias: boolean, meter: FrameMeter) {
 			meter.frames += 1;
 			render(scene, camera);
 		};
+		// Phase 39 : rendu intermédiaire (cible du SSAO) qui ne compte pas d'image.
+		(renderer as WebGLRenderer & { renderUncounted?: typeof render }).renderUncounted = render;
 		return renderer;
 	};
 }

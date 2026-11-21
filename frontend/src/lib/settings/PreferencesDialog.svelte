@@ -708,6 +708,22 @@
 						phongCtl,
 						'realistic-phong'
 					)}
+					{#snippet ssaoCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-realistic-ssao"
+							aria-labelledby="pref-realistic-ssao-label"
+							disabled={!prefs.graphics.realisticView}
+							checked={prefs.graphics.realisticSsao}
+							onchange={(e) => updateGraphics({ realisticSsao: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Occlusion ambiante SSAO',
+						'Assombrit légèrement les creux et les recoins pour mieux lire le relief (une passe d’écran en plus, comme Orca).',
+						ssaoCtl,
+						'realistic-ssao'
+					)}
 					{#snippet shadowsCtl()}
 						<input
 							type="checkbox"

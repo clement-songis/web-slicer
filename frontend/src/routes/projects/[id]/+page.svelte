@@ -143,8 +143,14 @@
 		syncAfterCut,
 		uniformCutScale
 	} from '$lib/scene/cut-info';
-	import { meshWarnings as toMeshWarnings, type MeshWarning } from '$lib/scene/mesh-errors';
-	import { invalidateCut, projectMeshErrors } from '$lib/api/scene';
+	import { groupCutScale, uniformFactor } from '$lib/scene/cut-group-scale';
+	import {
+		meshErrorsKey,
+		meshErrorsRequest,
+		meshWarnings as toMeshWarnings,
+		type MeshWarning
+	} from '$lib/scene/mesh-errors';
+	import { invalidateCut, sceneMeshErrors } from '$lib/api/scene';
 	import {
 		NOZZLE_FLOW_LABELS,
 		nozzleFlowChoices,
@@ -251,6 +257,14 @@
 	import { restingZ } from '$lib/scene/mesh';
 	import { fitScaleFactor, mirrorScale, scaleBy, worldSize } from '$lib/scene/transform-ops';
 	import { sectionNormal, sectionPlane, stepSectionRatio } from '$lib/scene/screen-select';
+	import {
+		assemblyInfo,
+		assemblySectionPlane,
+		formatAssemblyInfo,
+		objectsBox,
+		unionBox,
+		volumeWorldBox
+	} from '$lib/scene/assembly-info';
 	import type { PaintDocument } from '$lib/scene/gizmos/painting/painting';
 	import type { BrimEarsDocument } from '$lib/scene/gizmos/brim-ears';
 	import { PresetSettingsDialog } from '$lib/settings';
@@ -685,6 +699,13 @@
 	let assemblyExploded = $state(false);
 	let assemblyFactor = $state(0.5);
 	let assemblyMode = $state<'explode' | 'face' | 'point'>('explode');
+	// Phase 39 — vue d'assemblage d'Orca : vue en coupe (0–1, normale figée à la
+	// direction de vue), mode de sélection Objet / Pièce.
+	let assemblySection = $state(0);
+	let assemblySectionNormal = $state<[number, number, number] | null>(null);
+	let assemblySelectMode = $state<'object' | 'part'>('object');
+	// Phase 39 — fil de fer de la peinture (Plater::toggle_show_wireframe, défaut off).
+	let paintWireframe = $state(false);
 	let assemblyPick = $state<{
 		objectId: string;
 		point: [number, number, number];
@@ -1311,18 +1332,33 @@
 	}
 
 	// Phase 37 — erreurs de maillage (icône d'alerte de la liste d'objets).
+	// Lot 39 : statistiques de la scène COURANTE (POST, ids vivants) — l'icône
+	// apparaît dès l'import, avant le premier enregistrement, comme Orca
+	// (ObjectList::add_object_to_list → get_mesh_errors_info). `force` = false :
+	// relancé seulement si les maillages (objets, modèles, pièces) ont changé.
 	let meshErrorsSeq = 0;
-	async function refreshMeshErrors() {
+	let meshErrorsLastKey: string | null = null;
+	async function refreshMeshErrors(scene = buildSceneForSave(), force = true) {
+		const req = meshErrorsRequest(scene.objects);
+		const key = meshErrorsKey(req);
+		if (!force && key === meshErrorsLastKey) return;
+		meshErrorsLastKey = key;
 		const seq = ++meshErrorsSeq;
+		if (req.objects.length === 0) {
+			meshWarningsByObject = {};
+			return;
+		}
 		try {
-			const list = await projectMeshErrors(data.project.id);
+			const list = await sceneMeshErrors(data.project.id, req);
 			if (seq !== meshErrorsSeq) return;
 			const byPersisted = toMeshWarnings(list);
 			const live: Record<string, MeshWarning> = {};
 			for (const [id, w] of Object.entries(byPersisted)) live[persistedToLive.get(id) ?? id] = w;
 			meshWarningsByObject = live;
 		} catch {
-			// Erreurs de maillage : indicatif, silencieux en cas d'échec.
+			// Erreurs de maillage : indicatif, silencieux en cas d'échec (relancé au
+			// prochain changement de scène).
+			if (seq === meshErrorsSeq) meshErrorsLastKey = null;
 		}
 	}
 	async function repairFromWarning(id: string) {
@@ -3563,8 +3599,13 @@
 		// Phase 37 : pièce coupée → échelle uniforme seulement (comme Orca).
 		if (tree.get(id)?.cutId) {
 			const prev = sceneObjects.find((o) => o.id === id)?.scale ?? [1, 1, 1];
-			if (transform.scale.some((s, a) => Math.abs(s - prev[a]) > 1e-9))
+			if (transform.scale.some((s, a) => Math.abs(s - prev[a]) > 1e-9)) {
+				// Phase 39 (lot 39 §3) : outil Échelle → toutes les pièces de la coupe
+				// à la fois, autour du centre de leur boîte commune, puis reposées.
+				if (tools.active === 'scale' && scaleCutGroup(id, uniformFactor(prev, transform.scale)))
+					return;
 				transform = { ...transform, scale: uniformCutScale(prev, transform.scale) };
+			}
 		}
 		sceneObjects = sceneObjects.map((o) =>
 			o.id === id
@@ -3576,6 +3617,40 @@
 					}
 				: o
 		);
+	}
+
+	// Phase 39 — échelle groupée des pièces coupées (ObjectList::fix_cut_selection +
+	// Selection::scale_and_translate + GLCanvas3D::do_scale d'Orca 2.4.1). Une
+	// pièce liée non manipulable (verrouillée, autre plateau) bloque l'échelle,
+	// comme Orca qui désactive la manipulation d'une sélection de coupe incomplète.
+	// Renvoie true si l'échelle a été traitée (appliquée ou refusée).
+	function scaleCutGroup(id: string, k: number): boolean {
+		const linked = cutLinkedIds(tree.list(), id).filter((x) =>
+			sceneObjects.some((o) => o.id === x)
+		);
+		if (linked.length < 2) return false;
+		if (linked.some((x) => !canTransformObject(x, activePlate, objectLocked))) {
+			saveMessage =
+				'Échelle refusée : toutes les pièces de la coupe doivent être sur le plateau actif et déverrouillées.';
+			return true;
+		}
+		const pieces = linked.map((x) => {
+			const o = sceneObjects.find((s) => s.id === x)!;
+			return {
+				id: x,
+				mesh: o.mesh,
+				position: [...(o.position ?? [0, 0, 0])] as [number, number, number],
+				rotation: [...(o.rotation ?? [0, 0, 0])] as [number, number, number],
+				scale: [...(o.scale ?? [1, 1, 1])] as [number, number, number]
+			};
+		});
+		const next = new Map(groupCutScale(pieces, k).map((p) => [p.id, p]));
+		if (next.size === 0) return true;
+		sceneObjects = sceneObjects.map((o) => {
+			const n = next.get(o.id);
+			return n ? { ...o, position: n.position, scale: n.scale } : o;
+		});
+		return true;
 	}
 
 	// Contexte des panneaux d'outils (T104) : objet unique sélectionné + dérivés.
@@ -6739,6 +6814,18 @@
 		if (nativeTab) return;
 		// En Aperçu, les touches de navigation de couches priment sur les outils.
 		if (layout.tab === 'preview' && handlePreviewKey(e)) return;
+		// Phase 39 — « Toggle Wireframe » d'Orca (GLCanvas3D::on_key) : Alt+Maj+Entrée
+		// ou Ctrl+Maj+Entrée ; dessiné en peinture multi-matériaux.
+		if (
+			layout.tab === 'prepare' &&
+			e.key === 'Enter' &&
+			e.shiftKey &&
+			(e.altKey || e.ctrlKey || e.metaKey)
+		) {
+			e.preventDefault();
+			paintWireframe = !paintWireframe;
+			return;
+		}
 		if (keepsNativeKey(e)) return;
 		const chord = {
 			key: e.key,
@@ -8332,6 +8419,74 @@
 		return sectionPlane(sectionNormalDir, activeObject.position ?? [0, 0, 0], radius, sectionRatio);
 	});
 
+	// Phase 39 — vue d'assemblage (GLCanvas3D::_render_assemble_control /
+	// _render_assemble_info d'Orca). Coupe et mode Pièce ne vivent que dans la vue.
+	$effect(() => {
+		if (tools.active !== 'assembly') {
+			assemblySection = 0;
+			assemblySectionNormal = null;
+			assemblySelectMode = 'object';
+		}
+	});
+	// Premier déplacement du curseur : normale = direction de vue (gardée ensuite,
+	// set_position(…, keep_normal) ; « Réinitialiser la direction » la reprend).
+	$effect(() => {
+		if (assemblySection > 0 && !assemblySectionNormal)
+			assemblySectionNormal = sectionNormal(cameraForward);
+	});
+	function resetAssemblySection() {
+		assemblySectionNormal = sectionNormal(cameraForward);
+	}
+	type AssemblyObject = (typeof visibleSceneObjects)[number];
+	/** Boîte monde d'un objet affiché (maillage + volumes), positions éclatées comprises. */
+	function assemblyObjectBox(o: AssemblyObject) {
+		const placement = {
+			position: (o.position ?? [0, 0, 0]) as [number, number, number],
+			rotation: (o.rotation ?? [0, 0, 0]) as [number, number, number],
+			scale: (o.scale ?? [1, 1, 1]) as [number, number, number]
+		};
+		const base = objectsBox([{ mesh: o.mesh, ...placement }]);
+		const vols = (volumesByObject[o.id] ?? []).map((v) => volumeWorldBox(placement, v));
+		return unionBox(base ? [base, ...vols] : vols);
+	}
+	const assemblyBox = $derived.by(() => {
+		if (tools.active !== 'assembly') return null;
+		const boxes = visibleSceneObjects.map(assemblyObjectBox).filter((b) => b !== null);
+		return unionBox(boxes);
+	});
+	const assemblyClip = $derived(
+		tools.active === 'assembly'
+			? assemblySectionPlane(assemblySectionNormal, assemblyBox, assemblySection)
+			: null
+	);
+	// « Informations sur l'assemblage » : boîte de la sélection (pièce en mode Pièce).
+	const assemblyInfoText = $derived.by(() => {
+		if (tools.active !== 'assembly' || ws.selection.size === 0) return null;
+		if (assemblySelectMode === 'part' && selId && selectedVolumeId) {
+			const o = visibleSceneObjects.find((x) => x.id === selId);
+			const v = (volumesByObject[selId] ?? []).find((x) => x.id === selectedVolumeId);
+			if (o && v) {
+				const info = assemblyInfo(
+					volumeWorldBox(
+						{
+							position: (o.position ?? [0, 0, 0]) as [number, number, number],
+							rotation: (o.rotation ?? [0, 0, 0]) as [number, number, number],
+							scale: (o.scale ?? [1, 1, 1]) as [number, number, number]
+						},
+						v
+					)
+				);
+				if (info) return formatAssemblyInfo(info);
+			}
+		}
+		const boxes = visibleSceneObjects
+			.filter((o) => ws.selection.has(o.id))
+			.map(assemblyObjectBox)
+			.filter((b) => b !== null);
+		const info = assemblyInfo(unionBox(boxes));
+		return info ? formatAssemblyInfo(info) : null;
+	});
+
 	/** Scène telle que la sauvegarde l'envoie (sert aussi à l'indicateur
 	 *  « modifié depuis la dernière sauvegarde »). */
 	function buildSceneForSave() {
@@ -8431,9 +8586,13 @@
 		clearTimeout(signatureTimer);
 		if (pending) return;
 		signatureTimer = setTimeout(() => {
-			const sig = saveSignature();
+			const scene = buildSceneForSave();
+			const sig = saveSignature(scene);
 			currentSignature = sig;
 			if (savedSignature === null && baselineReady) savedSignature = sig;
+			// Lot 39 : alerte de maillage des objets importés / ajoutés, sans attendre
+			// l'enregistrement (relancée seulement si les maillages ont changé).
+			if (baselineReady) void refreshMeshErrors(scene, false);
 		}, 300);
 	});
 	let baselineReady = $state(false);
@@ -10117,7 +10276,10 @@
 							onvolumechange={replaceVolume}
 							ondragchange={onGizmoDragChange}
 							{sectionRatio}
-							clipPlane={cutClip ?? sectionClip}
+							clipPlane={cutClip ?? sectionClip ?? assemblyClip}
+							clipAll={!cutClip && !sectionClip && !!assemblyClip}
+							partSelect={tools.active === 'assembly' && assemblySelectMode === 'part'}
+							wireframe={paintWireframe && paintChannel === 'mmu'}
 							guides={sceneGuides}
 							oncameradir={(forward) => {
 								cameraForward = forward;
@@ -10203,6 +10365,12 @@
 						{#if !activeObject && !['assembly', 'boolean', 'emboss', 'svg'].includes(tools.active)}
 							<p class="text-sm text-content-subtle">Sélectionnez un objet.</p>
 						{:else if isTransformTool(tools.active) || tools.active === 'flatten'}
+							{#if tools.active === 'scale' && selId && (cutLinks[selId] ?? 0) > 0}
+								<p class="text-xs text-content-subtle" data-testid="cut-scale-group">
+									Pièce coupée : échelle uniforme appliquée aux {cutLinks[selId] + 1} pièces de la coupe,
+									autour de leur centre commun, puis reposées sur le plateau.
+								</p>
+							{/if}
 							<TransformPanel
 								transform={activeTransform}
 								onchange={(tr) => selId && onTransform(selId, tr)}
@@ -10274,6 +10442,10 @@
 								bind:factor={assemblyFactor}
 								bind:mode={assemblyMode}
 								picks={assemblyPick ? 1 : 0}
+								bind:section={assemblySection}
+								onresetsection={resetAssemblySection}
+								bind:selectionMode={assemblySelectMode}
+								info={assemblyInfoText}
 							/>
 						{:else if paintChannel}
 							<!-- Barre de peinture (T105) : canal verrouillé sur l'outil du rail. -->
@@ -10287,6 +10459,7 @@
 								bind:edgeDetection={paintEdgeDetection}
 								bind:gapArea={paintGapArea}
 								bind:constraint={paintConstraint}
+								bind:wireframe={paintWireframe}
 								busy={paintBusy}
 								ongapfill={performGapFill}
 								onremap={remapPaintFilaments}

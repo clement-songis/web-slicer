@@ -38,6 +38,7 @@
 	import { appPreferences } from '$lib/settings/preferences';
 	import type { HoverPreview, PaintAssist } from './gizmos/painting/paint-tools';
 	import type { RealisticOptions } from './realistic';
+	import SsaoPass from './SsaoPass.svelte';
 	import RealisticLight from './RealisticLight.svelte';
 
 	interface Props {
@@ -135,6 +136,12 @@
 		hoverPreviews?: Record<string, HoverPreview | null> | null;
 		/** Vue réaliste (préférence + menu Vue), null = rendu standard. */
 		realistic?: RealisticOptions | null;
+		/** Phase 39 — `clipPlane` appliqué à tous les objets (vue en coupe d'assemblage). */
+		clipAll?: boolean;
+		/** Phase 39 — mode de sélection « Pièce » (vue d'assemblage). */
+		partSelect?: boolean;
+		/** Phase 39 — fil de fer de la peinture sur les objets sélectionnés. */
+		wireframe?: boolean;
 	}
 
 	let {
@@ -181,7 +188,10 @@
 		recenterKey = null,
 		paintAssist = null,
 		hoverPreviews = null,
-		realistic = null
+		realistic = null,
+		clipAll = false,
+		partSelect = false,
+		wireframe = false
 	}: Props = $props();
 
 	// Cadre du plateau actif (multi-plateaux) : contour légèrement surélevé.
@@ -640,6 +650,10 @@
 	<!-- Vue réaliste : lumière fixe dans le repère caméra (Orca), ombres en option. -->
 	<T.AmbientLight intensity={0.45} />
 	<RealisticLight {bed} shadows={realistic.shadows} />
+	{#if realistic.ssao}
+		<!-- Phase 39 : occlusion ambiante SSAO (passe d'écran d'Orca). -->
+		<SsaoPass {bed} />
+	{/if}
 {:else}
 	<T.AmbientLight intensity={0.6} />
 	<T.DirectionalLight
@@ -726,7 +740,9 @@
 		selected={selection.has(obj.id)}
 		printable={obj.printable}
 		issue={issueObjects?.[obj.id] ?? null}
-		clipPlane={selection.has(obj.id) ? clipPlane : null}
+		clipPlane={clipAll || selection.has(obj.id) ? clipPlane : null}
+		{partSelect}
+		wireframe={wireframe && selection.has(obj.id)}
 		onpick={(additive) => pick(obj.id, additive)}
 		onmeshpick={onmeshpick ? (meshPick) => onmeshpick(obj.id, meshPick) : undefined}
 		{paintstroke}

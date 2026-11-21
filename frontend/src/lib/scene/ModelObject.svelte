@@ -8,7 +8,7 @@
 	import type { MeshPick, SceneMesh } from './mesh';
 	import type { SceneVolume, VolumeType } from './volumes';
 	import { overhangIndices } from './overhang';
-	import { sceneColors } from './scene-colors';
+	import { sceneColors, wireframeColor } from './scene-colors';
 	import type { SectionPlane } from './screen-select';
 	import type { PaintOverlay } from './gizmos/painting/paint-overlay';
 	import {
@@ -65,6 +65,12 @@
 		hoverPreview?: HoverPreview | null;
 		/** Vue réaliste (Phong / Gouraud, normales lissées, ombres), null = rendu standard. */
 		realistic?: RealisticOptions | null;
+		/** Phase 39 — mode « Pièce » de la vue d'assemblage : le clic simple choisit
+		 *  la pièce sous le curseur (comme Alt+clic). */
+		partSelect?: boolean;
+		/** Phase 39 — fil de fer (arêtes des triangles, peinture comprise) :
+		 *  « Toggle Wireframe » d'Orca, Alt+Maj+Entrée en peinture MMU. */
+		wireframe?: boolean;
 	}
 
 	// Couleurs par rôle, proches du rendu Orca (GLVolume) : pièce opaque,
@@ -100,7 +106,9 @@
 		issue = null,
 		paintAssist = null,
 		hoverPreview = null,
-		realistic = null
+		realistic = null,
+		partSelect = false,
+		wireframe = false
 	}: Props = $props();
 
 	// Aperçu au survol (Orca : triangles « is_selected_by_seed_fill »).
@@ -222,6 +230,9 @@
 		side: clipPlane === null ? THREE.FrontSide : THREE.DoubleSide
 	});
 
+	// Fil de fer : arêtes claires ou sombres selon la teinte (getWireframeColor d'Orca).
+	const edgeColor = $derived(wireframeColor(materialProps.color));
+
 	// Libère la géométrie précédente quand elle change / au démontage.
 	$effect(() => {
 		const g = baseGeometry;
@@ -252,7 +263,7 @@
 	function onvolumeclick(volumeId: string, event: IntersectionEvent<MouseEvent>) {
 		event.stopPropagation();
 		const ne = event.nativeEvent;
-		if (ne.altKey && onpickvolume) onpickvolume(volumeId);
+		if ((ne.altKey || partSelect) && onpickvolume) onpickvolume(volumeId);
 		else onpick?.(ne.shiftKey || ne.ctrlKey || ne.metaKey);
 	}
 
@@ -359,7 +370,7 @@
 	function onclick(event: IntersectionEvent<MouseEvent>) {
 		event.stopPropagation();
 		const ne = event.nativeEvent;
-		if (ne.altKey && onpickvolume) {
+		if ((ne.altKey || partSelect) && onpickvolume) {
 			// Alt+clic : pièce la plus proche sous le curseur (même si la surface
 			// de l'objet la recouvre), sinon l'objet lui-même.
 			const hit = (event.intersections ?? []).find((i) => i.object.userData?.volumeId);
@@ -396,6 +407,38 @@
 		<T.MeshLambertMaterial {...materialProps} />
 	{:else}
 		<T.MeshStandardMaterial {...materialProps} metalness={0.1} roughness={0.7} />
+	{/if}
+	{#if wireframe}
+		<!-- Fil de fer (shader mm_gouraud d'Orca, show_wireframe) : arêtes des
+		     triangles du maillage, non pickable. -->
+		<T.Mesh {geometry} renderOrder={5} raycast={() => {}}>
+			<T.MeshBasicMaterial
+				wireframe
+				color={edgeColor}
+				transparent
+				opacity={0.55}
+				depthWrite={false}
+				polygonOffset
+				polygonOffsetFactor={-4}
+				polygonOffsetUnits={-4}
+				{clippingPlanes}
+			/>
+		</T.Mesh>
+		{#if paintGeometry}
+			<T.Mesh geometry={paintGeometry} renderOrder={5} raycast={() => {}}>
+				<T.MeshBasicMaterial
+					wireframe
+					color={edgeColor}
+					transparent
+					opacity={0.55}
+					depthWrite={false}
+					polygonOffset
+					polygonOffsetFactor={-4}
+					polygonOffsetUnits={-4}
+					{clippingPlanes}
+				/>
+			</T.Mesh>
+		{/if}
 	{/if}
 	{#if overhangGeometry}
 		<!-- Surplombs : teinte rouge par-dessus (gouraud.fs : 50 % LightRed). -->
@@ -462,6 +505,8 @@
 				depthWrite={style.opacity >= 1}
 				metalness={0.1}
 				roughness={0.7}
+				{clippingPlanes}
+				side={clipPlane === null ? THREE.FrontSide : THREE.DoubleSide}
 			/>
 		</T.Mesh>
 	{/each}

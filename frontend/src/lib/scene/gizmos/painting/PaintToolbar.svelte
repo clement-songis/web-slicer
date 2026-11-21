@@ -55,6 +55,9 @@
 		onremap?: (table: number[]) => void;
 		/** Requête moteur en cours (boutons désactivés). */
 		busy?: boolean;
+		/** Phase 39 — fil de fer (« Toggle Wireframe » d'Orca, Alt+Maj+Entrée). Orca
+		 *  ne le dessine qu'en peinture multi-matériaux (set_wireframe_needed). */
+		wireframe?: boolean;
 	}
 
 	let {
@@ -70,7 +73,8 @@
 		constraint = $bindable(null),
 		ongapfill,
 		onremap,
-		busy = false
+		busy = false,
+		wireframe = $bindable(false)
 	}: Props = $props();
 
 	const tools = $derived(toolsFor(channel));
@@ -324,6 +328,14 @@
 			Ctrl + molette : {tool === 'height' ? 'hauteur' : tool === 'fill' ? 'angle' : 'rayon'} · Alt + molette
 			: plan de coupe
 		</p>
+	{/if}
+
+	{#if channel === 'mmu'}
+		<label class="flex items-center gap-2 text-xs" title="Alt + Maj + Entrée">
+			<input type="checkbox" bind:checked={wireframe} data-testid="paint-wireframe" />
+			<span>Afficher le maillage</span>
+			<kbd class="ml-auto text-[10px] text-content-subtle">Alt+Maj+Entrée</kbd>
+		</label>
 	{/if}
 
 	{#if channel === 'mmu' && filamentColours.length > 1}

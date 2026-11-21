@@ -15,6 +15,8 @@ import type { PaintChannel } from './gizmos/painting/painting';
 
 export interface RealisticOptions {
 	phong: boolean;
+	/** Occlusion ambiante SSAO (opengl_phong_ssao, phase 39) ; absent = non. */
+	ssao?: boolean;
 	shadows: boolean;
 	smoothNormals: boolean;
 }
@@ -35,6 +37,8 @@ export interface RealisticPrefs {
 	realisticPhong: boolean;
 	realisticShadows: boolean;
 	realisticSmoothNormals: boolean;
+	/** Phase 39 — absent des anciens appels : SSAO coupé. */
+	realisticSsao?: boolean;
 }
 
 /**
@@ -50,7 +54,8 @@ export function effectiveRealistic(
 	return {
 		phong: prefs.realisticPhong,
 		shadows: prefs.realisticShadows,
-		smoothNormals: prefs.realisticSmoothNormals
+		smoothNormals: prefs.realisticSmoothNormals,
+		...(prefs.realisticSsao ? { ssao: true } : {})
 	};
 }
 
