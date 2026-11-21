@@ -79,6 +79,23 @@ const META_FIELDS: &[&str] = &[
     "renamed_from",
 ];
 
+/// Champs de `META_FIELDS` qui sont aussi de vraies options de configuration
+/// Orca pour un preset **machine** : l'extracteur d'audit les classe en méta
+/// (comptages inchangés), mais Orca les charge dans la config du preset et les
+/// lit ensuite. Lot 45 : `default_bed_type` (option imprimante,
+/// `s_Preset_printer_options`) est lu par `Preset::get_default_bed_type`
+/// (Preset.cpp:966) pour le type de plaque d'un nouveau projet — le retirer
+/// donnait « High Temp » aux 5 profils qui portent « 4 » (Textured PEI).
+/// Dans un `machine_model`, la même clé reste un méta (fiche du modèle, jamais
+/// héritée par les presets machine).
+const MACHINE_CONFIG_META_FIELDS: &[&str] = &["default_bed_type"];
+
+/// Clé méta retirée des valeurs de config d'un preset de type `kind`.
+fn is_meta_field(kind: PresetKind, key: &str) -> bool {
+    META_FIELDS.contains(&key)
+        && !(kind == PresetKind::Machine && MACHINE_CONFIG_META_FIELDS.contains(&key))
+}
+
 /// Preset importé depuis un profil vendeur.
 #[derive(Debug, Clone)]
 pub struct ImportedPreset {
@@ -246,7 +263,7 @@ fn build_preset(
     }
     let values: Map<String, Value> = data
         .iter()
-        .filter(|(k, _)| !META_FIELDS.contains(&k.as_str()))
+        .filter(|(k, _)| !is_meta_field(kind, k))
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect();
 
@@ -422,6 +439,59 @@ mod tests {
         assert_eq!(diameter, Some("0.6"));
         assert!(variant.values.contains_key("printer_model"));
         assert!(variant.values.contains_key("printer_variant"));
+    }
+
+    /// Lot 45 : `default_bed_type` reste dans les valeurs des presets machine
+    /// (Orca `Preset::get_default_bed_type`), pas dans celles des modèles.
+    #[test]
+    fn machine_presets_keep_default_bed_type() {
+        let out = outcome();
+        let bed = |p: &ImportedPreset| {
+            p.values
+                .get("default_bed_type")
+                .and_then(Value::as_str)
+                .map(String::from)
+        };
+        let mut numeric: Vec<&str> = out
+            .presets
+            .iter()
+            .filter(|p| p.kind == PresetKind::Machine)
+            .filter(|p| bed(p).is_some_and(|v| v.parse::<i64>().is_ok()))
+            .map(|p| p.name.as_str())
+            .collect();
+        numeric.sort_unstable();
+        assert_eq!(
+            numeric,
+            [
+                "Elegoo Centauri 0.4 nozzle",
+                "Elegoo Centauri Carbon 0.4 nozzle",
+                "WonderMaker ZR 0.4 nozzle",
+                "WonderMaker ZR Ultra 0.4 nozzle",
+                "WonderMaker ZR Ultra S 0.4 nozzle",
+            ]
+        );
+        for name in &numeric {
+            let p = out.presets.iter().find(|p| p.name == *name).unwrap();
+            assert_eq!(bed(p).as_deref(), Some("4"), "{name}");
+        }
+        // Forme texte conservée telle quelle (Orca la lit via atoi → btPEI).
+        assert!(out
+            .presets
+            .iter()
+            .any(|p| p.kind == PresetKind::Machine
+                && bed(p).as_deref() == Some("Textured PEI Plate")));
+        // Fiches de modèle : méta, jamais en valeur.
+        assert!(out
+            .presets
+            .iter()
+            .filter(|p| p.kind == PresetKind::MachineModel)
+            .all(|p| !p.values.contains_key("default_bed_type")));
+        // Les autres méta restent retirés des presets machine.
+        assert!(out
+            .presets
+            .iter()
+            .filter(|p| p.kind == PresetKind::Machine)
+            .all(|p| !p.values.contains_key("renamed_from") && !p.values.contains_key("model_id")));
     }
 
     #[test]

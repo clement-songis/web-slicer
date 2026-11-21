@@ -403,7 +403,11 @@ const BED_TYPE_KEYS: &[&str] = &[
 /// résolues d'un preset machine : `default_bed_type` non vide → `atoi` > 0 =
 /// ce type, sinon (y compris un libellé texte comme « Textured PEI Plate »,
 /// que `atoi` lit 0) High Temp ; absent → X1 / X1 Carbon / X1E = Cool Plate,
-/// toute autre imprimante = High Temp (btPEI). Renvoie la clé Orca.
+/// toute autre imprimante = High Temp (btPEI). Une valeur hors de l'enum
+/// (≥ btCount = 7) n'est pas dans le sélecteur : `set_bed_type_accord_combox`
+/// (Plater.cpp:2783) choisit alors sa 1re entrée, Cool Plate (lot 45).
+/// Renvoie la clé Orca. `default_bed_type` est conservé au seed des presets
+/// machine depuis le lot 45 (engine::presets::import).
 pub(crate) fn printer_default_bed_type(values: &serde_json::Map<String, Value>) -> &'static str {
     let text = |key: &str| match values.get(key) {
         Some(Value::String(s)) => s.clone(),
@@ -421,9 +425,9 @@ pub(crate) fn printer_default_bed_type(values: &serde_json::Map<String, Value>) 
             value if value > 0 => BED_TYPE_KEYS
                 .get(value as usize)
                 .copied()
-                // Hors de l'enum : Orca renverrait un BedType invalide ;
-                // le sélecteur retombe sur le premier choix utile.
-                .unwrap_or("High Temp Plate"),
+                // Hors de l'enum : BedType absent du sélecteur, qui
+                // retombe sur sa 1re entrée (Cool Plate).
+                .unwrap_or("Cool Plate"),
             _ => "High Temp Plate",
         };
     }
@@ -1463,6 +1467,20 @@ mod lot44b_tests {
         assert_eq!(
             printer_default_bed_type(&values(json!({ "default_bed_type": "Textured PEI Plate" }))),
             "High Temp Plate"
+        );
+        // Hors de l'enum (≥ btCount) : 1re entrée du sélecteur, Cool Plate.
+        for n in ["7", "9", "42"] {
+            assert_eq!(
+                printer_default_bed_type(&values(
+                    json!({ "default_bed_type": n, "printer_model": "Voron 2.4 350" })
+                )),
+                "Cool Plate",
+                "{n}"
+            );
+        }
+        assert_eq!(
+            printer_default_bed_type(&values(json!({ "default_bed_type": "6" }))),
+            "Supertack Plate"
         );
         assert_eq!(c_atoi("  12abc"), 12);
         assert_eq!(c_atoi("-3"), -3);
