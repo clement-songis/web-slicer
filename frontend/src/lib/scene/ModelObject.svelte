@@ -2,7 +2,7 @@
 	// Un objet 3D de la scène (T050) : construit une BufferGeometry depuis le
 	// maillage décodé, met en surbrillance la sélection, et remonte les clics
 	// (raycast Three.js) au parent.
-	import { T } from '@threlte/core';
+	import { T, useThrelte } from '@threlte/core';
 	import type { IntersectionEvent } from '@threlte/extras';
 	import * as THREE from 'three';
 	import type { MeshPick, SceneMesh } from './mesh';
@@ -230,6 +230,44 @@
 		side: clipPlane === null ? THREE.FrontSide : THREE.DoubleSide
 	});
 
+	// Audit 40 E2 : matériau de surface géré ici plutôt que par trois branches
+	// <T.Mesh…Material> : en basculant la vue réaliste à chaud, Threlte détachait
+	// l'ancien matériau APRÈS avoir attaché le nouveau et rendait au maillage son
+	// matériau par défaut (MeshBasicMaterial blanc, non éclairé) → objets gris clair
+	// uniformes en Phong (mesuré : correct après rechargement, faux après bascule).
+	const { invalidate } = useThrelte();
+	const surfaceKind = $derived(realistic?.phong ? 'phong' : realistic ? 'gouraud' : 'standard');
+	const surface = $derived.by((): THREE.Material => {
+		if (surfaceKind === 'phong')
+			// Vue réaliste, Phong (shader « phong » d'Orca).
+			return new THREE.MeshPhongMaterial({ shininess: 40, specular: new THREE.Color('#3a3a3a') });
+		if (surfaceKind === 'gouraud')
+			// Vue réaliste sans Phong (« gouraud » d'Orca) : ombrage mat, sans reflets.
+			return new THREE.MeshLambertMaterial();
+		return new THREE.MeshStandardMaterial({ metalness: 0.1, roughness: 0.7 });
+	});
+	$effect(() => {
+		const m = surface;
+		return () => m.dispose();
+	});
+	$effect(() => {
+		const m = surface as THREE.MeshStandardMaterial;
+		const p = materialProps;
+		const recompile =
+			m.transparent !== p.transparent ||
+			m.side !== p.side ||
+			(m.clippingPlanes?.length ?? 0) !== (p.clippingPlanes?.length ?? 0);
+		m.color.set(p.color);
+		m.emissive.set(p.emissive);
+		m.emissiveIntensity = p.emissiveIntensity;
+		m.transparent = p.transparent;
+		m.opacity = p.opacity;
+		m.clippingPlanes = p.clippingPlanes ?? null;
+		m.side = p.side;
+		if (recompile) m.needsUpdate = true;
+		invalidate();
+	});
+
 	// Fil de fer : arêtes claires ou sombres selon la teinte (getWireframeColor d'Orca).
 	const edgeColor = $derived(wireframeColor(materialProps.color));
 
@@ -394,20 +432,12 @@
 	rotation={radRotation}
 	{scale}
 	castShadow
+	material={surface}
 	{onclick}
 	{onpointerdown}
 	{onpointermove}
 	{onpointerleave}
 >
-	{#if realistic?.phong}
-		<!-- Vue réaliste, Phong (shader « phong » d'Orca). -->
-		<T.MeshPhongMaterial {...materialProps} shininess={40} specular="#3a3a3a" />
-	{:else if realistic}
-		<!-- Vue réaliste sans Phong (« gouraud » d'Orca) : ombrage mat, sans reflets. -->
-		<T.MeshLambertMaterial {...materialProps} />
-	{:else}
-		<T.MeshStandardMaterial {...materialProps} metalness={0.1} roughness={0.7} />
-	{/if}
 	{#if wireframe}
 		<!-- Fil de fer (shader mm_gouraud d'Orca, show_wireframe) : arêtes des
 		     triangles du maillage, non pickable. -->

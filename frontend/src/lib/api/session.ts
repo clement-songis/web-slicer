@@ -5,11 +5,18 @@ import * as auth from './auth';
 import { ApiError } from './client';
 import type { UserResponse } from './types';
 import { setPreferencesUser } from '$lib/settings/preferences';
+import { clearPresetListCache } from './presets';
 
 /** Compte connecté, ou `null` si la session est absente/expirée. */
 export const currentUser = writable<UserResponse | null>(null);
 // Préférences par utilisateur : chaque compte retrouve les siennes.
-currentUser.subscribe((user) => setPreferencesUser(user?.id ?? null));
+// Listes de presets en mémoire (audit 40 E1) : jamais partagées entre comptes.
+let cacheUser: string | null = null;
+currentUser.subscribe((user) => {
+	setPreferencesUser(user?.id ?? null);
+	if ((user?.id ?? null) !== cacheUser) clearPresetListCache();
+	cacheUser = user?.id ?? null;
+});
 
 /**
  * Recharge la session depuis le backend (`GET /auth/me`). Met à jour le store et

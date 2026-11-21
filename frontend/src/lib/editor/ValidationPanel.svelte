@@ -13,7 +13,7 @@
 	import IconCrosshair from '~icons/lucide/crosshair';
 	import IconSliders from '~icons/lucide/sliders-horizontal';
 	import IconGrid from '~icons/lucide/layout-grid';
-	import { t } from '$lib/i18n';
+	import { locale, t } from '$lib/i18n';
 	import { noticeSummary, type ValidationNotice } from './validation';
 
 	interface Props {
@@ -62,7 +62,7 @@
 		data-errors={errors}
 		data-warnings={shown.length - errors}
 		data-busy={busy ? 'true' : undefined}
-		aria-label="Vérification avant tranchage"
+		aria-label={$t('Pre-slicing check')}
 	>
 		<button
 			type="button"
@@ -76,14 +76,15 @@
 				aria-hidden="true"
 			></span>
 			<span class="min-w-0 flex-1 truncate" role="status" aria-live="polite">
-				{blocked && !shown.length ? 'Vérification suspendue' : noticeSummary(shown)}
-				{#if errors}<span class="font-normal text-content-muted"> — tranchage impossible</span>{/if}
+				{blocked && !shown.length ? $t('Check suspended') : $locale && noticeSummary(shown)}
+				{#if errors}<span class="font-normal text-content-muted">{$t(' — slicing impossible')}</span
+					>{/if}
 			</span>
 			{#if busy}
 				<span
 					class="inline-block size-3 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent text-content-muted"
 					data-testid="validation-busy"
-					aria-label="Vérification en cours"
+					aria-label={$t('Checking')}
 				></span>
 			{/if}
 			{#if collapsed}<IconChevronUp
@@ -120,7 +121,7 @@
 						{/if}
 						<div class="flex min-w-0 flex-1 flex-col gap-1">
 							<p class="leading-snug break-words whitespace-pre-line">
-								<span class="sr-only">{n.level === 'error' ? 'Erreur : ' : 'Avertissement : '}</span
+								<span class="sr-only">{n.level === 'error' ? $t('Error: ') : $t('Warning: ')}</span
 								>{n.text}
 							</p>
 							{#if (n.objectId && ongotoobject) || (n.optKey && ongotooption) || (n.action && onarrange) || (n.plateIndex !== null && n.plateIndex !== activePlate && ongotoplate)}
@@ -131,8 +132,9 @@
 											class="ws-link inline-flex items-center gap-1 font-medium"
 											data-testid="validation-goto-plate"
 											onclick={() => ongotoplate(n.plateIndex!)}
-											><IconGrid class="h-3 w-3" aria-hidden="true" />Voir le plateau {n.plateIndex! +
-												1}</button
+											><IconGrid class="h-3 w-3" aria-hidden="true" />{$t('View plate {n}', {
+												n: n.plateIndex! + 1
+											})}</button
 										>
 									{/if}
 									{#if n.objectId && ongotoobject}
@@ -141,8 +143,12 @@
 											class="ws-link inline-flex max-w-full items-center gap-1 truncate font-medium"
 											data-testid="validation-goto-object"
 											onclick={() => ongotoobject(n.objectId!)}
-											><IconCrosshair class="h-3 w-3 shrink-0" aria-hidden="true" />Sélectionner « {n.objectName ??
-												'objet'} »</button
+											><IconCrosshair class="h-3 w-3 shrink-0" aria-hidden="true" />{$t(
+												'Select “{name}”',
+												{
+													name: n.objectName ?? $t('object')
+												}
+											)}</button
 										>
 									{/if}
 									{#if n.optKey && ongotooption}
@@ -152,9 +158,12 @@
 											data-testid="validation-goto-option"
 											title={n.optKey}
 											onclick={() => ongotooption(n)}
-											><IconSliders class="h-3 w-3 shrink-0" aria-hidden="true" />Régler « {n.optLabel
-												? $t(n.optLabel)
-												: n.optKey} »</button
+											><IconSliders class="h-3 w-3 shrink-0" aria-hidden="true" />{$t(
+												'Adjust “{name}”',
+												{
+													name: n.optLabel ? $t(n.optLabel) : (n.optKey ?? '')
+												}
+											)}</button
 										>
 									{/if}
 									{#if n.action === 'arrange' && onarrange}
@@ -162,7 +171,7 @@
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-secondary"
 											data-testid="validation-arrange"
-											onclick={() => onarrange()}>Disposer</button
+											onclick={() => onarrange()}>{$t('Arrange')}</button
 										>
 									{/if}
 								</div>
@@ -173,7 +182,7 @@
 								type="button"
 								class="ws-icon-btn ws-icon-btn-xs shrink-0 self-start"
 								data-testid="validation-dismiss"
-								aria-label="Masquer cet avertissement"
+								aria-label={$t('Hide this warning')}
 								onclick={() => (dismissed = [...dismissed, n.level + n.text])}
 							>
 								<IconX class="h-3 w-3" aria-hidden="true" />

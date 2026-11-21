@@ -10,6 +10,7 @@
 	// niveau de détail. Présentationnel : la page valide (`simplifyRequest`),
 	// appelle l'API et recharge le maillage de toutes les instances.
 	import { SIMPLIFY_DETAIL_LEVELS } from '../repair';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		onsimplify: (param: SimplifyToolParam) => void;
@@ -33,22 +34,22 @@
 
 <div class="flex flex-col gap-2 text-sm" data-testid="simplify-tool">
 	{#if triangles !== null}
-		<p class="text-content-subtle">Maillage actuel : {triangles} triangles</p>
+		<p class="text-content-subtle">{$t('Current mesh: {n} triangles', { n: triangles })}</p>
 	{/if}
 	<div class="flex gap-3">
 		<label class="flex items-center gap-1">
 			<input type="radio" bind:group={mode} value="detail" data-testid="simplify-mode-detail" />
-			Niveau de détail
+			{$t('Detail level')}
 		</label>
 		<label class="flex items-center gap-1">
 			<input type="radio" bind:group={mode} value="ratio" data-testid="simplify-mode-ratio" />
-			Ratio de décimation
+			{$t('Decimation ratio')}
 		</label>
 	</div>
 
 	{#if mode === 'detail'}
 		<label class="flex items-center gap-2">
-			<span class="w-28 text-content-muted">Détail</span>
+			<span class="w-28 text-content-muted">{$t('Detail')}</span>
 			<select bind:value={level} class="ws-field ws-field-sm flex-1" data-testid="simplify-level">
 				{#each SIMPLIFY_DETAIL_LEVELS as label, i (label)}
 					<option value={i}>{label}</option>
@@ -57,7 +58,7 @@
 		</label>
 	{:else}
 		<label class="flex items-center gap-2">
-			<span class="w-28 text-content-muted">Triangles retirés</span>
+			<span class="w-28 text-content-muted">{$t('Triangles removed')}</span>
 			<input type="range" min={1} max={99} step={1} bind:value={ratio} class="flex-1" />
 			<input
 				type="number"
@@ -66,7 +67,7 @@
 				step={1}
 				bind:value={ratio}
 				class="ws-field ws-field-sm w-16 text-right"
-				aria-label="Ratio de décimation (%)"
+				aria-label={$t('Decimation ratio (%)')}
 				data-testid="simplify-ratio"
 			/>
 			<span class="text-content-subtle">%</span>
@@ -79,10 +80,10 @@
 			class="ws-btn ws-btn-primary"
 			disabled={busy}
 			data-testid="simplify-apply"
-			onclick={submit}>{busy ? 'Simplification…' : 'Simplifier'}</button
+			onclick={submit}>{busy ? $t('Simplifying…') : $t('Simplify')}</button
 		>
 		<button type="button" class="ws-btn ws-btn-secondary" onclick={() => oncancel?.()}
-			>Annuler</button
+			>{$t('Cancel')}</button
 		>
 	</div>
 </div>

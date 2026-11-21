@@ -69,6 +69,23 @@ export interface CutGuide {
 const SEGMENTS = { triangle: 3, square: 4, hexagon: 6, circle: 32 } as const;
 let nextId = 1;
 
+/** État de l'outil annulable (plan, connecteurs, réglages) — sans sélection ni mode d'édition. */
+interface CutToolState {
+	mode: CutMode;
+	rotation: Vec3;
+	offset: number;
+	upper: PartAction;
+	lower: PartAction;
+	asParts: boolean;
+	connectors: ConnectorDraft[];
+	params: ConnectorParams;
+	groove: GrooveDraft | null;
+}
+/** Pas d'annulation regroupés : les changements continus (glisser du plan, d'un connecteur,
+ *  des anneaux) séparés de moins de ce délai forment une seule étape. */
+const HISTORY_BURST_MS = 400;
+const HISTORY_MAX = 100;
+
 export class CutSession {
 	target = $state.raw<CutTarget | null>(null);
 	mode = $state<CutMode>('planar');
@@ -82,6 +99,19 @@ export class CutSession {
 	selectedId = $state<string | null>(null);
 	params = $state<ConnectorParams>(defaultConnectorParams());
 	groove = $state<GrooveDraft | null>(null);
+
+	// — Annuler / rétablir propres à l'outil (audit 40 B2) — Orca prend un
+	//   instantané SnapshotType::GizmoAction à chaque action du gizmo de coupe
+	//   (« Add connector », « Move connector », « Move cut plane »…,
+	//   GLGizmoCut.cpp) et Ctrl+Z, outil ouvert, ne remonte que ces étapes.
+	private undoStack: string[] = [];
+	private redoStack: string[] = [];
+	private committed: string | null = null;
+	private burstUntil = 0;
+	private restoring = false;
+	/** Nombre d'étapes annulables / rétablissables (affichage, tests). */
+	undoCount = $state(0);
+	redoCount = $state(0);
 
 	/** Sommets dans le repère C (monde centré sur l'objet). */
 	readonly cpos = $derived(
@@ -118,8 +148,104 @@ export class CutSession {
 		untrack(() => {
 			const changed = target?.id !== this.target?.id;
 			this.target = target;
-			if (changed) this.reset();
+			if (changed) {
+				this.reset();
+				this.clearHistory();
+			}
 		});
+	}
+
+	/** Empreinte de l'état annulable (lue dans un effet : dépendances suivies). */
+	historyKey(): string {
+		const s: CutToolState = {
+			mode: this.mode,
+			rotation: this.rotation,
+			offset: this.offset,
+			upper: this.upper,
+			lower: this.lower,
+			asParts: this.asParts,
+			connectors: this.connectors,
+			params: this.params,
+			groove: this.groove
+		};
+		return JSON.stringify(s);
+	}
+
+	/**
+	 * Note l'état courant (appelé par un effet du panneau à chaque changement) :
+	 * le premier changement d'une rafale empile l'état d'avant ; les suivants
+	 * (glisser continu) prolongent la même étape.
+	 */
+	noteChange(key: string, now = Date.now()) {
+		if (this.restoring) {
+			this.committed = key;
+			return;
+		}
+		if (this.committed === null) {
+			this.committed = key;
+			return;
+		}
+		if (key === this.committed) return;
+		if (now > this.burstUntil) {
+			this.undoStack.push(this.committed);
+			if (this.undoStack.length > HISTORY_MAX) this.undoStack.shift();
+			this.redoStack = [];
+		}
+		this.burstUntil = now + HISTORY_BURST_MS;
+		this.committed = key;
+		this.syncCounts();
+	}
+
+	/** Annule la dernière étape de l'outil ; faux s'il n'y en a plus. */
+	undo(): boolean {
+		const prev = this.undoStack.pop();
+		if (prev === undefined) return false;
+		this.redoStack.push(this.historyKey());
+		this.restore(prev);
+		return true;
+	}
+
+	/** Rétablit l'étape annulée ; faux s'il n'y en a pas. */
+	redo(): boolean {
+		const next = this.redoStack.pop();
+		if (next === undefined) return false;
+		this.undoStack.push(this.historyKey());
+		this.restore(next);
+		return true;
+	}
+
+	/** Oublie l'historique de l'outil (autre objet, outil fermé, coupe effectuée). */
+	clearHistory() {
+		this.undoStack = [];
+		this.redoStack = [];
+		this.committed = null;
+		this.burstUntil = 0;
+		this.syncCounts();
+	}
+
+	private restore(key: string) {
+		const s = JSON.parse(key) as CutToolState;
+		this.restoring = true;
+		this.mode = s.mode;
+		this.rotation = s.rotation;
+		this.offset = s.offset;
+		this.upper = s.upper;
+		this.lower = s.lower;
+		this.asParts = s.asParts;
+		this.connectors = s.connectors;
+		this.params = s.params;
+		this.groove = s.groove;
+		if (this.selectedId && !s.connectors.some((c) => c.id === this.selectedId))
+			this.selectedId = null;
+		this.committed = key;
+		this.burstUntil = 0;
+		this.restoring = false;
+		this.syncCounts();
+	}
+
+	private syncCounts() {
+		this.undoCount = this.undoStack.length;
+		this.redoCount = this.redoStack.length;
 	}
 
 	reset() {

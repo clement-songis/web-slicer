@@ -87,7 +87,7 @@
 					<input
 						class="ws-field ws-field-sm w-32 border-accent"
 						data-testid="plate-rename-input"
-						aria-label={`Nouveau nom de ${plate.name}`}
+						aria-label={$t('New name for {name}', { name: plate.name })}
 						value={plate.name}
 						{@attach (el: HTMLInputElement) => {
 							el.focus();
@@ -110,7 +110,7 @@
 						type="button"
 						class="rounded px-2 py-0.5 hover:text-content"
 						aria-pressed={plate.id === activeId}
-						title="Double-clic pour renommer"
+						title={$t('Double-click to rename')}
 						onclick={() => onselect(plate.id)}
 						ondblclick={() => onrename && (editingId = plate.id)}
 					>
@@ -119,7 +119,7 @@
 						{#if sliced.includes(plate.id)}<span
 								class="text-success-text"
 								aria-hidden="true"
-								title="Plateau tranché : son aperçu est mémorisé">✓</span
+								title={$t('Plate sliced: its preview is kept')}>✓</span
 							>{/if}
 					</button>
 				{/if}
@@ -130,8 +130,8 @@
 						aria-pressed={plate.locked}
 						data-testid="plate-lock"
 						title={plate.locked
-							? 'Plateau verrouillé : l’arrangement ne le déplace pas. Cliquez pour déverrouiller.'
-							: 'Verrouiller ce plateau (l’arrangement ne le déplacera pas)'}
+							? $t('Plate locked: arranging does not move it. Click to unlock.')
+							: $t('Lock this plate (arranging will not move it)')}
 						onclick={() => onlock(plate.id, !plate.locked)}
 					>
 						{#if plate.locked}
@@ -146,8 +146,8 @@
 						type="button"
 						class="ws-icon-btn ws-icon-btn-xs hover:text-content"
 						data-testid="plate-move-front"
-						aria-label={`Déplacer ${plate.name} en premier`}
-						title="Déplacer le plateau vers l’avant (premier plateau)"
+						aria-label={$t('Move {name} first', { name: plate.name })}
+						title={$t('Move the plate to the front (first plate)')}
 						onclick={() => onfront(plate.id)}
 						><IconFront class="h-3.5 w-3.5" aria-hidden="true" /></button
 					>
@@ -156,7 +156,7 @@
 					<button
 						type="button"
 						class="ws-icon-btn ws-icon-btn-xs hover:text-danger"
-						aria-label={`Supprimer ${plate.name}`}
+						aria-label={$t('Delete {name}', { name: plate.name })}
 						onclick={() => onremove(plate.id)}
 						><IconX class="h-3.5 w-3.5" aria-hidden="true" /></button
 					>
@@ -166,14 +166,14 @@
 		<button
 			type="button"
 			class="ws-btn ws-btn-sm ws-btn-secondary"
-			aria-label="Ajouter un plateau"
+			aria-label={$t('Add a plate')}
 			onclick={() => onadd()}>+</button
 		>
 	</div>
 
 	{#if active}
 		<label class="flex items-center gap-2">
-			<span class="text-content-muted">Type de plaque</span>
+			<span class="text-content-muted">{$t('Plate type')}</span>
 			<select
 				class="ws-field ws-field-sm"
 				value={active.plateType}

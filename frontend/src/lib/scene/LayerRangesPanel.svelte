@@ -7,6 +7,7 @@
 	import { addRangeAfter, removeRange, setRangeBounds, type LayerRange } from './layer-ranges';
 	import IconX from '~icons/lucide/x';
 	import IconPlus from '~icons/lucide/plus';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		ranges: LayerRange[];
@@ -36,7 +37,7 @@
 
 <section class="flex flex-col gap-2 rounded border border-border p-2" data-testid="layer-ranges">
 	<div class="flex items-center gap-1.5">
-		<span class="text-sm font-medium text-content">Plages de hauteur</span>
+		<span class="text-sm font-medium text-content">{$t('Height ranges')}</span>
 		<span class="ws-badge h-4 px-1.5 tabular-nums">{ranges.length}</span>
 	</div>
 	{#each ranges as range, i (`${range.min}-${range.max}`)}
@@ -49,7 +50,7 @@
 						step="0.1"
 						min="0"
 						class="ws-field ws-field-sm w-16"
-						aria-label={`Z min de la plage ${i + 1}`}
+						aria-label={$t('Z min of range {n}', { n: i + 1 })}
 						value={range.min}
 						onchange={(e) => bound(i, 'min', e.currentTarget.value)}
 					/>
@@ -61,7 +62,7 @@
 						step="0.1"
 						min="0"
 						class="ws-field ws-field-sm w-16"
-						aria-label={`Z max de la plage ${i + 1}`}
+						aria-label={$t('Z max of range {n}', { n: i + 1 })}
 						value={range.max}
 						onchange={(e) => bound(i, 'max', e.currentTarget.value)}
 					/>
@@ -70,21 +71,21 @@
 				<button
 					type="button"
 					class="ws-icon-btn ws-icon-btn-xs ml-auto"
-					title="Ajouter une plage après"
-					aria-label={`Ajouter une plage après la plage ${i + 1}`}
+					title={$t('Add a range after')}
+					aria-label={$t('Add a range after range {n}', { n: i + 1 })}
 					onclick={() => onchange(addRangeAfter(ranges, i, layerHeight))}
 					><IconPlus class="h-3.5 w-3.5" aria-hidden="true" /></button
 				>
 				<button
 					type="button"
 					class="ws-icon-btn ws-icon-btn-xs"
-					aria-label={`Supprimer la plage ${i + 1}`}
+					aria-label={$t('Delete range {n}', { n: i + 1 })}
 					onclick={() => onchange(removeRange(ranges, i))}
 					><IconX class="h-3.5 w-3.5" aria-hidden="true" /></button
 				>
 			</div>
 			<ObjectSettingsPanel
-				title={`Réglages ${range.min}–${range.max} mm`}
+				title={$t('Settings {min}–{max} mm', { min: range.min, max: range.max })}
 				settings={range.settings}
 				{mode}
 				{base}

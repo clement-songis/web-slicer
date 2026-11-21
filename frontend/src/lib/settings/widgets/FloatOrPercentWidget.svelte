@@ -28,7 +28,7 @@
 		data-index={index}
 		{disabled}
 		aria-label={$t(def.label)}
-		placeholder={sep === ',' ? '0,4 ou 40%' : '0.4 ou 40%'}
+		placeholder={$t('{value} or 40%', { value: sep === ',' ? '0,4' : '0.4' })}
 		class={FIELD_CLASS}
 	/>
 	{#if unitText(def.sidetext)}

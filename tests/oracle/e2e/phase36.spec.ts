@@ -49,7 +49,7 @@ test("Arrangement sans rotation : rotation et échelle conservées ; panneau seu
   // Valeurs exactes : ni −45 (matrice du serveur), ni « 45.00000000000001 ».
   await expect(rz).toHaveValue("45");
   await expect(page.getByLabel("Rotation (°) X", { exact: true })).toHaveValue("0");
-  await expect(page.getByLabel("Échelle X", { exact: true })).toHaveValue("1");
+  await expect(page.getByLabel("Échelle X", { exact: true })).toHaveValue("100");
 
   // Le menu d'arrangement n'existe pas en Aperçu ni dans la page Projet (Orca).
   await page.getByRole("button", { name: "Aperçu", exact: true }).first().click();

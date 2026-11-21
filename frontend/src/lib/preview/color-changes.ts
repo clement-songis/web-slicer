@@ -5,6 +5,8 @@
 // (`plates[i].customGcodes`, lus par le serveur : slicing.rs
 // scene_custom_gcodes) et s'appliquent au prochain tranchage. Pur.
 
+import { tr } from '$lib/i18n';
+
 export type CustomGcodeType =
 	'color_change' | 'pause_print' | 'custom' | 'template' | 'tool_change';
 
@@ -109,7 +111,7 @@ export function editColorChangeAt(
 			return {
 				list: [...list],
 				changed: false,
-				message: `La couche ${layerLabel} a déjà un code personnalisé.`
+				message: tr('Layer {layer} already has a custom code.', { layer: layerLabel })
 			};
 		const color = colorChangeColor(list, z, filamentColor);
 		const next = [...list, { printZ: z, type: 'color_change' as const, extruder: 1, color }].sort(
@@ -118,20 +120,25 @@ export function editColorChangeAt(
 		return {
 			list: next,
 			changed: true,
-			message: `Changement de couleur ajouté à la couche ${layerLabel} — retranchez (Ctrl+R) pour l'appliquer.`
+			message: tr('Color change added to layer {layer} — reslice (Ctrl+R) to apply it.', {
+				layer: layerLabel
+			})
 		};
 	}
 	if (at < 0)
 		return {
 			list: [...list],
 			changed: false,
-			message: `Aucun code personnalisé à la couche ${layerLabel}.`
+			message: tr('No custom code at layer {layer}.', { layer: layerLabel })
 		};
 	const removed = list[at];
 	return {
 		list: list.filter((_, i) => i !== at),
 		changed: true,
-		message: `${removed.type === 'color_change' ? 'Changement de couleur' : 'Code personnalisé'} retiré de la couche ${layerLabel} — retranchez (Ctrl+R) pour l'appliquer.`
+		message: tr('{what} removed from layer {layer} — reslice (Ctrl+R) to apply it.', {
+			what: tr(removed.type === 'color_change' ? 'Color Change' : 'Custom code'),
+			layer: layerLabel
+		})
 	};
 }
 

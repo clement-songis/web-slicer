@@ -3,6 +3,7 @@
 	// changement d'outil, rendues en lignes d'option groupées.
 	import { PARAMS } from '../../../generated/params';
 	import OptionLine from '../OptionLine.svelte';
+	import { t } from '$lib/i18n';
 	import { FILAMENT_MULTIMATERIAL } from './groups';
 
 	interface Props {
@@ -17,7 +18,7 @@
 	{#each FILAMENT_MULTIMATERIAL as group (group.title)}
 		<section>
 			<h3 class="ws-section-title mb-1">
-				{group.title}
+				{$t(group.title)}
 			</h3>
 			<div class="divide-y divide-border">
 				{#each group.options as key (key)}

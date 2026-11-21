@@ -5,6 +5,8 @@
 // "Direct Drive High Flow"]) pour les options de `filament_options_with_variant`
 // (PrintConfig.cpp) ; le sélecteur choisit l'index édité. Pur.
 
+import { tr } from '$lib/i18n';
+
 /** Orca PrintConfig.cpp `filament_options_with_variant` (2.4.1). */
 export const FILAMENT_VARIANT_OPTIONS: ReadonlySet<string> = new Set([
 	'filament_flow_ratio',
@@ -52,14 +54,9 @@ export function isVariantOption(key: string): boolean {
 }
 
 // get_nozzle_volume_type_string (Orca) : types de débit reconnus en fin de nom.
-const NOZZLE_TYPES: [string, string][] = [
-	['High Flow', 'Haut débit'],
-	['Standard', 'Standard']
-];
-const DRIVES: Record<string, string> = {
-	'Direct Drive': 'Entraînement direct',
-	Bowden: 'Bowden'
-};
+// Libellés = clés i18n anglaises (fr : « Haut débit », « Entraînement direct »).
+const NOZZLE_TYPES = ['High Flow', 'Standard'];
+const DRIVES = new Set(['Direct Drive', 'Bowden']);
 
 /**
  * Libellés du sélecteur (generate_extruder_options : « <entraînement> :
@@ -69,10 +66,13 @@ export function variantLabels(raw: unknown): string[] {
 	if (!Array.isArray(raw)) return [];
 	return raw.map((v) => {
 		const variant = typeof v === 'string' ? v : String(v ?? '');
-		for (const [type, fr] of NOZZLE_TYPES) {
+		for (const type of NOZZLE_TYPES) {
 			if (variant.length > type.length + 1 && variant.endsWith(' ' + type)) {
 				const drive = variant.slice(0, -type.length - 1);
-				return `${DRIVES[drive] ?? drive} : ${fr}`;
+				return tr('{drive}: {flow}', {
+					drive: DRIVES.has(drive) ? tr(drive) : drive,
+					flow: tr(type)
+				});
 			}
 		}
 		return variant;

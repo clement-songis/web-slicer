@@ -7,6 +7,8 @@
 	// (GLCanvas3D::_render_assemble_control / _render_assemble_info) : « Vue en
 	// coupe » (0–1, « Réinitialiser la direction »), « Mode de sélection »
 	// Objet / Pièce et « Informations sur l'assemblage » (Volume, Taille).
+	import { t } from '$lib/i18n';
+
 	interface Props {
 		exploded?: boolean;
 		factor?: number;
@@ -47,28 +49,32 @@
 
 <div class="flex flex-col gap-2 text-sm">
 	<label class="flex items-center gap-2">
-		<span class="text-content-muted">Mode</span>
+		<span class="text-content-muted">{$t('Mode')}</span>
 		<select bind:value={mode} data-testid="assembly-mode" class="ws-field ws-field-sm">
-			<option value="explode">Vue éclatée</option>
-			<option value="face">Assemblage face à face</option>
-			<option value="point">Assemblage point à point</option>
+			<option value="explode">{$t('Exploded view')}</option>
+			<option value="face">{$t('Face and face assembly')}</option>
+			<option value="point">{$t('Point and point assembly')}</option>
 		</select>
 	</label>
 	{#if mode !== 'explode'}
 		<p class="text-content-subtle" data-testid="assembly-hint" data-picks={picks}>
 			{picks === 0
-				? `Cliquez ${mode === 'face' ? 'une face' : 'un point'} de l’objet fixe.`
-				: `Cliquez ${mode === 'face' ? 'une face' : 'un point'} de l’objet à déplacer.`}
+				? mode === 'face'
+					? $t('Click a face of the fixed object.')
+					: $t('Click a point of the fixed object.')
+				: mode === 'face'
+					? $t('Click a face of the object to move.')
+					: $t('Click a point of the object to move.')}
 		</p>
 	{/if}
 	<label class="flex items-center gap-2">
 		<input type="checkbox" bind:checked={exploded} onchange={emit} />
-		<span class="text-content-muted">Vue éclatée</span>
+		<span class="text-content-muted">{$t('Exploded view')}</span>
 	</label>
 
 	{#if exploded}
 		<label class="flex items-center gap-2">
-			<span class="w-20 text-content-muted">Écartement</span>
+			<span class="w-20 text-content-muted">{$t('Spacing||explode')}</span>
 			<input
 				type="range"
 				min={0}
@@ -84,7 +90,7 @@
 
 	<div class="flex flex-col gap-1" data-testid="assembly-section" data-section={section.toFixed(2)}>
 		<label class="flex items-center gap-2">
-			<span class="w-20 shrink-0 text-content-muted">Vue en coupe</span>
+			<span class="w-20 shrink-0 text-content-muted">{$t('Section view')}</span>
 			<input
 				type="range"
 				min={0}
@@ -93,7 +99,7 @@
 				value={section}
 				oninput={(e) => setSection(Number(e.currentTarget.value))}
 				class="min-w-0 flex-1"
-				aria-label="Vue en coupe"
+				aria-label={$t('Section view')}
 			/>
 			<input
 				type="number"
@@ -103,58 +109,60 @@
 				value={section.toFixed(2)}
 				onchange={(e) => setSection(Number(e.currentTarget.value) || 0)}
 				class="ws-field ws-field-sm w-16 text-right"
-				aria-label="Position de la coupe"
+				aria-label={$t('Section position')}
 			/>
 		</label>
 		{#if section > 0}
 			<div class="flex items-center justify-between gap-2">
-				<span class="text-xs text-content-subtle">Coupe face à la vue ; 0 la retire.</span>
+				<span class="text-xs text-content-subtle"
+					>{$t('Section facing the view; 0 removes it.')}</span
+				>
 				<button
 					type="button"
 					class="ws-btn ws-btn-sm"
 					data-testid="assembly-section-reset"
-					onclick={() => onresetsection?.()}>Réinitialiser la direction</button
+					onclick={() => onresetsection?.()}>{$t('Reset direction')}</button
 				>
 			</div>
 		{/if}
 	</div>
 
-	<div class="flex items-center gap-2" role="radiogroup" aria-label="Mode de sélection">
-		<span class="w-20 shrink-0 text-content-muted">Sélection</span>
+	<div class="flex items-center gap-2" role="radiogroup" aria-label={$t('Selection Mode')}>
+		<span class="w-20 shrink-0 text-content-muted">{$t('Selection')}</span>
 		<div class="ws-seg" data-testid="assembly-select-mode">
-			{#each [['object', 'Objet'], ['part', 'Pièce']] as const as [value, label] (value)}
+			{#each [['object', 'Object'], ['part', 'Part']] as const as [value, label] (value)}
 				<button
 					type="button"
 					role="radio"
 					aria-checked={selectionMode === value}
 					data-testid="assembly-select-{value}"
 					class="ws-seg-item {selectionMode === value ? 'ws-seg-on' : ''}"
-					onclick={() => (selectionMode = value)}>{label}</button
+					onclick={() => (selectionMode = value)}>{$t(label)}</button
 				>
 			{/each}
 		</div>
 	</div>
 	{#if selectionMode === 'part'}
-		<p class="text-xs text-content-subtle">Un clic sélectionne la pièce sous le curseur.</p>
+		<p class="text-xs text-content-subtle">{$t('A click selects the part under the cursor.')}</p>
 	{/if}
 
 	<section
 		class="rounded border border-border bg-surface-sunken p-2"
-		aria-label="Informations sur l'assemblage"
+		aria-label={$t('Assembly Info')}
 		data-testid="assembly-info"
 	>
-		<h3 class="mb-1 text-xs font-semibold text-content-muted">Informations sur l'assemblage</h3>
+		<h3 class="mb-1 text-xs font-semibold text-content-muted">{$t('Assembly Info')}</h3>
 		{#if info}
 			<dl class="grid grid-cols-[auto_1fr] gap-x-3 text-xs tabular-nums">
-				<dt class="text-content-muted" title="Volume de la boîte englobante de la sélection">
-					Volume :
+				<dt class="text-content-muted" title={$t('Volume of the selection’s bounding box')}>
+					{$t('Volume:')}
 				</dt>
 				<dd data-testid="assembly-info-volume">{info.volume} mm³</dd>
-				<dt class="text-content-muted">Taille :</dt>
+				<dt class="text-content-muted">{$t('Size:')}</dt>
 				<dd data-testid="assembly-info-size">{info.size} mm</dd>
 			</dl>
 		{:else}
-			<p class="text-xs text-content-subtle">Sélectionnez un objet ou une pièce.</p>
+			<p class="text-xs text-content-subtle">{$t('Select an object or a part.')}</p>
 		{/if}
 	</section>
 </div>

@@ -13,6 +13,7 @@
 		printObjectState,
 		type PrintObjectState
 	} from './device';
+	import { t, tr } from '$lib/i18n';
 
 	interface Props {
 		printerId: string;
@@ -56,7 +57,7 @@
 			status = await excludePrintObject(printerId, name);
 			confirm = null;
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'exclusion refusée';
+			error = e instanceof ApiError ? e.message : tr('exclusion rejected');
 		} finally {
 			busy = null;
 		}
@@ -66,10 +67,16 @@
 	const bounds = $derived(objectsBounds(objects));
 	const stateOf = (name: string): PrintObjectState =>
 		status ? printObjectState(name, status) : 'pending';
+	// Clés anglaises, traduites au rendu.
 	const LABELS: Record<PrintObjectState, string> = {
-		current: 'en cours',
-		pending: 'à imprimer',
-		excluded: 'exclu'
+		current: 'printing||object',
+		pending: 'to print',
+		excluded: 'excluded||one'
+	};
+	/** Nom lisible (« copie n » traduit, relu au changement de langue). */
+	const labelOf = (name: string): string => {
+		void $t;
+		return printObjectLabel(name);
 	};
 	const excludedCount = $derived(objects.filter((o) => stateOf(o.name) === 'excluded').length);
 	const flip = (y: number) => (bounds ? 2 * bounds.minY + bounds.height - y : y);
@@ -81,20 +88,24 @@
 		data-testid="device-objects"
 	>
 		<div class="flex items-center justify-between gap-2">
-			<h3 class="ws-section-title">Objets de l’impression</h3>
+			<h3 class="ws-section-title">{$t('Print objects')}</h3>
 			{#if objects.length}
 				<span class="text-xs text-content-subtle"
-					>{objects.length} objet{objects.length > 1 ? 's' : ''}{excludedCount
-						? ` · ${excludedCount} exclu${excludedCount > 1 ? 's' : ''}`
+					>{objects.length > 1
+						? $t('{n} objects', { n: objects.length })
+						: $t('{n} object', { n: objects.length })}{excludedCount
+						? excludedCount > 1
+							? $t(' · {n} excluded||many', { n: excludedCount })
+							: $t(' · {n} excluded||one', { n: excludedCount })
 						: ''}</span
 				>
 			{/if}
 		</div>
 		{#if !objects.length}
 			<p class="text-sm text-content-muted" data-testid="device-objects-empty">
-				Aucun objet étiqueté dans ce G-code. Pour pouvoir exclure un objet en cours d’impression,
-				activez « Exclure des objets » dans les réglages d’impression (onglet Autres) avant de
-				trancher, et la section [exclude_object] dans la configuration Klipper.
+				{$t(
+					'No labeled object in this G-code. To be able to exclude an object while printing, enable “Exclude objects” in the process settings (Others tab) before slicing, and the [exclude_object] section in the Klipper configuration.'
+				)}
 			</p>
 		{:else}
 			<div class="flex flex-col gap-3 sm:flex-row">
@@ -103,7 +114,7 @@
 						class="h-40 w-full shrink-0 rounded border border-border bg-surface sm:w-48"
 						viewBox="{bounds.minX} {bounds.minY} {bounds.width} {bounds.height}"
 						role="img"
-						aria-label="Vue de dessus des objets"
+						aria-label={$t('Top view of the objects')}
 						data-testid="device-objects-map"
 					>
 						{#each objects as o (o.name)}
@@ -140,14 +151,14 @@
 									class="block truncate {s === 'excluded'
 										? 'text-content-subtle line-through'
 										: 'text-content'}"
-									title={o.name}>{printObjectLabel(o.name)}</span
+									title={o.name}>{labelOf(o.name)}</span
 								>
 								<span
 									class="text-xs {s === 'current'
 										? 'text-primary'
 										: s === 'excluded'
 											? 'text-danger-text'
-											: 'text-content-subtle'}">{LABELS[s]}</span
+											: 'text-content-subtle'}">{$t(LABELS[s])}</span
 								>
 							</span>
 							{#if s !== 'excluded'}
@@ -159,12 +170,12 @@
 											data-testid="device-object-exclude-confirm"
 											disabled={busy !== null}
 											aria-busy={busy === o.name}
-											onclick={() => exclude(o.name)}>Exclure définitivement</button
+											onclick={() => exclude(o.name)}>{$t('Exclude permanently')}</button
 										>
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-ghost"
-											onclick={() => (confirm = null)}>Annuler</button
+											onclick={() => (confirm = null)}>{$t('Cancel')}</button
 										>
 									</span>
 								{:else}
@@ -174,9 +185,9 @@
 										data-testid="device-object-exclude"
 										disabled={!active || busy !== null}
 										title={active
-											? 'Ne plus imprimer cet objet (les autres continuent)'
-											: 'Possible seulement pendant une impression'}
-										onclick={() => (confirm = o.name)}>Exclure</button
+											? $t('Stop printing this object (the others continue)')
+											: $t('Only possible during a print')}
+										onclick={() => (confirm = o.name)}>{$t('Exclude')}</button
 									>
 								{/if}
 							{/if}
@@ -186,8 +197,10 @@
 			</div>
 			{#if confirm}
 				<p class="text-xs text-warning-text" role="status">
-					L’imprimante cessera d’imprimer « {printObjectLabel(confirm)} » à partir de la couche en cours.
-					Action irréversible pour cette impression.
+					{$t(
+						'The printer will stop printing “{name}” from the current layer. Irreversible action for this print.',
+						{ name: printObjectLabel(confirm) }
+					)}
 				</p>
 			{/if}
 			{#if error}<p class="text-xs text-danger" role="alert">{error}</p>{/if}

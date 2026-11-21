@@ -5,7 +5,8 @@
 // uniforme (×25,4 ou ×1000) : visible et réversible dans le panneau d'échelle.
 import type { SceneMesh } from '$lib/scene/mesh';
 import type { ObjectMenuEntry, ObjectMenuItem } from '$lib/scene/menus';
-import { registerTranslations } from '$lib/i18n';
+import { get } from 'svelte/store';
+import { locale, registerTranslations } from '$lib/i18n';
 
 export type UnitSource = 'inch' | 'meter';
 
@@ -140,5 +141,6 @@ export function unitActionOf(action: string): { unit: UnitSource; restore: boole
 export function formatSize(size: readonly number[]): string {
 	const f = (v: number) =>
 		v >= 100 ? v.toFixed(0) : v >= 1 ? v.toFixed(1).replace(/\.0$/, '') : v.toPrecision(2);
-	return `${size.map((v) => f(v).replace('.', ',')).join(' × ')} mm`;
+	const sep = get(locale) === 'fr' ? ',' : '.';
+	return `${size.map((v) => f(v).replace('.', sep)).join(' × ')} mm`;
 }

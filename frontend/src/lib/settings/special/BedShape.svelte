@@ -8,6 +8,7 @@
 		rectangularBed,
 		serializePoints
 	} from './dialogs';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		/** Valeurs par clé (liable). */
@@ -29,7 +30,7 @@
 <div class="flex flex-col gap-3">
 	<div class="grid grid-cols-2 gap-3">
 		<label class="text-sm">
-			<span class="mb-1 block text-content-muted">Largeur (mm)</span>
+			<span class="mb-1 block text-content-muted">{$t('Width (mm)')}</span>
 			<input
 				type="number"
 				min="0"
@@ -39,7 +40,7 @@
 			/>
 		</label>
 		<label class="text-sm">
-			<span class="mb-1 block text-content-muted">Profondeur (mm)</span>
+			<span class="mb-1 block text-content-muted">{$t('Depth (mm)')}</span>
 			<input
 				type="number"
 				min="0"
@@ -52,7 +53,7 @@
 
 	<label class="text-sm">
 		<span class="mb-1 block text-content-muted"
-			>Zone d'exclusion (points « XxY », séparés par ;)</span
+			>{$t('Excluded area (“XxY” points, separated by ;)')}</span
 		>
 		<input
 			type="text"
@@ -61,13 +62,13 @@
 			).join(';')}
 			oninput={(e) =>
 				(values[BED_SHAPE_KEYS.excludeArea] = serializePoints(parsePoints(e.currentTarget.value)))}
-			placeholder="ex. 0x0;20x20"
+			placeholder={$t('e.g. {example}', { example: '0x0;20x20' })}
 			class={FIELD}
 		/>
 	</label>
 
 	<label class="text-sm">
-		<span class="mb-1 block text-content-muted">Modèle de plateau (fichier)</span>
+		<span class="mb-1 block text-content-muted">{$t('Bed model (file)')}</span>
 		<input
 			type="text"
 			value={String(values[BED_SHAPE_KEYS.customModel] ?? '')}
@@ -77,7 +78,7 @@
 	</label>
 
 	<label class="text-sm">
-		<span class="mb-1 block text-content-muted">Texture de plateau (fichier)</span>
+		<span class="mb-1 block text-content-muted">{$t('Bed texture (file)')}</span>
 		<input
 			type="text"
 			value={String(values[BED_SHAPE_KEYS.customTexture] ?? '')}

@@ -10,6 +10,7 @@
 import type { ImportItem } from '../editor/imports';
 import type { RepairResponse } from '../api/types';
 import type { SimplifyRequest, SimplifyResponse } from '../api/scene';
+import { tr } from '$lib/i18n';
 
 /** Cible d'une réparation : modèle serveur, ou raison du refus. */
 export type RepairTarget = { ok: true; modelId: string } | { ok: false; reason: string };
@@ -22,13 +23,13 @@ export type RepairTarget = { ok: true; modelId: string } | { ok: false; reason: 
 export function repairTarget(objectId: string, imports: readonly ImportItem[]): RepairTarget {
 	const item = imports.find((i) => i.objectId === objectId);
 	if (!item || !item.modelId) {
-		return { ok: false, reason: 'objet non rattaché à un modèle serveur (upload en cours ?)' };
+		return { ok: false, reason: tr('object not attached to a server model (upload in progress?)') };
 	}
 	if (item.status === 'uploading' || item.status === 'converting') {
-		return { ok: false, reason: 'attendez la fin de la conversion du modèle' };
+		return { ok: false, reason: tr('wait for the model conversion to finish') };
 	}
 	if (item.status === 'failed') {
-		return { ok: false, reason: 'la conversion du modèle a échoué' };
+		return { ok: false, reason: tr('the model conversion failed') };
 	}
 	return { ok: true, modelId: item.modelId };
 }
@@ -75,13 +76,13 @@ export function simplifyRequest(
 	if (param.mode === 'ratio') {
 		const r = param.decimateRatio;
 		if (!Number.isFinite(r) || r <= 0 || r >= 100) {
-			return { ok: false, reason: 'le ratio de décimation doit être compris entre 0 et 100 %' };
+			return { ok: false, reason: tr('the decimation ratio must be between 0 and 100 %') };
 		}
 		return { ok: true, body: { mode: 'ratio', decimate_ratio: r } };
 	}
 	const l = param.level;
 	if (!Number.isInteger(l) || l < 0 || l >= SIMPLIFY_DETAIL_LEVELS.length) {
-		return { ok: false, reason: 'niveau de détail inconnu' };
+		return { ok: false, reason: tr('unknown detail level') };
 	}
 	return { ok: true, body: { mode: 'detail', level: l } };
 }
@@ -90,20 +91,30 @@ export function simplifyRequest(
 export function simplifySummary(report: SimplifyResponse): string {
 	const before = report.triangles_before;
 	const after = report.triangles_after;
-	if (after >= before) return `Simplification sans effet : ${before} triangles conservés.`;
+	if (after >= before)
+		return tr('Simplification had no effect: {n} triangles kept.', { n: before });
 	const pct = Math.round((1 - after / before) * 100);
 	const state = report.watertight
-		? 'étanche'
-		: `non étanche (${report.open_edges} arête(s) de bord)`;
-	return `Maillage simplifié : ${before} → ${after} triangles (−${pct} %), ${state}.`;
+		? tr('watertight')
+		: tr('not watertight ({n} open edge(s))', { n: report.open_edges });
+	return tr('Mesh simplified: {before} → {after} triangles (−{pct} %), {state}.', {
+		before,
+		after,
+		pct,
+		state
+	});
 }
 
 /** Message de fin de réparation à partir du rapport serveur. */
 export function repairSummary(report: RepairResponse): string {
 	const fixes = repairCount(report);
 	const state = report.watertight
-		? 'étanche'
-		: `non étanche (${report.open_edges} arête(s) de bord)`;
-	const what = fixes > 0 ? `${fixes} correction(s)` : 'aucune correction nécessaire';
-	return `Maillage réparé : ${what}, ${report.triangles} triangles, ${state}.`;
+		? tr('watertight')
+		: tr('not watertight ({n} open edge(s))', { n: report.open_edges });
+	const what = fixes > 0 ? tr('{n} fix(es)', { n: fixes }) : tr('no fix needed');
+	return tr('Mesh repaired: {what}, {n} triangles, {state}.', {
+		what,
+		n: report.triangles,
+		state
+	});
 }

@@ -6,6 +6,8 @@ import type { PaintChannel } from './painting';
 import type { EngineCursor, EngineTool } from './engine-paint-protocol';
 import type { MeshPick } from '../../mesh';
 
+// Libellés et infobulles : clés i18n anglaises, traduites au rendu ($t).
+
 /**
  * Outil de la barre : « brush » = cercle, « sphere », « pointer » = Triangle
  * (un triangle par point), « height » = Plage de hauteur, « fill » =
@@ -32,22 +34,22 @@ export const CHANNEL_TOOLS: Record<PaintChannel, readonly PaintTool[]> = {
 };
 
 export const PAINT_TOOL_LABELS: Record<PaintTool, string> = {
-	brush: 'Pinceau',
-	sphere: 'Sphère',
+	brush: 'Brush',
+	sphere: 'Sphere',
 	pointer: 'Triangle',
-	height: 'Plage de hauteur',
-	fill: 'Remplissage',
-	gap: 'Comblement'
+	height: 'Height range',
+	fill: 'Fill||paint',
+	gap: 'Gap fill'
 };
 
 /** Description courte de l'outil (infobulle et ligne d'aide sous le sélecteur). */
 export const PAINT_TOOL_HINTS: Record<PaintTool, string> = {
-	brush: 'Disque projeté depuis la caméra',
-	sphere: 'Boule autour du point touché (traverse l’objet)',
-	pointer: 'Peint le triangle sous le curseur',
-	height: 'Peint la tranche de hauteur au-dessus du point touché',
-	fill: 'Remplit la zone jusqu’aux arêtes vives',
-	gap: 'Comble les petites zones isolées d’une autre couleur'
+	brush: 'Disc projected from the camera',
+	sphere: 'Ball around the hit point (goes through the object)',
+	pointer: 'Paints the triangle under the cursor',
+	height: 'Paints the height slice above the hit point',
+	fill: 'Fills the area up to sharp edges',
+	gap: 'Fills small isolated areas of another color'
 };
 
 /** Outils disponibles sur un canal. */

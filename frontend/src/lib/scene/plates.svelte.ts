@@ -6,6 +6,7 @@
 // se re-rende à chaque mutation. Runes → testé sous vitest, pas sous bun.
 // Persisté dans le document scène.
 import { PLATE_TYPES } from '../settings/special/dialogs';
+import { tr } from '$lib/i18n';
 import type { PlateCustomGcode } from '../preview/color-changes';
 
 /** Type de plaque par défaut (première entrée de la table des températures). */
@@ -73,8 +74,8 @@ export class PlateSet {
 	// Premier nom « Plateau <n> » libre, à partir du rang du nouveau plateau.
 	private freeName(): string {
 		let n = this.plates.length + 1;
-		while (this.plates.some((p) => p.name === `Plateau ${n}`)) n += 1;
-		return `Plateau ${n}`;
+		while (this.plates.some((p) => p.name === tr('Plate {n}', { n }))) n += 1;
+		return tr('Plate {n}', { n });
 	}
 
 	/** Ajoute un plateau (vide) et le renvoie. */

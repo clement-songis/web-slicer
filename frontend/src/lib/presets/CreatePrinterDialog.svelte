@@ -4,6 +4,7 @@
 	// existant du catalogue (G-code, cinématique… hérités).
 	import { untrack } from 'svelte';
 	import Dialog from '$lib/ui/Dialog.svelte';
+	import { t, tr } from '$lib/i18n';
 	import { ApiError } from '$lib/api/client';
 	import { createPreset, getCreateOptions, getPreset, type CreateOptions } from '$lib/api/presets';
 	import { createPrinter } from '$lib/api/printers';
@@ -58,7 +59,7 @@
 
 	async function submit() {
 		error = validatePrinter(draft, existing);
-		if (!error && !baseId) error = 'Choisissez un modèle de départ.';
+		if (!error && !baseId) error = tr('Choose a starting model.');
 		if (error) return;
 		busy = true;
 		try {
@@ -76,7 +77,7 @@
 			oncreated(printer);
 			onclose();
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'création impossible';
+			error = e instanceof ApiError ? e.message : tr('creation failed');
 		} finally {
 			busy = false;
 		}
@@ -85,8 +86,8 @@
 
 <Dialog
 	{open}
-	label="Créer une imprimante"
-	title="Créer une imprimante personnalisée"
+	label={$t('Create printer')}
+	title={$t('Create custom printer')}
 	size="md"
 	{onclose}
 	data-testid="create-printer-dialog"
@@ -94,26 +95,26 @@
 	<form class="flex flex-col gap-3 text-sm" onsubmit={(e) => (e.preventDefault(), submit())}>
 		<div class="grid grid-cols-2 gap-3">
 			<label class="flex flex-col gap-1">
-				<span class="text-content-muted">Fournisseur</span>
+				<span class="text-content-muted">{$t('Vendor')}</span>
 				<input
 					class="ws-field"
 					list="printer-vendors"
 					bind:value={vendor}
 					data-testid="create-printer-vendor"
-					placeholder="ex. Atelier"
+					placeholder={$t('e.g. {example}', { example: 'Atelier' })}
 				/>
 				<datalist id="printer-vendors">
 					{#each options?.printer.vendors ?? [] as v (v)}<option value={v}></option>{/each}
 				</datalist>
 			</label>
 			<label class="flex flex-col gap-1">
-				<span class="text-content-muted">Modèle</span>
+				<span class="text-content-muted">{$t('Model')}</span>
 				<input
 					class="ws-field"
 					list="printer-models"
 					bind:value={model}
 					data-testid="create-printer-model"
-					placeholder="ex. Cube 300"
+					placeholder={$t('e.g. {example}', { example: 'Cube 300' })}
 				/>
 				<datalist id="printer-models">
 					{#each vendorModels as m (m)}<option value={m}></option>{/each}
@@ -121,7 +122,8 @@
 			</label>
 		</div>
 		<label class="flex flex-col gap-1">
-			<span class="text-content-muted">Partir du modèle (G-code, cinématique, limites hérités)</span
+			<span class="text-content-muted"
+				>{$t('Start from the model (G-code, kinematics, limits inherited)')}</span
 			>
 			<select class="ws-field" bind:value={baseId} data-testid="create-printer-base">
 				{#each catalog as v (v.vendor)}
@@ -134,9 +136,9 @@
 			</select>
 		</label>
 		<fieldset class="grid grid-cols-4 items-end gap-2">
-			<legend class="mb-1 text-content-muted">Volume d'impression (mm) et buse</legend>
+			<legend class="mb-1 text-content-muted">{$t('Print volume (mm) and nozzle')}</legend>
 			<label class="flex flex-col gap-1 text-xs"
-				>Largeur X<input
+				>{$t('Width X')}<input
 					type="number"
 					min="1"
 					class="ws-field"
@@ -145,7 +147,7 @@
 				/></label
 			>
 			<label class="flex flex-col gap-1 text-xs"
-				>Profondeur Y<input
+				>{$t('Depth Y')}<input
 					type="number"
 					min="1"
 					class="ws-field"
@@ -154,7 +156,7 @@
 				/></label
 			>
 			<label class="flex flex-col gap-1 text-xs"
-				>Hauteur Z<input
+				>{$t('Height Z')}<input
 					type="number"
 					min="1"
 					class="ws-field"
@@ -163,29 +165,34 @@
 				/></label
 			>
 			<label class="flex flex-col gap-1 text-xs"
-				>Buse<select class="ws-field" bind:value={nozzle} data-testid="create-printer-nozzle">
+				>{$t('Nozzle')}<select
+					class="ws-field"
+					bind:value={nozzle}
+					data-testid="create-printer-nozzle"
+				>
 					{#each NOZZLES as n (n)}<option value={n}>{n} mm</option>{/each}
 				</select></label
 			>
 		</fieldset>
 		<label class="flex items-center gap-2 text-xs text-content-muted">
-			<input type="checkbox" bind:checked={centered} /> Origine au centre du plateau (delta, plateau rond)
+			<input type="checkbox" bind:checked={centered} />
+			{$t('Origin at the plate center (delta, round bed)')}
 		</label>
 		<p class="text-xs text-content-subtle">
-			Preset machine : <strong class="text-content" data-testid="create-printer-name">{name}</strong
-			>
+			{$t('Machine preset:')}
+			<strong class="text-content" data-testid="create-printer-name">{name}</strong>
 		</p>
 		{#if error}<p class="text-sm text-danger" role="alert">{error}</p>{/if}
 		<button type="submit" class="hidden" aria-hidden="true" tabindex="-1"></button>
 	</form>
 	{#snippet footer()}
-		<button type="button" class="ws-btn ws-btn-secondary" onclick={onclose}>Annuler</button>
+		<button type="button" class="ws-btn ws-btn-secondary" onclick={onclose}>{$t('Cancel')}</button>
 		<button
 			type="button"
 			class="ws-btn ws-btn-primary"
 			disabled={busy}
 			data-testid="create-printer-submit"
-			onclick={submit}>Créer</button
+			onclick={submit}>{$t('Create')}</button
 		>
 	{/snippet}
 </Dialog>

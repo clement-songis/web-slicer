@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 // La suite tourne sous l'environnement node (sans DOM) : mini-shim de
 // sessionStorage pour les allers-retours du rapport d'import.

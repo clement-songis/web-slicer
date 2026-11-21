@@ -3,6 +3,7 @@
 	// fournisseur, type, série, à partir d'un filament existant (réglages hérités).
 	import { untrack } from 'svelte';
 	import Dialog from '$lib/ui/Dialog.svelte';
+	import { t, tr } from '$lib/i18n';
 	import { ApiError } from '$lib/api/client';
 	import { createPreset, getCreateOptions } from '$lib/api/presets';
 	import type { PresetDetail, PresetSummary } from '$lib/api/types';
@@ -65,7 +66,7 @@
 			presets.map((p) => p.name)
 		);
 		const parent = presets.find((p) => p.id === base);
-		if (!error && !parent) error = 'Choisissez le filament de base.';
+		if (!error && !parent) error = tr('Choose the base filament.');
 		if (error || !parent) return;
 		busy = true;
 		try {
@@ -78,7 +79,7 @@
 			oncreated(created);
 			onclose();
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'création impossible';
+			error = e instanceof ApiError ? e.message : tr('creation failed');
 		} finally {
 			busy = false;
 		}
@@ -87,21 +88,21 @@
 
 <Dialog
 	{open}
-	label="Créer un filament"
-	title="Créer un filament"
+	label={$t('Create filament')}
+	title={$t('Create filament')}
 	size="md"
 	{onclose}
 	data-testid="create-filament-dialog"
 >
 	<form class="flex flex-col gap-3 text-sm" onsubmit={(e) => (e.preventDefault(), submit())}>
 		<label class="flex flex-col gap-1">
-			<span class="text-content-muted">Fournisseur</span>
+			<span class="text-content-muted">{$t('Vendor')}</span>
 			<input
 				class="ws-field"
 				list="filament-vendors"
 				bind:value={vendor}
 				data-testid="create-filament-vendor"
-				placeholder="ex. Polymaker"
+				placeholder={$t('e.g. {example}', { example: 'Polymaker' })}
 			/>
 			<datalist id="filament-vendors">
 				{#each vendorList as v (v)}<option value={v}></option>{/each}
@@ -109,23 +110,23 @@
 		</label>
 		<div class="grid grid-cols-2 gap-3">
 			<label class="flex flex-col gap-1">
-				<span class="text-content-muted">Type</span>
+				<span class="text-content-muted">{$t('Type')}</span>
 				<select class="ws-field" bind:value={type} data-testid="create-filament-type">
-					{#each typeList as t (t)}<option value={t}>{t}</option>{/each}
+					{#each typeList as ty (ty)}<option value={ty}>{ty}</option>{/each}
 				</select>
 			</label>
 			<label class="flex flex-col gap-1">
-				<span class="text-content-muted">Série</span>
+				<span class="text-content-muted">{$t('Serial')}</span>
 				<input
 					class="ws-field"
 					bind:value={serial}
 					data-testid="create-filament-serial"
-					placeholder="ex. Matte"
+					placeholder={$t('e.g. {example}', { example: 'Matte' })}
 				/>
 			</label>
 		</div>
 		<label class="flex flex-col gap-1">
-			<span class="text-content-muted">Réglages de départ (filament existant)</span>
+			<span class="text-content-muted">{$t('Starting settings (existing filament)')}</span>
 			<select
 				class="ws-field"
 				bind:value={base}
@@ -136,23 +137,23 @@
 			</select>
 		</label>
 		<p class="text-xs text-content-subtle">
-			Nom du preset : <strong class="text-content" data-testid="create-filament-name"
-				>{name || '—'}</strong
-			>. Les températures, débits et refroidissement sont repris du filament de départ ; ajustez-les
-			ensuite dans ses réglages.
+			{$t('Preset name:')}
+			<strong class="text-content" data-testid="create-filament-name">{name || '—'}</strong>{$t(
+				'. Temperatures, flows and cooling are taken from the starting filament; adjust them afterwards in its settings.'
+			)}
 		</p>
 		{#if error}<p class="text-sm text-danger" role="alert">{error}</p>{/if}
 		<button type="submit" class="hidden" aria-hidden="true" tabindex="-1"></button>
 	</form>
 	{#snippet footer()}
-		<button type="button" class="ws-btn ws-btn-secondary" onclick={onclose}>Annuler</button>
+		<button type="button" class="ws-btn ws-btn-secondary" onclick={onclose}>{$t('Cancel')}</button>
 		<button
 			type="button"
 			class="ws-btn ws-btn-primary"
 			disabled={busy || presets.length === 0}
-			title={presets.length === 0 ? 'Chargement des filaments…' : undefined}
+			title={presets.length === 0 ? $t('Loading filaments…') : undefined}
 			data-testid="create-filament-submit"
-			onclick={submit}>Créer</button
+			onclick={submit}>{$t('Create')}</button
 		>
 	{/snippet}
 </Dialog>

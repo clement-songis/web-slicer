@@ -3,6 +3,7 @@
 // Sans dépendance Svelte → testable isolément.
 
 import type { PresetSummary } from '../api/types';
+import { tr } from '$lib/i18n';
 
 /** Une buse disponible pour un modèle d'imprimante (preset machine). */
 export interface NozzleOption {
@@ -101,7 +102,7 @@ export function isDerived(preset: Inheritable): boolean {
 
 /** Libellé de badge d'héritage, ou `null` s'il n'hérite de rien. */
 export function inheritanceLabel(preset: Inheritable): string | null {
-	return preset.inherits ? `hérite de ${preset.inherits}` : null;
+	return preset.inherits ? tr('inherits from {name}', { name: preset.inherits }) : null;
 }
 
 /** Sépare une liste en presets système et utilisateur (ordre préservé). */

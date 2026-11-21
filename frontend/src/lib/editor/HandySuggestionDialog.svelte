@@ -3,6 +3,7 @@
 	// GUI_Factories.cpp) : réglage du traitement à appliquer, en clair, avec les
 	// valeurs avant → après.
 	import { dialogFocus } from '$lib/ui/dialog-focus';
+	import { locale, t } from '$lib/i18n';
 	import { suggestionText, type HandyModelSuggestion } from './handy-models';
 
 	interface Props {
@@ -14,7 +15,7 @@
 	}
 	let { suggestion, values, onapply, onignore }: Props = $props();
 	const LABELS: Record<string, string> = {
-		min_width_top_surface: 'Largeur minimale de la surface supérieure'
+		min_width_top_surface: 'Top surface minimum width'
 	};
 	const show = (v: unknown) => (Array.isArray(v) ? v[0] : v) ?? '—';
 </script>
@@ -30,12 +31,14 @@
 		use:dialogFocus
 		onkeydown={(e) => e.key === 'Escape' && onignore()}
 	>
-		<h2 id="handy-sugg-title" class="ws-dialog-title mb-1">Réglage conseillé pour ce test</h2>
-		<p class="text-sm text-content-muted">{suggestionText(suggestion)}</p>
+		<h2 id="handy-sugg-title" class="ws-dialog-title mb-1">
+			{$t('Recommended setting for this test')}
+		</h2>
+		<p class="text-sm text-content-muted">{$locale && suggestionText(suggestion)}</p>
 		<ul class="mt-3 flex flex-col gap-1 text-sm">
 			{#each Object.entries(suggestion.apply) as [key, value] (key)}
 				<li class="flex items-center justify-between gap-3 rounded border border-border px-2 py-1">
-					<span>{LABELS[key] ?? key}</span>
+					<span>{LABELS[key] ? $t(LABELS[key]) : key}</span>
 					<span class="tabular-nums text-content-muted"
 						>{show(values[key])} → <strong class="text-content">{show(value)}</strong></span
 					>
@@ -47,13 +50,13 @@
 				type="button"
 				class="ws-btn ws-btn-secondary"
 				data-testid="handy-suggestion-ignore"
-				onclick={onignore}>Ignorer</button
+				onclick={onignore}>{$t('Ignore')}</button
 			>
 			<button
 				type="button"
 				class="ws-btn ws-btn-primary"
 				data-testid="handy-suggestion-apply"
-				onclick={onapply}>Appliquer</button
+				onclick={onapply}>{$t('Apply')}</button
 			>
 		</div>
 	</div>

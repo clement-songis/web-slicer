@@ -6,6 +6,8 @@
 // colonne de réglage avec sa remise au profil. Les colonnes « objet seul »
 // (only_object d'Orca) sont vides sur les lignes de volumes. Pur.
 
+import { tr } from '$lib/i18n';
+
 export type TableCategory = 'all' | 'quality' | 'strength' | 'support' | 'speed';
 
 export type TableColumnKind =
@@ -13,7 +15,7 @@ export type TableColumnKind =
 
 export interface TableColumn {
 	key: string;
-	/** En-tête (traduction française d'Orca). */
+	/** En-tête : clé i18n anglaise (libellé d'Orca), traduite au rendu. */
 	label: string;
 	kind: TableColumnKind;
 	category: TableCategory;
@@ -27,22 +29,22 @@ export interface TableColumn {
 	sortable?: boolean;
 }
 
-/** PrintConfig.cpp `brim_type` (libellés français d'Orca). */
+/** PrintConfig.cpp `brim_type` (libellés d'Orca : clés i18n anglaises). */
 export const BRIM_CHOICES = [
 	{ value: 'auto_brim', label: 'Auto' },
-	{ value: 'brim_ears', label: 'Oreilles de souris' },
-	{ value: 'painted', label: 'Peinte' },
-	{ value: 'outer_only', label: 'Bordure extérieure uniquement' },
-	{ value: 'inner_only', label: 'Bordure intérieure uniquement' },
-	{ value: 'outer_and_inner', label: 'Bordure extérieure et intérieure' },
-	{ value: 'no_brim', label: 'Pas de bordure' }
+	{ value: 'brim_ears', label: 'Mouse ear' },
+	{ value: 'painted', label: 'Painted||brim' },
+	{ value: 'outer_only', label: 'Outer brim only' },
+	{ value: 'inner_only', label: 'Inner brim only' },
+	{ value: 'outer_and_inner', label: 'Outer and inner brim' },
+	{ value: 'no_brim', label: 'No-brim||table' }
 ];
 
 /** Colonnes d'ObjectGridTable::init_cols, dans l'ordre d'Orca. */
 export const TABLE_COLUMNS: TableColumn[] = [
 	{
 		key: 'printable',
-		label: 'Imprimable',
+		label: 'Printable',
 		kind: 'printable',
 		category: 'all',
 		objectOnly: true,
@@ -50,7 +52,7 @@ export const TABLE_COLUMNS: TableColumn[] = [
 	},
 	{
 		key: 'plate_index',
-		label: 'Plateau',
+		label: 'Plate',
 		kind: 'plate',
 		category: 'all',
 		objectOnly: true,
@@ -59,7 +61,7 @@ export const TABLE_COLUMNS: TableColumn[] = [
 	},
 	{
 		key: 'name',
-		label: 'Nom',
+		label: 'Name',
 		kind: 'name',
 		category: 'all',
 		objectOnly: false,
@@ -77,7 +79,7 @@ export const TABLE_COLUMNS: TableColumn[] = [
 	},
 	{
 		key: 'layer_height',
-		label: 'Hauteur de couche',
+		label: 'Layer height',
 		kind: 'float',
 		category: 'quality',
 		objectOnly: true,
@@ -86,7 +88,7 @@ export const TABLE_COLUMNS: TableColumn[] = [
 	},
 	{
 		key: 'wall_loops',
-		label: 'Boucles de paroi',
+		label: 'Wall loops||table',
 		kind: 'int',
 		category: 'strength',
 		objectOnly: false,
@@ -94,7 +96,7 @@ export const TABLE_COLUMNS: TableColumn[] = [
 	},
 	{
 		key: 'sparse_infill_density',
-		label: 'Densité de remplissage',
+		label: 'Sparse infill density',
 		kind: 'percent',
 		category: 'strength',
 		objectOnly: false,
@@ -103,7 +105,7 @@ export const TABLE_COLUMNS: TableColumn[] = [
 	},
 	{
 		key: 'enable_support',
-		label: 'Supports',
+		label: 'Support',
 		kind: 'bool',
 		category: 'support',
 		objectOnly: true,
@@ -111,7 +113,7 @@ export const TABLE_COLUMNS: TableColumn[] = [
 	},
 	{
 		key: 'brim_type',
-		label: 'Bordure',
+		label: 'Brim',
 		kind: 'enum',
 		category: 'support',
 		objectOnly: true,
@@ -120,7 +122,7 @@ export const TABLE_COLUMNS: TableColumn[] = [
 	},
 	{
 		key: 'outer_wall_speed',
-		label: 'Vitesse de paroi extérieure',
+		label: 'Outer wall speed',
 		kind: 'float',
 		category: 'speed',
 		objectOnly: false,
@@ -131,11 +133,11 @@ export const TABLE_COLUMNS: TableColumn[] = [
 
 /** Filtre « catégorie » d'Orca (Tout, Qualité, Résistance, Support, Vitesse). */
 export const TABLE_CATEGORIES: { value: TableCategory; label: string }[] = [
-	{ value: 'all', label: 'Tout' },
-	{ value: 'quality', label: 'Qualité' },
-	{ value: 'strength', label: 'Résistance' },
-	{ value: 'support', label: 'Support' },
-	{ value: 'speed', label: 'Vitesse' }
+	{ value: 'all', label: 'All||table' },
+	{ value: 'quality', label: 'Quality' },
+	{ value: 'strength', label: 'Strength||table' },
+	{ value: 'support', label: 'Support||table' },
+	{ value: 'speed', label: 'Speed' }
 ];
 
 /** Colonnes affichées pour une catégorie (les colonnes « Tout » restent). */
@@ -269,8 +271,34 @@ export function cellText(column: TableColumn, value: unknown): string {
 		return Number.isFinite(n) ? String(n) : String(value);
 	}
 	if (column.kind === 'enum')
-		return column.choices?.find((c) => c.value === value)?.label ?? String(value);
+		return tr(column.choices?.find((c) => c.value === value)?.label ?? String(value));
 	return String(value);
+}
+
+/**
+ * Hauteur de couche maximale recommandée (audit 40 B6, Orca) : `max_layer_height`
+ * de l'imprimante (ConfigManipulation::check_print_config « Too large layer height »),
+ * sinon 75 % du diamètre de buse (GUI_ObjectList get_max_layer_height). null = inconnue.
+ */
+export function maxLayerHeight(
+	machine: Readonly<Record<string, unknown>> | null | undefined
+): number | null {
+	const first = (v: unknown) => parseFloat(String(Array.isArray(v) ? v[0] : (v ?? '')));
+	const max = first(machine?.max_layer_height);
+	if (Number.isFinite(max) && max > 0) return max;
+	const nozzle = first(machine?.nozzle_diameter);
+	return Number.isFinite(nozzle) && nozzle > 0 ? Math.round(nozzle * 0.75 * 1000) / 1000 : null;
+}
+
+/** Avertissement non bloquant d'une valeur hors de la plage recommandée (ou null). */
+export function cellWarning(
+	column: TableColumn,
+	value: unknown,
+	maxLayer: number | null
+): string | null {
+	if (column.key !== 'layer_height' || maxLayer === null) return null;
+	const n = typeof value === 'number' ? value : parseFloat(String(value));
+	return Number.isFinite(n) && n > maxLayer + 1e-9 ? 'layer_height_too_large' : null;
 }
 
 export function boolValue(value: unknown): boolean {

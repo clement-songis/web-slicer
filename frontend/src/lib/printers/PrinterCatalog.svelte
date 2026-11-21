@@ -25,6 +25,7 @@
 	import PrinterIcon from '~icons/lucide/printer';
 	import Plus from '~icons/lucide/plus';
 	import Check from '~icons/lucide/check';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		/** Catalogue (marque → modèle → variantes) renvoyé par `getPrinterCatalog`. */
@@ -38,7 +39,7 @@
 		oncancel?: () => void;
 		/** Création d'une imprimante custom (facultatif). */
 		oncreate?: () => void;
-		/** Libellé du bouton de confirmation. */
+		/** Libellé du bouton de confirmation (défaut : « Confirm » traduit). */
 		confirmLabel?: string;
 		/** Désactive les actions pendant un envoi. */
 		busy?: boolean;
@@ -52,7 +53,7 @@
 		onconfirm,
 		oncancel,
 		oncreate,
-		confirmLabel = 'Confirmer',
+		confirmLabel,
 		busy = false,
 		chooseNozzle = false,
 		onpick
@@ -108,10 +109,11 @@
 		else onconfirm(selectedModels(vendors, selected));
 	}
 
+	// Libellés = clés anglaises, traduites au rendu.
 	const VIEWS: { id: CatalogView; icon: typeof ListIcon; label: string }[] = [
-		{ id: 'list', icon: ListIcon, label: 'Liste' },
-		{ id: 'grid', icon: GridIcon, label: 'Grille' },
-		{ id: 'large', icon: LargeIcon, label: 'Grandes vignettes' }
+		{ id: 'list', icon: ListIcon, label: 'List||view' },
+		{ id: 'grid', icon: GridIcon, label: 'Grid' },
+		{ id: 'large', icon: LargeIcon, label: 'Large thumbnails' }
 	];
 </script>
 
@@ -125,20 +127,20 @@
 			<input
 				bind:value={query}
 				type="search"
-				placeholder="Rechercher une imprimante…"
-				aria-label="Rechercher une imprimante"
+				placeholder={$t('Search for a printer…')}
+				aria-label={$t('Search for a printer')}
 				class="ws-field w-full pl-8 pr-2"
 			/>
 		</div>
-		<div class="flex items-center gap-1" role="group" aria-label="Densité d'affichage">
+		<div class="flex items-center gap-1" role="group" aria-label={$t('Display density')}>
 			{#each VIEWS as v (v.id)}
 				{@const Icon = v.icon}
 				<button
 					type="button"
 					onclick={() => (view = v.id)}
 					aria-pressed={view === v.id}
-					aria-label={v.label}
-					title={v.label}
+					aria-label={$t(v.label)}
+					title={$t(v.label)}
 					class="ws-tool ws-tool-sm {view === v.id ? 'ws-tool-on' : ''}"
 				>
 					<Icon />
@@ -150,7 +152,7 @@
 	<!-- Sections par marque -->
 	<div class="flex-1 overflow-y-auto px-3 py-2" data-testid="printer-catalog">
 		{#if filtered.length === 0}
-			<p class="ws-empty">Aucune imprimante trouvée.</p>
+			<p class="ws-empty">{$t('No printer found.')}</p>
 		{/if}
 
 		{#each filtered as vendor (vendor.vendor)}
@@ -160,13 +162,17 @@
 				<header
 					class="mb-2 flex items-center gap-2 border-b border-accent/40 pb-1 text-sm font-medium text-accent"
 				>
-					<span class="flex-1">{vendor.vendor === 'Custom' ? 'Personnalisé' : vendor.vendor}</span>
+					<span class="flex-1"
+						>{vendor.vendor === 'Custom' ? $t('Custom||vendor') : vendor.vendor}</span
+					>
 					<span class="text-xs tabular-nums text-content-subtle">{sel} / {n}</span>
 					<input
 						type="checkbox"
 						checked={vendorAllSelected(selected, vendor)}
 						onchange={() => (selected = toggleVendorAll(selected, vendor))}
-						aria-label={`Tout sélectionner — ${vendor.vendor === 'Custom' ? 'Personnalisé' : vendor.vendor}`}
+						aria-label={$t('Select all — {vendor}', {
+							vendor: vendor.vendor === 'Custom' ? $t('Custom||vendor') : vendor.vendor
+						})}
 					/>
 				</header>
 
@@ -213,7 +219,7 @@
 							{#if model.variants.length > 1}
 								<!-- Variantes = diamètres de buse proposés (et non nombre de buses physiques). -->
 								<span class="text-2xs text-content-subtle" data-testid="catalog-nozzle-count"
-									>{model.variants.length} diamètres de buse</span
+									>{$t('{n} nozzle diameters', { n: model.variants.length })}</span
 								>
 							{/if}
 						</button>
@@ -229,11 +235,11 @@
 			class="flex max-h-40 flex-col gap-1.5 overflow-y-auto border-t border-border px-3 py-2"
 			data-testid="nozzle-choice"
 		>
-			<span class="ws-section-title">Buses</span>
+			<span class="ws-section-title">{$t('Nozzles')}</span>
 			{#each picked.filter((p) => p.model.variants.length > 1) as p (p.key)}
 				<div class="flex flex-wrap items-center gap-2 text-sm">
 					<span class="min-w-40 text-content">{p.model.model}</span>
-					<div class="flex flex-wrap gap-1" role="group" aria-label="Diamètres de buse">
+					<div class="flex flex-wrap gap-1" role="group" aria-label={$t('Nozzle diameters')}>
 						{#each sortedVariants(p.model) as v (v.machine_preset_id)}
 							{@const on = p.ids.includes(v.machine_preset_id)}
 							<button
@@ -242,12 +248,12 @@
 								aria-pressed={on}
 								data-testid="nozzle-option"
 								onclick={() => toggleNozzle(p.key, p.ids, v.machine_preset_id)}
-								>{v.nozzle ? `${v.nozzle} mm` : 'standard'}</button
+								>{v.nozzle ? `${v.nozzle} mm` : $t('standard||nozzle')}</button
 							>
 						{/each}
 					</div>
 					{#if p.ids.length === 0}
-						<span class="text-xs text-danger">Choisissez au moins une buse.</span>
+						<span class="text-xs text-danger">{$t('Choose at least one nozzle.')}</span>
 					{/if}
 				</div>
 			{/each}
@@ -262,10 +268,14 @@
 			</button>
 		{/if}
 		<span class="flex-1 text-xs text-content-subtle">
-			{count} imprimante{count > 1 ? 's' : ''} sélectionnée{count > 1 ? 's' : ''}
+			{count > 1
+				? $t('{n} printers selected', { n: count })
+				: $t('{n} printer selected', { n: count })}
 		</span>
 		{#if oncancel}
-			<button type="button" onclick={oncancel} class="ws-btn ws-btn-secondary"> Annuler </button>
+			<button type="button" onclick={oncancel} class="ws-btn ws-btn-secondary">
+				{$t('Cancel')}
+			</button>
 		{/if}
 		<button
 			type="button"
@@ -273,7 +283,7 @@
 			disabled={count === 0 || busy || missingNozzle}
 			class="ws-btn ws-btn-primary"
 		>
-			{confirmLabel}
+			{confirmLabel ?? $t('Confirm')}
 		</button>
 	</div>
 </div>

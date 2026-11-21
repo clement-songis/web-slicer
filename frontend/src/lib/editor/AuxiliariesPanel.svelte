@@ -20,6 +20,7 @@
 		putAuxiliary
 	} from '$lib/api/auxiliaries';
 	import { ApiError } from '$lib/api/client';
+	import { t, tr } from '$lib/i18n';
 	import {
 		AUX_FOLDERS,
 		AUX_MAX_BYTES,
@@ -70,7 +71,7 @@
 			files = groupAuxiliaries(await listAuxiliaries(projectId));
 			oncount?.(Object.values(files).reduce((n, f) => n + f.length, 0));
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Liste des fichiers indisponible.';
+			error = e instanceof ApiError ? e.message : tr('File list unavailable.');
 		} finally {
 			loading = false;
 		}
@@ -88,7 +89,7 @@
 		let added = 0;
 		for (const file of Array.from(list)) {
 			if (file.size > AUX_MAX_BYTES) {
-				error = `« ${file.name} » dépasse 50 Mo.`;
+				error = tr('“{name}” exceeds 50 MB.', { name: file.name });
 				continue;
 			}
 			const name = uniqueAuxName(safeAuxName(file.name), taken);
@@ -98,14 +99,17 @@
 				await putAuxiliary(projectId, target, name, file);
 				added++;
 			} catch (e) {
-				error = `« ${file.name} » : ${e instanceof ApiError ? e.message : 'échec du téléversement'}`;
+				error = tr('“{name}”: {msg}', {
+					name: file.name,
+					msg: e instanceof ApiError ? e.message : tr('upload failed||auxiliary')
+				});
 			} finally {
 				busy--;
 			}
 		}
 		stamp++;
 		await refresh();
-		if (added) notice = `${added} fichier${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''}.`;
+		if (added) notice = tr(added > 1 ? '{n} files added.' : '{n} file added.', { n: added });
 	}
 
 	async function remove(file: AuxFile) {
@@ -114,9 +118,9 @@
 		busy++;
 		try {
 			await deleteAuxiliary(projectId, file.folder, file.name);
-			notice = `« ${file.name} » supprimé.`;
+			notice = tr('“{name}” deleted.', { name: file.name });
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Suppression impossible.';
+			error = e instanceof ApiError ? e.message : tr('Cannot delete.');
 		} finally {
 			busy--;
 		}
@@ -134,14 +138,15 @@
 <!-- eslint-disable svelte/no-navigation-without-resolve -->
 <section class="flex flex-col gap-3" aria-labelledby="aux-title" data-testid="aux-panel">
 	<header>
-		<h3 id="aux-title" class="ws-section-title">Fichiers joints au projet</h3>
+		<h3 id="aux-title" class="ws-section-title">{$t('Files attached to the project')}</h3>
 		<p class="text-xs text-content-subtle">
-			Photos, nomenclature, guide d'assemblage… enregistrés avec le projet et inclus dans l'export
-			3MF (dossier Auxiliaries, comme Orca).
+			{$t(
+				'Photos, bill of materials, assembly guide… saved with the project and included in the 3MF export (Auxiliaries folder, like Orca).'
+			)}
 		</p>
 	</header>
 	<div class="flex min-h-72 gap-4 rounded-md border border-border bg-surface-raised p-3">
-		<nav class="flex w-48 shrink-0 flex-col gap-1" aria-label="Dossiers">
+		<nav class="flex w-48 shrink-0 flex-col gap-1" aria-label={$t('Folders')}>
 			{#each AUX_FOLDERS as f (f.id)}
 				<button
 					type="button"
@@ -157,14 +162,14 @@
 						confirmDelete = null;
 					}}
 				>
-					<span>{f.label}</span>
+					<span>{$t(f.label)}</span>
 					<span class="ws-badge tabular-nums" data-testid="aux-folder-count"
 						>{files[f.id].length}</span
 					>
 				</button>
 			{/each}
 			<p class="mt-auto px-3 text-xs text-content-subtle" data-testid="aux-total">
-				{total} fichier{total > 1 ? 's' : ''} au total
+				{$t(total > 1 ? '{n} files in total' : '{n} file in total', { n: total })}
 			</p>
 		</nav>
 		<div
@@ -172,7 +177,7 @@
 			class="flex min-w-0 flex-1 flex-col gap-3 rounded-md border-2 border-dashed p-3 {dragOver
 				? 'border-primary bg-primary/5'
 				: 'border-transparent'}"
-			aria-label={meta.label}
+			aria-label={$t(meta.label)}
 			ondragover={(e) => {
 				e.preventDefault();
 				dragOver = true;
@@ -183,8 +188,8 @@
 		>
 			<div class="flex items-start justify-between gap-3">
 				<div>
-					<h3 class="text-sm font-medium">{meta.label}</h3>
-					<p class="text-xs text-content-subtle">{meta.hint} Glissez des fichiers ici ou :</p>
+					<h3 class="text-sm font-medium">{$t(meta.label)}</h3>
+					<p class="text-xs text-content-subtle">{$t(meta.hint)} {$t('Drag files here or:')}</p>
 				</div>
 				<button
 					type="button"
@@ -192,7 +197,7 @@
 					data-testid="aux-add"
 					disabled={busy > 0}
 					onclick={() => input?.click()}
-					><IconPlus class="h-3.5 w-3.5" aria-hidden="true" />Ajouter des fichiers…</button
+					><IconPlus class="h-3.5 w-3.5" aria-hidden="true" />{$t('Add files…')}</button
 				>
 				<input
 					bind:this={input}
@@ -213,14 +218,14 @@
 				<p class="text-xs text-success-text" role="status" data-testid="aux-notice">{notice}</p>
 			{/if}
 			{#if busy > 0}
-				<p class="text-xs text-content-subtle" role="status">Téléversement…</p>
+				<p class="text-xs text-content-subtle" role="status">{$t('Uploading…')}</p>
 			{/if}
 			{#if current.length === 0}
 				<div
 					class="flex flex-1 items-center justify-center text-sm text-content-subtle"
 					data-testid="aux-empty"
 				>
-					{loading ? 'Chargement…' : 'Aucun fichier dans ce dossier.'}
+					{loading ? $t('Loading…') : $t('No file in this folder.')}
 				</div>
 			{:else}
 				<ul
@@ -239,7 +244,7 @@
 								target="_blank"
 								rel="noopener"
 								class="block aspect-[4/3] bg-surface-sunken"
-								title="Ouvrir « {file.name} »"
+								title={$t('Open “{name}”', { name: file.name })}
 							>
 								{#if isPreviewableImage(file.name)}
 									<img
@@ -253,7 +258,7 @@
 									<span
 										class="flex h-full items-center justify-center font-mono text-xs uppercase text-content-subtle"
 									>
-										{file.name.includes('.') ? file.name.split('.').pop() : 'fichier'}
+										{file.name.includes('.') ? file.name.split('.').pop() : $t('file')}
 									</span>
 								{/if}
 							</a>
@@ -269,13 +274,13 @@
 									target="_blank"
 									rel="noopener"
 									class="ws-icon-btn ws-icon-btn-xs"
-									aria-label={`Ouvrir ${file.name}`}
+									aria-label={$t('Open {name}', { name: file.name })}
 									><IconExternal class="h-3.5 w-3.5" aria-hidden="true" /></a
 								>
 								<button
 									type="button"
 									class="ws-icon-btn ws-icon-btn-xs text-danger-text"
-									aria-label={`Supprimer ${file.name}`}
+									aria-label={$t('Delete {name}', { name: file.name })}
 									data-testid="aux-delete"
 									disabled={busy > 0}
 									onclick={() => (confirmDelete = file.name)}
@@ -286,20 +291,20 @@
 								<div
 									class="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-surface-raised/95 p-2 text-center text-xs"
 									role="alertdialog"
-									aria-label={`Supprimer ${file.name} ?`}
+									aria-label={$t('Delete {name}?', { name: file.name })}
 								>
-									<span>Supprimer « {file.name} » ?</span>
+									<span>{$t('Delete “{name}”?', { name: file.name })}</span>
 									<span class="flex gap-1">
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-danger"
 											data-testid="aux-delete-confirm"
-											onclick={() => remove(file)}>Supprimer</button
+											onclick={() => remove(file)}>{$t('Delete')}</button
 										>
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-secondary"
-											onclick={() => (confirmDelete = null)}>Annuler</button
+											onclick={() => (confirmDelete = null)}>{$t('Cancel')}</button
 										>
 									</span>
 								</div>

@@ -6,6 +6,7 @@
 export const DEFAULT_PROJECT_NAMES: readonly string[] = [
 	'Sans titre',
 	'Nouveau projet',
+	'New Project',
 	'Untitled'
 ];
 

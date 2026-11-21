@@ -29,6 +29,25 @@
 		onaction(action);
 		close();
 	}
+	// Audit 40 D2 : sous-menu déplié au survol (après un court délai, comme les
+	// menus natifs d'Orca) ; le clic reste possible (tactile, clavier). Un clic
+	// juste après l'ouverture au survol ne le referme pas.
+	const HOVER_OPEN_MS = 120;
+	let hoverTimer: ReturnType<typeof setTimeout> | undefined;
+	let openedAt = 0;
+	function openSubNow(label: string) {
+		if (openSub !== label) openedAt = Date.now();
+		openSub = label;
+	}
+	function hoverSub(label: string) {
+		clearTimeout(hoverTimer);
+		hoverTimer = setTimeout(() => openSubNow(label), HOVER_OPEN_MS);
+	}
+	function clickSub(label: string) {
+		clearTimeout(hoverTimer);
+		if (openSub === label && Date.now() - openedAt > 400) openSub = null;
+		else openSubNow(label);
+	}
 </script>
 
 <div class="relative flex items-center">
@@ -65,7 +84,9 @@
 								class="ws-menu-item justify-between"
 								aria-haspopup="menu"
 								aria-expanded={openSub === entry.label}
-								onclick={() => (openSub = openSub === entry.label ? null : entry.label)}
+								onpointerenter={() => hoverSub(entry.label)}
+								onpointerleave={() => clearTimeout(hoverTimer)}
+								onclick={() => clickSub(entry.label)}
 							>
 								<span>{$t(entry.label)}</span>
 								<span class="text-content-subtle">{openSub === entry.label ? '▾' : '▸'}</span>
@@ -123,7 +144,7 @@
 		type="button"
 		class="fixed inset-0 z-20 cursor-default"
 		tabindex="-1"
-		aria-label="Fermer le menu"
+		aria-label={$t('Close menu')}
 		onclick={close}
 	></button>
 {/if}

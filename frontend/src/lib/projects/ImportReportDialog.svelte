@@ -36,8 +36,8 @@
 
 <Dialog
 	open={report !== null}
-	label="Avertissement du projet ouvert"
-	title={content?.title ?? 'Projet ouvert'}
+	label={$t('Opened project warning')}
+	title={content?.title ?? $t('Project opened')}
 	size="sm"
 	data-testid="import-report"
 	onclose={close}
@@ -62,23 +62,23 @@
 		</ul>
 		<label class="flex items-center gap-2 text-sm">
 			<input type="checkbox" bind:checked={ignore} data-testid="import-report-ignore" />
-			<span>Ne plus afficher cet avertissement</span>
+			<span>{$t('Don’t show this warning again')}</span>
 		</label>
 	{:else}
 		<p class="text-sm text-content">
-			Projet 3MF ouvert.
+			{$t('3MF project opened.')}
 			{report?.load === 'geometry'
-				? ' Géométrie seule importée (sans les réglages du fichier).'
+				? ' ' + $t('Geometry only imported (without the file settings).')
 				: ''}
 		</p>
 	{/if}
 
 	{#if report?.has_metadata}
 		<p class="mt-3 text-xs text-content-muted" data-testid="import-report-metadata">
-			Ce 3MF contient des métadonnées (titre, auteur, licence…).
+			{$t('This 3MF contains metadata (title, author, license…).')}
 			{#if onshowmetadata}
 				<button type="button" class="ws-btn ws-btn-sm ws-btn-ghost" onclick={onshowmetadata}>
-					Voir l'onglet Projet
+					{$t('See the Project tab')}
 				</button>
 			{/if}
 		</p>

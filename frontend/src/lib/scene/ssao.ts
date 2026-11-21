@@ -75,13 +75,19 @@ void main() {
 	offsets[5] = vec2(-0.707, -0.707);
 	offsets[6] = vec2(0.0, -1.0);
 	offsets[7] = vec2(0.707, -0.707);
+	// Audit 40 E2 : seuil bas au-dessus du pas de quantification de la
+	// profondeur 24 bits (≈ d² / (near · 2²⁴) en perspective, near = 1 mm ici
+	// contre un near ajusté à la scène chez Orca) : sans lui, un plan incliné
+	// (le plateau, ses bords) donnait des marches de profondeur → rayures.
+	float depthStep = ortho ? (zFar - zNear) / 16777216.0 : depthCenter * depthCenter / (zNear * 16777216.0);
+	float lowEdge = max(0.001, 4.0 * depthStep);
+	float threshold = max(0.015 * (0.5 + depthCenter / zFar), 2.0 * lowEdge);
 	float occlusion = 0.0;
 	for (int i = 0; i < 8; ++i) {
 		vec2 uv = clamp(vUv + offsets[i] * invTexSize * radius, vec2(0.001), vec2(0.999));
 		float sampleDepth = linearDepth(texture2D(tDepth, uv).r);
 		float depthDiff = max(0.0, depthCenter - sampleDepth);
-		float threshold = 0.015 * (0.5 + depthCenter / zFar);
-		float contribution = smoothstep(0.001, threshold, depthDiff);
+		float contribution = smoothstep(lowEdge, threshold, depthDiff);
 		float diagonalWeight = 1.0 - abs(offsets[i].x * offsets[i].y) * 0.5;
 		occlusion += contribution * diagonalWeight;
 	}

@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, afterAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import {
 	AXIS_ROTATION,
 	axisOfRotation,
@@ -206,3 +207,7 @@ describe('corps de POST /cut', () => {
 		expect(cutBlocker(draft(), [-10, 10])).toBeNull();
 	});
 });
+
+// Les libellés de ces modules sont traduits (tr) : valeurs attendues en français.
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));

@@ -5,20 +5,23 @@
 // (« 3MF projet illisible ») et on remplace le détail technique par une cause
 // compréhensible. Les messages sans trace de worker sont rendus tels quels.
 
-/** Causes connues (code du worker / texte d'Orca) → explication. */
+import { tr } from '$lib/i18n';
+
+/** Causes connues (code du worker / texte d'Orca) → explication (clé i18n
+ *  anglaise, traduite à l'affichage). */
 const CAUSES: [RegExp, string][] = [
-	[/because it'?s empty|file is empty|empty file/i, 'le fichier ne contient aucun objet'],
+	[/because it'?s empty|file is empty|empty file/i, 'the file contains no object'],
 	[
 		/no (?:printable )?objects?|does not contain any (?:valid )?(?:object|geometry)/i,
-		'le fichier ne contient aucun objet'
+		'the file contains no object'
 	],
 	[
 		/invalid_model|could ?n[o']t be read|unable to read|failed to read/i,
-		'le fichier est endommagé ou n’est pas un modèle valide'
+		'the file is damaged or is not a valid model'
 	],
-	[/unsupported|not supported/i, 'format non pris en charge'],
-	[/timed? ?out|timeout/i, 'le traitement a pris trop de temps'],
-	[/out of memory|bad_alloc/i, 'mémoire insuffisante pour ce modèle']
+	[/unsupported|not supported/i, 'unsupported format'],
+	[/timed? ?out|timeout/i, 'processing took too long'],
+	[/out of memory|bad_alloc/i, 'not enough memory for this model']
 ];
 
 const WORKER_TRACE =
@@ -32,11 +35,11 @@ export function isTechnicalEngineMessage(message: string): boolean {
 /** Message lisible (inchangé s'il ne contient pas de trace du worker). */
 export function readableServerMessage(message: string): string {
 	if (!message || !isTechnicalEngineMessage(message)) return message;
-	const cause = CAUSES.find(([re]) => re.test(message))?.[1] ?? 'le moteur n’a pas pu le lire';
+	const cause = tr(CAUSES.find(([re]) => re.test(message))?.[1] ?? 'the engine could not read it');
 	const context = message
 		.replace(WORKER_TRACE, '')
 		.replace(/\s*[:—-]\s*$/, '')
 		.trim();
-	const head = context || 'Fichier illisible';
-	return `${head} : ${cause}.`;
+	const head = context || tr('Unreadable file');
+	return tr('{context}: {cause}.', { context: head, cause });
 }

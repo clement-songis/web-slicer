@@ -6,6 +6,7 @@
 // (GET /api/projects/{id}/mesh-errors, scène enregistrée). Pur.
 import type { ObjectMeshErrors } from '../../generated/api/ObjectMeshErrors';
 import type { MeshErrorsRequest } from '../../generated/api/MeshErrorsRequest';
+import { tr } from '$lib/i18n';
 
 /** Alerte affichée pour un objet. */
 export interface MeshWarning {
@@ -16,8 +17,8 @@ export interface MeshWarning {
 	repairedErrors: number;
 }
 
-const plural = (n: number, one: string, many: string) =>
-	(n > 1 ? many : one).replace('%1$d', String(n));
+// Clés i18n anglaises (msgids d'Orca, %1$d → {n}), traduites à l'appel.
+const plural = (n: number, one: string, many: string) => tr(n > 1 ? many : one, { n });
 
 /** Infobulle d'Orca (msgids traduits par OrcaSlicer_fr.po). */
 export function meshErrorsTooltip(
@@ -26,13 +27,14 @@ export function meshErrorsTooltip(
 	if (!e.repaired && e.manifold) return '';
 	let tip = '';
 	if (e.repaired)
-		tip += plural(e.repaired_errors, '%1$d erreur réparée', '%1$d erreurs réparées') + '\n';
+		tip += plural(e.repaired_errors, '{n} error repaired', '{n} errors repaired') + '\n';
 	if (!e.manifold)
 		tip +=
-			'Erreurs restantes :\n\t' +
-			plural(e.open_edges, '%1$d arête non-manifold', '%1$d arêtes non-manifold') +
+			tr('Remaining errors:') +
+			'\n\t' +
+			plural(e.open_edges, '{n} non-manifold edge', '{n} non-manifold edges') +
 			'\n';
-	return tip + '\nCliquer sur l’icône pour réparer l’objet modèle';
+	return tip + '\n' + tr('Click the icon to repair model object');
 }
 
 /** Alertes par objet (objets sans alerte absents). */

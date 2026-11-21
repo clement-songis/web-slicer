@@ -15,6 +15,7 @@ export function normalize(gcode: string, opts: { ignoreLabels?: boolean } = {}):
 	let skipping = false;
 	for (const raw of gcode.replace(/\r\n/g, '\n').split('\n')) {
 		const line = raw.trimEnd();
+		if (/^; THUMBNAIL_BLOCK_END/.test(line)) continue; // fermeture du bloc après « ; thumbnail end »
 		if (/^; (THUMBNAIL_BLOCK_START|thumbnail(_JPG|_QOI)? begin)/.test(line)) skipping = true;
 		if (skipping) {
 			if (/^; (THUMBNAIL_BLOCK_END|thumbnail(_JPG|_QOI)? end)/.test(line)) skipping = false;

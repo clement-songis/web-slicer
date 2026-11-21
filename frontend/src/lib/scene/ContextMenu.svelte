@@ -67,7 +67,7 @@
 		type="button"
 		class="fixed inset-0 z-40 cursor-default"
 		tabindex="-1"
-		aria-label="Fermer le menu"
+		aria-label={$t('Close the menu')}
 		onclick={onclose}
 		oncontextmenu={(e) => {
 			e.preventDefault();

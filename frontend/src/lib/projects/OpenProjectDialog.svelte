@@ -6,6 +6,7 @@
 	// case « Se souvenir de mon choix » (masquée chez Orca) reste offerte et
 	// chaque option explique ce qu'elle charge.
 	import Dialog from '$lib/ui/Dialog.svelte';
+	import { t } from '$lib/i18n';
 	import type { ImportLoadMode } from '$lib/api/types';
 
 	interface Props {
@@ -30,17 +31,17 @@
 
 <Dialog
 	{open}
-	label="Ouvrir un projet 3MF"
-	title="Ouvrir un projet 3MF"
+	label={$t('Open a 3MF project')}
+	title={$t('Open a 3MF project')}
 	size="sm"
 	data-testid="open3mf-dialog"
 	onclose={oncancel}
 >
-	<p class="text-sm text-content">Choisissez une action pour</p>
+	<p class="text-sm text-content">{$t('Choose an action for')}</p>
 	<p class="mb-3 truncate text-sm font-medium" data-testid="open3mf-filename">{filename}</p>
 
 	<fieldset class="flex flex-col gap-2">
-		<legend class="sr-only">Action</legend>
+		<legend class="sr-only">{$t('Action')}</legend>
 		<label
 			class="flex cursor-pointer items-start gap-2 rounded border border-border p-2 {mode ===
 			'project'
@@ -56,9 +57,9 @@
 				class="mt-0.5"
 			/>
 			<span>
-				<span class="block text-sm font-medium">Ouvrir comme projet</span>
+				<span class="block text-sm font-medium">{$t('Open as project')}</span>
 				<span class="block text-xs text-content-subtle"
-					>Objets, plateaux, réglages et presets, fichiers joints et métadonnées du 3MF.</span
+					>{$t('Objects, plates, settings and presets, attached files and 3MF metadata.')}</span
 				>
 			</span>
 		</label>
@@ -77,9 +78,9 @@
 				class="mt-0.5"
 			/>
 			<span>
-				<span class="block text-sm font-medium">Importer la géométrie seule</span>
+				<span class="block text-sm font-medium">{$t('Import geometry only')}</span>
 				<span class="block text-xs text-content-subtle"
-					>Les objets et leurs transformations, sans réglages, presets ni métadonnées.</span
+					>{$t('Objects and their transformations, without settings, presets or metadata.')}</span
 				>
 			</span>
 		</label>
@@ -87,8 +88,8 @@
 
 	<label class="mt-3 flex items-center gap-2 text-sm">
 		<input type="checkbox" bind:checked={remember} data-testid="open3mf-remember" />
-		<span>Se souvenir de mon choix</span>
-		<span class="text-xs text-content-subtle">(modifiable dans les Préférences)</span>
+		<span>{$t('Remember my choice')}</span>
+		<span class="text-xs text-content-subtle">{$t('(can be changed in Preferences)')}</span>
 	</label>
 
 	{#snippet footer()}
@@ -98,7 +99,7 @@
 			data-testid="open3mf-cancel"
 			onclick={oncancel}
 		>
-			Annuler
+			{$t('Cancel')}
 		</button>
 		<button
 			type="button"
@@ -106,7 +107,7 @@
 			data-testid="open3mf-ok"
 			onclick={() => onconfirm(mode, remember)}
 		>
-			{mode === 'project' ? 'Ouvrir comme projet' : 'Importer la géométrie'}
+			{mode === 'project' ? $t('Open as project') : $t('Import geometry')}
 		</button>
 	{/snippet}
 </Dialog>

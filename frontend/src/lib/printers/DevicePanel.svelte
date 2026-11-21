@@ -53,6 +53,7 @@
 	import PrintObjectsPanel from './PrintObjectsPanel.svelte';
 	import HostWebUi from './HostWebUi.svelte';
 	import { webuiUrl } from './webui';
+	import { locale, numberLocale, t, tr } from '$lib/i18n';
 
 	type Cap = 'unknown' | 'yes' | 'no';
 	interface Live {
@@ -80,7 +81,10 @@
 	const printer = $derived(printers.find((p) => p.id === selectedId) ?? null);
 	const cur = $derived(selectedId ? live[selectedId] : undefined);
 	const st = $derived(cur?.view);
-	const meta = $derived(stateMeta(st?.state ?? ''));
+	const meta = $derived.by(() => {
+		void $t; // libellé traduit : recalcul au changement de langue
+		return stateMeta(st?.state ?? '');
+	});
 	const elapsed = $derived(cur?.ext.print_duration ?? 0);
 	const remaining = $derived(st ? remainingSeconds(st.progress, elapsed) : null);
 	const active = $derived(st?.state === 'printing' || st?.state === 'paused');
@@ -130,7 +134,9 @@
 		if (!r || choice === 'cancel') return;
 		if (choice === 'home')
 			void gcode(
-				`Origine puis ${r.axis} ${r.delta > 0 ? '+' : '−'}${Math.abs(r.delta)} mm`,
+				tr('Home then {move}', {
+					move: `${r.axis} ${r.delta > 0 ? '+' : '−'}${Math.abs(r.delta)} mm`
+				}),
 				`${homeGcode()}\n${moveGcode(r.axis, r.delta)}`
 			);
 		else jogNow(r.axis, r.delta);
@@ -160,7 +166,7 @@
 			filesError = null;
 		} catch (e) {
 			if (isMissingRoute(e)) capFiles = 'no';
-			else filesError = e instanceof ApiError ? e.message : 'liste des fichiers indisponible';
+			else filesError = e instanceof ApiError ? e.message : tr('file list unavailable');
 		}
 	}
 
@@ -182,7 +188,8 @@
 			notice = label;
 			await refresh(selectedId);
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : `${label} : commande refusée`;
+			error =
+				e instanceof ApiError ? e.message : tr('{action}: command rejected', { action: label });
 		} finally {
 			busy = false;
 		}
@@ -221,7 +228,7 @@
 				if (first) select(first.id);
 				await Promise.all(printers.filter((p) => p.id !== first?.id).map((p) => refresh(p.id)));
 			} catch (e) {
-				error = e instanceof ApiError ? e.message : 'chargement des imprimantes impossible';
+				error = e instanceof ApiError ? e.message : tr('unable to load printers');
 			} finally {
 				loading = false;
 			}
@@ -240,14 +247,15 @@
 		};
 	});
 
+	// Libellés = clés anglaises, traduites au rendu.
 	const PRESETS: { label: string; extruder: number; bed: number }[] = [
 		{ label: 'PLA', extruder: 210, bed: 60 },
 		{ label: 'PETG', extruder: 240, bed: 80 },
 		{ label: 'ABS', extruder: 250, bed: 100 },
-		{ label: 'Arrêt', extruder: 0, bed: 0 }
+		{ label: 'Off||heaters', extruder: 0, bed: 0 }
 	];
 	const missingTip = (route: string) =>
-		`Nécessite la route backend ${route} (relais Moonraker), pas encore disponible`;
+		$t('Requires the backend route {route} (Moonraker relay), not yet available', { route });
 	const ago = (at: number) => Math.max(0, Math.round((now - at) / 1000));
 </script>
 
@@ -258,14 +266,14 @@
 			>{Math.round(current)} °C</span
 		>
 		<span class="w-16 text-xs whitespace-nowrap tabular-nums text-content-subtle"
-			>{target > 0 ? `→ ${Math.round(target)} °C` : 'arrêt'}</span
+			>{target > 0 ? `→ ${Math.round(target)} °C` : $t('off||heater')}</span
 		>
 		<input
 			type="number"
 			min="0"
 			max={heater === 'extruder' ? 350 : 150}
 			class="ws-field ws-field-sm w-20 text-right"
-			aria-label="Consigne {label} (°C)"
+			aria-label={$t('{heater} target (°C)', { heater: label })}
 			placeholder="°C"
 			bind:value={targets[heater]}
 			onfocus={() => (editing = heater)}
@@ -273,7 +281,7 @@
 			onkeydown={(e) =>
 				e.key === 'Enter' &&
 				gcode(
-					`Consigne ${label.toLowerCase()} envoyée`,
+					tr('{heater} target sent', { heater: label.toLowerCase() }),
 					temperatureGcode(heater, Number(targets[heater]) || 0)
 				)}
 			disabled={capGcode !== 'yes'}
@@ -285,9 +293,9 @@
 			data-tip={capGcode === 'no' ? missingTip('POST /api/printers/{id}/gcode') : undefined}
 			onclick={() =>
 				gcode(
-					`Consigne ${label.toLowerCase()} envoyée`,
+					tr('{heater} target sent', { heater: label.toLowerCase() }),
 					temperatureGcode(heater, Number(targets[heater]) || 0)
-				)}>Régler</button
+				)}>{$t('Set||temperature')}</button
 		>
 	</div>
 {/snippet}
@@ -304,26 +312,27 @@
 
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-4 p-6" data-testid="device-panel">
 	<div class="flex flex-wrap items-center justify-between gap-3">
-		<h2 class="ws-page-title">Appareil</h2>
+		<h2 class="ws-page-title">{$t('Device')}</h2>
 		<a href={resolve('/printers')} class="ws-btn ws-btn-sm ws-btn-secondary"
-			>Gérer les imprimantes</a
+			>{$t('Manage printers')}</a
 		>
 	</div>
 
 	{#if loading}
-		<p class="text-sm text-content-subtle" role="status">Chargement…</p>
+		<p class="text-sm text-content-subtle" role="status">{$t('Loading...')}</p>
 	{:else if printers.length === 0}
 		<div
 			class="rounded-lg border border-border bg-surface-raised p-8 text-center text-content-muted"
 		>
-			<p>Aucune imprimante déclarée.</p>
-			<a href={resolve('/printers')} class="text-primary hover:underline">Déclarer une imprimante</a
+			<p>{$t('No printer declared.')}</p>
+			<a href={resolve('/printers')} class="text-primary hover:underline"
+				>{$t('Declare a printer')}</a
 			>
 		</div>
 	{:else}
 		<!-- Sélecteur d'imprimante (liste d'Orca), pastille de connexion. -->
 		{#if printers.length > 1}
-			<div class="flex flex-wrap gap-1.5" role="tablist" aria-label="Imprimantes">
+			<div class="flex flex-wrap gap-1.5" role="tablist" aria-label={$t('Printers')}>
 				{#each printers as p (p.id)}
 					<button
 						type="button"
@@ -366,7 +375,7 @@
 					<div class="truncate text-xs text-content-subtle">
 						{printer.moonraker_url
 							? `${hostMeta(printer.host_type).label} · ${printer.moonraker_url}`
-							: 'Connexion non déclarée'}
+							: $t('No connection declared')}
 					</div>
 				</div>
 				{#if hasLiveControls(printer)}
@@ -382,9 +391,12 @@
 									: 'bg-overlay'}"
 							aria-hidden="true"
 						></span>
-						{#if offline[printer.id]}Hors ligne{:else if cur}Connectée · mise à jour il y a {ago(
-								cur.at
-							)} s{:else}Connexion…{/if}
+						{#if offline[printer.id]}{$t('Offline')}{:else if cur}{$t(
+								'Connected · updated {n} s ago',
+								{
+									n: ago(cur.at)
+								}
+							)}{:else}{$t('Connecting…')}{/if}
 					</span>
 					<span class="rounded px-2 py-0.5 text-xs {meta.badge}" data-testid="device-state"
 						>{st ? meta.label : '—'}</span
@@ -392,7 +404,7 @@
 					<button
 						type="button"
 						class="ws-btn ws-btn-sm ws-btn-secondary"
-						onclick={() => refresh(printer.id)}>Rafraîchir</button
+						onclick={() => refresh(printer.id)}>{$t('Refresh')}</button
 					>
 					<!-- Phase 39 : interface web de l'hôte (Mainsail / Fluidd), comme Orca. -->
 					<!-- eslint-disable svelte/no-navigation-without-resolve -->
@@ -401,7 +413,7 @@
 						target="_blank"
 						rel="noopener noreferrer"
 						class="ws-btn ws-btn-sm ws-btn-ghost"
-						data-testid="device-webui-link">Interface web</a
+						data-testid="device-webui-link">{$t('Web interface')}</a
 					>
 					<!-- eslint-enable svelte/no-navigation-without-resolve -->
 				{/if}
@@ -416,7 +428,7 @@
 						class="rounded-lg border border-dashed border-border px-4 py-6 text-center text-sm text-content-muted"
 						data-testid="device-no-live"
 					>
-						Aucune connexion déclarée : ajoutez-la depuis la page Imprimantes (« Connexion… »).
+						{$t('No connection declared: add it from the Printers page (“Connection…”).')}
 					</p>
 				{/if}
 			{:else}
@@ -426,11 +438,11 @@
 						<section
 							class="flex flex-col gap-2 rounded-lg border border-border bg-surface-raised p-4"
 						>
-							<h3 class="ws-section-title">Caméra</h3>
+							<h3 class="ws-section-title">{$t('Camera')}</h3>
 							{#if webcamSrc}
 								<img
 									src="{webcamSrc}{webcamSrc.includes('?') ? '&' : '?'}t={webcamTick}"
-									alt="Webcam de {printer.name}"
+									alt={$t('Webcam of {name}', { name: printer.name })}
 									class="aspect-video w-full rounded-md bg-surface-sunken object-contain"
 									data-testid="device-webcam"
 								/>
@@ -438,18 +450,18 @@
 								<div
 									class="flex h-16 items-center justify-center rounded-md border border-dashed border-border text-sm text-content-subtle"
 								>
-									Aucune webcam déclarée par l'imprimante.
+									{$t('No webcam declared by the printer.')}
 								</div>
 							{/if}
 							<p class="text-xs text-content-subtle" data-testid="device-webcam-source">
 								{#if webcamUrl}
-									URL locale (surcharge){printerWebcam
-										? ` — l'imprimante déclare ${printerWebcam}`
+									{$t('Local URL (override)')}{printerWebcam
+										? $t(' — the printer declares {url}', { url: printerWebcam })
 										: ''}.
 								{:else if printerWebcam}
-									URL déclarée par l'imprimante (Moonraker).
+									{$t('URL declared by the printer (Moonraker).')}
 								{:else}
-									Moonraker ne déclare pas de webcam ; vous pouvez saisir une URL.
+									{$t('Moonraker declares no webcam; you can enter a URL.')}
 								{/if}
 							</p>
 							<form
@@ -463,11 +475,14 @@
 								<input
 									class="ws-field ws-field-sm min-w-0 flex-1"
 									placeholder={printerWebcam ||
-										"URL d'instantané ou de flux MJPEG (ex. http://imprimante/webcam/?action=snapshot)"}
-									aria-label="URL de la webcam"
+										$t(
+											'Snapshot or MJPEG stream URL (e.g. http://imprimante/webcam/?action=snapshot)'
+										)}
+									aria-label={$t('Webcam URL')}
 									bind:value={webcamDraft}
 								/>
-								<button type="submit" class="ws-btn ws-btn-sm ws-btn-secondary">Enregistrer</button>
+								<button type="submit" class="ws-btn ws-btn-sm ws-btn-secondary">{$t('Save')}</button
+								>
 								{#if webcamUrl}
 									<button
 										type="button"
@@ -477,7 +492,7 @@
 											saveWebcamUrl(printer.id, '');
 											webcamUrl = '';
 											webcamDraft = '';
-										}}>{printerWebcam ? "URL de l'imprimante" : 'Effacer'}</button
+										}}>{printerWebcam ? $t('Printer URL') : $t('Clear')}</button
 									>
 								{/if}
 							</form>
@@ -489,13 +504,13 @@
 							data-testid="device-job"
 						>
 							<div class="flex items-center justify-between gap-2">
-								<h3 class="ws-section-title">Impression</h3>
+								<h3 class="ws-section-title">{$t('Print job')}</h3>
 								<span class="text-2xl font-semibold tabular-nums text-content"
 									>{st ? progressPercent(st.progress) : 0} %</span
 								>
 							</div>
 							<p class="truncate text-sm text-content">
-								{st?.filename || 'Aucun fichier en cours'}
+								{st?.filename || $t('No file in progress')}
 							</p>
 							<div
 								class="h-2.5 w-full overflow-hidden rounded-full bg-overlay"
@@ -503,7 +518,7 @@
 								aria-valuemin="0"
 								aria-valuemax="100"
 								aria-valuenow={st ? progressPercent(st.progress) : 0}
-								aria-label="Progression"
+								aria-label={$t('Progress')}
 							>
 								<div
 									class="h-full rounded-full bg-primary transition-[width]"
@@ -512,27 +527,27 @@
 							</div>
 							<dl class="grid grid-cols-3 gap-3 text-sm">
 								<div>
-									<dt class="text-xs text-content-subtle">Écoulé</dt>
+									<dt class="text-xs text-content-subtle">{$t('Elapsed')}</dt>
 									<dd class="tabular-nums text-content">{active ? formatClock(elapsed) : '—'}</dd>
 								</div>
 								<div>
 									<dt
 										class="text-xs text-content-subtle"
-										data-tip="Extrapolé depuis la progression et le temps écoulé"
+										data-tip={$t('Extrapolated from the progress and the elapsed time')}
 									>
-										Restant (estimé)
+										{$t('Remaining (estimated)')}
 									</dt>
 									<dd class="tabular-nums text-content" data-testid="device-remaining">
 										{active ? formatClock(remaining) : '—'}
 									</dd>
 								</div>
 								<div>
-									<dt class="text-xs text-content-subtle">Couche</dt>
+									<dt class="text-xs text-content-subtle">{$t('Layer')}</dt>
 									<dd
 										class="tabular-nums text-content"
 										data-testid="device-layer"
 										data-tip={cur?.ext.current_layer == null
-											? 'Couche non fournie par le backend (print_stats.info)'
+											? $t('Layer not provided by the backend (print_stats.info)')
 											: undefined}
 									>
 										{cur?.ext.current_layer != null
@@ -546,31 +561,31 @@
 									type="button"
 									class="ws-btn ws-btn-secondary"
 									disabled={!st || !canPause(st.state) || busy}
-									onclick={() => run('Impression en pause', () => pausePrinter(printer.id))}
+									onclick={() => run(tr('Print paused'), () => pausePrinter(printer.id))}
 									>Pause</button
 								>
 								<button
 									type="button"
 									class="ws-btn ws-btn-primary"
 									disabled={!st || !canResume(st.state) || busy}
-									onclick={() => run('Impression reprise', () => resumePrinter(printer.id))}
-									>Reprendre</button
+									onclick={() => run(tr('Print resumed'), () => resumePrinter(printer.id))}
+									>{$t('Resume')}</button
 								>
 								{#if confirmCancel}
 									<span class="flex items-center gap-2 text-sm text-content" role="alert">
-										Annuler l'impression ?
+										{$t('Cancel the print?')}
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-danger"
 											onclick={() => {
 												confirmCancel = false;
-												void run('Impression annulée', () => cancelPrinter(printer.id));
-											}}>Oui, annuler</button
+												void run(tr('Print cancelled'), () => cancelPrinter(printer.id));
+											}}>{$t('Yes, cancel')}</button
 										>
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-secondary"
-											onclick={() => (confirmCancel = false)}>Non</button
+											onclick={() => (confirmCancel = false)}>{$t('No')}</button
 										>
 									</span>
 								{:else}
@@ -578,7 +593,7 @@
 										type="button"
 										class="ws-btn ws-btn-secondary"
 										disabled={!st || !canCancel(st.state) || busy}
-										onclick={() => (confirmCancel = true)}>Annuler</button
+										onclick={() => (confirmCancel = true)}>{$t('Cancel')}</button
 									>
 								{/if}
 							</div>
@@ -593,28 +608,27 @@
 							data-testid="device-files"
 						>
 							<div class="flex items-center justify-between">
-								<h3 class="ws-section-title">Fichiers de l'imprimante</h3>
+								<h3 class="ws-section-title">{$t('Printer files')}</h3>
 								{#if capFiles === 'yes'}
 									<button
 										type="button"
 										class="ws-btn ws-btn-sm ws-btn-secondary"
-										onclick={() => loadFiles(printer.id)}>Actualiser</button
+										onclick={() => loadFiles(printer.id)}>{$t('Refresh||files')}</button
 									>
 								{/if}
 							</div>
 							{#if capFiles === 'no'}
 								<p class="text-sm text-content-subtle">
-									Liste indisponible : le backend ne relaie pas encore <code
-										>/server/files/list</code
-									>
-									(route proposée : <code>GET /api/printers/{'{id}'}/files</code>). L'envoi depuis
-									l'aperçu reste possible.
+									{$t('List unavailable: the backend does not relay yet')}
+									<code>/server/files/list</code>
+									({$t('proposed route:')} <code>GET /api/printers/{'{id}'}/files</code>).
+									{$t('Sending from the preview is still possible.')}
 								</p>
 							{:else if filesError}
 								<p class="text-sm text-danger" role="alert">{filesError}</p>
 							{:else if files.length === 0}
 								<p class="text-sm text-content-subtle">
-									{capFiles === 'unknown' ? 'Chargement…' : 'Aucun fichier.'}
+									{capFiles === 'unknown' ? $t('Loading...') : $t('No files.')}
 								</p>
 							{:else}
 								<ul class="divide-y divide-border">
@@ -627,7 +641,7 @@
 												>{formatSize(f.size)}</span
 											>
 											<span class="hidden text-xs tabular-nums text-content-subtle sm:inline"
-												>{new Date(f.modified * 1000).toLocaleString('fr-FR', {
+												>{new Date(f.modified * 1000).toLocaleString(numberLocale($locale), {
 													dateStyle: 'short',
 													timeStyle: 'short'
 												})}</span
@@ -636,11 +650,11 @@
 												type="button"
 												class="ws-btn ws-btn-sm ws-btn-secondary"
 												disabled={active || busy}
-												data-tip={active ? 'Une impression est en cours' : undefined}
+												data-tip={active ? $t('A print is in progress') : undefined}
 												onclick={() =>
-													run(`Impression de « ${f.path} » lancée`, () =>
+													run(tr('Print of “{file}” started', { file: f.path }), () =>
 														startPrinterFile(printer.id, f.path)
-													)}>Imprimer</button
+													)}>{$t('Print')}</button
 											>
 										</li>
 									{/each}
@@ -654,9 +668,14 @@
 						<section
 							class="flex flex-col gap-2 rounded-lg border border-border bg-surface-raised p-4"
 						>
-							<h3 class="ws-section-title">Températures</h3>
-							{@render temp('extruder', 'Buse', st?.extruderTemp ?? 0, st?.extruderTarget ?? 0)}
-							{@render temp('bed', 'Plateau', st?.bedTemp ?? 0, st?.bedTarget ?? 0)}
+							<h3 class="ws-section-title">{$t('Temperatures')}</h3>
+							{@render temp(
+								'extruder',
+								$t('Nozzle'),
+								st?.extruderTemp ?? 0,
+								st?.extruderTarget ?? 0
+							)}
+							{@render temp('bed', $t('Bed'), st?.bedTemp ?? 0, st?.bedTarget ?? 0)}
 							<div class="flex flex-wrap gap-1.5 pt-1">
 								{#each PRESETS as p (p.label)}
 									<button
@@ -664,13 +683,13 @@
 										class="ws-chip"
 										disabled={capGcode !== 'yes' || busy}
 										data-tip={p.extruder
-											? `Buse ${p.extruder} °C, plateau ${p.bed} °C`
-											: 'Couper les chauffes'}
+											? $t('Nozzle {nozzle} °C, bed {bed} °C', { nozzle: p.extruder, bed: p.bed })
+											: $t('Turn off the heaters')}
 										onclick={() =>
 											gcode(
-												`Préchauffe ${p.label}`,
+												tr('Preheat {name}', { name: tr(p.label) }),
 												`${temperatureGcode('extruder', p.extruder)}\n${temperatureGcode('bed', p.bed)}`
-											)}>{p.label}</button
+											)}>{$t(p.label)}</button
 									>
 								{/each}
 							</div>
@@ -681,8 +700,8 @@
 							data-testid="device-motion"
 						>
 							<div class="flex items-center justify-between">
-								<h3 class="ws-section-title">Déplacements</h3>
-								<div class="ws-seg" role="group" aria-label="Pas de déplacement">
+								<h3 class="ws-section-title">{$t('Motion')}</h3>
+								<div class="ws-seg" role="group" aria-label={$t('Jog step')}>
 									{#each [0.1, 1, 10, 50] as s (s)}
 										<button
 											type="button"
@@ -694,28 +713,28 @@
 								</div>
 							</div>
 							<div class="flex items-center justify-center gap-6">
-								<div class="grid grid-cols-3 gap-1" role="group" aria-label="Axes X et Y">
+								<div class="grid grid-cols-3 gap-1" role="group" aria-label={$t('X and Y axes')}>
 									<span></span>{@render jog('Y', 1, 'Y+', '')}<span></span>
 									{@render jog('X', -1, 'X−', '')}
 									<button
 										type="button"
 										class="ws-icon-btn border-border-strong"
-										aria-label="Origine X Y"
-										data-tip="Origine XY (G28 X Y)"
+										aria-label={$t('Home X Y')}
+										data-tip={$t('Home XY (G28 X Y)')}
 										disabled={capGcode !== 'yes' || busy || active}
-										onclick={() => gcode('Origine XY', 'G28 X Y')}>⌂</button
+										onclick={() => gcode(tr('Home XY'), 'G28 X Y')}>⌂</button
 									>
 									{@render jog('X', 1, 'X+', '')}
 									<span></span>{@render jog('Y', -1, 'Y−', '')}<span></span>
 								</div>
-								<div class="flex flex-col gap-1" role="group" aria-label="Axe Z">
+								<div class="flex flex-col gap-1" role="group" aria-label={$t('Z axis')}>
 									{@render jog('Z', 1, 'Z+', '')}
 									<button
 										type="button"
 										class="ws-icon-btn border-border-strong"
-										aria-label="Origine Z"
+										aria-label={$t('Home Z')}
 										disabled={capGcode !== 'yes' || busy || active}
-										onclick={() => gcode('Origine Z', homeGcode('Z'))}>⌂Z</button
+										onclick={() => gcode(tr('Home Z'), homeGcode('Z'))}>⌂Z</button
 									>
 									{@render jog('Z', -1, 'Z−', '')}
 								</div>
@@ -724,37 +743,40 @@
 								<div
 									class="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-sm text-warning-text"
 									role="alertdialog"
-									aria-label="Origine avant déplacement"
+									aria-label={$t('Home before moving')}
 									data-testid="device-recenter"
 								>
 									<p>
-										L’axe {recenter.axis} n’a pas fait son origine : sa position est inconnue et le déplacement
-										peut buter en fin de course. Faites d’abord l’origine.
+										{$t(
+											'The {axis} axis is not homed: its position is unknown and the move may hit the end stop. Home it first.',
+											{ axis: recenter.axis }
+										)}
 									</p>
 									<div class="flex flex-wrap items-center gap-2">
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-primary"
 											data-testid="device-recenter-home"
-											onclick={() => resolveRecenter('home')}>Origine puis déplacer</button
+											onclick={() => resolveRecenter('home')}>{$t('Home then move')}</button
 										>
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-secondary"
 											data-testid="device-recenter-move"
-											onclick={() => resolveRecenter('move')}>Déplacer quand même</button
+											onclick={() => resolveRecenter('move')}>{$t('Move anyway')}</button
 										>
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-ghost"
-											onclick={() => resolveRecenter('cancel')}>Annuler</button
+											onclick={() => resolveRecenter('cancel')}>{$t('Cancel')}</button
 										>
 										<label class="ml-auto flex items-center gap-1 text-xs"
 											><input
 												type="checkbox"
 												bind:checked={recenterMute}
 												data-testid="device-recenter-mute"
-											/> Ne plus avertir</label
+											/>
+											{$t("Don't warn again")}</label
 										>
 									</div>
 								</div>
@@ -763,11 +785,12 @@
 								type="button"
 								class="ws-btn ws-btn-secondary"
 								disabled={capGcode !== 'yes' || busy || active}
-								onclick={() => gcode("Mise à l'origine", homeGcode())}
-								>Origine de tous les axes{#if unhomed.length}<span
+								onclick={() => gcode(tr('Homing'), homeGcode())}
+								>{$t('Home all axes')}{#if unhomed.length}<span
 										class="ws-badge ml-2 h-4 px-1.5"
 										data-testid="device-unhomed"
-										title="Axes sans origine">à faire : {unhomed.join(' ')}</span
+										title={$t('Unhomed axes')}
+										>{$t('to do: {axes}', { axes: unhomed.join(' ') })}</span
 									>{/if}</button
 							>
 						</section>
@@ -775,7 +798,7 @@
 						<section
 							class="flex flex-col gap-2 rounded-lg border border-border bg-surface-raised p-4"
 						>
-							<h3 class="ws-section-title">Ventilateur de pièce</h3>
+							<h3 class="ws-section-title">{$t('Part cooling fan')}</h3>
 							<div class="flex items-center gap-3">
 								<input
 									type="range"
@@ -783,10 +806,10 @@
 									max="100"
 									step="5"
 									class="min-w-0 flex-1"
-									aria-label="Ventilateur de pièce (%)"
+									aria-label={$t('Part cooling fan (%)')}
 									bind:value={fan}
 									disabled={capGcode !== 'yes'}
-									onchange={() => gcode(`Ventilateur à ${fan} %`, fanGcode(fan))}
+									onchange={() => gcode(tr('Fan at {n} %', { n: fan }), fanGcode(fan))}
 								/>
 								<span class="w-12 text-right text-sm tabular-nums text-content">{fan} %</span>
 							</div>
@@ -797,9 +820,9 @@
 								class="rounded-md border border-dashed border-border px-3 py-2 text-xs text-content-subtle"
 								data-testid="device-gcode-missing"
 							>
-								Consignes, déplacements et ventilateur nécessitent la route backend
-								<code>POST /api/printers/{'{id}'}/gcode</code> (relais
-								<code>/printer/gcode/script</code>), pas encore disponible.
+								{$t('Targets, motion and fan require the backend route')}
+								<code>POST /api/printers/{'{id}'}/gcode</code> ({$t('relay')}
+								<code>/printer/gcode/script</code>){$t(', not yet available.')}
 							</p>
 						{/if}
 					</div>

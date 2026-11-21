@@ -5,6 +5,8 @@
 // transitions. Plus d'aperçu client (R7/T126) : le moteur décode tous les
 // formats, le maillage arrive via `model.converted`.
 
+import { tr } from '$lib/i18n';
+
 /** Étape d'un import. */
 export type ImportStatus = 'uploading' | 'converting' | 'ready' | 'failed';
 
@@ -85,12 +87,12 @@ export function isPending(item: ImportItem): boolean {
 export function importLabel(item: ImportItem): string {
 	switch (item.status) {
 		case 'uploading':
-			return 'import en cours…';
+			return tr('importing…');
 		case 'converting':
-			return 'conversion en cours…';
+			return tr('converting…');
 		case 'failed':
-			return item.error ?? 'échec';
+			return item.error ?? tr('failed');
 		case 'ready':
-			return 'prêt';
+			return tr('ready');
 	}
 }

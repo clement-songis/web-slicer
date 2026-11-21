@@ -9,12 +9,13 @@
 	import { auxiliaryUrl, listAuxiliaries } from '$lib/api/auxiliaries';
 	import { getProjectMetadata, putProjectMetadata } from '$lib/api/projects';
 	import type { ProjectMetadataDto } from '$lib/api/types';
+	import { t, tr } from '$lib/i18n';
 
 	const PICTURES_FOLDER = 'Model Pictures';
 	const LICENSES = ['', 'CC0', 'BY', 'BY-SA', 'BY-ND', 'BY-NC', 'BY-NC-SA', 'BY-NC-ND'];
 	const LICENSE_LABELS: Record<string, string> = {
-		'': '(aucune)',
-		CC0: 'CC0 (domaine public)',
+		'': '(none)',
+		CC0: 'CC0 (public domain)',
 		BY: 'CC BY',
 		'BY-SA': 'CC BY-SA',
 		'BY-ND': 'CC BY-ND',
@@ -45,7 +46,7 @@
 				.filter((e) => e.path.startsWith(PICTURES_FOLDER + '/'))
 				.map((e) => e.path.slice(PICTURES_FOLDER.length + 1));
 		} catch (e) {
-			loadError = e instanceof ApiError ? e.message : 'métadonnées indisponibles';
+			loadError = e instanceof ApiError ? e.message : tr('metadata unavailable');
 		}
 	}
 	$effect(() => {
@@ -70,9 +71,9 @@
 			const saved = await putProjectMetadata(projectId, draft);
 			meta = saved;
 			draft = { ...saved };
-			saveMsg = { ok: true, text: 'Métadonnées enregistrées (écrites à l’export 3MF).' };
+			saveMsg = { ok: true, text: tr('Metadata saved (written on 3MF export).') };
 		} catch (e) {
-			saveMsg = { ok: false, text: e instanceof ApiError ? e.message : 'échec' };
+			saveMsg = { ok: false, text: e instanceof ApiError ? e.message : tr('failed') };
 		} finally {
 			saving = false;
 		}
@@ -83,10 +84,10 @@
 	{#if loadError}
 		<p class="text-sm text-danger" role="alert">{loadError}</p>
 	{:else if draft === null}
-		<p class="text-sm text-content-muted">Chargement…</p>
+		<p class="text-sm text-content-muted">{$t('Loading…')}</p>
 	{:else}
 		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-content-muted">Titre</span>
+			<span class="text-content-muted">{$t('Title')}</span>
 			<input
 				class="ws-field ws-field-sm"
 				data-testid="project-metadata-title"
@@ -95,7 +96,7 @@
 		</label>
 
 		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-content-muted">Auteur</span>
+			<span class="text-content-muted">{$t('Author')}</span>
 			<input
 				class="ws-field ws-field-sm"
 				data-testid="project-metadata-designer"
@@ -103,26 +104,28 @@
 			/>
 			{#if meta?.display_author && meta.display_author !== meta.designer}
 				<span class="text-xs text-content-subtle"
-					>Auteur affiché : {meta.display_author} (Copyright du fichier)</span
+					>{$t('Displayed author: {author} (file Copyright)', {
+						author: meta.display_author
+					})}</span
 				>
 			{/if}
 		</label>
 
 		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-content-muted">Licence</span>
+			<span class="text-content-muted">{$t('License')}</span>
 			<select
 				class="ws-field ws-field-sm"
 				data-testid="project-metadata-license"
 				bind:value={draft.license}
 			>
 				{#each LICENSES as lic (lic)}
-					<option value={lic}>{LICENSE_LABELS[lic] ?? lic}</option>
+					<option value={lic}>{$t(LICENSE_LABELS[lic] ?? lic)}</option>
 				{/each}
 			</select>
 		</label>
 
 		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-content-muted">Description</span>
+			<span class="text-content-muted">{$t('Description')}</span>
 			<textarea
 				class="ws-field ws-field-sm min-h-24"
 				data-testid="project-metadata-description"
@@ -130,13 +133,13 @@
 		</label>
 
 		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-content-muted">Couverture (image jointe « Model Pictures »)</span>
+			<span class="text-content-muted">{$t('Cover (attached “Model Pictures” image)')}</span>
 			<select
 				class="ws-field ws-field-sm"
 				data-testid="project-metadata-cover"
 				bind:value={draft.cover}
 			>
-				<option value="">(aucune)</option>
+				<option value="">{$t('(none)')}</option>
 				{#each pictures as pic (pic)}
 					<option value={pic}>{pic}</option>
 				{/each}
@@ -145,7 +148,7 @@
 		{#if draft.cover}
 			<img
 				src={auxiliaryUrl(projectId, PICTURES_FOLDER, draft.cover)}
-				alt="Couverture : {draft.cover}"
+				alt={$t('Cover: {name}', { name: draft.cover })}
 				class="max-h-40 rounded border border-border object-contain"
 				data-testid="project-metadata-cover-preview"
 			/>
@@ -153,17 +156,20 @@
 
 		{#if pictures.length === 0}
 			<p class="text-xs text-content-subtle">
-				Aucune image jointe : ajoutez un fichier au dossier « Model Pictures » (panneau des fichiers
-				joints) pour choisir une couverture.
+				{$t(
+					'No attached image: add a file to the “Model Pictures” folder (attachments panel) to choose a cover.'
+				)}
 			</p>
 		{/if}
 
 		{#if meta?.origin}
-			<p class="text-xs text-content-subtle">Origin : {meta.origin} (lecture seule)</p>
+			<p class="text-xs text-content-subtle">
+				{$t('Origin: {origin} (read-only)', { origin: meta.origin })}
+			</p>
 		{/if}
 		{#if meta?.profile?.title}
 			<p class="text-xs text-content-subtle">
-				Profil publié : {meta.profile.title} (lecture seule)
+				{$t('Published profile: {title} (read-only)', { title: meta.profile.title })}
 			</p>
 		{/if}
 
@@ -175,7 +181,7 @@
 				disabled={!dirty || saving}
 				onclick={save}
 			>
-				Enregistrer
+				{$t('Save')}
 			</button>
 			{#if saveMsg}
 				<span

@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { t, tr } from '$lib/i18n';
 	import { resolve } from '$app/paths';
 	import { ApiError } from '$lib/api/client';
 	import { register } from '$lib/api/session';
@@ -27,11 +28,11 @@
 		// Validation en français dans le formulaire (la bulle native suit la langue
 		// du navigateur et disparaît aussitôt).
 		if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-			error = 'Adresse e-mail invalide.';
+			error = tr('Invalid email address.');
 			return;
 		}
 		if (password.length < 8) {
-			error = `Mot de passe trop court : ${password.length} caractère(s), 8 minimum.`;
+			error = tr('Password too short: {n} character(s), 8 minimum.', { n: password.length });
 			return;
 		}
 		busy = true;
@@ -40,20 +41,20 @@
 			// Première connexion → wizard de sélection d'imprimante (Phase 14).
 			await goto(resolve('/setup'));
 		} catch (err) {
-			error = err instanceof ApiError ? err.message : 'Erreur inattendue';
+			error = err instanceof ApiError ? err.message : tr('Unexpected error');
 		} finally {
 			busy = false;
 		}
 	}
 </script>
 
-<svelte:head><title>Créer un compte — Web-Slicer</title></svelte:head>
+<svelte:head><title>{$t('Create an account')} — Web-Slicer</title></svelte:head>
 
-<h1 class="ws-page-title mb-6">Créer un compte</h1>
+<h1 class="ws-page-title mb-6">{$t('Create an account')}</h1>
 
 <form class="space-y-4" onsubmit={submit} novalidate>
 	<label class="block">
-		<span class="mb-1 block text-sm text-content-muted">Email</span>
+		<span class="mb-1 block text-sm text-content-muted">{$t('Email||auth')}</span>
 		<input
 			type="email"
 			bind:value={email}
@@ -66,7 +67,7 @@
 
 	<label class="block">
 		<span class="mb-1 block text-sm text-content-muted">
-			Mot de passe <span class="text-content-subtle">(8 caractères min.)</span>
+			{$t('Password')} <span class="text-content-subtle">{$t('(8 characters min.)')}</span>
 		</span>
 		<input
 			type="password"
@@ -81,7 +82,7 @@
 
 	<label class="block">
 		<span class="mb-1 block text-sm text-content-muted">
-			Jeton d'invitation <span class="text-content-subtle">(si requis)</span>
+			{$t('Invitation token')} <span class="text-content-subtle">{$t('(if required)')}</span>
 		</span>
 		<input
 			type="text"
@@ -102,10 +103,11 @@
 		disabled={!hydrated || busy}
 		class="ws-btn ws-btn-lg ws-btn-primary w-full"
 	>
-		{busy ? 'Création…' : 'Créer le compte'}
+		{busy ? $t('Creating…') : $t('Create account||admin')}
 	</button>
 </form>
 
 <p class="mt-4 text-center text-sm text-content-muted">
-	Déjà inscrit ? <a href={resolve('/login')} class="text-primary hover:underline">Se connecter</a>
+	{$t('Already registered?')}
+	<a href={resolve('/login')} class="text-primary hover:underline">{$t('Sign in')}</a>
 </p>

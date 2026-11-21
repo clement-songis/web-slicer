@@ -79,7 +79,7 @@ test('Calibration › VFA : vitesse de paroi externe par paliers de 5 mm @F:edit
 test('Calibration › débit volumétrique max : vitesse croissante avec la hauteur @F:editor.calibration-max-flow', async ({ page }) => {
 	test.setTimeout(420_000);
 	const sourceId = await bootstrap(page);
-	await openCalibration(page, 'Max flowrate');
+	await openCalibration(page, 'Débit maximal');
 	await page.getByTestId('engine-calib-confirm').click();
 	await waitNewProject(page, sourceId, 1);
 	await sliceInUi(page);
@@ -101,7 +101,7 @@ test('Calibration › débit volumétrique max : vitesse croissante avec la haut
 test('Calibration › débit passe 1 : 9 objets, print_flow_ratio par objet, 10 couches @F:editor.calibration-flow', async ({ page }) => {
 	test.setTimeout(420_000);
 	const sourceId = await bootstrap(page);
-	await openCalibration(page, 'Flow rate (pass 1)');
+	await openCalibration(page, 'Ratio de débit : passe 1');
 	await waitNewProject(page, sourceId, 9);
 	const projectId = /projects\/([^/?#]+)/.exec(page.url())![1];
 	const project = await (await page.request.get(`/api/projects/${projectId}`)).json();

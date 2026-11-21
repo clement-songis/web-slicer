@@ -16,6 +16,7 @@ import type { CutConnectorStyle } from '../../../generated/api/CutConnectorStyle
 import type { CutConnectorType } from '../../../generated/api/CutConnectorType';
 import type { CutRequest } from '../../../generated/api/CutRequest';
 import { rotateVectorByEulerDeg } from '../transform';
+import { tr } from '$lib/i18n';
 
 export type Vec3 = [number, number, number];
 export type Axis = 'x' | 'y' | 'z';
@@ -423,11 +424,11 @@ export function effectiveDraft(d: CutDraft): CutDraft {
 /** Raison d'empêcher la coupe, ou null (au moins une moitié, plan dans l'objet). */
 export function cutBlocker(d: CutDraft, range: [number, number]): string | null {
 	const e = effectiveDraft(d);
-	if (!e.upper.keep && !e.lower.keep) return 'Gardez au moins une des deux parties.';
+	if (!e.upper.keep && !e.lower.keep) return tr('Keep at least one of the two parts.');
 	if (!(d.offset > range[0] + 1e-6 && d.offset < range[1] - 1e-6))
-		return 'Le plan ne traverse pas l’objet.';
+		return tr('The plane does not cross the object.');
 	if (e.mode === 'groove' && e.groove && !(e.groove.depth > 0 && e.groove.width > 0))
-		return 'Profondeur et largeur de la queue d’aronde doivent être positives.';
+		return tr('Dovetail depth and width must be positive.');
 	return null;
 }
 
@@ -495,10 +496,10 @@ export function buildCutRequest(
 
 /** Libellé lisible d'une pièce produite (label serveur). */
 export function cutPartLabel(label: string): string {
-	if (label === 'upper') return 'partie supérieure';
-	if (label === 'lower') return 'partie inférieure';
-	if (label === 'parts') return 'pièces';
+	if (label === 'upper') return tr('upper part');
+	if (label === 'lower') return tr('lower part');
+	if (label === 'parts') return tr('parts||cut');
 	const m = /^dowel_(\d+)$/.exec(label);
-	if (m) return 'goujon ' + m[1];
+	if (m) return tr('dowel {n}', { n: m[1] });
 	return label;
 }

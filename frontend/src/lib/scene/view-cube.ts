@@ -18,12 +18,13 @@ export interface CubeFace {
 
 /** Faces dans le repère monde (Z vertical, avant = −Y), comme select_view d'Orca. */
 export const CUBE_FACES: CubeFace[] = [
-	{ view: 'front', label: 'Avant', normal: [0, -1, 0], right: [1, 0, 0], down: [0, 0, -1] },
-	{ view: 'rear', label: 'Arrière', normal: [0, 1, 0], right: [-1, 0, 0], down: [0, 0, -1] },
-	{ view: 'left', label: 'Gauche', normal: [-1, 0, 0], right: [0, -1, 0], down: [0, 0, -1] },
-	{ view: 'right', label: 'Droite', normal: [1, 0, 0], right: [0, 1, 0], down: [0, 0, -1] },
-	{ view: 'top', label: 'Dessus', normal: [0, 0, 1], right: [1, 0, 0], down: [0, -1, 0] },
-	{ view: 'bottom', label: 'Dessous', normal: [0, 0, -1], right: [1, 0, 0], down: [0, 1, 0] }
+	// Libellés : clés i18n anglaises, traduites au rendu.
+	{ view: 'front', label: 'Front||cube', normal: [0, -1, 0], right: [1, 0, 0], down: [0, 0, -1] },
+	{ view: 'rear', label: 'Rear', normal: [0, 1, 0], right: [-1, 0, 0], down: [0, 0, -1] },
+	{ view: 'left', label: 'Left', normal: [-1, 0, 0], right: [0, -1, 0], down: [0, 0, -1] },
+	{ view: 'right', label: 'Right', normal: [1, 0, 0], right: [0, 1, 0], down: [0, 0, -1] },
+	{ view: 'top', label: 'Top', normal: [0, 0, 1], right: [1, 0, 0], down: [0, -1, 0] },
+	{ view: 'bottom', label: 'Bottom', normal: [0, 0, -1], right: [1, 0, 0], down: [0, 1, 0] }
 ];
 
 const cross = (a: Vec3, b: Vec3): Vec3 => [

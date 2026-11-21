@@ -2,25 +2,36 @@
 // plusieurs buses comme la H2D) : `filament_map_mode` et `filament_map`
 // (1-based, une buse par filament) portés par le plateau (lot 21).
 
+import { tr } from '$lib/i18n';
+
 export type FilamentMapMode = 'Auto For Flush' | 'Auto For Match' | 'Manual' | 'Default';
 
+// Libellés traduits à la lecture (accesseurs `tr`) : clés anglaises, langue courante.
+function mapMode(value: FilamentMapMode, label: string, hint: string) {
+	return {
+		value,
+		get label() {
+			return tr(label);
+		},
+		get hint() {
+			return tr(hint);
+		}
+	};
+}
+
 export const FILAMENT_MAP_MODES: { value: FilamentMapMode; label: string; hint: string }[] = [
-	{
-		value: 'Auto For Flush',
-		label: 'Automatique — moins de purge',
-		hint: 'Le trancheur répartit les filaments pour limiter les changements et la purge.'
-	},
-	{
-		value: 'Auto For Match',
-		label: 'Automatique — selon les bobines',
-		hint: 'Répartition selon les filaments chargés sur chaque buse (AMS).'
-	},
-	{ value: 'Manual', label: 'Manuelle', hint: 'Vous choisissez la buse de chaque filament.' },
-	{
-		value: 'Default',
-		label: 'Réglage global',
-		hint: 'Suit le mode du traitement / de l’imprimante.'
-	}
+	mapMode(
+		'Auto For Flush',
+		'Automatic — less flushing',
+		'The slicer distributes filaments to limit changes and flushing.'
+	),
+	mapMode(
+		'Auto For Match',
+		'Automatic — by loaded spools',
+		'Distribution by the filaments loaded on each nozzle (AMS).'
+	),
+	mapMode('Manual', 'Manual||map', 'You choose the nozzle of each filament.'),
+	mapMode('Default', 'Global setting', 'Follows the process / printer mode.')
 ];
 
 /** Nombre de buses (longueur de nozzle_diameter du preset machine). */
@@ -30,8 +41,8 @@ export function extruderCount(nozzleDiameter: unknown): number {
 
 /** Libellé d'une buse : H2D = gauche (1) / droite (2), comme Orca. */
 export function nozzleLabel(index1: number, count: number): string {
-	if (count === 2) return index1 === 1 ? 'Gauche' : 'Droite';
-	return `Buse ${index1}`;
+	if (count === 2) return index1 === 1 ? tr('Left') : tr('Right');
+	return tr('Nozzle {n}', { n: index1 });
 }
 
 /** Carte lue depuis les réglages du plateau, complétée à `n` filaments (défaut buse 1). */

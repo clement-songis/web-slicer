@@ -47,9 +47,9 @@ test('menu Calibration : description sous chaque entrée, libellés de parité i
 	const menu = page.getByRole('menu');
 	await expect(menu.getByTestId('menu-hint')).toHaveCount(14);
 	// Nom accessible = libellé exact (la description est hors du nom).
-	await expect(page.getByRole('menuitem', { name: 'Flow rate (pass 1)', exact: true })).toBeVisible();
+	await expect(page.getByRole('menuitem', { name: 'Ratio de débit : passe 1', exact: true })).toBeVisible();
 	await expect(page.getByRole('menuitem', { name: /^Pressure advance$/ })).toBeVisible();
-	await expect(page.getByRole('menuitem', { name: 'Flow ratio', exact: true })).toHaveAccessibleDescription(
+	await expect(page.getByRole('menuitem', { name: 'Ratio de débit (assistant)', exact: true })).toHaveAccessibleDescription(
 		/YOLO/
 	);
 });

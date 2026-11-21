@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import {
 	applyBatchEvent,
 	batchFinished,
@@ -36,6 +37,10 @@ function start(): BatchState {
 		results: {}
 	};
 }
+
+// Messages attendus en français (langue des tests).
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('Trancher tout : un résultat par plateau (phase 25)', () => {
 	test('lot : plateaux non vides seulement (plate_index → onglet)', () => {

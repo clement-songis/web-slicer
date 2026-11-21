@@ -5,6 +5,7 @@
 	// pastille la fait passer de l'autre côté (au lieu du glisser-déposer).
 	import { dialogFocus } from '$lib/ui/dialog-focus';
 	import { swatchStyle } from '$lib/ui/color';
+	import { t } from '$lib/i18n';
 	import { nextNozzle, nozzleLabel, type FilamentMapMode } from './filament-map';
 
 	interface Props {
@@ -70,20 +71,21 @@
 		use:dialogFocus={oncancel}
 	>
 		<div>
-			<h2 id="fmap-title" class="ws-dialog-title">Répartition des filaments</h2>
+			<h2 id="fmap-title" class="ws-dialog-title">{$t('Filament grouping')}</h2>
 			<p class="text-xs text-content-subtle">
-				{allPlates ? 'Pour tous les plateaux' : 'Pour ce plateau'} : quelle buse imprime chaque filament
-				?
+				{$t('{scope}: which nozzle prints each filament?', {
+					scope: allPlates ? $t('For all plates') : $t('For this plate')
+				})}
 			</p>
 		</div>
-		<div class="ws-seg flex w-full" role="radiogroup" aria-label="Répartition">
+		<div class="ws-seg flex w-full" role="radiogroup" aria-label={$t('Grouping')}>
 			<button
 				type="button"
 				role="radio"
 				aria-checked={kind === 'auto'}
 				data-testid="filament-map-kind-auto"
 				class="ws-seg-item flex-1 {kind === 'auto' ? 'ws-seg-on' : ''}"
-				onclick={() => (kind = 'auto')}>Automatique</button
+				onclick={() => (kind = 'auto')}>{$t('Automatic')}</button
 			>
 			<button
 				type="button"
@@ -91,13 +93,13 @@
 				aria-checked={kind === 'manual'}
 				data-testid="filament-map-kind-manual"
 				class="ws-seg-item flex-1 {kind === 'manual' ? 'ws-seg-on' : ''}"
-				onclick={() => (kind = 'manual')}>Manuelle</button
+				onclick={() => (kind = 'manual')}>{$t('Manual||map')}</button
 			>
 		</div>
 
 		{#if kind === 'auto'}
 			<fieldset class="flex flex-col gap-1.5 text-sm" data-testid="filament-map-auto">
-				<legend class="sr-only">Critère de répartition automatique</legend>
+				<legend class="sr-only">{$t('Automatic grouping criterion')}</legend>
 				<label class="flex items-start gap-2 rounded border border-border p-2">
 					<input
 						type="radio"
@@ -107,9 +109,9 @@
 						bind:group={autoMode}
 					/>
 					<span>
-						<span class="block text-content">Moins de purge</span>
+						<span class="block text-content">{$t('Less flushing')}</span>
 						<span class="block text-xs text-content-subtle"
-							>Le trancheur regroupe les filaments pour limiter les changements et les déchets.</span
+							>{$t('The slicer groups filaments to limit changes and waste.')}</span
 						>
 					</span>
 				</label>
@@ -122,9 +124,9 @@
 						bind:group={autoMode}
 					/>
 					<span>
-						<span class="block text-content">Selon les bobines chargées</span>
+						<span class="block text-content">{$t('By loaded spools')}</span>
 						<span class="block text-xs text-content-subtle"
-							>Suit les filaments présents sur chaque buse de l'imprimante (AMS).</span
+							>{$t('Follows the filaments present on each printer nozzle (AMS).')}</span
 						>
 					</span>
 				</label>
@@ -135,7 +137,7 @@
 					<section
 						class="flex min-h-24 flex-col gap-1.5 rounded border border-border p-2"
 						data-testid="filament-map-nozzle-{n}"
-						aria-label="Buse {nozzleLabel(n, extruders)}"
+						aria-label={$t('Nozzle {name}', { name: nozzleLabel(n, extruders) })}
 					>
 						<h3 class="ws-section-title">{nozzleLabel(n, extruders)}</h3>
 						{#each filaments.filter((f) => (draft[f - 1] ?? 1) === n) as f (f)}
@@ -143,30 +145,32 @@
 								type="button"
 								class="flex items-center gap-2 rounded px-1.5 py-1 text-left text-sm hover:bg-surface-sunken"
 								data-testid="filament-map-chip-{f}"
-								title="Passer sur la buse {nozzleLabel(nextNozzle(n, extruders), extruders)}"
+								title={$t('Move to nozzle {name}', {
+									name: nozzleLabel(nextNozzle(n, extruders), extruders)
+								})}
 								onclick={() => (draft[f - 1] = nextNozzle(n, extruders))}
 							>
 								<span
 									class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-semibold"
 									style={swatchStyle(colours[f - 1])}>{f}</span
 								>
-								<span class="truncate">{types[f - 1] || 'Filament ' + f}</span>
+								<span class="truncate">{types[f - 1] || $t('Filament {n}', { n: f })}</span>
 								<span class="ml-auto text-xs text-content-subtle" aria-hidden="true">⇄</span>
 							</button>
 						{:else}
-							<p class="text-xs text-content-subtle">Aucun filament</p>
+							<p class="text-xs text-content-subtle">{$t('No filament')}</p>
 						{/each}
 					</section>
 				{/each}
 			</div>
-			<p class="text-xs text-content-subtle">Cliquez sur un filament pour changer de buse.</p>
+			<p class="text-xs text-content-subtle">{$t('Click a filament to change its nozzle.')}</p>
 		{/if}
 
 		<div class="flex items-center justify-between gap-2">
 			{#if ondisable}
 				<label class="flex items-center gap-2 text-xs text-content-muted">
 					<input type="checkbox" data-testid="filament-map-stop-asking" bind:checked={stopAsking} />
-					Ne plus demander
+					{$t("Don't ask again")}
 				</label>
 			{:else}
 				<span></span>
@@ -176,13 +180,13 @@
 					type="button"
 					class="ws-btn ws-btn-secondary"
 					data-testid="filament-map-cancel"
-					onclick={oncancel}>Annuler</button
+					onclick={oncancel}>{$t('Cancel')}</button
 				>
 				<button
 					type="button"
 					class="ws-btn ws-btn-primary"
 					data-testid="filament-map-confirm"
-					onclick={confirm}>Trancher</button
+					onclick={confirm}>{$t('Slice')}</button
 				>
 			</div>
 		</div>

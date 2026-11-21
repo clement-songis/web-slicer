@@ -6,6 +6,7 @@ import { History } from '$lib/stores/history';
 import type { SceneNode } from './objects.svelte';
 import type { PlatesDocument } from './plates.svelte';
 import type { SceneVolume } from './volumes';
+import { tr } from '$lib/i18n';
 
 export interface ObjectTransform {
 	position: [number, number, number];
@@ -85,13 +86,15 @@ const same3 = (a: readonly number[], b: readonly number[]) =>
  *  de l'historique d'annulation d'Orca (« Move Object », « Delete Object »…). */
 export function describeChange(prev: SceneSnapshot, next: SceneSnapshot): string {
 	const nodes = new Map([...prev.nodes, ...next.nodes].map((n) => [n.id, n]));
-	const name = (id: string) => `« ${nodes.get(id)?.name ?? 'objet'} »`;
-	const many = (verb: string, ids: string[]) =>
-		ids.length === 1 ? `${verb} ${name(ids[0])}` : `${verb} ${ids.length} objets`;
+	const name = (id: string) => nodes.get(id)?.name ?? tr('object');
+	// Clés i18n : « Verbe “{name}” » (un objet) / « Verbe {n} objects » (plusieurs).
+	const many = (one: string, several: string, ids: string[]) =>
+		ids.length === 1 ? tr(one, { name: name(ids[0]) }) : tr(several, { n: ids.length });
 	const { added, removed } = objectDiff(prev, next);
-	if (added.length && !removed.length) return many('Ajouter', added);
-	if (removed.length && !added.length) return many('Supprimer', removed);
-	if (added.length && removed.length) return 'Remplacer des objets';
+	if (added.length && !removed.length) return many('Add “{name}”', 'Add {n} objects', added);
+	if (removed.length && !added.length)
+		return many('Delete “{name}”', 'Delete {n} objects', removed);
+	if (added.length && removed.length) return tr('Replace objects');
 	const moved: string[] = [];
 	const rotated: string[] = [];
 	const scaled: string[] = [];
@@ -102,32 +105,35 @@ export function describeChange(prev: SceneSnapshot, next: SceneSnapshot): string
 		if (!same3(p.rotation, t.rotation)) rotated.push(id);
 		if (!same3(p.scale, t.scale)) scaled.push(id);
 	}
-	if (scaled.length) return many('Mettre à l’échelle', scaled);
-	if (rotated.length) return many('Pivoter', rotated);
-	if (moved.length) return many('Déplacer', moved);
+	if (scaled.length) return many('Scale “{name}”', 'Scale {n} objects', scaled);
+	if (rotated.length) return many('Rotate “{name}”', 'Rotate {n} objects', rotated);
+	if (moved.length) return many('Move “{name}”', 'Move {n} objects', moved);
 	const volumeIds = new Set([...Object.keys(prev.volumes), ...Object.keys(next.volumes)]);
 	const volumes = [...volumeIds].filter(
 		(id) => JSON.stringify(prev.volumes[id] ?? []) !== JSON.stringify(next.volumes[id] ?? [])
 	);
-	if (volumes.length) return many('Pièces et modificateurs de', volumes);
+	if (volumes.length)
+		return many('Parts and modifiers of “{name}”', 'Parts and modifiers of {n} objects', volumes);
 	const prevNodes = new Map(prev.nodes.map((n) => [n.id, n]));
 	for (const n of next.nodes) {
 		const p = prevNodes.get(n.id);
-		if (!p) return 'Regrouper';
-		if (p.name !== n.name) return `Renommer « ${p.name} » en « ${n.name} »`;
-		if (p.extruder !== n.extruder) return `Extrudeur de « ${n.name} »`;
+		if (!p) return tr('Regroup');
+		if (p.name !== n.name) return tr('Rename “{from}” to “{to}”', { from: p.name, to: n.name });
+		if (p.extruder !== n.extruder) return tr('Extruder of “{name}”', { name: n.name });
 		if (JSON.stringify(p.settings) !== JSON.stringify(n.settings))
-			return `Réglages de « ${n.name} »`;
-		if (p.hidden !== n.hidden) return `${n.hidden ? 'Masquer' : 'Afficher'} « ${n.name} »`;
-		if (p.locked !== n.locked) return `${n.locked ? 'Verrouiller' : 'Déverrouiller'} « ${n.name} »`;
-		if (p.printable !== n.printable) return `Imprimable : « ${n.name} »`;
-		if (p.parentId !== n.parentId) return 'Regrouper';
+			return tr('Settings of “{name}”', { name: n.name });
+		if (p.hidden !== n.hidden)
+			return tr(n.hidden ? 'Hide “{name}”' : 'Show “{name}”', { name: n.name });
+		if (p.locked !== n.locked)
+			return tr(n.locked ? 'Lock “{name}”' : 'Unlock “{name}”', { name: n.name });
+		if (p.printable !== n.printable) return tr('Printable: “{name}”', { name: n.name });
+		if (p.parentId !== n.parentId) return tr('Regroup');
 	}
-	if (prev.nodes.length !== next.nodes.length) return 'Regrouper';
+	if (prev.nodes.length !== next.nodes.length) return tr('Regroup');
 	if (prev.nodes.map((n) => n.id).join() !== next.nodes.map((n) => n.id).join())
-		return 'Ordre des objets';
-	if (JSON.stringify(prev.plates) !== JSON.stringify(next.plates)) return 'Plateaux';
-	return 'Modification';
+		return tr('Object order');
+	if (JSON.stringify(prev.plates) !== JSON.stringify(next.plates)) return tr('Plates');
+	return tr('Modification');
 }
 
 /**

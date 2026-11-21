@@ -1,4 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
+
+// Messages attendus en français (interface traduite).
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 import { ENGINE_CALIB_DEFAULTS, parseNumberList, testModels, validateRange } from './engine-calib';
 
 describe('dialogues des calibrations moteur', () => {

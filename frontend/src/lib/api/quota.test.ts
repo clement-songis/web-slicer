@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import {
 	apiErrorMessage,
 	formatBytes,
@@ -9,6 +10,9 @@ import {
 } from './quota';
 
 const MB = 1024 * 1024;
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('quotas (lot 32)', () => {
 	it('formate les octets', () => {

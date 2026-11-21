@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import {
 	diffPresets,
 	filterPlaceholders,
@@ -7,6 +8,9 @@ import {
 	placeholderGroups,
 	transferChanges
 } from './preset-tools';
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('outils de presets', () => {
 	it('diff : clés des onglets du type, ordre des onglets', () => {

@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import {
 	STEP_DEFAULTS,
 	formatTriangles,
@@ -6,6 +7,10 @@ import {
 	normalizeStepOptions,
 	sameStepOptions
 } from './step-mesh';
+
+// Messages attendus en français (langue des tests).
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('maillage STEP (StepMeshDialog)', () => {
 	it('défauts d Orca', () => {

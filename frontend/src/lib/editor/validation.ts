@@ -9,43 +9,14 @@ import type { ValidationIssue } from '../../generated/api/ValidationIssue';
 import type { SliceRequest } from '../../generated/api/SliceRequest';
 import { PARAMS } from '../../generated/params';
 import { UI_LAYOUT, type PresetKind } from '../../generated/ui-layout';
-import { api, ApiError } from '$lib/api/client';
+import { api } from '$lib/api/client';
+import { tr } from '$lib/i18n';
 
 export type { ValidateResponse, ValidationIssue };
 
 /** Valide le projet persisté (même corps que /slice ; aucun job créé). */
 export const validateProject = (projectId: string, body: SliceRequest) =>
 	api.post<ValidateResponse>('/projects/' + projectId + '/validate', body);
-
-/**
- * Le serveur accepte-t-il la scène non enregistrée dans le corps (`scene`,
- * lot 29) ? Sondé une fois par session : un `scene` qui n'est pas un objet est
- * refusé (422, `details.field = "scene"`) par un serveur compatible, ignoré par
- * un serveur antérieur — qui validerait alors la scène enregistrée, d'où
- * l'enregistrement silencieux conservé en repli. Erreur réseau : non mémorisée.
- */
-let inlineSceneProbe: Promise<boolean> | null = null;
-export function supportsInlineScene(projectId: string): Promise<boolean> {
-	inlineSceneProbe ??= api
-		.post('/projects/' + projectId + '/validate', { scene: 0 } satisfies SliceRequest)
-		.then(
-			() => false,
-			(e: unknown) => {
-				if (!(e instanceof ApiError)) {
-					inlineSceneProbe = null;
-					return false;
-				}
-				return (
-					e.status === 422 && (e.details as { field?: unknown } | undefined)?.field === 'scene'
-				);
-			}
-		);
-	return inlineSceneProbe;
-}
-/** Tests : oublie le résultat du sondage. */
-export function resetInlineSceneProbe(): void {
-	inlineSceneProbe = null;
-}
 
 /** Catalogue « msgid anglais → msgstr français » (scripts/gen-validation-i18n.mjs). */
 export type OrcaCatalog = Readonly<Record<string, string>>;
@@ -241,7 +212,7 @@ export function buildNotices(resp: ValidateResponse, ctx: NoticeContext): Valida
 					level,
 					kind: issue.kind,
 					plateIndex,
-					text: multi ? 'Plateau ' + (plateIndex + 1) + ' : ' + text : text,
+					text: multi ? tr('Plate {n}: {text}', { n: plateIndex + 1, text }) : text,
 					objectId,
 					objectName: issue.object_name,
 					optKey: issue.opt_key && optKind ? issue.opt_key : undefined,
@@ -292,8 +263,8 @@ export function plateBlocked(resp: ValidateResponse | null, plateIndex: number):
 export function noticeSummary(notices: readonly ValidationNotice[]): string {
 	const errors = notices.filter((n) => n.level === 'error').length;
 	const warnings = notices.length - errors;
-	const part = (n: number, one: string, many: string) => (n ? n + ' ' + (n > 1 ? many : one) : '');
-	return [part(errors, 'erreur', 'erreurs'), part(warnings, 'avertissement', 'avertissements')]
+	const part = (n: number, one: string, many: string) => (n ? tr(n > 1 ? many : one, { n }) : '');
+	return [part(errors, '{n} error', '{n} errors'), part(warnings, '{n} warning', '{n} warnings')]
 		.filter(Boolean)
 		.join(' · ');
 }
@@ -308,6 +279,6 @@ export function conversionCause(
 	catalog: OrcaCatalog | null
 ): string {
 	const raw = (cause ?? '').trim();
-	if (!raw) return 'le moteur n’a pas pu extraire de maillage de ce fichier';
+	if (!raw) return tr('the engine could not extract a mesh from this file');
 	return translateOrcaMessage(raw, catalog);
 }

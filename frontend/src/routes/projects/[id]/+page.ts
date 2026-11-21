@@ -5,6 +5,7 @@ import { error } from '@sveltejs/kit';
 import { ApiError } from '$lib/api/client';
 import { getProject } from '$lib/api/projects';
 import { requireOnboardedUser } from '$lib/guards';
+import { tr } from '$lib/i18n';
 import type { PageLoad } from './$types';
 
 export const ssr = false;
@@ -18,7 +19,7 @@ export const load: PageLoad = async ({ params }) => {
 	} catch (e) {
 		// 404 = inexistant ou appartenant à autrui (SC-008) : même page d'erreur.
 		if (e instanceof ApiError && e.status === 404) {
-			error(404, 'Projet introuvable');
+			error(404, tr('Project not found'));
 		}
 		throw e;
 	}

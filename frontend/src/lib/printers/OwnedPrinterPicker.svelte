@@ -11,6 +11,8 @@
 		PrinterCatalogVendor,
 		PrinterResponse
 	} from '$lib/api/types';
+	import ModifiedBadge from '$lib/presets/ModifiedBadge.svelte';
+	import { t } from '$lib/i18n';
 	import IconAdd from '~icons/lucide/plus';
 	import IconEdit from '~icons/lucide/pencil';
 
@@ -112,7 +114,7 @@
 	<div class="flex items-center gap-1">
 		<select
 			class={FIELD}
-			aria-label="Imprimante"
+			aria-label={$t('Printer')}
 			value={selectedPrinterId}
 			onchange={(e) => onPrinterChange(e.currentTarget.value)}
 		>
@@ -120,14 +122,14 @@
 				<option value={p.id}>{p.name}</option>
 			{/each}
 		</select>
-		<button type="button" class={ICON_BTN} title="Ajouter une imprimante…" onclick={onadd}>
+		<button type="button" class={ICON_BTN} title={$t('Add a printer…')} onclick={onadd}>
 			<IconAdd />
 		</button>
 		<button
 			type="button"
 			class={ICON_BTN}
 			data-testid="open-settings-printer"
-			title="Réglages de l'imprimante"
+			title={$t('Printer settings||picker')}
 			onclick={onedit}
 			disabled={!selectedPrinter}
 		>
@@ -136,16 +138,19 @@
 	</div>
 
 	{#if nozzles.length > 0}
-		<select
-			class={FIELD}
-			aria-label="Buse"
-			bind:value={selectedMachinePresetId}
-			data-testid="preset-select-printer"
-			data-modified={modified ? 'true' : 'false'}
-		>
-			{#each nozzles as option (option.id)}
-				<option value={option.id}>{option.label}</option>
-			{/each}
-		</select>
+		<div class="flex items-center gap-1">
+			<select
+				class={FIELD}
+				aria-label={$t('Nozzle')}
+				bind:value={selectedMachinePresetId}
+				data-testid="preset-select-printer"
+				data-modified={modified ? 'true' : 'false'}
+			>
+				{#each nozzles as option (option.id)}
+					<option value={option.id}>{option.label}</option>
+				{/each}
+			</select>
+			{#if modified}<ModifiedBadge testid="preset-select-printer-modified" />{/if}
+		</div>
 	{/if}
 </div>

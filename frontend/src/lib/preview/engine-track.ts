@@ -8,6 +8,7 @@
 import type { PreviewTrack, TrackChannel, TrackLayer } from './track';
 import type { EngineColorPrint, FilamentTable } from './engine-data';
 import { TRACK_CHANNELS } from './track';
+import { tr } from '$lib/i18n';
 
 /** Colonnes par mouvement (miroir de BYTES/FLOATS/INTS_PER_MOVE). */
 export const MOVE_BYTES = 4;
@@ -133,7 +134,7 @@ export class EngineFormatError extends Error {}
 
 /** Décode un buffer `WSPm`. */
 export function decodeEngineMoves(buffer: ArrayBuffer): EngineMoves {
-	if (buffer.byteLength < 24) throw new EngineFormatError('buffer WSPm tronqué');
+	if (buffer.byteLength < 24) throw new EngineFormatError(tr('truncated WSPm buffer'));
 	const view = new DataView(buffer);
 	const magic = String.fromCharCode(...new Uint8Array(buffer, 0, 4));
 	if (magic !== 'WSPm') throw new EngineFormatError('magic WSPm absent');
@@ -147,7 +148,7 @@ export function decodeEngineMoves(buffer: ArrayBuffer): EngineMoves {
 	o = Math.ceil(o / 4) * 4;
 	const fEnd = o + count * MOVE_FLOATS * 4;
 	const iEnd = fEnd + count * MOVE_INTS * 4;
-	if (iEnd > buffer.byteLength) throw new EngineFormatError('buffer WSPm incohérent');
+	if (iEnd > buffer.byteLength) throw new EngineFormatError(tr('inconsistent WSPm buffer'));
 	const floats = new Float32Array(buffer.slice(o, fEnd));
 	const ints = new Uint32Array(buffer.slice(fEnd, iEnd));
 	return { from, to, firstMove, count, bytes, floats, ints };
@@ -461,16 +462,17 @@ export function summaryView(
 	meta.role_times.forEach((t, role) => {
 		if (t[mode] > 0)
 			roles.push({
-				label: roleNames[role] ?? `Rôle ${role}`,
+				label: roleNames[role] ?? tr('Role {n}', { n: role }),
 				time: t[mode],
 				percent: (100 * t[mode]) / total
 			});
 	});
 	for (const [label, t] of [
-		['Déplacements', meta.travel_time],
-		['Essuyages', meta.wipe_time]
+		['Travel||summary', meta.travel_time],
+		['Wipes', meta.wipe_time]
 	] as const)
-		if (t[mode] > 0) roles.push({ label, time: t[mode], percent: (100 * t[mode]) / total });
+		if (t[mode] > 0)
+			roles.push({ label: tr(label), time: t[mode], percent: (100 * t[mode]) / total });
 	roles.sort((a, b) => b.time - a.time);
 	const extruders = Object.entries(s.total_volumes_per_extruder ?? {}).map(([k, vol]) => {
 		const e = Number(k);

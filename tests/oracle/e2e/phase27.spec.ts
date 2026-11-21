@@ -38,7 +38,7 @@ test("liste d’objets : un nom long reste entier même avec badges et sélecteu
   await importModel(page, "cube20");
   await page.getByTestId("add-filament-slot").click();
   await page
-    .getByRole("button", { name: "Ajouter un plateau" })
+    .getByRole("button", { name: /^(Ajouter un|Nouveau) plateau$/ })
     .first()
     .click();
   await page.getByRole("button", { name: "Objets", exact: true }).click();

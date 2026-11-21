@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Barre de sélection du mode de gizmo (T052) : déplacer / tourner / échelle.
 	import { GIZMO_MODE_LABELS, type GizmoMode } from './types';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		mode: GizmoMode;
@@ -20,7 +21,7 @@
 			aria-pressed={mode === m}
 			onclick={() => onmode(m)}
 		>
-			{GIZMO_MODE_LABELS[m]}
+			{$t(GIZMO_MODE_LABELS[m])}
 		</button>
 	{/each}
 </div>

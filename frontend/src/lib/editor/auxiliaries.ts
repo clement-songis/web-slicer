@@ -2,28 +2,32 @@
 // Auxiliaries/ du 3MF) : les 4 dossiers d'Orca, regroupement de la liste du
 // serveur, noms sûrs et aperçus. Pur → testable.
 import type { AuxiliaryEntry } from '$lib/api/auxiliaries';
+import { numberLocale, tr } from '$lib/i18n';
 
-/** Dossiers d'Orca (noms exacts du 3MF), libellés et aide. */
+/**
+ * Dossiers d'Orca (noms exacts du 3MF), libellés et aide — clés anglaises,
+ * traduites à l'affichage (`$t(f.label)`).
+ */
 export const AUX_FOLDERS = [
 	{
 		id: 'Model Pictures',
-		label: 'Photos du modèle',
-		hint: 'Images montrées avec le projet (PNG, JPEG…).',
+		label: 'Model Pictures',
+		hint: 'Images shown with the project (PNG, JPEG…).',
 		accept: 'image/*'
 	},
 	{
 		id: 'Bill of Materials',
-		label: 'Nomenclature',
-		hint: 'Liste des pièces et matériaux.',
+		label: 'Bill of Materials',
+		hint: 'List of parts and materials.',
 		accept: ''
 	},
 	{
 		id: 'Assembly Guide',
-		label: "Guide d'assemblage",
-		hint: 'Instructions de montage (PDF, images…).',
+		label: 'Assembly Guide',
+		hint: 'Assembly instructions (PDF, images…).',
 		accept: ''
 	},
-	{ id: 'Others', label: 'Autres', hint: 'Tout autre fichier lié au projet.', accept: '' }
+	{ id: 'Others', label: 'Others', hint: 'Any other file related to the project.', accept: '' }
 ] as const;
 
 export type AuxFolder = (typeof AUX_FOLDERS)[number]['id'];
@@ -86,10 +90,10 @@ export function isPreviewableImage(name: string): boolean {
 
 /** Taille lisible (o, Ko, Mo). */
 export function formatSize(bytes: number): string {
-	if (bytes < 1024) return `${bytes} o`;
-	if (bytes < 1024 * 1024)
-		return `${(bytes / 1024).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Ko`;
-	return `${(bytes / 1024 / 1024).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} Mo`;
+	if (bytes < 1024) return tr('{n} B', { n: bytes });
+	const fmt = (v: number) => v.toLocaleString(numberLocale(), { maximumFractionDigits: 1 });
+	if (bytes < 1024 * 1024) return tr('{n} KB', { n: fmt(bytes / 1024) });
+	return tr('{n} MB', { n: fmt(bytes / 1024 / 1024) });
 }
 
 /** Limite du serveur par fichier (50 Mo). */

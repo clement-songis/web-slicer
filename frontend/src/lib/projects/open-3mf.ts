@@ -5,6 +5,7 @@
 // testable ; les pages orchestrent les dialogues et l'appel API.
 import type { ProjectLoadBehaviour } from '$lib/settings/preferences';
 import type { GcodeWarning, ImportLoadMode, ImportReport } from '$lib/api/types';
+import { tr } from '$lib/i18n';
 
 /** Fichier projet 3MF (les autres formats s'importent comme modèles). */
 export function isProjectArchive(name: string): boolean {
@@ -105,12 +106,16 @@ export function gcodeItemLabel(key: string): string | null {
 export function warningContent(warning: GcodeWarning): { title: string; body: string } {
 	if (warning.kind === 'customized_presets') {
 		return {
-			title: 'Presets personnalisés',
-			body: 'Ce 3MF contient les presets filament ou imprimante personnalisés suivants. Confirmez que le G-code de ces presets est sûr pour éviter d’endommager la machine.'
+			title: tr('Customized presets'),
+			body: tr(
+				'This 3MF contains the following customized filament or printer presets. Confirm that the G-code of these presets is safe to avoid damaging the machine.'
+			)
 		};
 	}
 	return {
-		title: 'G-code modifié',
-		body: 'Ce 3MF contient le G-code modifié suivant dans des presets filament ou imprimante. Confirmez que tout ce G-code modifié est sûr pour éviter d’endommager la machine.'
+		title: tr('Modified G-code'),
+		body: tr(
+			'This 3MF contains the following modified G-code in filament or printer presets. Confirm that all this modified G-code is safe to avoid damaging the machine.'
+		)
 	};
 }

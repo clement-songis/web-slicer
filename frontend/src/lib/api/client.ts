@@ -5,6 +5,7 @@ import type { ErrorBody } from './types';
 import { reportReachable, reportUnreachable, unreachableMessage } from './connectivity';
 import { apiErrorMessage } from './quota';
 import { readableServerMessage } from './engine-error';
+import { tr } from '$lib/i18n';
 
 /** Préfixe des routes API (le proxy Vite renvoie vers le backend en dev). */
 export const API_BASE = '/api';
@@ -84,7 +85,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 	}
 	reportReachable();
 	if (text && data === undefined) {
-		throw new ApiError(res.status, 'bad_response', 'Réponse illisible du serveur. Réessayez.');
+		throw new ApiError(res.status, 'bad_response', tr('Unreadable server response. Try again.'));
 	}
 	return data as T;
 }

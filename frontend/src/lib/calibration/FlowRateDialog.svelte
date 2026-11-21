@@ -2,6 +2,7 @@
 	import { dialogFocus } from '$lib/ui/dialog-focus';
 	// FlowRateCalibrationDialog d'Orca : quatre types de test et motif de surface.
 	import type { FlowPass, FlowPattern } from './flowrate';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		open: boolean;
@@ -30,7 +31,7 @@
 			class="ws-dialog w-full max-w-sm p-5"
 			role="dialog"
 			aria-modal="true"
-			aria-label="Calibration du débit"
+			aria-label={$t('Flow Rate Calibration')}
 			data-testid="flow-calib-dialog"
 			tabindex="-1"
 			use:dialogFocus
@@ -38,9 +39,9 @@
 			onkeydown={(e) => e.key === 'Escape' && !busy && onclose()}
 		>
 			<form class="flex flex-col gap-4" onsubmit={submit}>
-				<h2 class="ws-dialog-title">Calibration du rapport de débit</h2>
+				<h2 class="ws-dialog-title">{$t('Flow Ratio Calibration')}</h2>
 				<fieldset class="flex flex-col gap-2">
-					<legend class="mb-2 text-sm font-medium">Type de test de calibration</legend>
+					<legend class="mb-2 text-sm font-medium">{$t('Calibration Test Type')}</legend>
 					{#each types as label, i (label)}
 						<label class="flex items-center gap-2 text-sm">
 							<input
@@ -55,7 +56,7 @@
 					{/each}
 				</fieldset>
 				<label class="flex items-center justify-between gap-3 text-sm">
-					<span>Motif de surface supérieure</span>
+					<span>{$t('Top surface pattern')}</span>
 					<select bind:value={pattern} data-testid="flow-pattern" class="ws-field">
 						<option value="archimedeanchords">Archimedean Chords</option>
 						<option value="monotonic">Monotonic</option>
@@ -70,13 +71,13 @@
 				{#if error}<p class="text-sm text-danger" role="alert">{error}</p>{/if}
 				<div class="flex justify-end gap-2">
 					<button type="button" class="ws-btn ws-btn-secondary" disabled={busy} onclick={onclose}
-						>Annuler</button
+						>{$t('Cancel')}</button
 					>
 					<button
 						type="submit"
 						data-testid="flow-calib-confirm"
 						class="ws-btn ws-btn-primary"
-						disabled={busy}>{busy ? 'Création…' : 'OK'}</button
+						disabled={busy}>{busy ? $t('Creating…') : $t('OK')}</button
 					>
 				</div>
 			</form>

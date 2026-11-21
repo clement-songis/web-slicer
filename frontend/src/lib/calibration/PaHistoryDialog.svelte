@@ -19,6 +19,7 @@
 		type PaMethod,
 		type PaRecord
 	} from './pa-history';
+	import { t, tr } from '$lib/i18n';
 
 	interface Props {
 		open: boolean;
@@ -70,7 +71,7 @@
 			});
 			if (mine === seq) rows = sortPa(list, filament);
 		} catch (e) {
-			if (mine === seq) error = e instanceof ApiError ? e.message : 'historique indisponible';
+			if (mine === seq) error = e instanceof ApiError ? e.message : tr('history unavailable');
 		} finally {
 			if (mine === seq) loading = false;
 		}
@@ -101,7 +102,7 @@
 	async function add() {
 		const k = parseK(kDraft);
 		if (k === null) {
-			error = 'K doit être un nombre entre 0 et 2 (ex. 0,04).';
+			error = tr('K must be a number between 0 and 2 (e.g. 0.04).');
 			return;
 		}
 		error = null;
@@ -119,13 +120,13 @@
 			note = '';
 			await refresh();
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'enregistrement impossible';
+			error = e instanceof ApiError ? e.message : tr('unable to save');
 		}
 	}
 	async function update(row: PaRecord, raw: string) {
 		const k = parseK(raw);
 		if (k === null) {
-			error = 'K invalide.';
+			error = tr('Invalid K.');
 			return;
 		}
 		error = null;
@@ -135,7 +136,7 @@
 			await updatePa(row.id, toInput(row, { k_value: k }));
 			await refresh();
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'modification impossible';
+			error = e instanceof ApiError ? e.message : tr('unable to modify');
 		}
 	}
 	async function remove(row: PaRecord) {
@@ -143,28 +144,33 @@
 			await deletePa(row.id);
 			await refresh();
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'suppression impossible';
+			error = e instanceof ApiError ? e.message : tr('unable to delete');
 		}
 	}
-	const methodLabel = (m: string) => PA_METHODS.find((x) => x.id === m)?.label ?? m;
+	const methodLabel = (m: string) => {
+		const label = PA_METHODS.find((x) => x.id === m)?.label;
+		return label ? $t(label) : m;
+	};
 </script>
 
 <Dialog
 	{open}
-	label="Historique Pressure Advance"
-	title="Historique Pressure Advance"
+	label={$t('Pressure Advance history')}
+	title={$t('Pressure Advance history')}
 	size="lg"
 	{onclose}
 	data-testid="pa-history-dialog"
 >
 	<div class="flex flex-col gap-3 text-sm">
 		<p class="text-content-muted">
-			{printer} · buse {nozzleMm} mm — valeurs K retenues après une calibration PA. Le filament actif
-			est « {filament} ».
+			{$t(
+				'{printer} · nozzle {nozzle} mm — K values kept after a PA calibration. The active filament is “{filament}”.',
+				{ printer, nozzle: nozzleMm, filament }
+			)}
 		</p>
 		<form class="flex flex-wrap items-end gap-2" onsubmit={(e) => (e.preventDefault(), add())}>
 			<label class="flex flex-col gap-1 text-xs text-content-muted"
-				>K pour « {filament} »<input
+				>{$t('K for “{filament}”', { filament })}<input
 					class="ws-field ws-field-sm w-24 tabular-nums"
 					inputmode="decimal"
 					bind:value={kDraft}
@@ -172,48 +178,54 @@
 				/></label
 			>
 			<label class="flex flex-col gap-1 text-xs text-content-muted"
-				>Méthode<select class="ws-field ws-field-sm" bind:value={method} data-testid="pa-method">
-					{#each PA_METHODS as m (m.id)}<option value={m.id}>{m.label}</option>{/each}
+				>{$t('Method')}<select
+					class="ws-field ws-field-sm"
+					bind:value={method}
+					data-testid="pa-method"
+				>
+					{#each PA_METHODS as m (m.id)}<option value={m.id}>{$t(m.label)}</option>{/each}
 				</select></label
 			>
 			<label class="flex min-w-40 flex-1 flex-col gap-1 text-xs text-content-muted"
-				>Note (facultative)<input
+				>{$t('Note (optional)')}<input
 					class="ws-field ws-field-sm"
 					bind:value={note}
-					placeholder="ex. 0,002 par ligne"
+					placeholder={$t('e.g. 0.002 per line')}
 				/></label
 			>
 			<button type="submit" class="ws-btn ws-btn-sm ws-btn-primary" data-testid="pa-add"
-				>Enregistrer la mesure</button
+				>{$t('Save the measurement')}</button
 			>
 		</form>
 		<fieldset class="flex flex-wrap items-center gap-4 text-xs text-content-muted">
-			<legend class="sr-only">Filtres</legend>
+			<legend class="sr-only">{$t('Filters')}</legend>
 			<label class="flex items-center gap-2">
-				<input type="checkbox" bind:checked={onlyPrinter} data-testid="pa-only-printer" /> Cette imprimante
+				<input type="checkbox" bind:checked={onlyPrinter} data-testid="pa-only-printer" />
+				{$t('This printer')}
 			</label>
 			<label class="flex items-center gap-2">
-				<input type="checkbox" bind:checked={onlyNozzle} data-testid="pa-only-nozzle" /> Buse {nozzleMm}
-				mm
+				<input type="checkbox" bind:checked={onlyNozzle} data-testid="pa-only-nozzle" />
+				{$t('Nozzle {nozzle} mm', { nozzle: nozzleMm })}
 			</label>
 			<label class="flex items-center gap-2">
-				<input type="checkbox" bind:checked={onlyFilament} data-testid="pa-only-filament" /> Ce filament
+				<input type="checkbox" bind:checked={onlyFilament} data-testid="pa-only-filament" />
+				{$t('This filament')}
 			</label>
 		</fieldset>
 		{#if error}<p class="text-xs text-danger" role="alert">{error}</p>{/if}
 		{#if loading && rows.length === 0}
-			<p class="text-xs text-content-subtle" role="status">Chargement…</p>
+			<p class="text-xs text-content-subtle" role="status">{$t('Loading...')}</p>
 		{:else if rows.length === 0}
 			<p class="ws-empty rounded-lg border border-dashed border-border" data-testid="pa-empty">
-				Aucune valeur pour ces filtres.
+				{$t('No value for these filters.')}
 			</p>
 		{:else}
 			<table class="w-full text-sm" aria-busy={loading}>
 				<thead class="text-left text-xs text-content-muted">
 					<tr
-						><th class="py-1">Filament</th><th class="py-1">Imprimante · buse</th><th class="py-1"
-							>K</th
-						><th class="py-1">Méthode</th><th class="py-1">Date</th><th></th></tr
+						><th class="py-1">{$t('Filament')}</th><th class="py-1">{$t('Printer · nozzle')}</th><th
+							class="py-1">K</th
+						><th class="py-1">{$t('Method')}</th><th class="py-1">{$t('Date')}</th><th></th></tr
 					>
 				</thead>
 				<tbody>
@@ -239,7 +251,7 @@
 									<input
 										class="ws-field ws-field-sm w-24"
 										value={String(row.k_value)}
-										aria-label="Nouveau K"
+										aria-label={$t('New K')}
 										onkeydown={(e) => {
 											if (e.key === 'Enter') void update(row, e.currentTarget.value);
 											if (e.key === 'Escape') {
@@ -260,18 +272,18 @@
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-primary"
 									data-testid="pa-apply"
-									onclick={() => onapply(row.k_value)}>Appliquer au filament</button
+									onclick={() => onapply(row.k_value)}>{$t('Apply to filament')}</button
 								>
 								<button
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-ghost"
-									onclick={() => (editing = row.id)}>Modifier</button
+									onclick={() => (editing = row.id)}>{$t('Edit||verb')}</button
 								>
 								<button
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-ghost text-danger"
 									data-testid="pa-delete"
-									onclick={() => void remove(row)}>Supprimer</button
+									onclick={() => void remove(row)}>{$t('Delete')}</button
 								>
 							</td>
 						</tr>
@@ -281,6 +293,6 @@
 		{/if}
 	</div>
 	{#snippet footer()}
-		<button type="button" class="ws-btn ws-btn-secondary" onclick={onclose}>Fermer</button>
+		<button type="button" class="ws-btn ws-btn-secondary" onclick={onclose}>{$t('Close')}</button>
 	{/snippet}
 </Dialog>

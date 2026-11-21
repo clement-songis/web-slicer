@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'vitest';
+import { beforeAll, afterAll, describe, expect, test } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import { meshErrorsTooltip, meshWarnings } from './mesh-errors';
 import type { ObjectMeshErrors } from '../../generated/api/ObjectMeshErrors';
 
@@ -46,3 +47,7 @@ describe('erreurs de maillage (get_mesh_errors_info d’Orca)', () => {
 		expect(w.bad.tooltip).toContain('4 arêtes non-manifold');
 	});
 });
+
+// Les libellés de ces modules sont traduits (tr) : valeurs attendues en français.
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));

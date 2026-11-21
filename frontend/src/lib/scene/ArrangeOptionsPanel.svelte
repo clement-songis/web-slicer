@@ -9,6 +9,7 @@
 	import type { ArrangeOptionsInfo } from '$lib/api/types';
 	import type { SavedArrangeOptions } from './arrange-options';
 	import { clampSpacing, resetOptions, spacingFloor } from './arrange-options';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		open: boolean;
@@ -63,21 +64,21 @@
 		class="ws-floating fixed top-24 left-1/2 z-40 flex w-80 -translate-x-1/2 flex-col gap-3 p-3 text-sm"
 		data-testid="arrange-options-panel"
 		role="dialog"
-		aria-label="Options d'arrangement"
+		aria-label={$t('Arrange options')}
 	>
 		<div class="flex items-center justify-between">
-			<span class="ws-section-title">Options d'arrangement</span>
+			<span class="ws-section-title">{$t('Arrange options')}</span>
 			<button
 				type="button"
 				class="ws-icon-btn ws-icon-btn-xs"
 				data-testid="arrange-options-close"
 				onclick={onclose}
-				aria-label="Fermer">✕</button
+				aria-label={$t('Close')}>✕</button
 			>
 		</div>
 
 		<label class="flex items-center gap-2">
-			<span class="w-24 shrink-0 text-content-muted">Espacement</span>
+			<span class="w-24 shrink-0 text-content-muted">{$t('Spacing')}</span>
 			<input
 				type="range"
 				min={floor}
@@ -85,7 +86,7 @@
 				step="0.5"
 				class="flex-1"
 				data-testid="arrange-spacing"
-				aria-label="Espacement (mm)"
+				aria-label={$t('Spacing (mm)')}
 				value={shownSpacing}
 				oninput={(e) => setSpacing(Number(e.currentTarget.value))}
 			/>
@@ -96,13 +97,15 @@
 				step="0.5"
 				class="ws-field ws-field-sm w-16"
 				data-testid="arrange-spacing-input"
-				aria-label="Espacement (mm), saisie"
+				aria-label={$t('Spacing (mm), input')}
 				value={shownSpacing}
 				oninput={(e) => setSpacing(Number(e.currentTarget.value))}
 			/>
 		</label>
 		<p class="-mt-2 text-xs text-content-subtle">
-			{floor > 0 ? `Séquentiel : espacement minimum ${floor} mm.` : '0 = espacement automatique.'}
+			{floor > 0
+				? $t('Sequential: minimum spacing {n} mm.', { n: floor })
+				: $t('0 = automatic spacing.')}
 		</p>
 
 		<label class="flex items-center gap-2">
@@ -112,7 +115,7 @@
 				checked={options.enableRotation}
 				onchange={(e) => onchange({ ...options, enableRotation: e.currentTarget.checked })}
 			/>
-			<span>Rotation automatique pour l'arrangement</span>
+			<span>{$t('Auto rotate for arrangement')}</span>
 		</label>
 
 		<label class="flex items-center gap-2">
@@ -123,7 +126,9 @@
 				disabled={options.enableRotation}
 				onchange={(e) => onchange({ ...options, alignToYAxis: e.currentTarget.checked })}
 			/>
-			<span class={options.enableRotation ? 'text-content-subtle' : ''}>Aligner sur l'axe Y</span>
+			<span class={options.enableRotation ? 'text-content-subtle' : ''}
+				>{$t('Align to Y axis')}</span
+			>
 		</label>
 
 		<label class="flex items-center gap-2">
@@ -134,7 +139,7 @@
 				onchange={(e) =>
 					onchange({ ...options, allowMultiMaterialsOnSamePlate: e.currentTarget.checked })}
 			/>
-			<span>Plusieurs matériaux sur le même plateau</span>
+			<span>{$t('Allow multiple materials on same plate')}</span>
 		</label>
 
 		{#if info?.show_avoid_extrusion_cali_region}
@@ -146,7 +151,7 @@
 					onchange={(e) =>
 						onchange({ ...options, avoidExtrusionCaliRegion: e.currentTarget.checked })}
 				/>
-				<span>Éviter la zone de calibration d'extrusion</span>
+				<span>{$t('Avoid extrusion calibration region')}</span>
 			</label>
 		{/if}
 
@@ -158,7 +163,7 @@
 				disabled={!info}
 				onclick={() => info && onchange(resetOptions(info))}
 			>
-				Réinitialiser
+				{$t('Reset')}
 			</button>
 			<div class="flex gap-2">
 				<button
@@ -167,11 +172,11 @@
 					data-testid="arrange-plate"
 					disabled={busy || activePlateLocked}
 					title={activePlateLocked
-						? 'Plateau verrouillé : déverrouillez-le pour l’arranger.'
-						: 'Arranger uniquement les objets du plateau courant'}
+						? $t('Plate locked: unlock it to arrange it.')
+						: $t('Arrange only the objects of the current plate')}
 					onclick={() => onarrange('plate')}
 				>
-					Ce plateau
+					{$t('This plate')}
 				</button>
 				<button
 					type="button"
@@ -180,7 +185,7 @@
 					disabled={busy}
 					onclick={() => onarrange('all')}
 				>
-					Tout arranger
+					{$t('Arrange all')}
 				</button>
 			</div>
 		</div>

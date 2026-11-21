@@ -3,6 +3,7 @@
 	// cube orienté comme la caméra ; un clic sur une face choisit la vue
 	// correspondante, le bouton central revient à la vue par défaut (Ctrl+0).
 	import type { NamedView } from './camera';
+	import { t } from '$lib/i18n';
 	import { CUBE_FACES, cubeTransform, faceTransform, facingFace } from './view-cube';
 
 	interface Props {
@@ -24,7 +25,7 @@
 	data-testid="view-cube"
 	data-facing={facing}
 	role="group"
-	aria-label="Navigateur 3D"
+	aria-label={$t('3D navigator')}
 >
 	<!-- Marge : la projection en perspective déborde de la boîte du cube. -->
 	<div
@@ -50,8 +51,8 @@
 					style:backface-visibility="hidden"
 					data-testid="view-cube-face"
 					data-view={face.view}
-					aria-label={`Vue ${face.label}`}
-					onclick={() => onselect(face.view)}>{face.label}</button
+					aria-label={$t('View {face}', { face: $t(face.label) })}
+					onclick={() => onselect(face.view)}>{$t(face.label)}</button
 				>
 			{/each}
 		</div>
@@ -60,7 +61,7 @@
 		type="button"
 		class="ws-chip px-1.5 py-0 text-2xs"
 		data-testid="view-cube-home"
-		data-tip="Vue par défaut (Ctrl+0)"
+		data-tip={$t('Default view (Ctrl+0)')}
 		data-tip-side="right"
 		onclick={() => onselect('default')}>Iso</button
 	>

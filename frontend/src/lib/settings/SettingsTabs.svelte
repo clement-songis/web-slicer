@@ -68,7 +68,8 @@
 	const variantSource = $derived(
 		valuesByKind ? valuesByKind.filament : kind === 'filament' ? values : null
 	);
-	const variants = $derived(variantLabels(variantSource?.filament_extruder_variant));
+	// Libellés traduits à l'appel : `$locale` pour les recalculer au changement de langue.
+	const variants = $derived($locale ? variantLabels(variantSource?.filament_extruder_variant) : []);
 	let variantIndex = $state(0);
 	const activeVariant = $derived(variantIndex < variants.length ? variantIndex : 0);
 	const variantFor = (sectionKind: PresetKind) =>
@@ -83,12 +84,12 @@
 	});
 
 	const MODES: DisplayMode[] = ['simple', 'advanced', 'expert', 'develop'];
-	/** Libellés FR des modes (les identifiants restent ceux d'Orca, cf. data-testid). */
+	/** Libellés des modes (clés i18n ; les identifiants restent ceux d'Orca, cf. data-testid). */
 	const MODE_LABELS: Record<DisplayMode, string> = {
 		simple: 'Simple',
-		advanced: 'Avancé',
+		advanced: 'Advanced',
 		expert: 'Expert',
-		develop: 'Développeur'
+		develop: 'Developer'
 	};
 
 	/** Slug stable du contrat UI ; la page dynamique mono-extrudeur est « Extruder 1 ». */
@@ -112,9 +113,9 @@
 
 	/** Libellé du type de preset d'une page ou section liée. */
 	const KIND_LABELS: Record<PresetKind, string> = {
-		process: 'Impression',
+		process: 'Process||kind',
 		filament: 'Filament',
-		machine: 'Imprimante'
+		machine: 'Printer'
 	};
 
 	// Pages du type demandé seul, ou pages liées (dépendances inter-presets :
@@ -293,7 +294,7 @@
 
 <div class="flex flex-col gap-3" bind:this={root}>
 	<div class="flex flex-col gap-2">
-		<div class="ws-seg flex w-full flex-wrap" role="group" aria-label="Mode d'affichage">
+		<div class="ws-seg flex w-full flex-wrap" role="group" aria-label={$t('Display mode')}>
 			{#each MODES as m (m)}
 				<button
 					type="button"
@@ -302,23 +303,25 @@
 					aria-pressed={mode === m}
 					class="ws-seg-item flex-1 {mode === m ? 'ws-seg-on' : ''}"
 				>
-					{MODE_LABELS[m]}
+					{$t(MODE_LABELS[m])}
 				</button>
 			{/each}
 		</div>
 		<input
 			type="search"
 			bind:value={query}
-			placeholder="Rechercher un paramètre…"
-			aria-label="Rechercher un paramètre"
+			placeholder={$t('Search a setting…')}
+			aria-label={$t('Search a setting')}
 			class="ws-field w-full px-3"
 		/>
 		{#if variants.length > 1 && (kind === 'filament' || activePage?.kind === 'filament')}
 			<div class="flex flex-col gap-1" data-testid="filament-variant-selector">
 				<span class="text-xs text-content-muted">
-					Variante de buse éditée — les réglages marqués « par buse » ont une valeur par variante.
+					{$t(
+						'Nozzle variant being edited — settings marked “per nozzle” have one value per variant.'
+					)}
 				</span>
-				<div class="ws-seg flex w-full flex-wrap" role="group" aria-label="Variante de buse">
+				<div class="ws-seg flex w-full flex-wrap" role="group" aria-label={$t('Nozzle variant')}>
 					{#each variants as label, i (i)}
 						<button
 							type="button"
@@ -340,7 +343,7 @@
 					<h3 class="ws-section-title mb-1 flex items-center gap-2">
 						{section.title ? $t(section.title) : ''}
 						{#if section.kind !== kind}
-							<span class="ws-badge normal-case">{KIND_LABELS[section.kind]}</span>
+							<span class="ws-badge normal-case">{$t(KIND_LABELS[section.kind])}</span>
 						{/if}
 					</h3>
 				{/if}
@@ -350,7 +353,14 @@
 							{#if valuesByKind}
 								<OptionLine
 									def={PARAMS[option]}
-									bind:value={valuesByKind[section.kind][option]}
+									bind:value={
+										() => valuesByKind?.[section.kind][option],
+										(v) => {
+											// Liaison par fonctions (audit 40 A5) : pas de bind: sur une
+											// propriété non liée par le parent (ownership_invalid_binding).
+											if (valuesByKind) valuesByKind[section.kind][option] = v;
+										}
+									}
 									saved={savedByKind?.[section.kind] ?? null}
 									system={systemByKind?.[section.kind] ?? null}
 									variantIndex={variantFor(section.kind)}
@@ -372,7 +382,7 @@
 	{/snippet}
 
 	{#if pages.length === 0}
-		<p class="py-6 text-center text-sm text-content-subtle">Aucun paramètre ne correspond.</p>
+		<p class="py-6 text-center text-sm text-content-subtle">{$t('No matching setting.')}</p>
 	{:else}
 		{#snippet tabButton(page: LinkedPage)}
 			<button
@@ -393,7 +403,7 @@
 			<div
 				class="flex flex-wrap gap-x-1 gap-y-0.5"
 				role="tablist"
-				aria-label="Onglets {KIND_LABELS[kind]}"
+				aria-label={$t('{kind} tabs', { kind: $t(KIND_LABELS[kind]) })}
 			>
 				{#each ownPages as page (pageSlug(page.title))}
 					{@render tabButton(page)}
@@ -403,16 +413,18 @@
 						type="button"
 						class="ml-auto self-center rounded px-1.5 text-2xs text-content-muted hover:bg-overlay hover:text-content"
 						data-testid="settings-hidden-pages"
-						data-tip="Onglets sans réglage au mode {MODE_LABELS[mode]} : {hiddenPages
-							.map((p) => $t(pageTitle(p.title)))
-							.join(', ')}"
+						data-tip={$t('Tabs without settings in {mode} mode: {pages}', {
+							mode: $t(MODE_LABELS[mode]),
+							pages: hiddenPages.map((p) => $t(pageTitle(p.title))).join(', ')
+						})}
 						onclick={() => {
 							activeSlug = pageSlug(hiddenPages[0].title);
 							mode = revealMode;
 						}}
-						>+{hiddenPages.length} onglet{hiddenPages.length > 1 ? 's' : ''} en mode {MODE_LABELS[
-							revealMode
-						]}</button
+						>{$t(hiddenPages.length > 1 ? '+{n} tabs in {mode} mode' : '+{n} tab in {mode} mode', {
+							n: hiddenPages.length,
+							mode: $t(MODE_LABELS[revealMode])
+						})}</button
 					>
 				{/if}
 			</div>
@@ -420,11 +432,11 @@
 				<div
 					class="flex flex-wrap items-center gap-x-1 gap-y-0.5 border-t border-dashed border-border pt-1"
 					role="tablist"
-					aria-label="Réglages liés : {KIND_LABELS[group.kind]}"
+					aria-label={$t('Linked settings: {kind}', { kind: $t(KIND_LABELS[group.kind]) })}
 					data-linked-kind={group.kind}
 				>
 					<span class="ws-section-title mr-1 text-2xs normal-case">
-						Lié · {KIND_LABELS[group.kind]}
+						{$t('Linked · {kind}', { kind: $t(KIND_LABELS[group.kind]) })}
 					</span>
 					{#each group.pages as page (pageSlug(page.title))}
 						{@render tabButton(page)}
@@ -440,7 +452,7 @@
 					data-testid="settings-loading"
 					role="status"
 				>
-					Chargement des réglages…
+					{$t('Loading settings…')}
 				</p>
 			{/if}
 			<!-- Ne pas démonter les options pendant `/resolved` : leur présence est
@@ -453,7 +465,7 @@
 							class="py-6 text-center text-sm text-content-subtle"
 							data-testid="settings-page-empty"
 						>
-							Aucun paramètre de cet onglet à ce niveau d'affichage.
+							{$t('No setting of this tab at this display level.')}
 							{#if emptyPageMode}
 								<button
 									type="button"
@@ -461,7 +473,7 @@
 									data-testid="settings-page-reveal"
 									onclick={() => {
 										if (emptyPageMode) mode = emptyPageMode;
-									}}>Afficher en mode {MODE_LABELS[emptyPageMode]}</button
+									}}>{$t('Show in {mode} mode', { mode: $t(MODE_LABELS[emptyPageMode]) })}</button
 								>
 							{/if}
 						</p>
@@ -474,7 +486,7 @@
 							<div class="flex flex-col gap-2" data-search-page={pageSlug(page.title)}>
 								<h2 class="text-xs font-semibold text-primary">
 									{$t(pageTitle(page.title))}{#if page.kind !== kind}
-										<span class="ws-badge ml-1 normal-case">{KIND_LABELS[page.kind]}</span>{/if}
+										<span class="ws-badge ml-1 normal-case">{$t(KIND_LABELS[page.kind])}</span>{/if}
 								</h2>
 								{@render pageSections(page.sections)}
 							</div>

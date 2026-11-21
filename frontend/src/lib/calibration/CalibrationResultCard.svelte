@@ -5,6 +5,7 @@
 	// dans l'historique PA — sans calcul à la main (Orca : wiki + saisie manuelle).
 	import { kAtHeight, type CalibrationReading } from './calibration-result';
 	import { parseK } from './pa-history';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		reading: CalibrationReading;
@@ -31,20 +32,22 @@
 <section
 	class="mb-3 rounded-lg border border-border bg-overlay p-3 text-sm"
 	data-testid="calib-result"
-	aria-label="Résultat de la calibration"
+	aria-label={$t('Calibration result')}
 >
 	<h3 class="mb-1 text-xs font-semibold tracking-wide text-content-muted uppercase">
-		Résultat de la calibration
+		{$t('Calibration result')}
 	</h3>
 	{#if reading.kind === 'temp_tower'}
 		<label class="flex flex-col gap-1">
 			<span class="text-xs text-content-subtle"
-				>Après impression : palier le plus net (du bas vers le haut, 10 mm chacun).</span
+				>{$t('After printing: the cleanest step (from bottom to top, 10 mm each).')}</span
 			>
 			<select class="ws-field ws-field-sm" bind:value={tempDraft} data-testid="calib-result-temp">
-				<option value="">Choisir…</option>
-				{#each reading.temperatures as t, i (i)}
-					<option value={String(t)}>Palier {i + 1} — {t} °C</option>
+				<option value="">{$t('Choose…')}</option>
+				{#each reading.temperatures as temperature, i (i)}
+					<option value={String(temperature)}
+						>{$t('Step {n} — {temp} °C', { n: i + 1, temp: temperature })}</option
+					>
 				{/each}
 			</select>
 		</label>
@@ -54,15 +57,20 @@
 				class="ws-btn ws-btn-sm ws-btn-primary"
 				disabled={temp === null}
 				data-testid="calib-result-apply"
-				onclick={() => temp !== null && onapplytemp(temp)}>Appliquer au filament</button
+				onclick={() => temp !== null && onapplytemp(temp)}>{$t('Apply to filament')}</button
 			>
 		</div>
 	{:else}
 		<label class="flex flex-col gap-1">
 			<span class="text-xs text-content-subtle">
 				{reading.kind === 'pa_tower'
-					? `Après impression : hauteur (mm) de la zone la plus nette, de 0 à ${Math.round(reading.maxHeight)}.`
-					: `Après impression : valeur K imprimée à côté du meilleur essai (${reading.start} à ${reading.end}).`}
+					? $t('After printing: height (mm) of the cleanest area, from 0 to {max}.', {
+							max: Math.round(reading.maxHeight)
+						})
+					: $t('After printing: K value printed next to the best test ({start} to {end}).', {
+							start: reading.start,
+							end: reading.end
+						})}
 			</span>
 			<span class="flex items-center gap-2">
 				<input
@@ -70,7 +78,7 @@
 					inputmode="decimal"
 					bind:value={draft}
 					placeholder={reading.kind === 'pa_tower' ? 'mm' : 'K'}
-					aria-label={reading.kind === 'pa_tower' ? 'Hauteur mesurée (mm)' : 'K relevé'}
+					aria-label={reading.kind === 'pa_tower' ? $t('Measured height (mm)') : $t('Measured K')}
 					data-testid="calib-result-input"
 				/>
 				<span class="text-content-muted" data-testid="calib-result-k"
@@ -84,14 +92,14 @@
 				class="ws-btn ws-btn-sm ws-btn-secondary"
 				disabled={k === null}
 				data-testid="calib-result-record"
-				onclick={() => k !== null && onrecordk(k)}>Enregistrer dans l'historique…</button
+				onclick={() => k !== null && onrecordk(k)}>{$t('Save to history…')}</button
 			>
 			<button
 				type="button"
 				class="ws-btn ws-btn-sm ws-btn-primary"
 				disabled={k === null}
 				data-testid="calib-result-apply"
-				onclick={() => k !== null && onapplyk(k)}>Appliquer au filament</button
+				onclick={() => k !== null && onapplyk(k)}>{$t('Apply to filament')}</button
 			>
 		</div>
 	{/if}

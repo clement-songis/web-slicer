@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import {
 	convertScale,
 	convertedFrom,
@@ -21,6 +22,10 @@ function cube(side: number) {
 	];
 	return { positions: new Float32Array(v), indices: new Uint32Array(f) };
 }
+
+// Messages attendus en français (langue des tests).
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('conversion d’unités (Orca Model.cpp:830-872)', () => {
 	it('volume d’un maillage fermé', () => {

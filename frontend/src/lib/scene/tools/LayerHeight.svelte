@@ -13,6 +13,7 @@
 		type LayerBand
 	} from './layer-height';
 	import { LayerBrushDriver, actionFor } from './layer-brush';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		profile: LayerBand[];
@@ -104,7 +105,7 @@
 		class="h-40 w-16 rounded border border-border bg-surface-raised"
 		class:cursor-crosshair={!!onbrush}
 		role="slider"
-		aria-label="Pinceau de hauteur de couche (gauche affine, droit épaissit, Maj réduit/lisse)"
+		aria-label={$t('Layer height brush (left thins, right thickens, Shift reduces/smooths)')}
 		aria-valuemin={0}
 		aria-valuemax={zMax}
 		aria-valuenow={0}
@@ -125,7 +126,7 @@
 	<div class="flex flex-1 flex-col gap-2">
 		<div class="grid grid-cols-3 gap-1">
 			<label class="flex flex-col">
-				<span class="text-content-muted">Z de</span>
+				<span class="text-content-muted">{$t('Z from')}</span>
 				<input
 					type="number"
 					min={0}
@@ -136,7 +137,7 @@
 				/>
 			</label>
 			<label class="flex flex-col">
-				<span class="text-content-muted">Z à</span>
+				<span class="text-content-muted">{$t('Z to')}</span>
 				<input
 					type="number"
 					min={0}
@@ -147,7 +148,7 @@
 				/>
 			</label>
 			<label class="flex flex-col">
-				<span class="text-content-muted">Hauteur</span>
+				<span class="text-content-muted">{$t('Height')}</span>
 				<input
 					type="number"
 					min={DEFAULT_MIN_HEIGHT}
@@ -161,7 +162,7 @@
 
 		{#if onbrush}
 			<label class="flex flex-col">
-				<span class="text-content-muted">Bande du pinceau (mm) — sur la courbe</span>
+				<span class="text-content-muted">{$t('Brush band (mm) — on the curve')}</span>
 				<input
 					type="number"
 					min={1.5}
@@ -176,7 +177,7 @@
 		{#if onadaptive || onsmooth}
 			<div class="grid grid-cols-3 gap-1">
 				<label class="flex flex-col">
-					<span class="text-content-muted">Qualité</span>
+					<span class="text-content-muted">{$t('Quality')}</span>
 					<input
 						type="number"
 						min={0}
@@ -187,7 +188,7 @@
 					/>
 				</label>
 				<label class="flex flex-col">
-					<span class="text-content-muted">Rayon</span>
+					<span class="text-content-muted">{$t('Radius')}</span>
 					<input
 						type="number"
 						min={1}
@@ -199,7 +200,7 @@
 				</label>
 				<label class="flex items-end gap-1">
 					<input type="checkbox" bind:checked={keepMin} />
-					<span class="text-content-muted">Garder min</span>
+					<span class="text-content-muted">{$t('Keep min')}</span>
 				</label>
 			</div>
 		{/if}
@@ -208,14 +209,14 @@
 			<button
 				type="button"
 				class="ws-btn ws-btn-primary"
-				onclick={() => onchange(setBand(profile, z0, z1, bandHeight))}>Appliquer la bande</button
+				onclick={() => onchange(setBand(profile, z0, z1, bandHeight))}>{$t('Apply band')}</button
 			>
 			{#if onadaptive}
 				<button
 					type="button"
 					disabled={busy}
 					class="ws-btn ws-btn-secondary"
-					onclick={() => run(() => onadaptive(quality))}>Adaptatif</button
+					onclick={() => run(() => onadaptive(quality))}>{$t('Adaptive')}</button
 				>
 			{/if}
 			<button
@@ -224,12 +225,12 @@
 				class="ws-btn ws-btn-secondary"
 				onclick={() =>
 					onsmooth ? run(() => onsmooth(radius, keepMin)) : onchange(smooth(profile, 0.5))}
-				>Lisser</button
+				>{$t('Smooth||verb')}</button
 			>
 			<button
 				type="button"
 				class="ws-btn ws-btn-secondary"
-				onclick={() => onchange(uniformProfile(zMax, baseHeight))}>Réinitialiser</button
+				onclick={() => onchange(uniformProfile(zMax, baseHeight))}>{$t('Reset')}</button
 			>
 		</div>
 	</div>

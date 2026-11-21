@@ -3,6 +3,7 @@
 	// liens Récent / Imprimantes / File + thème + déconnexion. Montée par la
 	// bibliothèque, la page imprimantes et la file pour garder le menu partout.
 	import { goto } from '$app/navigation';
+	import { t, tr } from '$lib/i18n';
 	import { resolve } from '$app/paths';
 	import { currentUser, logout } from '$lib/api/session';
 	import { deleteAccount } from '$lib/api/auth';
@@ -44,7 +45,7 @@
 			await logout();
 			await goto(resolve('/login'));
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'Erreur inattendue';
+			error = err instanceof Error ? err.message : tr('Unexpected error');
 		} finally {
 			busy = false;
 		}
@@ -67,10 +68,10 @@
 		} catch (err) {
 			deleteError =
 				err instanceof ApiError && err.status === 401
-					? 'Mot de passe incorrect.'
+					? tr('Incorrect password.')
 					: err instanceof Error
 						? err.message
-						: 'Suppression impossible';
+						: tr('Could not delete');
 		} finally {
 			busy = false;
 		}
@@ -111,7 +112,7 @@
 			await changePassword({ current_password: currentPassword, new_password: nextPassword });
 			passwordMsg = {
 				ok: true,
-				text: 'Mot de passe changé. Vos autres sessions ont été déconnectées.'
+				text: tr('Password changed. Your other sessions have been signed out.')
 			};
 			currentPassword = nextPassword = confirmPassword = '';
 			changing = false;
@@ -136,7 +137,7 @@
 	<details class="relative border-b border-border p-3" data-testid="user-menu">
 		<summary
 			class="flex cursor-pointer list-none items-center gap-3 rounded p-2 hover:bg-overlay"
-			aria-label="Menu utilisateur"
+			aria-label={$t('User menu')}
 			onclick={refreshUsage}
 		>
 			<span
@@ -146,7 +147,7 @@
 				{email.charAt(0).toUpperCase()}
 			</span>
 			<span class="min-w-0 flex-1">
-				<span class="block text-sm font-semibold text-content">Mon compte</span>
+				<span class="block text-sm font-semibold text-content">{$t('My account')}</span>
 				<span class="block truncate text-xs text-content-muted" title={email}>{email}</span>
 			</span>
 			<IconChevronDown class="h-4 w-4 shrink-0 text-content-muted" aria-hidden="true" />
@@ -157,7 +158,7 @@
 			{#if usage && lines && storageGauge}
 				<div class="flex flex-col gap-1 px-3 py-2 text-xs" data-testid="account-usage">
 					<div class="flex justify-between gap-2">
-						<span class="text-content-muted">Stockage</span>
+						<span class="text-content-muted">{$t('Storage')}</span>
 						<span class="tabular-nums text-content" data-testid="account-usage-storage"
 							>{lines.storage}</span
 						>
@@ -166,7 +167,7 @@
 						<div
 							class="h-1.5 overflow-hidden rounded-full bg-overlay"
 							role="meter"
-							aria-label="Stockage utilisé"
+							aria-label={$t('Storage used')}
 							aria-valuemin="0"
 							aria-valuemax="100"
 							aria-valuenow={Math.round(storageGauge.percent)}
@@ -182,7 +183,7 @@
 						</div>
 					{/if}
 					<div class="flex justify-between gap-2">
-						<span class="text-content-muted">Tranchages</span>
+						<span class="text-content-muted">{$t('Slices')}</span>
 						<span class="text-right tabular-nums text-content" data-testid="account-usage-slices"
 							>{lines.slices}</span
 						>
@@ -197,7 +198,7 @@
 						changing = true;
 						passwordMsg = null;
 					}}
-					data-testid="account-password-open">Changer mon mot de passe…</button
+					data-testid="account-password-open">{$t('Change my password…')}</button
 				>
 			{:else}
 				<form
@@ -209,44 +210,44 @@
 					<!-- Libellés visibles (le menu est étroit : un texte indicatif serait
 					     tronqué et disparaîtrait à la saisie). -->
 					<label class="flex flex-col gap-0.5 text-content-muted">
-						Mot de passe actuel
+						{$t('Current password')}
 						<input
 							type="password"
 							class="ws-field ws-field-sm w-full"
-							aria-label="Mot de passe actuel"
+							aria-label={$t('Current password')}
 							autocomplete="current-password"
 							bind:value={currentPassword}
 						/>
 					</label>
 					<label class="flex flex-col gap-0.5 text-content-muted">
 						<span
-							>Nouveau mot de passe <span class="text-content-subtle">(8 caractères min.)</span
-							></span
+							>{$t('New password')}
+							<span class="text-content-subtle">{$t('(8 characters min.)')}</span></span
 						>
 						<input
 							type="password"
 							class="ws-field ws-field-sm w-full"
-							aria-label="Nouveau mot de passe"
+							aria-label={$t('New password')}
 							autocomplete="new-password"
 							bind:value={nextPassword}
 						/>
 					</label>
 					<label class="flex flex-col gap-0.5 text-content-muted">
-						Confirmer le nouveau mot de passe
+						{$t('Confirm the new password')}
 						<input
 							type="password"
 							class="ws-field ws-field-sm w-full"
-							aria-label="Confirmer le nouveau mot de passe"
+							aria-label={$t('Confirm the new password')}
 							autocomplete="new-password"
 							bind:value={confirmPassword}
 						/>
 					</label>
 					<div class="flex gap-1">
 						<button type="submit" class="ws-btn ws-btn-sm ws-btn-primary flex-1" disabled={busy}
-							>Changer</button
+							>{$t('Change')}</button
 						>
 						<button type="button" class="ws-btn ws-btn-sm ws-btn-secondary" onclick={cancelPassword}
-							>Annuler</button
+							>{$t('Cancel')}</button
 						>
 					</div>
 				</form>
@@ -261,7 +262,7 @@
 				</p>
 			{/if}
 			<button onclick={signOut} disabled={busy} class="ws-menu-item rounded-md py-2">
-				{busy ? 'Déconnexion…' : 'Déconnexion'}
+				{busy ? $t('Signing out…') : $t('Sign out')}
 			</button>
 			{#if error}
 				<p class="px-3 py-2 text-xs text-danger" role="alert">{error}</p>
@@ -273,18 +274,18 @@
 					onclick={() => (deleting = true)}
 					data-testid="account-delete-open"
 				>
-					Supprimer mon compte…
+					{$t('Delete my account…')}
 				</button>
 			{:else}
 				<form class="flex flex-col gap-2 px-2 py-2 text-xs" onsubmit={removeAccount}>
 					<p class="text-content-muted">
-						Supprime définitivement le compte, ses projets, modèles et G-code.
+						{$t('Permanently deletes the account, its projects, models and G-code.')}
 					</p>
 					<input
 						type="password"
 						class="ws-field ws-field-sm w-full"
-						placeholder="Mot de passe"
-						aria-label="Mot de passe pour confirmer"
+						placeholder={$t('Password')}
+						aria-label={$t('Password to confirm')}
 						autocomplete="current-password"
 						bind:value={deletePassword}
 						required
@@ -294,7 +295,7 @@
 						<button
 							type="submit"
 							class="ws-btn ws-btn-sm ws-btn-danger flex-1"
-							disabled={busy || !deletePassword}>Supprimer</button
+							disabled={busy || !deletePassword}>{$t('Delete')}</button
 						>
 						<button
 							type="button"
@@ -303,7 +304,7 @@
 								deleting = false;
 								deletePassword = '';
 								deleteError = null;
-							}}>Annuler</button
+							}}>{$t('Cancel')}</button
 						>
 					</div>
 				</form>
@@ -316,21 +317,24 @@
 			class={active === 'recent' ? ACTIVE : IDLE}
 			aria-current={active === 'recent' ? 'page' : undefined}
 		>
-			<IconClock class="h-4 w-4" /> Récent
+			<IconClock class="h-4 w-4" />
+			{$t('Recent')}
 		</a>
 		<a
 			href={resolve('/printers')}
 			class={active === 'printers' ? ACTIVE : IDLE}
 			aria-current={active === 'printers' ? 'page' : undefined}
 		>
-			<IconPrinter class="h-4 w-4" /> Imprimantes
+			<IconPrinter class="h-4 w-4" />
+			{$t('Printers')}
 		</a>
 		<a
 			href={resolve('/queue')}
 			class={active === 'queue' ? ACTIVE : IDLE}
 			aria-current={active === 'queue' ? 'page' : undefined}
 		>
-			<IconQueue class="h-4 w-4" /> File de tranchage
+			<IconQueue class="h-4 w-4" />
+			{$t('Slicing queue')}
 		</a>
 		{#if $currentUser?.role === 'admin'}
 			<a
@@ -339,7 +343,8 @@
 				aria-current={active === 'admin' ? 'page' : undefined}
 				data-testid="nav-admin"
 			>
-				<IconShield class="h-4 w-4" /> Administration
+				<IconShield class="h-4 w-4" />
+				{$t('Administration')}
 			</a>
 		{/if}
 		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->

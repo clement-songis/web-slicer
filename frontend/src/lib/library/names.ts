@@ -4,11 +4,12 @@
 // l'erreur SQL brute. Orca n'a pas de bibliothèque à noms uniques ; comme un
 // gestionnaire de fichiers, on suffixe « (2) », « (3) »…
 import { ApiError } from '$lib/api/client';
+import { tr } from '$lib/i18n';
 
 /** Nom libre dérivé de `base` : `base`, puis `base (2)`, `base (3)`… La
  *  comparaison est exacte (la contrainte SQLite est sensible à la casse). */
 export function uniqueProjectName(base: string, taken: Iterable<string>): string {
-	const name = base.trim() || 'Sans titre';
+	const name = base.trim() || tr('Untitled');
 	const used = new Set(taken);
 	if (!used.has(name)) return name;
 	// « cube (2) » renommé encore : repart de la racine « cube ».
@@ -36,6 +37,9 @@ export function nameSuggestion(err: unknown): string | null {
 /** Message lisible pour un renommage refusé car le nom est déjà pris. */
 export function nameTakenMessage(name: string, suggestion?: string | null): string {
 	return suggestion
-		? `Un autre projet s'appelle déjà « ${name} ». Nom libre proposé : « ${suggestion} ».`
-		: `Un autre projet s'appelle déjà « ${name} ». Choisissez un autre nom.`;
+		? tr('Another project is already named “{name}”. Suggested free name: “{suggestion}”.', {
+				name,
+				suggestion
+			})
+		: tr('Another project is already named “{name}”. Choose another name.', { name });
 }

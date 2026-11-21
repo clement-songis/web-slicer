@@ -50,7 +50,7 @@ test('export des trajets en OBJ @F:editor.export-toolpaths-obj', async ({ page }
 	await openGcode(page);
 	const [dl] = await Promise.all([
 		page.waitForEvent('download'),
-		menu(page, FILE, /toolpaths/i, /^(export|exporter)\b/i)
+		menu(page, FILE, /toolpaths|trajectoires/i, /^(export|exporter)\b/i)
 	]);
 	expect(dl.suggestedFilename()).toMatch(/\.obj$/);
 	const text = readFileSync((await dl.path()) as string, 'utf8');

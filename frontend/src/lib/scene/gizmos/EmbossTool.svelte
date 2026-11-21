@@ -4,6 +4,7 @@
 	// (profils extrudés par libslic3r, Format/svg.cpp).
 	import { untrack } from 'svelte';
 	import { defaultEmbossParams, validateEmboss, type EmbossParams } from './emboss';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		onsubmit: (params: EmbossParams) => void;
@@ -46,7 +47,10 @@
 	$effect(() => {
 		if (fonts.length > 0 && !fonts.some((f) => f.id === params.font)) params.font = fonts[0].id;
 	});
-	const error = $derived(validateEmboss(params));
+	const error = $derived.by(() => {
+		void $t; // message traduit : se réévalue au changement de langue
+		return validateEmboss(params);
+	});
 
 	// Sélecteur SVG (phase 26) : bouton stylé au lieu du « Choose File » natif
 	// (anglais dans l'UI française) + aperçu de la forme ; la source brute reste
@@ -63,11 +67,11 @@
 
 <div class="flex flex-col gap-2 text-sm">
 	<div class="flex items-center gap-2">
-		<span class="text-content-muted">Source</span>
+		<span class="text-content-muted">{$t('Source')}</span>
 		<button
 			type="button"
 			class="ws-chip {params.source === 'text' ? 'ws-chip-on' : ''}"
-			onclick={() => (params.source = 'text')}>Texte</button
+			onclick={() => (params.source = 'text')}>{$t('Text')}</button
 		>
 		<button
 			type="button"
@@ -78,11 +82,11 @@
 
 	{#if params.source === 'text'}
 		<label class="flex flex-col gap-1">
-			<span class="text-content-muted">Texte</span>
+			<span class="text-content-muted">{$t('Text')}</span>
 			<input bind:value={params.text} data-testid="emboss-text" class="ws-field ws-field-sm" />
 		</label>
 		<label class="flex items-center justify-between gap-2">
-			<span class="text-content-muted">Police</span>
+			<span class="text-content-muted">{$t('Font')}</span>
 			<select bind:value={params.font} data-testid="emboss-font" class="ws-field ws-field-sm">
 				{#each fonts as f (f.id)}
 					<option value={f.id}>{f.label}</option>
@@ -90,7 +94,7 @@
 			</select>
 		</label>
 		<label class="flex items-center justify-between gap-2">
-			<span class="text-content-muted">Graisse (mm)</span>
+			<span class="text-content-muted">{$t('Boldness (mm)')}</span>
 			<input
 				type="number"
 				min={-2}
@@ -102,7 +106,7 @@
 			/>
 		</label>
 		<label class="flex items-center justify-between gap-2">
-			<span class="text-content-muted">Taille de police (mm)</span>
+			<span class="text-content-muted">{$t('Font size (mm)')}</span>
 			<input
 				type="number"
 				min={0.1}
@@ -113,7 +117,7 @@
 		</label>
 	{:else}
 		<div class="flex flex-col gap-1">
-			<span class="text-content-muted">Forme SVG</span>
+			<span class="text-content-muted">{$t('SVG shape')}</span>
 			<input
 				bind:this={svgInput}
 				type="file"
@@ -135,27 +139,27 @@
 					type="button"
 					class="ws-btn ws-btn-secondary"
 					data-testid="emboss-svg-pick"
-					onclick={() => svgInput?.click()}>Choisir un fichier SVG…</button
+					onclick={() => svgInput?.click()}>{$t('Choose an SVG file…')}</button
 				>
 				<span class="min-w-0 truncate text-xs text-content-subtle" data-testid="emboss-svg-name"
-					>{svgFileName ?? (params.svg.trim() ? 'SVG collé' : 'Aucun fichier')}</span
+					>{svgFileName ?? (params.svg.trim() ? $t('Pasted SVG') : $t('No file'))}</span
 				>
 			</div>
 			{#if svgPreview}
 				<img
 					src={svgPreview}
-					alt="Aperçu de la forme SVG"
+					alt={$t('SVG shape preview')}
 					data-testid="emboss-svg-preview"
 					class="h-24 w-full rounded border border-border bg-surface-sunken object-contain p-1"
 				/>
 			{/if}
 			<details class="text-xs">
-				<summary class="cursor-pointer text-content-subtle">Source SVG (coller)</summary>
+				<summary class="cursor-pointer text-content-subtle">{$t('SVG source (paste)')}</summary>
 				<textarea
 					bind:value={params.svg}
 					data-testid="emboss-svg"
 					rows="3"
-					aria-label="Source SVG"
+					aria-label={$t('SVG source')}
 					class="ws-field ws-field-sm mt-1 w-full font-mono"></textarea>
 			</details>
 		</div>
@@ -163,7 +167,7 @@
 
 	{#if params.source === 'svg'}
 		<label class="flex items-center justify-between gap-2">
-			<span class="text-content-muted">Largeur (mm)</span>
+			<span class="text-content-muted">{$t('Width (mm)')}</span>
 			<input
 				type="number"
 				min={1}
@@ -176,7 +180,7 @@
 	{/if}
 
 	<label class="flex items-center justify-between gap-2">
-		<span class="text-content-muted">Profondeur (mm)</span>
+		<span class="text-content-muted">{$t('Depth (mm)')}</span>
 		<input
 			type="number"
 			min={0.1}
@@ -189,7 +193,7 @@
 
 	{#if editing}
 		<p class="text-xs text-content-subtle" data-testid="emboss-editing">
-			Modification du relief existant : il est régénéré à la même place.
+			{$t('Editing the existing emboss: it is regenerated in the same place.')}
 		</p>
 	{:else}
 		<label class="flex items-center gap-2">
@@ -200,14 +204,14 @@
 				data-testid="emboss-raised"
 			/>
 			<span class="text-content-muted"
-				>En relief (décoché : gravé en creux dans l’objet sélectionné)</span
+				>{$t('Embossed (unchecked: engraved into the selected object)')}</span
 			>
 		</label>
 
 		{#if canEngrave && params.embossed}
 			<label class="flex items-center gap-2">
 				<input type="checkbox" bind:checked={params.onObject} data-testid="emboss-on-object" />
-				<span class="text-content-muted">Sur l’objet sélectionné (pièce posée sur le dessus)</span>
+				<span class="text-content-muted">{$t('On the selected object (part placed on top)')}</span>
 			</label>
 		{/if}
 	{/if}
@@ -224,21 +228,23 @@
 		onclick={() => onsubmit($state.snapshot(params))}
 		>{busy
 			? editing
-				? 'Mise à jour…'
-				: 'Création…'
+				? $t('Updating…')
+				: $t('Creating…')
 			: editing
-				? 'Appliquer'
-				: 'Créer l’objet'}</button
+				? $t('Apply')
+				: $t('Create object')}</button
 	>
 	{#if editing}
 		<button
 			type="button"
 			class="ws-btn ws-btn-secondary self-start"
 			data-testid="emboss-cancel"
-			onclick={() => oncancel?.()}>Annuler</button
+			onclick={() => oncancel?.()}>{$t('Cancel')}</button
 		>
 	{/if}
 	{#if !available}
-		<p class="text-content-subtle">La création de volume nécessite le moteur (à venir).</p>
+		<p class="text-content-subtle">
+			{$t('Volume creation requires the engine (coming soon).')}
+		</p>
 	{/if}
 </div>

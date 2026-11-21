@@ -4,6 +4,7 @@
 	// `job.finished`, FR-031). La logique de file est pure (`lib/queue/queue.ts`) ;
 	// cette page orchestre chargement, abonnement et actions.
 	import { onMount } from 'svelte';
+	import { t, tr } from '$lib/i18n';
 	import { ApiError } from '$lib/api/client';
 	import { cancelJob, getJob, listJobs } from '$lib/api/jobs';
 	import { resolve } from '$app/paths';
@@ -42,7 +43,7 @@
 	const projectNames = $derived(
 		Object.fromEntries((data.projects ?? []).map((p) => [p.id, p.name])) as Record<string, string>
 	);
-	const projectName = (id: string) => projectNames[id] ?? 'Projet';
+	const projectName = (id: string) => projectNames[id] ?? $t('Project');
 
 	// Phase 32 : resynchronisation après une coupure (événements perdus) et
 	// jobs inconnus (lancés depuis un autre onglet après le chargement).
@@ -106,7 +107,7 @@
 			const updated = await cancelJob(id);
 			jobs = jobs.map((j) => (j.id === updated.id ? updated : j));
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Annulation impossible';
+			error = e instanceof ApiError ? e.message : tr('Could not cancel');
 		} finally {
 			busy = { ...busy, [id]: false };
 		}
@@ -122,9 +123,9 @@
 				gcode_id: job.gcode_id,
 				start_now: sendStart[job.id] ?? false
 			});
-			sent = { ...sent, [job.id]: 'Envoyé à l’imprimante' };
+			sent = { ...sent, [job.id]: tr('Sent to printer') };
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Envoi impossible';
+			error = e instanceof ApiError ? e.message : tr('Could not send');
 		} finally {
 			busy = { ...busy, [job.id]: false };
 		}
@@ -136,13 +137,13 @@
 	}
 </script>
 
-<svelte:head><title>File de tranchage</title></svelte:head>
+<svelte:head><title>{$t('Slicing queue')}</title></svelte:head>
 
 <div class="flex h-screen bg-surface text-content">
 	<AppSidebar email={data.user.email} active="queue" />
 	<div class="flex-1 overflow-auto">
 		<main class="mx-auto flex max-w-3xl flex-col gap-6 p-6 text-content">
-			<h1 class="ws-page-title">File de tranchage</h1>
+			<h1 class="ws-page-title">{$t('Slicing queue')}</h1>
 
 			{#if error}
 				<p class="rounded bg-danger-soft px-3 py-2 text-danger-content" role="alert">{error}</p>
@@ -150,16 +151,16 @@
 
 			{#if justFinished}
 				<p class="rounded bg-success-soft px-3 py-2 text-success-content" role="status">
-					Tranchage terminé — G-code disponible.
+					{$t('Slicing complete — G-code available.')}
 				</p>
 			{/if}
 
 			<!-- File active -->
-			<section class="flex flex-col gap-2" aria-label="File active">
-				<h2 class="ws-section-title">En cours ({parts.active.length})</h2>
+			<section class="flex flex-col gap-2" aria-label={$t('Active queue')}>
+				<h2 class="ws-section-title">{$t('In progress ({n})', { n: parts.active.length })}</h2>
 				{#if parts.active.length === 0}
 					<p class="ws-empty rounded-lg border border-dashed border-border py-6">
-						Aucun tranchage en cours.
+						{$t('No slicing in progress.')}
 					</p>
 				{:else}
 					{#each parts.active as job (job.id)}
@@ -168,9 +169,12 @@
 								class="rounded px-2 py-0.5 text-xs {statusMeta(job.status).badge}"
 								data-testid="queue-status"
 							>
-								{statusMeta(job.status).label}{#if positions[job.id]}&nbsp;· n°&nbsp;{positions[
-										job.id
-									]}{/if}
+								{statusMeta(job.status).label}{#if positions[job.id]}&nbsp;· {$t(
+										'#{n}||queue position',
+										{
+											n: positions[job.id]
+										}
+									)}{/if}
 							</span>
 							<div class="flex min-w-0 flex-1 flex-col gap-1">
 								<div class="flex justify-between gap-2 text-sm">
@@ -180,7 +184,8 @@
 										data-testid="queue-job-project"
 										title={projectName(job.project_id)}
 										>{projectName(job.project_id)}
-										<span class="text-content-muted">· Plateau {Number(job.plate_index) + 1}</span
+										<span class="text-content-muted"
+											>· {$t('Plate {n}', { n: Number(job.plate_index) + 1 })}</span
 										></a
 									>
 									<span class="tabular-nums text-content-muted">{progressPercent(job)}%</span>
@@ -190,9 +195,11 @@
 								</div>
 								{#if job.status === 'queued'}
 									<span class="text-xs text-content-subtle"
-										>En attente : {positions[job.id] === 1
-											? 'démarre dès qu’un tranchage se termine'
-											: `${(positions[job.id] ?? 1) - 1} tranchage(s) avant celui-ci`}</span
+										>{positions[job.id] === 1
+											? $t('Waiting: starts as soon as a slice finishes')
+											: $t('Waiting: {n} slice(s) ahead of this one', {
+													n: (positions[job.id] ?? 1) - 1
+												})}</span
 									>
 								{:else if job.phase}<span class="text-xs text-content-subtle"
 										>{phaseLabel(job.phase)}</span
@@ -204,7 +211,7 @@
 								disabled={busy[job.id]}
 								onclick={() => cancel(job.id)}
 							>
-								Annuler
+								{$t('Cancel')}
 							</button>
 						</article>
 					{/each}
@@ -212,23 +219,23 @@
 			</section>
 
 			<!-- Historique -->
-			<section class="flex flex-col gap-2" aria-label="Historique">
+			<section class="flex flex-col gap-2" aria-label={$t('History')}>
 				<h2 class="ws-section-title">
-					Historique ({parts.history.length})
+					{$t('History ({n})', { n: parts.history.length })}
 				</h2>
 				{#if parts.history.length === 0}
 					<p class="ws-empty rounded-lg border border-dashed border-border py-6">
-						Aucun tranchage terminé.
+						{$t('No completed slices.')}
 					</p>
 				{:else}
 					<table class="w-full border-collapse text-sm">
 						<thead>
 							<tr class="text-left text-xs text-content-muted">
-								<th class="font-normal">État</th>
-								<th class="font-normal">Projet</th>
-								<th class="font-normal">Plateau</th>
-								<th class="font-normal">Date</th>
-								<th class="font-normal">Résultat</th>
+								<th class="font-normal">{$t('Status')}</th>
+								<th class="font-normal">{$t('Project')}</th>
+								<th class="font-normal">{$t('Plate')}</th>
+								<th class="font-normal">{$t('Date')}</th>
+								<th class="font-normal">{$t('Result')}</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -258,7 +265,7 @@
 													href="/api/gcodes/{job.gcode_id}/download"
 													download
 												>
-													Télécharger
+													{$t('Download')}
 												</a>
 												<!-- eslint-enable svelte/no-navigation-without-resolve -->
 												{#if printers.length > 0}
@@ -267,7 +274,7 @@
 														<select
 															class="ws-field ws-field-sm"
 															bind:value={sendTarget[job.id]}
-															aria-label="Imprimante cible"
+															aria-label={$t('Target printer')}
 														>
 															{#each printers as printer (printer.id)}
 																<option value={printer.id}>{printer.name}</option>
@@ -275,7 +282,7 @@
 														</select>
 														<label class="flex items-center gap-1 text-content-muted">
 															<input type="checkbox" bind:checked={sendStart[job.id]} />
-															Démarrer
+															{$t('Start')}
 														</label>
 														<button
 															type="button"
@@ -283,7 +290,7 @@
 															disabled={busy[job.id]}
 															onclick={() => sendToPrinter(job)}
 														>
-															Envoyer
+															{$t('Send')}
 														</button>
 													</div>
 													{#if sent[job.id]}
@@ -293,7 +300,9 @@
 											</div>
 										{:else if job.status === 'failed'}
 											<span class="text-danger" data-testid="queue-job-error"
-												>Échec{jobErrorText(job.error) ? ` : ${jobErrorText(job.error)}` : ''}</span
+												>{jobErrorText(job.error)
+													? $t('Failed: {error}', { error: jobErrorText(job.error) })
+													: $t('Failed||job')}</span
 											>
 										{:else}
 											<span class="text-content-subtle">—</span>

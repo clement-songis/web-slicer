@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { locale, numberLocale, t } from '$lib/i18n';
 	// Tableau « Filament » d'Orca (GCodeViewer::render_legend / render_all_plates_stats,
 	// lot 31) : une ligne par filament utilisé, colonnes Modèle / Support / Purge /
 	// Tour affichées seulement si un filament en consomme, puis Total ; chaque
@@ -18,7 +19,7 @@
 	let { table, testid = 'filament-table' }: Props = $props();
 	const columns = $derived(visibleFilamentColumns(table));
 	const n2 = (v: number) =>
-		v.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+		v.toLocaleString(numberLocale($locale), { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 	const used = (u: FilamentUsage | undefined): u is FilamentUsage => !!u && (u.m > 0 || u.g > 0);
 </script>
 
@@ -34,11 +35,11 @@
 <table class="w-full border-collapse text-xs" data-testid={testid}>
 	<thead>
 		<tr class="text-content-muted">
-			<th class="text-left font-normal">Filament</th>
+			<th class="text-left font-normal">{$t('Filament')}</th>
 			{#each columns as c (c)}
-				<th class="pl-2 text-right font-normal" data-column={c}>{FILAMENT_COLUMN_LABELS[c]}</th>
+				<th class="pl-2 text-right font-normal" data-column={c}>{$t(FILAMENT_COLUMN_LABELS[c])}</th>
 			{/each}
-			<th class="pl-2 text-right font-normal">Total</th>
+			<th class="pl-2 text-right font-normal">{$t('Total')}</th>
 		</tr>
 	</thead>
 	<tbody>

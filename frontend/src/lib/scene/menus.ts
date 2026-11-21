@@ -281,7 +281,9 @@ export const PLATE_CONTEXT_ITEMS: ObjectMenuEntry[] = [
 
 /** Menu contextuel d'un slot filament (`create_filament_action_menu`). */
 export const FILAMENT_CONTEXT_ITEMS: ObjectMenuEntry[] = [
-	{ label: 'Edit', action: 'filament.edit' },
+	// « Edit » du menu filament = verbe (Orca : « Éditer »), distinct du menu
+	// principal « Edit » (« Édition ») : clé à contexte, affichée « Edit » en anglais.
+	{ label: 'Edit||filament', action: 'filament.edit' },
 	{ label: 'Delete', action: 'filament.delete' }
 ];
 

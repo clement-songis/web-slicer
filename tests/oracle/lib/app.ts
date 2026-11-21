@@ -187,7 +187,7 @@ export async function readControl(control: ReturnType<Page['locator']>): Promise
 
 /** Égalité tolérante au formatage numérique (« 0.20 » == « 0.2 », « 50 % » == « 50% »). */
 export function looseEqual(a: string, b: string): boolean {
-	const norm = (s: string) => s.replace(/\s+/g, '').toLowerCase();
+	const norm = (s: string) => s.replace(/\s+/g, '').replace(/(\d),(\d)/g, '$1.$2').toLowerCase();
 	if (norm(a) === norm(b)) return true;
 	const na = Number(norm(a).replace(/%$/, ''));
 	const nb = Number(norm(b).replace(/%$/, ''));

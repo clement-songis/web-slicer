@@ -1,3 +1,5 @@
+import { tr } from '$lib/i18n';
+
 // Nom de fichier sûr pour les téléchargements. L'export STL / DRC est calculé
 // côté serveur par libslic3r (POST /api/projects/{id}/export/{stl,drc},
 // Plater::export_stl d'Orca) ; l'ancien encodeur STL TS a été retiré.
@@ -8,6 +10,6 @@ export function safeFileName(name: string, extension: string): string {
 		name
 			.replace(/\.[a-z0-9]+$/i, '')
 			.replace(/[\\/:*?"<>|]+/g, '_')
-			.trim() || 'objet';
+			.trim() || tr('object');
 	return `${base}.${extension}`;
 }

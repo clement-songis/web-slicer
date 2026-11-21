@@ -51,8 +51,8 @@ test('Édition › Dupliquer le plateau courant : copie active avec ses objets @
 	// L'objet est listé avant la fin de l'upload : la duplication refuse les objets sans modèle serveur.
 	await expect(page.getByTestId('import-status')).toHaveCount(0, { timeout: 60_000 });
 
-	await page.getByRole('button', { name: 'Edit', exact: true }).click();
-	await page.getByRole('menuitem', { name: 'Duplicate Current Plate' }).click();
+	await page.getByRole('button', { name: 'Édition', exact: true }).click();
+	await page.getByRole('menuitem', { name: 'Dupliquer le plateau courant' }).click();
 
 	// La barre de plateaux vit dans l'onglet « Objets » de la colonne de configuration.
 	await page.getByRole('button', { name: 'Objets', exact: true }).click();

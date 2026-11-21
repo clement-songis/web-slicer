@@ -3,7 +3,7 @@
 	// onglets : Général, Caméra et souris, Comportement, Presets. Chaque réglage
 	// s'applique immédiatement et est mémorisé pour l'utilisateur connecté.
 	import { THEME_PREFS, themePref, setTheme, type ThemePref } from '$lib/theme';
-	import { LOCALES, languageName, locale, setLocale, type Locale } from '$lib/i18n';
+	import { LOCALES, fmtNum, languageName, locale, setLocale, t, type Locale } from '$lib/i18n';
 	import {
 		CAMERA_DEFAULTS,
 		REMEMBERED_CHOICES,
@@ -37,35 +37,35 @@
 
 	type TabId = 'general' | 'camera' | 'behaviour' | 'presets' | 'graphics';
 	const TABS: { id: TabId; label: string }[] = [
-		{ id: 'general', label: 'Général' },
-		{ id: 'camera', label: 'Caméra et souris' },
-		{ id: 'behaviour', label: 'Comportement' },
+		{ id: 'general', label: 'General' },
+		{ id: 'camera', label: 'Camera & Mouse' },
+		{ id: 'behaviour', label: 'Behaviour' },
 		{ id: 'presets', label: 'Presets' },
 		// Orca Preferences › Graphismes, réduit à ce qui a un sens dans un navigateur.
-		{ id: 'graphics', label: 'Graphismes' }
+		{ id: 'graphics', label: 'Graphics' }
 	];
 	const FPS_CAPS = [0, 30, 60, 120];
 	let tab = $state<TabId>('general');
 
 	const themeLabels: Record<ThemePref, string> = {
-		light: 'Clair',
-		dark: 'Sombre',
-		system: 'Système'
+		light: 'Light',
+		dark: 'Dark',
+		system: 'System'
 	};
 	const DRAG_LABELS: Record<DragAction, string> = {
 		rotate: 'Rotation',
-		pan: 'Panoramique',
-		none: 'Rien'
+		pan: 'Pan',
+		none: 'None||drag action'
 	};
 	const BUTTONS: { key: 'leftDrag' | 'middleDrag' | 'rightDrag'; label: string }[] = [
-		{ key: 'leftDrag', label: 'Bouton gauche' },
-		{ key: 'middleDrag', label: 'Bouton du milieu' },
-		{ key: 'rightDrag', label: 'Bouton droit' }
+		{ key: 'leftDrag', label: 'Left button' },
+		{ key: 'middleDrag', label: 'Middle button' },
+		{ key: 'rightDrag', label: 'Right button' }
 	];
 	const FLUSH_LABELS: Record<AutoFlush, string> = {
-		all: 'Couleur ou filament',
-		color: 'Couleur seulement',
-		disabled: 'Jamais'
+		all: 'Color or filament',
+		color: 'Color only',
+		disabled: 'Never'
 	};
 
 	function update(patch: Partial<AppPreferences>) {
@@ -99,26 +99,32 @@
 		saveStepPrefs({ ...loadStepPrefs(), ask });
 	}
 
-	let cleared = $state<string | null>(null);
+	let cleared = $state<number | null>(null);
 	function clearChoices() {
-		const n = clearRememberedChoices();
-		cleared = n ? `${n} choix effacé${n > 1 ? 's' : ''}.` : 'Aucun choix mémorisé.';
+		cleared = clearRememberedChoices();
 	}
+	const clearedText = $derived(
+		cleared === null
+			? null
+			: cleared
+				? $t(cleared > 1 ? '{n} choices cleared.' : '{n} choice cleared.', { n: cleared })
+				: $t('No remembered choice.')
+	);
 
 	// Saisie libre (virgule acceptée), resynchronisée sur la valeur mémorisée.
-	let orbitText = $derived(cam.orbitSpeed.toFixed(2).replace('.', ','));
+	let orbitText = $derived(fmtNum(cam.orbitSpeed, 2, $locale));
 	function commitOrbit(text: string) {
 		const value = clampOrbitSpeed(Number(text.replace(',', '.')));
 		updateCamera({ orbitSpeed: value });
-		orbitText = value.toFixed(2).replace('.', ',');
+		orbitText = fmtNum(value, 2, $locale);
 	}
 </script>
 
 {#snippet row(label: string, hint: string | null, control: import('svelte').Snippet, id: string)}
 	<div class="flex items-start justify-between gap-4 py-2" data-pref-row={id}>
 		<div class="min-w-0">
-			<div class="text-sm text-content" id="pref-{id}-label">{label}</div>
-			{#if hint}<p class="mt-0.5 text-xs leading-5 text-content-subtle">{hint}</p>{/if}
+			<div class="text-sm text-content" id="pref-{id}-label">{$t(label)}</div>
+			{#if hint}<p class="mt-0.5 text-xs leading-5 text-content-subtle">{$t(hint)}</p>{/if}
 		</div>
 		<div class="shrink-0">{@render control()}</div>
 	</div>
@@ -134,7 +140,7 @@
 			class="ws-dialog flex max-h-[calc(100vh-2rem)] w-[38rem] max-w-[calc(100vw-2rem)] flex-col p-0"
 			role="dialog"
 			aria-modal="true"
-			aria-label="Préférences"
+			aria-label={$t('Preferences')}
 			data-testid="preferences-dialog"
 			tabindex="-1"
 			use:dialogFocus
@@ -142,16 +148,16 @@
 			onkeydown={(e) => e.key === 'Escape' && onclose()}
 		>
 			<div class="px-4 pt-4">
-				<h2 class="ws-dialog-title mb-3">Préférences</h2>
-				<div class="flex gap-1 border-b border-border" role="tablist" aria-label="Rubriques">
-					{#each TABS as t (t.id)}
+				<h2 class="ws-dialog-title mb-3">{$t('Preferences')}</h2>
+				<div class="flex gap-1 border-b border-border" role="tablist" aria-label={$t('Sections')}>
+					{#each TABS as tb (tb.id)}
 						<button
 							type="button"
 							role="tab"
-							aria-selected={tab === t.id}
-							data-testid="pref-tab-{t.id}"
-							class="ws-tab text-sm {tab === t.id ? 'ws-tab-on' : ''}"
-							onclick={() => (tab = t.id)}>{t.label}</button
+							aria-selected={tab === tb.id}
+							data-testid="pref-tab-{tb.id}"
+							class="ws-tab text-sm {tab === tb.id ? 'ws-tab-on' : ''}"
+							onclick={() => (tab = tb.id)}>{$t(tb.label)}</button
 						>
 					{/each}
 				</div>
@@ -168,11 +174,11 @@
 							onchange={(e) => setTheme(e.currentTarget.value as ThemePref)}
 						>
 							{#each THEME_PREFS as pref (pref)}
-								<option value={pref}>{themeLabels[pref]}</option>
+								<option value={pref}>{$t(themeLabels[pref])}</option>
 							{/each}
 						</select>
 					{/snippet}
-					{@render row('Thème', null, themeCtl, 'theme')}
+					{@render row('Theme', null, themeCtl, 'theme')}
 					{#snippet langCtl()}
 						<select
 							data-testid="pref-language"
@@ -186,7 +192,7 @@
 							{/each}
 						</select>
 					{/snippet}
-					{@render row('Langue', null, langCtl, 'language')}
+					{@render row('Language', null, langCtl, 'language')}
 					{#snippet unitsCtl()}
 						<select
 							data-testid="pref-units"
@@ -195,11 +201,11 @@
 							value={prefs.units}
 							onchange={(e) => update({ units: e.currentTarget.value as Units })}
 						>
-							<option value="mm">Métrique (mm)</option>
-							<option value="in">Impérial (pouces)</option>
+							<option value="mm">{$t('Metric (mm)')}</option>
+							<option value="in">{$t('Imperial (inches)')}</option>
 						</select>
 					{/snippet}
-					{@render row('Unités', null, unitsCtl, 'units')}
+					{@render row('Units', null, unitsCtl, 'units')}
 					{#snippet currencyCtl()}
 						<input
 							data-testid="pref-currency"
@@ -211,8 +217,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Devise des coûts',
-						'Unité du « Coût du filament » (par kg) saisi dans les réglages du filament.',
+						'Cost currency',
+						'Unit of the “Filament cost” (per kg) entered in the filament settings.',
 						currencyCtl,
 						'currency'
 					)}
@@ -226,8 +232,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Avertir avant de fermer',
-						'Demande confirmation en quittant un projet non sauvegardé.',
+						'Warn before closing',
+						'Asks for confirmation when leaving an unsaved project.',
 						closeCtl,
 						'confirm-close'
 					)}
@@ -239,13 +245,13 @@
 							value={prefs.defaultPage}
 							onchange={(e) => update({ defaultPage: e.currentTarget.value as DefaultPage })}
 						>
-							<option value="home">Accueil (projets)</option>
-							<option value="prepare">Dernier projet</option>
+							<option value="home">{$t('Home (projects)')}</option>
+							<option value="prepare">{$t('Last project')}</option>
 						</select>
 					{/snippet}
 					{@render row(
-						'Page au démarrage',
-						'Page ouverte après la connexion ou à l’adresse du site : la liste des projets, ou directement le dernier projet modifié.',
+						'Startup page',
+						'Page opened after signing in or at the site address: the project list, or directly the last modified project.',
 						startCtl,
 						'default-page'
 					)}
@@ -267,8 +273,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Projets récents affichés',
-						'Nombre de projets de « Récemment ouvert » sur la page d’accueil (0 à 999) ; les autres restent accessibles par la recherche ou « Tout afficher ».',
+						'Recent projects shown',
+						'Number of projects in “Recently opened” on the home page (0 to 999); the others remain reachable through search or “Show all”.',
 						recentCtl,
 						'max-recent'
 					)}
@@ -281,22 +287,22 @@
 							onchange={(e) =>
 								update({ projectLoadBehaviour: e.currentTarget.value as ProjectLoadBehaviour })}
 						>
-							<option value="load_all">Tout charger</option>
-							<option value="ask_when_relevant">Demander si utile</option>
-							<option value="always_ask">Toujours demander</option>
-							<option value="load_geometry_only">Géométrie seule</option>
+							<option value="load_all">{$t('Load All')}</option>
+							<option value="ask_when_relevant">{$t('Ask When Relevant')}</option>
+							<option value="always_ask">{$t('Always Ask')}</option>
+							<option value="load_geometry_only">{$t('Load Geometry Only')}</option>
 						</select>
 					{/snippet}
 					{@render row(
-						'Ouverture d’un 3MF',
-						'Faut-il charger les réglages (imprimante, filament, processus) à l’ouverture d’un fichier 3MF ? « Demander si utile » : la question n’est posée que si un projet est déjà ouvert (préférence « Load behaviour » d’Orca).',
+						'Opening a 3MF',
+						'Should the settings (printer, filament, process) be loaded when opening a 3MF file? “Ask when relevant”: the question is only asked if a project is already open (Orca “Load behaviour” preference).',
 						loadCtl,
 						'load-behaviour'
 					)}
 				{:else if tab === 'camera'}
 					{#snippet styleCtl()}
 						<div class="ws-seg" role="radiogroup" aria-labelledby="pref-camera-style-label">
-							{#each [['default', 'Souris'], ['touchpad', 'Pavé tactile']] as [value, label] (value)}
+							{#each [['default', 'Mouse'], ['touchpad', 'Touchpad']] as [value, label] (value)}
 								<button
 									type="button"
 									role="radio"
@@ -304,16 +310,16 @@
 									data-testid="pref-camera-style-{value}"
 									class="ws-seg-item {cam.style === value ? 'ws-seg-on' : ''}"
 									onclick={() => updateCamera({ style: value as CameraPreferences['style'] })}
-									>{label}</button
+									>{$t(label)}</button
 								>
 							{/each}
 						</div>
 					{/snippet}
 					{@render row(
-						'Style de navigation',
+						'Navigation style',
 						touchpad
-							? 'Alt + déplacement : rotation · Maj + déplacement : panoramique · défilement : zoom.'
-							: 'Glisser avec les boutons de la souris (actions ci-dessous) ; molette : zoom.',
+							? 'Alt + move: rotate · Shift + move: pan · scroll: zoom.'
+							: 'Drag with the mouse buttons (actions below); wheel: zoom.',
 						styleCtl,
 						'camera-style'
 					)}
@@ -328,11 +334,11 @@
 									onchange={(e) => updateCamera({ [b.key]: e.currentTarget.value as DragAction })}
 								>
 									{#each Object.entries(DRAG_LABELS) as [value, label] (value)}
-										<option {value}>{label}</option>
+										<option {value}>{$t(label)}</option>
 									{/each}
 								</select>
 							{/snippet}
-							{@render row(b.label + ' (glisser)', null, dragCtl, b.key)}
+							{@render row($t('{button} (drag)', { button: $t(b.label) }), null, dragCtl, b.key)}
 						{/each}
 						{#if noRotate}
 							<p
@@ -340,8 +346,9 @@
 								data-testid="pref-no-rotate"
 								role="status"
 							>
-								Aucun bouton ne fait tourner la vue : utilisez les vues prédéfinies (menu Vue) pour
-								changer d’angle.
+								{$t(
+									'No button rotates the view: use the preset views (View menu) to change the angle.'
+								)}
 							</p>
 						{/if}
 					{/if}
@@ -371,12 +378,7 @@
 							<span class="text-xs text-content-subtle">×</span>
 						</div>
 					{/snippet}
-					{@render row(
-						'Vitesse de rotation',
-						'Multiplicateur de 0,05 à 2 (1 = normal).',
-						orbitCtl,
-						'orbit'
-					)}
+					{@render row('Orbit speed', 'Multiplier from 0.05 to 2 (1 = normal).', orbitCtl, 'orbit')}
 					{#snippet zoomCtl()}
 						<input
 							type="checkbox"
@@ -387,8 +389,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Zoomer vers le pointeur',
-						'Le zoom se rapproche du point visé plutôt que du centre de la vue.',
+						'Zoom to mouse position',
+						'Zooming moves toward the point under the cursor instead of the view center.',
 						zoomCtl,
 						'zoom-to-mouse'
 					)}
@@ -401,7 +403,7 @@
 							onchange={(e) => updateCamera({ reverseWheel: e.currentTarget.checked })}
 						/>
 					{/snippet}
-					{@render row('Inverser le sens de la molette', null, reverseCtl, 'reverse-wheel')}
+					{@render row('Reverse mouse wheel', null, reverseCtl, 'reverse-wheel')}
 					{#snippet freeCtl()}
 						<input
 							type="checkbox"
@@ -412,21 +414,21 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Caméra libre',
-						'Rotation sans contrainte dans toutes les directions. Désactivée : l’axe Z reste vertical (recommandé).',
+						'Free camera',
+						'Unconstrained rotation in all directions. Off: the Z axis stays vertical (recommended).',
 						freeCtl,
 						'free-camera'
 					)}
 					<div
 						class="flex items-center justify-between gap-2 border-t border-border pt-2 text-xs text-content-subtle"
 					>
-						<span>Souris 3D (3Dconnexion) : non prise en charge par le navigateur.</span>
+						<span>{$t('3D mouse (3Dconnexion): not supported by the browser.')}</span>
 						<button
 							type="button"
 							class="ws-btn ws-btn-sm ws-btn-ghost"
 							data-testid="pref-camera-reset"
 							disabled={cameraIsDefault}
-							onclick={() => update({ camera: { ...CAMERA_DEFAULTS } })}>Valeurs par défaut</button
+							onclick={() => update({ camera: { ...CAMERA_DEFAULTS } })}>{$t('Defaults')}</button
 						>
 					</div>
 				{:else if tab === 'behaviour'}
@@ -440,8 +442,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Avertir du G-code modifié',
-						'À l’ouverture d’un 3MF dont les presets imprimante ou filament contiennent du G-code modifié (démarrage, fin, changement de filament…), une boîte liste ces G-code pour que vous vérifiiez qu’ils sont sans danger pour la machine. Décoché : le 3MF s’ouvre sans avertissement.',
+						'Warn about modified G-code',
+						'When opening a 3MF whose printer or filament presets contain modified G-code (start, end, filament change…), a dialog lists those G-codes so you can check they are safe for the machine. Unchecked: the 3MF opens without warning.',
 						gcodeWarnCtl,
 						'gcode-warn'
 					)}
@@ -455,8 +457,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Arranger automatiquement',
-						'Réorganise le plateau après un clonage ou l’ajout d’un modèle pratique, pour éviter les chevauchements.',
+						'Auto arrange',
+						'Rearranges the plate after cloning or adding a handy model, to avoid overlaps.',
 						arrangeCtl,
 						'auto-arrange'
 					)}
@@ -474,8 +476,8 @@
 						</select>
 					{/snippet}
 					{@render row(
-						'Recalculer les volumes de purge',
-						'Après un changement de filament, les purges vers et depuis ce filament sont recalculées ; les autres valeurs saisies sont conservées.',
+						'Auto-calculate flushing volumes',
+						'After a filament change, flushes to and from that filament are recalculated; other entered values are kept.',
 						flushCtl,
 						'auto-flush'
 					)}
@@ -489,8 +491,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Détecter les modèles en pouces ou en mètres',
-						'À l’import, un objet minuscule (moins de 8 mm³) propose une conversion en millimètres.',
+						'Detect models in inches or meters',
+						'On import, a tiny object (under 8 mm³) offers a conversion to millimeters.',
 						unitCtl,
 						'unit-conversion'
 					)}
@@ -504,8 +506,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Garder la peinture après Simplifier / Réparer',
-						'Reporte supports, couture, couleurs et surface floue peints sur le nouveau maillage. Désactivé : la peinture est effacée, comme dans OrcaSlicer.',
+						'Keep painting after Simplify / Repair',
+						'Transfers painted supports, seam, colors and fuzzy skin onto the new mesh. Off: painting is cleared, as in OrcaSlicer.',
 						keepPaintCtl,
 						'keep-painting'
 					)}
@@ -519,8 +521,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Autoriser les filaments haute et basse température ensemble',
-						'Par défaut, un mélange comme PLA + PC est refusé au tranchage (risque de bouchage). Activé : simple avertissement.',
+						'Allow high and low temperature filaments together',
+						'By default, a mix like PLA + PC is refused at slicing (clogging risk). On: a warning only.',
 						mixedCtl,
 						'mixed-temperature'
 					)}
@@ -534,8 +536,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Choisir la répartition des filaments avant de trancher',
-						'Imprimantes à deux buses (Bambu Lab H2D) : une fenêtre propose, à chaque tranchage, la buse de chaque filament (automatique ou manuelle).',
+						'Choose filament grouping before slicing',
+						'Dual-nozzle printers (Bambu Lab H2D): a dialog offers, at each slice, the nozzle for each filament (automatic or manual).',
 						fmapCtl,
 						'filament-map-popup'
 					)}
@@ -549,8 +551,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Options de maillage à l’import STEP',
-						'Affiche le réglage de précision après chaque import STEP ; sinon les derniers réglages s’appliquent.',
+						'Mesh options on STEP import',
+						'Shows the precision setting after each STEP import; otherwise the last settings apply.',
 						stepCtl,
 						'step-dialog'
 					)}
@@ -571,12 +573,12 @@
 									update({ dracoBits: bits });
 								}}
 							/>
-							<span class="text-xs text-content-subtle">bits</span>
+							<span class="text-xs text-content-subtle">{$t('bits')}</span>
 						</span>
 					{/snippet}
 					{@render row(
-						'Niveau de qualité pour l’exportation Draco',
-						'Quantification du maillage à l’export DRC. 0 = sans perte (géométrie exacte) ; de 8 à 30 : fichier plus petit, détails réduits quand la valeur baisse.',
+						'Draco export quality level',
+						'Mesh quantization for DRC export. 0 = lossless (exact geometry); 8 to 30: smaller file, fewer details as the value decreases.',
 						dracoCtl,
 						'draco-bits'
 					)}
@@ -585,12 +587,12 @@
 							type="button"
 							class="ws-btn ws-btn-sm ws-btn-secondary"
 							data-testid="pref-clear-choices"
-							onclick={clearChoices}>Effacer</button
+							onclick={clearChoices}>{$t('Clear')}</button
 						>
 					{/snippet}
 					{@render row(
-						'Choix « Ne plus demander »',
-						cleared ?? REMEMBERED_CHOICES.map((c) => c.label).join(' · '),
+						'“Don’t ask again” choices',
+						clearedText ?? REMEMBERED_CHOICES.map((c) => $t(c.label)).join(' · '),
 						clearCtl,
 						'clear-choices'
 					)}
@@ -605,8 +607,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Anticrénelage (MSAA)',
-						'Lisse les arêtes des modèles et des parcours. Désactivé : rendu plus rapide sur un ordinateur ou une carte graphique modeste. La vue 3D est recréée.',
+						'Anti-aliasing (MSAA)',
+						'Smooths the edges of models and toolpaths. Off: faster rendering on a modest computer or graphics card. The 3D view is recreated.',
 						aaCtl,
 						'antialias'
 					)}
@@ -620,13 +622,15 @@
 								updateGraphics({ fpsCap: clampFpsCap(Number(e.currentTarget.value)) })}
 						>
 							{#each FPS_CAPS as cap (cap)}
-								<option value={cap}>{cap === 0 ? 'Illimité (écran)' : `${cap} images/s`}</option>
+								<option value={cap}
+									>{cap === 0 ? $t('Unlimited (display)') : $t('{cap} FPS', { cap })}</option
+								>
 							{/each}
 						</select>
 					{/snippet}
 					{@render row(
-						'Images par seconde maximum',
-						'Plafonne le rafraîchissement de la vue 3D pendant les mouvements (Orca « FPS max ») : moins de chauffe et de batterie consommée sur un portable.',
+						'Maximum frames per second',
+						'Caps the 3D view refresh rate during movement (Orca “Max FPS”): less heat and battery drain on a laptop.',
 						fpsCapCtl,
 						'fps-cap'
 					)}
@@ -640,8 +644,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Afficher le compteur d’images/s',
-						'Compteur en coin de la vue 3D. La vue ne se redessine que lorsqu’elle change : 0 au repos est normal.',
+						'Show FPS counter',
+						'Counter in the corner of the 3D view. The view only redraws when it changes: 0 at rest is normal.',
 						fpsCtl,
 						'show-fps'
 					)}
@@ -655,8 +659,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Afficher le navigateur 3D',
-						'Cube d’orientation en bas à gauche de la vue de préparation : cliquez une face pour regarder le plateau de ce côté (aussi dans le menu Vue).',
+						'Show 3D Navigator',
+						'Orientation cube at the bottom left of the Prepare view: click a face to look at the plate from that side (also in the View menu).',
 						navCtl,
 						'3d-navigator'
 					)}
@@ -670,13 +674,13 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Afficher les axes',
-						'Repère X (rouge), Y (vert), Z (bleu) à l’origine du plateau.',
+						'Show axes',
+						'X (red), Y (green), Z (blue) axes at the plate origin.',
 						axesCtl,
 						'show-axes'
 					)}
 					<!-- Phase 38 — Orca Preferences › Graphics › Realistic View. -->
-					<h3 class="ws-section-title mt-3">Vue réaliste</h3>
+					<h3 class="ws-section-title mt-3">{$t('Realistic View')}</h3>
 					{#snippet realisticCtl()}
 						<input
 							type="checkbox"
@@ -687,8 +691,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Activer la vue réaliste',
-						'Ombrage plus fin des modèles en préparation (aussi dans le menu Vue). Suspendue pendant la peinture des supports, de la couture et du fuzzy skin pour bien voir la peinture.',
+						'Enable realistic view',
+						'Finer shading of models in Prepare (also in the View menu). Suspended while painting supports, seam and fuzzy skin so the painting stays visible.',
 						realisticCtl,
 						'realistic-view'
 					)}
@@ -703,8 +707,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Ombrage Phong',
-						'Éclairage calculé par pixel, avec reflets. Décoché : ombrage mat sans reflets (« Gouraud » d’Orca), plus léger.',
+						'Phong shading',
+						'Per-pixel lighting with highlights. Unchecked: matte shading without highlights (Orca “Gouraud”), lighter.',
 						phongCtl,
 						'realistic-phong'
 					)}
@@ -719,8 +723,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Occlusion ambiante SSAO',
-						'Assombrit légèrement les creux et les recoins pour mieux lire le relief (une passe d’écran en plus, comme Orca).',
+						'SSAO ambient occlusion',
+						'Slightly darkens hollows and corners to read the relief better (one extra screen pass, like Orca).',
 						ssaoCtl,
 						'realistic-ssao'
 					)}
@@ -735,8 +739,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Ombres sur le plateau',
-						'Les objets projettent leur ombre sur le plateau (lumière qui suit la caméra).',
+						'Shadows on the plate',
+						'Objects cast their shadow on the plate (light follows the camera).',
 						shadowsCtl,
 						'realistic-shadows'
 					)}
@@ -751,8 +755,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Lisser les surfaces courbes',
-						'Adoucit les facettes des surfaces arrondies ; les arêtes vives (plus de 5°) restent nettes.',
+						'Smooth curved surfaces',
+						'Softens the facets of rounded surfaces; sharp edges (over 5°) stay crisp.',
 						smoothCtl,
 						'realistic-smooth'
 					)}
@@ -767,13 +771,13 @@
 								update({ groupFilamentPresets: e.currentTarget.value as UserGrouping })}
 						>
 							{#each USER_GROUPINGS as g (g.value)}
-								<option value={g.value}>{g.label}</option>
+								<option value={g.value}>{$t(g.label)}</option>
 							{/each}
 						</select>
 					{/snippet}
 					{@render row(
-						'Grouper mes presets filament',
-						'Rangement de vos presets filament dans la liste des filaments : un seul groupe « Mes presets », sans sous-groupe, par type (PLA, PETG…) ou par fabricant.',
+						'Group my filament presets',
+						'How your filament presets are arranged in the filament list: a single “My Presets” group, no subgroup, by type (PLA, PETG…) or by vendor.',
 						groupCtl,
 						'group-filament-presets'
 					)}
@@ -787,8 +791,8 @@
 						/>
 					{/snippet}
 					{@render row(
-						'Afficher les presets incompatibles',
-						'Les filaments et traitements prévus pour d’autres imprimantes apparaissent grisés dans les listes, sans pouvoir être choisis.',
+						'Show incompatible presets',
+						'Filaments and processes meant for other printers appear greyed out in the lists, without being selectable.',
 						unsupportedCtl,
 						'show-unsupported'
 					)}
@@ -796,12 +800,12 @@
 			</div>
 
 			<div class="flex items-center justify-between gap-3 border-t border-border px-4 py-3">
-				<p class="text-xs text-content-subtle">Enregistré automatiquement pour votre compte.</p>
+				<p class="text-xs text-content-subtle">{$t('Saved automatically for your account.')}</p>
 				<button
 					type="button"
 					class="ws-btn ws-btn-primary"
 					data-testid="preferences-close"
-					onclick={onclose}>Fermer</button
+					onclick={onclose}>{$t('Close')}</button
 				>
 			</div>
 		</div>

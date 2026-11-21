@@ -1,8 +1,13 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import { applyJobEvent, friendlySliceError } from './session';
 
 const WORKER =
 	'worker sorti en code 1 — stderr :  — stdout : E engine_crashed configuration invalide : cylinder.stl is too close to others, and collisions may be caused.\n';
+
+// Messages attendus en français (langue des tests).
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('messages d échec du tranchage', () => {
 	it('objets trop proches (objet par objet) : message traduit avec le nom', () => {

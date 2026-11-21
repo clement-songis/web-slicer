@@ -3,6 +3,7 @@
 // Input_Shaping_Freq/Damp_Test_Dlg, Cornering_Test_Dlg d'OrcaSlicer 2.4.1) :
 // paramètres des dialogues et validation. Le projet est construit par le
 // serveur (POST /api/projects/{id}/calibration, cf. server.ts).
+import { tr } from '$lib/i18n';
 
 export type EngineCalibKind =
 	| 'retraction'
@@ -101,14 +102,15 @@ export const ENGINE_CALIB_DEFAULTS: Record<EngineCalibKind, RangeParams> = {
 	cornering: { start: 1, end: 15, step: 1 }
 };
 
+/** Libellés = clés anglaises, traduites au rendu. */
 export const ENGINE_CALIB_LABELS: Record<EngineCalibKind, string> = {
-	retraction: 'Rétraction',
+	retraction: 'Retraction||calibration',
 	vfa: 'VFA',
-	max_volumetric_speed: 'Débit volumétrique max',
-	pa_pattern: 'Pressure advance (motif)',
-	input_shaping_freq: 'Input shaping : fréquence',
-	input_shaping_damp: 'Input shaping : amortissement',
-	cornering: 'Virages (jerk / junction deviation)'
+	max_volumetric_speed: 'Max volumetric flow',
+	pa_pattern: 'Pressure advance (pattern)',
+	input_shaping_freq: 'Input shaping: frequency',
+	input_shaping_damp: 'Input shaping: damping',
+	cornering: 'Cornering (jerk / junction deviation)'
 };
 
 /** Unité affichée de la plage (Début/Fin/Pas). */
@@ -123,25 +125,25 @@ export const ENGINE_CALIB_UNITS: Record<EngineCalibKind, string> = {
 	cornering: 'mm/s'
 };
 
-/** Libellé et unité de la valeur fixe des tests d'input shaping. */
+/** Libellé et unité de la valeur fixe des tests d'input shaping (clés anglaises). */
 export const FIXED_VALUE_LABELS: Partial<Record<EngineCalibKind, string>> = {
-	input_shaping_freq: 'Amortissement',
-	input_shaping_damp: 'Fréquence X (Hz)'
+	input_shaping_freq: 'Damping',
+	input_shaping_damp: 'X frequency (Hz)'
 };
 
 export function validateRange(p: RangeParams, kind?: EngineCalibKind): string | null {
-	if (![p.start, p.end, p.step].every(Number.isFinite)) return 'valeurs numériques requises';
+	if (![p.start, p.end, p.step].every(Number.isFinite)) return tr('numeric values required');
 	if (kind && FIXED_VALUE_KINDS.includes(kind) && !Number.isFinite(p.fixed ?? NaN))
-		return 'valeur fixe requise';
+		return tr('fixed value required');
 	if (kind === 'input_shaping_damp' && (p.start < 0 || p.end > 1))
-		return 'l’amortissement doit rester entre 0 et 1';
+		return tr('damping must stay between 0 and 1');
 	if (kind === 'input_shaping_freq' && ((p.fixed ?? 0) < 0 || (p.fixed ?? 0) > 1))
-		return 'l’amortissement doit rester entre 0 et 1';
-	if (p.step <= 0) return 'le pas doit être positif';
-	if (p.end <= p.start) return 'la fin doit être supérieure au début';
+		return tr('damping must stay between 0 and 1');
+	if (p.step <= 0) return tr('the step must be positive');
+	if (p.end <= p.start) return tr('the end must be greater than the start');
 	if (p.startY !== undefined && p.endY !== undefined && !(p.endY > p.startY))
-		return 'la fin Y doit être supérieure au début Y';
+		return tr('the Y end must be greater than the Y start');
 	if (p.fixedY !== undefined && !(Number.isFinite(p.fixedY) && p.fixedY > 0))
-		return 'fréquence Y invalide';
+		return tr('invalid Y frequency');
 	return null;
 }

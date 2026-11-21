@@ -4,6 +4,7 @@
 // s'y branche.
 
 import type { JobResponse, ServerEvent } from '$lib/api/types';
+import { tr } from '$lib/i18n';
 
 /** États d'un job (miroir du backend `JobStatus`). */
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';
@@ -64,17 +65,21 @@ export interface StatusMeta {
 	badge: string;
 }
 
+// Libellés = clés i18n anglaises, traduites à l'appel de `statusMeta`.
 const STATUS_META: Record<JobStatus, StatusMeta> = {
-	queued: { label: 'En file', badge: 'bg-overlay text-content' },
-	running: { label: 'En cours', badge: 'bg-primary text-primary-content' },
-	succeeded: { label: 'Terminé', badge: 'bg-success text-white' },
-	failed: { label: 'Échec', badge: 'bg-danger text-white' },
-	cancelled: { label: 'Annulé', badge: 'bg-warning text-white' }
+	queued: { label: 'Queued', badge: 'bg-overlay text-content' },
+	running: { label: 'In progress||job', badge: 'bg-primary text-primary-content' },
+	succeeded: { label: 'Done||job', badge: 'bg-success text-white' },
+	failed: { label: 'Failed||job', badge: 'bg-danger text-white' },
+	cancelled: { label: 'Cancelled||job', badge: 'bg-warning text-white' }
 };
 
 /** Métadonnées d'affichage d'un état (repli neutre si inconnu). */
 export function statusMeta(status: string): StatusMeta {
-	return STATUS_META[status as JobStatus] ?? { label: status, badge: 'bg-overlay text-content' };
+	const meta = STATUS_META[status as JobStatus];
+	return meta
+		? { ...meta, label: tr(meta.label) }
+		: { label: status, badge: 'bg-overlay text-content' };
 }
 
 /**
@@ -103,22 +108,23 @@ export function unknownJobId(jobs: readonly JobResponse[], event: ServerEvent): 
 	return jobs.some((j) => j.id === event.id) ? null : event.id;
 }
 
-/** Libellé français de la phase moteur d'un job (`slice`, `export`…). */
+/** Libellé traduit de la phase moteur d'un job (`slice`, `export`…). */
 export function phaseLabel(phase: string | null | undefined): string {
 	const p = (phase ?? '').trim();
 	if (!p) return '';
 	const known: Record<string, string> = {
-		queued: 'en attente du moteur',
-		slice: 'tranchage',
-		slicing: 'tranchage',
-		gcode: 'génération du G-code',
-		export: 'écriture du G-code',
-		post: 'post-traitement',
-		postprocess: 'post-traitement',
-		thumbnail: 'vignette',
-		done: 'terminé'
+		queued: 'waiting for the engine',
+		slice: 'slicing||phase',
+		slicing: 'slicing||phase',
+		gcode: 'generating G-code',
+		export: 'writing G-code',
+		post: 'post-processing',
+		postprocess: 'post-processing',
+		thumbnail: 'thumbnail||phase',
+		done: 'done||phase'
 	};
-	return known[p.toLowerCase()] ?? p;
+	const key = known[p.toLowerCase()];
+	return key ? tr(key) : p;
 }
 
 /** Texte d'échec d'un job (`error` : chaîne ou `{ message }`). */

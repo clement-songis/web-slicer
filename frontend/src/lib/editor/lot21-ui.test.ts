@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import { buildSliceDraft } from './slice-draft';
 import {
 	extruderCount,
@@ -10,6 +11,10 @@ import {
 import { paintedChannels } from './keep-paint';
 import { compatibilityText } from './filament-compat';
 import { DEFAULT_PREFERENCES, parsePreferences } from '$lib/settings/preferences';
+
+// Messages attendus en français (langue des tests).
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('brouillon au tranchage (SliceDraft)', () => {
 	const same = { resolved: { layer_height: '0.2' }, current: { layer_height: '0.2' } };

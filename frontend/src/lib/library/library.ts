@@ -2,6 +2,7 @@
 // Le composant `routes/library/+page.svelte` reste présentational : tri,
 // formatage de date et URL de vignette sont testés ici, hors du `.svelte`.
 import type { ProjectResponse } from '$lib/api/types';
+import { tr } from '$lib/i18n';
 
 /** Réordonne par date de mise à jour décroissante (comme le backend). */
 export function sortByUpdated(list: readonly ProjectResponse[]): ProjectResponse[] {
@@ -75,13 +76,13 @@ export function relativeTime(rfc3339: string, now = Date.now()): string {
 	const t = new Date(rfc3339).getTime();
 	if (Number.isNaN(t)) return rfc3339;
 	const s = Math.max(0, Math.round((now - t) / 1000));
-	if (s < 60) return "à l'instant";
+	if (s < 60) return tr('just now');
 	const m = Math.round(s / 60);
-	if (m < 60) return `il y a ${m} min`;
+	if (m < 60) return tr('{n} min ago', { n: m });
 	const h = Math.round(m / 60);
-	if (h < 24) return `il y a ${h} h`;
+	if (h < 24) return tr('{n} h ago', { n: h });
 	const d = Math.round(h / 24);
-	if (d === 1) return 'hier';
-	if (d < 7) return `il y a ${d} j`;
+	if (d === 1) return tr('yesterday');
+	if (d < 7) return tr('{n} d ago', { n: d });
 	return new Date(t).toLocaleDateString();
 }

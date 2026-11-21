@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import {
 	TABLE_COLUMNS,
 	cellText,
@@ -8,6 +9,9 @@ import {
 	tableRows,
 	visibleColumns
 } from './object-table';
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 const col = (key: string) => TABLE_COLUMNS.find((c) => c.key === key)!;
 const objects = [

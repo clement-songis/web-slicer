@@ -146,7 +146,7 @@ test.describe("raccourcis clavier (parité Orca)", () => {
 
   test("1–9 : filament de la sélection @F:shortcut.1-9", async ({ page }) => {
     await setup(page);
-    await page.getByRole("button", { name: "Process", exact: true }).click();
+    await page.getByRole("button", { name: "Traitement", exact: true }).click();
     await page.getByTestId("add-filament-slot").click();
     await selectRow(page);
     await page.locator("body").focus();
@@ -213,7 +213,7 @@ test.describe("menus contextuels (parité Orca)", () => {
       [/^Along Z axis|^Selon l.axe Z/, "Z"],
     ] as const) {
       await contextItem(page, label);
-      await expect.poll(() => value(page, "Échelle", a)).toBeCloseTo(-1, 3);
+      await expect.poll(() => value(page, "Échelle", a)).toBeCloseTo(-100, 1);
     }
   });
 
@@ -223,7 +223,7 @@ test.describe("menus contextuels (parité Orca)", () => {
     await setup(page);
     await selectRowForTransform(page);
     await contextItem(page, /Scale to build volume|volume d.impression/i);
-    await expect.poll(() => value(page, "Échelle", "X")).toBeGreaterThan(1.5);
+    await expect.poll(() => value(page, "Échelle", "X")).toBeGreaterThan(150);
   });
 
   test("Clone / Add instance / Remove instance / Delete @F:ctx.clone @F:ctx.add-instance @F:ctx.remove-instance @F:ctx.delete", async ({
@@ -283,7 +283,7 @@ test.describe("menus contextuels (parité Orca)", () => {
       "true",
     );
     page.once("dialog", (d) => d.accept("3"));
-    await contextItem(page, /Set number of instances|Nombre d.instances/);
+    await contextItem(page, /Set number of instances|nombre d.instances/i);
     await expect(page.getByTestId("object-row")).toHaveCount(3);
   });
 

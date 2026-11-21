@@ -1,4 +1,5 @@
 import type { Transform } from './transform';
+import { tr } from '$lib/i18n';
 // Volumes ajoutés à un objet (Orca : Add part / negative volume / modifier /
 // support blocker / support enforcer). Primitive pavé, exprimée dans le repère
 // du maillage recentré de l'objet (même repère que le backend, cf.
@@ -42,24 +43,43 @@ export interface VolumeCutInfo {
 	heightTolerance: number;
 }
 
-/** Action de menu → rôle (libellés de parité Orca). */
+/** Action de menu → rôle (libellés de parité Orca). `name` : nom par défaut
+ *  traduit à la lecture (accesseur), dans la langue courante. */
 export const VOLUME_ACTIONS: Record<string, { type: VolumeType; label: string; name: string }> = {
-	'object.addPart': { type: 'part', label: 'Add part', name: 'Pièce' },
+	'object.addPart': {
+		type: 'part',
+		label: 'Add part',
+		get name() {
+			return tr('Part||volume');
+		}
+	},
 	'object.addNegativeVolume': {
 		type: 'negative',
 		label: 'Add negative volume',
-		name: 'Volume négatif'
+		get name() {
+			return tr('Negative volume');
+		}
 	},
-	'object.addModifier': { type: 'modifier', label: 'Add modifier', name: 'Modificateur' },
+	'object.addModifier': {
+		type: 'modifier',
+		label: 'Add modifier',
+		get name() {
+			return tr('Modifier');
+		}
+	},
 	'object.addSupportBlocker': {
 		type: 'blocker',
 		label: 'Add support blocker',
-		name: 'Bloqueur de supports'
+		get name() {
+			return tr('Support blocker');
+		}
 	},
 	'object.addSupportEnforcer': {
 		type: 'enforcer',
 		label: 'Add support enforcer',
-		name: 'Forceur de supports'
+		get name() {
+			return tr('Support enforcer');
+		}
 	}
 };
 
@@ -149,7 +169,13 @@ export function parseCutInfo(raw: unknown): VolumeCutInfo | null {
  */
 export const PART_TYPE_CHOICES: { type: VolumeType; label: string }[] = (
 	['part', 'negative', 'modifier', 'blocker', 'enforcer'] as const
-).map((type) => ({ type, label: volumeTypeName(type) }));
+).map((type) => ({
+	type,
+	// Accesseur : libellé traduit à la lecture (jamais figé au chargement du module).
+	get label() {
+		return volumeTypeName(type);
+	}
+}));
 
 /** Types proposés pour un volume (relief : pas de bloqueur / générateur). */
 export function partTypeChoices(v: Pick<SceneVolume, 'emboss'>): typeof PART_TYPE_CHOICES {

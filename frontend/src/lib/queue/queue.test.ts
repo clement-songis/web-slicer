@@ -1,9 +1,13 @@
 // Tests de la logique pure de file (T071) : réducteur d'événements, partition
 // active/historique, métadonnées d'état, progression, décodage d'événements.
-import { describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import type { JobResponse, ServerEvent } from '$lib/api/types';
 import { applyEvent, isActive, partitionJobs, progressPercent, statusMeta } from './queue';
 import { decodeEvent } from './events';
+import { setLocale } from '$lib/i18n';
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 const job = (over: Partial<JobResponse> = {}): JobResponse => ({
 	id: 'j1',

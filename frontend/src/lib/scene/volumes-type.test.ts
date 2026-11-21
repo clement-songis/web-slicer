@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'vitest';
+import { beforeAll, afterAll, describe, expect, test } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import {
 	PART_TYPE_CHOICES,
 	changeVolumeType,
@@ -88,3 +89,7 @@ describe('informations de coupe dans le document scène', () => {
 		expect(serializeObject({ ...live, cutId: null }).cutId).toBeUndefined();
 	});
 });
+
+// Les libellés de ces modules sont traduits (tr) : valeurs attendues en français.
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));

@@ -41,15 +41,15 @@
 			class="ws-btn ws-btn-sm ws-btn-ghost self-end"
 			data-testid="gcode-edit"
 			{disabled}
-			onclick={() => (editing = true)}>Éditer avec les variables…</button
+			onclick={() => (editing = true)}>{$t('Edit with variables…')}</button
 		>
 		<GcodeEditorDialog
 			open={editing}
 			gcodeKey={def.key}
 			title={$t(def.label)}
 			value={text}
-			onapply={(t) => {
-				set(t);
+			onapply={(next) => {
+				set(next);
 				// Même chemin qu'une saisie : le conteneur des réglages note la clé
 				// (événement « change » remonté depuis la ligne d'option).
 				wrapper?.dispatchEvent(new Event('change', { bubbles: true }));

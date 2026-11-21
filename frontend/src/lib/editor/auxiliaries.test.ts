@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import {
 	AUX_FOLDERS,
 	formatSize,
@@ -9,6 +10,8 @@ import {
 } from './auxiliaries';
 
 describe('fichiers joints au projet (Auxiliaries/ d Orca)', () => {
+	beforeAll(() => setLocale('fr'));
+	afterAll(() => setLocale('en'));
 	it('4 dossiers d Orca, noms exacts du 3MF', () => {
 		expect(AUX_FOLDERS.map((f) => f.id)).toEqual([
 			'Model Pictures',

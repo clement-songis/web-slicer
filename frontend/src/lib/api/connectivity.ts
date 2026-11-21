@@ -3,6 +3,7 @@
 // tant que le serveur est injoignable, une sonde légère (/api/health) vérifie
 // son retour. Le bandeau global (ConnectionBanner) et l'éditeur s'y abonnent.
 import { writable, get } from 'svelte/store';
+import { tr } from '$lib/i18n';
 
 export interface ConnectionState {
 	/** `false` dès qu'une requête n'a pas pu joindre le serveur. */
@@ -44,10 +45,15 @@ function browserIsOffline(): boolean {
 /** Message affiché pour une requête qui n'a pas pu aboutir. */
 export function unreachableMessage(status?: number): string {
 	if (browserIsOffline())
-		return 'Vous êtes hors ligne : action impossible. Elle pourra être relancée dès le retour de la connexion.';
+		return tr(
+			'You are offline: action not possible. It can be retried as soon as the connection is back.'
+		);
 	if (status)
-		return `Serveur indisponible (${status}) : action impossible pour l'instant. Réessayez dans quelques instants.`;
-	return "Serveur injoignable : action impossible pour l'instant. Vérifiez la connexion puis réessayez.";
+		return tr(
+			'Server unavailable ({status}): action not possible for now. Try again in a few moments.',
+			{ status }
+		);
+	return tr('Server unreachable: action not possible for now. Check the connection and try again.');
 }
 
 /** Une requête a échoué faute de liaison : passe hors ligne, lance la sonde. */

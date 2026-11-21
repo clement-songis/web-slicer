@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'vitest';
+import { beforeAll, afterAll, describe, expect, test } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import {
 	colorChangeColor,
 	editColorChangeAt,
@@ -65,9 +66,9 @@ describe('changements de couleur au clavier (Aperçu, « + » / « − »)', () 
 		// Marqueur du moteur « custom » (golden cube_custom.orca.gcode : pas de
 		// M600 ni ;COLOR_CHANGE) + code posé color_change à la même couche.
 		const codes: PlateCustomGcode[] = [{ printZ: 0.4, type: 'color_change' }];
-		expect(
-			withAuthoredTypes([{ layer: 1, type: 'custom' }], codes, layers)
-		).toEqual([{ layer: 1, type: 'color_change' }]);
+		expect(withAuthoredTypes([{ layer: 1, type: 'custom' }], codes, layers)).toEqual([
+			{ layer: 1, type: 'color_change' }
+		]);
 		// Marqueurs sans code posé (G-code ouvert) : inchangés, même couche.
 		expect(withAuthoredTypes([{ layer: 1, type: 'custom' }], [], layers)).toEqual([
 			{ layer: 1, type: 'custom' }
@@ -86,3 +87,7 @@ describe('changements de couleur au clavier (Aperçu, « + » / « − »)', () 
 		]);
 	});
 });
+
+// Les libellés de ces modules sont traduits (tr) : valeurs attendues en français.
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));

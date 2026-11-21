@@ -9,6 +9,7 @@
 // libvgcode) peuvent différer d'une unité de celles de `/preview/meta` (WSPv)
 // sur un G-code à pause → rapprochement par `first_line` (jamais par index).
 import type { Rgb } from './colorations';
+import { tr } from '$lib/i18n';
 import type { EngineCustomGcode, EngineMeta, EngineMoves } from './engine-track';
 import { COL, MOVE_BYTES, MOVE_FLOATS, MOVE_INTS, MOVE_TYPE } from './engine-track';
 import { parseOrcaColor } from './filament-colors';
@@ -47,11 +48,12 @@ export interface EngineColorPrint {
 
 export type FilamentColumn = 'model' | 'support' | 'flushed' | 'tower';
 export const FILAMENT_COLUMNS: readonly FilamentColumn[] = ['model', 'support', 'flushed', 'tower'];
+/** En-têtes : clés i18n anglaises, traduites au rendu. */
 export const FILAMENT_COLUMN_LABELS: Record<FilamentColumn, string> = {
-	model: 'Modèle',
-	support: 'Support',
-	flushed: 'Purge',
-	tower: 'Tour'
+	model: 'Model',
+	support: 'Support||usage',
+	flushed: 'Flushed',
+	tower: 'Tower'
 };
 export interface FilamentUsage {
 	volume?: number;
@@ -201,7 +203,10 @@ export function colorPrintLegend(
 	for (const ex of cp.extruders) {
 		const items = ex.items.length ? ex.items : [{ color_id: ex.extruder, layer: 0, time: [0, 0] }];
 		if (items.length === 1) {
-			out.push({ label: `Filament ${ex.extruder + 1}`, color: color(items[0].color_id) });
+			out.push({
+				label: tr('Filament {n}', { n: ex.extruder + 1 }),
+				color: color(items[0].color_id)
+			});
 			continue;
 		}
 		items.forEach((it, i) => {
@@ -209,13 +214,12 @@ export function colorPrintLegend(
 			const next = items[i + 1];
 			const to = next ? Math.max(from, toPreview(next.layer)) : layerCount;
 			out.push({
-				label: `Filament ${ex.extruder + 1} · couches ${from}–${to}`,
+				label: tr('Filament {n} · layers {from}–{to}', { n: ex.extruder + 1, from, to }),
 				color: color(it.color_id)
 			});
 		});
 	}
-	if (cp.option_layers.length)
-		out.push({ label: 'Pause / G-code personnalisé', color: DUMMY_COLOR });
+	if (cp.option_layers.length) out.push({ label: tr('Pause / Custom G-code'), color: DUMMY_COLOR });
 	return out;
 }
 
@@ -432,12 +436,13 @@ export interface LayerTick {
 	label: string;
 	time: [number, number];
 }
+// Clés i18n anglaises (traduites à la construction des repères).
 const TICK_LABELS: Record<string, string> = {
-	color_change: 'Changement de couleur',
+	color_change: 'Color Change',
 	pause_print: 'Pause',
-	custom: 'G-code personnalisé',
-	tool_change: 'Changement d’outil',
-	template: 'Modèle'
+	custom: 'Custom G-code',
+	tool_change: 'Tool change',
+	template: 'Template'
 };
 /** Repères du curseur de couches (markers du moteur, couches d'aperçu). */
 export function layerTicks(track: PreviewTrack, meta: EngineMeta): LayerTick[] {
@@ -447,7 +452,7 @@ export function layerTicks(track: PreviewTrack, meta: EngineMeta): LayerTick[] {
 	return cp.markers.map((mk) => ({
 		layer: mk.layer >= 0 && mk.layer < map.length ? map[mk.layer] : track.layers.length - 1,
 		type: mk.type,
-		label: TICK_LABELS[mk.type] ?? mk.type,
+		label: tr(TICK_LABELS[mk.type] ?? mk.type),
 		time: mk.time
 	}));
 }

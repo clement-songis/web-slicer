@@ -22,6 +22,7 @@
 	import IconWrench from '~icons/lucide/wrench';
 	import type { Plate } from './plates.svelte';
 	import { searchObjects } from './object-search';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		tree: ObjectTree;
@@ -227,7 +228,7 @@
 					<input
 						class="ws-field ws-field-sm min-w-0 flex-1 border-accent"
 						data-testid="object-rename-input"
-						aria-label={`Nouveau nom de ${node.name}`}
+						aria-label={$t('New name for {name}', { name: node.name })}
 						value={node.name}
 						{@attach (el: HTMLInputElement) => {
 							el.focus();
@@ -252,10 +253,14 @@
 								? 'bg-primary-content text-primary'
 								: 'bg-surface-sunken text-content-muted ring-1 ring-border-strong'}"
 							data-testid="object-print-order"
-							data-tip="Imprimé en {printRank[node.id]}{printRank[node.id] === 1
-								? 'er'
-								: 'e'} (objet par objet) · glissez ou Alt+↑/↓ pour changer l'ordre"
-							aria-label="Ordre d'impression : {printRank[node.id]}">{printRank[node.id]}</span
+							data-tip={$t(
+								printRank[node.id] === 1
+									? 'Printed {n}st (by object) · drag or Alt+↑/↓ to change the order'
+									: 'Printed #{n} (by object) · drag or Alt+↑/↓ to change the order',
+								{ n: printRank[node.id] }
+							)}
+							aria-label={$t('Print order: {n}', { n: printRank[node.id] })}
+							>{printRank[node.id]}</span
 						>
 					{/if}
 					<button
@@ -312,7 +317,9 @@
 							data-level={issue.level}
 							data-tip={issue.text}
 							role="img"
-							aria-label="{issue.level === 'error' ? 'Erreur' : 'Avertissement'} : {issue.text}"
+							aria-label={$t(issue.level === 'error' ? 'Error: {text}' : 'Warning: {text}', {
+								text: issue.text
+							})}
 						>
 							{#if issue.level === 'error'}<IconIssueError
 									class="h-3.5 w-3.5"
@@ -330,7 +337,10 @@
 							data-testid="object-mesh-warning"
 							data-open-edges={mw.openEdges}
 							data-tip={mw.tooltip}
-							aria-label="Erreurs de maillage de {node.name} : {mw.tooltip.replace(/\s+/g, ' ')}"
+							aria-label={$t('Mesh errors of {name}: {details}', {
+								name: node.name,
+								details: mw.tooltip.replace(/\s+/g, ' ')
+							})}
 							onclick={() => onrepair?.(node.id)}
 						>
 							<IconWrench class="h-3.5 w-3.5" aria-hidden="true" />
@@ -340,11 +350,12 @@
 						<span
 							class="inline-flex shrink-0 items-center opacity-80"
 							data-testid="object-cut-info"
-							data-tip="Pièce découpée, liée à {cutLinks[
-								node.id
-							]} pièce(s) : sélection groupée, échelle uniforme seulement. Menu objet › « Invalider les informations de découpe » pour la délier."
+							data-tip={$t(
+								'Cut part, linked to {n} part(s): grouped selection, uniform scale only. Object menu › “Invalidate cut info” to unlink it.',
+								{ n: cutLinks[node.id] }
+							)}
 							role="img"
-							aria-label="Pièce découpée liée à {cutLinks[node.id]} pièce(s)"
+							aria-label={$t('Cut part linked to {n} part(s)', { n: cutLinks[node.id] })}
 						>
 							<IconScissors class="h-3.5 w-3.5" aria-hidden="true" />
 						</span>
@@ -360,12 +371,15 @@
 							class="flex shrink-0 items-center gap-1.5 rounded px-1 text-2xs tabular-nums opacity-90 hover:bg-overlay"
 							data-testid="object-overrides"
 							data-settings={nSettings}
-							aria-label="Surcharges de {node.name} : {nSettings} réglage(s){ov?.ranges
-								? `, ${ov.ranges} plage(s) de hauteur`
-								: ''}{ov?.parts ? `, ${ov.parts} pièce(s)/modificateur(s)` : ''}"
-							data-tip="{nSettings} réglage(s) surchargé(s){ov?.ranges
-								? ` · ${ov.ranges} plage(s) de hauteur`
-								: ''}{ov?.parts ? ` · ${ov.parts} pièce(s)/modificateur(s)` : ''}"
+							aria-label={$t('Overrides of {name}: {n} setting(s)', {
+								name: node.name,
+								n: nSettings
+							}) +
+								(ov?.ranges ? ', ' + $t('{n} height range(s)', { n: ov.ranges }) : '') +
+								(ov?.parts ? ', ' + $t('{n} part(s)/modifier(s)', { n: ov.parts }) : '')}
+							data-tip={$t('{n} overridden setting(s)', { n: nSettings }) +
+								(ov?.ranges ? ' · ' + $t('{n} height range(s)', { n: ov.ranges }) : '') +
+								(ov?.parts ? ' · ' + $t('{n} part(s)/modifier(s)', { n: ov.parts }) : '')}
 							onclick={() => onselect(node.id, false)}
 						>
 							{#if nSettings}<span class="flex items-center gap-0.5"
@@ -394,7 +408,7 @@
 					     (ObjectList::set_filament_column_hidden). -->
 						{#if extruders.length > 1}<select
 								class="ws-field ws-field-sm h-6 px-0.5"
-								aria-label={`Extrudeur de ${node.name}`}
+								aria-label={$t('Extruder of {name}', { name: node.name })}
 								value={ex}
 								onchange={(e) => onextruder(node.id, Number(e.currentTarget.value))}
 							>
@@ -408,7 +422,7 @@
 					{#if node.kind === 'object' && onassign && plates.length > 1}
 						<select
 							class="ws-field ws-field-sm h-6 max-w-24 px-0.5"
-							aria-label={`Plateau de ${node.name}`}
+							aria-label={$t('Plate of {name}', { name: node.name })}
 							value={plates.find((plate) => plate.objectIds.includes(node.id))?.id ?? ''}
 							onchange={(e) => onassign(node.id, e.currentTarget.value)}
 						>
@@ -422,8 +436,8 @@
 						type="button"
 						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
 						aria-pressed={node.locked}
-						aria-label={`Verrouiller ${node.name}`}
-						title={node.locked ? 'Déverrouiller' : 'Verrouiller'}
+						aria-label={$t('Lock {name}', { name: node.name })}
+						title={node.locked ? $t('Unlock') : $t('Lock')}
 						onclick={() => ontogglelock(node.id)}
 					>
 						{#if node.locked}<IconLock class="h-3.5 w-3.5" aria-hidden="true" />{:else}<IconUnlock
@@ -435,8 +449,8 @@
 						type="button"
 						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
 						aria-pressed={node.hidden}
-						aria-label={`Masquer ${node.name}`}
-						title={node.hidden ? 'Afficher' : 'Masquer'}
+						aria-label={$t('Hide {name}', { name: node.name })}
+						title={node.hidden ? $t('Show') : $t('Hide')}
 						onclick={() => ontogglehide(node.id)}
 					>
 						{#if node.hidden}<IconEyeOff class="h-3.5 w-3.5" aria-hidden="true" />{:else}<IconEye
@@ -447,8 +461,8 @@
 					<button
 						type="button"
 						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
-						aria-label={`Dupliquer ${node.name}`}
-						title="Dupliquer"
+						aria-label={$t('Duplicate {name}', { name: node.name })}
+						title={$t('Duplicate')}
 						onclick={() => onduplicate(node.id)}
 					>
 						<IconCopy class="h-3.5 w-3.5" aria-hidden="true" />
@@ -456,8 +470,8 @@
 					<button
 						type="button"
 						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
-						aria-label={`Supprimer ${node.name}`}
-						title="Supprimer"
+						aria-label={$t('Delete {name}', { name: node.name })}
+						title={$t('Delete')}
 						onclick={() => ondelete(node.id)}
 					>
 						<IconX class="h-3.5 w-3.5" aria-hidden="true" />
@@ -491,22 +505,23 @@
 
 <div class="flex flex-col gap-2">
 	<div class="flex items-center justify-between">
-		<span class="ws-section-title">Objets</span>
+		<span class="ws-section-title">{$t('Objects')}</span>
 		{#if sequential}
 			<span
 				class="ws-badge mr-auto ml-2"
 				data-testid="object-list-sequential"
-				data-tip="Impression objet par objet : l'ordre de la liste est l'ordre d'impression. Glissez un objet sur un autre (ou Alt+↑/↓) pour le changer."
-				>Objet par objet</span
+				data-tip={$t(
+					'Print by object: the list order is the print order. Drag an object onto another (or Alt+↑/↓) to change it.'
+				)}>{$t('By object||list')}</span
 			>
 			<button
 				type="button"
 				class="ws-icon-btn ws-icon-btn-xs mr-1 {showOrderOnScene ? 'text-primary' : ''}"
 				aria-pressed={showOrderOnScene}
-				aria-label="Ordre d'impression sur la scène"
+				aria-label={$t('Print order on the scene')}
 				data-tip={showOrderOnScene
-					? "Masquer les numéros d'ordre sur la scène"
-					: "Afficher les numéros d'ordre sur la scène"}
+					? $t('Hide the order numbers on the scene')
+					: $t('Show the order numbers on the scene')}
 				data-testid="object-list-order-toggle"
 				onclick={() => (showOrderOnScene = !showOrderOnScene)}
 				><IconHash class="h-3.5 w-3.5" aria-hidden="true" /></button
@@ -516,13 +531,13 @@
 			type="button"
 			class="ws-btn ws-btn-sm ws-btn-secondary"
 			disabled={selection.size < 2}
-			onclick={() => ongroup()}>Grouper</button
+			onclick={() => ongroup()}>{$t('Group')}</button
 		>
 	</div>
 	{#if tree.roots().length > 0}
 		<!-- Orca « Search plate, object and part. » (Plater m_search_bar). -->
 		<label class="relative block">
-			<span class="sr-only">Rechercher un plateau, un objet ou une pièce</span>
+			<span class="sr-only">{$t('Search plate, object and part')}</span>
 			<IconSearch
 				class="pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-content-subtle"
 				aria-hidden="true"
@@ -530,7 +545,7 @@
 			<input
 				type="search"
 				bind:value={query}
-				placeholder="Plateau, objet ou pièce…"
+				placeholder={$t('Plate, object or part…')}
 				class="ws-field ws-field-sm w-full pl-7"
 				data-testid="object-search"
 				onkeydown={(e) => {
@@ -552,12 +567,12 @@
 	{#if search}
 		{#if shownHere === 0 && elsewhere.length === 0}
 			<p class="px-1 text-xs text-content-subtle" data-testid="object-search-empty">
-				Aucun plateau, objet ou pièce ne correspond à « {query.trim()} ».
+				{$t('No plate, object or part matches “{query}”.', { query: query.trim() })}
 			</p>
 		{/if}
 		{#if elsewhere.length > 0}
 			<div class="flex flex-col gap-0.5" data-testid="object-search-elsewhere">
-				<span class="px-1 text-2xs text-content-subtle">Sur d'autres plateaux</span>
+				<span class="px-1 text-2xs text-content-subtle">{$t('On other plates')}</span>
 				{#each elsewhere as hit (hit.id)}
 					<button
 						type="button"

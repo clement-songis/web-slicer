@@ -2,6 +2,7 @@
 // tableaux typés prêts pour une BufferGeometry Three.js. Pur → testable.
 import type { SceneVolume } from './volumes';
 import { rotateVectorByEulerDeg } from './transform';
+import { tr } from '$lib/i18n';
 //
 // Format little-endian : magic(4)=WSMh · version(u32)=1 · vertex_count(u32) ·
 // index_count(u32) · f32 positions[vc*3] · f32 normals[vc*3] · u32 indices[ic].
@@ -126,16 +127,16 @@ const MAGIC = 0x5753_4d68;
 
 /** Décode un tampon WSMh. Lève si l'en-tête ou la taille est incohérent. */
 export function decodeMesh(buffer: ArrayBuffer): SceneMesh {
-	if (buffer.byteLength < 16) throw new Error('maillage tronqué (en-tête)');
+	if (buffer.byteLength < 16) throw new Error(tr('truncated mesh (header)'));
 	const view = new DataView(buffer);
-	if (view.getUint32(0, false) !== MAGIC) throw new Error('en-tête de maillage invalide');
-	if (view.getUint32(4, true) !== 1) throw new Error('version de maillage non supportée');
+	if (view.getUint32(0, false) !== MAGIC) throw new Error(tr('invalid mesh header'));
+	if (view.getUint32(4, true) !== 1) throw new Error(tr('unsupported mesh version'));
 
 	const vertexCount = view.getUint32(8, true);
 	const indexCount = view.getUint32(12, true);
 	const floats = vertexCount * 3;
 	const expected = 16 + floats * 4 * 2 + indexCount * 4;
-	if (buffer.byteLength !== expected) throw new Error('maillage tronqué');
+	if (buffer.byteLength !== expected) throw new Error(tr('truncated mesh'));
 
 	let off = 16;
 	const positions = new Float32Array(buffer.slice(off, off + floats * 4));

@@ -8,6 +8,7 @@ import {
 	GCODE_SPECIFIC_PLACEHOLDERS
 } from '../../generated/gcode-placeholders';
 import { settingChanged, type PresetValues } from './editing';
+import { tr } from '$lib/i18n';
 
 /** Page / section d'Orca où vit une clé (pour regrouper un diff). */
 const LOCATION = new Map<string, { page: string; section: string; kind: PresetKind }>();
@@ -66,7 +67,7 @@ export function formatSetting(value: unknown): string {
 		: String(value);
 	const lines = flat.split('\n');
 	const head = lines[0].length > 60 ? lines[0].slice(0, 57) + '…' : lines[0];
-	return lines.length > 1 ? `${head} (… ${lines.length} lignes)` : head;
+	return lines.length > 1 ? `${head} ${tr('(… {n} lines)', { n: lines.length })}` : head;
 }
 
 /** Brouillon transféré vers un autre preset (Orca « Transfer ») : les
@@ -86,7 +87,10 @@ export interface PlaceholderItem {
 	insert: string;
 }
 export interface PlaceholderGroup {
+	/** Titre (clé i18n anglaise, traduite au rendu). */
 	title: string;
+	/** Variables du titre (`{label}` : libellé anglais d'Orca, traduit au rendu). */
+	titleParams?: { label: string };
 	items: PlaceholderItem[];
 }
 
@@ -102,7 +106,8 @@ export function placeholderGroups(gcodeKey: string): PlaceholderGroup[] {
 	const specific = GCODE_SPECIFIC_PLACEHOLDERS[gcodeKey] ?? [];
 	if (specific.length)
 		groups.push({
-			title: `Spécifique à ${PARAMS[gcodeKey]?.label ?? gcodeKey}`,
+			title: 'Specific to {label}',
+			titleParams: { label: PARAMS[gcodeKey]?.label ?? gcodeKey },
 			items: specific.map((k) => {
 				const d = GCODE_SPECIFIC_DEFS[k];
 				return { key: k, label: d.label, tooltip: d.tooltip, insert: insertFor(k, d.type, false) };
@@ -120,9 +125,9 @@ export function placeholderGroups(gcodeKey: string): PlaceholderGroup[] {
 				}))
 			});
 	const titles: Record<PresetKind, string> = {
-		process: "Réglages d'impression",
-		filament: 'Réglages du filament',
-		machine: "Réglages de l'imprimante"
+		process: 'Print settings',
+		filament: 'Filament settings',
+		machine: 'Printer settings||gcode variables'
 	};
 	for (const kind of ['process', 'filament', 'machine'] as const) {
 		const seen = new Set<string>();

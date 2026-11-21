@@ -6,6 +6,7 @@
 // préfixée de « http:// » sans schéma http/file. Le navigateur peut refuser
 // l'intégration (X-Frame-Options / CSP frame-ancestors, contenu mixte http
 // dans une page https) : repli sur un lien externe. Pur, sauf le stockage local.
+import { tr } from '$lib/i18n';
 
 /** URL de l'interface web (PrintHost::get_print_host_webui). '' = aucune. */
 export function webuiUrl(src: {
@@ -47,19 +48,58 @@ export function embedBlockedReason(
 
 /** Explication affichée avec le lien de repli. */
 export function blockedMessage(
-	reason: 'mixed' | 'file' | 'invalid' | 'refused' | 'manual'
+	reason: 'mixed' | 'file' | 'invalid' | 'refused' | 'manual' | 'unreachable'
 ): string {
 	switch (reason) {
+		case 'unreachable':
+			return tr(
+				'Cannot reach the host: check the address and that the printer is on and connected to the same network.'
+			);
 		case 'mixed':
-			return 'Cette page est en HTTPS et l’hôte en HTTP : le navigateur interdit de l’afficher ici.';
+			return tr(
+				'This page uses HTTPS and the host uses HTTP: the browser forbids displaying it here.'
+			);
 		case 'file':
-			return 'Interface locale (fichier) : elle ne peut pas être affichée dans le navigateur.';
+			return tr('Local interface (file): it cannot be displayed in the browser.');
 		case 'invalid':
-			return 'Adresse de l’interface illisible : vérifiez-la ci-dessous.';
+			return tr('Unreadable interface address: check it below.');
 		case 'refused':
-			return 'L’hôte n’a pas répondu ou refuse d’être affiché dans une autre page.';
+			return tr('The host did not respond or refuses to be displayed in another page.');
 		case 'manual':
-			return 'Intégration désactivée pour cette imprimante.';
+			return tr('Embedding disabled for this printer.');
+	}
+}
+
+/**
+ * Sonde de joignabilité (audit 40 B5) : une iframe ne signale pas l'échec de
+ * connexion (Chrome charge sa page d'erreur et émet « load »). Requête
+ * `no-cors` vers l'adresse : rejet réseau (connexion refusée, nom inconnu) →
+ * 'unreachable' ; toute réponse HTTP, même opaque → 'ok' ; délai dépassé →
+ * 'timeout' (laissé au repli « pas de réponse » de l'iframe).
+ */
+export async function probeHost(
+	url: string,
+	timeoutMs: number,
+	fetchImpl: typeof fetch = fetch
+): Promise<'ok' | 'unreachable' | 'timeout'> {
+	const ctl = new AbortController();
+	let timedOut = false;
+	const timer = setTimeout(() => {
+		timedOut = true;
+		ctl.abort();
+	}, timeoutMs);
+	try {
+		await fetchImpl(url, {
+			mode: 'no-cors',
+			cache: 'no-store',
+			credentials: 'omit',
+			signal: ctl.signal
+		});
+		return 'ok';
+	} catch {
+		return timedOut ? 'timeout' : 'unreachable';
+	} finally {
+		clearTimeout(timer);
 	}
 }
 

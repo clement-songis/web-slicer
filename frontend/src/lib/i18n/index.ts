@@ -40,8 +40,36 @@ export function languageName(code: string): string {
 	}
 }
 
-/** Signature d'une fonction de message Paraglide (nos messages sont sans paramètre). */
-type MessageFn = (inputs?: Record<string, never>, options?: { locale?: Locale }) => string;
+/** Signature d'une fonction de message Paraglide (paramètres `{nom}` facultatifs). */
+type MessageFn = (inputs?: Record<string, unknown>, options?: { locale?: Locale }) => string;
+
+/** Valeurs d'interpolation d'un message : `$t('Plate {n}', { n: 2 })`. */
+export type MessageParams = Record<string, string | number>;
+
+/**
+ * Entrées « miroir » : chaque variable `{nom}` se rend `{nom}`. Les messages
+ * paramétrés produisent ainsi leur gabarit (« Plate {n} »), qui sert de clé
+ * anglaise ; l'interpolation est faite ensuite par `interpolate`.
+ */
+const TEMPLATE_INPUTS = new Proxy({} as Record<string, unknown>, {
+	get: (_target, prop) => (typeof prop === 'string' ? `{${prop}}` : undefined)
+});
+
+/**
+ * Contexte de désambiguïsation : « Cut||tool » s'affiche « Cut » en anglais et
+ * peut avoir une autre traduction que « Cut ». Le suffixe n'est jamais affiché.
+ */
+function stripContext(text: string): string {
+	const i = text.indexOf('||');
+	return i < 0 ? text : text.slice(0, i);
+}
+
+function interpolate(text: string, params?: MessageParams): string {
+	if (!params) return text;
+	return text.replace(/\{(\w+)\}/g, (whole, name: string) =>
+		name in params ? String(params[name]) : whole
+	);
+}
 
 /**
  * Index inverse : libellé anglais (clé de parité) → fonction de message. Construit
@@ -52,7 +80,7 @@ const byEnglish = new Map<string, MessageFn>();
 for (const value of Object.values(m)) {
 	if (typeof value === 'function') {
 		const fn = value as MessageFn;
-		byEnglish.set(fn({}, { locale: baseLocale }), fn);
+		byEnglish.set(fn(TEMPLATE_INPUTS, { locale: baseLocale }), fn);
 	}
 }
 
@@ -72,11 +100,12 @@ export function registerTranslations(loc: Locale, dict: Record<string, string>):
 function lookup(
 	dicts: Partial<Record<Locale, Record<string, string>>>,
 	loc: Locale,
-	key: string
+	key: string,
+	params?: MessageParams
 ): string {
 	const fn = byEnglish.get(key);
-	if (fn) return fn({}, { locale: loc });
-	return dicts[loc]?.[key] ?? key;
+	const text = fn ? fn(TEMPLATE_INPUTS, { locale: loc }) : (dicts[loc]?.[key] ?? key);
+	return interpolate(stripContext(text), params);
 }
 
 /** Vrai si le libellé anglais dispose d'une traduction (Paraglide ou dictionnaire chargé). */
@@ -87,8 +116,8 @@ export function isTranslatable(label: string): boolean {
 }
 
 /** Traduit une clé (libellé anglais) pour une locale ; repli additif sur la clé. */
-export function translate(loc: Locale, key: string): string {
-	return lookup(get(lazyDicts), loc, key);
+export function translate(loc: Locale, key: string, params?: MessageParams): string {
+	return lookup(get(lazyDicts), loc, key, params);
 }
 
 /** Locale courante (store réactif) ; synchronisée avec Paraglide. */
@@ -101,13 +130,32 @@ export const locale = writable<Locale>(currentLocale());
 export const t = derived(
 	[locale, lazyDicts],
 	([loc, dicts]) =>
-		(key: string) =>
-			lookup(dicts, loc, key)
+		(key: string, params?: MessageParams) =>
+			lookup(dicts, loc, key, params)
 );
 
 /** Traduit avec la locale courante hors composant (usage impératif). */
-export function tr(key: string): string {
-	return translate(get(locale), key);
+export function tr(key: string, params?: MessageParams): string {
+	return translate(get(locale), key, params);
+}
+
+/** Étiquette BCP 47 de la locale (séparateurs décimaux : « 0,26 » en fr, « 0.26 » en en). */
+export function numberLocale(loc: Locale = get(locale)): string {
+	return loc === 'fr' ? 'fr-FR' : 'en-US';
+}
+
+/**
+ * Nombre à décimales fixes avec le séparateur de la langue courante (sans
+ * séparateur de milliers, comme les champs d'Orca) : fmtNum(14.336, 2) →
+ * « 14,34 » (fr) / « 14.34 » (en).
+ */
+export function fmtNum(value: number, digits = 2, loc: Locale = get(locale)): string {
+	if (!Number.isFinite(value)) return String(value);
+	return value.toLocaleString(numberLocale(loc), {
+		minimumFractionDigits: digits,
+		maximumFractionDigits: digits,
+		useGrouping: false
+	});
 }
 
 /** Change la locale (persistée par la stratégie Paraglide) sans recharger la page. */

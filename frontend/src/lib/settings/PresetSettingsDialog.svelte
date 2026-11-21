@@ -6,10 +6,12 @@
 	// mêmes onglets que l'édition inline (`SettingsTabs`, cadrés par type) mais
 	// dans une fenêtre modale ouverte depuis le sélecteur. Présentational : les
 	// valeurs sont liées, la persistance reste dans la page.
-	import { t } from '$lib/i18n';
+	import { t, tr } from '$lib/i18n';
 	import type { PresetKind } from '../../generated/ui-layout';
 	import type { DisplayMode } from './filter';
 	import SettingsTabs from './SettingsTabs.svelte';
+	import ModifiedBadge from '$lib/presets/ModifiedBadge.svelte';
+	import { hasPresetChanges } from './editing';
 
 	interface Props {
 		open?: boolean;
@@ -81,6 +83,12 @@
 		oncompare
 	}: Props = $props();
 
+	// Audit 40 A2 : en-tête marqué « (modifié) » quand les valeurs éditées
+	// diffèrent du preset enregistré (Orca : titre de l'onglet « … (modified) »).
+	const presetModified = $derived.by(() => {
+		const saved = savedByKind?.[kind];
+		return !!saved && hasPresetChanges(saved, values);
+	});
 	let renaming = $state<string | null>(null);
 	let renameError = $state<string | null>(null);
 	let confirmDelete = $state(false);
@@ -94,14 +102,15 @@
 	let detachBusy = $state(false);
 	function startDetach() {
 		detachError = null;
-		detaching = preset && preset.origin !== 'user' ? `${preset.name} (détaché)` : '';
+		detaching =
+			preset && preset.origin !== 'user' ? tr('{name} (detached)', { name: preset.name }) : '';
 	}
 	async function confirmDetach() {
 		if (detaching === null || !ondetach || !preset) return;
 		const system = preset.origin !== 'user';
 		const name = detaching.trim();
 		if (system && !name) {
-			detachError = 'nom requis';
+			detachError = tr('name required');
 			return;
 		}
 		detachBusy = true;
@@ -169,7 +178,7 @@
 								<input
 									class="ws-field ws-field-sm w-64 {renameError ? 'border-danger' : ''}"
 									bind:value={renaming}
-									aria-label="Nouveau nom du preset"
+									aria-label={$t('New preset name')}
 									aria-invalid={!!renameError}
 									data-testid="preset-rename-input"
 									onkeydown={(e) => {
@@ -181,7 +190,7 @@
 									}}
 								/>
 								<button type="button" class="ws-btn ws-btn-sm ws-btn-primary" onclick={commitRename}
-									>Renommer</button
+									>{$t('Rename')}</button
 								>
 								{#if renameError}<span class="text-danger" role="alert">{renameError}</span>{/if}
 							{:else}
@@ -193,12 +202,14 @@
 									title={preset.name}>{preset.name}</span
 								>
 								<span class="ws-badge h-4 shrink-0 px-1.5"
-									>{preset.origin === 'user' ? 'Utilisateur' : 'Système'}</span
+									>{preset.origin === 'user' ? $t('User') : $t('System')}</span
 								>
+								{#if presetModified}<ModifiedBadge testid="preset-modified" />{/if}
 								{#if preset.inherits}
 									<span
 										class="min-w-0 truncate text-content-subtle"
-										title="hérite de {preset.inherits}">hérite de {preset.inherits}</span
+										title={$t('inherits from {name}', { name: preset.inherits })}
+										>{$t('inherits from {name}', { name: preset.inherits })}</span
 									>
 								{/if}
 							{/if}
@@ -211,15 +222,16 @@
 							type="button"
 							class="ws-btn ws-btn-sm ws-btn-ghost"
 							data-testid="preset-detach"
-							title="Rendre ce preset autonome : il ne suivra plus les mises à jour de « {preset?.origin ===
-							'user'
-								? preset?.inherits
-								: preset?.name} »"
+							title={$t(
+								'Make this preset standalone: it will no longer follow the updates of “{name}”',
+								{
+									name: (preset?.origin === 'user' ? preset?.inherits : preset?.name) ?? ''
+								}
+							)}
 							onclick={startDetach}
-							><IconUnlink
-								class="mr-1 inline h-3.5 w-3.5 align-[-2px]"
-								aria-hidden="true"
-							/>Détacher…</button
+							><IconUnlink class="mr-1 inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />{$t(
+								'Detach…'
+							)}</button
 						>
 					{/if}
 					{#if preset && oncompare}
@@ -227,7 +239,7 @@
 							type="button"
 							class="ws-btn ws-btn-sm ws-btn-ghost"
 							data-testid="preset-compare"
-							onclick={oncompare}>Comparer…</button
+							onclick={oncompare}>{$t('Compare…')}</button
 						>
 					{/if}
 					{#if preset?.origin === 'user' && onrename && renaming === null}
@@ -238,12 +250,14 @@
 							onclick={() => {
 								renaming = preset?.name ?? '';
 								renameError = null;
-							}}>Renommer</button
+							}}>{$t('Rename')}</button
 						>
 					{/if}
 					{#if preset?.origin === 'user' && ondelete}
 						{#if confirmDelete}
-							<span class="text-xs text-content-muted">Supprimer « {preset.name} » ?</span>
+							<span class="text-xs text-content-muted"
+								>{$t('Delete “{name}”?', { name: preset.name })}</span
+							>
 							<button
 								type="button"
 								class="ws-btn ws-btn-sm ws-btn-danger"
@@ -251,19 +265,19 @@
 								onclick={() => {
 									confirmDelete = false;
 									ondelete?.();
-								}}>Supprimer</button
+								}}>{$t('Delete')}</button
 							>
 							<button
 								type="button"
 								class="ws-btn ws-btn-sm ws-btn-ghost"
-								onclick={() => (confirmDelete = false)}>Annuler</button
+								onclick={() => (confirmDelete = false)}>{$t('Cancel')}</button
 							>
 						{:else}
 							<button
 								type="button"
 								class="ws-btn ws-btn-sm ws-btn-ghost text-danger hover:bg-danger-soft hover:text-danger-content"
 								data-testid="preset-delete"
-								onclick={() => (confirmDelete = true)}>Supprimer</button
+								onclick={() => (confirmDelete = true)}>{$t('Delete')}</button
 							>
 						{/if}
 					{/if}
@@ -276,23 +290,27 @@
 				<div
 					class="mx-4 mt-2 flex flex-col gap-2 rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-sm text-warning-text"
 					role="alertdialog"
-					aria-label="Détacher le preset"
+					aria-label={$t('Detach preset')}
 					data-testid="preset-detach-panel"
 				>
 					<p>
 						{#if preset.origin !== 'user'}
-							Une copie autonome de « {preset.name} » sera créée dans vos presets. Elle garde toutes les
-							valeurs actuelles mais ne suivra plus les mises à jour du preset système.
+							{$t(
+								'A standalone copy of “{name}” will be created in your presets. It keeps all the current values but will no longer follow the updates of the system preset.',
+								{ name: preset.name }
+							)}
 						{:else}
-							« {preset.name} » deviendra autonome : les valeurs héritées de « {preset.inherits} » y sont
-							recopiées, et il ne suivra plus ses mises à jour.
+							{$t(
+								'“{name}” will become standalone: the values inherited from “{parent}” are copied into it, and it will no longer follow its updates.',
+								{ name: preset.name, parent: preset.inherits ?? '' }
+							)}
 						{/if}
-						Les modifications non enregistrées ne sont pas incluses. Action irréversible.
+						{$t('Unsaved changes are not included. This cannot be undone.')}
 					</p>
 					<div class="flex flex-wrap items-center gap-2">
 						{#if preset.origin !== 'user'}
 							<label class="flex items-center gap-2 text-xs">
-								Nom de la copie
+								{$t('Copy name')}
 								<input
 									class="ws-field ws-field-sm w-64"
 									data-testid="preset-detach-name"
@@ -307,12 +325,12 @@
 							data-testid="preset-detach-confirm"
 							disabled={detachBusy}
 							aria-busy={detachBusy}
-							onclick={confirmDetach}>Détacher</button
+							onclick={confirmDetach}>{$t('Detach')}</button
 						>
 						<button
 							type="button"
 							class="ws-btn ws-btn-sm ws-btn-ghost"
-							onclick={() => (detaching = null)}>Annuler</button
+							onclick={() => (detaching = null)}>{$t('Cancel')}</button
 						>
 						{#if detachError}<span class="text-danger" role="alert">{detachError}</span>{/if}
 					</div>
@@ -340,7 +358,7 @@
 				<div class="flex items-center justify-end gap-3 border-t border-border px-4 py-3">
 					{#if saveAsName !== null}
 						<label class="flex min-w-0 flex-1 flex-col gap-0.5 text-xs text-content-muted">
-							<span>Preset système : enregistrer sous le nom</span>
+							<span>{$t('System preset: save under the name')}</span>
 							<input
 								class="ws-field w-full {saveAsError ? 'border-danger' : ''}"
 								bind:value={saveAsName}
@@ -365,7 +383,7 @@
 						disabled={saveDisabled || !!saveAsError}
 						onclick={onsave}
 					>
-						Enregistrer
+						{$t('Save')}
 					</button>
 				</div>
 			{/if}

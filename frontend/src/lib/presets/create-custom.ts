@@ -1,6 +1,8 @@
 // Création de presets personnalisés (Orca CreateFilamentPresetDialog /
 // CreatePrinterPresetDialog) : noms et valeurs, logique pure testée.
 
+import { tr } from '$lib/i18n';
+
 /** Types de filament proposés par Orca (CreatePresetsDialog.cpp:66). */
 export const FILAMENT_TYPES = [
 	'PLA',
@@ -88,10 +90,11 @@ export function filamentPresetName(f: CustomFilament): string {
 }
 
 export function validateFilament(f: CustomFilament, existing: readonly string[]): string | null {
-	if (!cleanName(f.vendor)) return 'Indiquez un fournisseur.';
-	if (!f.type) return 'Choisissez un type de filament.';
-	if (!cleanName(f.serial)) return 'Indiquez une série (ex. « Basic », « Matte »).';
-	if (existing.includes(filamentPresetName(f))) return `« ${filamentPresetName(f)} » existe déjà.`;
+	if (!cleanName(f.vendor)) return tr('Enter a vendor.');
+	if (!f.type) return tr('Choose a filament type.');
+	if (!cleanName(f.serial)) return tr('Enter a serial (e.g. “Basic”, “Matte”).');
+	if (existing.includes(filamentPresetName(f)))
+		return tr('“{name}” already exists.', { name: filamentPresetName(f) });
 	return null;
 }
 
@@ -117,15 +120,16 @@ export function printerPresetName(p: CustomPrinter): string {
 }
 
 export function validatePrinter(p: CustomPrinter, existing: readonly string[]): string | null {
-	if (!cleanName(p.vendor) || !cleanName(p.model)) return 'Indiquez le fournisseur et le modèle.';
-	for (const [v, label] of [
-		[p.width, 'largeur'],
-		[p.depth, 'profondeur'],
-		[p.height, 'hauteur']
+	if (!cleanName(p.vendor) || !cleanName(p.model)) return tr('Enter the vendor and the model.');
+	for (const [v, message] of [
+		[p.width, 'The volume width must be between 1 and 2000 mm.'],
+		[p.depth, 'The volume depth must be between 1 and 2000 mm.'],
+		[p.height, 'The volume height must be between 1 and 2000 mm.']
 	] as const)
-		if (!(v > 0 && v <= 2000)) return `La ${label} du volume doit être entre 1 et 2000 mm.`;
-	if (!(p.nozzle > 0 && p.nozzle <= 2)) return 'Diamètre de buse invalide.';
-	if (existing.includes(printerPresetName(p))) return `« ${printerPresetName(p)} » existe déjà.`;
+		if (!(v > 0 && v <= 2000)) return tr(message);
+	if (!(p.nozzle > 0 && p.nozzle <= 2)) return tr('Invalid nozzle diameter.');
+	if (existing.includes(printerPresetName(p)))
+		return tr('“{name}” already exists.', { name: printerPresetName(p) });
 	return null;
 }
 

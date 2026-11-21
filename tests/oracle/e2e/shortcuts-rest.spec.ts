@@ -128,7 +128,7 @@ test("presse-papier, sélection, suppression et historique @F:shortcut.ctrl-x @F
     /Cube renommé/,
   );
 
-  await page.getByRole("button", { name: "Process", exact: true }).click();
+  await page.getByRole("button", { name: "Traitement", exact: true }).click();
   await page.getByTestId("add-filament-slot").click();
   await page.getByTestId("object-name").first().click();
   await focusEditor(page);

@@ -2,7 +2,7 @@
 	// filament_ramming_parameters : résumé (durée, volume, largeur) + bouton
 	// ouvrant l'éditeur de courbe (RammingDialog, parité Orca « Ramming
 	// settings… »). La chaîne exacte est conservée tant que rien ne change.
-	import { t } from '$lib/i18n';
+	import { locale, numberLocale, t } from '$lib/i18n';
 	import RammingDialog from '../special/RammingDialog.svelte';
 	import { parseRamming, rammingTime, rammingVolume } from '../special/ramming';
 	import type { WidgetProps } from './types';
@@ -35,7 +35,7 @@
 		} else value = [next];
 		open = false;
 	}
-	const fmt = (n: number) => n.toLocaleString('fr-FR', { maximumFractionDigits: 2 });
+	const fmt = (n: number) => n.toLocaleString(numberLocale($locale), { maximumFractionDigits: 2 });
 </script>
 
 <div class="flex items-center gap-2" data-index={index}>
@@ -49,9 +49,9 @@
 		type="button"
 		class="ws-btn ws-btn-sm ws-btn-secondary shrink-0"
 		data-testid="ramming-open"
-		aria-label={`${$t(def.label)} : personnaliser`}
+		aria-label={$t('{label}: customize', { label: $t(def.label) })}
 		{disabled}
-		onclick={() => (open = true)}>Personnaliser…</button
+		onclick={() => (open = true)}>{$t('Customize…')}</button
 	>
 </div>
 {#if open}

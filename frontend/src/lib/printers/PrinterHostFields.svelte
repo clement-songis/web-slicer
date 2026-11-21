@@ -18,6 +18,7 @@
 	import { getResolvedPreset } from '$lib/api/presets';
 	import { ApiError } from '$lib/api/client';
 	import { HOST_GROUPS, hostCapabilities, hostMeta, type HostForm } from './hosts';
+	import { t, tr } from '$lib/i18n';
 	import IconCheck from '~icons/lucide/check';
 	import IconMinus from '~icons/lucide/minus';
 
@@ -69,14 +70,25 @@
 	const elegoo = $derived(form.type === 'elegoolink' ? elegooProtocol(profile.model) : null);
 
 	const meta = $derived(hostMeta(form.type));
-	const capabilities = $derived(hostCapabilities(form.type, profile.model));
+	const capabilities = $derived.by(() => {
+		void $t; // libellés traduits : recalcul au changement de langue
+		return hostCapabilities(form.type, profile.model);
+	});
+	/** Placeholder « depuis le profil machine : … » (réactif à la langue). */
+	function fromProfile(value: string | undefined | null, fallback = ''): string {
+		void $t;
+		return profilePlaceholder(value, fallback);
+	}
 	let slugs = $state<string[] | null>(null);
 	let slugError = $state<string | null>(null);
 	let loadingSlugs = $state(false);
 
 	// « Parcourir » (Orca BonjourDialog) : recherche DNS-SD depuis le serveur.
 	const service = $derived(discoveryService(form.type));
-	const hints = $derived(discoveryHints(service ?? ''));
+	const hints = $derived.by(() => {
+		void $t;
+		return discoveryHints(service ?? '');
+	});
 	let found = $state<BonjourReply[] | null>(null);
 	let browsing = $state(false);
 	let browseError = $state<string | null>(null);
@@ -95,10 +107,10 @@
 		} catch (e) {
 			browseError =
 				e instanceof ApiError && (e.status === 404 || e.status === 405)
-					? 'Recherche réseau indisponible : le serveur web-slicer doit être mis à jour.'
+					? tr('Network search unavailable: the web-slicer server must be updated.')
 					: e instanceof ApiError
 						? e.message
-						: 'Recherche impossible.';
+						: tr('Search failed.');
 		} finally {
 			browsing = false;
 		}
@@ -117,14 +129,14 @@
 		try {
 			const id = (await beforeListPrinters?.()) ?? printerId;
 			if (!id) {
-				slugError = "Enregistrez d'abord l'imprimante.";
+				slugError = tr('Save the printer first.');
 				return;
 			}
 			slugs = await getHostPrinters(id);
 			if (slugs.length && !form.slug) form.slug = hostPrinterValue(form.type, slugs[0]);
-			if (!slugs.length) slugError = 'Aucune imprimante sur ce serveur.';
+			if (!slugs.length) slugError = tr('No printer on this server.');
 		} catch (e) {
-			slugError = e instanceof ApiError ? e.message : 'Liste indisponible.';
+			slugError = e instanceof ApiError ? e.message : tr('List unavailable.');
 		} finally {
 			loadingSlugs = false;
 		}
@@ -133,7 +145,7 @@
 
 <div class="flex flex-col gap-3" data-testid="host-fields">
 	<label class="flex flex-col gap-1 text-sm">
-		<span class="text-content-muted">Type d'hôte</span>
+		<span class="text-content-muted">{$t('Host Type')}</span>
 		<select
 			class="ws-field"
 			bind:value={form.type}
@@ -141,7 +153,7 @@
 			onchange={() => (slugs = null)}
 		>
 			{#each HOST_GROUPS as g (g.label)}
-				<optgroup label={g.label}>
+				<optgroup label={$t(g.label)}>
 					{#each g.hosts as h (h.id)}
 						<option value={h.id}>{h.label}</option>
 					{/each}
@@ -164,12 +176,13 @@
 						class="h-3.5 w-3.5 text-success-text"
 						aria-hidden="true"
 					/>{:else}<IconMinus class="h-3.5 w-3.5" aria-hidden="true" />{/if}
-				<span><span class="sr-only">{c.ok ? 'Oui : ' : 'Non : '}</span>{c.label}</span>
+				<span><span class="sr-only">{c.ok ? $t('Yes: ') : $t('No: ')}</span>{c.label}</span>
 			</li>
 		{/each}
 	</ul>
 	<label class="flex flex-col gap-1 text-sm">
-		<span class="text-content-muted">Adresse{form.type === 'moonraker' ? ' (facultatif)' : ''}</span
+		<span class="text-content-muted"
+			>{form.type === 'moonraker' ? $t('Address (optional)') : $t('Address')}</span
 		>
 		<div class="flex gap-2">
 			<input
@@ -186,7 +199,7 @@
 					data-testid="host-browse"
 					disabled={browsing}
 					aria-busy={browsing}
-					onclick={browse}>{browsing ? 'Recherche…' : 'Parcourir le réseau'}</button
+					onclick={browse}>{browsing ? $t('Searching…') : $t('Browse network')}</button
 				>
 			{/if}
 		</div>
@@ -222,7 +235,7 @@
 								data-testid="host-browse-use"
 								disabled={form.url === host.full_address}
 								onclick={() => useHost(host)}
-								>{form.url === host.full_address ? 'Choisi' : 'Utiliser'}</button
+								>{form.url === host.full_address ? $t('Chosen') : $t('Use')}</button
 							>
 						</li>
 					{/each}
@@ -231,17 +244,17 @@
 		</div>
 	{/if}
 	{#if meta.authChoice}
-		<div class="flex flex-col gap-1 text-sm" role="radiogroup" aria-label="Authentification">
-			<span class="text-content-muted">Authentification</span>
+		<div class="flex flex-col gap-1 text-sm" role="radiogroup" aria-label={$t('Authentication')}>
+			<span class="text-content-muted">{$t('Authentication')}</span>
 			<div class="ws-seg self-start">
-				{#each [['key', 'Clé API'], ['user', 'Utilisateur et mot de passe']] as [id, label] (id)}
+				{#each [['key', 'API key'], ['user', 'User and password']] as [id, label] (id)}
 					<button
 						type="button"
 						role="radio"
 						aria-checked={form.auth === id}
 						class="ws-seg-item {form.auth === id ? 'ws-seg-on' : ''}"
 						data-testid={`host-auth-${id}`}
-						onclick={() => (form.auth = id as 'key' | 'user')}>{label}</button
+						onclick={() => (form.auth = id as 'key' | 'user')}>{$t(label)}</button
 					>
 				{/each}
 			</div>
@@ -249,80 +262,80 @@
 	{/if}
 	{#if meta.authChoice && profile.auth}
 		<p class="-mt-2 text-xs text-content-subtle" data-testid="host-auth-profile">
-			Profil machine : {profile.auth === 'user'
-				? 'utilisateur et mot de passe'
-				: 'clé API'}{profile.auth !== form.auth ? ' — votre choix ci-dessus prévaut' : ''}.
+			{$t('Machine profile: {auth}', {
+				auth: profile.auth === 'user' ? $t('user and password') : $t('API key||lower')
+			})}{profile.auth !== form.auth ? $t(' — your choice above takes precedence') : ''}.
 		</p>
 	{/if}
 	{#if elegoo}
 		<p class="-mt-1 text-xs text-content-muted" data-testid="host-elegoo-protocol">
-			{profile.model
-				? `Modèle du profil machine : ${profile.model} — `
-				: ''}{ELEGOO_PROTOCOL_LABELS[elegoo]}.
+			{profile.model ? $t('Machine profile model: {model} — ', { model: profile.model }) : ''}{$t(
+				ELEGOO_PROTOCOL_LABELS[elegoo]
+			)}.
 		</p>
 	{/if}
 	{#if meta.authChoice && form.auth === 'user'}
 		<div class="grid grid-cols-2 gap-3">
 			<label class="flex flex-col gap-1 text-sm">
-				<span class="text-content-muted">Utilisateur</span>
+				<span class="text-content-muted">{$t('User')}</span>
 				<input
 					class="ws-field"
 					bind:value={form.user}
 					autocomplete="off"
-					placeholder={profilePlaceholder(profile.user)}
+					placeholder={fromProfile(profile.user)}
 					data-testid="host-user"
 				/>
 			</label>
 			<label class="flex flex-col gap-1 text-sm">
-				<span class="text-content-muted">Mot de passe</span>
+				<span class="text-content-muted">{$t('Password')}</span>
 				<input
 					class="ws-field"
 					type="password"
 					bind:value={form.password}
 					autocomplete="new-password"
 					placeholder={hasPassword
-						? '•••••• Enregistré'
+						? $t('•••••• Saved')
 						: profile.hasPassword
-							? 'depuis le profil machine'
+							? $t('from the machine profile')
 							: ''}
-					title={hasPassword ? 'Laisser vide pour garder le mot de passe enregistré' : undefined}
+					title={hasPassword ? $t('Leave empty to keep the saved password') : undefined}
 					data-testid="host-password"
 				/>
 			</label>
 		</div>
 	{:else if meta.secret}
 		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-content-muted">{meta.secret}</span>
+			<span class="text-content-muted">{$t(meta.secret)}</span>
 			<input
 				class="ws-field"
 				type="password"
 				bind:value={form.apiKey}
 				autocomplete="new-password"
-				placeholder={hasSecret ? 'Enregistrée — laisser vide pour la garder' : ''}
+				placeholder={hasSecret ? $t('Saved — leave empty to keep it||key') : ''}
 				data-testid="host-api-key"
 			/>
 		</label>
 	{/if}
 	{#if meta.serialNumber}
 		<label class="flex flex-col gap-1 text-sm">
-			<span class="text-content-muted">Numéro de série</span>
+			<span class="text-content-muted">{$t('Serial Number')}</span>
 			<input
 				class="ws-field"
 				bind:value={form.serial}
 				autocomplete="off"
 				spellcheck="false"
 				placeholder={profile.serial
-					? profilePlaceholder(profile.serial)
+					? fromProfile(profile.serial)
 					: printerId
-						? 'Enregistré — laisser vide pour le garder'
-						: 'ex. SNMOMC9900728'}
+						? $t('Saved — leave empty to keep it||serial')
+						: $t('e.g. SNMOMC9900728')}
 				data-testid="host-serial"
 			/>
 		</label>
 	{/if}
 	{#if meta.printerSlug}
 		<div class="flex flex-col gap-1 text-sm">
-			<span class="text-content-muted">{meta.slugLabel ?? 'Imprimante sur le serveur'}</span>
+			<span class="text-content-muted">{$t(meta.slugLabel ?? 'Printer on the server')}</span>
 			<div class="flex gap-2">
 				{#if slugs?.length}
 					<select class="ws-field flex-1" bind:value={form.slug} data-testid="host-slug">
@@ -332,9 +345,9 @@
 					<input
 						class="ws-field flex-1"
 						bind:value={form.slug}
-						placeholder={profilePlaceholder(
+						placeholder={fromProfile(
 							profile.port,
-							form.type === 'obico' ? 'ID Obico' : 'slug Repetier'
+							form.type === 'obico' ? $t('Obico ID') : $t('Repetier slug')
 						)}
 						data-testid="host-slug"
 					/>
@@ -344,16 +357,16 @@
 					class="ws-btn ws-btn-secondary"
 					disabled={loadingSlugs || !form.url.trim()}
 					data-testid="host-slug-list"
-					onclick={listSlugs}>{loadingSlugs ? 'Recherche…' : 'Lister'}</button
+					onclick={listSlugs}>{loadingSlugs ? $t('Searching…') : $t('List')}</button
 				>
 			</div>
 			{#if slugError}<span class="text-xs text-danger-text" role="alert">{slugError}</span>{/if}
 		</div>
 	{/if}
-	<p class="text-xs text-content-subtle" data-testid="host-help">{meta.help}</p>
+	<p class="text-xs text-content-subtle" data-testid="host-help">{$t(meta.help)}</p>
 	{#if form.type !== 'moonraker'}
 		<p class="sr-only" data-testid="host-limits">
-			Le suivi en direct et les commandes (pause, reprise, fichiers) restent réservés à Moonraker.
+			{$t('Live monitoring and commands (pause, resume, files) remain reserved for Moonraker.')}
 		</p>
 	{/if}
 </div>

@@ -4,6 +4,7 @@
 // Aucun accès réseau ni DOM (testable en isolation).
 
 import type { PrinterStatusResponse, ServerEvent } from '$lib/api/types';
+import { tr } from '$lib/i18n';
 
 /** État d'impression affiché pour une imprimante. */
 export interface PrinterStatusView {
@@ -60,20 +61,23 @@ export interface StateMeta {
 	badge: string;
 }
 
+// Libellés = clés anglaises, traduites par stateMeta (langue courante).
 const STATE_META: Record<string, StateMeta> = {
-	standby: { label: 'En veille', badge: 'bg-overlay text-content' },
-	printing: { label: 'Impression', badge: 'bg-primary text-primary-content' },
+	standby: { label: 'Standby', badge: 'bg-overlay text-content' },
+	printing: { label: 'Printing', badge: 'bg-primary text-primary-content' },
 	// Teintes douces du design system : texte ≥ 4,5:1 en clair comme en sombre
 	// (le blanc sur ambre / vert / gris tombait sous 3:1).
-	paused: { label: 'En pause', badge: 'bg-warning-soft text-warning-content' },
-	complete: { label: 'Terminé', badge: 'bg-success-soft text-success-content' },
-	cancelled: { label: 'Annulé', badge: 'bg-overlay text-content-muted' },
-	error: { label: 'Erreur', badge: 'bg-danger-soft text-danger-content' }
+	paused: { label: 'Paused', badge: 'bg-warning-soft text-warning-content' },
+	complete: { label: 'Completed', badge: 'bg-success-soft text-success-content' },
+	cancelled: { label: 'Cancelled', badge: 'bg-overlay text-content-muted' },
+	error: { label: 'Error', badge: 'bg-danger-soft text-danger-content' }
 };
 
 /** Métadonnées d'un état (repli neutre si inconnu ou vide). */
 export function stateMeta(state: string): StateMeta {
-	return STATE_META[state] ?? { label: state || 'Inconnu', badge: 'bg-overlay text-content' };
+	const m = STATE_META[state];
+	if (m) return { label: tr(m.label), badge: m.badge };
+	return { label: state || tr('Unknown'), badge: 'bg-overlay text-content' };
 }
 
 /** Progression en pourcentage entier borné (0–100). */

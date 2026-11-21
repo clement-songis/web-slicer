@@ -1,5 +1,6 @@
 // Tests du modèle multi-plateaux (T059).
-import { describe, expect, test } from 'vitest';
+import { beforeAll, afterAll, describe, expect, test } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import { PlateSet, DEFAULT_PLATE_TYPE } from './plates.svelte';
 
 describe('PlateSet', () => {
@@ -174,3 +175,7 @@ describe('réglages par plateau', () => {
 		expect(set.get(id)?.settings).toBeUndefined();
 	});
 });
+
+// Les libellés de ces modules sont traduits (tr) : valeurs attendues en français.
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));

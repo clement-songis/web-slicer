@@ -1,8 +1,12 @@
 // Tests des gizmos mesure / oreilles de bord / relief (T057, analyse G1).
-import { describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import { distance, angleDeg, angleBetweenNormals, measurePoints } from './measure';
 import { BrimEars } from './brim-ears';
 import { defaultEmbossParams, validateEmboss, type EmbossParams } from './emboss';
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('measure', () => {
 	test('distance et composantes entre deux points', () => {

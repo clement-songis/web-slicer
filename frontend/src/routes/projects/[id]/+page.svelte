@@ -48,14 +48,16 @@
 	import { autoFlushResult, changedSlots, type FlushSnapshot } from '$lib/editor/auto-flush';
 	import { detachPreset } from '$lib/api/presets';
 	// Lot 21 : brouillon au tranchage, peinture conservée, températures, buses.
-	import { buildSliceDraft } from '$lib/editor/slice-draft';
+	import { buildProjectOverrides } from '$lib/editor/slice-draft';
 	import { preferredFilaments } from '$lib/printers/wizard-filaments';
 	import {
 		applyBatchEvent,
 		batchFinished,
 		batchLabel,
 		makeBatch,
+		plateSceneSignature,
 		resultFor,
+		staleResults,
 		type PlateResults,
 		type SliceBatch
 	} from '$lib/editor/plate-results';
@@ -102,16 +104,16 @@
 		optionPage,
 		plateBlocked,
 		validateProject,
-		supportsInlineScene,
 		type OrcaCatalog,
 		type ValidateResponse,
 		type ValidationNotice
 	} from '$lib/editor/validation';
 	import { safeFileName } from '$lib/export/stl';
 	import { getJob, listJobs } from '$lib/api/jobs';
+	import { EarlyJobEvents } from '$lib/editor/early-job-events';
 	import { jobAsEvent, planResume, resumedProgress } from '$lib/editor/resume-job';
 	import { connection } from '$lib/api/connectivity';
-	import type { JobResponse } from '$lib/api/types';
+	import type { JobResponse, SliceRequest } from '$lib/api/types';
 	import type { Projection } from '$lib/scene/camera';
 	import { cameraSpaceNudge, clampZoom } from '$lib/scene/camera';
 	// Phase 34 : Page préc./suiv. (rotation ±45°), « + »/« − » (instances, ou
@@ -135,6 +137,7 @@
 	} from '$lib/preview/layer-code-menu';
 	import ObjectTable from '$lib/scene/ObjectTable.svelte';
 	import type { TableObjectSource, TableRow } from '$lib/scene/object-table';
+	import { maxLayerHeight } from '$lib/scene/object-table';
 	import ViewCube from '$lib/scene/ViewCube.svelte';
 	import {
 		cutLinkedIds,
@@ -467,6 +470,7 @@
 	} from '$lib/api/preview';
 	import {
 		listPresets,
+		cachedPresetList,
 		createPreset,
 		updatePreset,
 		getPreset,
@@ -545,7 +549,7 @@
 		PrinterCatalogModel
 	} from '$lib/api/types';
 	import { ApiError } from '$lib/api/client';
-	import { locale, t } from '$lib/i18n';
+	import { fmtNum, locale, numberLocale, t, tr } from '$lib/i18n';
 	import {
 		initialWorkspace,
 		pick,
@@ -586,6 +590,14 @@
 		type ImportItem
 	} from '$lib/editor';
 	import type { DisplayMode } from '$lib/settings/filter';
+	import {
+		applyOverrides,
+		pendingAfterSlotRemoval,
+		pendingOverridesFor,
+		withPendingFilament,
+		withoutPending,
+		type ActivePresets
+	} from '$lib/editor/presets';
 	import {
 		addFilamentSlot,
 		importedFilamentSlots,
@@ -752,7 +764,9 @@
 		try {
 			await renameProject(data.project.id, name);
 			savedName = name;
-			saveMessage = fromFile ? `Projet nommé « ${name} » d'après ${fromFile}.` : 'Projet renommé.';
+			saveMessage = fromFile
+				? tr('Project named “{name}” after {file}.', { name, file: fromFile })
+				: tr('Project renamed.');
 		} catch (e) {
 			if (isNameConflict(e) && fromFile) {
 				// Phase 32 : nom de fichier déjà pris par un autre projet → « cube20 (2) ».
@@ -766,7 +780,7 @@
 						]);
 					await renameProject(data.project.id, free);
 					projectName = savedName = free;
-					saveMessage = `Projet nommé « ${free} » d'après ${fromFile}.`;
+					saveMessage = tr('Project named “{name}” after {file}.', { name: free, file: fromFile });
 					return;
 				} catch {
 					// repli : message ci-dessous
@@ -776,7 +790,7 @@
 				? nameTakenMessage(name, nameSuggestion(e))
 				: e instanceof ApiError
 					? e.message
-					: 'renommage impossible';
+					: tr('rename failed');
 		}
 	}
 
@@ -940,6 +954,14 @@
 	// depuis le blob `active_presets` au montage (lecture non réactive de `data`),
 	// modifiés par les sélecteurs, persistés au save.
 	let activePresets = $state(emptyActivePresets());
+	// Lot 40 (D1) : surcharges enregistrées du projet (`active_presets.overrides`)
+	// pas encore chargées dans un brouillon de réglages, avec les ids des presets
+	// auxquels elles s'appliquent (cf. lib/editor/presets : pendingOverridesFor).
+	let pendingOverrides = $state.raw<ActivePresets>(emptyActivePresets());
+	// `overrides` de la dernière sauvegarde / de l'ouverture.
+	let persistedOverrides: ActivePresets['overrides'] = undefined;
+	// Slot filament dont le brouillon `filamentValues` est chargé (null : aucun).
+	let filamentLoadedSlot = $state<number | null>(null);
 	let machinePresets = $state<PresetSummary[]>([]);
 	let filamentPresets = $state<PresetSummary[]>([]);
 	let processPresets = $state<PresetSummary[]>([]);
@@ -977,7 +999,7 @@
 		if (id) editTouchedPreset.filament.set('nozzle_temperature', id);
 		configTab = 'settings';
 		openSettingsDialog('filament', 'Filament');
-		saveMessage = `Température ${t} °C posée dans le filament : enregistrez ses réglages.`;
+		saveMessage = tr('Temperature {t} °C set in the filament: save its settings.', { t });
 	}
 	// Valeur K de l'historique PA posée dans le filament actif (brouillon,
 	// notée comme une saisie pour survivre à un rechargement de la base).
@@ -992,7 +1014,7 @@
 		showPaHistory = false;
 		configTab = 'settings';
 		openSettingsDialog('filament', 'Filament');
-		saveMessage = `Pressure advance K = ${k} posé dans le filament : enregistrez ses réglages.`;
+		saveMessage = tr('Pressure advance K = {k} set in the filament: save its settings.', { k });
 	}
 	// Multiplicateur de purge effectif hors surcharge projet (config résolue ;
 	// défaut Orca 0,3) : valeur initiale du dialogue, pas 1.
@@ -1065,6 +1087,8 @@
 	// Choix du preset d'un slot (sélecteur du slot) : le slot devient actif.
 	function setFilamentSlot(slot: number, id: string | null) {
 		if (id === null || id === filamentAt(activePresets, slot)) return;
+		// Surcharges enregistrées du preset quitté : abandonnées (comme Orca).
+		pendingOverrides = withoutPending(pendingOverrides, 'filament', slot);
 		activePresets = setFilament(activePresets, id, slot);
 		filamentSlot = clampFilamentSlot(activePresets, slot);
 	}
@@ -1100,8 +1124,17 @@
 			}
 		afterFilamentSlotRemoved(slot, (s) => remapExtruderAfterRemoval(s, slot));
 		projectFilament = afterSlotRemoved(projectFilament, slot);
+		overridesAfterFilamentRemoval(slot);
 		filamentSlot = slotAfterRemoval(filamentSlot, slot, next.filaments.length);
 		activePresets = next;
+	}
+
+	// Surcharges filament (lot 40) : celles du slot retiré disparaissent, celles
+	// des slots suivants descendent d'un cran avec eux.
+	function overridesAfterFilamentRemoval(slot: number) {
+		pendingOverrides = pendingAfterSlotRemoval(pendingOverrides, slot);
+		if (filamentLoadedSlot === slot) filamentLoadedSlot = null;
+		else if (filamentLoadedSlot !== null && filamentLoadedSlot > slot) filamentLoadedSlot -= 1;
 	}
 
 	// Phase 37 — « Fusionner avec » (Orca create_filament_action_menu →
@@ -1131,9 +1164,15 @@
 			remapExtruderAfterMerge(s, slot, target)
 		);
 		projectFilament = afterSlotRemoved(projectFilament, slot);
+		overridesAfterFilamentRemoval(slot);
 		filamentSlot = slotAfterRemoval(filamentSlot, slot, next.filaments.length);
 		activePresets = next;
-		saveMessage = `Filament ${slot + 1} fusionné avec le filament ${target + 1} : objets, pièces${repainted ? ', peinture' : ''} et filaments de support réaffectés.`;
+		saveMessage = tr(
+			repainted
+				? 'Filament {a} merged with filament {b}: objects, parts, painting and support filaments reassigned.'
+				: 'Filament {a} merged with filament {b}: objects, parts and support filaments reassigned.',
+			{ a: slot + 1, b: target + 1 }
+		);
 	}
 
 	/**
@@ -1187,7 +1226,7 @@
 		const name = plates.get(id)?.name;
 		if (!plates.moveToFront(id)) return;
 		ws = setSelection(ws, new Set());
-		saveMessage = `« ${name} » est maintenant le premier plateau.`;
+		saveMessage = tr('“{name}” is now the first plate.', { name: name ?? '' });
 	}
 
 	// Phase 37 — tableau des paramètres d'objets (ObjectGridTable).
@@ -1238,7 +1277,11 @@
 		const next = v ? changeVolumeType(v, type) : null;
 		if (!v || !next) return;
 		replaceVolume(objectId, next);
-		saveMessage = `« ${v.name} » : ${volumeTypeName(v.type)} → ${volumeTypeName(type)}.`;
+		saveMessage = tr('“{name}”: {from} → {to}.', {
+			name: v.name,
+			from: volumeTypeName(v.type),
+			to: volumeTypeName(type)
+		});
 	}
 	function openVolumeContext(objectId: string, volumeId: string, x: number, y: number) {
 		ws = setSelection(ws, new Set([objectId]));
@@ -1247,6 +1290,7 @@
 	}
 	// Entrées ajoutées en tête du menu objet (phase 37).
 	const objectMenuExtras = $derived.by(() => {
+		void $locale;
 		const id = contextMenu.targetId;
 		if (!contextMenu.open || !id || contextMenu.part) return [];
 		const volume = (volumesByObject[id] ?? []).find((v) => v.id === selectedVolumeId);
@@ -1263,7 +1307,7 @@
 		if (volume)
 			extras.push(
 				{
-					label: `Changer le type de « ${volume.name} »`,
+					label: tr('Change type of “{name}”', { name: volume.name }),
 					action: 'section.volumeType',
 					section: true,
 					items: partTypeChoices(volume)
@@ -1273,13 +1317,13 @@
 				'separator'
 			);
 		extras.push({
-			label: 'Modifier dans la Table des Paramètres',
+			label: 'Edit in Parameter Table',
 			action: 'object.parameterTable'
 		});
 		if (node?.cutId)
 			extras.push(
-				{ label: 'Sélectionner les pièces liées', action: 'object.selectCutParts' },
-				{ label: 'Invalider les informations de découpe', action: 'object.invalidateCut' }
+				{ label: 'Select linked parts', action: 'object.selectCutParts' },
+				{ label: 'Invalidate cut info', action: 'object.invalidateCut' }
 			);
 		extras.push('separator');
 		return extras;
@@ -1295,13 +1339,15 @@
 	function selectCutParts(id: string) {
 		const ids = cutLinkedIds(tree.list(), id).filter((x) => activePlate?.objectIds.includes(x));
 		ws = setSelection(ws, new Set(ids));
-		saveMessage = `${ids.length} pièce(s) de la même coupe sélectionnée(s).`;
+		saveMessage = tr('{n} part(s) from the same cut selected.', { n: ids.length });
 	}
 	async function invalidateCutInfo(id: string) {
 		if (!tree.get(id)?.cutId) return;
 		const saved = await save({ quiet: true });
 		if (saved.status !== 'saved') {
-			saveMessage = `Informations de découpe : ${saved.status === 'error' ? saved.message : 'sauvegarde impossible'}`;
+			saveMessage = tr('Cut info: {msg}', {
+				msg: saved.status === 'error' ? saved.message : tr('save failed')
+			});
 			return;
 		}
 		try {
@@ -1325,9 +1371,13 @@
 			data.project.scene = res.project.scene;
 			savedSignature = saveSignature();
 			currentSignature = savedSignature;
-			saveMessage = `Informations de découpe retirées de ${res.object_ids.length} pièce(s) : elles se manipulent maintenant séparément.`;
+			saveMessage = tr('Cut info removed from {n} part(s): they can now be handled separately.', {
+				n: res.object_ids.length
+			});
 		} catch (e) {
-			saveMessage = `Informations de découpe : ${e instanceof ApiError ? e.message : 'échec'}`;
+			saveMessage = tr('Cut info: {msg}', {
+				msg: e instanceof ApiError ? e.message : tr('failed')
+			});
 		}
 	}
 
@@ -1388,7 +1438,10 @@
 		editTouched.machine.set('nozzle_volume_type', ++editTouchSeq);
 		const presetId = activePresetOf('machine')?.id;
 		if (presetId) editTouchedPreset.machine.set('nozzle_volume_type', presetId);
-		saveMessage = `Extrudeur ${index + 1} : débit ${NOZZLE_FLOW_LABELS[flow]} (réglage de l'imprimante modifié).`;
+		saveMessage = tr('Extruder {n}: {flow} flow (printer setting changed).', {
+			n: index + 1,
+			flow: NOZZLE_FLOW_LABELS[flow]
+		});
 	}
 
 	// Onglet de la colonne de configuration : liste d'objets/plateaux, réglages
@@ -1422,9 +1475,9 @@
 	const saveAsError = $derived.by(() => {
 		if (saveAsName === null || !settingsDialog) return null;
 		const name = saveAsName.trim();
-		if (!name) return 'Donnez un nom au preset.';
+		if (!name) return $t('Give the preset a name.');
 		if (presetsOfKind(settingsDialog).some((x) => x.name === name))
-			return `Un preset « ${name} » existe déjà.`;
+			return $t('A preset “{name}” already exists.', { name });
 		return null;
 	});
 	// Dialogue « Réglages du plateau » (surcharges par plateau).
@@ -1444,9 +1497,40 @@
 	// Plateau par défaut tant que le preset machine n'est pas résolu, puis contour
 	// et hauteur effectifs dès que `/resolved` répond (ou que le preset change).
 	const bed = $derived(bedFromValues(machineResolvedValues));
-	const processModified = $derived(hasPresetChanges(processResolvedValues, processValues));
-	const filamentModified = $derived(hasPresetChanges(filamentResolvedValues, filamentValues));
-	const machineModified = $derived(hasPresetChanges(machineResolvedValues, machineValues));
+	// Surcharges du projet (lot 40, D1) : brouillons chargés + surcharges
+	// enregistrées en attente. Base du badge « (modifié) » (A2), de la
+	// sauvegarde et du brouillon de tranchage / validation.
+	function projectOverrides() {
+		return buildProjectOverrides({
+			active: activePresets,
+			pending: pendingOverrides,
+			process: {
+				loadedId: editLoadedId.process,
+				resolved: processResolvedValues,
+				current: processValues
+			},
+			printer: {
+				loadedId: editLoadedId.machine,
+				resolved: machineResolvedValues,
+				current: machineValues
+			},
+			filament: {
+				loadedId: editLoadedId.filament,
+				slot: filamentLoadedSlot,
+				resolved: filamentResolvedValues,
+				current: filamentValues
+			}
+		});
+	}
+	/** Document `active_presets` complet (sélection + surcharges) à persister. */
+	function projectActivePresets(): ActivePresets {
+		return { ...activePresets, overrides: projectOverrides() };
+	}
+	const currentOverrides = $derived(projectOverrides());
+	const processModified = $derived(!!currentOverrides?.process);
+	const machineModified = $derived(!!currentOverrides?.printer);
+	// Badge par slot filament (le brouillon chargé ne couvre qu'un slot).
+	const filamentModifiedAt = (slot: number) => !!currentOverrides?.filaments?.[slot];
 	let saveMessage = $state<string | null>(null);
 	// Estompage de la barre de messages : 6 s après chaque message ; le texte
 	// reste dans le DOM jusqu'au suivant.
@@ -1502,22 +1586,22 @@
 	let moveCursorLayer = -1;
 	let hiddenTypes = $state<number[]>([]);
 	const COLORATIONS: { id: Coloration; label: string }[] = [
-		{ id: 'type', label: 'Type de ligne' },
-		{ id: 'speed', label: 'Vitesse' },
-		{ id: 'height', label: 'Hauteur de couche' },
-		{ id: 'width', label: 'Largeur de ligne' },
-		{ id: 'flow', label: 'Débit' },
-		{ id: 'temperature', label: 'Température' },
-		{ id: 'fan', label: 'Ventilateur' },
-		{ id: 'layer-time', label: 'Temps de couche (linéaire)' },
-		{ id: 'layer-time-log', label: 'Temps de couche (logarithmique)' },
-		{ id: 'acceleration', label: 'Accélération' },
+		{ id: 'type', label: 'Line Type' },
+		{ id: 'speed', label: 'Speed' },
+		{ id: 'height', label: 'Layer height' },
+		{ id: 'width', label: 'Line Width' },
+		{ id: 'flow', label: 'Flow' },
+		{ id: 'temperature', label: 'Temperature' },
+		{ id: 'fan', label: 'Fan' },
+		{ id: 'layer-time', label: 'Layer Time (linear)' },
+		{ id: 'layer-time-log', label: 'Layer Time (logarithmic)' },
+		{ id: 'acceleration', label: 'Acceleration' },
 		{ id: 'jerk', label: 'Jerk' },
-		{ id: 'pa', label: 'Avance de pression' },
-		{ id: 'actual-speed', label: 'Vitesse réelle' },
-		{ id: 'actual-flow', label: 'Débit réel' },
+		{ id: 'pa', label: 'Pressure Advance' },
+		{ id: 'actual-speed', label: 'Actual Speed' },
+		{ id: 'actual-flow', label: 'Actual Flow' },
 		{ id: 'filament', label: 'Filament' },
-		{ id: 'color-print', label: 'Couleur d’impression' }
+		{ id: 'color-print', label: 'Color Print' }
 	];
 
 	// Piste G-code complète (lib/preview/track.ts) : grandeurs absentes du modèle
@@ -1850,12 +1934,12 @@
 	// Raison affichée au survol quand le tranchage est impossible.
 	const sliceBlocker = $derived(
 		activeSceneObjects.length === 0
-			? 'Ajoutez un objet à trancher'
+			? $t('Add an object to slice')
 			: !activePresets.process
-				? 'Choisissez un profil de traitement'
+				? $t('Choose a process profile')
 				: activePresets.filaments.length === 0
-					? 'Choisissez un filament'
-					: 'Import en cours…'
+					? $t('Choose a filament')
+					: $t('Import in progress…')
 	);
 
 	// Profils par défaut d'un nouveau projet (comme Orca : default_print_profile /
@@ -1878,6 +1962,11 @@
 	}
 	$effect(() => {
 		if (!activePresets.printer) return;
+		// Phase 41d : listes filtrées pour CETTE imprimante et défauts de son preset
+		// machine connus — sinon un « 0.20mm Standard » d'une autre imprimante,
+		// absent de la liste compatible arrivée ensuite, laissait le sélecteur vide.
+		if (presetListsPrinter !== activePresets.printer) return;
+		if (editLoadedId.machine !== activePresets.printer) return;
 		if (!activePresets.process && processPresets.length > 0) {
 			const id = pickDefault(
 				processPresets,
@@ -1916,7 +2005,16 @@
 		// système), vue 3D comprise (palette `sceneColors`, lib/scene/scene-colors.ts).
 
 		// Presets actifs du projet (lecture non réactive de `data` au montage, T098).
-		activePresets = parseActivePresets(data.project.active_presets);
+		// Lot 40 (D1) : surcharges enregistrées mises en attente, appliquées au
+		// brouillon de chaque preset à son premier chargement (`/resolved`).
+		const opened = parseActivePresets(data.project.active_presets);
+		activePresets = {
+			printer: opened.printer,
+			process: opened.process,
+			filaments: opened.filaments
+		};
+		pendingOverrides = opened;
+		persistedOverrides = opened.overrides;
 		filamentSlot = 0;
 		projectName = data.project.name;
 		savedName = data.project.name;
@@ -1963,7 +2061,7 @@
 						...startSlicing(plan.jobs.map((job) => job.id)),
 						progress: resumedProgress(plan.jobs)
 					};
-					saveMessage = 'Tranchage en cours repris après le rechargement de la page.';
+					saveMessage = tr('Slicing in progress resumed after the page reload.');
 					// Fini entre la liste et l'abonnement : état relu une fois.
 					void resyncSessionJobs();
 					return;
@@ -2016,7 +2114,7 @@
 		try {
 			models = await listProjectModels(data.project.id);
 		} catch (e) {
-			importError = e instanceof ApiError ? e.message : 'chargement des modèles impossible';
+			importError = e instanceof ApiError ? e.message : tr('could not load models');
 			return;
 		}
 		// Recharger remplace le document vivant : conserver les tableaux précédents
@@ -2180,28 +2278,28 @@
 	}
 	async function renameActivePreset(kind: Kind, name: string): Promise<string | null> {
 		const preset = activePresetOf(kind);
-		if (!preset || preset.origin !== 'user') return 'seuls les presets utilisateur se renomment';
+		if (!preset || preset.origin !== 'user') return tr('only user presets can be renamed');
 		if (presetsOfKind(kind).some((p) => p.id !== preset.id && p.name === name))
-			return `un preset « ${name} » existe déjà`;
+			return tr('a preset “{name}” already exists', { name });
 		try {
 			await updatePreset(preset.id, { name });
 			replacePresetList(
 				kind,
 				presetsOfKind(kind).map((p) => (p.id === preset.id ? { ...p, name } : p))
 			);
-			saveMessage = `Preset renommé en « ${name} ».`;
+			saveMessage = tr('Preset renamed to “{name}”.', { name });
 			return null;
 		} catch (e) {
-			return e instanceof ApiError ? e.message : 'renommage impossible';
+			return e instanceof ApiError ? e.message : tr('rename failed');
 		}
 	}
 	// Détacher du preset système (Orca Tab::detach_preset) : copie autonome
 	// sélectionnée (preset système) ou preset utilisateur détaché sur place.
 	async function detachActivePreset(kind: Kind, name: string | null): Promise<string | null> {
 		const preset = activePresetOf(kind);
-		if (!preset) return 'aucun preset sélectionné';
+		if (!preset) return tr('no preset selected');
 		if (name && presetsOfKind(kind).some((p) => p.name === name))
-			return `un preset « ${name} » existe déjà`;
+			return tr('a preset “{name}” already exists', { name });
 		try {
 			const detached = await detachPreset(preset.id, name);
 			const summary = {
@@ -2217,18 +2315,18 @@
 					kind,
 					list.map((p) => (p.id === preset.id ? summary : p))
 				);
-				saveMessage = `« ${preset.name} » est maintenant autonome.`;
+				saveMessage = tr('“{name}” is now detached.', { name: preset.name });
 			} else {
 				replacePresetList(kind, [...list, summary]);
 				if (kind === 'process') activePresets.process = summary.id;
 				else if (kind === 'filament')
 					setFilamentSlot(clampFilamentSlot(activePresets, filamentSlot), summary.id);
 				else activePresets.printer = summary.id;
-				saveMessage = `Copie autonome « ${summary.name} » créée et sélectionnée.`;
+				saveMessage = tr('Detached copy “{name}” created and selected.', { name: summary.name });
 			}
 			return null;
 		} catch (e) {
-			return e instanceof ApiError ? e.message : 'détachement impossible';
+			return e instanceof ApiError ? e.message : tr('detach failed');
 		}
 	}
 	async function deleteActivePreset(kind: Kind) {
@@ -2254,7 +2352,9 @@
 				const saved = await save();
 				if (saved.status !== 'saved') {
 					select(preset.id);
-					saveMessage = `Suppression impossible : ${saved.status === 'error' ? saved.message : 'sauvegarde du projet impossible'}`;
+					saveMessage = tr('Cannot delete: {msg}', {
+						msg: saved.status === 'error' ? saved.message : tr('project save failed')
+					});
 					return;
 				}
 			}
@@ -2264,11 +2364,20 @@
 				list.filter((p) => p.id !== preset.id)
 			);
 			settingsDialog = null;
-			saveMessage = `Preset « ${preset.name} » supprimé${fallback ? `, « ${fallback.name} » sélectionné` : ''}.`;
+			saveMessage = fallback
+				? tr('Preset “{name}” deleted, “{fallback}” selected.', {
+						name: preset.name,
+						fallback: fallback.name
+					})
+				: tr('Preset “{name}” deleted.', { name: preset.name });
 			// Autres projets qui l'utilisaient : basculés sur le parent par le serveur.
 			presetDeleteReport = result?.projects.length
 				? {
-						title: `« ${preset.name} » supprimé : ${result.projects.length} autre(s) projet(s) passé(s) sur « ${result.parent.name} »`,
+						title: tr('“{name}” deleted: {n} other project(s) switched to “{parent}”', {
+							name: preset.name,
+							n: result.projects.length,
+							parent: result.parent.name
+						}),
 						projects: result.projects
 					}
 				: null;
@@ -2277,11 +2386,14 @@
 			if (blocking.length) {
 				// Le projet ouvert reste sur le preset de repli (déjà sauvegardé).
 				presetDeleteReport = {
-					title: `« ${preset.name} » n'a pas de preset parent et reste utilisé par ${blocking.length} projet(s) : choisissez un autre preset dans ces projets avant de le supprimer`,
+					title: tr(
+						'“{name}” has no parent preset and is still used by {n} project(s): choose another preset in those projects before deleting it',
+						{ name: preset.name, n: blocking.length }
+					),
 					projects: blocking
 				};
 			}
-			saveMessage = e instanceof ApiError ? e.message : 'suppression impossible';
+			saveMessage = e instanceof ApiError ? e.message : tr('delete failed');
 		}
 	}
 	let presetDeleteReport = $state<{
@@ -2356,14 +2468,48 @@
 	// Modifications locales des listes (renommer / supprimer) : une liste
 	// demandée avant elles est périmée à son arrivée et ne doit pas les écraser.
 	let presetListSeq = 0;
+	// Génération du dernier chargement (phase 41d) : un chargement dépassé (lancé
+	// avant que l'imprimante du projet neuf soit posée, donc sans filtre machine)
+	// n'écrase jamais les listes du suivant.
+	let presetLoadGen = 0;
+	// Imprimante pour laquelle filament/process ont été listés (`undefined` = jamais).
+	let presetListsPrinter = $state<string | null | undefined>(undefined);
 	async function loadPresetsNow(): Promise<void> {
 		const seqAtStart = presetListSeq;
+		const gen = ++presetLoadGen;
+		const printerAtStart = activePresets.printer;
+		const superseded = async () => {
+			if (gen === presetLoadGen) return false;
+			// Le chargement plus récent fait foi : on l'attend (editorReady…).
+			if (presetsInFlight) await presetsInFlight;
+			return true;
+		};
 		try {
-			const [printers, catalog, machines] = await Promise.all([
-				listPrinters(),
-				getPrinterCatalog(),
-				listPresets('machine')
+			// Audit 40 E1 : listes déjà connues (navigation dans l'application)
+			// affichées tout de suite ; filament/process demandés dès que le nom de
+			// l'imprimante est connu, sans attendre imprimantes et catalogue.
+			const cachedName = cachedPresetList('machine')?.find(
+				(m) => m.id === activePresets.printer
+			)?.name;
+			if (cachedName) {
+				const f = cachedPresetList('filament', cachedName);
+				const p = cachedPresetList('process', cachedName);
+				if (f && filamentPresets.length === 0) filamentPresets = f;
+				if (p && processPresets.length === 0) {
+					processPresets = p;
+					presetListsPrinter = printerAtStart;
+				}
+			}
+			const ownedP = Promise.all([listPrinters(), getPrinterCatalog()]);
+			const machines = await listPresets('machine');
+			const printerName = machines.find((m) => m.id === activePresets.printer)?.name;
+			const listsP = Promise.all([
+				listPresets('filament', printerName ?? undefined),
+				listPresets('process', printerName ?? undefined)
 			]);
+			listsP.catch(() => {});
+			const [printers, catalog] = await ownedP;
+			if (await superseded()) return;
 			if (seqAtStart !== presetListSeq) return loadPresetsNow();
 			ownedPrinters = printers;
 			printerCatalog = catalog;
@@ -2371,16 +2517,14 @@
 			// des imprimantes **possédées** ; le catalogue alimente le menu de buse.
 			const owned = new Set(printers.map((p) => p.machine_preset_id));
 			machinePresets = machines.filter((m) => owned.has(m.id) || m.id === activePresets.printer);
-			const printerName = machines.find((m) => m.id === activePresets.printer)?.name;
-			const [filaments, processes] = await Promise.all([
-				listPresets('filament', printerName ?? undefined),
-				listPresets('process', printerName ?? undefined)
-			]);
+			const [filaments, processes] = await listsP;
+			if (await superseded()) return;
 			if (seqAtStart !== presetListSeq) return loadPresetsNow();
 			filamentPresets = filaments;
 			processPresets = processes;
+			presetListsPrinter = printerAtStart;
 		} catch (e) {
-			importError = e instanceof ApiError ? e.message : 'chargement des presets impossible';
+			importError = e instanceof ApiError ? e.message : tr('could not load presets');
 		}
 	}
 
@@ -2496,7 +2640,7 @@
 				// sans dérivation ni mise à jour.
 				const preset = await presetForSave(kind);
 				if (!preset) {
-					if (kind === currentKind) throw new Error('preset actif introuvable');
+					if (kind === currentKind) throw new Error(tr('active preset not found'));
 					continue;
 				}
 				const values = drafts[kind].values;
@@ -2536,27 +2680,44 @@
 			// Une seule sauvegarde du projet après avoir sélectionné toutes les
 			// copies dérivées (active_presets cohérent pour le prochain slice).
 			if (derived) await save();
-			saveMessage = 'Réglages enregistrés.';
+			saveMessage = tr('Settings saved.');
 			settingsDialog = null;
 			await loadPresets();
 			await Promise.all(toSave.map((kind) => loadEditedValues(kind, true)));
+			// Lot 40 (D1) : les clés enregistrées quittent les surcharges du projet
+			// (le preset les porte désormais) — brouillons rechargés ci-dessus ;
+			// projet sauvegardé si ses surcharges enregistrées en contenaient.
+			if (!derived && toSave.some((kind) => persistedOverridesHave(kind)))
+				await save({ quiet: true });
 		} catch (e) {
 			importError =
 				e instanceof ApiError
 					? e.message
-					: `enregistrement impossible${e instanceof Error ? ` : ${e.message}` : ''}`;
+					: e instanceof Error
+						? tr('save failed: {msg}', { msg: e.message })
+						: tr('save failed||settings');
 		}
+	}
+
+	/** Les surcharges enregistrées du projet ont-elles une entrée pour ce type (slot affiché) ? */
+	function persistedOverridesHave(kind: 'process' | 'filament' | 'machine'): boolean {
+		const o = persistedOverrides;
+		if (kind === 'process') return !!o?.process;
+		if (kind === 'machine') return !!o?.printer;
+		return !!o?.filaments?.[clampFilamentSlot(activePresets, filamentSlot)];
 	}
 
 	// Dernier chargement gagnant par portée ; un appel remplacé attend le plus
 	// récent (sinon `editorReady` se résoudrait avant le preset machine).
 	const editLoads = createLatestLoader<'process' | 'filament' | 'machine'>();
 	// Preset dont la base `/resolved` alimente actuellement le brouillon.
-	const editLoadedId: Record<'process' | 'filament' | 'machine', string | null> = {
+	// Réactif (lot 40, D1) : les surcharges du projet (`currentOverrides`, badge
+	// « (modifié) ») dépendent du preset chargé.
+	const editLoadedId = $state<Record<'process' | 'filament' | 'machine', string | null>>({
 		process: null,
 		filament: null,
 		machine: null
-	};
+	});
 
 	// Pré-remplit avec la configuration effective `/resolved`. Les surcharges
 	// brutes ne sont relues qu'à l'enregistrement, pour ne pas aplatir l'héritage.
@@ -2643,8 +2804,32 @@
 			editTouched[kind].clear();
 			editTouchedPreset[kind].clear();
 			const kept = clonePresetValues(Object.fromEntries(typed.map((key) => [key, draft[key]])));
+			// Lot 40 (D1) : slot filament affiché → celui dont le brouillon est chargé.
+			const slot = kind === 'filament' ? clampFilamentSlot(activePresets, filamentSlot) : 0;
+			// Indicateur « non enregistré » au repos avant ce chargement : la
+			// reprise des surcharges enregistrées (forme typée de `/resolved`) ne
+			// doit pas l'allumer.
+			const wasClean =
+				baselineReady && savedSignature !== null && savedSignature === saveSignature();
+			// Changement de slot filament : les modifications du slot quitté sont
+			// mises en attente (reprises quand il est réaffiché, sauvegardées).
+			if (kind === 'filament') stashFilamentDraft(slot);
+			const stored = pendingOverridesFor(pendingOverrides, kind, slot, requestedId);
+			pendingOverrides = withoutPending(pendingOverrides, kind, slot);
 			editLoadedId[kind] = requestedId;
+			if (kind === 'filament') filamentLoadedSlot = slot;
 			setValuesForKind(kind, resolved.values);
+			// Surcharges enregistrées du projet (« (modifié) » à la réouverture).
+			if (stored) {
+				const next = applyOverrides(valuesForKind(kind), stored);
+				if (kind === 'process') processValues = next;
+				else if (kind === 'filament') filamentValues = next;
+				else machineValues = next;
+			}
+			if (wasClean) {
+				savedSignature = saveSignature();
+				currentSignature = savedSignature;
+			}
 			// « Transférer » (changement de preset avec modifications) : les
 			// différences du brouillon précédent sont posées sur le nouveau preset.
 			const transfer = pendingTransfer[kind];
@@ -2662,8 +2847,21 @@
 				for (const key of typed) next[key] = kept[key];
 			}
 		} catch (e) {
-			importError = e instanceof ApiError ? e.message : 'chargement des réglages impossible';
+			importError = e instanceof ApiError ? e.message : tr('could not load settings');
 		}
+	}
+
+	// Met en attente le brouillon du slot filament chargé quand le panneau passe
+	// au slot `next` (sinon ses modifications seraient perdues ou attribuées au
+	// nouveau slot).
+	function stashFilamentDraft(next: number) {
+		const loaded = filamentLoadedSlot;
+		const id = editLoadedId.filament;
+		if (loaded === null || loaded === next || !id || activePresets.filaments[loaded] !== id) return;
+		const changes = changedPresetValues(filamentResolvedValues, filamentValues);
+		pendingOverrides = Object.keys(changes).length
+			? withPendingFilament(pendingOverrides, loaded, id, changes)
+			: withoutPending(pendingOverrides, 'filament', loaded);
 	}
 
 	// Ouvre immédiatement : le catalogue complet peut encore être en cours de
@@ -2683,7 +2881,9 @@
 				return await createPreset({ kind, name: chosenName, inherits: parentName, values });
 			} catch (e) {
 				if (e instanceof ApiError && e.status === 409)
-					throw new Error(`un preset « ${chosenName} » existe déjà`, { cause: e });
+					throw new Error(tr('a preset “{name}” already exists', { name: chosenName }), {
+						cause: e
+					});
 				throw e;
 			}
 		}
@@ -2726,8 +2926,20 @@
 	$effect(() => {
 		if (activePresets.process) void loadEditedValues('process');
 	});
+	// Lot 40 : aussi au changement de slot (même preset compris) — le brouillon
+	// filament est propre à un slot ; `force` car celui chargé appartient à
+	// l'autre slot (mis en attente, cf. stashFilamentDraft).
+	const filamentEditTarget = $derived(
+		`${clampFilamentSlot(activePresets, filamentSlot)}|${filamentSel ?? ''}`
+	);
 	$effect(() => {
-		if (filamentSel) void loadEditedValues('filament');
+		void filamentEditTarget;
+		const slot = clampFilamentSlot(
+			untrack(() => activePresets),
+			untrack(() => filamentSlot)
+		);
+		const loaded = untrack(() => filamentLoadedSlot);
+		if (filamentSel) void loadEditedValues('filament', loaded !== slot);
 	});
 	$effect(() => {
 		if (activePresets.printer) void loadEditedValues('machine');
@@ -2748,7 +2960,7 @@
 			if (firstPreset && !activePresets.printer) activePresets.printer = firstPreset;
 			showCatalog = false;
 		} catch (e) {
-			importError = e instanceof ApiError ? e.message : 'ajout d’imprimante impossible';
+			importError = e instanceof ApiError ? e.message : tr('could not add printer');
 		} finally {
 			addingPrinter = false;
 		}
@@ -2773,7 +2985,17 @@
 		}
 	}
 
+	// Phase 41c : événements d'un job reçus AVANT que la réponse de POST /slice
+	// n'ait créé la session (job déjà fini quand la réponse arrive) — mis de côté
+	// puis rejoués par sliceActive / sliceAll (sinon « Tranchage en cours… » sans fin).
+	const earlyJobEvents = new EarlyJobEvents();
+	const jobTracked = (id: string) => !!sliceBatch?.jobPlates[id] || session.jobIds.includes(id);
+	function replayEarlyJobEvents(ids: readonly string[]) {
+		for (const event of earlyJobEvents.take(ids)) onEvent(event);
+	}
+
 	function onEvent(event: ServerEvent) {
+		earlyJobEvents.offer(event, jobTracked);
 		const wasPreview = layout.tab === 'preview';
 		if (
 			sliceBatch &&
@@ -2800,7 +3022,13 @@
 				rawStats = shown?.stats ?? null;
 			}
 			const label = batchLabel(sliceBatch);
-			if (label) saveMessage = `Trancher tout : ${label}${batchFinished(sliceBatch) ? '.' : '…'}`;
+			if (label)
+				saveMessage = tr(
+					batchFinished(sliceBatch) ? 'Slice all: {status}.' : 'Slice all: {status}…',
+					{
+						status: label
+					}
+				);
 		} else {
 			session = applyJobEvent(session, event);
 			if (event.event === 'job.finished' && session.jobIds.includes(event.id)) {
@@ -2927,7 +3155,7 @@
 		try {
 			res = await addHandyModel(data.project.id, key);
 		} catch (e) {
-			importError = e instanceof ApiError ? e.message : 'ajout du modèle pratique impossible';
+			importError = e instanceof ApiError ? e.message : tr('could not add handy model');
 			return;
 		}
 		if (generation !== sceneGeneration) return;
@@ -2995,7 +3223,9 @@
 			);
 			if (!merged) return;
 			projectFilament = { ...projectFilament, flush_volumes_matrix: merged };
-			saveMessage = `Volumes de purge recalculés (filament ${slots.map((s) => s + 1).join(', ')}).`;
+			saveMessage = tr('Flushing volumes recalculated (filament {slots}).', {
+				slots: slots.map((s) => s + 1).join(', ')
+			});
 		} catch {
 			// Calcul indisponible : les volumes saisis restent en place.
 		}
@@ -3062,7 +3292,11 @@
 			res.triangles &&
 			![meshTriangles, meshTriangles * 3].includes(res.triangles)
 		) {
-			saveMessage = `Couleurs de « ${pending.filename} » non appliquées : maillage différent (${res.triangles} / ${meshTriangles} triangles).`;
+			saveMessage = tr('Colors of “{file}” not applied: different mesh ({a} / {b} triangles).', {
+				file: pending.filename,
+				a: res.triangles,
+				b: meshTriangles
+			});
 			nextObjColor();
 			return;
 		}
@@ -3080,7 +3314,14 @@
 		doc.replaceChannel('mmu', remapMmu(res.painting?.mmu ?? {}, plan));
 		paintings = { ...paintings };
 		tree.setExtruder(objectId, mapExtruder(plan, res.extruder || 1));
-		saveMessage = `Couleurs de « ${pending.filename} » appliquées${added ? ` : ${added} filament${added > 1 ? 's' : ''} ajouté${added > 1 ? 's' : ''}` : ''}.`;
+		saveMessage = tr(
+			!added
+				? 'Colors of “{file}” applied.'
+				: added > 1
+					? 'Colors of “{file}” applied: {n} filaments added.'
+					: 'Colors of “{file}” applied: {n} filament added.',
+			{ file: pending.filename, n: added }
+		);
 		nextObjColor();
 	}
 
@@ -3091,7 +3332,7 @@
 		// OBJ coloré : un .mtl déposé avec l'OBJ l'accompagne (couleurs Kd).
 		const mtls = files.filter((f) => isMtl(f.name));
 		const models = files.filter((f) => !isMtl(f.name));
-		if (mtls.length && !models.length) importError = 'Un fichier .mtl s’importe avec son .obj.';
+		if (mtls.length && !models.length) importError = tr('An .mtl file is imported with its .obj.');
 		queuedImports = [
 			...queuedImports,
 			...models.filter((f) => isAccepted(f.name)).map((f) => f.name)
@@ -3111,7 +3352,7 @@
 				if (mtl) objMtlFiles.set(file, mtl);
 			}
 			if (!isAccepted(file.name)) {
-				importError = `Format non supporté : ${file.name}`;
+				importError = tr('Unsupported format: {file}', { file: file.name });
 				continue;
 			}
 			if ((await importOne(file)) && firstLoaded === null) firstLoaded = file.name;
@@ -3168,7 +3409,7 @@
 			return true;
 		} catch (e) {
 			if (generation !== sceneGeneration) return false;
-			failImport(objectId, e instanceof ApiError ? e.message : 'échec de l’upload');
+			failImport(objectId, e instanceof ApiError ? e.message : tr('upload failed'));
 			return false;
 		}
 	}
@@ -3329,14 +3570,14 @@
 				? conversionCause(
 						(e.details as { cause?: string } | undefined)?.cause ??
 							e.technical.replace(/^.*?moteur\s*:\s*/, ''),
-						orcaCatalog
+						$locale === 'fr' ? orcaCatalog : null
 					)
 				: null;
 			const message = cause
-				? 'conversion impossible — ' + cause
+				? tr('conversion failed — {cause}', { cause })
 				: e instanceof ApiError
 					? e.message
-					: 'maillage converti indisponible';
+					: tr('converted mesh unavailable');
 			const kept: string[] = [];
 			for (const item of imports.filter((i) => i.modelId === modelId)) {
 				if (item.status === 'failed') continue;
@@ -3349,11 +3590,10 @@
 			// Objets restaurés (projet rouvert) : restent listés avec leur cause ;
 			// notification comme pour un import raté.
 			if (kept.length)
-				importError =
-					'Conversion impossible de ' +
-					kept.map((f) => '« ' + f + ' »').join(', ') +
-					' : ' +
-					(cause ?? message);
+				importError = tr('Could not convert {files}: {cause}', {
+					files: kept.map((f) => '« ' + f + ' »').join(', '),
+					cause: cause ?? message
+				});
 		}
 	}
 
@@ -3431,13 +3671,99 @@
 		if (!owner) return;
 		plateResults = {
 			...plateResults,
-			[owner]: { gcodeId: session.gcodeId, jobId: '', stats: rawStats, signature: null }
+			[owner]: {
+				gcodeId: session.gcodeId,
+				jobId: '',
+				stats: rawStats,
+				signature:
+					shownSliceSignature?.gcodeId === session.gcodeId ? shownSliceSignature.signature : null
+			}
 		};
+	}
+	/** Réglages lus par le tranchage : presets actifs + brouillon non enregistré. */
+	function sliceSettingsSignature(): string {
+		return (
+			JSON.stringify(serializeActivePresets(activePresets)) + JSON.stringify(currentDraft() ?? null)
+		);
+	}
+	/** Signature de tranchage d'UN plateau (phase 40) : sa part de scène + réglages. */
+	function plateSliceSignature(
+		plateId: string,
+		scene = buildSceneForSave() as unknown as Record<string, unknown>,
+		settings = sliceSettingsSignature()
+	): string {
+		return plateSceneSignature(scene, plateId) + settings;
+	}
+	function plateSliceSignatures(): Record<string, string> {
+		const scene = buildSceneForSave() as unknown as Record<string, unknown>;
+		const settings = sliceSettingsSignature();
+		return Object.fromEntries(
+			plates.list().map((p) => [p.id, plateSliceSignature(p.id, scene, settings)])
+		);
+	}
+
+	// — Audit 40 B1 : G-code invalidé dès que la signature de tranchage d'un plateau
+	//   change (Orca Plater::priv::update → invalidate du processus d'arrière-plan) :
+	//   suppression/ajout/déplacement d'objet, annuler/rétablir, réglage modifié… Le
+	//   résultat du plateau est oublié ; s'il était affiché, Exporter / Envoyer / la
+	//   coche ✓ tombent jusqu'au prochain tranchage.
+	/** Résultat affiché sans signature (restauré à l'ouverture) : référence prise à la première vérification. */
+	let shownSliceSignature: { gcodeId: string; signature: string } | null = null;
+	let freshnessTimer: ReturnType<typeof setTimeout> | undefined;
+	$effect(() => {
+		void currentSignature;
+		void plateResults;
+		void session.gcodeId;
+		void session.phase;
+		void $state.snapshot(processValues);
+		void $state.snapshot(machineValues);
+		void $state.snapshot(filamentValues);
+		void $state.snapshot(activePresets);
+		clearTimeout(freshnessTimer);
+		freshnessTimer = setTimeout(() => untrack(checkSliceFreshness), 350);
+		return () => clearTimeout(freshnessTimer);
+	});
+	function checkSliceFreshness() {
+		if (!baselineReady || session.phase === 'slicing') return;
+		if (imports.some((item) => isPending(item))) return;
+		const scene = buildSceneForSave() as unknown as Record<string, unknown>;
+		const settings = sliceSettingsSignature();
+		const signatureOf = (id: string) => plateSliceSignature(id, scene, settings);
+		let shownStale = false;
+		const stale = staleResults(plateResults, signatureOf);
+		if (stale.length) {
+			const rest = { ...plateResults };
+			for (const id of stale) {
+				if (rest[id].gcodeId === session.gcodeId) shownStale = true;
+				delete rest[id];
+			}
+			plateResults = rest;
+		}
+		const shown = session.gcodeId;
+		if (
+			session.phase === 'preview' &&
+			shown &&
+			!Object.values(plateResults).some((r) => r.gcodeId === shown)
+		) {
+			const owner =
+				(restoredPlateIndex !== null ? plates.list()[restoredPlateIndex]?.id : null) ??
+				plates.activeId;
+			const signature = owner ? signatureOf(owner) : '';
+			if (shownSliceSignature?.gcodeId !== shown)
+				shownSliceSignature = { gcodeId: shown, signature };
+			else if (shownSliceSignature.signature !== signature) shownStale = true;
+		}
+		if (shownStale) {
+			session = prepareSession();
+			rawStats = null;
+			previewLoadedFor = null;
+			shownSliceSignature = null;
+		}
 	}
 	/** Affiche le résultat mémorisé du plateau (ou « non tranché »). */
 	function showPlateResult(id: string) {
 		if (session.phase === 'slicing') return; // le lot en cours décide
-		const result = resultFor(plateResults, id, sliceSignature());
+		const result = resultFor(plateResults, id, plateSliceSignature(id));
 		if (!result && plateResults[id]) {
 			// Résultat périmé (scène ou réglages modifiés depuis) : oublié.
 			const rest = { ...plateResults };
@@ -3479,7 +3805,10 @@
 			return { ...o, position: [x - dx, y - dy, z] as [number, number, number] };
 		});
 		assignObjectToPlate(objectId, list[index].id);
-		saveMessage = `« ${tree.get(objectId)?.name ?? 'Objet'} » déplacé sur ${list[index].name}.`;
+		saveMessage = tr('“{name}” moved to {plate}.', {
+			name: tree.get(objectId)?.name ?? tr('Object'),
+			plate: list[index].name
+		});
 	}
 
 	function assignObjectToPlate(id: string, plateId: string) {
@@ -3524,7 +3853,7 @@
 				break;
 			case 'plate.reloadAll':
 				await loadProjectModels();
-				saveMessage = 'Modèles rechargés depuis le disque.';
+				saveMessage = tr('Models reloaded from disk.');
 				break;
 		}
 	}
@@ -3630,8 +3959,9 @@
 		);
 		if (linked.length < 2) return false;
 		if (linked.some((x) => !canTransformObject(x, activePlate, objectLocked))) {
-			saveMessage =
-				'Échelle refusée : toutes les pièces de la coupe doivent être sur le plateau actif et déverrouillées.';
+			saveMessage = tr(
+				'Scale refused: all parts of the cut must be on the active plate and unlocked.'
+			);
 			return true;
 		}
 		const pieces = linked.map((x) => {
@@ -3831,7 +4161,7 @@
 							}
 						];
 				})
-				.catch(() => (saveMessage = 'Rétablissement : maillage introuvable.'))
+				.catch(() => (saveMessage = tr('Redo: mesh not found.')))
 				.finally(() => historyRestores--);
 		}
 	}
@@ -3840,11 +4170,21 @@
 		// Outil de peinture actif : Ctrl+Z annule le dernier trait (une entrée
 		// par appui, comme l'instantané de GLGizmoPainterBase).
 		if (paintChannel && restorePaint(paintUndo, paintRedo)) return;
+		// Audit 40 B2 : outil Coupe ouvert → seules ses étapes (plan, connecteurs)
+		// sont annulées, jamais la scène (Orca GLGizmoCut3D, instantanés GizmoAction).
+		if (tools.active === 'cut') {
+			cutSession.undo();
+			return;
+		}
 		undoSteps(1);
 	}
 
 	function redoScene() {
 		if (paintChannel && restorePaint(paintRedo, paintUndo)) return;
+		if (tools.active === 'cut') {
+			cutSession.redo();
+			return;
+		}
 		redoSteps(1);
 	}
 
@@ -3894,7 +4234,7 @@
 			const process = await ref('process', activePresets.process);
 			const filament = await ref('filament', filamentSel ?? activePresets.filaments[0] ?? null);
 			if (!printer || !process || !filament) {
-				calibError = 'Sélectionnez d’abord une imprimante, un filament et un traitement.';
+				calibError = tr('Select a printer, a filament and a process first.');
 				return;
 			}
 			// Construite côté serveur (lot 14, portage des Plater::calib_* d'Orca).
@@ -3916,7 +4256,7 @@
 			window.location.assign(resolve('/projects/[id]', { id }));
 		} catch (e) {
 			calibError =
-				e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'création impossible';
+				e instanceof ApiError ? e.message : e instanceof Error ? e.message : tr('creation failed');
 		} finally {
 			calibBusy = false;
 		}
@@ -3945,7 +4285,7 @@
 	) {
 		flowCalibBusy = true;
 		flowCalibError = null;
-		saveMessage = `Calibration du débit : création du projet…`;
+		saveMessage = tr('Flow rate calibration: creating the project…');
 		try {
 			const ref = async (kind: 'machine' | 'process' | 'filament', id: string | null) => {
 				const local = activePresetOf(kind);
@@ -3958,7 +4298,7 @@
 			const process = await ref('process', activePresets.process);
 			const filament = await ref('filament', filamentSel ?? activePresets.filaments[0] ?? null);
 			if (!printer || !process || !filament) {
-				flowCalibError = 'Sélectionnez une imprimante, un filament et un traitement.';
+				flowCalibError = tr('Select a printer, a filament and a process.');
 				return;
 			}
 			const id = await createServerCalibration(
@@ -3969,7 +4309,8 @@
 			flowCalibOpen = false;
 			window.location.assign(resolve('/projects/[id]', { id }));
 		} catch (e) {
-			flowCalibError = e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'échec';
+			flowCalibError =
+				e instanceof ApiError ? e.message : e instanceof Error ? e.message : tr('failed');
 		} finally {
 			flowCalibBusy = false;
 		}
@@ -3990,7 +4331,7 @@
 			const process = await ref('process', activePresets.process);
 			const filament = await ref('filament', filamentSel ?? activePresets.filaments[0] ?? null);
 			if (!printer || !process || !filament) {
-				engineCalibError = 'Sélectionnez d’abord une imprimante, un filament et un traitement.';
+				engineCalibError = tr('Select a printer, a filament and a process first.');
 				return;
 			}
 			// Les 7 calibrations « mode moteur » (rétraction, VFA, débit max, motif
@@ -4004,7 +4345,7 @@
 			window.location.assign(resolve('/projects/[id]', { id }));
 		} catch (e) {
 			engineCalibError =
-				e instanceof ApiError ? e.message : e instanceof Error ? e.message : 'création impossible';
+				e instanceof ApiError ? e.message : e instanceof Error ? e.message : tr('creation failed');
 		} finally {
 			engineCalibBusy = false;
 		}
@@ -4025,10 +4366,10 @@
 			!params.embossed && selId ? (sceneObjects.find((o) => o.id === selId) ?? null) : null;
 		const targetModel = target ? objectModelId(target.id) : null;
 		if (!params.embossed && (!target || !targetModel)) {
-			saveMessage = 'Gravure en creux : sélectionnez un objet.';
+			saveMessage = tr('Engraving: select an object.');
 			return;
 		}
-		const label = params.source === 'svg' ? 'Forme SVG' : 'Texte en relief';
+		const label = params.source === 'svg' ? tr('SVG shape') : tr('Embossed text');
 		embossBusy = true;
 		try {
 			// En creux : outil d'épaisseur double centré sur la face supérieure de
@@ -4108,7 +4449,11 @@
 					[host.id]: [...(volumesByObject[host.id] ?? []), volume]
 				};
 				ws = setSelection(ws, new Set([host.id]));
-				saveMessage = `${label} : pièce « ${name} » ajoutée sur « ${tree.get(host.id)?.name ?? 'objet'} ».`;
+				saveMessage = tr('{label}: part “{name}” added to “{host}”.', {
+					label,
+					name,
+					host: tree.get(host.id)?.name ?? tr('object')
+				});
 				return;
 			}
 			const ids = await applyMeshOpParts(res, null, []);
@@ -4124,9 +4469,12 @@
 					? { ...o, position: [bed.center.x, bed.center.y, o.position?.[2] ?? 0] }
 					: o
 			);
-			saveMessage = label + ' : objet créé.';
+			saveMessage = tr('{label}: object created.', { label });
 		} catch (e) {
-			saveMessage = label + ' : ' + (e instanceof ApiError ? e.message : 'échec.');
+			saveMessage = tr('{label}: {msg}', {
+				label,
+				msg: e instanceof ApiError ? e.message : tr('failed.')
+			});
 		} finally {
 			embossBusy = false;
 		}
@@ -4166,7 +4514,7 @@
 		if (!edit) return;
 		const object = sceneObjects.find((o) => o.id === edit.objectId);
 		if (!object) return;
-		const label = params.source === 'svg' ? 'Forme SVG' : 'Texte en relief';
+		const label = params.source === 'svg' ? tr('SVG shape') : tr('Embossed text');
 		embossBusy = true;
 		try {
 			const res =
@@ -4185,7 +4533,7 @@
 							boldness_mm: params.boldness
 						});
 			const part = res.parts[0];
-			if (!part) throw new Error('aucune pièce');
+			if (!part) throw new Error(tr('no part'));
 			const { mesh } = await loadCenteredMesh(part.model.id);
 			projectModelIds.add(part.model.id);
 			const b = meshBounds(mesh);
@@ -4244,12 +4592,14 @@
 				const node = tree.get(edit.objectId);
 				if (node && part.emboss) node.emboss = part.emboss;
 			}
-			saveMessage = label + ' : relief mis à jour.';
+			saveMessage = tr('{label}: relief updated.', { label });
 			embossEdit = null;
 			closeTool();
 		} catch (e) {
-			saveMessage =
-				label + ' : ' + (e instanceof ApiError ? e.message : 'échec de la mise à jour.');
+			saveMessage = tr('{label}: {msg}', {
+				label,
+				msg: e instanceof ApiError ? e.message : tr('update failed.')
+			});
 		} finally {
 			embossBusy = false;
 		}
@@ -4397,7 +4747,9 @@
 			// jamais persisté à la place du résultat d'Orca).
 			paintings[id]?.replaceChannel(channel, before);
 			paintings = { ...paintings };
-			saveMessage = 'Peinture (moteur) : ' + (e instanceof Error ? e.message : String(e));
+			saveMessage = tr('Painting (engine): {msg}', {
+				msg: e instanceof Error ? e.message : String(e)
+			});
 		});
 		paintQueues.set(key, tail);
 		void tail.finally(() => {
@@ -4516,7 +4868,7 @@
 				});
 			}
 			assemblyPick = null;
-			saveMessage = 'Assemblage appliqué.';
+			saveMessage = tr('Assembly applied.');
 		}
 		if (tools.active === 'brim-ears') {
 			const ears = brimEarsByObject[id] ?? new BrimEars();
@@ -4577,7 +4929,7 @@
 	): boolean {
 		const modelId = objectModelId(id);
 		if (!modelId) {
-			saveMessage = 'Peinture : l’objet n’est pas encore enregistré sur le serveur.';
+			saveMessage = tr('Painting: the object is not saved on the server yet.');
 			return false;
 		}
 		const key = `${id}/${channel}`;
@@ -4593,7 +4945,9 @@
 				done?.(base, after);
 			})
 			.catch((e) => {
-				saveMessage = 'Peinture (moteur) : ' + (e instanceof Error ? e.message : String(e));
+				saveMessage = tr('Painting (engine): {msg}', {
+					msg: e instanceof Error ? e.message : String(e)
+				});
 			})
 			.finally(() => {
 				paintBusy = false;
@@ -4620,8 +4974,10 @@
 			(before, after) => {
 				const changed = JSON.stringify(before) !== JSON.stringify(after);
 				saveMessage = changed
-					? `Comblement : zones de moins de ${area.toLocaleString('fr-FR')} mm² absorbées.`
-					: 'Comblement : aucune zone assez petite.';
+					? tr('Gap fill: areas under {area} mm² absorbed.', {
+							area: area.toLocaleString(numberLocale())
+						})
+					: tr('Gap fill: no area small enough.');
 			}
 		);
 	}
@@ -4659,7 +5015,15 @@
 				baseChanged = true;
 			}
 		}
-		saveMessage = `Filaments remappés${Object.keys(mmu).length ? ' (peinture' + (baseChanged ? ' et filament de base)' : ')') : baseChanged ? ' (filament de base)' : ''}.`;
+		saveMessage = tr(
+			Object.keys(mmu).length
+				? baseChanged
+					? 'Filaments remapped (painting and base filament).'
+					: 'Filaments remapped (painting).'
+				: baseChanged
+					? 'Filaments remapped (base filament).'
+					: 'Filaments remapped.'
+		);
 	}
 
 	// Aperçu au survol (Orca : surbrillance de la zone avant le clic) — envoyé
@@ -4775,7 +5139,7 @@
 		const object = id ? sceneObjects.find((o) => o.id === id) : undefined;
 		const modelId = id ? objectModelId(id) : null;
 		if (!id || !object || !modelId) {
-			saveMessage = 'Hauteur de couche : sélectionnez un objet dont le maillage est prêt.';
+			saveMessage = tr('Layer height: select an object whose mesh is ready.');
 			return;
 		}
 		try {
@@ -4791,7 +5155,9 @@
 			});
 			layerProfiles = { ...layerProfiles, [id]: deserializeLayerProfile(profile) };
 		} catch (e) {
-			saveMessage = 'Hauteur de couche : ' + (e instanceof Error ? e.message : 'erreur moteur');
+			saveMessage = tr('Layer height: {msg}', {
+				msg: e instanceof Error ? e.message : tr('engine error')
+			});
 		}
 	}
 	// Adaptatif / lissage : calculés par libslic3r (Slicing.cpp) dans le moteur,
@@ -4804,7 +5170,7 @@
 		const object = id ? sceneObjects.find((o) => o.id === id) : undefined;
 		const modelId = id ? objectModelId(id) : null;
 		if (!id || !object || !modelId) {
-			saveMessage = 'Hauteur de couche : sélectionnez un objet dont le maillage est prêt.';
+			saveMessage = tr('Layer height: select an object whose mesh is ready.');
 			return;
 		}
 		try {
@@ -4818,8 +5184,9 @@
 			});
 			layerProfiles = { ...layerProfiles, [id]: deserializeLayerProfile(res.profile) };
 		} catch (e) {
-			saveMessage =
-				'Hauteur de couche : ' + (e instanceof ApiError ? e.message : 'erreur moteur inconnue');
+			saveMessage = tr('Layer height: {msg}', {
+				msg: e instanceof ApiError ? e.message : tr('unknown engine error')
+			});
 		}
 	}
 
@@ -4917,10 +5284,10 @@
 				sceneObjects = permuteInSlots(sceneObjects, order, (o) => o.id);
 			}
 			saveMessage =
-				`Arrangement : ${res.placements.length} objet(s) repositionné(s)` +
-				(order ? ', ordre d’impression mis à jour.' : '.');
+				tr('Arrange: {n} object(s) repositioned', { n: res.placements.length }) +
+				(order ? tr(', print order updated.') : '.');
 		} catch (e) {
-			saveMessage = e instanceof ApiError ? e.message : 'arrangement indisponible';
+			saveMessage = e instanceof ApiError ? e.message : tr('arrange unavailable');
 		}
 	}
 
@@ -4994,7 +5361,7 @@
 			});
 			applyGuiArrangeResult(res);
 		} catch (e) {
-			saveMessage = e instanceof ApiError ? e.message : 'arrangement indisponible';
+			saveMessage = e instanceof ApiError ? e.message : tr('arrange unavailable');
 		} finally {
 			arrangeBusy = false;
 		}
@@ -5030,9 +5397,14 @@
 		const ignored = unarrangedIds(res.placements);
 		const placed = res.placements.length - ignored.length;
 		saveMessage =
-			`Arrangement : ${placed} objet(s) sur ${count} plateau${count > 1 ? 'x' : ''}.` +
+			tr(
+				count > 1
+					? 'Arrange: {n} object(s) on {count} plates.'
+					: 'Arrange: {n} object(s) on {count} plate.',
+				{ n: placed, count }
+			) +
 			(ignored.length > 0
-				? ` ${ignored.length} objet(s) trop grand(s) pour un plateau, laissé(s) en l’état.`
+				? tr(' {n} object(s) too large for a plate, left as is.', { n: ignored.length })
 				: '');
 	}
 
@@ -5051,32 +5423,32 @@
 				onTransform(object.id, { ...objectTransform(current), rotation: [rx, ry, rz] });
 				oriented++;
 			} catch (e) {
-				saveMessage = e instanceof ApiError ? e.message : 'orientation indisponible';
+				saveMessage = e instanceof ApiError ? e.message : tr('orientation unavailable');
 				return;
 			}
 		}
-		saveMessage = `Orientation auto : ${oriented} objet(s) du plateau.`;
+		saveMessage = tr('Auto orient: {n} object(s) on the plate.', { n: oriented });
 	}
 
 	// Orientation auto de l'objet sélectionné : rotation Euler renvoyée par le moteur.
 	async function orientActive() {
 		if (!selId) return;
 		if (!canTransformObject(selId, activePlate, objectLocked)) {
-			saveMessage = 'Orientation : objet verrouillé ou hors du plateau actif.';
+			saveMessage = tr('Orientation: object locked or outside the active plate.');
 			return;
 		}
 		const modelId = imports.find((i) => i.objectId === selId)?.modelId;
 		if (!modelId) {
-			saveMessage = 'Orientation : modèle non résolu (conversion en cours).';
+			saveMessage = tr('Orientation: model not resolved (conversion in progress).');
 			return;
 		}
 		try {
 			const res = await orientModel(data.project.id, modelId);
 			const [rx, ry, rz] = res.rotation;
 			onTransform(selId, { ...activeTransform, rotation: [rx, ry, rz] });
-			saveMessage = 'Orientation auto appliquée.';
+			saveMessage = tr('Auto orientation applied.');
 		} catch (e) {
-			saveMessage = e instanceof ApiError ? e.message : 'orientation indisponible';
+			saveMessage = e instanceof ApiError ? e.message : tr('orientation unavailable');
 		}
 	}
 
@@ -5194,7 +5566,7 @@
 	function duplicateActivePlate() {
 		const source = activePlate;
 		if (!source) {
-			saveMessage = 'Aucun plateau actif à dupliquer.';
+			saveMessage = tr('No active plate to duplicate.');
 			return;
 		}
 		// Un objet sans `modelId` (upload en cours) ne serait jamais rattaché à
@@ -5205,7 +5577,9 @@
 			return !item?.modelId;
 		});
 		if (uploading.length > 0) {
-			saveMessage = `Dupliquer le plateau : attendez la fin de ${uploading.length} upload(s).`;
+			saveMessage = tr('Duplicate plate: wait for {n} upload(s) to finish.', {
+				n: uploading.length
+			});
 			return;
 		}
 		let copied = 0;
@@ -5215,15 +5589,15 @@
 			return copyId;
 		});
 		if (!plate) {
-			saveMessage = 'Dupliquer le plateau : plateau introuvable.';
+			saveMessage = tr('Duplicate plate: plate not found.');
 			return;
 		}
 		ws = setSelection(ws, new Set());
 		closeContext();
 		const missed = source.objectIds.length - copied;
 		saveMessage =
-			`Plateau « ${plate.name} » créé : ${copied} objet(s) copié(s).` +
-			(missed > 0 ? ` ${missed} objet(s) non copiable(s).` : '');
+			tr('Plate “{name}” created: {n} object(s) copied.', { name: plate.name, n: copied }) +
+			(missed > 0 ? tr(' {n} object(s) could not be copied.', { n: missed }) : '');
 	}
 
 	// Objet › Ajouter pièce / volume négatif / modificateur / bloqueur ou forceur
@@ -5255,7 +5629,10 @@
 		ws = setSelection(ws, new Set([id]));
 		selectedVolumeId = volume.id;
 		configTab = 'objects';
-		saveMessage = `${volume.name} ajouté (${volume.size.join(' × ')} mm).`;
+		saveMessage = tr('{name} added ({size} mm).', {
+			name: volume.name,
+			size: volume.size.join(' × ')
+		});
 	}
 
 	// Objet › Height range Modifier (Orca) : nouvelle plage de hauteur
@@ -5334,17 +5711,11 @@
 	// a échoué / la scène a changé entre-temps (message déjà posé).
 	// Corps de tranchage : brouillon des presets (Orca tranche le preset édité)
 	// et préférence « mélange haute/basse température » (lot 21).
+	// Lot 40 (D1) : surcharges complètes du projet (brouillons chargés +
+	// surcharges enregistrées pas encore chargées) — le `draft` remplace côté
+	// serveur les surcharges enregistrées, il doit donc toutes les porter.
 	function currentDraft() {
-		return buildSliceDraft({
-			process: { resolved: processResolvedValues, current: processValues },
-			printer: { resolved: machineResolvedValues, current: machineValues },
-			filament: {
-				slot: clampFilamentSlot(activePresets, filamentSlot),
-				count: activePresets.filaments.length,
-				resolved: filamentResolvedValues,
-				current: filamentValues
-			}
-		});
+		return projectOverrides();
 	}
 	function sliceRequestWithDraft(scope: 'plate' | 'all', plateIndex: number) {
 		const draft = currentDraft();
@@ -5402,9 +5773,10 @@
 			({ mesh } = await loadCenteredMesh(modelId));
 		} catch (e) {
 			if (generation !== sceneGeneration) return null;
-			saveMessage = `${what} côté serveur, mais rechargement impossible : ${
-				e instanceof ApiError ? e.message : 'erreur inconnue'
-			}. Utilisez Fichier › Recharger.`;
+			saveMessage = tr('{what} on the server, but reload failed: {msg}. Use File › Reload.', {
+				what,
+				msg: e instanceof ApiError ? e.message : tr('unknown error')
+			});
 			return null;
 		}
 		if (generation !== sceneGeneration) return null;
@@ -5416,7 +5788,7 @@
 			if (!currentPreferences().keepPainting) {
 				for (const { oid } of before) delete paintings[oid];
 				paintings = { ...paintings };
-				return ' Peinture effacée (Préférences › Comportement › « Garder la peinture » pour la conserver).';
+				return tr(' Painting cleared (Preferences › Behavior › “Keep painting” to keep it).');
 			}
 			try {
 				for (const { oid, channels } of before) {
@@ -5429,10 +5801,12 @@
 						);
 				}
 				paintings = { ...paintings };
-				return ' Peinture reportée sur le nouveau maillage.';
+				return tr(' Painting transferred to the new mesh.');
 			} catch (e) {
 				if (!(e instanceof ApiError && (e.status === 404 || e.status === 405))) {
-					saveMessage = `Peinture non reportée : ${e instanceof ApiError ? e.message : 'erreur inconnue'}`;
+					saveMessage = tr('Painting not transferred: {msg}', {
+						msg: e instanceof ApiError ? e.message : tr('unknown error')
+					});
 				}
 			}
 		}
@@ -5446,7 +5820,7 @@
 		const topologyChanged =
 			previousTriangles !== null && previousTriangles !== mesh.indices.length / 3;
 		return painted && topologyChanged
-			? ' Attention : le nombre de triangles a changé, vérifiez la peinture.'
+			? tr(' Warning: the triangle count changed, check the painting.')
 			: '';
 	}
 
@@ -5457,30 +5831,30 @@
 	async function repairObject(id: string) {
 		const target = repairTarget(id, imports);
 		if (!target.ok) {
-			saveMessage = `Réparer le maillage : ${target.reason}.`;
+			saveMessage = tr('Repair mesh: {reason}.', { reason: target.reason });
 			return;
 		}
 		const { modelId } = target;
 		if (repairingModels.has(modelId)) {
-			saveMessage = 'Une opération sur ce maillage est déjà en cours…';
+			saveMessage = tr('An operation on this mesh is already in progress…');
 			return;
 		}
 		const generation = sceneGeneration;
 		repairingModels.add(modelId);
-		saveMessage = 'Réparation du maillage en cours…';
+		saveMessage = tr('Repairing the mesh…');
 		try {
 			let report;
 			try {
 				report = await repairModel(modelId);
 			} catch (e) {
 				if (generation !== sceneGeneration) return;
-				saveMessage = `Réparation du maillage impossible : ${
-					e instanceof ApiError ? e.message : 'erreur inconnue'
-				}`;
+				saveMessage = tr('Mesh repair failed: {msg}', {
+					msg: e instanceof ApiError ? e.message : tr('unknown error')
+				});
 				return;
 			}
 			if (generation !== sceneGeneration) return;
-			const warning = await reloadServerMesh(modelId, generation, 'Maillage réparé', true);
+			const warning = await reloadServerMesh(modelId, generation, tr('Mesh repaired'), true);
 			if (warning === null) return;
 			saveMessage = repairSummary(report) + warning;
 		} finally {
@@ -5494,35 +5868,35 @@
 	async function simplifyObject(id: string, param: SimplifyToolParam) {
 		const target = repairTarget(id, imports);
 		if (!target.ok) {
-			saveMessage = `Simplifier le maillage : ${target.reason}.`;
+			saveMessage = tr('Simplify mesh: {reason}.', { reason: target.reason });
 			return;
 		}
 		const request = simplifyRequest(param);
 		if (!request.ok) {
-			saveMessage = `Simplifier le maillage : ${request.reason}.`;
+			saveMessage = tr('Simplify mesh: {reason}.', { reason: request.reason });
 			return;
 		}
 		const { modelId } = target;
 		if (repairingModels.has(modelId)) {
-			saveMessage = 'Une opération sur ce maillage est déjà en cours…';
+			saveMessage = tr('An operation on this mesh is already in progress…');
 			return;
 		}
 		const generation = sceneGeneration;
 		repairingModels.add(modelId);
-		saveMessage = 'Simplification du maillage en cours…';
+		saveMessage = tr('Simplifying the mesh…');
 		try {
 			let report;
 			try {
 				report = await simplifyModel(modelId, request.body);
 			} catch (e) {
 				if (generation !== sceneGeneration) return;
-				saveMessage = `Simplification du maillage impossible : ${
-					e instanceof ApiError ? e.message : 'erreur inconnue'
-				}`;
+				saveMessage = tr('Mesh simplification failed: {msg}', {
+					msg: e instanceof ApiError ? e.message : tr('unknown error')
+				});
 				return;
 			}
 			if (generation !== sceneGeneration) return;
-			const warning = await reloadServerMesh(modelId, generation, 'Maillage simplifié', true);
+			const warning = await reloadServerMesh(modelId, generation, tr('Mesh simplified'), true);
 			if (warning === null) return;
 			saveMessage = simplifySummary(report) + warning;
 		} finally {
@@ -5593,16 +5967,17 @@
 			// Repli sur l'enregistrement si le serveur ignore `scene`.
 			const dirty = saveSignature() !== savedSignature;
 			// Phase 33 (lot 31) : presets actifs envoyés aussi (`active_presets`).
-			const inline = dirty && projectConfigSaved() && (await supportsInlineScene(data.project.id));
-			if (seq !== validationSeq) return;
+			// Phase 41 (A3) : le serveur accepte la scène dans le corps depuis le
+			// lot 29 — plus de sondage (422 volontaire, erreur console).
+			const inline = dirty && projectConfigSaved();
 			if (dirty && !inline) {
 				const saved = await save({ quiet: true });
 				if (seq !== validationSeq) return;
 				if (saved.status !== 'saved') {
 					validationBlocked =
 						saved.status === 'conflict'
-							? 'Vérification suspendue : le projet a été modifié ailleurs. Rechargez-le.'
-							: 'Vérification suspendue : ' + saved.message;
+							? tr('Check suspended: the project was modified elsewhere. Reload it.')
+							: tr('Check suspended: {msg}', { msg: saved.message });
 					return;
 				}
 			}
@@ -5615,8 +5990,9 @@
 			validationBlocked = null;
 		} catch (e) {
 			if (seq !== validationSeq) return;
-			validationBlocked =
-				'Vérification impossible : ' + (e instanceof ApiError ? e.message : 'serveur injoignable');
+			validationBlocked = tr('Check failed: {msg}', {
+				msg: e instanceof ApiError ? e.message : tr('server unreachable')
+			});
 		} finally {
 			if (seq === validationSeq) validationBusy = false;
 		}
@@ -5624,7 +6000,8 @@
 	const validationNotices = $derived(
 		validation
 			? buildNotices(validation, {
-					catalog: orcaCatalog,
+					// Catalogue d'Orca (fr) seulement en français : messages du moteur en anglais sinon.
+					catalog: $locale === 'fr' ? orcaCatalog : null,
 					liveId: (id) => persistedToLive.get(id) ?? (tree.get(id) ? id : undefined),
 					plateCount: plates.list().length
 				})
@@ -5645,7 +6022,7 @@
 			if (item.status === 'failed')
 				out[item.objectId] = {
 					level: 'error',
-					text: 'Conversion impossible : ' + (item.error ?? 'fichier illisible'),
+					text: tr('Conversion failed: {msg}', { msg: item.error ?? tr('unreadable file') }),
 					inline: true
 				};
 		return out;
@@ -5736,7 +6113,10 @@
 		if (!sceneWipeTower) return;
 		const [cx, cy] = clampTowerPosition(x, y, sceneWipeTower.size, bed, sceneWipeTower.brim);
 		projectFilament = setTowerPosition(projectFilament, activePlateIndex, cx, cy, towerDefault);
-		saveMessage = `Tour d'essuyage déplacée en X ${cx.toFixed(1)} · Y ${cy.toFixed(1)} mm.`;
+		saveMessage = tr('Prime tower moved to X {x} · Y {y} mm.', {
+			x: cx.toFixed(1),
+			y: cy.toFixed(1)
+		});
 	}
 
 	function reorderObject(id: string, targetId: string) {
@@ -5748,13 +6128,13 @@
 			tree.list().map((n) => n.id),
 			(o) => o.id
 		);
-		const name = tree.get(id)?.name ?? 'objet';
+		const name = tree.get(id)?.name ?? tr('object');
 		const rank =
 			tree
 				.roots()
 				.filter((n) => n.kind === 'object')
 				.findIndex((n) => n.id === id) + 1;
-		saveMessage = `Ordre des objets : « ${name} » en position ${rank}.`;
+		saveMessage = tr('Object order: “{name}” in position {rank}.', { name, rank });
 	}
 
 	// Duplique un objet donné (décalage de 10 mm en X/Y, Z conservé).
@@ -5837,7 +6217,9 @@
 		removeIds: string[]
 	) {
 		if (meshOpBusy || modelIds.some((m) => repairingModels.has(m))) {
-			saveMessage = `${feature} : une opération est déjà en cours sur ce modèle.`;
+			saveMessage = tr('{feature}: an operation is already in progress on this model.', {
+				feature
+			});
 			return;
 		}
 		meshOpBusy = true;
@@ -5845,12 +6227,12 @@
 		try {
 			const res = await call();
 			const ids = await applyMeshOpParts(res, source, removeIds);
-			saveMessage = `${feature} : ${ids.length} objet(s) créé(s).`;
+			saveMessage = tr('{feature}: {n} object(s) created.', { feature, n: ids.length });
 		} catch (e) {
 			saveMessage =
 				e instanceof ApiError
 					? meshOpErrorMessage(feature, e.status, e.message)
-					: meshOpErrorMessage(feature, null, 'erreur inconnue');
+					: meshOpErrorMessage(feature, null, tr('unknown error'));
 		} finally {
 			modelIds.forEach((m) => repairingModels.delete(m));
 			meshOpBusy = false;
@@ -5862,10 +6244,10 @@
 		const object = id ? sceneObjects.find((o) => o.id === id) : undefined;
 		const modelId = id ? objectModelId(id) : null;
 		if (!object || !modelId) {
-			saveMessage = 'Séparer : sélectionnez un objet dont le maillage est prêt.';
+			saveMessage = tr('Split: select an object whose mesh is ready.');
 			return;
 		}
-		await runMeshOp('Séparation', [modelId], () => splitModel(modelId), object, [object.id]);
+		await runMeshOp(tr('Splitting'), [modelId], () => splitModel(modelId), object, [object.id]);
 	}
 
 	// Charge le maillage de chaque volume `mesh` (restauration, undo, split).
@@ -5894,11 +6276,11 @@
 		const modelId = id ? objectModelId(id) : null;
 		const node = id ? tree.get(id) : undefined;
 		if (!id || !object || !modelId || !node) {
-			saveMessage = 'Séparer en pièces : sélectionnez un objet dont le maillage est prêt.';
+			saveMessage = tr('Split to parts: select an object whose mesh is ready.');
 			return null;
 		}
 		if (meshOpBusy || repairingModels.has(modelId)) {
-			saveMessage = 'Séparer en pièces : une opération est déjà en cours sur ce modèle.';
+			saveMessage = tr('Split to parts: an operation is already in progress on this model.');
 			return null;
 		}
 		const generation = sceneGeneration;
@@ -5913,7 +6295,9 @@
 			if (loaded.length < 2) {
 				// Orca `ObjectList::split` : « The target object contains only one part
 				// and can not be split. »
-				saveMessage = `Séparer en pièces : « ${node.name} » ne contient qu'une pièce et ne peut pas être séparé.`;
+				saveMessage = tr('Split to parts: “{name}” contains only one part and can not be split.', {
+					name: node.name
+				});
 				return null;
 			}
 			const [first, ...rest] = loaded;
@@ -5973,13 +6357,16 @@
 			volumesByObject = { ...volumesByObject, [objectId]: [...partVolumes, ...kept] };
 			removeObject(id);
 			ws = setSelection(ws, new Set([objectId]));
-			saveMessage = `Séparation en pièces : ${loaded.length} pièce(s) dans « ${node.name} ».`;
+			saveMessage = tr('Splitting to parts: {n} part(s) in “{name}”.', {
+				n: loaded.length,
+				name: node.name
+			});
 			return objectId;
 		} catch (e) {
 			saveMessage =
 				e instanceof ApiError
-					? meshOpErrorMessage('Séparation en pièces', e.status, e.message)
-					: meshOpErrorMessage('Séparation en pièces', null, 'erreur inconnue');
+					? meshOpErrorMessage(tr('Splitting to parts'), e.status, e.message)
+					: meshOpErrorMessage(tr('Splitting to parts'), null, tr('unknown error'));
 			return null;
 		} finally {
 			repairingModels.delete(modelId);
@@ -6007,11 +6394,11 @@
 		const node = tree.get(id);
 		const groupName = node?.parentId ? tree.get(node.parentId)?.name : undefined;
 		if (!object || !modelId || !node) {
-			saveMessage = 'Séparer en pièces : sélectionnez une pièce dont le maillage est prêt.';
+			saveMessage = tr('Split to parts: select a part whose mesh is ready.');
 			return [];
 		}
 		if (meshOpBusy || repairingModels.has(modelId)) {
-			saveMessage = 'Séparer en pièces : une opération est déjà en cours sur ce modèle.';
+			saveMessage = tr('Split to parts: an operation is already in progress on this model.');
 			return [];
 		}
 		const generation = sceneGeneration;
@@ -6024,7 +6411,9 @@
 			);
 			if (generation !== sceneGeneration || !tree.get(id)) return [];
 			if (loaded.length < 2) {
-				saveMessage = `Séparer en pièces : « ${node.name} » ne contient qu'une pièce et ne peut pas être séparé.`;
+				saveMessage = tr('Split to parts: “{name}” contains only one part and can not be split.', {
+					name: node.name
+				});
 				return [];
 			}
 			const plateId = plates.plateOf(id) ?? plates.activeId;
@@ -6066,13 +6455,16 @@
 			if (kept.length) volumesByObject = { ...volumesByObject, [created[0]]: kept };
 			removeObject(id);
 			ws = setSelection(ws, new Set(created));
-			saveMessage = `Séparation en pièces : ${created.length} pièce(s) dans « ${groupName ?? node.name} ».`;
+			saveMessage = tr('Splitting to parts: {n} part(s) in “{name}”.', {
+				n: created.length,
+				name: groupName ?? node.name
+			});
 			return created;
 		} catch (e) {
 			saveMessage =
 				e instanceof ApiError
-					? meshOpErrorMessage('Séparation en pièces', e.status, e.message)
-					: meshOpErrorMessage('Séparation en pièces', null, 'erreur inconnue');
+					? meshOpErrorMessage(tr('Splitting to parts'), e.status, e.message)
+					: meshOpErrorMessage(tr('Splitting to parts'), null, tr('unknown error'));
 			return [];
 		} finally {
 			repairingModels.delete(modelId);
@@ -6125,8 +6517,11 @@
 		if (batch && done > 0)
 			saveMessage =
 				mode === 'parts'
-					? `Séparation en pièces : ${done} objet(s) séparé(s) en pièces.`
-					: `Séparation : ${done} objet(s) séparé(s) en ${created.length} morceau(x).`;
+					? tr('Splitting to parts: {n} object(s) split into parts.', { n: done })
+					: tr('Splitting: {n} object(s) split into {count} piece(s).', {
+							n: done,
+							count: created.length
+						});
 	}
 
 	/**
@@ -6153,7 +6548,7 @@
 			onGizmoDragChange(false);
 		}
 		ws = setSelection(ws, new Set(result));
-		saveMessage = `Séparation en objets : ${result.length} objet(s).`;
+		saveMessage = tr('Splitting to objects: {n} object(s).', { n: result.length });
 	}
 
 	/**
@@ -6164,16 +6559,16 @@
 	async function smoothObject(id: string) {
 		const modelId = objectModelId(id);
 		if (!modelId) {
-			saveMessage = 'Subdivision : maillage pas encore prêt.';
+			saveMessage = tr('Subdivision: mesh not ready yet.');
 			return;
 		}
 		if (repairingModels.has(modelId)) {
-			saveMessage = 'Une opération sur ce maillage est déjà en cours…';
+			saveMessage = tr('An operation on this mesh is already in progress…');
 			return;
 		}
 		const generation = sceneGeneration;
 		repairingModels.add(modelId);
-		saveMessage = 'Subdivision du maillage en cours…';
+		saveMessage = tr('Subdividing the mesh…');
 		try {
 			const res = await smoothModel(modelId);
 			const part = res.parts[0];
@@ -6192,13 +6587,13 @@
 				delete paintings[oid];
 			}
 			paintings = { ...paintings };
-			saveMessage = `Subdivision : ${part.triangles} triangles (peinture perdue).`;
+			saveMessage = tr('Subdivision: {n} triangles (painting lost).', { n: part.triangles });
 		} catch (e) {
 			if (generation !== sceneGeneration) return;
 			saveMessage =
 				e instanceof ApiError
-					? meshOpErrorMessage('Subdivision', e.status, e.message)
-					: meshOpErrorMessage('Subdivision', null, 'erreur inconnue');
+					? meshOpErrorMessage(tr('Subdivision'), e.status, e.message)
+					: meshOpErrorMessage(tr('Subdivision'), null, tr('unknown error'));
 		} finally {
 			repairingModels.delete(modelId);
 		}
@@ -6216,11 +6611,11 @@
 		const object = id ? sceneObjects.find((o) => o.id === id) : undefined;
 		const modelId = id ? objectModelId(id) : null;
 		if (!object || !modelId) {
-			saveMessage = 'Coupe : sélectionnez un objet dont le maillage est prêt.';
+			saveMessage = tr('Cut: select an object whose mesh is ready.');
 			return;
 		}
 		if (meshOpBusy || repairingModels.has(modelId)) {
-			saveMessage = 'Coupe : une opération est déjà en cours sur ce modèle.';
+			saveMessage = tr('Cut: an operation is already in progress on this model.');
 			return;
 		}
 		const source = objectTransform(object);
@@ -6233,7 +6628,7 @@
 		if (tree.list().some((n) => n.cutId)) {
 			const saved = await save({ quiet: true });
 			if (saved.status !== 'saved') {
-				saveMessage = 'Coupe : enregistrez d’abord le projet (informations de découpe).';
+				saveMessage = tr('Cut: save the project first (cut info).');
 				return;
 			}
 		}
@@ -6347,20 +6742,22 @@
 			sceneObjects = [...sceneObjects, ...added];
 			removeObject(object.id);
 			ws = setSelection(ws, new Set(newIds));
-			saveMessage =
-				'Coupe : ' +
-				newIds.length +
-				' objet(s) créé(s) (' +
-				names.join(', ') +
-				')' +
-				(connectorCount ? ', ' + connectorCount + ' connecteur(s)' : '') +
-				'.';
+			saveMessage = connectorCount
+				? tr('Cut: {n} object(s) created ({names}), {c} connector(s).', {
+						n: newIds.length,
+						names: names.join(', '),
+						c: connectorCount
+					})
+				: tr('Cut: {n} object(s) created ({names}).', {
+						n: newIds.length,
+						names: names.join(', ')
+					});
 			closeTool();
 		} catch (e) {
 			saveMessage =
 				e instanceof ApiError
-					? meshOpErrorMessage('Coupe', e.status, e.message)
-					: meshOpErrorMessage('Coupe', null, 'erreur inconnue');
+					? meshOpErrorMessage(tr('Cut||operation'), e.status, e.message)
+					: meshOpErrorMessage(tr('Cut||operation'), null, tr('unknown error'));
 		} finally {
 			repairingModels.delete(modelId);
 			meshOpBusy = false;
@@ -6386,7 +6783,7 @@
 		// l'outil B (comportement par défaut du gizmo Orca, « Delete input » off).
 		const remove = op === 'difference' ? [a.id] : [a.id, b.id];
 		await runMeshOp(
-			'Booléen',
+			tr('Boolean'),
 			[...new Set([ma, mb])],
 			() =>
 				booleanModels(data.project.id, {
@@ -6581,12 +6978,12 @@
 	function changeInstances(key: '+' | '-') {
 		if (!selId || !sceneObjects.some((o) => o.id === selId)) {
 			if (selectedIds.length > 1)
-				saveMessage = 'Instances : sélectionnez un seul objet pour utiliser « + » / « − ».';
+				saveMessage = tr('Instances: select a single object to use “+” / “−”.');
 			return;
 		}
 		if (key === '+') {
 			if (!tree.isPrintable(selId)) {
-				saveMessage = 'Ajouter une instance : l’objet est marqué non imprimable.';
+				saveMessage = tr('Add instance: the object is marked as not printable.');
 				return;
 			}
 			duplicateObject(selId);
@@ -6597,7 +6994,7 @@
 			? imports.filter((i) => i.modelId === modelId && tree.get(i.objectId)).map((i) => i.objectId)
 			: [selId];
 		if (instances.length < 2) {
-			saveMessage = 'Retirer une instance : c’est la seule instance de ce modèle.';
+			saveMessage = tr('Remove instance: this is the only instance of this model.');
 			return;
 		}
 		const last = instances[instances.length - 1];
@@ -6614,7 +7011,7 @@
 		if (!plateId || !layers?.length) return;
 		// G-code ouvert (pas de résultat de tranchage) : rien à retrancher.
 		if (!session.gcodeId) {
-			saveMessage = 'G-code ouvert : les changements de couleur se règlent sur un plateau tranché.';
+			saveMessage = tr('G-code opened: color changes are set on a sliced plate.');
 			return;
 		}
 		const z = layers[layerRange.high]?.z;
@@ -6658,7 +7055,7 @@
 	}
 	function openLayerMenu(x: number, y: number, layer = activeThumbLayer()) {
 		if (!session.gcodeId) {
-			saveMessage = 'G-code ouvert : les codes par couche se règlent sur un plateau tranché.';
+			saveMessage = tr('G-code opened: layer codes are set on a sliced plate.');
 			return;
 		}
 		layerMenu = { open: true, x, y, layer };
@@ -6921,7 +7318,7 @@
 			rollbackImportIds.delete(id);
 		} catch (e) {
 			if (generation !== sceneGeneration) return;
-			failImport(id, e instanceof ApiError ? e.message : 'échec de l’upload');
+			failImport(id, e instanceof ApiError ? e.message : tr('upload failed'));
 		}
 	}
 	// Dispatch du menu d'ajout (T113) : Load (import) ou primitive.
@@ -6975,12 +7372,14 @@
 			});
 			placements = res.placements;
 		} catch (e) {
-			saveMessage = `Remplir le plateau : ${e instanceof ApiError ? e.message : 'échec du moteur'}`;
+			saveMessage = tr('Fill bed: {msg}', {
+				msg: e instanceof ApiError ? e.message : tr('engine failure')
+			});
 			return;
 		}
 		const added = placements.filter((p) => p.id !== id);
 		if (added.length === 0) {
-			saveMessage = 'Remplir le plateau : aucune instance supplémentaire ne tient sur le plateau.';
+			saveMessage = tr('Fill bed: no extra instance fits on the plate.');
 			return;
 		}
 		const snap = snapshotObject(id);
@@ -6993,7 +7392,7 @@
 			);
 		for (const p of added) instantiateSnapshot(snap, [p.x, p.y, z]);
 		ws = setSelection(ws, new Set([id]));
-		saveMessage = `Remplissage du plateau : ${added.length + 1} instances.`;
+		saveMessage = tr('Fill bed: {n} instances.', { n: added.length + 1 });
 	}
 
 	// Détache une instance : nouveau modèle serveur, transformations conservées.
@@ -7005,9 +7404,11 @@
 			const model = await uploadModel(data.project.id, sceneMeshToStlFile(object.mesh, name));
 			projectModelIds.add(model.id);
 			patchImport(id, (item) => markConverted(markUploaded(item, model.id, false)));
-			saveMessage = `${name} est maintenant un objet individuel.`;
+			saveMessage = tr('{name} is now an individual object.', { name });
 		} catch (e) {
-			saveMessage = `Objet individuel : ${e instanceof ApiError ? e.message : 'échec de l’upload'}`;
+			saveMessage = tr('Individual object: {msg}', {
+				msg: e instanceof ApiError ? e.message : tr('upload failed')
+			});
 		}
 	}
 
@@ -7015,8 +7416,8 @@
 		const modelId = objectModelId(id);
 		if (!modelId) return;
 		meshRequests.delete(modelId);
-		const warning = await reloadServerMesh(modelId, sceneGeneration, 'Maillage rechargé');
-		if (warning !== null) saveMessage = `Maillage rechargé depuis le disque.${warning}`;
+		const warning = await reloadServerMesh(modelId, sceneGeneration, tr('Mesh reloaded'));
+		if (warning !== null) saveMessage = tr('Mesh reloaded from disk.') + warning;
 	}
 
 	function chooseReplacement(id: string, all: boolean) {
@@ -7052,11 +7453,15 @@
 				sceneObjects = sceneObjects.map((o) => (o.id === id ? { ...o, mesh } : o));
 				patchImport(id, (item) => markConverted(markUploaded(item, model.id, false)));
 			} catch (err) {
-				saveMessage = `Remplacement : ${err instanceof ApiError ? err.message : 'maillage illisible'}`;
+				saveMessage = tr('Replace: {msg}', {
+					msg: err instanceof ApiError ? err.message : tr('unreadable mesh')
+				});
 				return;
 			}
 		}
-		saveMessage = `Remplacement : ${Math.min(files.length, targets.length)} maillage(s) remplacé(s), transformations conservées.`;
+		saveMessage = tr('Replace: {n} mesh(es) replaced, transformations kept.', {
+			n: Math.min(files.length, targets.length)
+		});
 	}
 
 	// Dispatch des actions du menu contextuel sur l'objet ciblé.
@@ -7126,7 +7531,7 @@
 						)
 					: [];
 				if (siblings.length === 0) {
-					saveMessage = 'Retirer une instance : c’est la seule instance de ce modèle.';
+					saveMessage = tr('Remove instance: this is the only instance of this model.');
 					break;
 				}
 				removeObject(id);
@@ -7231,12 +7636,12 @@
 			case 'object.assemble': {
 				const ids = ws.selection.has(id) ? selectedIds : [id];
 				if (ids.length > 1 && tree.group(ids, 'Assemblage'))
-					saveMessage = `Assemblage : ${ids.length} objets regroupés en pièces.`;
+					saveMessage = tr('Assemble: {n} objects grouped as parts.', { n: ids.length });
 				break;
 			}
 			case 'object.assembleSingle':
 				if (ws.selection.has(id) && selectedIds.length === 2) await booleanSelected('union');
-				else saveMessage = 'Assemblage en une pièce : sélectionnez exactement deux objets.';
+				else saveMessage = tr('Assemble (single part): select exactly two objects.');
 				break;
 			case 'object.toObjects':
 			case 'object.split':
@@ -7291,7 +7696,10 @@
 		const label = format.toUpperCase();
 		const saved = await save();
 		if (saved.status !== 'saved') {
-			saveMessage = `Export ${label} : ${saved.status === 'error' ? saved.message : 'sauvegarde impossible'}`;
+			saveMessage = tr('Export {label}: {msg}', {
+				label,
+				msg: saved.status === 'error' ? saved.message : tr('save failed')
+			});
 			return;
 		}
 		try {
@@ -7308,16 +7716,21 @@
 			});
 			if (!res.ok) {
 				const err = (await res.json().catch(() => ({}))) as { message?: string };
-				saveMessage = `Export ${label} : ${err.message ?? res.statusText}`;
+				saveMessage = tr('Export {label}: {msg}', { label, msg: err.message ?? res.statusText });
 				return;
 			}
 			const name =
 				/filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ??
 				safeFileName(projectName || data.project.name, split ? 'zip' : format);
 			downloadBlob(await res.blob(), name);
-			saveMessage = `Export ${label} : ${split ? 'archive (un fichier par objet) exportée' : 'fichier fusionné exporté'} — « ${name} ».`;
+			saveMessage = tr(
+				split
+					? 'Export {label}: archive (one file per object) exported — “{name}”.'
+					: 'Export {label}: merged file exported — “{name}”.',
+				{ label, name }
+			);
 		} catch {
-			saveMessage = `Export ${label} : échec du téléchargement.`;
+			saveMessage = tr('Export {label}: download failed.', { label });
 		}
 	}
 
@@ -7332,7 +7745,7 @@
 	// Export plate sliced file : G-code du dernier tranchage (plateau actif).
 	function exportPlateGcode() {
 		if (!session.gcodeId) {
-			saveMessage = 'Export du plateau : tranchez d’abord le plateau.';
+			saveMessage = tr('Plate export: slice the plate first.');
 			return;
 		}
 		downloadUrl(`/api/gcodes/${session.gcodeId}/download`);
@@ -7398,8 +7811,10 @@
 				for (const [key, value] of filamentMapChoice(choice.mode, choice.map))
 					plates.setPlateSetting(id, key, value);
 			// Choix explicite de l'utilisateur : enregistré comme un réglage de plateau
-			// (le tranchage, lui, part de la scène affichée sans sauvegarder).
-			void saveNow({ quiet: true });
+			// (le tranchage, lui, part de la scène affichée sans sauvegarder). Dans la
+			// file des sauvegardes (phase 41d) : un `saveNow` direct partait en même
+			// temps que celui de `requestSlice` (même version → 409, pas de tranchage).
+			void save({ quiet: true });
 		}
 		prompt.resolve(choice !== null);
 	}
@@ -7409,9 +7824,9 @@
 		progress: (message: string) => void
 	): Promise<{ succeeded: JobResponse[]; missed: number; firstError: string | null }> {
 		await editorReady;
-		if (!(await askFilamentMap(true))) throw new Error('tranchage annulé');
+		if (!(await askFilamentMap(true))) throw new Error(tr('slicing cancelled'));
 		const res = await requestSlice(sliceRequestWithDraft('all', 0));
-		progress(`${label} : tranchage de ${res.jobs.length} plateau(x)…`);
+		progress(tr('{label}: slicing {n} plate(s)…', { label, n: res.jobs.length }));
 		const deadline = Date.now() + 10 * 60_000;
 		// Table locale (non réactive) des jobs terminés.
 		const done: Record<string, JobResponse> = {};
@@ -7423,7 +7838,13 @@
 				if (['succeeded', 'failed', 'cancelled'].includes(current.status)) done[job.id] = current;
 			}
 			if (finished() < res.jobs.length) {
-				progress(`${label} : ${finished()} / ${res.jobs.length} plateau(x) tranché(s)…`);
+				progress(
+					tr('{label}: {done} / {n} plate(s) sliced…', {
+						label,
+						done: finished(),
+						n: res.jobs.length
+					})
+				);
 				await new Promise((r) => setTimeout(r, 1000));
 			}
 		}
@@ -7436,7 +7857,7 @@
 			? friendlySliceError(
 					typeof failed.error === 'string'
 						? failed.error
-						: ((failed.error as { message?: string } | null)?.message ?? 'échec')
+						: ((failed.error as { message?: string } | null)?.message ?? tr('failed'))
 				)
 			: null;
 		return { succeeded, missed: res.jobs.length - succeeded.length, firstError };
@@ -7449,14 +7870,16 @@
 	async function exportAllPlatesGcode() {
 		if (exportingAll) return;
 		exportingAll = true;
-		const label = 'Export des plateaux';
+		const label = tr('Plates export');
 		try {
 			const { succeeded, missed, firstError } = await sliceAllPlatesJobs(
 				label,
 				(m) => (saveMessage = m)
 			);
 			if (succeeded.length === 0) {
-				saveMessage = `${label} : aucun plateau n’a pu être tranché${firstError ? ` — ${firstError}` : '.'}`;
+				saveMessage = firstError
+					? tr('{label}: no plate could be sliced — {error}', { label, error: firstError })
+					: tr('{label}: no plate could be sliced.', { label });
 				return;
 			}
 			const resp = await fetch(`/api/projects/${data.project.id}/export/sliced`, {
@@ -7473,12 +7896,19 @@
 				/filename="([^"]+)"/.exec(resp.headers.get('content-disposition') ?? '')?.[1] ??
 				`${safeFileName(projectName || data.project.name, 'gcode')}.3mf`;
 			downloadBlob(await resp.blob(), name);
-			const nPlates = (n: number) => `${n} plateau${n > 1 ? 'x' : ''}`;
+			const nPlates = (n: number) => tr(n > 1 ? '{n} plates' : '{n} plate', { n });
 			saveMessage =
-				`${label} : ${nPlates(succeeded.length)} dans « ${name} ».` +
-				(missed > 0 ? ` ${nPlates(missed)} en échec${firstError ? ` — ${firstError}` : '.'}` : '');
+				tr('{label}: {plates} in “{name}”.', { label, plates: nPlates(succeeded.length), name }) +
+				(missed > 0
+					? firstError
+						? tr(' {plates} failed — {error}', { plates: nPlates(missed), error: firstError })
+						: tr(' {plates} failed.', { plates: nPlates(missed) })
+					: '');
 		} catch (e) {
-			saveMessage = `${label} : ${e instanceof Error ? e.message : 'échec'}`;
+			saveMessage = tr('{label}: {msg}', {
+				label,
+				msg: e instanceof Error ? e.message : tr('failed')
+			});
 		} finally {
 			exportingAll = false;
 		}
@@ -7492,14 +7922,20 @@
 		progress: (message: string) => void,
 		queue = false
 	) {
-		const { succeeded, missed, firstError } = await sliceAllPlatesJobs('Envoi', progress);
+		const { succeeded, missed, firstError } = await sliceAllPlatesJobs(tr('Sending'), progress);
 		if (succeeded.length === 0)
-			throw new Error(`aucun plateau n’a pu être tranché${firstError ? ` — ${firstError}` : '.'}`);
+			throw new Error(
+				firstError
+					? tr('no plate could be sliced — {error}', { error: firstError })
+					: tr('no plate could be sliced.')
+			);
 		if (missed > 0)
 			throw new Error(
-				`${missed} plateau(x) en échec, rien n'a été envoyé${firstError ? ` — ${firstError}` : '.'}`
+				firstError
+					? tr('{n} plate(s) failed, nothing was sent — {error}', { n: missed, error: firstError })
+					: tr('{n} plate(s) failed, nothing was sent.', { n: missed })
 			);
-		progress('Envoi : transfert vers l’imprimante…');
+		progress(tr('Sending: transferring to the printer…'));
 		return uploadSliced(printerId, {
 			project_id: data.project.id,
 			job_ids: succeeded.map((j) => j.id),
@@ -7540,9 +7976,14 @@
 			previewLoadedFor = null;
 			layout = setTab(layout, 'preview');
 			await refreshGeometry();
-			saveMessage = `G-code « ${file.name} » ouvert (${meta.layer_count} couches).`;
+			saveMessage = tr('G-code “{file}” opened ({n} layers).', {
+				file: file.name,
+				n: meta.layer_count
+			});
 		} catch (e) {
-			saveMessage = `Ouverture du G-code : ${e instanceof ApiError ? e.message : 'échec'}`;
+			saveMessage = tr('Opening G-code: {msg}', {
+				msg: e instanceof ApiError ? e.message : tr('failed')
+			});
 		}
 	}
 
@@ -7608,7 +8049,7 @@
 			gcodeLines = (await source()).split(/\r?\n/);
 		} catch {
 			gcodeLinesFor = null;
-			saveMessage = 'Fenêtre G-code : lecture du G-code impossible.';
+			saveMessage = tr('G-code window: could not read the G-code.');
 		}
 	}
 	function setGcodeSource(source: () => Promise<string>) {
@@ -7680,7 +8121,7 @@
 	// Export toolpaths as OBJ : trajets d'extrusion de tout l'aperçu courant.
 	async function exportToolpathsObj() {
 		if (!loader || !previewMeta || session.phase !== 'preview') {
-			saveMessage = 'Export des trajets : tranchez ou ouvrez d’abord un G-code.';
+			saveMessage = tr('Toolpaths export: slice or open a G-code first.');
 			return;
 		}
 		const last = Math.max(0, previewMeta.layer_count - 1);
@@ -7689,7 +8130,7 @@
 		const text = toolpathsToObj(loader.rangeSegments(0, last), base);
 		const file = safeFileName(`${base}_trajets`, 'obj');
 		downloadBlob(new TextEncoder().encode(text), file, 'model/obj');
-		saveMessage = `Trajets exportés en OBJ — « ${file} ».`;
+		saveMessage = tr('Toolpaths exported as OBJ — “{file}”.', { file });
 	}
 
 	// — Ouverture d'un 3MF (lot 34) : « Ouvrir comme projet / Importer la
@@ -7717,13 +8158,15 @@
 
 	async function openProjectWithLoad(file: File, load?: ImportLoadMode) {
 		open3mf = null;
-		saveMessage = `Ouverture du projet « ${file.name} »…`;
+		saveMessage = tr('Opening project “{file}”…', { file: file.name });
 		try {
 			const project = await importProject(file, load);
 			if (project.import) stashImportReport(project.id, project.import);
 			window.location.assign(resolve('/projects/[id]', { id: project.id }));
 		} catch (e) {
-			saveMessage = `Ouverture du projet : ${e instanceof ApiError ? e.message : 'échec'}`;
+			saveMessage = tr('Opening project: {msg}', {
+				msg: e instanceof ApiError ? e.message : tr('failed')
+			});
 		}
 	}
 
@@ -7741,13 +8184,15 @@
 		try {
 			const files = await modelsFromZip(file);
 			if (files.length === 0) {
-				saveMessage = 'Import ZIP : aucun modèle compatible dans l’archive.';
+				saveMessage = tr('ZIP import: no compatible model in the archive.');
 				return;
 			}
 			await importFiles(files);
-			saveMessage = `Import ZIP : ${files.length} modèle(s) importé(s).`;
+			saveMessage = tr('ZIP import: {n} model(s) imported.', { n: files.length });
 		} catch (e) {
-			saveMessage = `Import ZIP : ${e instanceof Error ? e.message : 'archive illisible'}`;
+			saveMessage = tr('ZIP import: {msg}', {
+				msg: e instanceof Error ? e.message : tr('unreadable archive')
+			});
 		}
 	}
 
@@ -7761,9 +8206,11 @@
 				else if (document.kind === 'filament') selectPreset('filament', created.id);
 			}
 			await loadPresets();
-			saveMessage = `Import des configurations : ${documents.length} profil(s) importé(s).`;
+			saveMessage = tr('Configs import: {n} profile(s) imported.', { n: documents.length });
 		} catch (e) {
-			saveMessage = `Import des configurations : ${e instanceof Error ? e.message : 'échec'}`;
+			saveMessage = tr('Configs import: {msg}', {
+				msg: e instanceof Error ? e.message : tr('failed')
+			});
 		}
 	}
 
@@ -7802,23 +8249,27 @@
 				entries.push({ name, data: new TextEncoder().encode(JSON.stringify(json, null, 2)) });
 			}
 			if (entries.length === 0) {
-				saveMessage = 'Export des presets : aucun preset actif.';
+				saveMessage = tr('Presets export: no active preset.');
 				return;
 			}
 			downloadBlob(
 				buildZip(entries),
 				safeFileName(`${projectName || data.project.name}_presets`, 'zip')
 			);
-			saveMessage = `Export des presets : ${entries.length} profil(s) exporté(s).`;
+			saveMessage = tr('Presets export: {n} profile(s) exported.', { n: entries.length });
 		} catch (e) {
-			saveMessage = `Export des presets : ${e instanceof Error ? e.message : 'échec'}`;
+			saveMessage = tr('Presets export: {msg}', {
+				msg: e instanceof Error ? e.message : tr('failed')
+			});
 		}
 	}
 
 	async function exportGeneric3mf() {
 		const outcome = await save();
 		if (outcome.status !== 'saved') {
-			saveMessage = `Export 3MF : ${outcome.status === 'error' ? outcome.message : 'sauvegarde impossible'}`;
+			saveMessage = tr('3MF export: {msg}', {
+				msg: outcome.status === 'error' ? outcome.message : tr('save failed')
+			});
 			return;
 		}
 		// Phase 28 : vignette du plateau actif (Metadata/plate_<n>.png), capturée
@@ -7836,7 +8287,7 @@
 
 	// Item de menu sans commande câblée en v1 : informe au lieu d'un no-op muet.
 	function menuTodo(action: string) {
-		saveMessage = `Menu « ${action} » : commande non disponible en v1.`;
+		saveMessage = tr('Menu “{action}”: command not available in v1.', { action: tr(action) });
 	}
 
 	// Déclenche le téléchargement d'une ressource API (export) via un lien éphémère.
@@ -7856,11 +8307,11 @@
 			// — Fichier —
 			case 'project.new':
 				try {
-					const p = await createProject({ name: 'Nouveau projet' });
+					const p = await createProject({ name: tr('New Project') });
 					// Rechargement complet : la même route SvelteKit ne rejoue pas onMount.
 					window.location.assign(resolve('/projects/[id]', { id: p.id }));
 				} catch (e) {
-					saveMessage = e instanceof ApiError ? e.message : 'création de projet impossible';
+					saveMessage = e instanceof ApiError ? e.message : tr('could not create project');
 				}
 				break;
 			case 'project.open': {
@@ -7881,14 +8332,14 @@
 				await editorReady;
 				const saved = await save();
 				if (saved.status !== 'saved') {
-					if (saved.status === 'error') saveMessage = `Enregistrer sous : ${saved.message}`;
+					if (saved.status === 'error') saveMessage = tr('Save as: {msg}', { msg: saved.message });
 					break;
 				}
 				try {
 					const dup = await duplicateProject(data.project.id);
 					window.location.assign(resolve('/projects/[id]', { id: dup.id }));
 				} catch (e) {
-					saveMessage = e instanceof ApiError ? e.message : 'duplication impossible';
+					saveMessage = e instanceof ApiError ? e.message : tr('could not duplicate');
 				}
 				break;
 			}
@@ -7908,7 +8359,7 @@
 			case 'export.print':
 				showTab('preview');
 				if (session.gcodeId) printDialogRequest += 1;
-				else saveMessage = 'Imprimer le plateau : tranchez d’abord le plateau.';
+				else saveMessage = tr('Print plate: slice the plate first.');
 				break;
 			case 'export.allPlates':
 				await exportAllPlatesGcode();
@@ -8028,7 +8479,7 @@
 			case 'view.navigator': {
 				const show = !currentPreferences().show3dNavigator;
 				savePreferences({ ...currentPreferences(), show3dNavigator: show });
-				saveMessage = show ? 'Navigateur 3D affiché.' : 'Navigateur 3D masqué.';
+				saveMessage = show ? tr('3D navigator shown.') : tr('3D navigator hidden.');
 				break;
 			}
 			// Phase 38 : vue réaliste (Orca « Realistic View », préférence opengl_realistic_mode).
@@ -8038,15 +8489,15 @@
 				savePreferences({ ...prefs, graphics: { ...prefs.graphics, realisticView: on } });
 				saveMessage = on
 					? paintChannel && paintChannel !== 'mmu'
-						? 'Vue réaliste activée (reprend à la fermeture de l’outil de peinture).'
-						: 'Vue réaliste activée.'
-					: 'Vue réaliste désactivée.';
+						? tr('Realistic view on (resumes when the painting tool is closed).')
+						: tr('Realistic view on.')
+					: tr('Realistic view off.');
 				break;
 			}
 			case 'view.axes': {
 				const show = !currentPreferences().showAxes;
 				savePreferences({ ...currentPreferences(), showAxes: show });
-				saveMessage = show ? 'Axes affichés.' : 'Axes masqués.';
+				saveMessage = show ? tr('Axes shown.') : tr('Axes hidden.');
 				break;
 			}
 			// — Aide (T111) —
@@ -8125,23 +8576,23 @@
 	// Phase 31 (lot 29) : POST /slice reçoit la scène affichée (`scene`), comme
 	// /validate — plus d'enregistrement avant tranchage, l'état « non
 	// enregistré » est conservé (Orca tranche le plateau courant sans
-	// enregistrer). Replis : serveur antérieur (champ ignoré, cf.
-	// supportsInlineScene) ou modèle pas encore rattaché au projet (422
-	// field=scene) → enregistrement puis tranchage de la scène enregistrée.
+	// enregistrer). Repli : modèle pas encore rattaché au projet (422
+	// field=scene) → enregistrement puis tranchage de la scène enregistrée
+	// (phase 41 : plus de sondage du serveur, il accepte `scene` depuis le lot 29).
 	// Presets actifs modifiés : envoyés dans `active_presets` (lot 31, plus
 	// d'enregistrement forcé) ; config projet modifiée : enregistrée d'abord
 	// (projectConfigSaved).
-	const SLICE_CONFLICT = 'Conflit : le projet a été modifié ailleurs. Rechargez avant de trancher.';
+	const SLICE_CONFLICT = 'Conflict: the project was modified elsewhere. Reload before slicing.';
 	async function requestSlice(
 		req: ReturnType<typeof sliceRequestWithDraft>
 	): Promise<Awaited<ReturnType<typeof sliceProject>>> {
 		const saveFirst = async () => {
 			const saved = await save();
-			if (saved.status === 'conflict') throw new SliceSaveError(SLICE_CONFLICT);
+			if (saved.status === 'conflict') throw new SliceSaveError(tr(SLICE_CONFLICT));
 			if (saved.status === 'error') throw new SliceSaveError(saved.message);
 		};
 		const dirty = saveSignature() !== savedSignature;
-		const inline = dirty && projectConfigSaved() && (await supportsInlineScene(data.project.id));
+		const inline = dirty && projectConfigSaved();
 		if (dirty && !inline) await saveFirst();
 		if (!inline) return sliceProject(data.project.id, req);
 		try {
@@ -8163,12 +8614,9 @@
 	// transporte pas ; lot 31 → champ `active_presets` de /slice, /validate et
 	// /filament-compatibility (même format que le projet). Remplace la
 	// sauvegarde forcée de la phase 31 (activePresetsSaved).
-	function activePresetsBody(): { printer?: string; process?: string; filaments?: string[] } {
-		return serializeActivePresets(activePresets) as {
-			printer?: string;
-			process?: string;
-			filaments?: string[];
-		};
+	// Lot 40 (D1) : surcharges comprises — ce document remplace celui du projet.
+	function activePresetsBody(): SliceRequest['active_presets'] {
+		return serializeActivePresets(projectActivePresets()) as SliceRequest['active_presets'];
 	}
 	// Config projet hors objets (`scene.projectConfig` : couleurs des slots,
 	// matrice et multiplicateur de purge, position de la tour) : même règle que
@@ -8200,14 +8648,16 @@
 			sliceBatch = makeBatch(
 				res.jobs,
 				plates.list().map((p) => p.id),
-				sliceSignature()
+				sliceSignature(),
+				plateSliceSignatures()
 			);
 			layout = setTab(layout, 'preview');
+			replayEarlyJobEvents(res.jobs.map((j) => j.id));
 		} catch (e) {
 			session = sliceFailed(
 				e instanceof ApiError || e instanceof SliceSaveError
 					? e.message
-					: 'échec du lancement du tranchage'
+					: tr('slicing could not be started')
 			);
 			layout = setTab(layout, 'preview');
 		}
@@ -8232,16 +8682,18 @@
 			sliceBatch = makeBatch(
 				res.jobs,
 				plates.list().map((p) => p.id),
-				sliceSignature()
+				sliceSignature(),
+				plateSliceSignatures()
 			);
 			if (res.jobs.length > 1)
-				saveMessage = `Trancher tout : 0 / ${res.jobs.length} plateaux tranchés…`;
+				saveMessage = tr('Slice all: 0 / {n} plates sliced…', { n: res.jobs.length });
 			layout = setTab(layout, 'preview');
+			replayEarlyJobEvents(res.jobs.map((j) => j.id));
 		} catch (e) {
 			session = sliceFailed(
 				e instanceof ApiError || e instanceof SliceSaveError
 					? e.message
-					: 'échec du lancement du tranchage'
+					: tr('slicing could not be started')
 			);
 			layout = setTab(layout, 'preview');
 		}
@@ -8564,7 +9016,7 @@
 	//   celle de la dernière sauvegarde / ouverture, plus les brouillons de profil
 	//   non enregistrés. Référence prise une fois l'éditeur restauré.
 	function saveSignature(scene = buildSceneForSave()): string {
-		return JSON.stringify(scene) + JSON.stringify(serializeActivePresets(activePresets));
+		return JSON.stringify(scene) + JSON.stringify(serializeActivePresets(projectActivePresets()));
 	}
 	let savedSignature = $state<string | null>(null);
 	let currentSignature = $state<string | null>(null);
@@ -8575,6 +9027,8 @@
 		void $state.snapshot(tree.list());
 		void plates.serialize();
 		void $state.snapshot(activePresets);
+		// Lot 40 (D1) : réglages modifiés non enregistrés, persistés avec le projet.
+		void currentOverrides;
 		void $state.snapshot(layerProfiles);
 		void $state.snapshot(volumesByObject);
 		void $state.snapshot(layerRangesByObject);
@@ -8598,7 +9052,6 @@
 	let baselineReady = $state(false);
 	/** Ouverture : objets restaurés depuis des modèles absents de la scène enregistrée. */
 	let restoredOrphans = false;
-	const profilesDirty = $derived(processModified || filamentModified || machineModified);
 	// Projet neuf et vide : rien à perdre (les presets par défaut ne comptent pas).
 	const hasContent = $derived(
 		sceneObjects.length > 0 ||
@@ -8608,14 +9061,13 @@
 		savedSignature !== null &&
 			hasContent &&
 			((currentSignature !== null && currentSignature !== savedSignature) ||
-				profilesDirty ||
 				imports.some((item) => isPending(item)))
 	);
 	/** Calcul synchrone (alerte de sortie) : ne dépend pas du différé. */
 	function unsavedNow(): boolean {
 		if (savedSignature === null) return sceneObjects.length > 0;
 		if (!hasContent) return false;
-		if (profilesDirty || imports.some((item) => isPending(item))) return true;
+		if (imports.some((item) => isPending(item))) return true;
 		return saveSignature() !== savedSignature;
 	}
 
@@ -8634,15 +9086,19 @@
 		if (pending.length > 0) {
 			return {
 				status: 'error',
-				message: `Attendez la fin de ${pending.length} import(s) avant de sauvegarder ou trancher.`
+				message: tr('Wait for {n} import(s) to finish before saving or slicing.', {
+					n: pending.length
+				})
 			};
 		}
 		const scene = buildSceneForSave();
+		// Lot 40 (D1) : `overrides` = réglages modifiés non enregistrés en preset.
+		const active = projectActivePresets();
 		const outcome = await saveScene(
 			data.project.id,
 			Number(data.project.version),
 			scene,
-			serializeActivePresets(activePresets)
+			serializeActivePresets(active)
 		);
 		// Verrou optimiste : on adopte la version renvoyée pour que les
 		// enregistrements suivants (dont le save implicite avant tranchage) ne
@@ -8652,7 +9108,9 @@
 		if (outcome.status === 'saved') {
 			data.project.version = BigInt(outcome.version);
 			data.project.scene = scene;
-			savedSignature = saveSignature(scene);
+			persistedOverrides = active.overrides;
+			// Empreinte de ce qui a été envoyé (pas des saisies faites pendant l'appel).
+			savedSignature = JSON.stringify(scene) + JSON.stringify(serializeActivePresets(active));
 			currentSignature = savedSignature;
 			// Les ids persistés sont désormais les ids vivants.
 			persistedToLive.clear();
@@ -8663,9 +9121,9 @@
 		if (opts.quiet) return outcome;
 		saveMessage =
 			outcome.status === 'saved'
-				? 'Projet sauvegardé.'
+				? tr('Project saved.')
 				: outcome.status === 'conflict'
-					? 'Conflit : le projet a été modifié dans un autre onglet.'
+					? tr('Conflict: the project was modified in another tab.')
 					: outcome.message;
 		return outcome;
 	}
@@ -8693,7 +9151,9 @@
 		data-preset-switch-pending={presetSwitchPending ?? undefined}
 		aria-busy={presetSwitchPending ? 'true' : undefined}
 	>
-		<h1 class="ws-sr-only">{projectName || data.project.name} — éditeur web-slicer</h1>
+		<h1 class="ws-sr-only">
+			{$t('{name} — web-slicer editor', { name: projectName || data.project.name })}
+		</h1>
 		<!-- overflow-x-clip (et non overflow-hidden) : la barre reste coupée en largeur
 		     sur écran étroit, mais les menus déroulants (Fichier, Édition…) débordent
 		     vers le bas ; overflow-hidden les rendait invisibles. -->
@@ -8701,13 +9161,13 @@
 			<a
 				href={resolve('/library')}
 				class="text-sm text-primary hover:underline"
-				title="Bibliothèque">←</a
+				title={$t('Library')}>←</a
 			>
 			<!-- Barre de menus principale (T107–T111) : Fichier/Édition/Vue/Aide. -->
 			<MenuBar menus={MAIN_MENUS} onaction={onMenuAction} />
 			<nav
 				class="flex shrink-0 items-center gap-1 whitespace-nowrap"
-				aria-label="Vues de l'éditeur"
+				aria-label={$t('Editor views')}
 			>
 				{#each TABS as tab (tab.id)}
 					<button
@@ -8760,14 +9220,14 @@
 				type="button"
 				class="ws-btn ws-btn-secondary"
 				data-testid="plate-settings-button"
-				title="Réglages du plateau"
+				title={$t('Plate settings')}
 				disabled={!plates.activeId}
 				onclick={() => (plateSettingsOpen = true)}
 			>
 				<!-- Libellés longs des actions dès 1920 px seulement : de 1536 à ~1800 px
 				     ils recouvraient les onglets « Appareil » et « Projet » (phase 36). -->
 				<IconPlateSettings class="h-4 w-4" aria-hidden="true" /><span
-					class="hidden min-[1920px]:inline">Plateau</span
+					class="hidden min-[1920px]:inline">{$t('Plate')}</span
 				>
 			</button>
 			<PlateSettingsDialog
@@ -8792,8 +9252,8 @@
 					title={!canSliceNow
 						? sliceBlocker
 						: activePlateBlocked
-							? 'Le plateau a des erreurs bloquantes : voir la barre de vérification en bas à droite'
-							: 'Trancher le plateau actif'}
+							? $t('The plate has blocking errors: see the check bar at the bottom right')
+							: $t('Slice the active plate')}
 				>
 					{#if activePlateBlocked && canSliceNow}
 						<!-- Orca grise « Trancher » ; ici le bouton reste actif (le moteur
@@ -8813,8 +9273,8 @@
 					data-testid="slice-menu-button"
 					aria-haspopup="menu"
 					aria-expanded={sliceMenuOpen}
-					aria-label="Options de découpe"
-					title="Trancher le plateau ou tous les plateaux"
+					aria-label={$t('Slicing options')}
+					title={$t('Slice the plate or all plates')}
 					onclick={() => (sliceMenuOpen = !sliceMenuOpen)}
 				>
 					<span aria-hidden="true">▾</span>
@@ -8824,7 +9284,7 @@
 						type="button"
 						class="fixed inset-0 z-40 cursor-default"
 						tabindex="-1"
-						aria-label="Fermer le menu"
+						aria-label={$t('Close menu')}
 						onclick={() => (sliceMenuOpen = false)}
 					></button>
 					<div
@@ -8852,7 +9312,9 @@
 							onclick={() => void sliceAll()}
 							>{$t('Slice all')}
 							<span class="ml-auto text-xs text-content-subtle"
-								>{plates.list().length} plateau{plates.list().length > 1 ? 'x' : ''}</span
+								>{$t(plates.list().length > 1 ? '{n} plates' : '{n} plate', {
+									n: plates.list().length
+								})}</span
 							></button
 						>
 					</div>
@@ -9104,7 +9566,7 @@
 				class="ws-dialog flex h-[85vh] w-full max-w-4xl flex-col overflow-hidden"
 				role="dialog"
 				aria-modal="true"
-				aria-label="Ajouter une imprimante"
+				aria-label={$t('Add printer')}
 				onclick={(e) => e.stopPropagation()}
 				onkeydown={(e) => e.stopPropagation()}
 				tabindex="-1"
@@ -9114,7 +9576,7 @@
 					vendors={printerCatalog}
 					onconfirm={addPrintersFromCatalog}
 					oncancel={() => (showCatalog = false)}
-					confirmLabel="Ajouter"
+					confirmLabel={$t('Add')}
 					busy={addingPrinter}
 				/>
 			</div>
@@ -9130,8 +9592,7 @@
 			...(embossTarget(contextMenu.targetId)
 				? [
 						{
-							label:
-								embossEditLabel(embossTarget(contextMenu.targetId)?.emboss) ?? 'Modifier le texte',
+							label: embossEditLabel(embossTarget(contextMenu.targetId)?.emboss) ?? 'Edit text',
 							action: 'object.editEmboss'
 						},
 						'separator' as const
@@ -9183,14 +9644,14 @@
 						(item) => item === 'separator' || item.action !== 'filament.delete'
 					)),
 			...(projectFilament.filament_colour?.[filamentMenu.slot]
-				? [{ label: 'Couleur du preset', action: 'filament.resetColour' }]
+				? [{ label: 'Preset color', action: 'filament.resetColour' }]
 				: []),
 			// Phase 37 — « Fusionner avec » (create_filament_action_menu d'Orca).
 			...(filamentSlots > 1 && canRemoveFilamentSlot(activePresets, filamentMenu.slot)
 				? [
 						'separator' as const,
 						{
-							label: 'Fusionner avec',
+							label: 'Merge with',
 							action: 'filament.mergeMenu',
 							items: Array.from({ length: filamentSlots }, (_, i) => i)
 								.filter((i) => i !== filamentMenu.slot)
@@ -9225,8 +9686,8 @@
 	/>
 	<Dialog
 		open={customGcodeEdit !== null}
-		label="G-code personnalisé"
-		title="G-code personnalisé"
+		label={$t('Custom G-code')}
+		title={$t('Custom G-code')}
 		size="md"
 		onclose={() => (customGcodeEdit = null)}
 		data-testid="custom-gcode-dialog"
@@ -9234,8 +9695,10 @@
 		{#if customGcodeEdit}
 			<label class="flex flex-col gap-1 text-sm">
 				<span
-					>Entrez le G-code personnalisé à utiliser sur la couche {customGcodeEdit.layer + 1}
-					({customGcodeEdit.z.toFixed(2)} mm) :</span
+					>{$t('Enter the custom G-code to use on layer {n} ({z} mm):', {
+						n: customGcodeEdit.layer + 1,
+						z: fmtNum(customGcodeEdit.z, 2, $locale)
+					})}</span
 				>
 				<textarea
 					class="ws-field min-h-32 font-mono text-xs"
@@ -9246,13 +9709,15 @@
 						if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submitCustomGcode();
 					}}></textarea>
 				<span class="text-xs text-content-subtle"
-					>Inséré au début de la couche ; appliqué au prochain tranchage. Ctrl+Entrée pour valider.</span
+					>{$t(
+						'Inserted at the start of the layer; applied on the next slice. Ctrl+Enter to confirm.'
+					)}</span
 				>
 			</label>
 		{/if}
 		{#snippet footer()}
 			<button type="button" class="ws-btn ws-btn-secondary" onclick={() => (customGcodeEdit = null)}
-				>Annuler</button
+				>{$t('Cancel')}</button
 			>
 			<button
 				type="button"
@@ -9269,6 +9734,7 @@
 		open={objectTableOpen}
 		objects={objectTableObjects}
 		inherited={processValues}
+		maxLayer={maxLayerHeight(machineValues)}
 		filamentColors={filamentSlotColors.slice(0, filamentSlots)}
 		focusId={objectTableFocus}
 		onclose={() => (objectTableOpen = false)}
@@ -9290,7 +9756,7 @@
 				<button
 					type="button"
 					class="ws-icon-btn ws-icon-btn-xs"
-					aria-label="Fermer"
+					aria-label={$t('Close')}
 					onclick={() => (presetDeleteReport = null)}
 					><IconX class="h-3.5 w-3.5" aria-hidden="true" /></button
 				>
@@ -9310,7 +9776,7 @@
 	<!-- Historique PA (menu Calibration) : hors de la colonne, toujours monté. -->
 	<PaHistoryDialog
 		open={showPaHistory}
-		printer={activePresetOf('machine')?.name ?? 'Imprimante'}
+		printer={activePresetOf('machine')?.name ?? $t('Printer')}
 		nozzle={String(
 			Array.isArray(machineValues.nozzle_diameter)
 				? machineValues.nozzle_diameter[0]
@@ -9340,8 +9806,8 @@
 			class="flex items-center justify-between gap-4 bg-warning-soft px-6 py-2 text-sm text-warning-content"
 			role="status"
 		>
-			<span>Un brouillon local plus récent existe pour ce projet.</span>
-			<button onclick={dismissDraft} class="font-medium hover:underline">Ignorer</button>
+			<span>{$t('A newer local draft exists for this project.')}</span>
+			<button onclick={dismissDraft} class="font-medium hover:underline">{$t('Ignore')}</button>
 		</div>
 	{/if}
 
@@ -9374,7 +9840,7 @@
 		>
 			<span>{importError}</span>
 			<button onclick={() => (importError = null)} class="font-medium hover:underline"
-				>Fermer</button
+				>{$t('Close')}</button
 			>
 		</div>
 	{/if}
@@ -9393,13 +9859,13 @@
 				>
 				<button
 					class="ws-tab flex-1 py-2.5 text-sm {configTab === 'objects' ? 'ws-tab-on' : ''}"
-					onclick={() => (configTab = 'objects')}>Objets</button
+					onclick={() => (configTab = 'objects')}>{$t('Objects')}</button
 				>
 				<button
 					class="ws-tab flex-1 py-2.5 text-sm {configTab === 'project' ? 'ws-tab-on' : ''}"
 					data-testid="config-tab-project"
-					aria-label="Fiche projet"
-					onclick={() => (configTab = 'project')}>Projet</button
+					aria-label={$t('Project sheet')}
+					onclick={() => (configTab = 'project')}>{$t('Project')}</button
 				>
 			</div>
 
@@ -9424,10 +9890,10 @@
 					<section
 						class="mb-4 flex flex-col gap-3 border-b border-border pb-4"
 						data-testid="slice-summary"
-						aria-label="Résultat du tranchage"
+						aria-label={$t('Slicing result')}
 					>
 						<div class="flex items-center justify-between gap-2">
-							<h2 class="ws-section-title">Résultat du tranchage</h2>
+							<h2 class="ws-section-title">{$t('Slicing result')}</h2>
 							<div class="flex gap-1.5">
 								<button
 									type="button"
@@ -9435,13 +9901,13 @@
 									disabled={!session.gcodeId}
 									onclick={() =>
 										session.gcodeId && downloadUrl(`/api/gcodes/${session.gcodeId}/download`)}
-									>Exporter</button
+									>{$t('Export')}</button
 								>
 								<button
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-primary"
 									disabled={!session.gcodeId}
-									onclick={() => session.gcodeId && (printDialogRequest += 1)}>Envoyer</button
+									onclick={() => session.gcodeId && (printDialogRequest += 1)}>{$t('Send')}</button
 								>
 							</div>
 						</div>
@@ -9494,8 +9960,9 @@
 					{#if layout.tab === 'project'}
 						<!-- Une seule fiche montée à la fois (sinon deux brouillons divergents). -->
 						<p class="text-xs text-content-muted" data-testid="project-metadata-elsewhere">
-							La fiche du modèle (titre, auteur, licence, description, couverture) est affichée dans
-							la page Projet, à droite.
+							{$t(
+								'The model sheet (title, author, license, description, cover) is shown on the Project page, on the right.'
+							)}
 						</p>
 					{:else}
 						<ProjectMetadataPanel projectId={data.project.id} />
@@ -9511,7 +9978,7 @@
 								<button
 									type="button"
 									class="ws-btn ws-btn-secondary text-center"
-									onclick={() => (showCatalog = true)}>Ajouter une imprimante…</button
+									onclick={() => (showCatalog = true)}>{$t('Add printer…')}</button
 								>
 							{:else}
 								<OwnedPrinterPicker
@@ -9531,8 +9998,10 @@
 										<label class="flex items-center gap-1">
 											<span class="text-content-muted"
 												>{nozzleFlows.length > 1
-													? `Débit buse ${nozzleFlows.length === 2 ? (choice.index === 0 ? 'gauche' : 'droite') : choice.index + 1}`
-													: 'Débit de la buse'}</span
+													? nozzleFlows.length === 2
+														? $t(choice.index === 0 ? 'Left nozzle flow' : 'Right nozzle flow')
+														: $t('Nozzle {n} flow', { n: choice.index + 1 })
+													: $t('Nozzle flow')}</span
 											>
 											<select
 												class="ws-field ws-field-sm"
@@ -9562,8 +10031,8 @@
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-ghost ml-auto"
 									data-testid="create-filament"
-									title="Créer un filament personnalisé"
-									onclick={() => (showCreateFilament = true)}>Créer…</button
+									title={$t('Create a custom filament')}
+									onclick={() => (showCreateFilament = true)}>{$t('Create…')}</button
 								>
 								<CreateFilamentDialog
 									open={showCreateFilament}
@@ -9574,14 +10043,16 @@
 										const slot = clampFilamentSlot(activePresets, filamentSlot);
 										await loadPresets();
 										setFilamentSlot(slot, created.id);
-										saveMessage = `Filament « ${created.name} » créé et sélectionné.`;
+										saveMessage = tr('Filament “{name}” created and selected.', {
+											name: created.name
+										});
 									}}
 								/>
 								<button
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-secondary"
-									title="Ajouter un filament"
-									aria-label="Ajouter un filament"
+									title={$t('Add one filament')}
+									aria-label={$t('Add one filament')}
 									data-testid="add-filament-slot"
 									disabled={!activePresets.filaments.length && !filamentPresets.length}
 									onclick={addFilament}
@@ -9611,7 +10082,9 @@
 									<label
 										class="relative flex h-7 w-6 shrink-0 cursor-pointer items-center justify-center rounded text-xs font-semibold shadow-inner focus-within:ring-2 focus-within:ring-accent"
 										style={swatchStyle(filamentSlotColors[slot])}
-										title={`Filament ${slot + 1} (extrudeur ${slot + 1}) — cliquer pour changer la couleur`}
+										title={$t('Filament {n} (extruder {n}) — click to change the color', {
+											n: slot + 1
+										})}
 										data-testid="filament-swatch"
 										data-colour={filamentSlotColors[slot]}
 										data-custom={projectFilament.filament_colour?.[slot] ? 'true' : undefined}
@@ -9620,7 +10093,7 @@
 										<input
 											type="color"
 											class="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-											aria-label={`Couleur du filament ${slot + 1}`}
+											aria-label={$t('Color of filament {n}', { n: slot + 1 })}
 											data-testid="filament-colour"
 											value={filamentSlotColors[slot]}
 											onclick={() => (filamentSlot = slot)}
@@ -9641,7 +10114,7 @@
 												testid={slot === 0
 													? 'preset-select-filament'
 													: `preset-select-filament-${slot + 1}`}
-												modified={active && filamentModified}
+												modified={filamentModifiedAt(slot)}
 												bind:selectedId={
 													() => filamentAt(activePresets, slot),
 													(id) =>
@@ -9656,10 +10129,10 @@
 									<button
 										type="button"
 										class="ws-btn ws-btn-secondary shrink-0 justify-center"
-										title="Réglages du filament"
+										title={$t('Filament settings')}
 										aria-label={filamentSlots > 1
-											? `Réglages du filament ${slot + 1}`
-											: 'Réglages du filament'}
+											? $t('Filament {n} settings', { n: slot + 1 })
+											: $t('Filament settings')}
 										data-testid={slot === 0
 											? 'open-settings-filament'
 											: `open-settings-filament-${slot + 1}`}
@@ -9675,8 +10148,8 @@
 										<button
 											type="button"
 											class="ws-icon-btn ws-icon-btn-sm"
-											title="Retirer ce filament"
-											aria-label={`Retirer le filament ${slot + 1}`}
+											title={$t('Remove this filament')}
+											aria-label={$t('Remove filament {n}', { n: slot + 1 })}
 											data-testid="remove-filament-slot"
 											disabled={!canRemoveFilamentSlot(activePresets, slot)}
 											onclick={() => removeFilament(slot)}
@@ -9699,7 +10172,7 @@
 										<button
 											type="button"
 											class="ws-link ml-1"
-											onclick={() => (showPreferences = true)}>Préférences…</button
+											onclick={() => (showPreferences = true)}>{$t('Preferences…')}</button
 										>
 									{/if}
 								</p>
@@ -9716,25 +10189,25 @@
 										class="ws-btn ws-btn-sm ws-btn-secondary"
 										data-testid="open-flush-volumes"
 										onclick={() => (flushDialogOpen = true)}
-										>Volumes de purge
+										>{$t('Flushing volumes')}
 										{#if projectFilament.flush_volumes_matrix || projectFilament.flush_multiplier}
-											<span class="ws-badge h-4 px-1.5">projet</span>
+											<span class="ws-badge h-4 px-1.5">{$t('project||badge')}</span>
 										{/if}</button
 									>
 									<button
 										type="button"
 										class="ws-btn ws-btn-sm ws-btn-ghost"
 										data-testid="open-prime-tower"
-										title="Réglages de la tour d'essuyage (réglages d'impression › Multimatériau)"
+										title={$t('Prime tower settings (print settings › Multimaterial)')}
 										onclick={() => openSettingsDialog('process', 'Multimaterial')}
 									>
-										Tour d'essuyage :
+										{$t('Prime tower:')}
 										<span
 											class={primeTowerOn ? 'text-success-content' : 'text-content-muted'}
 											data-testid="prime-tower-state"
 											>{primeTowerOn
-												? `activée · ${Number(processValues.prime_tower_width ?? 35)} mm`
-												: 'désactivée'}</span
+												? $t('on · {w} mm', { w: Number(processValues.prime_tower_width ?? 35) })
+												: $t('off||prime tower')}</span
 										>
 									</button>
 								</div>
@@ -9744,7 +10217,7 @@
 										class="flex items-center gap-2 text-xs text-content-muted"
 										data-testid="wipe-tower-position"
 									>
-										<span>Position de la tour</span>
+										<span>{$t('Tower position')}</span>
 										{#each [0, 1] as axis (axis)}
 											<label class="flex items-center gap-1">
 												<span>{axis === 0 ? 'X' : 'Y'}</span>
@@ -9752,7 +10225,9 @@
 													type="number"
 													step="1"
 													class="ws-field ws-field-sm w-16 tabular-nums"
-													aria-label={`Position ${axis === 0 ? 'X' : 'Y'} de la tour d'essuyage (mm)`}
+													aria-label={$t('Prime tower {axis} position (mm)', {
+														axis: axis === 0 ? 'X' : 'Y'
+													})}
 													data-testid={`wipe-tower-${axis === 0 ? 'x' : 'y'}`}
 													value={(axis === 0 ? sceneWipeTower.x : sceneWipeTower.y).toFixed(1)}
 													onchange={(e) => {
@@ -9780,8 +10255,9 @@
 										role="note"
 										data-testid="prime-tower-warning"
 									>
-										Sans tour d'essuyage, la purge des changements de filament se fait dans l'objet
-										ou en l'air.
+										{$t(
+											'Without a prime tower, filament change purging happens in the object or in the air.'
+										)}
 									</p>
 								{/if}
 							{/if}
@@ -9797,10 +10273,10 @@
 						<UnsavedPresetDialog
 							open={pendingSwitch !== null}
 							kindLabel={pendingSwitch?.kind === 'filament'
-								? 'filament'
+								? 'filament||preset kind'
 								: pendingSwitch?.kind === 'machine'
-									? "d'imprimante"
-									: "d'impression"}
+									? 'printer||preset kind'
+									: 'process||preset kind'}
 							fromName={pendingSwitch ? (activePresetOf(pendingSwitch.kind)?.name ?? '') : ''}
 							toName={pendingSwitch?.toName ?? ''}
 							changes={pendingSwitch?.changes ?? []}
@@ -9817,6 +10293,14 @@
 							ondiscard={() => {
 								const p = pendingSwitch;
 								pendingSwitch = null;
+								// Lot 40 (D1) : « Abandonner » retire aussi l'entrée du type
+								// des surcharges du projet (le brouillon repart du preset choisi).
+								if (p)
+									pendingOverrides = withoutPending(
+										pendingOverrides,
+										p.kind,
+										p.kind === 'filament' ? clampFilamentSlot(activePresets, filamentSlot) : 0
+									);
 								p?.apply();
 							}}
 							oncancel={() => {
@@ -9849,7 +10333,7 @@
 									<span class="rounded bg-primary px-2 py-0.5 text-primary-content">Global</span>
 									<span
 										class="rounded px-2 py-0.5 text-content-subtle"
-										title="Réglages par objet (à venir)">Objets</span
+										title={$t('Per-object settings (coming soon)')}>{$t('Objects')}</span
 									>
 								</div>
 							</div>
@@ -9871,8 +10355,8 @@
 							<button
 								type="button"
 								class="ws-btn ws-btn-secondary self-end"
-								title="Réglages d'impression"
-								aria-label="Réglages d'impression"
+								title={$t('Print settings')}
+								aria-label={$t('Print settings')}
 								data-testid="open-settings-print"
 								disabled={!activePresets.process}
 								onclick={() => openSettingsDialog('process')}
@@ -9890,7 +10374,7 @@
 						>
 							<PresetSettingsDialog
 								open={settingsDialog === 'process'}
-								title="Réglages d'impression"
+								title={$t('Print settings')}
 								kind="process"
 								initialPage={settingsInitialPage}
 								focusKey={settingsFocusKey}
@@ -9920,8 +10404,10 @@
 							<PresetSettingsDialog
 								open={settingsDialog === 'filament'}
 								title={filamentSlots > 1
-									? `Réglages du filament ${clampFilamentSlot(activePresets, filamentSlot) + 1}`
-									: 'Réglages du filament'}
+									? $t('Filament {n} settings', {
+											n: clampFilamentSlot(activePresets, filamentSlot) + 1
+										})
+									: $t('Filament settings')}
 								kind="filament"
 								initialPage={settingsInitialPage}
 								focusKey={settingsFocusKey}
@@ -9950,7 +10436,7 @@
 							/>
 							<PresetSettingsDialog
 								open={settingsDialog === 'machine'}
-								title="Paramètres de l'imprimante"
+								title={$t('Printer settings')}
 								kind="machine"
 								focusKey={settingsFocusKey}
 								savedByKind={{
@@ -9988,8 +10474,8 @@
 								type="button"
 								class="ws-btn ws-btn-sm ws-btn-ghost"
 								data-testid="open-object-table"
-								data-tip="Voir et modifier les réglages de tous les objets dans un tableau"
-								onclick={() => openObjectTable(selId)}>Table des paramètres…</button
+								data-tip={$t('View and edit the settings of all objects in a table')}
+								onclick={() => openObjectTable(selId)}>{$t('Parameter table…')}</button
 							>
 						</div>
 					{/if}
@@ -10084,7 +10570,7 @@
 										></span>
 										<select
 											class="ws-field ws-field-sm h-6 px-0.5"
-											aria-label={`Extrudeur de ${volume.name}`}
+											aria-label={$t('Extruder of {name}', { name: volume.name })}
 											data-testid="object-volume-extruder"
 											value={vx}
 											onchange={(e) => {
@@ -10093,7 +10579,7 @@
 													updateVolume(selId, volume.id, { extruder: v > 0 ? v : undefined });
 											}}
 										>
-											<option value={0}>objet</option>
+											<option value={0}>{$t('object')}</option>
 											{#each Array.from({ length: filamentSlots }, (_, i) => i + 1) as ex (ex)}
 												<option value={ex}>{ex}</option>
 											{/each}
@@ -10102,7 +10588,7 @@
 									<button
 										type="button"
 										class="px-1 text-xs text-content-muted hover:text-content"
-										aria-label={`Supprimer ${volume.name}`}
+										aria-label={$t('Delete {name}', { name: volume.name })}
 										onclick={() => selId && removeVolume(selId, volume.id)}
 										><IconX class="h-3.5 w-3.5" aria-hidden="true" /></button
 									>
@@ -10126,14 +10612,17 @@
 									/>
 								</div>
 								<div class="grid grid-cols-4 items-center gap-1 text-xs" data-testid="volume-size">
-									<span>Taille</span>
+									<span>{$t('Size')}</span>
 									{#each [0, 1, 2] as axis (axis)}
 										<input
 											type="number"
 											step="0.1"
 											min="0.1"
 											class="ws-field ws-field-sm w-full"
-											aria-label={`Taille ${'XYZ'[axis]} de ${volume.name}`}
+											aria-label={$t('{axis} size of {name}', {
+												axis: 'XYZ'[axis],
+												name: volume.name
+											})}
 											value={volume.size[axis]}
 											onchange={(e) => {
 												const n = Number(e.currentTarget.value);
@@ -10147,7 +10636,7 @@
 								</div>
 								{#if volume.type === 'modifier' || volume.type === 'part'}
 									<ObjectSettingsPanel
-										title={`Réglages de ${volume.name}`}
+										title={$t('{name} settings', { name: volume.name })}
 										settings={volume.settings}
 										isPart
 										mode={settingsMode}
@@ -10159,7 +10648,9 @@
 								{/if}
 							{:else}
 								<ObjectSettingsPanel
-									title={`Réglages de ${tree.get(objectId)?.name ?? 'l’objet'}`}
+									title={$t('{name} settings', {
+										name: tree.get(objectId)?.name ?? $t('the object')
+									})}
 									settings={tree.get(objectId)?.settings ?? {}}
 									mode={settingsMode}
 									base={processValues}
@@ -10207,12 +10698,12 @@
 					data-testid="overlap-warning"
 				>
 					<span class="h-2 w-2 shrink-0 rounded-full bg-warning" aria-hidden="true"></span>
-					<span>{overlapCount} objet(s) superposé(s) sur le plateau.</span>
+					<span>{$t('{n} overlapping object(s) on the plate.', { n: overlapCount })}</span>
 					<button
 						type="button"
 						class="ws-btn ws-btn-sm ws-btn-secondary"
 						data-testid="overlap-arrange"
-						onclick={() => void arrangeActive()}>Disposer</button
+						onclick={() => void arrangeActive()}>{$t('Arrange')}</button
 					>
 				</div>
 			{/if}
@@ -10337,7 +10828,7 @@
 								onbrush={engineLayerBrush}
 							/>
 						{:else}
-							<p class="text-sm text-content-subtle">Sélectionnez un objet.</p>
+							<p class="text-sm text-content-subtle">{$t('Select an object.')}</p>
 						{/if}
 					</div>
 				{/if}
@@ -10363,16 +10854,25 @@
 						</div>
 						<!-- Booléen sans sélection unique ; Emboss/SVG peuvent créer un objet en relief sans sélection. -->
 						{#if !activeObject && !['assembly', 'boolean', 'emboss', 'svg'].includes(tools.active)}
-							<p class="text-sm text-content-subtle">Sélectionnez un objet.</p>
+							<p class="text-sm text-content-subtle">{$t('Select an object.')}</p>
 						{:else if isTransformTool(tools.active) || tools.active === 'flatten'}
 							{#if tools.active === 'scale' && selId && (cutLinks[selId] ?? 0) > 0}
 								<p class="text-xs text-content-subtle" data-testid="cut-scale-group">
-									Pièce coupée : échelle uniforme appliquée aux {cutLinks[selId] + 1} pièces de la coupe,
-									autour de leur centre commun, puis reposées sur le plateau.
+									{$t(
+										'Cut part: uniform scale applied to the {n} parts of the cut, around their common center, then dropped back onto the plate.',
+										{ n: cutLinks[selId] + 1 }
+									)}
 								</p>
 							{/if}
 							<TransformPanel
 								transform={activeTransform}
+								baseSize={activeObject
+									? ([0, 1, 2].map((i) => activeBounds.max[i] - activeBounds.min[i]) as [
+											number,
+											number,
+											number
+										])
+									: null}
 								onchange={(tr) => selId && onTransform(selId, tr)}
 								canLayFlat={tools.active === 'flatten'}
 								onlayflat={layActiveFlat}
@@ -10388,7 +10888,7 @@
 							<BooleanTool
 								available={!!booleanOperands}
 								busy={meshOpBusy}
-								hint="Sélectionnez deux objets prêts (A puis B, Ctrl+clic)."
+								hint={$t('Select two ready objects (A then B, Ctrl+click).')}
 								onapply={booleanSelected}
 							/>
 						{:else if tools.active === 'simplify'}
@@ -10466,18 +10966,18 @@
 								filamentColours={filamentSlotColors}
 							/>
 							<div class="mt-3 flex items-center justify-between text-xs text-content-subtle">
-								<span>{activePaintedCount} triangle(s) peint(s)</span>
+								<span>{$t('{n} painted triangle(s)', { n: activePaintedCount })}</span>
 								<button
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-secondary"
 									data-testid="paint-frame-selection"
-									data-tip="Recadrer la vue sur l'objet sélectionné"
-									onclick={frameSelection}>Cadrer l'objet</button
+									data-tip={$t('Frame the view on the selected object')}
+									onclick={frameSelection}>{$t('Frame object')}</button
 								>
 								<button
 									class="ws-btn ws-btn-sm ws-btn-secondary"
 									onclick={clearActivePaint}
-									disabled={activePaintedCount === 0}>Effacer</button
+									disabled={activePaintedCount === 0}>{$t('Clear')}</button
 								>
 							</div>
 						{/if}
@@ -10496,12 +10996,14 @@
 									aria-hidden="true"
 								></span>
 								<p role="status" data-testid="import-loading">
-									Import de <span class="font-medium text-content">{name}</span>…
+									{$t('Importing')} <span class="font-medium text-content">{name}</span>…
 								</p>
 							{:else}
 								<IconFileUp class="h-6 w-6 text-primary" aria-hidden="true" />
 								<p>
-									Glissez un modèle ici (STL, OBJ, 3MF, STEP, AMF, SVG, DRC)<br />ou cliquez sur
+									{$t('Drag a model here (STL, OBJ, 3MF, STEP, AMF, SVG, DRC)')}<br />{$t(
+										'or click'
+									)}
 									<span class="font-medium text-content">{$t('Import')}</span>.
 								</p>
 							{/if}
@@ -10513,7 +11015,7 @@
 					<div
 						class="pointer-events-none absolute inset-0 z-20 flex items-center justify-center border-2 border-dashed border-accent bg-primary/10 text-sm font-medium text-primary"
 					>
-						Déposez pour importer
+						{$t('Drop to import')}
 					</div>
 				{/if}
 
@@ -10564,7 +11066,7 @@
 							class="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-content-muted"
 							data-testid="slice-progress"
 						>
-							<p>Tranchage en cours… ({session.jobPhase})</p>
+							<p>{$t('Slicing… ({phase})', { phase: session.jobPhase })}</p>
 							<div class="h-2 w-64 overflow-hidden rounded bg-overlay">
 								<div
 									class="h-full bg-primary transition-all"
@@ -10583,17 +11085,19 @@
 								data-testid="slice-error"
 							>
 								<p>
-									{session.error && session.error !== 'échec du tranchage'
-										? `Échec du tranchage : ${session.error}`
-										: 'Échec du tranchage. Vérifiez l’imprimante, le filament et le profil de traitement, puis réessayez.'}
+									{session.error && session.error !== $t('slicing failed')
+										? $t('Slicing failed: {error}', { error: session.error })
+										: $t(
+												'Slicing failed. Check the printer, the filament and the process profile, then try again.'
+											)}
 								</p>
 								<div class="flex flex-wrap gap-2">
 									<button
 										type="button"
 										class="ws-btn ws-btn-sm ws-btn-secondary"
-										onclick={() => showTab('prepare')}>Retour à la préparation</button
+										onclick={() => showTab('prepare')}>{$t('Back to Prepare')}</button
 									>
-									{#if session.error?.includes('trop près des autres objets')}
+									{#if session.error?.includes('trop près des autres objets') || session.error?.includes('too close to the other objects')}
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-primary"
@@ -10601,7 +11105,7 @@
 											onclick={async () => {
 												showTab('prepare');
 												await arrangeActive();
-											}}>Disposer les objets</button
+											}}>{$t('Arrange objects')}</button
 										>
 									{/if}
 								</div>
@@ -10672,14 +11176,14 @@
 							<div
 								class="ws-floating absolute right-30 bottom-3 left-3 z-10 flex items-center gap-2 px-3 py-2 text-xs text-content-muted"
 							>
-								<span>Déplacements</span>
+								<span>{$t('Travel moves')}</span>
 								<input
 									type="range"
 									class="min-w-0 flex-1"
 									min="0"
 									max={moveCursor.total}
 									value={moveCursor.position}
-									aria-label="Progression dans la couche"
+									aria-label={$t('Progress within the layer')}
 									oninput={(e) => {
 										moveCursor = { ...moveCursor, position: Number(e.currentTarget.value) };
 										void refreshGeometry();
@@ -10691,7 +11195,7 @@
 									<span
 										class="tabular-nums text-content"
 										data-testid="preview-move-time"
-										data-tip="Temps estimé écoulé à la position de l’outil"
+										data-tip={$t('Estimated elapsed time at the tool position')}
 										data-tip-side="top">{formatDuration(previewToolTime.time)}</span
 									>
 								{/if}
@@ -10701,41 +11205,41 @@
 							<div
 								class="ws-floating absolute left-3 top-3 flex items-center gap-2 p-2 text-xs text-content-muted"
 							>
-								<span>Couleur</span>
+								<span>{$t('Color')}</span>
 								<select
 									class="ws-field ws-field-sm"
 									bind:value={coloration}
 									onchange={refreshGeometry}
-									aria-label="Coloration de l'aperçu"
+									aria-label={$t('Preview coloring')}
 								>
 									{#each COLORATIONS as c (c.id)}
-										<option value={c.id}>{c.label}</option>
+										<option value={c.id}>{$t(c.label)}</option>
 									{/each}
 								</select>
-								<span class="ml-1">Cadrer</span>
-								<div class="ws-seg" role="group" aria-label="Cadrage de la vue">
+								<span class="ml-1">{$t('Frame')}</span>
+								<div class="ws-seg" role="group" aria-label={$t('View framing')}>
 									<button
 										type="button"
 										class="ws-seg-item {previewFit === 'objects' ? 'ws-seg-on' : ''}"
 										aria-pressed={previewFit === 'objects'}
 										data-testid="preview-fit-objects"
-										data-tip="Zoom sur les objets imprimés"
+										data-tip={$t('Zoom on printed objects')}
 										data-tip-side="bottom"
-										onclick={() => setPreviewFit('objects')}>Objets</button
+										onclick={() => setPreviewFit('objects')}>{$t('Objects')}</button
 									>
 									<button
 										type="button"
 										class="ws-seg-item {previewFit === 'bed' ? 'ws-seg-on' : ''}"
 										aria-pressed={previewFit === 'bed'}
 										data-testid="preview-fit-bed"
-										data-tip="Vue de tout le plateau"
+										data-tip={$t('Whole plate view')}
 										data-tip-side="bottom"
-										onclick={() => setPreviewFit('bed')}>Plateau</button
+										onclick={() => setPreviewFit('bed')}>{$t('Plate')}</button
 									>
 								</div>
-								<span class="ml-1">Rendu</span>
-								<div class="ws-seg" role="group" aria-label="Rendu des extrusions">
-									{#each [['auto', 'Auto'], ['volumes', 'Volumes'], ['lines', 'Lignes']] as [id, label] (id)}
+								<span class="ml-1">{$t('Render')}</span>
+								<div class="ws-seg" role="group" aria-label={$t('Extrusion rendering')}>
+									{#each [['auto', 'Auto'], ['volumes', 'Volumes'], ['lines', 'Lines']] as [id, label] (id)}
 										<button
 											type="button"
 											class="ws-seg-item {renderMode === id ? 'ws-seg-on' : ''}"
@@ -10743,13 +11247,15 @@
 											data-testid={`preview-render-${id}`}
 											data-tip={id === 'auto'
 												? softwareGl
-													? 'Rendu WebGL logiciel détecté (pas de GPU) : lignes'
-													: `Volumes jusqu'à ${VOLUME_SEGMENT_LIMIT.toLocaleString('fr-FR')} segments, lignes au-delà`
+													? $t('Software WebGL rendering detected (no GPU): lines')
+													: $t('Volumes up to {n} segments, lines beyond', {
+															n: VOLUME_SEGMENT_LIMIT.toLocaleString(numberLocale($locale))
+														})
 												: id === 'volumes'
-													? 'Cordons pleins éclairés (largeur × hauteur réelles)'
-													: 'Lignes fines (rapide, gros fichiers)'}
+													? $t('Solid lit beads (actual width × height)')
+													: $t('Thin lines (fast, large files)')}
 											data-tip-side="bottom"
-											onclick={() => (renderMode = id as RenderMode)}>{label}</button
+											onclick={() => (renderMode = id as RenderMode)}>{$t(label)}</button
 										>
 									{/each}
 								</div>
@@ -10764,7 +11270,7 @@
 								>
 									<span class="tabular-nums"
 										>{layerRange.oneLayerMode
-											? `Couche ${layerRange.high + 1}`
+											? $t('Layer {n}', { n: layerRange.high + 1 })
 											: `${layerRange.low + 1}–${layerRange.high + 1}`}/{previewMeta.layer_count}</span
 									>
 									{#if topLayerTime !== null}
@@ -10772,10 +11278,11 @@
 										<span
 											class="tabular-nums text-content-subtle"
 											data-testid="preview-layer-time"
-											data-tip="Temps nominal de la couche haute (sans accélérations)"
+											data-tip={$t('Nominal time of the top layer (without accelerations)')}
 											data-tip-side="left"
-											aria-label="Temps nominal de la couche haute : {formatDuration(topLayerTime)}"
-											>{formatDuration(topLayerTime)}</span
+											aria-label={$t('Nominal time of the top layer: {time}', {
+												time: formatDuration(topLayerTime)
+											})}>{formatDuration(topLayerTime)}</span
 										>
 									{/if}
 									<!-- Poignée haute : numéro + Z. -->
@@ -10790,13 +11297,13 @@
 											layerRange = setActiveThumb(layerRange, 'high');
 											openLayerMenu(e.clientX, e.clientY, layerRange.high);
 										}}
-										aria-label="Poignée haute"
-										data-tip="Poignée haute (↑/↓ quand active ; clic droit : codes de la couche)"
+										aria-label={$t('Top handle')}
+										data-tip={$t('Top handle (↑/↓ when active; right-click: layer codes)')}
 										data-tip-side="left"
 									>
 										<span class="tabular-nums">▲ {layerRange.high + 1}</span>
 										<span class="text-2xs tabular-nums opacity-80"
-											>{(previewMeta.layers[layerRange.high]?.z ?? 0).toFixed(2)} mm</span
+											>{fmtNum(previewMeta.layers[layerRange.high]?.z ?? 0, 2, $locale)} mm</span
 										>
 									</button>
 									<!-- Une seule piste, deux poignées (comme Orca) : deux curseurs natifs
@@ -10850,7 +11357,7 @@
 											onfocus={() => (layerRange = setActiveThumb(layerRange, 'high'))}
 											oninput={(e) =>
 												moveLayerThumb(Number(e.currentTarget.value) - layerRange.high)}
-											aria-label="Couche haute"
+											aria-label={$t('Top layer')}
 										/>
 										{#if !layerRange.oneLayerMode}
 											<input
@@ -10863,7 +11370,7 @@
 													layerRange = setActiveThumb(layerRange, 'low');
 													moveLayerThumb(Number(e.currentTarget.value) - layerRange.low);
 												}}
-												aria-label="Couche basse"
+												aria-label={$t('Bottom layer')}
 											/>
 										{/if}
 									</div>
@@ -10880,13 +11387,13 @@
 												layerRange = setActiveThumb(layerRange, 'low');
 												openLayerMenu(e.clientX, e.clientY, layerRange.low);
 											}}
-											aria-label="Poignée basse"
-											data-tip="Poignée basse (↑/↓ quand active ; clic droit : codes de la couche)"
+											aria-label={$t('Bottom handle')}
+											data-tip={$t('Bottom handle (↑/↓ when active; right-click: layer codes)')}
 											data-tip-side="left"
 										>
 											<span class="tabular-nums">▼ {layerRange.low + 1}</span>
 											<span class="text-2xs tabular-nums opacity-80"
-												>{(previewMeta.layers[layerRange.low]?.z ?? 0).toFixed(2)} mm</span
+												>{fmtNum(previewMeta.layers[layerRange.low]?.z ?? 0, 2, $locale)} mm</span
 											>
 										</button>
 									{/if}
@@ -10894,16 +11401,16 @@
 										<button
 											type="button"
 											class="ws-icon-btn ws-icon-btn-sm flex-1 border-border-strong"
-											aria-label="Descendre la poignée active d'une couche"
-											data-tip="Couche précédente (↓)"
+											aria-label={$t('Move the active handle down one layer')}
+											data-tip={$t('Previous layer (↓)')}
 											data-tip-side="left"
 											onclick={() => moveLayerThumb(-1)}>−</button
 										>
 										<button
 											type="button"
 											class="ws-icon-btn ws-icon-btn-sm flex-1 border-border-strong"
-											aria-label="Monter la poignée active d'une couche"
-											data-tip="Couche suivante (↑)"
+											aria-label={$t('Move the active handle up one layer')}
+											data-tip={$t('Next layer (↑)')}
 											data-tip-side="left"
 											onclick={() => moveLayerThumb(1)}>+</button
 										>
@@ -10918,8 +11425,8 @@
 											data-active={codeAtHighLayer ? 'true' : 'false'}
 											aria-keyshortcuts={codeAtHighLayer ? '-' : '+'}
 											data-tip={codeAtHighLayer
-												? 'Retirer le code de la couche ' + (layerRange.high + 1) + ' (−)'
-												: 'Changement de couleur à la couche ' + (layerRange.high + 1) + ' (+)'}
+												? $t('Remove the code of layer {n} (−)', { n: layerRange.high + 1 })
+												: $t('Color change at layer {n} (+)', { n: layerRange.high + 1 })}
 											data-tip-side="left"
 											onclick={() => editColorChangeKey(codeAtHighLayer ? '-' : '+')}
 											>{codeAtHighLayer ? '− couleur' : '+ couleur'}</button
@@ -10931,14 +11438,14 @@
 											class="ws-chip w-full justify-center"
 											data-testid="layer-code-menu-open"
 											aria-haspopup="menu"
-											data-tip={'Codes de la couche ' +
-												(activeThumbLayer() + 1) +
-												' : pause, G-code, filament…'}
+											data-tip={$t('Codes of layer {n}: pause, G-code, filament…', {
+												n: activeThumbLayer() + 1
+											})}
 											data-tip-side="left"
 											onclick={(e) => {
 												const rect = e.currentTarget.getBoundingClientRect();
 												openLayerMenu(rect.left, rect.bottom);
-											}}>Codes…</button
+											}}>{$t('Codes…')}</button
 										>
 									{/if}
 									<button
@@ -10949,9 +11456,9 @@
 											layerRange = toggleOneLayerMode(layerRange);
 											void refreshGeometry();
 										}}
-										data-tip="Mode une couche (L)"
+										data-tip={$t('Single layer mode (L)')}
 										data-tip-side="left"
-										aria-keyshortcuts="L">1 couche</button
+										aria-keyshortcuts="L">{$t('1 layer')}</button
 									>
 									{#if goToLayerOpen}
 										<form
@@ -10969,7 +11476,7 @@
 												min="1"
 												max={previewMeta.layer_count}
 												bind:value={goToLayerValue}
-												aria-label="Aller à la couche (1 – {previewMeta.layer_count})"
+												aria-label={$t('Jump to layer (1 – {n})', { n: previewMeta.layer_count })}
 												autofocus
 												onkeydown={(e) => {
 													e.stopPropagation();
@@ -10977,7 +11484,7 @@
 												}}
 											/>
 											<button type="submit" class="ws-btn ws-btn-sm ws-btn-primary w-full"
-												>Aller</button
+												>{$t('Go')}</button
 											>
 										</form>
 									{:else}
@@ -10985,10 +11492,10 @@
 											type="button"
 											class="ws-chip w-full justify-center"
 											data-testid="preview-goto-layer-open"
-											data-tip="Aller à la couche (Maj+G)"
+											data-tip={$t('Jump to layer (Shift+G)')}
 											data-tip-side="left"
 											aria-keyshortcuts="Shift+G"
-											onclick={openGoToLayer}>Aller à…</button
+											onclick={openGoToLayer}>{$t('Go to…')}</button
 										>
 									{/if}
 								</div>
@@ -11007,7 +11514,7 @@
 									aria-controls="preview-legend-body"
 									onclick={() => (legendOpen = !legendOpen)}
 								>
-									<span class="ws-section-title">Légende</span>
+									<span class="ws-section-title">{$t('Legend')}</span>
 									<span class="text-content-subtle" aria-hidden="true"
 										>{legendOpen ? '▾' : '▸'}</span
 									>
@@ -11042,9 +11549,9 @@
 							<!-- Tranchage terminé mais trajectoires encore en chargement : ne pas
 							     inviter à trancher (message trompeur pendant 1 à 15 s en multi-filament). -->
 							{#if session.phase === 'preview' && session.gcodeId}
-								<p role="status" data-testid="preview-loading">Chargement de l'aperçu…</p>
+								<p role="status" data-testid="preview-loading">{$t('Loading preview…')}</p>
 							{:else}
-								<p>Aperçu G-code : tranchez la scène pour l'afficher.</p>
+								<p>{$t('G-code preview: slice the scene to show it.')}</p>
 							{/if}
 						</div>
 					{/if}
@@ -11058,39 +11565,39 @@
 				<!-- Onglet Projet (T117) : métadonnées du projet + renommage. -->
 				<div class="h-full overflow-auto p-6">
 					<div class="mx-auto flex w-full max-w-4xl flex-col gap-4">
-						<h2 class="ws-dialog-title">Projet</h2>
+						<h2 class="ws-dialog-title">{$t('Project')}</h2>
 						{#if data.project.has_thumbnail}
 							<img
 								src="/api/projects/{data.project.id}/thumbnail"
-								alt="Vignette du projet"
+								alt={$t('Project thumbnail')}
 								class="max-h-48 w-auto self-start rounded border border-border"
 							/>
 						{/if}
 						<label class="flex flex-col gap-1">
-							<span class="text-sm text-content-muted">Nom</span>
+							<span class="text-sm text-content-muted">{$t('Name')}</span>
 							<div class="flex gap-2">
 								<input class="ws-field flex-1" bind:value={projectName} />
 								<button
 									class="ws-btn ws-btn-primary"
 									disabled={projectName.trim() === '' || projectName === savedName}
-									onclick={() => renameCurrentProject()}>Renommer</button
+									onclick={() => renameCurrentProject()}>{$t('Rename')}</button
 								>
 							</div>
 						</label>
 						<dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-							<dt class="text-content-muted">Identifiant</dt>
+							<dt class="text-content-muted">{$t('Identifier')}</dt>
 							<dd class="truncate font-mono text-xs text-content">{data.project.id}</dd>
-							<dt class="text-content-muted">Version</dt>
+							<dt class="text-content-muted">{$t('Version')}</dt>
 							<dd class="tabular-nums text-content">{data.project.version}</dd>
-							<dt class="text-content-muted">Créé le</dt>
+							<dt class="text-content-muted">{$t('Created||date')}</dt>
 							<dd class="text-content">{new Date(data.project.created_at).toLocaleString()}</dd>
-							<dt class="text-content-muted">Modifié le</dt>
+							<dt class="text-content-muted">{$t('Modified||date')}</dt>
 							<dd class="text-content">{new Date(data.project.updated_at).toLocaleString()}</dd>
 						</dl>
 						<!-- Fiche du modèle (ProjectPanel d'Orca : informations du modèle avant
 						     les fichiers joints) — même panneau que l'onglet Projet de la colonne. -->
 						<section class="flex flex-col gap-2" aria-labelledby="project-page-meta-title">
-							<h3 id="project-page-meta-title" class="ws-section-title">Fiche du modèle</h3>
+							<h3 id="project-page-meta-title" class="ws-section-title">{$t('Model sheet')}</h3>
 							<ProjectMetadataPanel projectId={data.project.id} />
 						</section>
 						<AuxiliariesPanel projectId={data.project.id} />
@@ -11102,7 +11609,7 @@
 		<!-- Zone droite : rail d'outils vertical (16 gizmos, T103). Actif en préparation. -->
 		{#if layout.tab === 'prepare'}
 			<aside
-				aria-label="Outils"
+				aria-label={$t('Tools')}
 				class="flex flex-col items-center border-l border-border bg-surface-raised p-2"
 			>
 				<ToolRail active={tools.active} onselect={selectTool} />

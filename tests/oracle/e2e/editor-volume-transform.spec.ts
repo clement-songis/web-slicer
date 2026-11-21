@@ -22,7 +22,8 @@ test('volume : panneau de transformation (position, rotation, échelle) @F:edito
 
 	await panel.getByLabel('Position (mm) X').fill('2');
 	await panel.getByLabel('Rotation (°) Z').fill('30');
-	await panel.getByLabel('Échelle X').fill('2');
+	await panel.getByTestId('transform-uniform-scale').click();
+	await panel.getByLabel('Échelle X').fill('200');
 
 	const [res] = await Promise.all([
 		page.waitForResponse((r) => r.request().method() === 'PUT' && /\/api\/projects\/[^/]+$/.test(r.url())),

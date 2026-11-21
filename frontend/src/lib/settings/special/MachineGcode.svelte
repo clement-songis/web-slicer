@@ -4,6 +4,7 @@
 	// résolu par type (tous ces champs → MultilineWidget).
 	import { PARAMS } from '../../../generated/params';
 	import { widgetFor } from '../widgets';
+	import { t } from '$lib/i18n';
 	import { MACHINE_GCODE } from './groups';
 
 	interface Props {
@@ -19,8 +20,8 @@
 		{@const key = group.options[0]}
 		{@const Widget = widgetFor(PARAMS[key])}
 		<section>
-			<h3 class="mb-1 text-sm font-medium text-content-muted" title={PARAMS[key].tooltip}>
-				{group.title}
+			<h3 class="mb-1 text-sm font-medium text-content-muted" title={$t(PARAMS[key].tooltip)}>
+				{$t(group.title)}
 			</h3>
 			<Widget def={PARAMS[key]} bind:value={values[key]} />
 		</section>

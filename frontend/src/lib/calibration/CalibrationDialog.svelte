@@ -12,6 +12,7 @@
 		type PressureAdvanceParams,
 		type TemperatureParams
 	} from './calibration';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		open: boolean;
@@ -32,17 +33,26 @@
 	let paMethod = $state<'tower' | 'line'>('tower');
 
 	const isTemp = $derived(kind === 'temperature');
-	const invalid = $derived(
-		isTemp
+	const invalid = $derived.by(() => {
+		void $t; // message traduit : recalcul au changement de langue
+		return isTemp
 			? validateTemperature({ start: tStart, end: tEnd })
-			: validatePressureAdvance({ start: paStart, end: paEnd, step: paStep })
-	);
+			: validatePressureAdvance({ start: paStart, end: paEnd, step: paStep });
+	});
 	const summary = $derived(
 		invalid
 			? ''
 			: isTemp
-				? `${Math.round((tStart - tEnd) / 5) + 1} blocs, de ${tStart} °C (bas) à ${tEnd} °C (haut).`
-				: `Tour de ${pressureAdvanceTowerHeight({ start: paStart, end: paEnd, step: paStep })} mm : PA = ${paStart} + ${paStep} × hauteur (mm).`
+				? $t('{n} blocks, from {start} °C (bottom) to {end} °C (top).', {
+						n: Math.round((tStart - tEnd) / 5) + 1,
+						start: tStart,
+						end: tEnd
+					})
+				: $t('{height} mm tower: PA = {start} + {step} × height (mm).', {
+						height: pressureAdvanceTowerHeight({ start: paStart, end: paEnd, step: paStep }),
+						start: paStart,
+						step: paStep
+					})
 	);
 
 	function submit(event: SubmitEvent) {
@@ -79,21 +89,23 @@
 		>
 			<form class="flex flex-col gap-4" onsubmit={submit}>
 				<h2 id="calib-title" class="ws-dialog-title">
-					{isTemp ? 'Calibration de la température' : 'Calibration du pressure advance'}
+					{isTemp ? $t('Temperature calibration') : $t('Pressure advance calibration')}
 				</h2>
 				<p class="text-sm text-content-muted">
 					{#if isTemp}
-						Crée un projet « tour de température » (modèle OrcaSlicer) : un bloc de 10 mm par palier
-						de 5 °C, la température change à chaque bloc.
+						{$t(
+							'Creates a “temperature tower” project (OrcaSlicer model): one 10 mm block per 5 °C step, the temperature changes at each block.'
+						)}
 					{:else}
-						Crée un projet « tour de pressure advance » (modèle OrcaSlicer) : le PA augmente d'un
-						pas par millimètre de hauteur.
+						{$t(
+							'Creates a “pressure advance tower” project (OrcaSlicer model): the PA increases by one step per millimeter of height.'
+						)}
 					{/if}
 				</p>
 				{#if isTemp}
 					<div class="grid grid-cols-2 gap-3">
 						<label class="flex flex-col gap-1 text-sm">
-							<span class="text-content-muted">Température de départ (°C)</span>
+							<span class="text-content-muted">{$t('Start temperature (°C)')}</span>
 							<input
 								type="number"
 								step="5"
@@ -106,7 +118,7 @@
 							/>
 						</label>
 						<label class="flex flex-col gap-1 text-sm">
-							<span class="text-content-muted">Température de fin (°C)</span>
+							<span class="text-content-muted">{$t('End temperature (°C)')}</span>
 							<input
 								type="number"
 								step="5"
@@ -122,21 +134,21 @@
 				{:else}
 					<!-- Méthodes d'Orca construites par le serveur : tour, lignes (le
 					     motif reste dans « Pressure advance pattern »). -->
-					<div class="ws-seg self-start" role="group" aria-label="Méthode">
-						{#each [['tower', 'Tour'], ['line', 'Lignes']] as const as [m, label] (m)}
+					<div class="ws-seg self-start" role="group" aria-label={$t('Method')}>
+						{#each [['tower', 'Tower'], ['line', 'Lines']] as const as [m, label] (m)}
 							<button
 								type="button"
 								class="ws-seg-item {paMethod === m ? 'ws-seg-on' : ''}"
 								aria-pressed={paMethod === m}
 								data-testid={`calib-pa-method-${m}`}
 								disabled={busy}
-								onclick={() => (paMethod = m)}>{label}</button
+								onclick={() => (paMethod = m)}>{$t(label)}</button
 							>
 						{/each}
 					</div>
 					<div class="grid grid-cols-3 gap-3">
 						<label class="flex flex-col gap-1 text-sm">
-							<span class="text-content-muted">PA de départ</span>
+							<span class="text-content-muted">{$t('Start PA')}</span>
 							<input
 								type="number"
 								step="0.001"
@@ -148,7 +160,7 @@
 							/>
 						</label>
 						<label class="flex flex-col gap-1 text-sm">
-							<span class="text-content-muted">PA de fin</span>
+							<span class="text-content-muted">{$t('End PA')}</span>
 							<input
 								type="number"
 								step="0.001"
@@ -160,7 +172,7 @@
 							/>
 						</label>
 						<label class="flex flex-col gap-1 text-sm">
-							<span class="text-content-muted">Pas</span>
+							<span class="text-content-muted">{$t('Step||range')}</span>
 							<input
 								type="number"
 								step="0.001"
@@ -192,7 +204,7 @@
 						type="button"
 						class="ws-btn ws-btn-lg ws-btn-secondary"
 						disabled={busy}
-						onclick={onclose}>Annuler</button
+						onclick={onclose}>{$t('Cancel')}</button
 					>
 					<button
 						type="submit"
@@ -200,7 +212,7 @@
 						disabled={!!invalid || busy}
 						class="ws-btn ws-btn-lg ws-btn-primary"
 					>
-						{busy ? 'Création…' : 'Créer le projet'}
+						{busy ? $t('Creating…') : $t('Create project')}
 					</button>
 				</div>
 			</form>

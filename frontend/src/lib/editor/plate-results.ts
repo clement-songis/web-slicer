@@ -7,6 +7,7 @@
 // lot (un job par plateau) en état de session + table plateau → résultat ; la page
 // `projects/[id]` applique le résultat (chargement de l'aperçu, onglet actif).
 import type { ServerEvent } from '../api/types';
+import { tr } from '$lib/i18n';
 import { friendlySliceError, type SliceSession } from './session';
 
 /** Résultat mémorisé d'un plateau tranché. */
@@ -35,6 +36,8 @@ export interface SliceBatch {
 	/** Erreur par plateau. */
 	errors: Record<string, string>;
 	signature: string | null;
+	/** Signature propre à chaque plateau du lot (phase 40) ; repli sur `signature`. */
+	plateSignatures?: Record<string, string>;
 }
 
 /**
@@ -44,7 +47,8 @@ export interface SliceBatch {
 export function makeBatch(
 	jobs: readonly { id: string; plate_index: bigint | number }[],
 	plateIds: readonly string[],
-	signature: string | null
+	signature: string | null,
+	plateSignatures?: Record<string, string>
 ): SliceBatch {
 	const jobPlates: Record<string, string> = {};
 	for (const job of jobs) {
@@ -52,7 +56,60 @@ export function makeBatch(
 		if (id) jobPlates[job.id] = id;
 	}
 	const plateOrder = plateIds.filter((id) => Object.values(jobPlates).includes(id));
-	return { jobPlates, plateOrder, progress: {}, done: {}, errors: {}, signature };
+	return {
+		jobPlates,
+		plateOrder,
+		progress: {},
+		done: {},
+		errors: {},
+		signature,
+		...(plateSignatures ? { plateSignatures } : {})
+	};
+}
+
+/** Scène sérialisée (forme minimale lue ici). */
+interface SignatureScene {
+	plates?: {
+		plates?: readonly { id: string; name?: string; objectIds?: readonly string[] }[];
+	} | null;
+	objects?: readonly { id: string }[];
+	[key: string]: unknown;
+}
+
+/**
+ * Empreinte de ce que le tranchage d'UN plateau lit dans la scène (phase 40,
+ * Orca `PartPlate` : seul le plateau dont les objets/réglages changent est
+ * invalidé) : rang du plateau (origine), ses réglages et G-code par couche, ses
+ * objets (ordre compris), la configuration projet. Exclus : nom du plateau,
+ * plateau actif, objets des autres plateaux, liste des modèles connus.
+ */
+export function plateSceneSignature(scene: SignatureScene, plateId: string): string {
+	const list = scene.plates?.plates ?? [];
+	const index = list.findIndex((p) => p.id === plateId);
+	if (index < 0) return '';
+	const { name, ...plate } = list[index];
+	void name;
+	const ids = new Set(plate.objectIds ?? []);
+	const objects = (scene.objects ?? []).filter((o) => ids.has(o.id));
+	const { plates, objects: all, knownModels, ...rest } = scene;
+	void plates;
+	void all;
+	void knownModels;
+	return JSON.stringify({ index, plate, objects, rest });
+}
+
+/**
+ * Résultats périmés (phase 40, Orca `Plater::priv::update` → invalidation) :
+ * plateaux dont la signature courante diffère de celle du tranchage. Un
+ * résultat sans signature (restauré à l'ouverture) n'est jamais déclaré périmé ici.
+ */
+export function staleResults(
+	results: PlateResults,
+	signatureOf: (plateId: string) => string
+): string[] {
+	return Object.entries(results)
+		.filter(([id, r]) => r.signature !== null && r.signature !== signatureOf(id))
+		.map(([id]) => id);
 }
 
 /** Résultat valable d'un plateau (absent ou périmé → null). */
@@ -109,7 +166,10 @@ export function applyBatchEvent(
 	if (state.batch.done[event.id]) return none;
 	let { session, batch, results } = state;
 
-	if (event.event === 'job.updated' && (event.status === 'failed' || event.status === 'cancelled')) {
+	if (
+		event.event === 'job.updated' &&
+		(event.status === 'failed' || event.status === 'cancelled')
+	) {
 		const message = errorText(event.error, event.status);
 		batch = {
 			...batch,
@@ -123,7 +183,7 @@ export function applyBatchEvent(
 		batch = {
 			...batch,
 			done: { ...batch.done, [event.id]: 'failed' },
-			errors: { ...batch.errors, [plate]: 'tranchage terminé sans G-code' }
+			errors: { ...batch.errors, [plate]: tr('slicing finished without G-code') }
 		};
 	} else {
 		batch = {
@@ -137,7 +197,7 @@ export function applyBatchEvent(
 				gcodeId: event.gcode_id,
 				jobId: event.id,
 				stats: event.stats,
-				signature: batch.signature
+				signature: batch.plateSignatures?.[plate] ?? batch.signature
 			}
 		};
 	}
@@ -180,7 +240,7 @@ export function applyBatchEvent(
 		// Rien d'affichable : tous les plateaux du lot ont échoué.
 		const first = batch.plateOrder.map((id) => batch.errors[id]).find(Boolean);
 		return {
-			session: { ...session, phase: 'error', error: first ?? 'échec du tranchage' },
+			session: { ...session, phase: 'error', error: first ?? tr('slicing failed') },
 			batch,
 			results,
 			showPlate: null
@@ -194,9 +254,9 @@ export function batchLabel(batch: SliceBatch): string | null {
 	const { done, total } = batchCounts(batch);
 	if (total < 2) return null;
 	const failed = Object.values(batch.done).filter((d) => d === 'failed').length;
-	return (
-		`${done - failed} / ${total} plateaux tranchés` + (failed ? ` · ${failed} en échec` : '')
-	);
+	return failed
+		? tr('{done} / {total} plates sliced · {failed} failed', { done: done - failed, total, failed })
+		: tr('{done} / {total} plates sliced', { done: done - failed, total });
 }
 
 function clamp01(v: number): number {
@@ -208,9 +268,11 @@ function errorText(error: unknown, status: string): string {
 	const raw =
 		typeof error === 'string'
 			? error
-			: error && typeof error === 'object' && typeof (error as { message?: unknown }).message === 'string'
+			: error &&
+				  typeof error === 'object' &&
+				  typeof (error as { message?: unknown }).message === 'string'
 				? (error as { message: string }).message
 				: '';
 	if (raw.trim() !== '') return friendlySliceError(raw);
-	return status === 'cancelled' ? 'tranchage annulé' : 'échec du tranchage';
+	return status === 'cancelled' ? tr('slicing cancelled') : tr('slicing failed');
 }

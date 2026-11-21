@@ -4,6 +4,7 @@
 // page envoie la capture du plateau actif avant l'export
 // (PUT /api/projects/{id}/plates/{index}/thumbnail, PNG brut, 204).
 import { API_BASE, ApiError } from '../api/client';
+import { tr } from '$lib/i18n';
 
 type CaptureSource = () => HTMLCanvasElement | null;
 let source: CaptureSource | null = null;
@@ -52,5 +53,10 @@ export async function putPlateThumbnail(
 		headers: { 'content-type': 'image/png' },
 		body: png
 	});
-	if (!res.ok) throw new ApiError(res.status, 'thumbnail', 'vignette refusée (' + res.status + ')');
+	if (!res.ok)
+		throw new ApiError(
+			res.status,
+			'thumbnail',
+			tr('thumbnail rejected ({status})', { status: res.status })
+		);
 }

@@ -5,7 +5,7 @@
 import { api } from '$lib/api/client';
 import type { HandyModelAdded, HandyModelInfo, HandyModelSuggestion } from '$lib/api/types';
 import type { ObjectMenuEntry, ObjectMenuItem } from '$lib/scene/menus';
-import { registerTranslations } from '$lib/i18n';
+import { registerTranslations, tr } from '$lib/i18n';
 
 export type { HandyModelAdded, HandyModelInfo, HandyModelSuggestion };
 
@@ -13,17 +13,20 @@ export const listHandyModels = () => api.get<HandyModelInfo[]>('/handy-models');
 export const addHandyModel = (projectId: string, key: string) =>
 	api.post<HandyModelAdded>(`/projects/${projectId}/handy-models/${encodeURIComponent(key)}`);
 
-/** Libellé affiché et rôle de chaque modèle (Orca ne dit pas à quoi ils servent). */
+/**
+ * Libellé affiché (fr, dictionnaire paresseux) et rôle de chaque modèle (Orca ne
+ * dit pas à quoi ils servent) ; le rôle est une clé anglaise traduite au rendu.
+ */
 const LABELS: Record<string, { label: string; hint: string }> = {
-	'Orca Cube': { label: 'Cube Orca', hint: 'cube et bouchon emboîtables' },
-	'OrcaSliced Combo': { label: 'Combo OrcaSliced', hint: 'plateau de démonstration' },
-	'Orca Tolerance Test': { label: 'Test de tolérance Orca', hint: 'jeu entre pièces' },
-	'3DBenchy': { label: '3DBenchy', hint: 'test général' },
-	'Cali Cat': { label: 'Cali Cat', hint: 'calibration rapide' },
-	'Autodesk FDM Test': { label: 'Test FDM Autodesk', hint: 'surplombs, ponts, détails' },
-	'Voron Cube': { label: 'Cube Voron', hint: 'dimensions et finition' },
-	'Stanford Bunny': { label: 'Lapin de Stanford', hint: 'surfaces organiques' },
-	'Orca String Hell': { label: 'String Hell Orca', hint: 'test de filage' }
+	'Orca Cube': { label: 'Cube Orca', hint: 'interlocking cube and cap' },
+	'OrcaSliced Combo': { label: 'Combo OrcaSliced', hint: 'demo plate' },
+	'Orca Tolerance Test': { label: 'Test de tolérance Orca', hint: 'clearance between parts' },
+	'3DBenchy': { label: '3DBenchy', hint: 'general test' },
+	'Cali Cat': { label: 'Cali Cat', hint: 'quick calibration' },
+	'Autodesk FDM Test': { label: 'Test FDM Autodesk', hint: 'overhangs, bridges, details' },
+	'Voron Cube': { label: 'Cube Voron', hint: 'dimensions and finish' },
+	'Stanford Bunny': { label: 'Lapin de Stanford', hint: 'organic surfaces' },
+	'Orca String Hell': { label: 'String Hell Orca', hint: 'stringing test' }
 };
 
 export function handyLabel(info: Pick<HandyModelInfo, 'label'>): string {
@@ -100,6 +103,8 @@ export function suggestionApplies(
 /** Message de la suggestion String Hell, en clair. */
 export function suggestionText(s: HandyModelSuggestion): string {
 	if (s.apply.min_width_top_surface !== undefined)
-		return 'Pour que le test de filage soit fiable, la surface supérieure doit être imprimée en une seule paroi sur toute sa largeur : « Largeur minimale de la surface supérieure » passe à 0 (réglage du traitement, à enregistrer ensuite).';
+		return tr(
+			'For the stringing test to be reliable, the top surface must be printed as a single wall over its whole width: “Top surface minimum width” goes to 0 (process setting, to be saved afterwards).'
+		);
 	return s.message;
 }

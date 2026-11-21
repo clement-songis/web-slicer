@@ -11,6 +11,7 @@ export default defineConfig({
 	retries: 0,
 	reporter: 'line',
 	use: {
+		locale: 'fr-FR',
 		baseURL: process.env.BASE_URL ?? 'http://127.0.0.1:5173',
 		acceptDownloads: true,
 		// Échec rapide sur sélecteur absent : feedback court et peu coûteux pour l'agent.

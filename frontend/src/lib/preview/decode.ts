@@ -8,6 +8,8 @@
 //   start 3×f32 | end 3×f32 | feedrate f32 | width f32 | height f32
 //   | kind u8 | extruder u8 | layer u16
 
+import { tr } from '$lib/i18n';
+
 /** Taille d'un enregistrement segment (octets), miroir de `PREVIEW_RECORD_BYTES`. */
 export const RECORD_BYTES = 40;
 /** Taille de l'en-tête (octets). */
@@ -52,7 +54,7 @@ export class PreviewFormatError extends Error {}
  */
 export function decodePreview(buffer: ArrayBuffer): PreviewSegments {
 	if (buffer.byteLength < HEADER_BYTES) {
-		throw new PreviewFormatError('buffer de prévisualisation tronqué');
+		throw new PreviewFormatError(tr('truncated preview buffer'));
 	}
 	const view = new DataView(buffer);
 	const magic = String.fromCharCode(

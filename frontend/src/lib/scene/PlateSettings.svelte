@@ -24,7 +24,7 @@
 		if (v === undefined || v === null || v === '') return 'Profil';
 		const s = typeof v === 'boolean' ? (v ? '1' : '0') : String(v);
 		const opt = options(key).find((o) => o.value === s);
-		return opt ? `Profil (${opt.label})` : 'Profil';
+		return opt ? $t('Profile ({value})', { value: opt.label }) : $t('Profile||plate');
 	}
 
 	// Valeurs d'énumération (types de plaque, séquence) traduites comme dans le
@@ -34,9 +34,10 @@
 	});
 
 	const FIELDS = [
-		{ key: 'curr_bed_type', label: 'Type de plaque (surcharge)' },
-		{ key: 'print_sequence', label: "Séquence d'impression" },
-		{ key: 'spiral_mode', label: 'Vase spirale' }
+		// Libellés : clés i18n anglaises, traduites au rendu.
+		{ key: 'curr_bed_type', label: 'Bed type (override)' },
+		{ key: 'print_sequence', label: 'Print sequence' },
+		{ key: 'spiral_mode', label: 'Spiral vase' }
 	] as const;
 
 	function options(key: string): { value: string; label: string }[] {
@@ -44,8 +45,8 @@
 		if (!def) return [];
 		if (def.type === 'coBool')
 			return [
-				{ value: '1', label: 'Oui' },
-				{ value: '0', label: 'Non' }
+				{ value: '1', label: $t('Yes') },
+				{ value: '0', label: $t('No') }
 			];
 		return def.enumValues.map((value, i) => ({ value, label: $t(def.enumLabels[i] || value) }));
 	}
@@ -59,12 +60,12 @@
 </script>
 
 <fieldset class="flex flex-col gap-1 rounded border border-border p-2" data-testid="plate-settings">
-	<legend class="px-1 text-xs font-semibold text-content-subtle">Réglages du plateau</legend>
+	<legend class="px-1 text-xs font-semibold text-content-subtle">{$t('Plate settings')}</legend>
 	<!-- Le type de plaque se règle déjà juste au-dessus (barre du plateau) :
 	     sa surcharge n'apparaît ici que si elle existe (posée par le dialogue). -->
 	{#each FIELDS.filter((f) => f.key !== 'curr_bed_type' || current(f.key) !== '') as field (field.key)}
 		<label class="flex items-center justify-between gap-2">
-			<span class="text-content-muted">{field.label}</span>
+			<span class="text-content-muted">{$t(field.label)}</span>
 			<select
 				class="ws-field ws-field-sm w-36 shrink-0"
 				data-testid={`plate-setting-${field.key}`}

@@ -5,6 +5,7 @@
 	import IconUndo from '~icons/lucide/undo-2';
 	import IconRedo from '~icons/lucide/redo-2';
 	import IconChevron from '~icons/lucide/chevron-down';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		/** Lit les étapes (`undo[0]` = prochaine annulation). */
@@ -21,6 +22,7 @@
 	// Lecture non réactive de l'historique : recalculée à chaque `version`.
 	const list = $derived.by(() => {
 		void version;
+		void $t; // libellés d'étapes traduits à la lecture : relus au changement de langue
 		return entries();
 	});
 	let open = $state<'undo' | 'redo' | null>(null);
@@ -50,16 +52,21 @@
 	bind:this={root}
 	data-testid="undo-history"
 >
-	{#each [['undo', 'Annuler', IconUndo], ['redo', 'Rétablir', IconRedo]] as const as [which, label, Icon] (which)}
+	{#each [['undo', 'Undo', IconUndo], ['redo', 'Redo', IconRedo]] as const as [which, label, Icon] (which)}
 		{@const items = list[which]}
 		<div class="flex items-center">
 			<button
 				type="button"
 				class="ws-icon-btn ws-icon-btn-sm"
-				aria-label={items.length ? `${label} : ${items[0]}` : label}
+				aria-label={items.length
+					? $t(which === 'undo' ? 'Undo: {step}' : 'Redo: {step}', { step: items[0] })
+					: $t(label)}
 				data-tip={items.length
-					? `${label} : ${items[0]} (${which === 'undo' ? 'Ctrl+Z' : 'Ctrl+Y'})`
-					: label}
+					? $t(which === 'undo' ? 'Undo: {step} ({key})' : 'Redo: {step} ({key})', {
+							step: items[0],
+							key: which === 'undo' ? 'Ctrl+Z' : 'Ctrl+Y'
+						})
+					: $t(label)}
 				data-testid={`history-${which}`}
 				disabled={!items.length}
 				onclick={() => (which === 'undo' ? onundo(1) : onredo(1))}
@@ -68,7 +75,9 @@
 			<button
 				type="button"
 				class="ws-icon-btn ws-icon-btn-xs"
-				aria-label={`Historique : ${label.toLowerCase()} plusieurs étapes`}
+				aria-label={$t(
+					which === 'undo' ? 'History: undo several steps' : 'History: redo several steps'
+				)}
 				aria-expanded={open === which}
 				aria-haspopup="menu"
 				data-testid={`history-${which}-list`}
@@ -82,7 +91,7 @@
 		<div
 			class="ws-floating absolute top-full left-0 z-20 mt-1 max-h-80 w-72 overflow-y-auto p-1"
 			role="menu"
-			aria-label={open === 'undo' ? 'Étapes à annuler' : 'Étapes à rétablir'}
+			aria-label={open === 'undo' ? $t('Steps to undo') : $t('Steps to redo')}
 			data-testid="history-menu"
 		>
 			{#each items as label, i (i)}
@@ -103,8 +112,8 @@
 			{/each}
 			<p class="px-2 pt-1 text-xs text-content-subtle" aria-live="polite">
 				{hover >= 0
-					? `${open === 'undo' ? 'Annuler' : 'Rétablir'} ${hover + 1} étape(s)`
-					: `${items.length} étape(s)`}
+					? $t(open === 'undo' ? 'Undo {n} step(s)' : 'Redo {n} step(s)', { n: hover + 1 })
+					: $t('{n} step(s)', { n: items.length })}
 			</p>
 		</div>
 	{/if}

@@ -6,6 +6,7 @@
 	// orchestre transport (API projets) + disposition.
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { t, tr } from '$lib/i18n';
 	import { resolve } from '$app/paths';
 	import { ApiError } from '$lib/api/client';
 	import {
@@ -99,7 +100,7 @@
 		try {
 			await action();
 		} catch (err) {
-			error = err instanceof ApiError ? err.message : 'Erreur inattendue';
+			error = err instanceof ApiError ? err.message : tr('Unexpected error');
 		} finally {
 			busy = false;
 		}
@@ -112,7 +113,7 @@
 			// Un projet créé ailleurs entre-temps (autre onglet) → nouvel essai.
 			const taken = projects.map((p) => p.name);
 			for (let attempt = 0; ; attempt++) {
-				const name = uniqueProjectName('Sans titre', taken);
+				const name = uniqueProjectName(tr('Untitled'), taken);
 				try {
 					const project = await createProject({ name });
 					await goto(resolve('/projects/[id]', { id: project.id }));
@@ -142,7 +143,7 @@
 		input.value = '';
 		if (!file) return;
 		if (!isAccepted(file.name)) {
-			error = `Format non supporté : ${file.name}`;
+			error = tr('Unsupported format: {name}', { name: file.name });
 			return;
 		}
 		if (isProjectArchive(file.name)) {
@@ -207,14 +208,14 @@
 	}
 </script>
 
-<svelte:head><title>Récent — Web-Slicer</title></svelte:head>
+<svelte:head><title>{$t('Recent')} — Web-Slicer</title></svelte:head>
 
 <div class="flex h-screen bg-surface text-content">
 	<AppSidebar email={data.user.email} active="recent" />
 
 	<!-- Zone principale -->
 	<main class="flex-1 overflow-auto p-8">
-		<h1 class="ws-sr-only">Bibliothèque de projets</h1>
+		<h1 class="ws-sr-only">{$t('Project library')}</h1>
 		<!-- Deux cartes d'entrée -->
 		<div class="flex flex-wrap gap-4">
 			<button
@@ -229,8 +230,8 @@
 					<IconNew class="h-7 w-7" />
 				</span>
 				<span class="flex flex-col">
-					<span class="font-medium text-content">Nouveau projet</span>
-					<span class="text-sm text-content-muted">Créer un nouveau projet</span>
+					<span class="font-medium text-content">{$t('New Project')}</span>
+					<span class="text-sm text-content-muted">{$t('Create a new project')}</span>
 				</span>
 			</button>
 			<button
@@ -244,8 +245,8 @@
 					<IconOpen class="h-7 w-7" />
 				</span>
 				<span class="flex flex-col">
-					<span class="font-medium text-content">Ouvrir un projet</span>
-					<span class="text-sm text-content-muted">Projet .3mf ou modèle 3D</span>
+					<span class="font-medium text-content">{$t('Open Project')}</span>
+					<span class="text-sm text-content-muted">{$t('.3mf project or 3D model')}</span>
 				</span>
 			</button>
 			<input
@@ -263,7 +264,7 @@
 
 		<!-- Récemment ouvert : recherche, tri, mode suppression. -->
 		<div class="mt-8 flex flex-wrap items-center gap-3">
-			<h2 class="ws-section-title">Récemment ouvert</h2>
+			<h2 class="ws-section-title">{$t('Recently opened')}</h2>
 			{#if projects.length}
 				<span class="ws-badge tabular-nums" data-testid="library-count"
 					>{query.trim() ? `${shown.length} / ${projects.length}` : projects.length}</span
@@ -273,11 +274,12 @@
 					class="ws-btn ws-btn-sm {removeMode ? 'ws-btn-danger' : 'ws-btn-ghost'}"
 					aria-pressed={removeMode}
 				>
-					<IconTrash class="h-3.5 w-3.5" /> Supprimer
+					<IconTrash class="h-3.5 w-3.5" />
+					{$t('Delete')}
 				</button>
 				<div class="ml-auto flex items-center gap-2">
 					<label class="relative">
-						<span class="ws-sr-only">Rechercher un projet</span>
+						<span class="ws-sr-only">{$t('Search projects')}</span>
 						<IconSearch
 							class="pointer-events-none absolute top-1/2 left-2 h-3.5 w-3.5 -translate-y-1/2 text-content-subtle"
 							aria-hidden="true"
@@ -285,22 +287,22 @@
 						<input
 							type="search"
 							class="ws-field ws-field-sm w-56 pl-7"
-							placeholder="Rechercher un projet…"
+							placeholder={$t('Search projects…')}
 							bind:value={query}
 							data-testid="library-search"
 						/>
 					</label>
 					<label class="flex items-center gap-1.5 text-xs text-content-muted">
-						Trier
+						{$t('Sort')}
 						<select
 							class="ws-field ws-field-sm"
 							bind:value={sort}
 							onchange={() => localStorage.setItem(SORT_KEY, sort)}
 							data-testid="library-sort"
 						>
-							<option value="updated">Modifiés récemment</option>
-							<option value="created">Créés récemment</option>
-							<option value="name">Nom (A → Z)</option>
+							<option value="updated">{$t('Recently modified')}</option>
+							<option value="created">{$t('Recently created')}</option>
+							<option value="name">{$t('Name (A → Z)')}</option>
 						</select>
 					</label>
 				</div>
@@ -313,9 +315,11 @@
 				data-testid="library-empty"
 			>
 				<IconFolder class="h-8 w-8 text-content-subtle" aria-hidden="true" />
-				<p class="font-medium text-content">Aucun projet pour le moment</p>
+				<p class="font-medium text-content">{$t('No projects yet')}</p>
 				<p>
-					Créez un projet ou ouvrez un fichier .3mf / .stl : il apparaîtra ici avec sa vignette.
+					{$t(
+						'Create a project or open a .3mf / .stl file: it will appear here with its thumbnail.'
+					)}
 				</p>
 			</div>
 		{:else if filtered.length === 0}
@@ -323,9 +327,9 @@
 				class="ws-empty mt-4 rounded-lg border border-dashed border-border"
 				data-testid="library-no-match"
 			>
-				<p>Aucun projet ne correspond à « {query.trim()} ».</p>
+				<p>{$t('No project matches “{query}”.', { query: query.trim() })}</p>
 				<button type="button" class="ws-btn ws-btn-sm ws-btn-secondary" onclick={() => (query = '')}
-					>Effacer la recherche</button
+					>{$t('Clear search')}</button
 				>
 			</div>
 		{:else}
@@ -336,7 +340,7 @@
 						<a
 							href={resolve('/projects/[id]', { id: project.id })}
 							class="block aspect-square overflow-hidden rounded-lg border border-border bg-overlay hover:border-primary"
-							aria-label="Ouvrir {project.name}"
+							aria-label={$t('Open {name}', { name: project.name })}
 						>
 							{#if thumb}
 								<img src={thumb} alt="" class="h-full w-full object-cover" />
@@ -350,7 +354,7 @@
 							<button
 								onclick={() => remove(project.id)}
 								disabled={busy}
-								title="Supprimer {project.name}"
+								title={$t('Delete {name}', { name: project.name })}
 								class="ws-btn ws-btn-sm ws-btn-danger absolute right-2 top-2 w-7 justify-center"
 							>
 								<IconTrash class="h-4 w-4" />
@@ -373,13 +377,14 @@
 								type="button"
 								onclick={() => goto(resolve('/projects/[id]', { id: project.id }))}
 								class="truncate text-left text-sm font-medium text-content hover:underline"
-								title="Ouvrir {project.name}"
+								title={$t('Open {name}', { name: project.name })}
 							>
 								{project.name}
 							</button>
 						{/if}
 						<p class="text-xs text-content-subtle">
-							Modifié <time datetime={project.updated_at} title={formatDate(project.updated_at)}
+							{$t('Modified||project')}
+							<time datetime={project.updated_at} title={formatDate(project.updated_at)}
 								>{relativeTime(project.updated_at, now)}</time
 							>
 						</p>
@@ -391,14 +396,14 @@
 								disabled={busy}
 								class="hover:text-primary hover:underline"
 							>
-								Renommer
+								{$t('Rename')}
 							</button>
 							<button
 								onclick={() => duplicate(project.id)}
 								disabled={busy}
 								class="hover:text-primary hover:underline"
 							>
-								Dupliquer
+								{$t('Duplicate')}
 							</button>
 						</div>
 					</li>
@@ -407,15 +412,18 @@
 			{#if recent.hidden > 0}
 				<div class="mt-4 flex items-center gap-3 text-sm text-content-muted">
 					<span data-testid="library-hidden"
-						>{recent.hidden} projet{recent.hidden > 1 ? 's' : ''} plus ancien{recent.hidden > 1
-							? 's'
-							: ''} masqué{recent.hidden > 1 ? 's' : ''} (préférence « Projets récents affichés »).</span
+						>{$t(
+							recent.hidden > 1
+								? '{n} older projects hidden (“Recent projects shown” preference).'
+								: '{n} older project hidden (“Recent projects shown” preference).',
+							{ n: recent.hidden }
+						)}</span
 					>
 					<button
 						type="button"
 						class="ws-btn ws-btn-sm ws-btn-secondary"
 						data-testid="library-show-all"
-						onclick={() => (showAll = true)}>Tout afficher</button
+						onclick={() => (showAll = true)}>{$t('Show all')}</button
 					>
 				</div>
 			{/if}

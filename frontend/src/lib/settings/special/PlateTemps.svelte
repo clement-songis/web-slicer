@@ -27,9 +27,9 @@
 	<table class="text-sm">
 		<thead>
 			<tr class="text-left text-xs text-content-subtle">
-				<th class="py-1 pr-4 font-medium">Type de plaque</th>
-				<th class="px-2 py-1 font-medium">Autres couches (°C)</th>
-				<th class="px-2 py-1 font-medium">Première couche (°C)</th>
+				<th class="py-1 pr-4 font-medium">{$t('Plate type')}</th>
+				<th class="px-2 py-1 font-medium">{$t('Other layers (°C)')}</th>
+				<th class="px-2 py-1 font-medium">{$t('First layer (°C)')}</th>
 			</tr>
 		</thead>
 		<tbody>

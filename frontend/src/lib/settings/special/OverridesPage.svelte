@@ -4,6 +4,7 @@
 	// l'imprimante/process, valeur `null`) ; cochée = valeur éditable.
 	import { PARAMS } from '../../../generated/params';
 	import OptionLine from '../OptionLine.svelte';
+	import { t } from '$lib/i18n';
 	import { defaultFor, FILAMENT_OVERRIDES, isOverrideActive } from './groups';
 
 	interface Props {
@@ -22,7 +23,7 @@
 	{#each FILAMENT_OVERRIDES as group (group.title)}
 		<section>
 			<h3 class="ws-section-title mb-1">
-				{group.title}
+				{$t(group.title)}
 			</h3>
 			<div class="divide-y divide-border">
 				{#each group.options as key (key)}
@@ -32,7 +33,7 @@
 							type="checkbox"
 							checked={active}
 							onchange={(e) => toggle(key, e.currentTarget.checked)}
-							aria-label="Activer {PARAMS[key].label}"
+							aria-label={$t('Enable {label}', { label: $t(PARAMS[key].label) })}
 							class="h-4 w-4 shrink-0 rounded border-border-strong"
 						/>
 						{#if active}
@@ -41,8 +42,8 @@
 							</div>
 						{:else}
 							<span class="flex-1 text-sm text-content-muted">
-								{PARAMS[key].label}
-								<span class="ml-2 text-xs text-content-subtle italic">N/A</span>
+								{$t(PARAMS[key].label)}
+								<span class="ml-2 text-xs text-content-subtle italic">{$t('N/A||override')}</span>
 							</span>
 						{/if}
 					</div>

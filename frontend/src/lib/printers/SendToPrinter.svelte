@@ -23,6 +23,7 @@
 		sendErrorMessage,
 		sendSuccessMessage
 	} from './send';
+	import { t, tr } from '$lib/i18n';
 
 	interface Props {
 		/** G-code tranché courant ; absent → bouton désactivé. */
@@ -108,7 +109,7 @@
 			})
 			.catch((e) => {
 				if (hostPrintersFor === key)
-					hostPrintersError = sendErrorMessage(e, p?.name) || 'Liste indisponible.';
+					hostPrintersError = sendErrorMessage(e, p?.name) || tr('List unavailable.');
 			});
 	});
 	async function chooseHostPrinter(slug: string) {
@@ -139,7 +140,7 @@
 		if (!selected || savingUrl) return;
 		const url = normalizeMoonrakerUrl(urlDraft);
 		if (!url) {
-			urlError = 'URL invalide : par exemple http://192.168.1.20:7125';
+			urlError = tr('Invalid URL: for example http://192.168.1.20:7125');
 			return;
 		}
 		savingUrl = true;
@@ -212,7 +213,16 @@
 				success =
 					res.files.length === 1
 						? sendSuccessMessage(selected.name, res.files[0], queue)
-						: `${res.files.length} fichiers envoyés à ${selected.name}${queue ? " et mis en file d'attente" : ''} : ${res.files.map((f) => f.path).join(', ')}.`;
+						: tr(
+								queue
+									? '{n} files sent to {printer} and queued: {files}.'
+									: '{n} files sent to {printer}: {files}.',
+								{
+									n: res.files.length,
+									printer: selected.name,
+									files: res.files.map((f) => f.path).join(', ')
+								}
+							);
 			} else if (gcodeId) {
 				const result = await uploadToPrinter(selected.id, {
 					gcode_id: gcodeId,
@@ -230,6 +240,16 @@
 		}
 	}
 
+	// Libellés calculés hors gabarit : relus au changement de langue.
+	function optionLabel(p: PrinterResponse): string {
+		void $t;
+		return printerOptionLabel(p);
+	}
+	function hintFor(p: PrinterResponse): string | null {
+		void $t;
+		return connectionHint(p);
+	}
+
 	function onKeydown(event: KeyboardEvent) {
 		if (event.key === 'Escape' && !sending) open = false;
 	}
@@ -242,11 +262,11 @@
 	class="ws-btn ws-btn-primary inline-flex"
 	data-testid="send-to-printer"
 	disabled={!gcodeId && !canSendAll}
-	title={gcodeId || canSendAll ? "Envoyer le G-code à l'imprimante" : "Tranchez d'abord le plateau"}
+	title={gcodeId || canSendAll ? $t('Send the G-code to the printer') : $t('Slice the plate first')}
 	onclick={openDialog}
 >
 	<IconSend class="h-4 w-4" aria-hidden="true" />
-	Envoyer
+	{$t('Send')}
 </button>
 
 {#if open}
@@ -266,18 +286,18 @@
 			onkeydown={(e) => e.key !== 'Escape' && e.stopPropagation()}
 			use:dialogFocus
 		>
-			<h2 id="send-title" class="ws-dialog-title">Envoyer à l'imprimante</h2>
+			<h2 id="send-title" class="ws-dialog-title">{$t('Send to printer')}</h2>
 
 			{#if canSendAll}
-				<div class="ws-seg flex w-full" role="group" aria-label="Plateaux à envoyer">
+				<div class="ws-seg flex w-full" role="group" aria-label={$t('Plates to send')}>
 					<button
 						type="button"
 						class="ws-seg-item flex-1 {scope === 'plate' ? 'ws-seg-on' : ''}"
 						aria-pressed={scope === 'plate'}
 						data-testid="send-scope-plate"
 						disabled={sending || !gcodeId}
-						title={gcodeId ? undefined : "Tranchez d'abord le plateau actif"}
-						onclick={() => (scope = 'plate')}>Plateau tranché</button
+						title={gcodeId ? undefined : $t('Slice the active plate first')}
+						onclick={() => (scope = 'plate')}>{$t('Sliced plate')}</button
 					>
 					<button
 						type="button"
@@ -285,27 +305,29 @@
 						aria-pressed={scope === 'all'}
 						data-testid="send-scope-all"
 						disabled={sending}
-						onclick={() => (scope = 'all')}>Tous les plateaux ({plateCount})</button
+						onclick={() => (scope = 'all')}>{$t('All plates ({n})', { n: plateCount })}</button
 					>
 				</div>
 				{#if scope === 'all'}
 					<p class="text-xs text-content-subtle">
-						Tous les plateaux sont tranchés puis envoyés : un seul .gcode.3mf si l'imprimante
-						l'accepte, sinon un G-code par plateau (démarrage immédiat impossible dans ce cas).
+						{$t(
+							'All plates are sliced then sent: a single .gcode.3mf if the printer accepts it, otherwise one G-code per plate (immediate start impossible in that case).'
+						)}
 					</p>
 				{/if}
 			{/if}
 
 			{#if loading}
-				<p class="text-sm text-content-muted">Chargement des imprimantes…</p>
+				<p class="text-sm text-content-muted">{$t('Loading printers…')}</p>
 			{:else if targets.length === 0 && !error}
 				<p class="text-sm text-content-muted" data-testid="send-no-printer">
-					Aucune imprimante déclarée.
-					<a class="text-primary underline" href={resolve('/printers')}>Déclarer une imprimante</a>
+					{$t('No printer declared.')}
+					<a class="text-primary underline" href={resolve('/printers')}>{$t('Declare a printer')}</a
+					>
 				</p>
 			{:else if targets.length > 0}
 				<label class="flex flex-col gap-1 text-sm">
-					<span class="text-content-muted">Imprimante</span>
+					<span class="text-content-muted">{$t('Printer')}</span>
 					<select
 						class="ws-field"
 						bind:value={printerId}
@@ -313,23 +335,23 @@
 						disabled={sending}
 					>
 						{#each targets as p (p.id)}
-							<option value={p.id}>{printerOptionLabel(p)}</option>
+							<option value={p.id}>{optionLabel(p)}</option>
 						{/each}
 					</select>
 				</label>
 				{#if selected && !needsUrl}
 					<p class="-mt-2 text-xs text-content-subtle" data-testid="send-host-info">
 						{meta.label} · {hasLiveControls(selected)
-							? 'suivi de l’impression dans l’onglet Appareil'
+							? $t('print monitoring in the Device tab')
 							: meta.id === 'flashair'
-								? 'dépôt du fichier seulement'
-								: 'envoi et lancement, sans suivi en direct'}
+								? $t('file upload only')
+								: $t('upload and start, without live monitoring')}
 					</p>
 				{/if}
 				{#if selected && !needsUrl && meta.printerSlug}
 					<label class="flex flex-col gap-1 text-sm">
 						<span class="text-content-muted"
-							>{meta.id === 'obico' ? 'Imprimante Obico' : 'Imprimante du serveur Repetier'}</span
+							>{meta.id === 'obico' ? $t('Obico printer') : $t('Repetier server printer')}</span
 						>
 						{#if hostPrinters?.length}
 							<select
@@ -339,12 +361,14 @@
 								disabled={sending || savingSlug}
 								onchange={(e) => chooseHostPrinter((e.currentTarget as HTMLSelectElement).value)}
 							>
-								{#if !selected.host_port}<option value="" disabled>Choisir…</option>{/if}
+								{#if !selected.host_port}<option value="" disabled>{$t('Choose…')}</option>{/if}
 								{#each hostPrinters as slug (slug)}
 									<option value={hostPrinterValue(meta.id, slug)}>{slug}</option>
 								{/each}
 								{#if selected.host_port && !hostPrinters.some((s) => hostPrinterValue(meta.id, s) === selected.host_port)}
-									<option value={selected.host_port}>{selected.host_port} (introuvable)</option>
+									<option value={selected.host_port}
+										>{$t('{name} (not found)', { name: selected.host_port })}</option
+									>
 								{/if}
 							</select>
 						{:else if hostPrintersError}
@@ -354,7 +378,7 @@
 								data-testid="send-host-printer-error">{hostPrintersError}</span
 							>
 						{:else}
-							<span class="text-xs text-content-subtle">Recherche des imprimantes…</span>
+							<span class="text-xs text-content-subtle">{$t('Searching for printers…')}</span>
 						{/if}
 					</label>
 				{/if}
@@ -371,7 +395,13 @@
 					>
 						<label class="flex flex-col gap-1">
 							<span class="text-content-muted"
-								>{meta.id === 'moonraker' ? 'URL Moonraker' : `Adresse ${meta.label}`} de {selected?.name}</span
+								>{$t('{field} of {name}', {
+									field:
+										meta.id === 'moonraker'
+											? $t('Moonraker URL')
+											: $t('{host} address', { host: meta.label }),
+									name: selected?.name ?? ''
+								})}</span
 							>
 							<input
 								type="url"
@@ -387,10 +417,11 @@
 						</label>
 						<div class="flex flex-col items-end gap-1">
 							<span class="w-full text-xs text-content-subtle"
-								>Enregistrée dans l'imprimante à l'envoi, réutilisée ensuite. Autre type de
-								connexion (OctoPrint, PrusaLink…) :
+								>{$t(
+									'Saved in the printer when sending, reused afterwards. Other connection type (OctoPrint, PrusaLink…):'
+								)}
 								<a class="underline" href={resolve('/printers')} data-testid="send-host-settings"
-									>page Imprimantes</a
+									>{$t('Printers page')}</a
 								>.</span
 							>
 							<button
@@ -399,12 +430,12 @@
 								disabled={savingUrl || !urlDraft.trim()}
 								data-testid="send-save-url"
 							>
-								{savingUrl ? 'Enregistrement…' : "Enregistrer l'URL"}
+								{savingUrl ? $t('Saving…') : $t('Save URL')}
 							</button>
 						</div>
-						{#if selected && connectionHint(selected)}
+						{#if selected && hintFor(selected)}
 							<p class="text-xs text-warning-text" data-testid="send-connection-hint">
-								{connectionHint(selected)}
+								{hintFor(selected)}
 							</p>
 						{/if}
 						{#if urlError}
@@ -416,13 +447,15 @@
 				{/if}
 				{#if !needsUrl && meta.storages && storages === null && selected?.moonraker_url}
 					<p class="text-xs text-content-subtle" data-testid="send-storage-loading">
-						Lecture des {meta.id === 'repetier' ? 'groupes' : 'stockages'}…
+						{meta.id === 'repetier' ? $t('Reading groups…') : $t('Reading storages…')}
 					</p>
 				{/if}
 				{#if storages && storages.items.length > 0}
 					<label class="flex flex-col gap-1 text-sm">
 						<span class="text-content-muted"
-							>{storages.kind === 'group' ? 'Groupe (Repetier)' : 'Stockage de destination'}</span
+							>{storages.kind === 'group'
+								? $t('Group (Repetier)')
+								: $t('Destination storage')}</span
 						>
 						<select
 							class="ws-field"
@@ -443,7 +476,7 @@
 						data-testid="send-start-now"
 						disabled={sending}
 					/>
-					Démarrer l'impression dès réception
+					{$t('Start printing on receipt')}
 				</label>
 			{/if}
 
@@ -478,7 +511,7 @@
 					disabled={sending}
 					onclick={() => (open = false)}
 				>
-					{success ? 'Fermer' : 'Annuler'}
+					{success ? $t('Close') : $t('Cancel')}
 				</button>
 				{#if meta.queue && selected && !needsUrl}
 					<!-- Orca PrintHostSendDialog « Upload to Queue » : hôtes dont
@@ -487,11 +520,11 @@
 						type="button"
 						class="ws-btn ws-btn-lg ws-btn-secondary"
 						data-testid="send-queue"
-						title="Téléverser puis ajouter à la file d'impression de l'imprimante (sans démarrer)"
+						title={$t('Upload then add to the printer print queue (without starting)')}
 						disabled={(scope === 'plate' && !gcodeId) || sending || loading}
 						onclick={() => send(true)}
 					>
-						{sending && lastQueued ? 'Envoi…' : 'Envoyer et mettre en file'}
+						{sending && lastQueued ? $t('Sending…') : $t('Send and queue')}
 					</button>
 				{/if}
 				<button
@@ -508,7 +541,7 @@
 						loading}
 					onclick={() => send()}
 				>
-					{sending && !lastQueued ? 'Envoi…' : success ? 'Renvoyer' : 'Envoyer'}
+					{sending && !lastQueued ? $t('Sending…') : success ? $t('Send again') : $t('Send')}
 				</button>
 			</div>
 		</div>

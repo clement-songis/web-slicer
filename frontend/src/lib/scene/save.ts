@@ -5,6 +5,7 @@
 import { ApiError } from '../api/client';
 import { saveProject } from '../api/projects';
 import type { SceneDocument } from './document';
+import { tr } from '$lib/i18n';
 
 /** Résultat d'une tentative de sauvegarde. */
 export type SaveOutcome =
@@ -35,7 +36,7 @@ export async function saveScene(
 		if (classifySaveError(e) === 'conflict') return { status: 'conflict' };
 		return {
 			status: 'error',
-			message: e instanceof ApiError ? e.message : 'échec de la sauvegarde'
+			message: e instanceof ApiError ? e.message : tr('save failed||project')
 		};
 	}
 }

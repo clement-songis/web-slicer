@@ -2,6 +2,7 @@
 // PA_Calibration_Dlg d'OrcaSlicer) : paramètres et validation des dialogues.
 // Le projet est construit par le serveur (POST /api/projects/{id}/calibration,
 // portage des Plater::calib_* ; cf. server.ts).
+import { tr } from '$lib/i18n';
 
 export type CalibrationKind = 'temperature' | 'pressure_advance';
 
@@ -36,14 +37,15 @@ export function pressureAdvanceTowerHeight(p: PressureAdvanceParams): number {
 
 export function validateTemperature(p: TemperatureParams): string | null {
 	if (!(p.start >= 170 && p.start <= 350 && p.end >= 170 && p.end <= 350))
-		return 'Températures hors plage (170–350 °C).';
-	if (p.start <= p.end) return 'La température de départ doit être supérieure à celle de fin.';
+		return tr('Temperatures out of range (170–350 °C).');
+	if (p.start <= p.end) return tr('The start temperature must be higher than the end temperature.');
 	return null;
 }
 
 export function validatePressureAdvance(p: PressureAdvanceParams): string | null {
-	if (!(p.step > 0)) return 'Le pas doit être positif.';
-	if (!(p.end > p.start)) return 'Le PA de fin doit être supérieur au PA de départ.';
-	if (pressureAdvanceTowerHeight(p) > 300) return 'Tour trop haute (> 300 mm) : augmentez le pas.';
+	if (!(p.step > 0)) return tr('The step must be positive.');
+	if (!(p.end > p.start)) return tr('The end PA must be greater than the start PA.');
+	if (pressureAdvanceTowerHeight(p) > 300)
+		return tr('Tower too tall (> 300 mm): increase the step.');
 	return null;
 }

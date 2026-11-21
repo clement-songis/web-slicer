@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import { embossEditLabel, paramsFromEmboss } from './emboss';
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 import { deserializeObject, serializeObject } from '../document';
 import { TrianglePainting } from './painting/painting';
 import { BrimEars } from './brim-ears';

@@ -10,7 +10,7 @@ test('Calibration › Température : tour tranchée, M104 S230…S190 par palier
 	const sourceId = await bootstrap(page);
 
 	await page.getByRole('button', { name: 'Calibration', exact: true }).click();
-	await page.getByRole('menuitem', { name: 'Temperature' }).click();
+	await page.getByRole('menuitem', { name: 'Température' }).click();
 	const dialog = page.getByTestId('calib-dialog');
 	await expect(dialog).toBeVisible();
 	await dialog.getByTestId('calib-start').fill('230');

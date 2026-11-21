@@ -2,6 +2,7 @@
 // charge par le serveur (lot 17), champs utiles à chacun, corps de requête.
 // Pur → testable.
 import type { PrinterResponse, SavePrinterRequest } from '$lib/api/types';
+import { tr } from '$lib/i18n';
 
 export type HostType =
 	| 'moonraker'
@@ -25,7 +26,7 @@ export interface HostMeta {
 	label: string;
 	/** Exemple d'adresse. */
 	placeholder: string;
-	/** Libellé du champ secret (printhost_apikey), null = sans secret. */
+	/** Libellé du champ secret (printhost_apikey, clé anglaise à traduire au rendu), null = sans secret. */
 	secret: string | null;
 	/** Choix clé API / utilisateur + mot de passe (PrusaLink, PrusaConnect). */
 	authChoice: boolean;
@@ -40,7 +41,7 @@ export interface HostMeta {
 	/** « Envoyer et mettre en file » (Orca PrintHostPostUploadAction::QueuePrint,
 	 *  get_post_upload_actions) : PrusaConnect seulement. */
 	queue?: boolean;
-	/** Où trouver l'adresse et les identifiants (aide sous le formulaire). */
+	/** Où trouver l'adresse et les identifiants (aide sous le formulaire ; clé anglaise, traduite au rendu). */
 	help: string;
 }
 
@@ -49,74 +50,74 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		id: 'moonraker',
 		label: 'Moonraker (Klipper)',
 		placeholder: 'http://klipper.local:7125',
-		secret: 'Clé API (facultatif)',
+		secret: 'API key (optional)',
 		authChoice: false,
 		printerSlug: false,
 		storages: false,
-		help: "Adresse de Moonraker (port 7125 par défaut). Clé API seulement si l'autorisation est activée dans moonraker.conf."
+		help: 'Moonraker address (port 7125 by default). API key only if authorization is enabled in moonraker.conf.'
 	},
 	{
 		id: 'octoprint',
 		label: 'OctoPrint',
 		placeholder: 'http://octopi.local',
-		secret: 'Clé API',
+		secret: 'API key',
 		authChoice: false,
 		printerSlug: false,
 		storages: false,
-		help: "Clé API : OctoPrint → Paramètres → API (clé globale ou clé d'application)."
+		help: 'API key: OctoPrint → Settings → API (global key or application key).'
 	},
 	{
 		id: 'prusalink',
 		label: 'PrusaLink',
 		placeholder: 'http://192.168.1.30',
-		secret: 'Clé API',
+		secret: 'API key',
 		authChoice: true,
 		printerSlug: false,
 		storages: true,
-		help: "Sur l'imprimante : Réglages → Réseau → PrusaLink. Utilisateur « maker » et mot de passe affiché, ou clé API (anciens firmwares)."
+		help: 'On the printer: Settings → Network → PrusaLink. User “maker” and the displayed password, or API key (older firmware).'
 	},
 	{
 		id: 'prusaconnect',
 		label: 'PrusaConnect',
 		placeholder: 'https://connect.prusa3d.com',
-		secret: 'Clé API',
+		secret: 'API key',
 		authChoice: true,
 		printerSlug: false,
 		// Orca PrusaConnect::get_storage → false : pas de choix du stockage.
 		storages: false,
 		// PrusaConnect::get_post_upload_actions : StartPrint | QueuePrint (to_queue).
 		queue: true,
-		help: "Clé API de l'imprimante, dans Prusa Connect → Imprimante → Réglages."
+		help: 'Printer API key, in Prusa Connect → Printer → Settings.'
 	},
 	{
 		id: 'duet',
 		label: 'Duet (RepRapFirmware)',
 		placeholder: 'http://duet.local',
-		secret: 'Mot de passe (facultatif)',
+		secret: 'Password (optional)',
 		authChoice: false,
 		printerSlug: false,
 		storages: false,
-		help: "Mot de passe défini par M551 (laisser vide s'il n'y en a pas). RepRapFirmware autonome ou DSF."
+		help: 'Password set by M551 (leave empty if there is none). Standalone RepRapFirmware or DSF.'
 	},
 	{
 		id: 'repetier',
 		label: 'Repetier-Server',
 		placeholder: 'http://repetier.local:3344',
-		secret: 'Clé API',
+		secret: 'API key',
 		authChoice: false,
 		printerSlug: true,
 		storages: true,
-		help: "Clé API : Repetier-Server → Paramètres globaux → Connectivité. Choisissez ensuite l'imprimante du serveur."
+		help: 'API key: Repetier-Server → Global settings → Connectivity. Then choose the server printer.'
 	},
 	{
 		id: 'astrobox',
 		label: 'AstroBox',
 		placeholder: 'http://astrobox.local',
-		secret: 'Clé API',
+		secret: 'API key',
 		authChoice: false,
 		printerSlug: false,
 		storages: false,
-		help: 'Clé API : AstroBox → Paramètres → Avancé.'
+		help: 'API key: AstroBox → Settings → Advanced.'
 	},
 	{
 		id: 'mks',
@@ -126,7 +127,7 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		authChoice: false,
 		printerSlug: false,
 		storages: false,
-		help: 'Module WiFi MKS : adresse IP seule ; le lancement passe par la console TCP (port 8080).'
+		help: 'MKS WiFi module: IP address only; printing is started through the TCP console (port 8080).'
 	},
 	{
 		id: 'flashair',
@@ -136,7 +137,7 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		authChoice: false,
 		printerSlug: false,
 		storages: false,
-		help: 'Carte FlashAir configurée avec UPLOAD=1 ; dépôt du fichier seulement, sans lancement.'
+		help: 'FlashAir card configured with UPLOAD=1; file upload only, without starting the print.'
 	},
 	{
 		id: 'esp3d',
@@ -146,49 +147,52 @@ export const HOST_TYPES: readonly HostMeta[] = [
 		authChoice: false,
 		printerSlug: false,
 		storages: false,
-		help: 'Carte ESP3D : adresse IP seule ; les noms de fichiers sont raccourcis au format 8.3.'
+		help: 'ESP3D board: IP address only; file names are shortened to the 8.3 format.'
 	},
 	{
 		id: 'obico',
 		label: 'Obico',
 		placeholder: 'https://app.obico.io',
-		secret: 'Clé API',
+		secret: 'API key',
 		authChoice: false,
 		printerSlug: true,
-		slugLabel: "ID d'imprimante",
+		// Évalué à la lecture (langue courante).
+		get slugLabel() {
+			return tr('Printer ID');
+		},
 		storages: false,
-		help: "Adresse du serveur Obico (cloud ou auto-hébergé) et jeton d'API du compte (Obico → Préférences → API). Puis « Lister » pour choisir l'imprimante : son ID est enregistré."
+		help: 'Obico server address (cloud or self-hosted) and the account API token (Obico → Preferences → API). Then “List” to choose the printer: its ID is saved.'
 	},
 	{
 		id: 'crealityprint',
 		label: 'Creality Print (K2, Sparkx)',
 		placeholder: 'http://192.168.1.60',
-		secret: 'Clé API (facultatif)',
+		secret: 'API key (optional)',
 		authChoice: false,
 		printerSlug: false,
 		storages: false,
-		help: "Imprimantes Creality K2 / K2 Plus / K2 Pro / Sparkx i7 : adresse IP affichée sur l'écran (Réglages → Réseau). Le lancement passe par le port 9999 de l'imprimante."
+		help: 'Creality K2 / K2 Plus / K2 Pro / Sparkx i7 printers: IP address shown on the screen (Settings → Network). Printing is started through port 9999 of the printer.'
 	},
 	{
 		id: 'flashforge',
 		label: 'Flashforge',
 		placeholder: '192.168.1.70',
-		secret: "Code d'accès",
+		secret: 'Access code',
 		authChoice: false,
 		printerSlug: false,
 		serialNumber: true,
 		storages: false,
-		help: "Adresse IP de l'imprimante. Numéro de série et code d'accès : écran de l'imprimante → Réglages → Réseau (mode « LAN uniquement »). Sans eux, l'envoi passe par l'ancienne console (port 8899)."
+		help: 'Printer IP address. Serial number and access code: printer screen → Settings → Network (“LAN only” mode). Without them, sending goes through the legacy console (port 8899).'
 	},
 	{
 		id: 'elegoolink',
 		label: 'ElegooLink',
 		placeholder: 'http://192.168.1.80',
-		secret: "Code d'accès (facultatif)",
+		secret: 'Access code (optional)',
 		authChoice: false,
 		printerSlug: false,
 		storages: false,
-		help: "Adresse IP affichée sur l'écran de l'imprimante. Le protocole suit le modèle du profil machine : Centauri Carbon (envoi + lancement), Centauri Carbon 2 (code d'accès, 123456 par défaut ; envoi seul), autres modèles via OctoPrint."
+		help: 'IP address shown on the printer screen. The protocol follows the machine profile model: Centauri Carbon (upload + start), Centauri Carbon 2 (access code, 123456 by default; upload only), other models via OctoPrint.'
 	}
 ];
 
@@ -281,7 +285,7 @@ export function profileHost(values: Record<string, unknown> | null | undefined):
 
 /** Placeholder d'un champ laissé vide : valeur du profil machine, s'il en a une. */
 export function profilePlaceholder(value: string | undefined | null, fallback = ''): string {
-	return value ? `depuis le profil machine : ${value}` : fallback;
+	return value ? tr('from the machine profile: {value}', { value }) : fallback;
 }
 
 /** Protocole ElegooLink selon printer_model (Orca classify_printer_model). */
@@ -291,10 +295,11 @@ export function elegooProtocol(model: string | undefined | null): ElegooProtocol
 	if (!m.startsWith('Elegoo Centauri')) return 'octoprint';
 	return m.trimEnd().endsWith('2') ? 'cc2' : 'cc';
 }
+/** Clés anglaises, traduites au rendu. */
 export const ELEGOO_PROTOCOL_LABELS: Record<ElegooProtocol, string> = {
-	cc: 'Centauri Carbon : envoi par morceaux et lancement (SDCP, port 3030)',
-	cc2: 'Centauri Carbon 2 : envoi avec code d’accès, sans lancement automatique',
-	octoprint: 'protocole OctoPrint (clé API facultative)'
+	cc: 'Centauri Carbon: chunked upload and start (SDCP, port 3030)',
+	cc2: 'Centauri Carbon 2: upload with access code, without automatic start',
+	octoprint: 'OctoPrint protocol (optional API key)'
 };
 
 /** Erreur de saisie bloquante (null = valide). */
@@ -304,15 +309,16 @@ export function hostFormError(f: HostForm, profile: ProfileHost = {}): string | 
 		try {
 			new URL(url);
 		} catch {
-			return 'Adresse invalide.';
+			return tr('Invalid address.');
 		}
 	}
 	const meta = hostMeta(f.type);
-	if (f.type !== 'moonraker' && !url) return `Adresse de l'hôte ${meta.label} requise.`;
+	if (f.type !== 'moonraker' && !url)
+		return tr('{host} host address required.', { host: meta.label });
 	if (meta.authChoice && f.auth === 'user' && !f.user.trim() && !profile.user)
-		return 'Utilisateur requis (absent du profil machine).';
+		return tr('User required (missing from the machine profile).');
 	if (meta.serialNumber && f.apiKey.trim() && !f.serial.trim() && !profile.serial)
-		return "Numéro de série requis avec le code d'accès.";
+		return tr('Serial number required with the access code.');
 	return null;
 }
 
@@ -365,15 +371,18 @@ export function testMessage(
 	const meta = hostMeta(type);
 	if (meta.id === 'moonraker')
 		return r.connected
-			? `Connecté (Klipper ${r.klippy_state}, Moonraker ${r.moonraker_version})`
-			: `Injoignable (${r.klippy_state})`;
-	if (!r.connected) return `${meta.label} injoignable`;
+			? tr('Connected (Klipper {state}, Moonraker {version})', {
+					state: r.klippy_state,
+					version: r.moonraker_version
+				})
+			: tr('Unreachable ({state})', { state: r.klippy_state });
+	if (!r.connected) return tr('{host} unreachable', { host: meta.label });
 	const name = r.klippy_state || meta.label;
 	const version = r.moonraker_version?.trim() ?? '';
 	// « OctoPrint 1.10.2 » / « PrusaLink 2.1.2 » : la version porte déjà le nom.
 	if (version && version.toLowerCase().startsWith(name.split(' ')[0].toLowerCase()))
-		return `Connecté à ${version}`;
-	return `Connecté à ${name}${version ? ` ${version}` : ''}`;
+		return tr('Connected to {host}', { host: version });
+	return tr('Connected to {host}', { host: `${name}${version ? ` ${version}` : ''}` });
 }
 
 /** Résultat de test affichable : succès ou échec, avec la cause. */
@@ -393,15 +402,18 @@ export function testOutcome(
 export function testFailure(type: string, cause: string | null | undefined): TestOutcome {
 	const label = hostMeta(type).label;
 	const why = (cause ?? '').trim();
-	if (!why) return { ok: false, message: `Échec de connexion à ${label}` };
+	if (!why) return { ok: false, message: tr('Failed to connect to {host}', { host: label }) };
 	// 401/403 : identifiants refusés, dit en clair (la réponse brute suit).
 	const denied = /HTTP (401|403)\b/.exec(why);
 	if (denied)
 		return {
 			ok: false,
-			message: `Échec — identifiants refusés par ${label} (HTTP ${denied[1]}). Vérifiez la clé ou le mot de passe.`
+			message: tr(
+				'Failed — credentials rejected by {host} (HTTP {code}). Check the key or the password.',
+				{ host: label, code: denied[1] }
+			)
 		};
-	return { ok: false, message: `Échec — ${why}` };
+	return { ok: false, message: tr('Failed — {reason}', { reason: why }) };
 }
 
 /** Ce que permet un hôte (affiché sous le choix du type, comme une fiche). */
@@ -417,21 +429,22 @@ export function hostCapabilities(type: string, model?: string | null): HostCapab
 	const noStart =
 		meta.id === 'flashair' || (meta.id === 'elegoolink' && elegooProtocol(model) === 'cc2');
 	return [
-		{ id: 'upload', label: 'Envoi du G-code', ok: true },
-		{ id: 'start', label: "Lancement de l'impression", ok: !noStart },
+		{ id: 'upload', label: tr('G-code upload'), ok: true },
+		{ id: 'start', label: tr('Print start'), ok: !noStart },
 		{
 			id: 'storage',
-			label: meta.id === 'repetier' ? 'Choix du groupe' : 'Choix du stockage',
+			label: meta.id === 'repetier' ? tr('Group selection') : tr('Storage selection'),
 			ok: meta.storages
 		},
-		{ id: 'live', label: 'Suivi en direct, pause, fichiers', ok: meta.id === 'moonraker' }
+		{ id: 'live', label: tr('Live monitoring, pause, files'), ok: meta.id === 'moonraker' }
 	];
 }
 
-/** Types d'hôte regroupés pour le sélecteur (contrôle complet / envoi seul). */
+/** Types d'hôte regroupés pour le sélecteur (contrôle complet / envoi seul ; libellés
+ *  = clés anglaises traduites au rendu). */
 export const HOST_GROUPS: readonly { label: string; hosts: readonly HostMeta[] }[] = [
-	{ label: 'Suivi et contrôle complets', hosts: HOST_TYPES.filter((h) => h.id === 'moonraker') },
-	{ label: 'Envoi et lancement', hosts: HOST_TYPES.filter((h) => h.id !== 'moonraker') }
+	{ label: 'Full monitoring and control', hosts: HOST_TYPES.filter((h) => h.id === 'moonraker') },
+	{ label: 'Upload and start', hosts: HOST_TYPES.filter((h) => h.id !== 'moonraker') }
 ];
 
 /** Résumé des identifiants enregistrés (jamais le secret lui-même). */
@@ -457,20 +470,19 @@ export function credentialSummary(
 	const meta = hostMeta(p.host_type);
 	const chips: CredentialChip[] = [];
 	if (meta.authChoice && p.host_auth === 'user') {
-		chips.push({ text: `Utilisateur « ${p.host_user ?? ''} »`, missing: !p.host_user });
+		chips.push({ text: tr('User “{user}”', { user: p.host_user ?? '' }), missing: !p.host_user });
 		chips.push(
 			p.has_host_password
-				? { text: 'Mot de passe enregistré' }
-				: { text: 'Sans mot de passe', missing: true }
+				? { text: tr('Password saved') }
+				: { text: tr('No password'), missing: true }
 		);
 	} else if (meta.secret) {
-		const optional = /facultatif/i.test(meta.secret);
+		const optional = /optional/i.test(meta.secret);
 		const noun =
-			meta.id === 'duet' ? 'Mot de passe' : meta.id === 'flashforge' ? "Code d'accès" : 'Clé API';
-		const fem = noun === 'Clé API';
-		if (p.has_api_key) chips.push({ text: `${noun} enregistré${fem ? 'e' : ''}` });
-		else if (meta.id === 'flashforge') chips.push({ text: 'Sans code : console 8899' });
-		else if (!optional) chips.push({ text: `${noun} manquant${fem ? 'e' : ''}`, missing: true });
+			meta.id === 'duet' ? 'Password' : meta.id === 'flashforge' ? 'Access code' : 'API key';
+		if (p.has_api_key) chips.push({ text: tr(`${noun} saved`) });
+		else if (meta.id === 'flashforge') chips.push({ text: tr('No code: console 8899') });
+		else if (!optional) chips.push({ text: tr(`${noun} missing`), missing: true });
 	}
 	if (meta.printerSlug)
 		chips.push(
@@ -478,10 +490,10 @@ export function credentialSummary(
 				? {
 						text:
 							meta.id === 'obico'
-								? `ID d'imprimante « ${p.host_port} »`
-								: `Imprimante « ${p.host_port} »`
+								? tr('Printer ID “{id}”', { id: p.host_port })
+								: tr('Printer “{id}”', { id: p.host_port })
 					}
-				: { text: 'Imprimante du serveur à choisir', missing: true }
+				: { text: tr('Server printer to choose'), missing: true }
 		);
 	return chips;
 }
@@ -509,17 +521,24 @@ export function discoveryTimeoutMs(service: string): number {
 export function discoveryHints(service: string): { waiting: string; none: string } {
 	if (service === 'creality')
 		return {
-			waiting: 'Recherche des imprimantes Creality (série K) sur le réseau local (environ 5 s)…',
-			none: "Aucune imprimante Creality trouvée. L'imprimante doit être sur le même réseau local que le serveur web-slicer, sans isolation des clients Wi-Fi."
+			waiting: tr('Searching for Creality printers (K series) on the local network (about 5 s)…'),
+			none: tr(
+				'No Creality printer found. The printer must be on the same local network as the web-slicer server, without Wi-Fi client isolation.'
+			)
 		};
 	if (service === 'flashforge')
 		return {
-			waiting:
-				'Recherche des imprimantes Flashforge sur le réseau local (jusqu’à 30 s si aucune ne répond)…',
-			none: "Aucune imprimante Flashforge trouvée. L'imprimante doit être sur le même réseau local que le serveur web-slicer (diffusion UDP)."
+			waiting: tr(
+				'Searching for Flashforge printers on the local network (up to 30 s if none responds)…'
+			),
+			none: tr(
+				'No Flashforge printer found. The printer must be on the same local network as the web-slicer server (UDP broadcast).'
+			)
 		};
 	return {
-		waiting: 'Recherche des serveurs annoncés sur le réseau local (quelques secondes)…',
-		none: 'Aucun serveur trouvé. La recherche part du serveur web-slicer : l’imprimante doit être sur le même réseau local que lui et annoncer son service (mDNS).'
+		waiting: tr('Searching for servers announced on the local network (a few seconds)…'),
+		none: tr(
+			'No server found. The search starts from the web-slicer server: the printer must be on the same local network and announce its service (mDNS).'
+		)
 	};
 }

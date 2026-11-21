@@ -4,6 +4,8 @@
 	// d'un clic sur la face de coupe (vue 3D ou carte de section ci-dessous),
 	// queue d'aronde, options après la coupe. État partagé : CutSession.
 	import type { CutSession } from './cut-session.svelte';
+	import { untrack } from 'svelte';
+	import { t } from '$lib/i18n';
 	import type { CutConnectorShape } from '../../../generated/api/CutConnectorShape';
 	import type { CutConnectorType } from '../../../generated/api/CutConnectorType';
 
@@ -14,6 +16,15 @@
 		busy?: boolean;
 	}
 	let { session: s, oncut, oncancel, busy = false }: Props = $props();
+
+	// Audit 40 B2 : chaque changement de l'outil (plan, connecteurs, réglages)
+	// alimente l'historique propre à l'outil ; Ctrl+Z / Ctrl+Y, outil ouvert,
+	// n'annulent que ces étapes (Orca SnapshotType::GizmoAction). Oublié à la fermeture.
+	$effect(() => {
+		const key = s.historyKey();
+		untrack(() => s.noteChange(key));
+	});
+	$effect(() => () => s.clearHistory());
 
 	const round = (v: number) => Math.round(v * 100) / 100;
 	const lo = $derived(round(Math.min(s.worldOf(s.range[0]), s.worldOf(s.range[1]))));
@@ -34,14 +45,14 @@
 	const num = (e: Event) => Number((e.currentTarget as HTMLInputElement).value.replace(',', '.'));
 
 	const TYPES: { id: CutConnectorType; label: string; tip: string }[] = [
-		{ id: 'plug', label: 'Tenon', tip: 'Tenon imprimé sur une moitié, trou dans l’autre' },
-		{ id: 'dowel', label: 'Goujon', tip: 'Trou dans les deux moitiés + goujon imprimé à part' },
-		{ id: 'snap', label: 'Clip', tip: 'Clip fendu qui s’emboîte' }
+		{ id: 'plug', label: 'Plug', tip: 'Plug printed on one half, hole in the other' },
+		{ id: 'dowel', label: 'Dowel', tip: 'Hole in both halves + separately printed dowel' },
+		{ id: 'snap', label: 'Snap', tip: 'Split clip that snaps in' }
 	];
 	const SHAPES: { id: CutConnectorShape; label: string }[] = [
-		{ id: 'circle', label: 'Cercle' },
-		{ id: 'square', label: 'Carré' },
-		{ id: 'hexagon', label: 'Hexagone' },
+		{ id: 'circle', label: 'Circle' },
+		{ id: 'square', label: 'Square' },
+		{ id: 'hexagon', label: 'Hexagon' },
 		{ id: 'triangle', label: 'Triangle' }
 	];
 
@@ -107,14 +118,14 @@
 </script>
 
 <div class="flex max-w-72 flex-col gap-2 text-sm" data-testid="cut-tool">
-	<div class="ws-segmented flex gap-1" role="radiogroup" aria-label="Mode de coupe">
+	<div class="ws-segmented flex gap-1" role="radiogroup" aria-label={$t('Cut mode')}>
 		<button
 			type="button"
 			role="radio"
 			aria-checked={s.mode === 'planar'}
 			data-testid="cut-mode-planar"
 			class="ws-chip {s.mode === 'planar' ? 'ws-chip-on' : ''}"
-			onclick={() => s.setMode('planar')}>Plane</button
+			onclick={() => s.setMode('planar')}>{$t('Planar||cut')}</button
 		>
 		<button
 			type="button"
@@ -124,14 +135,14 @@
 			class="ws-chip {s.mode === 'groove' ? 'ws-chip-on' : ''}"
 			disabled={s.connectors.length > 0}
 			title={s.connectors.length > 0
-				? 'Retirez les connecteurs pour passer en queue d’aronde (Orca)'
-				: 'Queue d’aronde : les deux moitiés s’emboîtent'}
-			onclick={() => s.setMode('groove')}>Queue d’aronde</button
+				? $t('Remove the connectors to switch to dovetail (Orca)')
+				: $t('Dovetail: the two halves interlock')}
+			onclick={() => s.setMode('groove')}>{$t('Dovetail')}</button
 		>
 	</div>
 
-	<div class="flex items-center gap-2" role="radiogroup" aria-label="Axe de coupe">
-		<span class="text-content-muted">Axe</span>
+	<div class="flex items-center gap-2" role="radiogroup" aria-label={$t('Cut axis')}>
+		<span class="text-content-muted">{$t('Axis')}</span>
 		{#each ['x', 'y', 'z'] as const as a (a)}
 			<button
 				type="button"
@@ -142,26 +153,29 @@
 				onclick={() => s.setAxis(a)}>{a.toUpperCase()}</button
 			>
 		{/each}
-		{#if !s.axis}<span class="text-xs text-primary" data-testid="cut-tilted">incliné</span>{/if}
+		{#if !s.axis}<span class="text-xs text-primary" data-testid="cut-tilted">{$t('tilted')}</span
+			>{/if}
 		<span class="flex-1"></span>
 		<button
 			type="button"
 			class="ws-btn ws-btn-sm ws-btn-ghost"
 			data-testid="cut-flip-plane"
-			title="Retourner le plan de coupe (échange haut et bas)"
+			title={$t('Flip cut plane (swap top and bottom)')}
 			onclick={() => s.flipPlane()}>⇅</button
 		>
 		<button
 			type="button"
 			class="ws-btn ws-btn-sm ws-btn-ghost"
 			data-testid="cut-reset"
-			title="Réinitialiser le plan de coupe et retirer les connecteurs"
+			title={$t('Reset the cut plane and remove the connectors')}
 			onclick={() => s.reset()}>↺</button
 		>
 	</div>
 
 	<label class="flex items-center gap-2">
-		<span class="w-20 text-content-muted">{s.displayAxis === 2 ? 'Hauteur' : 'Position'}</span>
+		<span class="w-20 text-content-muted"
+			>{s.displayAxis === 2 ? $t('Height') : $t('Position||cut')}</span
+		>
 		<input
 			type="range"
 			data-testid="cut-offset"
@@ -172,8 +186,8 @@
 			oninput={(e) => setWorld(num(e))}
 			class="flex-1"
 			aria-label={s.displayAxis === 2
-				? 'Hauteur de coupe (mm)'
-				: 'Position de coupe en ' + axisName + ' (mm)'}
+				? $t('Cut height (mm)')
+				: $t('Cut position along {axis} (mm)', { axis: axisName })}
 		/>
 		<input
 			type="number"
@@ -186,18 +200,22 @@
 			onchange={(e) => setWorld(num(e))}
 			class="ws-field ws-field-sm w-20 text-right"
 			aria-label={s.displayAxis === 2
-				? 'Hauteur de coupe (mm)'
-				: 'Position de coupe en ' + axisName + ' (mm)'}
+				? $t('Cut height (mm)')
+				: $t('Cut position along {axis} (mm)', { axis: axisName })}
 		/>
 		<span class="text-content-subtle">mm</span>
 	</label>
 	<p class="text-xs text-content-subtle" data-testid="cut-range">
-		{s.displayAxis === 2 ? 'Depuis le plateau' : 'Coordonnée du plateau'} (centre du plan, {axisName})
-		: {lo} – {hi} mm
+		{$t(
+			s.displayAxis === 2
+				? 'From the bed (plane center, {axis}): {lo} – {hi} mm'
+				: 'Bed coordinate (plane center, {axis}): {lo} – {hi} mm',
+			{ axis: axisName, lo, hi }
+		)}
 	</p>
 
 	<fieldset class="flex flex-col gap-1">
-		<legend class="text-content-muted">Inclinaison du plan</legend>
+		<legend class="text-content-muted">{$t('Plane tilt')}</legend>
 		<div class="flex items-center gap-1">
 			{#each ['X', 'Y', 'Z'] as a, i (a)}
 				<label class="flex items-center gap-0.5 text-xs">
@@ -209,20 +227,20 @@
 						value={s.rotation[i]}
 						onchange={(e) => setRot(i, num(e))}
 						class="ws-field ws-field-sm w-16 text-right"
-						aria-label={'Rotation du plan autour de ' + a + ' (°)'}
+						aria-label={$t('Plane rotation around {axis} (°)', { axis: a })}
 					/>°
 				</label>
 			{/each}
 		</div>
 		<p class="text-xs text-content-subtle">
-			Ou faites tourner les anneaux autour du plan dans la vue 3D.
+			{$t('Or rotate the rings around the plane in the 3D view.')}
 		</p>
 	</fieldset>
 
 	{#if s.mode === 'planar'}
-		<section class="flex flex-col gap-1 border-t border-border pt-2" aria-label="Connecteurs">
+		<section class="flex flex-col gap-1 border-t border-border pt-2" aria-label={$t('Connectors')}>
 			<div class="flex items-center gap-2">
-				<span class="font-medium">Connecteurs</span>
+				<span class="font-medium">{$t('Connectors')}</span>
 				<span class="text-xs text-content-subtle" data-testid="cut-connector-count"
 					>{s.connectors.length}</span
 				>
@@ -234,20 +252,22 @@
 					disabled={!canConnect}
 					aria-pressed={s.editingConnectors}
 					title={canConnect
-						? 'Cliquez ensuite sur la face de coupe pour poser un connecteur'
-						: 'Indisponible avec « Couper en pièces » (Orca)'}
+						? $t('Then click the cut face to place a connector')
+						: $t('Unavailable with “Cut to parts” (Orca)')}
 					onclick={() => (s.editingConnectors = !s.editingConnectors)}
 					>{s.editingConnectors
-						? 'Terminer'
+						? $t('Finish')
 						: s.connectors.length
-							? 'Modifier les connecteurs'
-							: 'Ajouter des connecteurs'}</button
+							? $t('Edit connectors')
+							: $t('Add connectors')}</button
 				>
 			</div>
 			<p class="text-xs text-content-subtle" data-testid="cut-connectors-note">
 				{s.editingConnectors
-					? 'Cliquez sur la face de coupe (ci-dessous ou dans la vue 3D) pour poser un connecteur ; glissez-le pour le déplacer, Suppr pour le retirer.'
-					: 'Tenons, goujons ou clips pour réassembler les deux moitiés.'}
+					? $t(
+							'Click the cut face (below or in the 3D view) to place a connector; drag it to move it, Delete to remove it.'
+						)
+					: $t('Plugs, dowels or snaps to reassemble the two halves.')}
 			</p>
 			{#if s.editingConnectors}
 				<!-- svelte-ignore a11y_no_noninteractive_tabindex -->
@@ -257,7 +277,7 @@
 					class="h-40 w-full cursor-crosshair rounded border border-border bg-surface-sunken"
 					data-testid="cut-section-map"
 					role="application"
-					aria-label="Face de coupe : cliquez pour poser un connecteur"
+					aria-label={$t('Cut face: click to place a connector')}
 					tabindex="0"
 					onpointerdown={onMapDown}
 					onpointermove={onMapMove}
@@ -290,22 +310,22 @@
 						{/if}
 					{/each}
 				</svg>
-				<div class="flex items-center gap-1" role="radiogroup" aria-label="Type de connecteur">
-					<span class="w-16 text-xs text-content-muted">Type</span>
-					{#each TYPES as t (t.id)}
+				<div class="flex items-center gap-1" role="radiogroup" aria-label={$t('Connector type')}>
+					<span class="w-16 text-xs text-content-muted">{$t('Type')}</span>
+					{#each TYPES as ty (ty.id)}
 						<button
 							type="button"
 							role="radio"
-							aria-checked={s.params.type === t.id}
-							title={t.tip}
-							data-testid={'cut-type-' + t.id}
-							class="ws-chip {s.params.type === t.id ? 'ws-chip-on' : ''}"
-							onclick={() => s.setParams({ type: t.id })}>{t.label}</button
+							aria-checked={s.params.type === ty.id}
+							title={$t(ty.tip)}
+							data-testid={'cut-type-' + ty.id}
+							class="ws-chip {s.params.type === ty.id ? 'ws-chip-on' : ''}"
+							onclick={() => s.setParams({ type: ty.id })}>{$t(ty.label)}</button
 						>
 					{/each}
 				</div>
-				<div class="flex items-center gap-1" role="radiogroup" aria-label="Forme du connecteur">
-					<span class="w-16 text-xs text-content-muted">Forme</span>
+				<div class="flex items-center gap-1" role="radiogroup" aria-label={$t('Connector shape')}>
+					<span class="w-16 text-xs text-content-muted">{$t('Shape')}</span>
 					{#each SHAPES as sh (sh.id)}
 						<button
 							type="button"
@@ -314,12 +334,12 @@
 							disabled={s.params.type === 'snap'}
 							data-testid={'cut-shape-' + sh.id}
 							class="ws-chip ws-chip-sm {s.params.shape === sh.id ? 'ws-chip-on' : ''}"
-							onclick={() => s.setParams({ shape: sh.id })}>{sh.label}</button
+							onclick={() => s.setParams({ shape: sh.id })}>{$t(sh.label)}</button
 						>
 					{/each}
 				</div>
 				<label class="flex items-center gap-1 text-xs">
-					<span class="w-16 text-content-muted">Style</span>
+					<span class="w-16 text-content-muted">{$t('Style')}</span>
 					<select
 						class="ws-field ws-field-sm"
 						data-testid="cut-style"
@@ -327,13 +347,13 @@
 						value={s.params.style}
 						onchange={(e) => s.setParams({ style: e.currentTarget.value as 'prism' | 'frustum' })}
 					>
-						<option value="prism">Prisme</option>
-						<option value="frustum">Tronc (cône)</option>
+						<option value="prism">{$t('Prism')}</option>
+						<option value="frustum">{$t('Frustum (cone)')}</option>
 					</select>
 				</label>
-				{#each [['size', 'sizeTolerance', 'Taille', 'Diamètre'], ['depth', 'depthTolerance', 'Profondeur', 'Profondeur']] as const as [k, tk, label, aria] (k)}
+				{#each [['size', 'sizeTolerance', 'Size', 'Connector diameter (mm)', 'Diameter tolerance (mm)'], ['depth', 'depthTolerance', 'Depth', 'Connector depth (mm)', 'Depth tolerance (mm)']] as const as [k, tk, label, aria, tolAria] (k)}
 					<div class="flex items-center gap-1 text-xs">
-						<span class="w-16 text-content-muted">{label}</span>
+						<span class="w-16 text-content-muted">{$t(label)}</span>
 						<input
 							type="number"
 							step="0.5"
@@ -342,7 +362,7 @@
 							value={s.params[k]}
 							onchange={(e) => s.setParams({ [k]: num(e) })}
 							class="ws-field ws-field-sm w-16 text-right"
-							aria-label={aria + ' du connecteur (mm)'}
+							aria-label={$t(aria)}
 						/>
 						<span class="text-content-subtle">mm ± tol.</span>
 						<input
@@ -353,12 +373,12 @@
 							value={s.params[tk]}
 							onchange={(e) => s.setParams({ [tk]: num(e) })}
 							class="ws-field ws-field-sm w-14 text-right"
-							aria-label={'Tolérance de ' + aria.toLowerCase() + ' (mm)'}
+							aria-label={$t(tolAria)}
 						/>
 					</div>
 				{/each}
 				<label class="flex items-center gap-1 text-xs">
-					<span class="w-16 text-content-muted">Rotation</span>
+					<span class="w-16 text-content-muted">{$t('Rotation')}</span>
 					<input
 						type="number"
 						step="15"
@@ -368,7 +388,7 @@
 						value={s.params.rotation}
 						onchange={(e) => s.setParams({ rotation: num(e) })}
 						class="ws-field ws-field-sm w-16 text-right"
-						aria-label="Rotation du connecteur (°)"
+						aria-label={$t('Connector rotation (°)')}
 					/>°
 				</label>
 				<div class="flex gap-2">
@@ -377,32 +397,32 @@
 						class="ws-btn ws-btn-sm ws-btn-secondary"
 						data-testid="cut-connector-remove"
 						disabled={!s.selectedId}
-						onclick={() => s.removeConnector()}>Retirer</button
+						onclick={() => s.removeConnector()}>{$t('Remove')}</button
 					>
 					<button
 						type="button"
 						class="ws-btn ws-btn-sm ws-btn-secondary"
 						data-testid="cut-connectors-clear"
 						disabled={!s.connectors.length}
-						onclick={() => s.clearConnectors()}>Retirer les connecteurs</button
+						onclick={() => s.clearConnectors()}>{$t('Remove connectors')}</button
 					>
 				</div>
 				<p class="text-xs text-content-subtle">
 					{s.selectedId
-						? 'Les réglages s’appliquent au connecteur sélectionné.'
-						: 'Les réglages s’appliquent à tous les connecteurs.'}
+						? $t('Settings apply to the selected connector.')
+						: $t('Settings apply to all connectors.')}
 				</p>
 			{/if}
 		</section>
 	{:else if s.groove}
 		<section
 			class="flex flex-col gap-1 border-t border-border pt-2 text-xs"
-			aria-label="Queue d'aronde"
+			aria-label={$t('Dovetail||section')}
 			data-testid="cut-groove"
 		>
-			{#each [['depth', 'Profondeur', 'mm', 0.5], ['width', 'Largeur', 'mm', 0.5], ['depthTolerance', 'Tol. profondeur', 'mm', 0.05], ['widthTolerance', 'Tol. largeur', 'mm', 0.05], ['flapsAngle', 'Angle des rabats', '° (30–120)', 5], ['angle', 'Angle de la rainure', '° (0–15)', 1], ['count', 'Nombre', '', 1], ['gap', 'Espacement', 'mm', 1]] as const as [k, label, unit, step] (k)}
+			{#each [['depth', 'Depth', 'mm', 0.5], ['width', 'Width', 'mm', 0.5], ['depthTolerance', 'Depth tol.', 'mm', 0.05], ['widthTolerance', 'Width tol.', 'mm', 0.05], ['flapsAngle', 'Flaps angle', '° (30–120)', 5], ['angle', 'Groove Angle', '° (0–15)', 1], ['count', 'Count', '', 1], ['gap', 'Gap', 'mm', 1]] as const as [k, label, unit, step] (k)}
 				<label class="flex items-center gap-1">
-					<span class="w-32 text-content-muted">{label}</span>
+					<span class="w-32 text-content-muted">{$t(label)}</span>
 					<input
 						type="number"
 						{step}
@@ -413,7 +433,7 @@
 						}}
 						disabled={k === 'gap' && s.groove.count <= 1}
 						class="ws-field ws-field-sm w-16 text-right"
-						aria-label={label}
+						aria-label={$t(label)}
 					/>
 					<span class="text-content-subtle">{unit}</span>
 				</label>
@@ -421,18 +441,18 @@
 		</section>
 	{/if}
 
-	<section class="flex flex-col gap-1 border-t border-border pt-2" aria-label="Après la coupe">
-		<span class="font-medium">Après la coupe</span>
-		{#each [['upper', 'Partie supérieure', 'bg-sky-500'], ['lower', 'Partie inférieure', 'bg-amber-500']] as const as [k, label, dot] (k)}
+	<section class="flex flex-col gap-1 border-t border-border pt-2" aria-label={$t('After cut')}>
+		<span class="font-medium">{$t('After cut')}</span>
+		{#each [['upper', 'Upper part', 'bg-sky-500'], ['lower', 'Lower part', 'bg-amber-500']] as const as [k, label, dot] (k)}
 			{@const part = s[k]}
 			{@const locked = s.connectors.length > 0 || s.asParts}
 			<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
 				<span class="flex w-28 items-center gap-1"
-					><span class="h-2 w-2 rounded-full {dot}" aria-hidden="true"></span>{label}</span
+					><span class="h-2 w-2 rounded-full {dot}" aria-hidden="true"></span>{$t(label)}</span
 				>
 				<label
 					class="flex items-center gap-1"
-					title={locked ? 'Toujours conservée avec des connecteurs ou en pièces' : ''}
+					title={locked ? $t('Always kept with connectors or as parts') : ''}
 				>
 					<input
 						type="checkbox"
@@ -440,7 +460,7 @@
 						checked={locked || part.keep}
 						disabled={locked}
 						onchange={(e) => (s[k] = { ...part, keep: e.currentTarget.checked })}
-					/>Conserver
+					/>{$t('Keep')}
 				</label>
 				<label class="flex items-center gap-1">
 					<input
@@ -449,7 +469,7 @@
 						checked={part.placeOnCut && !s.asParts}
 						disabled={!part.keep || s.asParts}
 						onchange={(e) => (s[k] = { ...part, placeOnCut: e.currentTarget.checked, flip: false })}
-					/>Placer sur la coupe
+					/>{$t('Place on cut')}
 				</label>
 				<label class="flex items-center gap-1">
 					<input
@@ -458,22 +478,22 @@
 						checked={part.flip && !s.asParts}
 						disabled={!part.keep || s.asParts}
 						onchange={(e) => (s[k] = { ...part, flip: e.currentTarget.checked, placeOnCut: false })}
-					/>Retourner
+					/>{$t('Flip')}
 				</label>
 			</div>
 		{/each}
 		<label
 			class="flex items-center gap-1 text-xs"
 			title={s.connectors.length || s.mode === 'groove'
-				? 'Indisponible avec des connecteurs ou une queue d’aronde (Orca)'
-				: 'Un seul objet composé de deux pièces'}
+				? $t('Unavailable with connectors or a dovetail (Orca)')
+				: $t('A single object made of two parts')}
 		>
 			<input
 				type="checkbox"
 				data-testid="cut-as-parts"
 				bind:checked={s.asParts}
 				disabled={s.connectors.length > 0 || s.mode === 'groove'}
-			/>Couper en pièces (un seul objet)
+			/>{$t('Cut to parts (single object)')}
 		</label>
 	</section>
 
@@ -486,10 +506,10 @@
 			data-testid="cut-apply"
 			class="ws-btn ws-btn-primary"
 			disabled={busy || !!s.blocker}
-			onclick={() => oncut()}>{busy ? 'Coupe…' : 'Couper'}</button
+			onclick={() => oncut()}>{busy ? $t('Cutting…') : $t('Cut')}</button
 		>
 		<button type="button" class="ws-btn ws-btn-secondary" onclick={() => oncancel?.()}
-			>Annuler</button
+			>{$t('Cancel')}</button
 		>
 	</div>
 </div>

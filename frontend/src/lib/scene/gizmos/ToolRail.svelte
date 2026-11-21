@@ -41,7 +41,9 @@
 		rotate: { label: 'Rotate', icon: IconRotate, family: 'transform' },
 		scale: { label: 'Scale', icon: IconScale, family: 'transform' },
 		flatten: { label: 'Flatten', icon: IconFlatten, family: 'mesh' },
-		cut: { label: 'Cut', icon: IconCut, family: 'mesh' },
+		// « Cut||tool » : nom de l'outil (« Coupe »), distinct du bouton d'action
+		// « Couper » du panneau de coupe et d'Édition › Couper ; « Cut » en anglais.
+		cut: { label: 'Cut||tool', icon: IconCut, family: 'mesh' },
 		boolean: { label: 'Mesh Boolean', icon: IconBoolean, family: 'mesh' },
 		'support-paint': { label: 'Supports Painting', icon: IconSupport, family: 'paint' },
 		'seam-paint': { label: 'Seam painting', icon: IconSeam, family: 'paint' },
@@ -50,7 +52,9 @@
 		emboss: { label: 'Text shape', icon: IconText, family: 'add' },
 		svg: { label: 'SVG shape', icon: IconSvg, family: 'add' },
 		measure: { label: 'Measure', icon: IconMeasure, family: 'tools' },
-		assembly: { label: 'Assembly View', icon: IconAssembly, family: 'tools' },
+		// Gizmo d'assemblage d'Orca : « Assemble » (GLGizmoAssembly::on_get_name) ; « Assembly
+		// View » est le bouton de la barre de plateau (vue éclatée) — noms distincts.
+		assembly: { label: 'Assemble', icon: IconAssembly, family: 'tools' },
 		simplify: { label: 'Simplify model', icon: IconSimplify, family: 'tools' },
 		'brim-ears': { label: 'Auto-Brim', icon: IconBrim, family: 'tools' }
 	};
@@ -58,11 +62,12 @@
 	// Familles du rail (comme les groupes de la barre de gizmos d'Orca) : chaque
 	// famille est un groupe nommé, séparé visuellement des voisins.
 	const FAMILY_LABELS: Record<Family, string> = {
-		transform: 'Transformer',
-		mesh: 'Maillage',
-		paint: 'Peinture',
-		add: 'Ajouter une forme',
-		tools: 'Outils'
+		// Clés i18n anglaises, traduites au rendu.
+		transform: 'Transform||family',
+		mesh: 'Mesh',
+		paint: 'Paint||family',
+		add: 'Add shape',
+		tools: 'Tools'
 	};
 	const groups = $derived.by(() => {
 		const out: { family: Family; tools: EditorTool[] }[] = [];
@@ -79,7 +84,7 @@
 <div
 	class="flex flex-col items-center gap-1"
 	role="toolbar"
-	aria-label="Outils"
+	aria-label={$t('Tools')}
 	aria-orientation="vertical"
 >
 	{#each groups as group, gi (group.family)}
@@ -89,7 +94,7 @@
 		<div
 			class="flex flex-col items-center gap-0.5"
 			role="group"
-			aria-label={FAMILY_LABELS[group.family]}
+			aria-label={$t(FAMILY_LABELS[group.family])}
 		>
 			{#each group.tools as tool (tool)}
 				{@const meta = META[tool]}

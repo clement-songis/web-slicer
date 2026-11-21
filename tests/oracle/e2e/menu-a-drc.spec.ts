@@ -73,10 +73,10 @@ test('menu objet › Export as one DRC / as DRCs sur la sélection @F:ctx.export
 	page,
 }) => {
 	await twoObjects(page);
-	const one = await download(page, () => objectMenu(page, 1, /export as one drc/i));
+	const one = await download(page, () => objectMenu(page, 1, /export as one drc|exporter en un seul drc/i));
 	expect(one.name).toMatch(/\.drc$/);
 	expect(isDraco(one.bytes)).toBe(true);
-	const many = await download(page, () => objectMenu(page, 1, /export as drcs/i));
+	const many = await download(page, () => objectMenu(page, 1, /export as drcs|exporter en plusieurs drc/i));
 	const entries = zipEntries(many.bytes);
 	// Seul l'objet ciblé (cylindre) est exporté.
 	expect(entries).toHaveLength(1);

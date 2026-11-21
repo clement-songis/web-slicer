@@ -1,6 +1,7 @@
 // Logique des sélecteurs de presets (T046) : arbre imprimante, filtre de
 // compatibilité, badge d'héritage.
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 
 import type { PresetSummary } from '../api/types';
 import {
@@ -88,6 +89,8 @@ describe('isCompatible / filterByPrinter (FR-021)', () => {
 });
 
 describe('héritage', () => {
+	beforeAll(() => setLocale('fr'));
+	afterAll(() => setLocale('en'));
 	it('détecte un preset dérivé et son libellé', () => {
 		expect(isDerived({ origin: 'user', inherits: 'Generic PLA' })).toBe(true);
 		expect(isDerived({ origin: 'user' })).toBe(false);

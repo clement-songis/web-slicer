@@ -7,7 +7,7 @@
 	// - options d'affichage (EOptionType) : déplacements, essuyages,
 	//   rétractions, réamorçages, coutures, changements d'outil / de couleur,
 	//   pauses, avec leur couleur Orca et leur nombre dans les couches visibles.
-	import { t } from '$lib/i18n';
+	import { locale, numberLocale, t } from '$lib/i18n';
 	import { OPTION_COLORS, SEGMENT_ROLE_COLORS, type Legend, type Rgb } from './colorations';
 	import type { PreviewOption } from './geometry';
 
@@ -43,25 +43,26 @@
 		`rgb(${Math.round(r * 255)} ${Math.round(g * 255)} ${Math.round(b * 255)})`;
 
 	const OPTION_LABELS: Record<PreviewOption, string> = {
-		travel: 'Déplacements',
-		wipe: 'Essuyages',
-		retract: 'Rétractions',
-		unretract: 'Réamorçages',
-		seam: 'Coutures',
-		toolchange: "Changements d'outil",
-		colorchange: 'Changements de couleur',
+		// Clés i18n anglaises, traduites au rendu.
+		travel: 'Travel||summary',
+		wipe: 'Wipes',
+		retract: 'Retractions',
+		unretract: 'Deretractions',
+		seam: 'Seams',
+		toolchange: 'Tool changes',
+		colorchange: 'Color changes',
 		pause: 'Pauses'
 	};
 
 	function fmt(v: number, unit: string): string {
 		const digits = Math.abs(v) >= 100 ? 0 : Math.abs(v) >= 10 ? 1 : 2;
-		return `${v.toLocaleString('fr-FR', { maximumFractionDigits: digits })}${unit ? ' ' + unit : ''}`;
+		return `${v.toLocaleString(numberLocale($locale), { maximumFractionDigits: digits })}${unit ? ' ' + unit : ''}`;
 	}
 </script>
 
 <div class="flex flex-col gap-2 px-3 py-2" data-testid="preview-legend">
 	{#if showTypes && types.length}
-		<div class="flex flex-wrap gap-1.5" role="group" aria-label="Types de ligne">
+		<div class="flex flex-wrap gap-1.5" role="group" aria-label={$t('Line types')}>
 			{#each types as type (type.id)}
 				{@const off = hiddenTypes.includes(type.id)}
 				<button
@@ -118,14 +119,15 @@
 					{/if}
 				{/each}
 			</div>
-			{#if legend.log}<span class="text-2xs text-content-subtle">Échelle logarithmique</span>{/if}
+			{#if legend.log}<span class="text-2xs text-content-subtle">{$t('Logarithmic scale')}</span
+				>{/if}
 		</div>
 	{/if}
 
-	<div class="flex flex-wrap items-center gap-1.5" role="group" aria-label="Options d'affichage">
-		<span class="ws-section-title mr-1 text-2xs">Afficher</span>
+	<div class="flex flex-wrap items-center gap-1.5" role="group" aria-label={$t('Display options')}>
+		<span class="ws-section-title mr-1 text-2xs">{$t('Show||legend')}</span>
 		{#if loading}
-			<span class="text-xs text-content-subtle" aria-busy="true">Lecture du G-code…</span>
+			<span class="text-xs text-content-subtle" aria-busy="true">{$t('Reading the G-code…')}</span>
 		{:else}
 			{#each options as opt (opt.id)}
 				<button
@@ -140,7 +142,7 @@
 						style:background-color={css(OPTION_COLORS[opt.id])}
 						aria-hidden="true"
 					></span>
-					{OPTION_LABELS[opt.id]}
+					{$t(OPTION_LABELS[opt.id])}
 					<span class="tabular-nums {enabled.has(opt.id) ? '' : 'text-content-muted'}"
 						>{opt.count}</span
 					>

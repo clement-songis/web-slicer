@@ -19,6 +19,7 @@
 		type EngineCalibKind,
 		type RangeParams
 	} from './engine-calib';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		open: boolean;
@@ -67,20 +68,20 @@
 	const fields = $derived(
 		stepless
 			? [
-					['Début', 'start'],
-					['Fin', 'end']
+					['Start||range', 'start'],
+					['End||range', 'end']
 				]
 			: kind === 'pa_pattern'
 				? [
 						// Orca PA_Calibration_Dlg : « Start PA / End PA / PA step ».
-						['PA de départ (K)', 'start'],
-						['PA final (K)', 'end'],
-						['Pas de PA', 'step']
+						['Start PA (K)', 'start'],
+						['End PA (K)', 'end'],
+						['PA step', 'step']
 					]
 				: [
-						['Début', 'start'],
-						['Fin', 'end'],
-						['Pas', 'step']
+						['Start||range', 'start'],
+						['End||range', 'end'],
+						['Step||range', 'step']
 					]
 	);
 	const hasModel = $derived(TEST_MODEL_KINDS.includes(kind));
@@ -100,11 +101,12 @@
 			? { printNumbers, speeds: speeds ?? [], accelerations: accels ?? [] }
 			: {})
 	});
-	const invalid = $derived(
-		kind === 'pa_pattern' && (speeds === null || accels === null)
-			? 'vitesses / accélérations : nombres positifs séparés par des virgules'
-			: validateRange(params, kind)
-	);
+	const invalid = $derived.by(() => {
+		if (kind === 'pa_pattern' && (speeds === null || accels === null))
+			return $t('speeds / accelerations: positive numbers separated by commas');
+		void $t; // message traduit : recalcul au changement de langue
+		return validateRange(params, kind);
+	});
 
 	function submit(event: SubmitEvent) {
 		event.preventDefault();
@@ -124,7 +126,7 @@
 			class="ws-dialog w-full max-w-sm p-5"
 			role="dialog"
 			aria-modal="true"
-			aria-label="Calibration {ENGINE_CALIB_LABELS[kind]}"
+			aria-label={$t('Calibration {name}', { name: $t(ENGINE_CALIB_LABELS[kind]) })}
 			data-testid="engine-calib-dialog"
 			tabindex="-1"
 			use:dialogFocus
@@ -132,10 +134,14 @@
 			onkeydown={(e) => e.key === 'Escape' && !busy && onclose()}
 		>
 			<form class="flex flex-col gap-3" onsubmit={submit}>
-				<h2 class="ws-dialog-title">Calibration : {ENGINE_CALIB_LABELS[kind]}</h2>
+				<h2 class="ws-dialog-title">
+					{$t('Calibration: {name}', { name: $t(ENGINE_CALIB_LABELS[kind]) })}
+				</h2>
 				{#each fields as [label, key] (key)}
 					<label class="flex items-center justify-between gap-2 text-sm">
-						<span>{label}{ENGINE_CALIB_UNITS[kind] ? ` (${ENGINE_CALIB_UNITS[kind]})` : ''}</span>
+						<span
+							>{$t(label)}{ENGINE_CALIB_UNITS[kind] ? ` (${ENGINE_CALIB_UNITS[kind]})` : ''}</span
+						>
 						{#if key === 'start'}
 							<input
 								class={FIELD}
@@ -165,7 +171,7 @@
 				{/each}
 				{#if hasFixed}
 					<label class="flex items-center justify-between gap-2 text-sm">
-						<span>{FIXED_VALUE_LABELS[kind]}</span>
+						<span>{$t(FIXED_VALUE_LABELS[kind] ?? '')}</span>
 						<input
 							class={FIELD}
 							type="number"
@@ -177,7 +183,7 @@
 				{/if}
 				{#if kind === 'input_shaping_freq'}
 					<label class="flex items-center justify-between gap-2 text-sm">
-						<span>Début Y (Hz)</span>
+						<span>{$t('Y start (Hz)')}</span>
 						<input
 							class={FIELD}
 							type="number"
@@ -187,7 +193,7 @@
 						/>
 					</label>
 					<label class="flex items-center justify-between gap-2 text-sm">
-						<span>Fin Y (Hz)</span>
+						<span>{$t('Y end (Hz)')}</span>
 						<input
 							class={FIELD}
 							type="number"
@@ -198,7 +204,7 @@
 					</label>
 				{:else if kind === 'input_shaping_damp'}
 					<label class="flex items-center justify-between gap-2 text-sm">
-						<span>Fréquence Y (Hz)</span>
+						<span>{$t('Y frequency (Hz)')}</span>
 						<input
 							class={FIELD}
 							type="number"
@@ -210,7 +216,7 @@
 				{/if}
 				{#if hasModel}
 					<label class="flex items-center justify-between gap-2 text-sm">
-						<span>Modèle de test</span>
+						<span>{$t('Test model')}</span>
 						<select class="{FIELD} w-36" data-testid="calib-test-model" bind:value={testModel}>
 							{#each testModels(kind) as m (m.id)}<option value={m.id}>{m.label}</option>{/each}
 						</select>
@@ -218,32 +224,32 @@
 				{/if}
 				{#if isShaping}
 					<label class="flex items-center justify-between gap-2 text-sm">
-						<span>Type de shaper</span>
+						<span>{$t('Shaper type')}</span>
 						<select class="{FIELD} w-36" data-testid="calib-shaper-type" bind:value={shaperType}>
-							{#each SHAPER_TYPES as t (t)}<option value={t}>{t}</option>{/each}
+							{#each SHAPER_TYPES as s (s)}<option value={s}>{s}</option>{/each}
 						</select>
 					</label>
 				{/if}
 				{#if kind === 'pa_pattern'}
 					<label class="flex items-center gap-2 text-sm">
 						<input type="checkbox" data-testid="calib-print-numbers" bind:checked={printNumbers} />
-						Imprimer les numéros
+						{$t('Print numbers')}
 					</label>
 					<label class="flex flex-col gap-1 text-sm">
-						<span>Accélérations (mm/s², facultatif)</span>
+						<span>{$t('Accelerations (mm/s², optional)')}</span>
 						<input
 							class="{FIELD} w-full"
 							data-testid="calib-accels"
-							placeholder="ex. 1000, 3000"
+							placeholder={$t('e.g. {values}', { values: '1000, 3000' })}
 							bind:value={accelsRaw}
 						/>
 					</label>
 					<label class="flex flex-col gap-1 text-sm">
-						<span>Vitesses (mm/s, facultatif)</span>
+						<span>{$t('Speeds (mm/s, optional)')}</span>
 						<input
 							class="{FIELD} w-full"
 							data-testid="calib-speeds"
-							placeholder="ex. 100, 200"
+							placeholder={$t('e.g. {values}', { values: '100, 200' })}
 							bind:value={speedsRaw}
 						/>
 					</label>
@@ -252,13 +258,13 @@
 				{#if error}<p class="text-sm text-danger" data-testid="engine-calib-error">{error}</p>{/if}
 				<div class="flex justify-end gap-2">
 					<button type="button" class="ws-btn ws-btn-secondary" disabled={busy} onclick={onclose}
-						>Annuler</button
+						>{$t('Cancel')}</button
 					>
 					<button
 						type="submit"
 						data-testid="engine-calib-confirm"
 						class="ws-btn ws-btn-primary"
-						disabled={!!invalid || busy}>{busy ? 'Création…' : 'OK'}</button
+						disabled={!!invalid || busy}>{busy ? $t('Creating…') : $t('OK')}</button
 					>
 				</div>
 			</form>

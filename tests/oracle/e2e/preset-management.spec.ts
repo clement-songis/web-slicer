@@ -92,7 +92,7 @@ test('G-code personnalisé : éditeur avec variables, insertion au curseur @F:ui
 	await ed.getByTestId('gcode-placeholder-search').fill('layer_z');
 	const item = ed.locator('[data-testid=gcode-placeholder][data-key=layer_z]').first();
 	await item.click();
-	await expect(ed.getByTestId('gcode-placeholder-help')).toContainText(/Layer Z|Z/);
+	await expect(ed.getByTestId('gcode-placeholder-help')).toContainText(/Layer Z|Couche z/i);
 	await item.dblclick();
 	await expect(area).toHaveValue('; couche\n{layer_z}');
 	await ed.getByTestId('gcode-editor-apply').click();

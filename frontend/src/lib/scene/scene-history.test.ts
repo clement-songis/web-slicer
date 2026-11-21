@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import type { SceneNode } from './objects.svelte';
 import {
 	describeChange,
@@ -7,6 +8,9 @@ import {
 	takeSnapshot,
 	type SnapshotSource
 } from './scene-history';
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 const node = (id: string, name = id): SceneNode => ({
 	id,

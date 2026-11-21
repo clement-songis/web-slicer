@@ -1,6 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import { ApiError } from './client';
 import { loginErrorMessage, passwordChangeError, validatePasswordChange } from './account';
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('compte (lot 32)', () => {
 	it('connexion refusée : invalid_credentials ou 401 générique', () => {

@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import { defaultEmbossParams, embossPartOffset } from './emboss';
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('relief posé sur l’objet sélectionné (phase 26)', () => {
 	it('par défaut : en relief, sur l’objet sélectionné (gizmo Emboss d’Orca)', () => {

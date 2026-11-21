@@ -8,6 +8,7 @@ import { Matrix4 } from 'three/src/math/Matrix4.js';
 import { Quaternion } from 'three/src/math/Quaternion.js';
 import { Vector3 } from 'three/src/math/Vector3.js';
 import { rotateVectorByEulerDeg } from '../transform';
+import { tr } from '$lib/i18n';
 
 export type Vec3 = [number, number, number];
 
@@ -60,7 +61,7 @@ export function meshOpErrorMessage(
 	message: string
 ): string {
 	if (status === 409)
-		return `${feature} : conversion du modèle en cours, réessayez dans un instant.`;
-	if (status === 422) return `${feature} impossible : ${message}`;
-	return `${feature} : échec (${message}).`;
+		return tr('{feature}: model conversion in progress, try again in a moment.', { feature });
+	if (status === 422) return tr('{feature} not possible: {message}', { feature, message });
+	return tr('{feature}: failed ({message}).', { feature, message });
 }

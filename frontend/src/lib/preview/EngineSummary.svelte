@@ -8,7 +8,7 @@
 	//   n'est pas disponible, signalé « estimation approchée ».
 	// Les données viennent de `engine-track.ts` (summaryView) et de `stats.ts` ;
 	// ce composant ne fait que la présentation.
-	import { t as translate } from '$lib/i18n';
+	import { fmtNum, locale, t as translate } from '$lib/i18n';
 	import { formatMoney } from '$lib/settings/preferences';
 	import { formatDuration, type PreviewStats } from './stats';
 	import { summaryView, type EngineMeta } from './engine-track';
@@ -46,35 +46,41 @@
 	}: Props = $props();
 
 	// Noms des rôles Orca (ExtrusionRole, mêmes ids que SEGMENT_ROLE_COLORS).
-	const ORCA_ROLES: Record<number, string> = {
-		0: 'Aucun',
-		1: 'Paroi intérieure',
-		2: 'Paroi extérieure',
-		3: 'Paroi en surplomb',
-		4: 'Remplissage interne',
-		5: 'Remplissage plein',
-		6: 'Surface supérieure',
-		7: 'Surface inférieure',
-		8: 'Lissage',
-		9: 'Pont',
-		10: 'Pont interne',
-		11: 'Remplissage d’espace',
-		12: 'Jupe',
-		13: 'Bordure',
-		14: 'Support',
-		15: 'Interface de support',
-		16: 'Transition de support',
-		17: 'Tour d’essuyage',
-		18: 'Personnalisé',
-		19: 'Mixte'
+	// Clés i18n anglaises, traduites au rendu (réactif à la langue).
+	const ORCA_ROLE_KEYS: Record<number, string> = {
+		0: 'None',
+		1: 'Inner wall',
+		2: 'Outer wall',
+		3: 'Overhang wall',
+		4: 'Sparse infill||role',
+		5: 'Internal solid infill||role',
+		6: 'Top surface',
+		7: 'Bottom surface',
+		8: 'Ironing',
+		9: 'Bridge',
+		10: 'Internal Bridge',
+		11: 'Gap infill||role',
+		12: 'Skirt',
+		13: 'Brim',
+		14: 'Support||role',
+		15: 'Support interface',
+		16: 'Support transition',
+		17: 'Prime tower||role',
+		18: 'Custom',
+		19: 'Multiple||role'
 	};
+	const ORCA_ROLES = $derived(
+		Object.fromEntries(
+			Object.entries(ORCA_ROLE_KEYS).map(([k, v]) => [k, $translate(v)])
+		) as Record<number, string>
+	);
 	const CUSTOM_LABELS: Record<string, string> = {
-		color_change: 'Changement de couleur',
+		color_change: 'Color Change',
 		pause_print: 'Pause',
-		tool_change: 'Changement d’outil',
-		template: 'Modèle',
-		custom: 'G-code personnalisé',
-		unknown: 'Inconnu'
+		tool_change: 'Tool change',
+		template: 'Template',
+		custom: 'Custom G-code',
+		unknown: 'Unknown'
 	};
 
 	const view = $derived(meta ? summaryView(meta, ORCA_ROLES, mode) : null);
@@ -82,9 +88,9 @@
 	// generate_partial_times) : pas d'« événement » pour le tronçon final.
 	const partials = $derived(view ? partialTimes(view.colorChangeTimes, view.customGcodes) : []);
 	const PARTIAL_LABELS: Record<PartialKind, string> = {
-		print: 'Impression',
+		print: 'Printing',
 		pause: 'Pause',
-		color_change: 'Changement de couleur'
+		color_change: 'Color Change'
 	};
 
 	type Row = {
@@ -114,7 +120,7 @@
 			if (t[mode] > 0)
 				out.push({
 					key: 'r' + role,
-					label: ORCA_ROLES[role] ?? `Rôle ${role}`,
+					label: ORCA_ROLES[role] ?? $translate('Role {n}', { n: role }),
 					color: SEGMENT_ROLE_COLORS[role] ?? [0.5, 0.5, 0.5],
 					time: t[mode],
 					percent: (100 * t[mode]) / total,
@@ -122,8 +128,8 @@
 				});
 		});
 		const extra: [string, string, Rgb, [number, number]][] = [
-			['travel', 'Déplacements', OPTION_COLORS.travel, meta.travel_time],
-			['wipe', 'Essuyages', OPTION_COLORS.wipe, meta.wipe_time]
+			['travel', $translate('Travel||summary'), OPTION_COLORS.travel, meta.travel_time],
+			['wipe', $translate('Wipes'), OPTION_COLORS.wipe, meta.wipe_time]
 		];
 		for (const [key, label, color, t] of extra)
 			if (t[mode] > 0)
@@ -176,23 +182,23 @@
 	<!-- Estimation -->
 	<div class="flex flex-col gap-1">
 		<div class="flex items-center justify-between gap-2">
-			<h3 class="ws-section-title">Estimation</h3>
+			<h3 class="ws-section-title">{$translate('Estimate')}</h3>
 			{#if view?.hasStealth && onmode}
-				<div class="ws-seg" role="group" aria-label="Mode d’estimation">
-					{#each ['Normal', 'Silencieux'] as label, i (label)}
+				<div class="ws-seg" role="group" aria-label={$translate('Estimation mode')}>
+					{#each ['Normal', 'Silent'] as label, i (label)}
 						<button
 							type="button"
 							class="ws-seg-item {mode === i ? 'ws-seg-on' : ''}"
 							aria-pressed={mode === i}
 							data-testid={`engine-mode-${i}`}
-							onclick={() => onmode?.(i)}>{label}</button
+							onclick={() => onmode?.(i)}>{$translate(label)}</button
 						>
 					{/each}
 				</div>
 			{/if}
 		</div>
 		<dl class="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5">
-			<dt class="text-content-muted">Temps total</dt>
+			<dt class="text-content-muted">{$translate('Total time')}</dt>
 			<dd
 				class="text-right font-medium whitespace-nowrap tabular-nums"
 				data-testid="engine-total-time"
@@ -202,10 +208,10 @@
 			{#if view && declared && declared !== formatDuration(view.total[mode])}
 				<dt
 					class="text-content-muted"
-					data-tip="Durée écrite dans le pied du fichier par le trancheur d’origine"
+					data-tip={$translate('Duration written in the file footer by the original slicer')}
 					data-tip-side="right"
 				>
-					Annoncé par le G-code
+					{$translate('Declared by the G-code')}
 				</dt>
 				<dd class="text-right whitespace-nowrap tabular-nums" data-testid="engine-declared-time">
 					{declared}
@@ -213,36 +219,38 @@
 			{/if}
 			{#if view}
 				{#if view.hasStealth}
-					<dt class="text-content-muted">{mode === 0 ? 'Mode silencieux' : 'Mode normal'}</dt>
+					<dt class="text-content-muted">
+						{mode === 0 ? $translate('Silent mode') : $translate('Normal mode')}
+					</dt>
 					<dd class="text-right whitespace-nowrap tabular-nums">
 						{formatDuration(view.total[mode === 0 ? 1 : 0])}
 					</dd>
 				{/if}
-				<dt class="text-content-muted">Première couche</dt>
+				<dt class="text-content-muted">{$translate('First layer||summary')}</dt>
 				<dd class="text-right whitespace-nowrap tabular-nums" data-testid="engine-first-layer">
 					{formatDuration(view.firstLayer[mode])}
 				</dd>
 				<dt
 					class="text-content-muted"
-					data-tip="Temps de préparation écrit par Orca (chauffe, mise à l’origine…)"
+					data-tip={$translate('Preparation time written by Orca (heating, homing…)')}
 					data-tip-side="right"
 				>
-					Préparation
+					{$translate('Preparation')}
 				</dt>
 				<dd class="text-right whitespace-nowrap tabular-nums" data-testid="engine-prepare">
 					{formatDuration(view.prepare[mode])}
 				</dd>
 			{/if}
-			<dt class="text-content-muted">Couches</dt>
+			<dt class="text-content-muted">{$translate('Layers')}</dt>
 			<dd class="text-right whitespace-nowrap tabular-nums">
 				{meta?.layer_count || fallback.layerCount}
 			</dd>
-			<dt class="text-content-muted">Changements de filament</dt>
+			<dt class="text-content-muted">{$translate('Filament changes')}</dt>
 			<dd class="text-right whitespace-nowrap tabular-nums" data-testid="summary-filament-changes">
 				{view ? view.filamentChanges : fallback.toolchanges}
 			</dd>
 			{#if view && view.extruderChanges > 0}
-				<dt class="text-content-muted">Changements d’extrudeur</dt>
+				<dt class="text-content-muted">{$translate('Extruder changes')}</dt>
 				<dd
 					class="text-right whitespace-nowrap tabular-nums"
 					data-testid="summary-extruder-changes"
@@ -251,15 +259,17 @@
 				</dd>
 			{/if}
 			{#if view && view.travelDistance > 0}
-				<dt class="text-content-muted">Distance de déplacement</dt>
+				<dt class="text-content-muted">{$translate('Travel distance')}</dt>
 				<dd class="text-right whitespace-nowrap tabular-nums">
-					{(view.travelDistance / 1000).toFixed(2)} m
+					{fmtNum(view.travelDistance / 1000, 2, $locale)} m
 				</dd>
 			{/if}
 		</dl>
 		{#if !meta}
 			<p class="text-xs text-content-subtle" data-testid="summary-approx">
-				Estimation approchée (relecture du G-code) — la simulation Orca n’est pas disponible.
+				{$translate(
+					'Approximate estimate (G-code re-read) — the Orca simulation is not available.'
+				)}
 			</p>
 		{/if}
 	</div>
@@ -267,12 +277,12 @@
 	<!-- Par type de ligne (une seule liste, déplacements et essuyages compris) -->
 	{#if rows.length}
 		<div class="flex flex-col gap-1">
-			<h3 class="ws-section-title">Par type de ligne</h3>
+			<h3 class="ws-section-title">{$translate('By line type')}</h3>
 			<table class="w-full border-collapse" data-testid="engine-role-times">
 				<thead>
 					<tr class="text-xs text-content-muted">
-						<th class="text-left font-normal">Type</th>
-						<th class="text-right font-normal">Temps</th>
+						<th class="text-left font-normal">{$translate('Type')}</th>
+						<th class="text-right font-normal">{$translate('Time')}</th>
 						<th class="text-right font-normal">%</th>
 					</tr>
 				</thead>
@@ -286,7 +296,7 @@
 										type="button"
 										class="flex items-center gap-1.5 text-left"
 										aria-pressed={!off}
-										data-tip="Afficher/masquer ce type"
+										data-tip={$translate('Show/hide this type')}
 										data-tip-side="right"
 										onclick={() => row.kind !== undefined && ontoggletype(row.kind)}
 									>
@@ -310,7 +320,7 @@
 								>{formatDuration(row.time)}</td
 							>
 							<td class="pl-2 text-right whitespace-nowrap tabular-nums text-content-muted">
-								{row.percent.toFixed(1)} %
+								{fmtNum(row.percent, 1, $locale)} %
 							</td>
 						</tr>
 					{/each}
@@ -322,25 +332,25 @@
 	<!-- Filament (un seul tableau) -->
 	{#if filaments.length}
 		<div class="flex flex-col gap-1">
-			<h3 class="ws-section-title">Filament</h3>
+			<h3 class="ws-section-title">{$translate('Filament')}</h3>
 			<table class="w-full border-collapse" data-testid="engine-extruders">
 				<thead>
 					<tr class="text-xs text-content-muted">
 						<th class="text-left font-normal">#</th>
-						<th class="text-right font-normal">Longueur</th>
-						<th class="text-right font-normal">Volume</th>
-						<th class="text-right font-normal">Masse</th>
-						<th class="text-right font-normal">Coût</th>
-						{#if multi && meta}<th class="text-right font-normal">Temps</th>{/if}
+						<th class="text-right font-normal">{$translate('Length')}</th>
+						<th class="text-right font-normal">{$translate('Volume')}</th>
+						<th class="text-right font-normal">{$translate('Mass')}</th>
+						<th class="text-right font-normal">{$translate('Cost')}</th>
+						{#if multi && meta}<th class="text-right font-normal">{$translate('Time')}</th>{/if}
 					</tr>
 				</thead>
 				<tbody>
 					{#each filaments as f (f.extruder)}
 						<tr class="tabular-nums">
 							<td class="text-left text-content-muted">{f.extruder + 1}</td>
-							<td class="pl-2 text-right whitespace-nowrap">{f.meters.toFixed(2)} m</td>
-							<td class="pl-2 text-right whitespace-nowrap">{f.cm3.toFixed(2)} cm³</td>
-							<td class="pl-2 text-right whitespace-nowrap">{f.grams.toFixed(2)} g</td>
+							<td class="pl-2 text-right whitespace-nowrap">{fmtNum(f.meters, 2, $locale)} m</td>
+							<td class="pl-2 text-right whitespace-nowrap">{fmtNum(f.cm3, 2, $locale)} cm³</td>
+							<td class="pl-2 text-right whitespace-nowrap">{fmtNum(f.grams, 2, $locale)} g</td>
 							<td class="pl-2 text-right whitespace-nowrap">{money(f.cost)}</td>
 							{#if multi && meta}<td class="pl-2 text-right whitespace-nowrap"
 									>{formatDuration(f.time ?? 0)}</td
@@ -354,7 +364,7 @@
 							<td class="text-left text-content-muted">Σ</td>
 							<td></td>
 							<td></td>
-							<td class="pl-2 text-right whitespace-nowrap">{totalGrams.toFixed(2)} g</td>
+							<td class="pl-2 text-right whitespace-nowrap">{fmtNum(totalGrams, 2, $locale)} g</td>
 							<td class="pl-2 text-right whitespace-nowrap">{money(totalCost)}</td>
 							{#if meta}<td></td>{/if}
 						</tr>
@@ -368,7 +378,7 @@
 	     support / purge / tour) — seulement s'il y a plus que le modèle. -->
 	{#if meta?.filament_table && hasFilamentBreakdown(meta.filament_table)}
 		<div class="flex flex-col gap-1">
-			<h3 class="ws-section-title">Filament par usage</h3>
+			<h3 class="ws-section-title">{$translate('Filament by usage')}</h3>
 			<FilamentTable table={meta.filament_table} testid="engine-filament-table" />
 		</div>
 	{/if}
@@ -376,13 +386,15 @@
 	<!-- G-code personnalisés, pauses, changements de couleur -->
 	{#if view && (view.customGcodes.length || hasEvents(partials))}
 		<div class="flex flex-col gap-1">
-			<h3 class="ws-section-title">Événements</h3>
+			<h3 class="ws-section-title">{$translate('Events')}</h3>
 			{#if view.customGcodes.length}
 				<ul class="flex flex-col gap-0.5" data-testid="engine-custom-gcodes">
 					{#each view.customGcodes as g, i (i)}
 						<li class="flex justify-between gap-2">
-							<span>{CUSTOM_LABELS[g.type] ?? g.type}{g.extra ? ' — ' + g.extra : ''}</span>
-							<span class="tabular-nums text-content-muted">Z {g.print_z.toFixed(2)}</span>
+							<span
+								>{$translate(CUSTOM_LABELS[g.type] ?? g.type)}{g.extra ? ' — ' + g.extra : ''}</span
+							>
+							<span class="tabular-nums text-content-muted">Z {fmtNum(g.print_z, 2, $locale)}</span>
 						</li>
 					{/each}
 				</ul>
@@ -391,9 +403,9 @@
 				<table class="w-full text-xs" data-testid="engine-partial-times">
 					<thead>
 						<tr class="text-content-subtle">
-							<th class="text-left font-normal">Étape</th>
-							<th class="text-right font-normal">Restant</th>
-							<th class="text-right font-normal">Durée</th>
+							<th class="text-left font-normal">{$translate('Step')}</th>
+							<th class="text-right font-normal">{$translate('Remaining')}</th>
+							<th class="text-right font-normal">{$translate('Duration')}</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -408,7 +420,7 @@
 												aria-hidden="true"
 											></span>
 										{/if}
-										{PARTIAL_LABELS[p.kind]}
+										{$translate(PARTIAL_LABELS[p.kind])}
 									</span>
 								</td>
 								<td class="text-right tabular-nums">

@@ -60,6 +60,12 @@
 	// Items désactivés sans sélection (instances/split) ou sans objet (arrange/orient).
 	const NEEDS_SELECTION = new Set(['more', 'fewer', 'splitobjects', 'splitvolumes']);
 	const NEEDS_OBJECTS = new Set(['arrange', 'orient']);
+	// Noms accessibles distincts : « Add plate » de la barre ne doit pas reprendre le
+	// nom du bouton « + » de la barre de plateaux (« Add a plate » → « Ajouter un
+	// plateau » en français) — clé à contexte, affichée « Add plate » en anglais.
+	const I18N_KEY: Record<string, string> = { addplate: 'Add plate||toolbar' };
+	const labelOf = (item: ToolbarButton) => I18N_KEY[item.id] ?? item.label;
+
 	function disabled(id: string): boolean {
 		if (NEEDS_SELECTION.has(id)) return !hasSelection;
 		if (NEEDS_OBJECTS.has(id)) return !hasObjects;
@@ -70,7 +76,7 @@
 <div
 	class="ws-floating flex items-center gap-0.5 p-1"
 	role="toolbar"
-	aria-label="Barre d'outils de plateau"
+	aria-label={$t('Plate toolbar')}
 >
 	{#each ITEMS as item (item.id)}
 		{@const Icon = ICONS[item.id]}
@@ -83,9 +89,9 @@
 			aria-pressed={active.has(item.id)}
 			disabled={disabled(item.id)}
 			data-testid={`toolbar-${item.id}`}
-			aria-label={$t(item.label)}
+			aria-label={$t(labelOf(item))}
 			aria-keyshortcuts={shortcutKeyFor(item.id) ?? undefined}
-			data-tip={withShortcut($t(item.label), shortcutKeyFor(item.id))}
+			data-tip={withShortcut($t(labelOf(item)), shortcutKeyFor(item.id))}
 			data-tip-side="bottom"
 			onclick={() => onaction(item.id)}
 		>

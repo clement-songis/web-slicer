@@ -5,11 +5,12 @@
 import { api } from '$lib/api/client';
 
 export type PaMethod = 'pa_line' | 'pa_pattern' | 'pa_tower' | 'manual';
+// Libellés = clés anglaises, traduites au rendu.
 export const PA_METHODS: { id: PaMethod; label: string }[] = [
-	{ id: 'pa_tower', label: 'Tour' },
-	{ id: 'pa_line', label: 'Lignes' },
-	{ id: 'pa_pattern', label: 'Motif' },
-	{ id: 'manual', label: 'Saisie manuelle' }
+	{ id: 'pa_tower', label: 'Tower' },
+	{ id: 'pa_line', label: 'Lines' },
+	{ id: 'pa_pattern', label: 'Pattern' },
+	{ id: 'manual', label: 'Manual entry' }
 ];
 
 export interface PaRecord {

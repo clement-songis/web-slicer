@@ -7,6 +7,7 @@
 	// import (app_config d'Orca), « Ne plus afficher ».
 	import Dialog from '$lib/ui/Dialog.svelte';
 	import { ApiError } from '$lib/api/client';
+	import { numberLocale, t, tr } from '$lib/i18n';
 	import {
 		ANGLE_RANGE,
 		LINEAR_RANGE,
@@ -103,7 +104,7 @@
 			await onremeshed(result);
 			return true;
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Remaillage impossible.';
+			error = e instanceof ApiError ? e.message : tr('Remeshing failed.');
 			return false;
 		} finally {
 			busy = false;
@@ -116,27 +117,27 @@
 		onclose();
 	}
 	function fmt(n: number, d: number) {
-		return n.toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d });
+		return n.toLocaleString(numberLocale(), { minimumFractionDigits: d, maximumFractionDigits: d });
 	}
 </script>
 
 <Dialog
 	{open}
-	label="Maillage du STEP"
+	label={$t('STEP mesh')}
 	size="md"
 	onclose={() => !busy && onclose()}
 	data-testid="step-mesh-dialog"
 >
 	{#snippet header()}
 		<div class="flex min-w-0 flex-col gap-0.5">
-			<h2 class="ws-dialog-title">Maillage du STEP</h2>
+			<h2 class="ws-dialog-title">{$t('STEP mesh')}</h2>
 			<p class="truncate text-xs text-content-subtle" title={filename}>« {filename} »</p>
 		</div>
 	{/snippet}
 	<div class="flex flex-col gap-4 text-sm">
 		<div class="flex flex-col gap-1.5">
-			<span class="text-content-muted">Qualité</span>
-			<div class="ws-seg flex w-full" role="radiogroup" aria-label="Qualité du maillage">
+			<span class="text-content-muted">{$t('Quality')}</span>
+			<div class="ws-seg flex w-full" role="radiogroup" aria-label={$t('Mesh quality')}>
 				{#each STEP_PRESETS as p (p.id)}
 					<button
 						type="button"
@@ -149,26 +150,26 @@
 						disabled={busy}
 						data-testid={'step-preset-' + p.id}
 						onclick={() => choosePreset(p.id)}
-						><span>{p.label}</span><span class="text-2xs opacity-75">{p.hint}</span></button
+						><span>{$t(p.label)}</span><span class="text-2xs opacity-75">{$t(p.hint)}</span></button
 					>
 				{/each}
 			</div>
 			{#if preset === null}
 				<span class="text-2xs text-content-subtle" data-testid="step-preset-custom"
-					>Réglages personnalisés</span
+					>{$t('Custom settings')}</span
 				>
 			{/if}
 			{#if remembered && !result}
 				<span class="text-2xs text-content-subtle" data-testid="step-remembered"
-					>Réglages de votre dernier import STEP — appliqués avec « Appliquer et fermer ».</span
+					>{$t('Settings from your last STEP import — applied with “Apply and close”.')}</span
 				>
 			{/if}
 		</div>
 
 		<div class="grid grid-cols-[1fr_auto] items-center gap-x-3 gap-y-1">
 			<label for="step-linear" class="col-span-2 flex justify-between text-content-muted">
-				<span>Déflexion linéaire</span>
-				<span class="text-2xs text-content-subtle">écart corde / surface</span>
+				<span>{$t('Linear deflection')}</span>
+				<span class="text-2xs text-content-subtle">{$t('chord / surface deviation')}</span>
 			</label>
 			<input
 				id="step-linear"
@@ -185,7 +186,7 @@
 				<input
 					class="ws-field ws-field-sm w-20 text-right tabular-nums"
 					inputmode="decimal"
-					aria-label="Déflexion linéaire (mm)"
+					aria-label={$t('Linear deflection (mm)')}
 					aria-invalid={!!linearError}
 					bind:value={linearText}
 					onchange={() => commitText('linear')}
@@ -196,7 +197,7 @@
 				<span class="w-7 text-xs text-content-subtle">mm</span>
 			</span>
 			<span class="flex justify-between text-2xs text-content-subtle"
-				><span>Plus fin · plus de triangles</span><span>Plus grossier</span></span
+				><span>{$t('Finer · more triangles')}</span><span>{$t('Coarser')}</span></span
 			>
 			<span></span>
 			{#if linearError}<span class="col-span-2 text-xs text-danger-text" role="alert"
@@ -204,8 +205,8 @@
 				>{/if}
 
 			<label for="step-angle" class="col-span-2 mt-2 flex justify-between text-content-muted">
-				<span>Déflexion angulaire</span>
-				<span class="text-2xs text-content-subtle">angle entre facettes voisines</span>
+				<span>{$t('Angle deflection')}</span>
+				<span class="text-2xs text-content-subtle">{$t('angle between neighboring facets')}</span>
 			</label>
 			<input
 				id="step-angle"
@@ -222,7 +223,7 @@
 				<input
 					class="ws-field ws-field-sm w-20 text-right tabular-nums"
 					inputmode="decimal"
-					aria-label="Déflexion angulaire (rad)"
+					aria-label={$t('Angle deflection (rad)')}
 					aria-invalid={!!angleError}
 					bind:value={angleText}
 					onchange={() => commitText('angle')}
@@ -246,20 +247,20 @@
 				data-testid="step-split"
 			/>
 			<span
-				>Découper les compounds en plusieurs pièces
+				>{$t('Split compounds into several parts')}
 				<span class="block text-2xs text-content-subtle"
-					>une pièce par solide (« nom-SOLID-n »)</span
+					>{$t('one part per solid (“name-SOLID-n”)')}</span
 				></span
 			>
 		</label>
 
 		<div class="flex flex-col gap-2 rounded-md bg-surface-sunken px-3 py-2.5" aria-live="polite">
 			<div class="flex items-baseline justify-between gap-2">
-				<span class="text-content-muted">Triangles</span>
+				<span class="text-content-muted">{$t('Triangles')}</span>
 				<span class="flex items-baseline gap-2">
 					{#if delta}
 						<span class="text-xs text-content-subtle" data-testid="step-delta"
-							>{delta} vs import</span
+							>{$t('{delta} vs import', { delta })}</span
 						>
 					{/if}
 					<output class="text-base font-medium tabular-nums" data-testid="step-triangles"
@@ -272,13 +273,15 @@
 				data-testid="step-state"
 				data-dirty={dirty}
 			>
-				{#if busy}Remaillage en cours…{:else if dirty}Réglages modifiés : « Remailler » pour voir le
-					résultat{:else if result}Maillage affiché à jour{:else}Maillage de l’import (réglages par
-					défaut){/if}
+				{#if busy}{$t('Remeshing…')}{:else if dirty}{$t(
+						'Settings changed: “Remesh” to see the result'
+					)}{:else if result}{$t('Displayed mesh up to date')}{:else}{$t(
+						'Import mesh (default settings)'
+					)}{/if}
 			</span>
 			{#if result && result.objects.length > 1}
 				<div data-testid="step-pieces">
-					<p class="text-xs text-content-muted">{result.objects.length} pièces</p>
+					<p class="text-xs text-content-muted">{$t('{n} parts', { n: result.objects.length })}</p>
 					<ul class="mt-1 flex max-h-28 flex-col gap-0.5 overflow-auto text-xs">
 						{#each result.objects as o, i (i)}
 							<li class="flex justify-between gap-2">
@@ -293,12 +296,12 @@
 			{/if}
 		</div>
 		<p class="text-2xs text-content-subtle">
-			Des déflexions plus faibles donnent un maillage plus fidèle mais un traitement plus long.
+			{$t('Lower deflections give a more faithful mesh but longer processing.')}
 			<a
 				class="text-primary-text underline"
 				href="https://www.orcaslicer.com/wiki/import_export#step"
 				target="_blank"
-				rel="noopener noreferrer">Guide (wiki Orca)</a
+				rel="noopener noreferrer">{$t('Guide (Orca wiki)')}</a
 			>
 		</p>
 		{#if error}<p class="text-xs text-danger-text" role="alert">{error}</p>{/if}
@@ -306,7 +309,7 @@
 	{#snippet footer()}
 		<label class="mr-auto flex items-center gap-2 text-xs text-content-muted">
 			<input type="checkbox" bind:checked={dontAsk} disabled={busy} data-testid="step-dont-ask" />
-			Ne plus afficher
+			{$t("Don't show again")}
 		</label>
 		<button
 			type="button"
@@ -316,21 +319,21 @@
 			onclick={() => {
 				options = { ...STEP_DEFAULTS };
 				syncTexts();
-			}}>Défauts</button
+			}}>{$t('Defaults||step')}</button
 		>
 		<button
 			type="button"
 			class="ws-btn ws-btn-secondary"
 			data-testid="step-apply"
 			disabled={busy || !dirty || !!linearError || !!angleError}
-			onclick={apply}>{busy ? 'Remaillage…' : 'Remailler'}</button
+			onclick={apply}>{busy ? $t('Remeshing…||button') : $t('Remesh')}</button
 		>
 		<button
 			type="button"
 			class="ws-btn ws-btn-primary"
 			data-testid="step-done"
 			disabled={busy || !!linearError || !!angleError}
-			onclick={finish}>{dirty ? 'Appliquer et fermer' : 'Terminé'}</button
+			onclick={finish}>{dirty ? $t('Apply and close') : $t('Done')}</button
 		>
 	{/snippet}
 </Dialog>

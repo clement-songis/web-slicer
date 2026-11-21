@@ -2,6 +2,7 @@
 // découpe des compounds, envoyées à `POST /api/models/{id}/step-mesh` (lot 17).
 // Bornes et défauts du dialogue d'Orca. Pur → testable.
 import { api } from '$lib/api/client';
+import { numberLocale, tr } from '$lib/i18n';
 
 export interface StepMeshOptions {
 	/** Déflexion linéaire (mm) : écart maximal corde / surface. */
@@ -59,13 +60,16 @@ export function isStep(name: string): boolean {
 
 /** Nombre lisible (séparateur de milliers). */
 export function formatTriangles(n: number): string {
-	return n.toLocaleString('fr-FR');
+	return n.toLocaleString(numberLocale());
 }
 
 export const remeshStep = (modelId: string, options: StepMeshOptions) =>
 	api.post<StepMeshResult>(`/models/${modelId}/step-mesh`, normalizeStepOptions(options));
 
-/** Préréglages de qualité (raccourcis vers les curseurs d'Orca ; « Fin » = défauts d'Orca). */
+/**
+ * Préréglages de qualité (raccourcis vers les curseurs d'Orca ; « Fin » = défauts d'Orca).
+ * Libellés : clés anglaises traduites à l'affichage (`$t(p.label)`).
+ */
 export const STEP_PRESETS: readonly {
 	id: 'fine' | 'balanced' | 'light';
 	label: string;
@@ -75,22 +79,22 @@ export const STEP_PRESETS: readonly {
 }[] = [
 	{
 		id: 'fine',
-		label: 'Fin',
-		hint: 'défaut d’Orca',
+		label: 'Fine||step',
+		hint: 'Orca default',
 		linear_deflection: 0.003,
 		angle_deflection: 0.5
 	},
 	{
 		id: 'balanced',
-		label: 'Équilibré',
-		hint: 'courbes lisses',
+		label: 'Balanced',
+		hint: 'smooth curves',
 		linear_deflection: 0.01,
 		angle_deflection: 0.5
 	},
 	{
 		id: 'light',
-		label: 'Léger',
-		hint: 'peu de triangles',
+		label: 'Light||step',
+		hint: 'few triangles',
 		linear_deflection: 0.05,
 		angle_deflection: 1
 	}
@@ -126,8 +130,8 @@ export function parseDeflection(
 		return {
 			error:
 				kind === 'linear'
-					? 'Valeur attendue entre 0,001 et 0,1 mm.'
-					: 'Valeur attendue entre 0,01 et 1 rad.'
+					? tr('Value expected between 0.001 and 0.1 mm.')
+					: tr('Value expected between 0.01 and 1 rad.')
 		};
 	return { value: v };
 }

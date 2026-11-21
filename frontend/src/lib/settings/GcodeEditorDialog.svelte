@@ -53,8 +53,8 @@
 
 <Dialog
 	{open}
-	label={`Éditer : ${title}`}
-	title={`Éditer : ${title}`}
+	label={$t('Edit: {title}', { title })}
+	title={$t('Edit: {title}', { title })}
 	size="xl"
 	{onclose}
 	data-testid="gcode-editor"
@@ -64,15 +64,15 @@
 			<input
 				type="search"
 				class="ws-field ws-field-sm"
-				placeholder="Rechercher une variable…"
+				placeholder={$t('Search a variable…')}
 				bind:value={query}
 				data-testid="gcode-placeholder-search"
-				aria-label="Rechercher une variable"
+				aria-label={$t('Search a variable')}
 			/>
 			<div
 				class="min-h-0 flex-1 overflow-y-auto rounded border border-border"
 				role="tree"
-				aria-label="Variables"
+				aria-label={$t('Variables')}
 			>
 				{#each shown as group, gi (group.title)}
 					{@const expanded = query.trim() !== '' || (openGroups[group.title] ?? gi === 0)}
@@ -81,9 +81,12 @@
 							type="button"
 							class="flex w-full items-center justify-between bg-overlay px-2 py-1 text-left text-xs font-semibold"
 							onclick={() => (openGroups = { ...openGroups, [group.title]: !expanded })}
-							><span>{group.title}</span><span class="text-content-subtle tabular-nums"
-								>{group.items.length}</span
-							></button
+							><span
+								>{$t(
+									group.title,
+									group.titleParams ? { label: $t(group.titleParams.label) } : undefined
+								)}</span
+							><span class="text-content-subtle tabular-nums">{group.items.length}</span></button
 						>
 						{#if expanded}
 							<ul role="group">
@@ -107,7 +110,7 @@
 						{/if}
 					</div>
 				{:else}
-					<p class="p-3 text-xs text-content-subtle">Aucune variable.</p>
+					<p class="p-3 text-xs text-content-subtle">{$t('No variable.')}</p>
 				{/each}
 			</div>
 			<div
@@ -124,11 +127,12 @@
 						type="button"
 						class="ws-btn ws-btn-sm ws-btn-secondary mt-2"
 						data-testid="gcode-insert"
-						onclick={() => selected && insert(selected)}>Insérer {selected.insert}</button
+						onclick={() => selected && insert(selected)}
+						>{$t('Insert {name}', { name: selected.insert })}</button
 					>
 				{:else}
 					<p class="text-content-subtle">
-						Choisissez une variable (double-clic pour l'insérer au curseur).
+						{$t('Choose a variable (double-click to insert it at the cursor).')}
 					</p>
 				{/if}
 			</div>
@@ -142,7 +146,7 @@
 			data-testid="gcode-editor-text"></textarea>
 	</div>
 	{#snippet footer()}
-		<button type="button" class="ws-btn ws-btn-secondary" onclick={onclose}>Annuler</button>
+		<button type="button" class="ws-btn ws-btn-secondary" onclick={onclose}>{$t('Cancel')}</button>
 		<button
 			type="button"
 			class="ws-btn ws-btn-primary"
@@ -150,7 +154,7 @@
 			onclick={() => {
 				onapply(text);
 				onclose();
-			}}>Appliquer</button
+			}}>{$t('Apply')}</button
 		>
 	{/snippet}
 </Dialog>

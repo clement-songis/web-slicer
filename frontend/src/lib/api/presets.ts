@@ -9,11 +9,33 @@ import type {
 	UpdatePresetRequest
 } from './types';
 
+/**
+ * Dernières listes reçues (audit 40 E1) : le filtrage de compatibilité côté
+ * serveur coûte 1–2,7 s par liste ; en revenant sur un projet (navigation dans
+ * l'application), la page affiche aussitôt la liste connue puis la remplace par
+ * la réponse fraîche. Mémoire seulement (jamais persisté : pas de fuite entre
+ * comptes après rechargement).
+ */
+const listCache = new Map<string, PresetSummary[]>();
+const listKey = (kind: string, printer?: string) => `${kind}\u0000${printer ?? ''}`;
+
+/** Liste déjà reçue pour ce type / cette imprimante (ou null). */
+export function cachedPresetList(kind: string, printer?: string): PresetSummary[] | null {
+	return listCache.get(listKey(kind, printer)) ?? null;
+}
+
+/** Oublie les listes connues (déconnexion, changement de compte). */
+export function clearPresetListCache(): void {
+	listCache.clear();
+}
+
 /** Presets système + utilisateur d'un type, filtrés par compatibilité (FR-021). */
-export const listPresets = (kind: string, printer?: string) => {
+export const listPresets = async (kind: string, printer?: string) => {
 	const q = new URLSearchParams({ kind });
 	if (printer) q.set('printer', printer);
-	return api.get<PresetSummary[]>(`/presets?${q.toString()}`);
+	const list = await api.get<PresetSummary[]>(`/presets?${q.toString()}`);
+	listCache.set(listKey(kind, printer), list);
+	return list;
 };
 
 /** Valeurs brutes (surcharges du preset). */

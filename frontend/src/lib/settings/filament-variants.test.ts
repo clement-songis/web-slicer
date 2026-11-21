@@ -1,4 +1,8 @@
-import { describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { setLocale } from '$lib/i18n';
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 import { isVariantOption, variantLabels, variantSlot } from './filament-variants';
 
 describe('variantes de buse du filament (Orca TabFilament m_variant_combo)', () => {

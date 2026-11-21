@@ -9,6 +9,9 @@
 	import { unsupportedPresets } from './unsupported';
 	import { groupUserPresets, loadUserPresetMeta, type UserPresetMeta } from './user-grouping';
 	import { getResolvedPreset } from '../api/presets';
+	import ModifiedBadge from './ModifiedBadge.svelte';
+	import { locale, t } from '$lib/i18n';
+	import { UNSPECIFIED } from './user-grouping';
 
 	interface Props {
 		/** Presets d'un type (déjà filtrés par compatibilité). */
@@ -70,7 +73,17 @@
 			alive = false;
 		};
 	});
-	const userGroups = $derived(groupUserPresets(groups.user, grouping, userMeta));
+	const userGroups = $derived.by(() => {
+		void $locale; // libellés traduits à l'appel : recalcul au changement de langue
+		return groupUserPresets(groups.user, grouping, userMeta);
+	});
+	/** Libellé d'`<optgroup>` affiché : clés anglaises traduites, noms de fabricant tels quels. */
+	function groupLabel(label: string): string {
+		const suffix = ` · ${UNSPECIFIED}`;
+		return label.endsWith(suffix)
+			? label.slice(0, -suffix.length) + ` · ${$t(UNSPECIFIED)}`
+			: $t(label);
+	}
 	// Recherche (accents/casse ignorés) et filtre de compatibilité imprimante.
 	let query = $state('');
 	// Orca `show_unsupported_presets` : la préférence coche « Afficher les
@@ -96,7 +109,7 @@
 	// bibliothèque de filaments vaut pour toutes les imprimantes), mais groupé par
 	// fabricant — Génériques en tête — au lieu d'une liste plate de centaines de noms.
 	const filtered = $derived(
-		searchable
+		$locale && searchable
 			? filterPresetList(presets, {
 					query,
 					printer,
@@ -131,7 +144,7 @@
 		else queueMicrotask(() => searchInput?.focus());
 	}
 	const selected = $derived(presets.find((p) => p.id === selectedId) ?? null);
-	const badge = $derived(selected ? inheritanceLabel(selected) : null);
+	const badge = $derived(selected && $locale ? inheritanceLabel(selected) : null);
 	const isUser = $derived(selected?.origin === 'user');
 
 	const FIELD =
@@ -142,7 +155,7 @@
 {#snippet unsupportedOptions()}
 	{#if unsupported.length}
 		<optgroup
-			label="Incompatibles avec cette imprimante"
+			label={$t('Incompatible with this printer')}
 			data-testid={testid ? `${testid}-unsupported` : undefined}
 		>
 			{#each unsupported as p (p.id)}
@@ -153,11 +166,11 @@
 {/snippet}
 
 {#snippet options()}
-	<option value={null} disabled>Choisir…</option>
+	<option value={null} disabled>{$t('Select…')}</option>
 	{#if filtered}
 		{#each filtered.groups as g (g.label)}
 			{#if g.label}
-				<optgroup label={g.label}>
+				<optgroup label={groupLabel(g.label)}>
 					{#each g.presets as p (p.id)}
 						<option value={p.id}>{p.name}{isDerived(p) ? ' ✎' : ''}</option>
 					{/each}
@@ -170,7 +183,7 @@
 			{/if}
 		{/each}
 	{:else if groups.system.length}
-		<optgroup label="Système">
+		<optgroup label={$t('System')}>
 			{#each groups.system as p (p.id)}
 				<option value={p.id}>{p.name}</option>
 			{/each}
@@ -179,7 +192,7 @@
 	{#if !filtered}
 		{#each userGroups as g (g.label)}
 			{#if g.label}
-				<optgroup label={g.label}>
+				<optgroup label={groupLabel(g.label)}>
 					{#each g.presets as p (p.id)}
 						<option value={p.id}>{p.name}{isDerived(p) ? ' ✎' : ''}</option>
 					{/each}
@@ -200,15 +213,15 @@
 			<input
 				type="search"
 				bind:value={query}
-				placeholder="Rechercher un profil…"
-				aria-label="Rechercher : {label}"
+				placeholder={$t('Search a profile…')}
+				aria-label={$t('Search: {label}', { label })}
 				class={FIELD}
 				data-testid={testid ? `${testid}-search` : undefined}
 			/>
 			<div class="flex items-center justify-between gap-2 text-xs text-content-muted">
 				<span data-testid={testid ? `${testid}-count` : undefined}>
 					{filtered.shown} / {showAll ? filtered.total : filtered.compatible}
-					{showAll ? 'profils' : 'compatibles'}
+					{showAll ? $t('profiles') : $t('compatible')}
 				</span>
 				{#if printer}
 					<label class="flex items-center gap-1">
@@ -217,7 +230,7 @@
 							bind:checked={showAll}
 							data-testid={testid ? `${testid}-show-all` : undefined}
 						/>
-						Afficher les incompatibles
+						{$t('Show incompatible')}
 					</label>
 				{/if}
 			</div>
@@ -234,8 +247,8 @@
 					bind:this={searchInput}
 					type="search"
 					bind:value={query}
-					placeholder="Rechercher un profil…"
-					aria-label="Rechercher : {label}"
+					placeholder={$t('Search a profile…')}
+					aria-label={$t('Search: {label}', { label })}
 					class={FIELD}
 					data-testid={testid ? `${testid}-search` : undefined}
 					onkeydown={(e) => {
@@ -264,12 +277,13 @@
 			>
 				{@render options()}
 			</select>
+			{#if modified}<ModifiedBadge testid={testid ? `${testid}-modified` : undefined} />{/if}
 			<button
 				type="button"
 				class="ws-btn ws-btn-sm ws-btn-ghost shrink-0 px-1.5 {searchOpen ? 'text-primary' : ''}"
-				aria-label="Rechercher : {label}"
+				aria-label={$t('Search: {label}', { label })}
 				aria-pressed={searchOpen}
-				title="Rechercher dans la liste"
+				title={$t('Search in the list')}
 				data-testid={testid ? `${testid}-search-toggle` : undefined}
 				onclick={toggleSearch}
 			>
@@ -284,15 +298,18 @@
 			</button>
 		</div>
 	{:else}
-		<select
-			bind:value={selectedId}
-			aria-label={label}
-			class={FIELD}
-			data-testid={testid}
-			data-modified={modified ? 'true' : 'false'}
-		>
-			{@render options()}
-		</select>
+		<div class="flex items-center gap-1">
+			<select
+				bind:value={selectedId}
+				aria-label={label}
+				class={FIELD}
+				data-testid={testid}
+				data-modified={modified ? 'true' : 'false'}
+			>
+				{@render options()}
+			</select>
+			{#if modified}<ModifiedBadge testid={testid ? `${testid}-modified` : undefined} />{/if}
+		</div>
 	{/if}
 {:else}
 	<div class="flex flex-col gap-1">
@@ -308,6 +325,7 @@
 			>
 				{@render options()}
 			</select>
+			{#if modified}<ModifiedBadge testid={testid ? `${testid}-modified` : undefined} />{/if}
 		</div>
 
 		<div class="flex items-center gap-2 pl-18">
@@ -323,7 +341,7 @@
 					disabled={!selected}
 					onclick={() => selected && onderive?.(selected)}
 				>
-					Dériver
+					{$t('Derive')}
 				</button>
 				<button
 					type="button"
@@ -331,7 +349,7 @@
 					disabled={!isUser}
 					onclick={() => selected && onsave?.(selected)}
 				>
-					Enregistrer
+					{$t('Save')}
 				</button>
 				<button
 					type="button"
@@ -339,7 +357,7 @@
 					disabled={!isUser}
 					onclick={() => selected && ondelete?.(selected)}
 				>
-					Supprimer
+					{$t('Delete')}
 				</button>
 			</div>
 		</div>

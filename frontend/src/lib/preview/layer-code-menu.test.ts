@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import {
 	applyLayerCode,
 	codeAt,
@@ -8,6 +9,9 @@ import {
 import type { PlateCustomGcode } from './color-changes';
 
 const colors = ['#FF0000', '#00FF00', '#0000FF'];
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('menu du curseur de couches (IMSlider d’Orca)', () => {
 	test('couche libre : pause, G-code perso, couleur ; modèle si template non vide ; filaments si > 1', () => {

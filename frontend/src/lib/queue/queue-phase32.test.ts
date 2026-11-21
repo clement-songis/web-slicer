@@ -1,7 +1,11 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import type { JobResponse } from '$lib/api/types';
 import { subscribeEvents } from './events';
 import { jobErrorText, phaseLabel, queuePositions, unknownJobId, upsertJob } from './queue';
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 const job = (id: string, status: string, created: string): JobResponse => ({
 	id,

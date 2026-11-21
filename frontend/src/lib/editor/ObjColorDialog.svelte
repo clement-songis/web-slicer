@@ -5,6 +5,7 @@
 	// « Sans les couleurs » garde l'objet sur un seul filament.
 	import Dialog from '$lib/ui/Dialog.svelte';
 	import { swatchStyle } from '$lib/ui/color';
+	import { t } from '$lib/i18n';
 	import {
 		MAX_FILAMENTS,
 		defaultTargets,
@@ -67,20 +68,24 @@
 	const swatch = (c: string) => swatchStyle(paletteHex(c) ?? c);
 </script>
 
-<Dialog {open} label="Couleurs de l'OBJ" size="lg" onclose={onskip} data-testid="obj-color-dialog">
+<Dialog {open} label={$t('OBJ colors')} size="lg" onclose={onskip} data-testid="obj-color-dialog">
 	{#snippet header()}
 		<div class="flex min-w-0 flex-col gap-0.5">
-			<h2 class="ws-dialog-title">Couleurs de l'OBJ</h2>
+			<h2 class="ws-dialog-title">{$t('OBJ colors')}</h2>
 			<p class="text-xs text-content-subtle">
-				« {filename} » contient {palette.length} couleur{palette.length > 1 ? 's' : ''} : choisissez le
-				filament de chacune. La peinture multi-matériaux de l'objet suit ce choix.
+				{$t(
+					palette.length > 1
+						? "“{file}” contains {n} colors: choose the filament of each. The object's multi-material painting follows this choice."
+						: "“{file}” contains {n} color: choose the filament of each. The object's multi-material painting follows this choice.",
+					{ file: filename, n: palette.length }
+				)}
 			</p>
 		</div>
 	{/snippet}
 	<div class="flex flex-col gap-4 text-sm">
 		<div class="flex flex-wrap items-center gap-x-6 gap-y-2">
 			<label class="flex items-center gap-2">
-				<span class="text-content-muted">Nombre de couleurs</span>
+				<span class="text-content-muted">{$t('Number of colors')}</span>
 				<input
 					type="number"
 					class="ws-field ws-field-sm w-16 text-right"
@@ -92,8 +97,8 @@
 						(count = Math.max(1, Math.min(palette.length, Number(e.currentTarget.value) || 1)))}
 				/>
 			</label>
-			<div class="flex items-center gap-1" role="group" aria-label="Affectation rapide">
-				<span class="mr-1 text-content-muted">Affecter</span>
+			<div class="flex items-center gap-1" role="group" aria-label={$t('Quick assignment')}>
+				<span class="mr-1 text-content-muted">{$t('Assign')}</span>
 				<button
 					type="button"
 					class="ws-btn ws-btn-sm {mode === 'append' ? 'ws-btn-primary' : 'ws-btn-secondary'}"
@@ -103,7 +108,7 @@
 					onclick={() => {
 						mode = 'append';
 						targets = defaultTargets(groups, slotColours, 'append');
-					}}>À de nouveaux filaments</button
+					}}>{$t('To new filaments')}</button
 				>
 				<button
 					type="button"
@@ -113,7 +118,7 @@
 					onclick={() => {
 						mode = 'match';
 						targets = defaultTargets(groups, slotColours, 'match');
-					}}>Aux filaments les plus proches</button
+					}}>{$t('To the closest filaments')}</button
 				>
 			</div>
 		</div>
@@ -134,31 +139,37 @@
 					<span aria-hidden="true" class="text-content-subtle">→</span>
 					<select
 						class="ws-field ws-field-sm min-w-0 flex-1"
-						aria-label={`Filament pour la couleur ${g.hex}`}
+						aria-label={$t('Filament for color {hex}', { hex: g.hex })}
 						data-testid="obj-color-target"
 						value={targetValue(targets[i])}
 						onchange={(e) => setTarget(i, e.currentTarget.value)}
 					>
-						<option value="new" disabled={roomLeft <= 0}>Nouveau filament ({g.hex})</option>
+						<option value="new" disabled={roomLeft <= 0}
+							>{$t('New filament ({hex})', { hex: g.hex })}</option
+						>
 						{#each slotColours as c, s (s)}
-							<option value={String(s)}>Filament {s + 1} ({c})</option>
+							<option value={String(s)}
+								>{$t('Filament {n} ({color})', { n: s + 1, color: c })}</option
+							>
 						{/each}
 					</select>
 					<span
 						class="h-6 w-6 shrink-0 rounded border border-border-strong"
 						style={swatch(resultColour(i) ?? g.hex)}
-						title="Couleur du filament retenu"
+						title={$t('Color of the chosen filament')}
 						data-testid="obj-color-result"
 					></span>
 				</li>
 			{/each}
 		</ul>
 		<p class="text-xs text-content-subtle" data-testid="obj-color-summary">
-			{plan.newColours.length} filament{plan.newColours.length > 1 ? 's' : ''} ajouté{plan
-				.newColours.length > 1
-				? 's'
-				: ''} · {reused} existant{reused > 1 ? 's' : ''} réutilisé{reused > 1 ? 's' : ''} · {slotColours.length +
-				plan.newColours.length} / {MAX_FILAMENTS} filaments
+			{$t(plan.newColours.length > 1 ? '{n} filaments added' : '{n} filament added', {
+				n: plan.newColours.length
+			})} · {$t(reused > 1 ? '{n} existing reused||plural' : '{n} existing reused', { n: reused })} ·
+			{$t('{used} / {max} filaments', {
+				used: slotColours.length + plan.newColours.length,
+				max: MAX_FILAMENTS
+			})}
 		</p>
 	</div>
 	{#snippet footer()}
@@ -166,13 +177,13 @@
 			type="button"
 			class="ws-btn ws-btn-ghost mr-auto"
 			data-testid="obj-color-skip"
-			onclick={onskip}>Importer sans les couleurs</button
+			onclick={onskip}>{$t('Import without colors')}</button
 		>
 		<button
 			type="button"
 			class="ws-btn ws-btn-primary"
 			data-testid="obj-color-apply"
-			onclick={() => onapply(plan)}>Appliquer les couleurs</button
+			onclick={() => onapply(plan)}>{$t('Apply colors')}</button
 		>
 	{/snippet}
 </Dialog>

@@ -5,6 +5,7 @@
 	// lignes. Débits échantillonnés et chaîne écrits comme Orca (ramming.ts) ;
 	// sans changement de courbe, la chaîne d'origine est rendue telle quelle.
 	import Dialog from '$lib/ui/Dialog.svelte';
+	import { locale, numberLocale, t } from '$lib/i18n';
 	import {
 		DEFAULT_RAMMING,
 		RAMMING_MAX_SPEED,
@@ -93,7 +94,8 @@
 		event.preventDefault();
 		edit = movePoint(edit, i, edit.points[i][1] + d, uniform || event.ctrlKey || event.metaKey);
 	}
-	const fmt = (n: number, d = 1) => n.toLocaleString('fr-FR', { maximumFractionDigits: d });
+	const fmt = (n: number, d = 1) =>
+		n.toLocaleString(numberLocale($locale), { maximumFractionDigits: d });
 </script>
 
 <Dialog {open} label="Ramming" size="xl" {onclose} data-testid="ramming-dialog">
@@ -101,9 +103,9 @@
 		<div class="flex min-w-0 flex-col gap-0.5">
 			<h2 class="ws-dialog-title">Ramming</h2>
 			<p class="text-xs text-content-subtle">
-				Extrusion rapide juste avant un changement d'outil sur une imprimante multi-matériaux à
-				extrudeur unique : elle donne à l'extrémité du filament déchargé une forme propre pour le
-				recharger.
+				{$t(
+					'Rapid extrusion just before a tool change on a single-extruder multi-material printer: it gives the tip of the unloaded filament a clean shape for reloading.'
+				)}
 			</p>
 		</div>
 	{/snippet}
@@ -117,7 +119,7 @@
 				class="block max-w-full rounded border border-border bg-surface-sunken select-none"
 				data-testid="ramming-chart"
 				role="group"
-				aria-label="Débit volumétrique du ramming en fonction du temps"
+				aria-label={$t('Ramming volumetric flow over time')}
 			>
 				{#each yTicks as v (v)}
 					<line
@@ -155,14 +157,14 @@
 					x={PAD.l + PW / 2}
 					y={H - 4}
 					text-anchor="middle"
-					class="fill-content-muted text-[11px]">Temps (s)</text
+					class="fill-content-muted text-[11px]">{$t('Time (s)')}</text
 				>
 				<text
 					x="10"
 					y={PAD.t + PH / 2}
 					text-anchor="middle"
 					transform="rotate(-90 10 {PAD.t + PH / 2})"
-					class="fill-content-muted text-[11px]">Débit (mm³/s)</text
+					class="fill-content-muted text-[11px]">{$t('Flow (mm³/s)')}</text
 				>
 				<!-- Débit retenu par pas de 0,25 s (valeurs écrites dans la chaîne). -->
 				{#each speeds as v, i (i)}
@@ -196,7 +198,7 @@
 							stroke-width={dragging === i ? 3 : 2}
 							role="slider"
 							tabindex="0"
-							aria-label={`Débit à ${fmt(p[0], 2)} s`}
+							aria-label={$t('Flow at {time} s', { time: fmt(p[0], 2) })}
 							aria-valuemin="0"
 							aria-valuemax={RAMMING_MAX_SPEED}
 							aria-valuenow={Math.round(p[1] * 10) / 10}
@@ -211,15 +213,16 @@
 				{/each}
 			</svg>
 			<figcaption class="mt-1 text-xs text-content-subtle">
-				Glissez un point (ou flèches ↑/↓, Maj = pas de 1). Ctrl ou la case ci-dessous : débit
-				constant, tous les points se déplacent ensemble.
+				{$t(
+					'Drag a point (or ↑/↓ arrows, Shift = step of 1). Ctrl or the box below: constant flow, all points move together.'
+				)}
 			</figcaption>
 		</figure>
 		<div class="flex min-w-56 flex-1 flex-col gap-4 text-sm">
 			<section class="flex flex-col gap-2">
-				<h3 class="ws-section-title">Ramming total</h3>
+				<h3 class="ws-section-title">{$t('Total ramming')}</h3>
 				<label class="flex items-center justify-between gap-3">
-					<span class="text-content-muted">Durée</span>
+					<span class="text-content-muted">{$t('Duration')}</span>
 					<span class="flex items-center gap-1">
 						<input
 							type="number"
@@ -234,18 +237,18 @@
 					</span>
 				</label>
 				<div class="flex items-center justify-between gap-3">
-					<span class="text-content-muted">Volume</span>
+					<span class="text-content-muted">{$t('Volume')}</span>
 					<output class="tabular-nums" data-testid="ramming-volume">{volume} mm³</output>
 				</div>
 				<label class="flex items-center gap-2 text-content-muted">
 					<input type="checkbox" bind:checked={uniform} data-testid="ramming-uniform" />
-					Débit constant (déplacer tous les points)
+					{$t('Constant flow (move all points)')}
 				</label>
 			</section>
 			<section class="flex flex-col gap-2">
-				<h3 class="ws-section-title">Ligne de ramming</h3>
+				<h3 class="ws-section-title">{$t('Ramming line')}</h3>
 				<label class="flex items-center justify-between gap-3">
-					<span class="text-content-muted">Largeur</span>
+					<span class="text-content-muted">{$t('Width')}</span>
 					<span class="flex items-center gap-1">
 						<input
 							type="number"
@@ -259,7 +262,7 @@
 					</span>
 				</label>
 				<label class="flex items-center justify-between gap-3">
-					<span class="text-content-muted">Espacement</span>
+					<span class="text-content-muted">{$t('Spacing')}</span>
 					<span class="flex items-center gap-1">
 						<input
 							type="number"
@@ -274,7 +277,7 @@
 				</label>
 			</section>
 			<details class="text-xs text-content-subtle">
-				<summary class="cursor-pointer">Chaîne Orca</summary>
+				<summary class="cursor-pointer">{$t('Orca string')}</summary>
 				<code class="mt-1 block font-mono break-all" data-testid="ramming-string">{result}</code>
 			</details>
 		</div>
@@ -284,14 +287,14 @@
 			type="button"
 			class="ws-btn ws-btn-ghost mr-auto"
 			data-testid="ramming-reset"
-			onclick={() => (edit = startEdit(DEFAULT_RAMMING))}>Valeurs par défaut</button
+			onclick={() => (edit = startEdit(DEFAULT_RAMMING))}>{$t('Defaults')}</button
 		>
-		<button type="button" class="ws-btn ws-btn-secondary" onclick={onclose}>Annuler</button>
+		<button type="button" class="ws-btn ws-btn-secondary" onclick={onclose}>{$t('Cancel')}</button>
 		<button
 			type="button"
 			class="ws-btn ws-btn-primary"
 			data-testid="ramming-apply"
-			onclick={() => onapply(result)}>Appliquer</button
+			onclick={() => onapply(result)}>{$t('Apply')}</button
 		>
 	{/snippet}
 </Dialog>

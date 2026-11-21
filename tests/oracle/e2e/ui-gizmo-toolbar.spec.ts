@@ -121,7 +121,7 @@ test("gizmos Move/Rotate/Scale : transformations visibles et persistées @F:gizm
   await page.getByTestId("tool-rotate").click();
   await page.getByLabel("Rotation (°) Z", { exact: true }).fill("30");
   await page.getByTestId("tool-scale").click();
-  await page.getByLabel("Échelle X", { exact: true }).fill("1.5");
+  await page.getByLabel("Échelle X", { exact: true }).fill("150");
   const saved = await save(page, id);
   const t = saved.scene.objects[0].transform;
   expect(t.position[0]).toBeCloseTo(before + 7, 5);
@@ -441,7 +441,7 @@ test("réglages objet et modificateur de plage Z persistés @F:ui.object-setting
   await objLine.fill("5");
   await objLine.press("Tab");
   await page.getByTestId("object-row").first().click({ button: "right" });
-  await page.getByRole("menuitem", { name: /Height range Modifier/i }).click();
+  await page.getByRole("menuitem", { name: /Height range Modifier|Modificateur de plage de hauteur/i }).click();
   // Orca layer_config_ranges : première plage [0, 2] avec layer_height courant.
   const range = page.getByTestId("layer-range");
   await expect(range).toHaveCount(1);

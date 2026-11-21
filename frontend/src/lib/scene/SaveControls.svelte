@@ -9,6 +9,7 @@
 	// capté ici : il reste au dispatcher (`project.saveAs`).
 	import type { SaveOutcome } from './save';
 	import { isSaveChord } from '../editor/shortcuts';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		/** Effectue la sauvegarde et renvoie son issue (le parent bâtit la scène). */
@@ -60,7 +61,7 @@
 		disabled={saveState === 'saving'}
 		onclick={run}
 		data-unsaved={unsaved ? 'true' : 'false'}
-		data-tip={unsaved ? 'Modifications non enregistrées (Ctrl+S)' : 'Projet enregistré'}
+		data-tip={unsaved ? $t('Unsaved changes (Ctrl+S)') : $t('Project saved')}
 		data-tip-side="bottom"
 		aria-describedby={unsaved ? 'save-unsaved-hint' : undefined}
 	>
@@ -73,18 +74,19 @@
 				aria-hidden="true"
 			></span>
 		{/if}
-		{saveState === 'saving' ? 'Sauvegarde…' : 'Sauvegarder'}
+		{saveState === 'saving' ? $t('Saving…||project') : $t('Save||project')}
 	</button>
 	{#if unsaved}
-		<span id="save-unsaved-hint" class="sr-only">Modifications non enregistrées</span>
+		<span id="save-unsaved-hint" class="sr-only">{$t('Unsaved changes')}</span>
 	{/if}
 
 	<!-- Succès : annoncé par la barre de message de l'éditeur (évite le doublon
 	     et le décalage de la barre d'en-tête). -->
 	{#if saveState === 'conflict'}
 		<p class="text-warning" role="alert">
-			Conflit : le projet a été modifié dans un autre onglet. Rechargez avant de sauvegarder pour ne
-			pas écraser ces changements.
+			{$t(
+				'Conflict: the project was modified in another tab. Reload before saving so as not to overwrite those changes.'
+			)}
 		</p>
 	{:else if saveState === 'error'}
 		<p class="text-danger" role="alert">{message}</p>

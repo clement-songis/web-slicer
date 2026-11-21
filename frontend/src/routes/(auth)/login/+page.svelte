@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { t } from '$lib/i18n';
 	import { resolve } from '$app/paths';
 	import { loginErrorMessage } from '$lib/api/account';
 	import { login } from '$lib/api/session';
@@ -40,13 +41,13 @@
 	}
 </script>
 
-<svelte:head><title>Connexion — Web-Slicer</title></svelte:head>
+<svelte:head><title>{$t('Login')} — Web-Slicer</title></svelte:head>
 
-<h1 class="ws-page-title mb-6">Connexion</h1>
+<h1 class="ws-page-title mb-6">{$t('Login')}</h1>
 
 <form class="space-y-4" onsubmit={submit}>
 	<label class="block">
-		<span class="mb-1 block text-sm text-content-muted">Email</span>
+		<span class="mb-1 block text-sm text-content-muted">{$t('Email||auth')}</span>
 		<input
 			type="email"
 			bind:value={email}
@@ -58,7 +59,7 @@
 	</label>
 
 	<label class="block">
-		<span class="mb-1 block text-sm text-content-muted">Mot de passe</span>
+		<span class="mb-1 block text-sm text-content-muted">{$t('Password')}</span>
 		<input
 			type="password"
 			bind:value={password}
@@ -78,7 +79,7 @@
 			data-testid="auth-forgot"
 			onclick={() => (showForgot = !showForgot)}
 		>
-			Mot de passe oublié ?
+			{$t('Forgot password?')}
 		</button>
 	</div>
 
@@ -88,9 +89,9 @@
 			class="rounded border border-border bg-overlay px-3 py-2 text-xs text-content-muted"
 			data-testid="auth-forgot-help"
 		>
-			Cette instance n'envoie pas d'e-mails : demandez à son administrateur de réinitialiser votre
-			mot de passe (page Administration). Vous pourrez ensuite vous connecter avec le mot de passe
-			qu'il vous communiquera.
+			{$t(
+				'This instance does not send emails: ask its administrator to reset your password (Administration page). You can then sign in with the password they give you.'
+			)}
 		</p>
 	{/if}
 
@@ -104,11 +105,11 @@
 		disabled={!hydrated || busy}
 		class="ws-btn ws-btn-lg ws-btn-primary w-full"
 	>
-		{busy ? 'Connexion…' : 'Se connecter'}
+		{busy ? $t('Signing in…') : $t('Sign in')}
 	</button>
 </form>
 
 <p class="mt-4 text-center text-sm text-content-muted">
-	Pas de compte ?
-	<a href={resolve('/register')} class="text-primary hover:underline">Créer un compte</a>
+	{$t('No account?')}
+	<a href={resolve('/register')} class="text-primary hover:underline">{$t('Create an account')}</a>
 </p>

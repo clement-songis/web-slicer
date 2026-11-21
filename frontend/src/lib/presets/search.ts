@@ -57,11 +57,11 @@ export interface PresetFilterResult<T> {
 const GENERIC_VENDORS = new Set(['', 'custom', 'generic', 'orca', 'orcafilamentlibrary']);
 
 /** Libellé du groupe des presets sans fabricant ou génériques. */
-export const GENERIC_GROUP = 'Génériques';
+export const GENERIC_GROUP = 'Generic||group';
 /** Libellé du groupe des presets de l'utilisateur. */
-export const USER_GROUP = 'Mes presets';
+export const USER_GROUP = 'My Presets';
 /** Libellé du groupe gardant la sélection masquée par le filtre. */
-export const SELECTED_GROUP = 'Sélection actuelle';
+export const SELECTED_GROUP = 'Current selection';
 
 /** Minuscule sans accents ni espaces superflus (« Élégoo  » → « elegoo »). */
 export function normalizeSearch(text: string): string {

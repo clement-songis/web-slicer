@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { dialogFocus } from '$lib/ui/dialog-focus';
+	import { t, tr } from '$lib/i18n';
 	// Page imprimantes (T077/US8) : déclaration + test de connexion, panneau
 	// d'état en direct (progression, températures) via WebSocket `printer.status`,
 	// et contrôles pause/reprise/annulation. La logique d'état est pure
@@ -113,7 +114,7 @@
 			}
 			return saved.id;
 		} catch (e) {
-			connectError = e instanceof ApiError ? e.message : 'Enregistrement impossible';
+			connectError = e instanceof ApiError ? e.message : tr('Could not save');
 			return null;
 		}
 	}
@@ -187,7 +188,7 @@
 			}
 			editing = { printerId: printer.id, presetId };
 		} catch (e) {
-			fail(e, 'Édition impossible');
+			fail(e, tr('Could not edit'));
 		} finally {
 			busy = { ...busy, [printer.id]: false };
 		}
@@ -199,7 +200,7 @@
 			await updatePreset(editing.presetId, { values: editValues });
 			editing = null;
 		} catch (e) {
-			fail(e, 'Enregistrement impossible');
+			fail(e, tr('Could not save'));
 		}
 	}
 
@@ -214,7 +215,7 @@
 			await reload();
 			showCatalog = false;
 		} catch (e) {
-			fail(e, 'Ajout impossible');
+			fail(e, tr('Could not add'));
 		}
 	}
 
@@ -237,9 +238,9 @@
 	/** Nom par défaut : hôte de l'URL Moonraker, sinon libellé générique. */
 	function defaultName(rawUrl: string): string {
 		try {
-			return new URL(rawUrl).hostname || 'Imprimante';
+			return new URL(rawUrl).hostname || tr('Printer');
 		} catch {
-			return rawUrl.trim() ? rawUrl.trim() : 'Imprimante';
+			return rawUrl.trim() ? rawUrl.trim() : tr('Printer');
 		}
 	}
 
@@ -258,7 +259,7 @@
 			name = '';
 			hostForm = emptyHostForm(hostForm.type);
 		} catch (e) {
-			fail(e, 'Déclaration impossible');
+			fail(e, tr('Could not add the printer'));
 		} finally {
 			creating = false;
 		}
@@ -290,7 +291,7 @@
 			const snapshot = await getPrinterStatus(id);
 			statuses = { ...statuses, [id]: fromStatusResponse(snapshot) };
 		} catch (e) {
-			fail(e, 'État indisponible');
+			fail(e, tr('Status unavailable'));
 		} finally {
 			busy = { ...busy, [id]: false };
 		}
@@ -303,7 +304,7 @@
 			await action(id);
 			await refreshStatus(id);
 		} catch (e) {
-			fail(e, 'Commande refusée');
+			fail(e, tr('Command rejected'));
 		} finally {
 			busy = { ...busy, [id]: false };
 		}
@@ -316,7 +317,7 @@
 			await deletePrinter(id);
 			printers = printers.filter((p) => p.id !== id);
 		} catch (e) {
-			fail(e, 'Suppression impossible');
+			fail(e, tr('Could not delete'));
 		} finally {
 			busy = { ...busy, [id]: false };
 		}
@@ -327,14 +328,14 @@
 	}
 </script>
 
-<svelte:head><title>Imprimantes</title></svelte:head>
+<svelte:head><title>{$t('Printers')}</title></svelte:head>
 
 <div class="flex h-screen bg-surface text-content">
 	<AppSidebar email={data.user.email} active="printers" />
 	<div class="flex-1 overflow-auto">
 		<!-- Même gouttière que la bibliothèque (p-8, alignement à gauche). -->
 		<main class="flex max-w-3xl flex-col gap-6 p-8 text-content">
-			<h1 class="ws-page-title">Imprimantes</h1>
+			<h1 class="ws-page-title">{$t('Printers')}</h1>
 
 			{#if error}
 				<p class="rounded bg-danger-soft px-3 py-2 text-danger-content" role="alert">{error}</p>
@@ -346,7 +347,8 @@
 				class="ws-btn ws-btn-lg ws-btn-primary self-start"
 				onclick={() => (showCatalog = true)}
 			>
-				<IconPlus class="h-4 w-4" aria-hidden="true" /> Ajouter des imprimantes
+				<IconPlus class="h-4 w-4" aria-hidden="true" />
+				{$t('Add printers')}
 			</button>
 			<button
 				type="button"
@@ -354,7 +356,7 @@
 				data-testid="printer-create-custom"
 				onclick={() => (showCreatePrinter = true)}
 			>
-				Imprimante personnalisée…
+				{$t('Custom printer…')}
 			</button>
 			<CreatePrinterDialog
 				open={showCreatePrinter}
@@ -370,7 +372,7 @@
 			<!-- Déclaration manuelle (connexion Moonraker facultative) -->
 			<section
 				class="flex flex-col gap-3 rounded-lg border border-border bg-surface-raised p-4"
-				aria-label="Déclarer une imprimante"
+				aria-label={$t('Add a printer')}
 			>
 				<button
 					type="button"
@@ -382,16 +384,17 @@
 					<IconChevron
 						class="h-4 w-4 transition-transform {showManual ? 'rotate-90' : ''}"
 						aria-hidden="true"
-					/> Déclarer manuellement (Moonraker, OctoPrint, PrusaLink…)
+					/>
+					{$t('Add manually (Moonraker, OctoPrint, PrusaLink…)')}
 				</button>
 				{#if showManual}
 					<form class="flex flex-col gap-3" onsubmit={declare}>
 						<label class="flex flex-col gap-1 text-sm">
-							<span class="text-content-muted">Nom</span>
+							<span class="text-content-muted">{$t('Name')}</span>
 							<input
 								class="ws-field"
 								bind:value={name}
-								placeholder="Imprimante du salon (défaut : hôte de l'URL)"
+								placeholder={$t('Living room printer (default: URL host)')}
 							/>
 						</label>
 						<PrinterHostFields
@@ -400,7 +403,7 @@
 							machinePresetId={machinePreset || null}
 						/>
 						<label class="flex flex-col gap-1 text-sm">
-							<span class="text-content-muted">Préréglage machine</span>
+							<span class="text-content-muted">{$t('Printer preset')}</span>
 							<select class="ws-field" bind:value={machinePreset} required>
 								{#each machines as preset (preset.id)}
 									<option value={preset.id}>{preset.name}</option>
@@ -413,24 +416,25 @@
 							data-testid="printer-save"
 							disabled={creating || machines.length === 0 || !!hostError}
 						>
-							Déclarer
+							{$t('Add printer||declare')}
 						</button>
 						{#if hostError && hostForm.url.trim()}
 							<p class="text-xs text-danger-text" role="alert">{hostError}</p>
 						{/if}
 						{#if machines.length === 0}
-							<p class="text-xs text-warning">Aucun preset machine disponible.</p>
+							<p class="text-xs text-warning">{$t('No printer preset available.')}</p>
 						{/if}
 					</form>
 				{/if}
 			</section>
 
 			<!-- Liste -->
-			<section class="flex flex-col gap-3" aria-label="Imprimantes déclarées">
+			<section class="flex flex-col gap-3" aria-label={$t('Added printers')}>
 				<div class="flex items-center justify-between">
-					<h2 class="ws-section-title">Déclarées ({printers.length})</h2>
+					<h2 class="ws-section-title">{$t('Added ({n})', { n: printers.length })}</h2>
 					<button type="button" class="ws-btn ws-btn-sm ws-btn-ghost" onclick={reload}>
-						<IconRefresh class="h-3.5 w-3.5" aria-hidden="true" /> Rafraîchir
+						<IconRefresh class="h-3.5 w-3.5" aria-hidden="true" />
+						{$t('Refresh')}
 					</button>
 				</div>
 
@@ -444,7 +448,7 @@
 						role="status"
 						data-testid="printer-saving"
 					>
-						Enregistrement de l'imprimante…
+						{$t('Saving printer…')}
 					</p>
 				{:else if printers.length === 0}
 					<div
@@ -452,12 +456,12 @@
 						data-testid="printers-empty"
 					>
 						<IconPrinter class="h-8 w-8 text-content-subtle" aria-hidden="true" />
-						<p class="font-medium text-content">Aucune imprimante déclarée</p>
-						<p>Choisissez vos modèles dans le catalogue, ou déclarez une imprimante Moonraker.</p>
+						<p class="font-medium text-content">{$t('No printers added')}</p>
+						<p>{$t('Pick your models from the catalog, or add a Moonraker printer.')}</p>
 						<button
 							type="button"
 							class="ws-btn ws-btn-sm ws-btn-primary"
-							onclick={() => (showCatalog = true)}>Ouvrir le catalogue</button
+							onclick={() => (showCatalog = true)}>{$t('Open catalog')}</button
 						>
 					</div>
 				{:else}
@@ -480,7 +484,9 @@
 												>{hostMeta(printer.host_type).label}</span
 											>
 										{/if}
-										<span class="truncate">{printer.moonraker_url ?? 'Non connectée'}</span>
+										<span class="truncate"
+											>{printer.moonraker_url ?? $t('Not connected||printer')}</span
+										>
 									</span>
 									{#if credentialSummary(printer).length}
 										<span class="mt-1 flex flex-wrap gap-1.5" data-testid="printer-credentials">
@@ -516,27 +522,31 @@
 										></div>
 									</div>
 									<div class="mt-1 flex gap-4 text-xs text-content-muted">
-										<span>Buse {formatTemp(st.extruderTemp, st.extruderTarget)}</span>
-										<span>Plateau {formatTemp(st.bedTemp, st.bedTarget)}</span>
+										<span
+											>{$t('Nozzle {temp}', {
+												temp: formatTemp(st.extruderTemp, st.extruderTarget)
+											})}</span
+										>
+										<span>{$t('Bed {temp}', { temp: formatTemp(st.bedTemp, st.bedTarget) })}</span>
 									</div>
 								</div>
 							{/if}
 
 							{#if testResult[printer.id]}
-								{@const t = testResult[printer.id]}
+								{@const res = testResult[printer.id]}
 								<p
-									class="flex items-center gap-1.5 text-xs {t.ok
+									class="flex items-center gap-1.5 text-xs {res.ok
 										? 'text-success-text'
 										: 'text-danger-text'}"
 									role="status"
 									data-testid="printer-test-result"
-									data-ok={t.ok}
+									data-ok={res.ok}
 								>
-									{#if t.ok}<IconOk
+									{#if res.ok}<IconOk
 											class="h-3.5 w-3.5 shrink-0"
 											aria-hidden="true"
 										/>{:else}<IconFail class="h-3.5 w-3.5 shrink-0" aria-hidden="true" />{/if}
-									<span class="min-w-0 break-words">{t.message}</span>
+									<span class="min-w-0 break-words">{res.message}</span>
 								</p>
 							{/if}
 
@@ -547,7 +557,7 @@
 									disabled={busy[printer.id]}
 									onclick={() => editSettings(printer)}
 								>
-									Réglages
+									{$t('Settings')}
 								</button>
 								<button
 									type="button"
@@ -556,7 +566,7 @@
 									disabled={busy[printer.id]}
 									onclick={() => openConnection(printer)}
 								>
-									Connexion…
+									{$t('Connection…')}
 								</button>
 								{#if printer.moonraker_url}
 									<button
@@ -566,7 +576,7 @@
 										disabled={busy[printer.id]}
 										onclick={() => runTest(printer.id)}
 									>
-										{busy[printer.id] ? 'Test…' : 'Tester'}
+										{busy[printer.id] ? $t('Testing…') : $t('Test')}
 									</button>
 									{#if hasLiveControls(printer)}
 										<button
@@ -576,12 +586,12 @@
 											disabled={busy[printer.id]}
 											onclick={() => refreshStatus(printer.id)}
 										>
-											État
+											{$t('Status')}
 										</button>
 									{/if}
 								{:else}
 									<span class="self-center text-xs text-content-subtle"
-										>Sans URL Moonraker ni autre hôte : réglages et tranchage seulement.</span
+										>{$t('No Moonraker URL or other host: settings and slicing only.')}</span
 									>
 								{/if}
 								<!-- Commandes d'impression : seulement quand l'état est connu
@@ -593,7 +603,7 @@
 										disabled={busy[printer.id] || !st || !canPause(st.state)}
 										onclick={() => control(printer.id, pausePrinter)}
 									>
-										Pause
+										{$t('Pause')}
 									</button>
 									<button
 										type="button"
@@ -601,7 +611,7 @@
 										disabled={busy[printer.id] || !st || !canResume(st.state)}
 										onclick={() => control(printer.id, resumePrinter)}
 									>
-										Reprendre
+										{$t('Resume')}
 									</button>
 									<button
 										type="button"
@@ -609,7 +619,7 @@
 										disabled={busy[printer.id] || !st || !canCancel(st.state)}
 										onclick={() => control(printer.id, cancelPrinter)}
 									>
-										Annuler
+										{$t('Cancel')}
 									</button>
 								{/if}
 								<button
@@ -618,7 +628,7 @@
 									disabled={busy[printer.id]}
 									onclick={() => remove(printer.id)}
 								>
-									Supprimer
+									{$t('Delete')}
 								</button>
 							</div>
 						</article>
@@ -640,7 +650,7 @@
 			class="ws-dialog flex h-[85vh] w-full max-w-4xl flex-col overflow-hidden"
 			role="dialog"
 			aria-modal="true"
-			aria-label="Ajouter des imprimantes"
+			aria-label={$t('Add printers')}
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.stopPropagation()}
 			tabindex="-1"
@@ -650,7 +660,7 @@
 				vendors={data.catalog}
 				onconfirm={addFromCatalog}
 				oncancel={() => (showCatalog = false)}
-				confirmLabel="Ajouter"
+				confirmLabel={$t('Add')}
 			/>
 		</div>
 	</div>
@@ -659,8 +669,8 @@
 <!-- Connexion d'une imprimante (Orca : PhysicalPrinterDialog). -->
 <Dialog
 	open={connecting !== null}
-	label="Connexion de l'imprimante"
-	title={connecting ? `Connexion — ${connecting.name}` : ''}
+	label={$t('Printer connection')}
+	title={connecting ? $t('Connection — {name}', { name: connecting.name }) : ''}
 	size="md"
 	onclose={() => !connectBusy && (connecting = null)}
 	data-testid="printer-connection-dialog"
@@ -707,17 +717,17 @@
 			class="ws-btn ws-btn-secondary mr-auto"
 			data-testid="connection-test"
 			disabled={connectBusy || !!connectFormError || !connectForm.url.trim()}
-			onclick={saveAndTest}>Tester la connexion</button
+			onclick={saveAndTest}>{$t('Test connection')}</button
 		>
 		<button type="button" class="ws-btn ws-btn-ghost" onclick={() => (connecting = null)}
-			>Annuler</button
+			>{$t('Cancel')}</button
 		>
 		<button
 			type="button"
 			class="ws-btn ws-btn-primary"
 			data-testid="connection-save"
 			disabled={connectBusy || !!connectFormError}
-			onclick={saveAndClose}>Enregistrer</button
+			onclick={saveAndClose}>{$t('Save')}</button
 		>
 	{/snippet}
 </Dialog>
@@ -725,7 +735,7 @@
 <!-- Réglages complets d'une imprimante (dialogue réutilisé de l'éditeur). -->
 <PresetSettingsDialog
 	open={editing !== null}
-	title="Paramètres de l'imprimante"
+	title={$t('Printer settings')}
 	kind="machine"
 	bind:mode={editMode}
 	bind:values={editValues}

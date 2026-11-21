@@ -6,12 +6,14 @@
 	// profil est sur la cellule, les valeurs héritées sont en gris.
 	// Présentationnel : les mutations passent par des callbacks.
 	import Dialog from '$lib/ui/Dialog.svelte';
+	import { t, tr } from '$lib/i18n';
 	import IconReset from '~icons/lucide/rotate-ccw';
 	import {
 		TABLE_CATEGORIES,
 		boolValue,
 		cellText,
 		cellValue,
+		cellWarning,
 		parseCell,
 		sortRows,
 		tableRows,
@@ -37,6 +39,8 @@
 		onextruder: (row: TableRow, extruder: number) => void;
 		onrename: (row: TableRow, name: string) => void;
 		onprintable: (objectId: string, printable: boolean) => void;
+		/** Hauteur de couche maximale recommandée de l'imprimante (avertissement). */
+		maxLayer?: number | null;
 	}
 
 	let {
@@ -49,8 +53,10 @@
 		onsetting,
 		onextruder,
 		onrename,
-		onprintable
+		onprintable,
+		maxLayer = null
 	}: Props = $props();
+	let warning = $state<string | null>(null);
 
 	let category = $state<TableCategory>('all');
 	let sortKey = $state<SortKey | null>(null);
@@ -72,10 +78,19 @@
 	function commit(row: TableRow, column: TableColumn, raw: string | boolean) {
 		const value = parseCell(column, raw);
 		if (value === null) {
-			error = `« ${String(raw)} » : valeur invalide pour ${column.label}.`;
+			error = tr('“{value}”: invalid value for {column}.', {
+				value: String(raw),
+				column: tr(column.label)
+			});
 			return;
 		}
 		error = null;
+		warning =
+			cellWarning(column, value, maxLayer) && maxLayer !== null
+				? tr('Too large layer height: the printer recommends at most {max} mm.', {
+						max: String(maxLayer)
+					})
+				: null;
 		onsetting(row, column.key, value);
 	}
 
@@ -86,8 +101,8 @@
 
 <Dialog
 	{open}
-	label="Table des paramètres des objets"
-	title="Table des paramètres des objets"
+	label={$t('Object parameter table')}
+	title={$t('Object parameter table')}
 	size="xl"
 	{onclose}
 	data-testid="object-table"
@@ -95,23 +110,28 @@
 	<div class="flex flex-col gap-2 text-sm">
 		<div class="flex flex-wrap items-center gap-2">
 			<label class="flex items-center gap-2">
-				<span class="text-content-muted">Catégorie</span>
+				<span class="text-content-muted">{$t('Category')}</span>
 				<select
 					class="ws-field ws-field-sm"
 					data-testid="object-table-category"
 					bind:value={category}
 				>
 					{#each TABLE_CATEGORIES as c (c.value)}
-						<option value={c.value}>{c.label}</option>
+						<option value={c.value}>{$t(c.label)}</option>
 					{/each}
 				</select>
 			</label>
 			<span class="text-xs text-content-subtle"
-				>Valeurs grises : héritées du profil. ↺ remet la cellule au profil.</span
+				>{$t('Gray values: inherited from the profile. ↺ resets the cell to the profile.')}</span
 			>
 		</div>
 		{#if error}
 			<p class="text-xs text-danger" role="alert" data-testid="object-table-error">{error}</p>
+		{/if}
+		{#if warning}
+			<p class="text-xs text-warning-content" role="status" data-testid="object-table-warning">
+				{warning}
+			</p>
 		{/if}
 		<div class="max-h-[60vh] overflow-auto rounded border border-border">
 			<table class="w-full border-collapse text-xs">
@@ -134,14 +154,15 @@
 										class="hover:text-accent"
 										data-testid="object-table-sort"
 										onclick={() => toggleSort(column.key as SortKey)}
-										>{column.label}
+										>{$t(column.label)}
 										<span aria-hidden="true"
 											>{sortKey === column.key ? (descending ? '↓' : '↑') : '↑↓'}</span
 										></button
 									>
 								{:else}
-									{column.label}{#if column.unit}<span class="text-content-subtle">
-											({column.unit})</span
+									{$t(column.label)}{#if column.unit}<span
+											class="block font-normal text-content-subtle"
+											data-testid="object-table-unit">({column.unit})</span
 										>{/if}
 								{/if}
 							</th>
@@ -167,7 +188,7 @@
 										<input
 											type="checkbox"
 											checked={row.printable}
-											aria-label={`Imprimable : ${row.name}`}
+											aria-label={$t('Printable: {name}', { name: row.name })}
 											onchange={(e) => onprintable(row.objectId, e.currentTarget.checked)}
 										/>
 									{:else if column.kind === 'plate'}
@@ -176,7 +197,7 @@
 										<input
 											class="ws-field ws-field-sm {row.kind === 'volume' ? 'ml-3 w-28' : 'w-32'}"
 											value={row.name}
-											aria-label={`Nom de ${row.name}`}
+											aria-label={$t('Name of {name}', { name: row.name })}
 											onkeydown={(e) => {
 												e.stopPropagation();
 												if (e.key === 'Enter') e.currentTarget.blur();
@@ -196,12 +217,14 @@
 											></span>
 											<select
 												class="ws-field ws-field-sm h-6 px-0.5"
-												aria-label={`Filament de ${row.name}`}
+												aria-label={$t('Filament of {name}', { name: row.name })}
 												data-testid="object-table-extruder"
 												value={row.kind === 'object' ? row.extruder || 1 : row.extruder}
 												onchange={(e) => onextruder(row, Number(e.currentTarget.value))}
 											>
-												{#if row.kind === 'volume'}<option value={0}>objet</option>{/if}
+												{#if row.kind === 'volume'}<option value={0}
+														>{$t('object||extruder')}</option
+													>{/if}
 												{#each filamentColors.map((_c, i) => i + 1) as n (n)}
 													<option value={n}>{n}</option>
 												{/each}
@@ -219,7 +242,10 @@
 												<input
 													type="checkbox"
 													checked={boolValue(cell.value)}
-													aria-label={`${column.label} : ${row.name}`}
+													aria-label={$t('{column}: {name}', {
+														column: $t(column.label),
+														name: row.name
+													})}
 													onchange={(e) => commit(row, column, e.currentTarget.checked)}
 												/>
 											{:else if column.kind === 'enum'}
@@ -227,12 +253,15 @@
 													class="ws-field ws-field-sm h-6 w-28 px-0.5 {cell.overridden
 														? ''
 														: 'text-content-subtle'}"
-													aria-label={`${column.label} : ${row.name}`}
+													aria-label={$t('{column}: {name}', {
+														column: $t(column.label),
+														name: row.name
+													})}
 													value={String(cell.value ?? '')}
 													onchange={(e) => commit(row, column, e.currentTarget.value)}
 												>
 													{#each column.choices ?? [] as choice (choice.value)}
-														<option value={choice.value}>{choice.label}</option>
+														<option value={choice.value}>{$t(choice.label)}</option>
 													{/each}
 												</select>
 											{:else}
@@ -242,7 +271,10 @@
 														: 'text-content-subtle'}"
 													inputmode="decimal"
 													value={cellText(column, cell.value)}
-													aria-label={`${column.label} : ${row.name}`}
+													aria-label={$t('{column}: {name}', {
+														column: $t(column.label),
+														name: row.name
+													})}
 													data-testid="object-table-cell"
 													data-key={column.key}
 													onkeydown={(e) => {
@@ -257,8 +289,13 @@
 													type="button"
 													class="ws-icon-btn ws-icon-btn-xs"
 													data-testid="object-table-reset"
-													aria-label={`Remettre ${column.label} au profil pour ${row.name}`}
-													data-tip={`Profil : ${cellText(column, cell.inherited) || '—'}`}
+													aria-label={$t('Reset {column} to the profile for {name}', {
+														column: $t(column.label),
+														name: row.name
+													})}
+													data-tip={$t('Profile: {value}', {
+														value: cellText(column, cell.inherited) || '—'
+													})}
 													onclick={() => onsetting(row, column.key, undefined)}
 												>
 													<IconReset class="h-3 w-3" aria-hidden="true" />
@@ -273,11 +310,11 @@
 				</tbody>
 			</table>
 			{#if rows.length === 0}
-				<p class="p-4 text-center text-content-muted">Aucun objet sur les plateaux.</p>
+				<p class="p-4 text-center text-content-muted">{$t('No objects on the plates.')}</p>
 			{/if}
 		</div>
 	</div>
 	{#snippet footer()}
-		<button type="button" class="ws-btn ws-btn-primary" onclick={onclose}>Fermer</button>
+		<button type="button" class="ws-btn ws-btn-primary" onclick={onclose}>{$t('Close')}</button>
 	{/snippet}
 </Dialog>

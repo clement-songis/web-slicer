@@ -4,6 +4,7 @@
 	import { ApiError } from '../../api/client';
 	import { repairModel } from '../../api/scene';
 	import type { RepairResponse } from '../../api/types';
+	import { t, tr } from '$lib/i18n';
 
 	interface Props {
 		modelId: string;
@@ -21,7 +22,7 @@
 		try {
 			report = await repairModel(modelId);
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'échec de l’analyse';
+			error = e instanceof ApiError ? e.message : tr('analysis failed');
 			report = null;
 		} finally {
 			loading = false;
@@ -34,7 +35,7 @@
 		type="button"
 		class="ws-btn ws-btn-primary self-start"
 		disabled={loading}
-		onclick={analyze}>{loading ? 'Analyse…' : 'Analyser le maillage'}</button
+		onclick={analyze}>{loading ? $t('Analyzing…') : $t('Analyze mesh')}</button
 	>
 
 	{#if error}
@@ -43,15 +44,15 @@
 
 	{#if report}
 		<dl class="grid grid-cols-2 gap-x-4 gap-y-1">
-			<dt class="text-content-muted">Triangles</dt>
+			<dt class="text-content-muted">{$t('Triangles')}</dt>
 			<dd>{report.triangles}</dd>
-			<dt class="text-content-muted">Facettes dégénérées</dt>
+			<dt class="text-content-muted">{$t('Degenerate facets')}</dt>
 			<dd>{report.degenerate}</dd>
-			<dt class="text-content-muted">Arêtes de bord</dt>
+			<dt class="text-content-muted">{$t('Open edges')}</dt>
 			<dd>{report.open_edges}</dd>
-			<dt class="text-content-muted">Étanche</dt>
+			<dt class="text-content-muted">{$t('Watertight')}</dt>
 			<dd class={report.watertight ? 'text-success' : 'text-warning'}>
-				{report.watertight ? 'oui' : 'non'}
+				{report.watertight ? $t('yes') : $t('no')}
 			</dd>
 		</dl>
 	{/if}

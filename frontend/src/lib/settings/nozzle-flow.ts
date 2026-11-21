@@ -5,12 +5,18 @@
 // config machine ; le moteur choisit alors la variante des réglages filament
 // (filament_extruder_variant) de chaque extrudeur. Pur.
 
+import { tr } from '$lib/i18n';
+
 export type NozzleFlow = 'Standard' | 'High Flow';
 
-/** Libellés (Orca fr : « Standard », « Haut débit »). */
-export const NOZZLE_FLOW_LABELS: Record<NozzleFlow, string> = {
-	Standard: 'Standard',
-	'High Flow': 'Haut débit'
+/** Libellés traduits à la lecture (Orca fr : « Standard », « Haut débit »). */
+export const NOZZLE_FLOW_LABELS: Readonly<Record<NozzleFlow, string>> = {
+	get Standard() {
+		return tr('Standard');
+	},
+	get 'High Flow'() {
+		return tr('High Flow');
+	}
 };
 
 /** Sélecteur d'un extrudeur : types proposés et type actuel. */

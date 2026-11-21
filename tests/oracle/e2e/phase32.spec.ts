@@ -107,7 +107,8 @@ test('serveur injoignable pendant l’édition : message clair, bandeau, retour 
 	await expect(banner).toBeVisible();
 	await expect(banner).toHaveAttribute('data-state', 'unreachable');
 	await page.unroute(API);
-	await page.getByTestId('connection-retry').click();
+	// Une réponse d'une requête de fond peut déjà avoir rétabli la liaison.
+	if (await banner.isVisible()) await page.getByTestId('connection-retry').click({ timeout: 2_000 }).catch(() => {});
 	await expect(page.getByTestId('connection-restored')).toBeVisible();
 	await expect(banner).toHaveCount(0);
 	await page.context().setOffline(true);

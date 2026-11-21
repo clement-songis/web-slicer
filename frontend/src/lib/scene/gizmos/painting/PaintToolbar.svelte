@@ -10,6 +10,7 @@
 	import { CHANNELS, type PaintChannel } from './painting';
 	import { ENFORCER, BLOCKER } from './facets';
 	import { CHANNEL_LABELS } from './types';
+	import { t } from '$lib/i18n';
 	import {
 		FILL_ANGLE_MAX,
 		FILL_ANGLE_MIN,
@@ -126,70 +127,70 @@
 	}
 
 	const CONSTRAINT_LABELS: Record<'vertical' | 'horizontal', string> = {
-		vertical: 'Verticale',
-		horizontal: 'Horizontale'
+		vertical: 'Vertical',
+		horizontal: 'Horizontal'
 	};
 </script>
 
 <div class="flex flex-col gap-2 text-sm" role="toolbar" tabindex="0" {onwheel}>
 	<label class="flex items-center gap-2">
-		<span class="w-16 text-content-muted">Canal</span>
+		<span class="w-16 text-content-muted">{$t('Channel')}</span>
 		<select bind:value={channel} class="ws-field ws-field-sm">
 			{#each CHANNELS as c (c)}
-				<option value={c}>{CHANNEL_LABELS[c]}</option>
+				<option value={c}>{$t(CHANNEL_LABELS[c])}</option>
 			{/each}
 		</select>
 	</label>
 
 	<div class="flex items-start gap-2">
-		<span class="w-16 shrink-0 pt-1 text-content-muted">Outil</span>
-		<div class="flex flex-wrap gap-1" role="radiogroup" aria-label="Outil de peinture">
-			{#each tools as t (t)}
+		<span class="w-16 shrink-0 pt-1 text-content-muted">{$t('Tool')}</span>
+		<div class="flex flex-wrap gap-1" role="radiogroup" aria-label={$t('Paint tool')}>
+			{#each tools as tl (tl)}
 				<button
 					type="button"
 					role="radio"
-					class="ws-chip {tool === t ? 'ws-chip-on' : ''}"
-					aria-checked={tool === t}
-					title={PAINT_TOOL_HINTS[t]}
-					data-testid={`paint-tool-${t}`}
-					onclick={() => (tool = t)}>{PAINT_TOOL_LABELS[t]}</button
+					class="ws-chip {tool === tl ? 'ws-chip-on' : ''}"
+					aria-checked={tool === tl}
+					title={$t(PAINT_TOOL_HINTS[tl])}
+					data-testid={`paint-tool-${tl}`}
+					onclick={() => (tool = tl)}>{$t(PAINT_TOOL_LABELS[tl])}</button
 				>
 			{/each}
 		</div>
 	</div>
 	<p class="pl-18 text-xs text-content-subtle" data-testid="paint-tool-hint">
-		{PAINT_TOOL_HINTS[tool]}
+		{$t(PAINT_TOOL_HINTS[tool])}
 	</p>
 
 	{#if channel !== 'mmu'}
 		<div class="flex items-center gap-2">
-			<span class="w-16 text-content-muted">Peindre</span>
+			<span class="w-16 text-content-muted">{$t('Paint||state')}</span>
 			<button
 				type="button"
 				class="ws-chip {painted === ENFORCER
 					? 'bg-success text-primary-content border-transparent'
 					: ''}"
-				onclick={() => (painted = ENFORCER)}>Forcer</button
+				onclick={() => (painted = ENFORCER)}>{$t('Enforce')}</button
 			>
 			<button
 				type="button"
 				class="ws-chip {painted === BLOCKER
 					? 'bg-danger text-primary-content border-transparent'
 					: ''}"
-				onclick={() => (painted = BLOCKER)}>Bloquer</button
+				onclick={() => (painted = BLOCKER)}>{$t('Block')}</button
 			>
 		</div>
 	{:else if filamentColours.length > 0}
 		<div class="flex items-center gap-2">
-			<span class="w-16 text-content-muted">Filament</span>
-			<div class="flex flex-wrap gap-1" role="radiogroup" aria-label="Filament peint">
+			<span class="w-16 text-content-muted">{$t('Filament')}</span>
+			<div class="flex flex-wrap gap-1" role="radiogroup" aria-label={$t('Painted filament')}>
 				{#each filamentColours as colour, i (i)}
 					<button
 						type="button"
 						role="radio"
 						aria-checked={painted === i + 1}
-						aria-label={`Filament ${i + 1}`}
-						title={`Filament ${i + 1}`}
+						aria-label={$t('Filament {n}', { n: i + 1 })}
+						title={$t('Filament {n}', { n: i + 1 })}
 						class="flex size-7 items-center justify-center rounded border text-xs font-semibold {painted ===
 						i + 1
 							? 'border-accent ring-2 ring-accent'
@@ -204,21 +205,21 @@
 		</div>
 	{:else}
 		<label class="flex items-center gap-2">
-			<span class="w-16 text-content-muted">Extrudeur</span>
+			<span class="w-16 text-content-muted">{$t('Extruder')}</span>
 			<input
 				type="number"
 				min={1}
 				step={1}
 				bind:value={painted}
 				class="ws-field ws-field-sm w-16 text-right"
-				aria-label="Index d'extrudeur"
+				aria-label={$t('Extruder index')}
 			/>
 		</label>
 	{/if}
 
 	{#if tool === 'brush' || tool === 'sphere'}
 		<label class="flex items-center gap-2">
-			<span class="w-16 text-content-muted">Rayon</span>
+			<span class="w-16 text-content-muted">{$t('Radius')}</span>
 			<input
 				type="range"
 				min={RADIUS_MIN}
@@ -234,7 +235,7 @@
 		</label>
 	{:else if tool === 'height'}
 		<label class="flex items-center gap-2">
-			<span class="w-16 text-content-muted">Hauteur</span>
+			<span class="w-16 text-content-muted">{$t('Height')}</span>
 			<input
 				type="range"
 				min={HEIGHT_MIN}
@@ -252,12 +253,12 @@
 		{#if channel === 'mmu'}
 			<label class="flex items-center gap-2 pl-18 text-xs">
 				<input type="checkbox" bind:checked={edgeDetection} data-testid="paint-edge-detection" />
-				S’arrêter aux arêtes
+				{$t('Stop at edges')}
 			</label>
 		{/if}
 		{#if channel !== 'mmu' || edgeDetection}
 			<label class="flex items-center gap-2">
-				<span class="w-16 text-content-muted">Angle</span>
+				<span class="w-16 text-content-muted">{$t('Angle')}</span>
 				<input
 					type="range"
 					min={FILL_ANGLE_MIN}
@@ -272,11 +273,13 @@
 				>
 			</label>
 		{:else}
-			<p class="pl-18 text-xs text-content-subtle">Remplit toute la partie connexe de l’objet.</p>
+			<p class="pl-18 text-xs text-content-subtle">
+				{$t('Fills the whole connected part of the object.')}
+			</p>
 		{/if}
 	{:else if tool === 'gap'}
 		<label class="flex items-center gap-2">
-			<span class="w-16 text-content-muted">Aire max</span>
+			<span class="w-16 text-content-muted">{$t('Max area')}</span>
 			<input
 				type="range"
 				min={GAP_AREA_MIN}
@@ -292,21 +295,21 @@
 		</label>
 		<div class="flex items-center justify-between gap-2 pl-18">
 			<span class="text-xs text-content-subtle">
-				{gapArea > 0 ? 'Zones plus petites absorbées par leur voisine' : 'Aire nulle : aucun effet'}
+				{gapArea > 0 ? $t('Smaller areas absorbed by their neighbor') : $t('Zero area: no effect')}
 			</span>
 			<button
 				type="button"
 				class="ws-btn ws-btn-sm ws-btn-primary"
 				disabled={busy || gapArea <= 0}
 				data-testid="paint-gap-apply"
-				onclick={() => ongapfill?.()}>Combler</button
+				onclick={() => ongapfill?.()}>{$t('Fill gaps')}</button
 			>
 		</div>
 	{/if}
 
 	{#if constraints.length}
 		<div class="flex items-center gap-2">
-			<span class="w-16 text-content-muted">Guider</span>
+			<span class="w-16 text-content-muted">{$t('Guide')}</span>
 			{#each constraints as c (c)}
 				{#if c}
 					<label class="flex items-center gap-1 text-xs">
@@ -316,7 +319,7 @@
 							data-testid={`paint-constraint-${c}`}
 							onchange={(e) => (constraint = e.currentTarget.checked ? c : null)}
 						/>
-						{CONSTRAINT_LABELS[c]}
+						{$t(CONSTRAINT_LABELS[c])}
 					</label>
 				{/if}
 			{/each}
@@ -325,16 +328,19 @@
 
 	{#if tool !== 'gap' && tool !== 'pointer'}
 		<p class="text-xs text-content-subtle">
-			Ctrl + molette : {tool === 'height' ? 'hauteur' : tool === 'fill' ? 'angle' : 'rayon'} · Alt + molette
-			: plan de coupe
+			{$t('Ctrl + wheel: {param} · Alt + wheel: cut plane', {
+				param: $t(
+					tool === 'height' ? 'height||wheel' : tool === 'fill' ? 'angle||wheel' : 'radius||wheel'
+				)
+			})}
 		</p>
 	{/if}
 
 	{#if channel === 'mmu'}
-		<label class="flex items-center gap-2 text-xs" title="Alt + Maj + Entrée">
+		<label class="flex items-center gap-2 text-xs" title={$t('Alt + Shift + Enter')}>
 			<input type="checkbox" bind:checked={wireframe} data-testid="paint-wireframe" />
-			<span>Afficher le maillage</span>
-			<kbd class="ml-auto text-[10px] text-content-subtle">Alt+Maj+Entrée</kbd>
+			<span>{$t('Show wireframe')}</span>
+			<kbd class="ml-auto text-[10px] text-content-subtle">{$t('Alt+Shift+Enter')}</kbd>
 		</label>
 	{/if}
 
@@ -347,7 +353,7 @@
 				data-testid="paint-remap-open"
 				onclick={() => (remapOpen = !remapOpen)}
 			>
-				<span>Remapper les filaments</span>
+				<span>{$t('Remap filaments')}</span>
 				<span aria-hidden="true">{remapOpen ? '▾' : '▸'}</span>
 			</button>
 			{#if remapOpen}
@@ -368,7 +374,7 @@
 							>
 							<select
 								class="ws-field ws-field-sm flex-1"
-								aria-label={`Filament ${src + 1} devient`}
+								aria-label={$t('Filament {n} becomes', { n: src + 1 })}
 								data-testid={`paint-remap-${src + 1}`}
 								value={dst}
 								onchange={(e) => {
@@ -378,19 +384,21 @@
 								}}
 							>
 								{#each filamentColours, j (j)}
-									<option value={j}>Filament {j + 1}</option>
+									<option value={j}>{$t('Filament {n}', { n: j + 1 })}</option>
 								{/each}
 							</select>
 						</div>
 					{/each}
 					<div class="mt-1 flex items-center justify-between gap-2">
-						<span class="text-xs text-content-subtle">Peinture et filament de base de l’objet</span>
+						<span class="text-xs text-content-subtle"
+							>{$t('Painting and base filament of the object')}</span
+						>
 						<button
 							type="button"
 							class="ws-btn ws-btn-sm ws-btn-primary"
 							disabled={busy || !remapChanged}
 							data-testid="paint-remap-apply"
-							onclick={applyRemap}>Appliquer</button
+							onclick={applyRemap}>{$t('Apply')}</button
 						>
 					</div>
 				</div>

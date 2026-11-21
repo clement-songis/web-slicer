@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import {
 	bytesToMb,
 	generatePassword,
@@ -8,6 +9,9 @@ import {
 	parseSliceLimit,
 	quotaMbToBytes
 } from './admin';
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('quotas et liste des comptes (lot 32)', () => {
 	it('quota de stockage : Mo → octets, 0 / vide = illimité', () => {

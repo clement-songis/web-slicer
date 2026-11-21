@@ -9,6 +9,7 @@
 		serializeNumbers,
 		toMatrix
 	} from './dialogs';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		/** Valeurs par clé (liable). */
@@ -38,7 +39,7 @@
 
 <div class="flex flex-col gap-3">
 	<label class="flex items-center gap-2 text-sm">
-		<span class="text-content-muted">Multiplicateur de purge</span>
+		<span class="text-content-muted">{$t('Flushing multiplier')}</span>
 		<input
 			type="number"
 			step="any"
@@ -75,7 +76,7 @@
 		</div>
 	{:else}
 		<p class="text-xs text-content-subtle">
-			Matrice de purge indisponible (aucun filament configuré).
+			{$t('Flushing matrix unavailable (no filament configured).')}
 		</p>
 	{/if}
 </div>

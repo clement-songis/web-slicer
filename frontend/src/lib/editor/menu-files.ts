@@ -2,6 +2,7 @@
 // l'écosystème Three.js : décompression ZIP locale, sans envoyer l'archive à un
 // service tiers. Seuls les fichiers réellement importables sont retournés.
 import { unzipSync } from 'fflate';
+import { tr } from '$lib/i18n';
 
 const MODEL_EXTENSION = /\.(stl|obj|3mf|oltp|step|stp|amf|svg|drc)$/i;
 const CONFIG_EXTENSION = /\.(json|orca_printer|orca_bundle|orca_filament)$/i;
@@ -13,7 +14,7 @@ async function archiveEntries(file: File): Promise<Record<string, Uint8Array>> {
 			filter: (entry) => !entry.name.endsWith('/') && entry.originalSize <= MAX_ARCHIVE_BYTES
 		});
 	} catch {
-		throw new Error(`Archive ZIP illisible : ${file.name}`);
+		throw new Error(tr('Unreadable ZIP archive: {file}', { file: file.name }));
 	}
 }
 
@@ -23,7 +24,7 @@ function checkedEntries(entries: Record<string, Uint8Array>, source: string) {
 		files.length > 1000 ||
 		files.reduce((sum, [, data]) => sum + data.length, 0) > MAX_ARCHIVE_BYTES
 	)
-		throw new Error(`Archive ZIP trop volumineuse : ${source}`);
+		throw new Error(tr('ZIP archive too large: {file}', { file: source }));
 	return files;
 }
 
@@ -47,12 +48,12 @@ export interface PresetDocument {
 
 function presetDocument(value: unknown, fallbackName: string): PresetDocument {
 	if (!value || typeof value !== 'object' || Array.isArray(value))
-		throw new Error(`Configuration JSON invalide : ${fallbackName}`);
+		throw new Error(tr('Invalid JSON configuration: {file}', { file: fallbackName }));
 	const source = value as Record<string, unknown>;
 	const rawKind = typeof source.type === 'string' ? source.type : 'process';
 	const kind = rawKind === 'print' ? 'process' : rawKind;
 	if (!['process', 'filament', 'machine', 'machine_model'].includes(kind))
-		throw new Error(`Type de preset inconnu : ${rawKind}`);
+		throw new Error(tr('Unknown preset type: {kind}', { kind: String(rawKind) }));
 	const name = typeof source.name === 'string' && source.name.trim() ? source.name : fallbackName;
 	const values = { ...source };
 	for (const key of [

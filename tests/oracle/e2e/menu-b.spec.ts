@@ -216,7 +216,19 @@ test("Preset Bundle : lot actif listé puis exporté en JSON Orca @F:menu.preset
 });
 
 /** Ouvre un item du menu Calibration ; renvoie l'id du projet source. */
+// Libellés du menu Calibration en français (locale fr-FR de l'oracle).
+const CALIB_FR: Record<string, string> = {
+  Temperature: "Température",
+  "Max flowrate": "Débit maximal",
+  "Retraction test": "Test de rétraction",
+  Cornering: "Virages (jerk / junction deviation)",
+  "Input Shaping Frequency": "Input shaping : fréquence",
+  "Input Shaping Damping/zeta factor": "Input Shaping : amortissement (facteur zeta)",
+  "Flow ratio": "Ratio de débit (assistant)",
+  "Calibration Guide": "Guide de calibration",
+};
 async function calib(page: Page, label: string) {
+  label = CALIB_FR[label] ?? label;
   await menu(
     page,
     CALIB,
@@ -536,7 +548,7 @@ test("G-code : ouvrir, recharger (menu et F5), exporter les trajets OBJ @F:menu.
   ).toBe(1);
 
   const obj = await download(page, () =>
-    menu(page, FILE, /toolpaths/i, /^(export|exporter)\b/i),
+    menu(page, FILE, /toolpaths|trajectoires/i, /^(export|exporter)\b/i),
   );
   expect(obj.name).toMatch(/\.obj$/);
   const text = obj.bytes.toString("utf8");

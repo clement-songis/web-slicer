@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import {
 	clearUserPresetMeta,
 	groupUserPresets,
@@ -18,6 +19,9 @@ const meta = {
 	u2: { type: 'PLA', vendor: 'Sunlu' },
 	u4: { type: 'PLA', vendor: 'Polymaker' }
 };
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('« Grouper les presets filament utilisateur » (Orca group_filament_presets)', () => {
 	test('Tous : un groupe ; Aucun : sans groupe (libellé vide)', () => {

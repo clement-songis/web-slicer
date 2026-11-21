@@ -18,27 +18,34 @@
 	}
 	let { open, kindLabel, fromName, toName, changes, ontransfer, ondiscard, oncancel }: Props =
 		$props();
+	// Message traduit découpé autour des noms (affichés en gras).
+	const parts = $derived(
+		$t(
+			'The {kind} preset “{from}” has {n} unsaved modified option(s). What to do when switching to “{to}”?',
+			{ kind: $t(kindLabel), n: changes.length }
+		).split(/(\{from\}|\{to\})/)
+	);
 </script>
 
 <Dialog
 	{open}
-	label="Modifications non enregistrées"
-	title="Modifications non enregistrées"
+	label={$t('Unsaved changes')}
+	title={$t('Unsaved changes')}
 	size="lg"
 	onclose={oncancel}
 	data-testid="unsaved-preset-dialog"
 >
 	<div class="flex flex-col gap-3 text-sm">
 		<p>
-			Le preset {kindLabel} « <strong>{fromName}</strong> » a {changes.length} option(s) modifiée(s) non
-			enregistrée(s). Que faire en passant à « <strong>{toName}</strong> » ?
+			{#each parts as part, i (i)}{#if part === '{from}'}<strong>{fromName}</strong
+					>{:else if part === '{to}'}<strong>{toName}</strong>{:else}{part}{/if}{/each}
 		</p>
 		<div class="max-h-64 overflow-y-auto rounded border border-border">
 			<table class="w-full text-xs">
 				<thead class="sticky top-0 bg-surface-raised text-left text-content-muted">
 					<tr
-						><th class="px-3 py-1">Option</th><th class="px-3 py-1">Enregistré</th><th
-							class="px-3 py-1">Modifié</th
+						><th class="px-3 py-1">{$t('Option')}</th><th class="px-3 py-1">{$t('Saved')}</th><th
+							class="px-3 py-1">{$t('Modified')}</th
 						></tr
 					>
 				</thead>
@@ -59,19 +66,19 @@
 			type="button"
 			class="ws-btn ws-btn-ghost"
 			data-testid="unsaved-cancel"
-			onclick={oncancel}>Garder « {fromName} »</button
+			onclick={oncancel}>{$t('Keep “{name}”', { name: fromName })}</button
 		>
 		<button
 			type="button"
 			class="ws-btn ws-btn-secondary"
 			data-testid="unsaved-discard"
-			onclick={ondiscard}>Abandonner les modifications</button
+			onclick={ondiscard}>{$t('Discard changes')}</button
 		>
 		<button
 			type="button"
 			class="ws-btn ws-btn-primary"
 			data-testid="unsaved-transfer"
-			onclick={ontransfer}>Transférer vers « {toName} »</button
+			onclick={ontransfer}>{$t('Transfer to “{name}”', { name: toName })}</button
 		>
 	{/snippet}
 </Dialog>

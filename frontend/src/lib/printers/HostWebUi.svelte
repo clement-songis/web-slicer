@@ -13,10 +13,12 @@
 		embedBlockedReason,
 		loadWebuiPrefs,
 		presetWebui,
+		probeHost,
 		saveWebuiPrefs,
 		webuiUrl,
 		type WebuiPrefs
 	} from './webui';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		printer: PrinterResponse;
@@ -29,6 +31,8 @@
 	let draft = $state('');
 	let loaded = $state(false);
 	let timedOut = $state(false);
+	/** Sonde réseau en échec (audit 40 B5) : hôte injoignable → message d'erreur. */
+	let unreachable = $state(false);
 	let reloadKey = $state(0);
 
 	// Imprimante choisie : réglages locaux et print_host_webui du profil machine.
@@ -58,7 +62,11 @@
 			? embedBlockedReason(url, typeof location === 'undefined' ? 'http:' : location.protocol)
 			: null
 	);
-	const reason = $derived(prefs.noEmbed ? 'manual' : (known ?? (timedOut ? 'refused' : null)));
+	const reason = $derived(
+		prefs.noEmbed
+			? 'manual'
+			: (known ?? (unreachable ? 'unreachable' : timedOut ? 'refused' : null))
+	);
 	const label = $derived(hostMeta(printer.host_type).label);
 
 	// Iframe sans « load » au bout du délai : jugée refusée (repli sur le lien).
@@ -69,11 +77,19 @@
 		void reloadKey;
 		loaded = false;
 		timedOut = false;
+		unreachable = false;
 		if (!go) return;
-		const t = setTimeout(() => {
+		const timer = setTimeout(() => {
 			if (!loaded) timedOut = true;
 		}, EMBED_TIMEOUT_MS);
-		return () => clearTimeout(t);
+		let alive = true;
+		void probeHost(url, EMBED_TIMEOUT_MS).then((r) => {
+			if (alive && r === 'unreachable') unreachable = true;
+		});
+		return () => {
+			alive = false;
+			clearTimeout(timer);
+		};
 	});
 
 	function update(next: WebuiPrefs) {
@@ -94,9 +110,9 @@
 >
 	<div class="flex flex-wrap items-center gap-2">
 		<div class="min-w-0 flex-1">
-			<h3 class="text-sm font-medium text-content">Interface de l’appareil</h3>
+			<h3 class="text-sm font-medium text-content">{$t('Device interface')}</h3>
 			<p class="truncate text-xs text-content-subtle">
-				{url ? `${label} · ${url}` : `${label} : aucune adresse d’interface`}
+				{url ? `${label} · ${url}` : $t('{host}: no interface address', { host: label })}
 			</p>
 		</div>
 		{#if url}
@@ -107,14 +123,14 @@
 				target="_blank"
 				rel="noopener noreferrer"
 				class="ws-btn ws-btn-sm ws-btn-secondary"
-				data-testid="device-webui-open">Ouvrir dans un nouvel onglet</a
+				data-testid="device-webui-open">{$t('Open in a new tab')}</a
 			>
 			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 			{#if !reason}
 				<button
 					type="button"
 					class="ws-btn ws-btn-sm ws-btn-secondary"
-					onclick={() => (reloadKey += 1)}>Recharger</button
+					onclick={() => (reloadKey += 1)}>{$t('Reload')}</button
 				>
 			{/if}
 			{#if known === null}
@@ -123,7 +139,7 @@
 					class="ws-btn ws-btn-sm ws-btn-ghost"
 					data-testid="device-webui-embed-toggle"
 					onclick={() => update({ ...prefs, noEmbed: !prefs.noEmbed || undefined })}
-					>{prefs.noEmbed ? 'Intégrer ici' : 'Lien seulement'}</button
+					>{prefs.noEmbed ? $t('Embed here') : $t('Link only')}</button
 				>
 			{/if}
 		{/if}
@@ -135,7 +151,7 @@
 			onclick={() => {
 				draft = prefs.url ?? '';
 				editing = !editing;
-			}}>Adresse…</button
+			}}>{$t('Address…')}</button
 		>
 	</div>
 
@@ -150,38 +166,40 @@
 			<input
 				class="ws-field ws-field-sm min-w-0 flex-1"
 				bind:value={draft}
-				aria-label="Adresse de l’interface web"
+				aria-label={$t('Web interface address')}
 				data-testid="device-webui-url"
 				placeholder={fromPreset
-					? `depuis le profil machine : ${fromPreset}`
+					? $t('from the machine profile: {value}', { value: fromPreset })
 					: printer.moonraker_url || 'http://imprimante.local'}
 			/>
-			<button type="submit" class="ws-btn ws-btn-sm ws-btn-primary">Enregistrer</button>
+			<button type="submit" class="ws-btn ws-btn-sm ws-btn-primary">{$t('Save')}</button>
 			<span class="w-full text-xs text-content-subtle"
-				>Vide : adresse du profil machine (« Interface utilisateur de l’appareil »), sinon celle de
-				la connexion. Mémorisée dans ce navigateur.</span
+				>{$t(
+					'Empty: machine profile address (“Device user interface”), otherwise the connection address. Remembered in this browser.'
+				)}</span
 			>
 		</form>
 	{/if}
 
 	{#if !url}
 		<p class="text-sm text-content-muted">
-			Renseignez l’adresse de l’imprimante (page Imprimantes, « Connexion… ») ou une adresse
-			d’interface ci-dessus.
+			{$t(
+				'Enter the printer address (Printers page, “Connection…”) or an interface address above.'
+			)}
 		</p>
 	{:else if reason}
 		<div
 			class="flex flex-col items-center gap-3 rounded-md border border-dashed border-border px-4 py-8 text-center"
 			data-testid="device-webui-fallback"
 		>
-			<p class="text-sm text-content-muted">{blockedMessage(reason)}</p>
+			<p class="text-sm text-content-muted">{$t(blockedMessage(reason))}</p>
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 			<a href={url} target="_blank" rel="noopener noreferrer" class="ws-btn ws-btn-primary"
-				>Ouvrir l’interface de {label}</a
+				>{$t('Open the {host} interface', { host: label })}</a
 			>
-			{#if reason === 'refused'}
+			{#if reason === 'refused' || reason === 'unreachable'}
 				<button type="button" class="ws-btn ws-btn-sm ws-btn-ghost" onclick={() => (reloadKey += 1)}
-					>Réessayer l’intégration</button
+					>{$t('Retry embedding')}</button
 				>
 			{/if}
 		</div>
@@ -189,7 +207,7 @@
 		{#key reloadKey}
 			<iframe
 				src={url}
-				title="Interface web de {printer.name}"
+				title={$t('Web interface of {name}', { name: printer.name })}
 				class="h-[70vh] min-h-96 w-full rounded-md border border-border bg-surface"
 				sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-downloads allow-modals"
 				referrerpolicy="no-referrer"
@@ -198,12 +216,12 @@
 			></iframe>
 		{/key}
 		<p class="text-xs text-content-subtle">
-			Page vide ou refusée ? L’hôte interdit peut-être l’intégration : utilisez « Ouvrir dans un
-			nouvel onglet ».
+			{$t('Blank or refused page? The host may forbid embedding: use “Open in a new tab”.')}
 		</p>
 	{/if}
 	<p class="text-xs text-content-subtle">
-		L’envoi des fichiers se fait depuis l’éditeur ; le suivi en direct et les commandes intégrés
-		sont réservés à Moonraker.
+		{$t(
+			'Files are sent from the editor; built-in live monitoring and commands are reserved for Moonraker.'
+		)}
 	</p>
 </section>

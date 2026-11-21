@@ -4,6 +4,7 @@
 	// de fermeture. `role` s'ajuste : alerte pour danger, statut sinon.
 	import type { Snippet } from 'svelte';
 	import { bannerClasses, cx, FOCUS_RING, type BannerTone } from './styles';
+	import { t } from '$lib/i18n';
 
 	type Props = {
 		tone?: BannerTone;
@@ -12,7 +13,7 @@
 		children: Snippet;
 	};
 
-	let { tone = 'info', onclose, closeLabel = 'Fermer', children }: Props = $props();
+	let { tone = 'info', onclose, closeLabel, children }: Props = $props();
 </script>
 
 <div class={bannerClasses(tone)} role={tone === 'danger' ? 'alert' : 'status'}>
@@ -23,7 +24,7 @@
 			onclick={onclose}
 			class={cx('shrink-0 rounded font-medium underline-offset-2 hover:underline', FOCUS_RING)}
 		>
-			{closeLabel}
+			{closeLabel ?? $t('Close')}
 		</button>
 	{/if}
 </div>

@@ -9,7 +9,7 @@
 	import { formatMoney } from '$lib/settings/preferences';
 	import type { Rgb } from './colorations';
 	// Alias : la boucle des types nomme déjà sa variable `t`.
-	import { t as label } from '$lib/i18n';
+	import { fmtNum, locale, t as label } from '$lib/i18n';
 
 	interface Props {
 		stats: PreviewStats;
@@ -29,23 +29,26 @@
 		return `rgb(${Math.round(r * 255)} ${Math.round(g * 255)} ${Math.round(b * 255)})`;
 	}
 
-	const pct = (v: number) => `${v.toFixed(1)}%`;
-	const mm = (v: number) => `${v.toFixed(1)} mm`;
-	const cm3 = (v: number) => `${v.toFixed(2)} cm³`;
-	const grams = (v: number) => `${v.toFixed(2)} g`;
+	const pct = (v: number) => `${fmtNum(v, 1, $locale)}%`;
+	const mm = (v: number) => `${fmtNum(v, 1, $locale)} mm`;
+	const cm3 = (v: number) => `${fmtNum(v, 2, $locale)} cm³`;
+	const grams = (v: number) => `${fmtNum(v, 2, $locale)} g`;
 	const money = (v: number) => formatMoney(v, currency);
 </script>
 
-<section class="flex w-72 flex-col gap-4 p-3 text-sm text-content" aria-label="Statistiques">
+<section
+	class="flex w-72 flex-col gap-4 p-3 text-sm text-content"
+	aria-label={$label('Statistics')}
+>
 	<!-- Estimation globale -->
 	<div class="flex flex-col gap-1">
-		<h3 class="ws-section-title">Estimation</h3>
+		<h3 class="ws-section-title">{$label('Estimate')}</h3>
 		<dl class="grid grid-cols-[1fr_auto] gap-x-3 gap-y-0.5">
-			<dt class="text-content-muted">Temps total</dt>
+			<dt class="text-content-muted">{$label('Total time')}</dt>
 			<dd class="text-right whitespace-nowrap tabular-nums">{stats.totalTimeText}</dd>
-			<dt class="text-content-muted">Couches</dt>
+			<dt class="text-content-muted">{$label('Layers')}</dt>
 			<dd class="text-right whitespace-nowrap tabular-nums">{stats.layerCount}</dd>
-			<dt class="text-content-muted">Changements d'outil</dt>
+			<dt class="text-content-muted">{$label('Tool changes')}</dt>
 			<dd class="text-right whitespace-nowrap tabular-nums">{stats.toolchanges}</dd>
 		</dl>
 	</div>
@@ -53,12 +56,12 @@
 	<!-- Répartition par type de ligne -->
 	{#if stats.types.length}
 		<div class="flex flex-col gap-1">
-			<h3 class="ws-section-title">Par type de ligne</h3>
+			<h3 class="ws-section-title">{$label('By line type')}</h3>
 			<table class="w-full border-collapse">
 				<thead>
 					<tr class="text-xs text-content-muted">
-						<th class="text-left font-normal">Type</th>
-						<th class="text-right font-normal">Temps</th>
+						<th class="text-left font-normal">{$label('Type')}</th>
+						<th class="text-right font-normal">{$label('Time')}</th>
 						<th class="text-right font-normal">%</th>
 					</tr>
 				</thead>
@@ -72,7 +75,7 @@
 										type="button"
 										class="flex items-center gap-1.5 text-left"
 										aria-pressed={!off}
-										title="Afficher/masquer ce type"
+										title={$label('Show/hide this type')}
 										onclick={() => ontoggletype(t.kind)}
 									>
 										<span
@@ -107,15 +110,15 @@
 	<!-- Consommation de filament -->
 	{#if stats.filaments.length}
 		<div class="flex flex-col gap-1">
-			<h3 class="ws-section-title">Filament</h3>
+			<h3 class="ws-section-title">{$label('Filament')}</h3>
 			<table class="w-full border-collapse">
 				<thead>
 					<tr class="text-xs text-content-muted">
 						<th class="text-left font-normal">#</th>
-						<th class="text-right font-normal">Longueur</th>
-						<th class="text-right font-normal">Volume</th>
-						<th class="text-right font-normal">Masse</th>
-						<th class="text-right font-normal">Coût</th>
+						<th class="text-right font-normal">{$label('Length')}</th>
+						<th class="text-right font-normal">{$label('Volume')}</th>
+						<th class="text-right font-normal">{$label('Mass')}</th>
+						<th class="text-right font-normal">{$label('Cost')}</th>
 					</tr>
 				</thead>
 				<tbody>

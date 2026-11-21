@@ -108,7 +108,7 @@ test("échelle groupée : l'outil Échelle met à l'échelle toutes les pièces 
   await page.getByTestId("object-name").first().click();
   await page.getByTestId("tool-scale").click();
   await expect(page.getByTestId("cut-scale-group")).toContainText("2 pièces de la coupe");
-  await page.getByLabel("Échelle X", { exact: true }).fill("2");
+  await page.getByLabel("Échelle X", { exact: true }).fill("200");
   await saveNow(page);
   const saved = await (await page.request.get(`/api/projects/${id}`)).json();
   const objs = saved.scene.objects as { transform: { position: number[]; scale: number[] } }[];

@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, afterAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import { buildZip, crc32 } from './zip';
 import { safeFileName } from './stl';
 
@@ -25,3 +26,7 @@ describe('noms de fichiers', () => {
 		expect(safeFileName('', 'stl')).toBe('objet.stl');
 	});
 });
+
+// Les libellés de ces modules sont traduits (tr) : valeurs attendues en français.
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));

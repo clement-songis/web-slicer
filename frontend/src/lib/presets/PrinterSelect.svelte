@@ -3,6 +3,7 @@
 	// vignette de couverture (placeholder si absente).
 	import type { PresetSummary } from '../api/types';
 	import { groupPrinters } from './catalog';
+	import { t } from '$lib/i18n';
 
 	interface Props {
 		/** Presets machine à proposer. */
@@ -51,7 +52,7 @@
 		{#if model && covers[model]}
 			<img src={covers[model]} alt={model} class="h-full w-full object-contain" />
 		{:else}
-			<span class="text-xs text-content-subtle">Aperçu</span>
+			<span class="text-xs text-content-subtle">{$t('Preview')}</span>
 		{/if}
 	</div>
 
@@ -62,10 +63,10 @@
 				model = '';
 				selectedId = null;
 			}}
-			aria-label="Vendeur"
+			aria-label={$t('Vendor||printer')}
 			class={FIELD}
 		>
-			<option value="" disabled>Vendeur…</option>
+			<option value="" disabled>{$t('Vendor…')}</option>
 			{#each tree as v (v.vendor)}
 				<option value={v.vendor}>{v.vendor}</option>
 			{/each}
@@ -75,17 +76,17 @@
 			bind:value={model}
 			onchange={() => (selectedId = null)}
 			disabled={!vendorNode}
-			aria-label="Modèle"
+			aria-label={$t('Model')}
 			class={FIELD}
 		>
-			<option value="" disabled>Modèle…</option>
+			<option value="" disabled>{$t('Model…')}</option>
 			{#each vendorNode?.models ?? [] as m (m.model)}
 				<option value={m.model}>{m.model}</option>
 			{/each}
 		</select>
 
-		<select bind:value={selectedId} disabled={!modelNode} aria-label="Buse" class={FIELD}>
-			<option value={null} disabled>Buse…</option>
+		<select bind:value={selectedId} disabled={!modelNode} aria-label={$t('Nozzle')} class={FIELD}>
+			<option value={null} disabled>{$t('Nozzle…')}</option>
 			{#each modelNode?.nozzles ?? [] as n (n.preset.id)}
 				<option value={n.preset.id}>{n.nozzle} mm</option>
 			{/each}

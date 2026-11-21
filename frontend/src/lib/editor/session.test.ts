@@ -1,6 +1,7 @@
 // Tests du réducteur de session de tranchage (T088) : transitions, progression,
 // bascule vers l'aperçu, isolation et gel des erreurs.
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import type { ServerEvent } from '../api/types';
 import {
 	applyJobEvent,
@@ -31,6 +32,10 @@ const finished = (id: string, gcode_id?: string): ServerEvent => ({
 	gcode_id,
 	stats: null
 });
+
+// Messages attendus en français (langue des tests).
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('slice session', () => {
 	it('démarre en préparation', () => {

@@ -1,7 +1,11 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import { get } from 'svelte/store';
 import { api, ApiError } from './client';
 import { __resetConnectivity, connection, probeNow, unreachableMessage } from './connectivity';
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('serveur injoignable / hors ligne', () => {
 	beforeEach(() => __resetConnectivity(async () => true));

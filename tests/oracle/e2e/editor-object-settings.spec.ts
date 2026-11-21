@@ -241,7 +241,7 @@ test('volume négatif : ajouté depuis le menu, persistant, creuse l’objet @F:
 		return outerWallStarts(moves(g), (m) => Math.abs(m.z - 10) < 0.11).length;
 	};
 	const before = midOuterLoops(await sliceGcode(page, id));
-	await addVolumeFromMenu(page, /add negative volume/i, 'negative');
+	await addVolumeFromMenu(page, /add negative volume|ajouter un volume négatif/i, 'negative');
 	await saveEditor(page);
 	const p = await getProject(page, id);
 	expect(p.scene.objects[0].volumes?.map((v) => [v.type, v.size])).toEqual([['negative', [10, 10, 10]]]);
@@ -260,7 +260,7 @@ test('modificateur : ses réglages s’appliquent dans son volume @F:editor.volu
 	const midSparse = (g: string) => moves(g).filter((m) => Math.abs(m.z - 10) < 0.11 && m.extrude && m.type === 'Sparse infill').length;
 	const before = midSparse(await sliceGcode(page, id));
 	expect(before).toBeGreaterThan(0);
-	await addVolumeFromMenu(page, /add modifier/i, 'modifier');
+	await addVolumeFromMenu(page, /add modifier|ajouter un modificateur/i, 'modifier');
 	await saveEditor(page);
 	const p = await getProject(page, id);
 	const volume = p.scene.objects[0].volumes![0];
@@ -281,7 +281,7 @@ test('bloqueur de supports : supprime les supports auto dans son volume @F:edito
 	expect(supports(await sliceGcode(page, id)), 'supports auto attendus sans bloqueur').toBeGreaterThan(0);
 	await page.reload();
 	await expect(page.getByTestId('object-row')).toHaveCount(1, { timeout: 60_000 });
-	await addVolumeFromMenu(page, /add support blocker/i, 'blocker');
+	await addVolumeFromMenu(page, /add support blocker|ajouter un bloqueur de supports/i, 'blocker');
 	await saveEditor(page);
 	p = await getProject(page, id);
 	expect(p.scene.objects[0].settings).toMatchObject(auto);

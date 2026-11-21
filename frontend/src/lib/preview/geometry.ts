@@ -5,6 +5,7 @@
 // dépendance Three.js) : la géométrie GPU est assemblée dans le composant.
 
 import type { PreviewSegments } from './decode';
+import { tr } from '$lib/i18n';
 import {
 	DEFAULT_FILAMENT_COLORS,
 	NO_DATA_COLOR,
@@ -273,7 +274,7 @@ export function buildLegend(
 		if (!ctx.track || !ctx.track.present[channel])
 			return {
 				kind: 'list',
-				entries: [{ label: 'Aucune donnée dans ce G-code', color: NO_DATA_COLOR }]
+				entries: [{ label: tr('No data in this G-code'), color: NO_DATA_COLOR }]
 			};
 		const [lo, hi] = ctx.track.ranges[channel];
 		return scaleLegend(lo, hi, TRACK_LEGEND[channel].unit);
@@ -292,7 +293,10 @@ export function buildLegend(
 	}
 	if (coloration === 'layer-time' || coloration === 'layer-time-log') {
 		if (!ctx.track)
-			return { kind: 'list', entries: [{ label: 'Chargement du G-code…', color: NO_DATA_COLOR }] };
+			return {
+				kind: 'list',
+				entries: [{ label: tr('Loading the G-code…'), color: NO_DATA_COLOR }]
+			};
 		const [lo, hi] = ctx.track.ranges.layerTime;
 		return scaleLegend(lo, hi, 's', coloration === 'layer-time-log');
 	}
@@ -323,7 +327,7 @@ export function buildLegend(
 			return scaleLegend(min, max, 'mm³/s');
 		}
 		default:
-			return { kind: 'list', entries: [{ label: 'Aucune donnée', color: NO_DATA_COLOR }] };
+			return { kind: 'list', entries: [{ label: tr('No data'), color: NO_DATA_COLOR }] };
 	}
 }
 

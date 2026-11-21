@@ -11,6 +11,7 @@
 // passent par le store `appPreferences`.
 
 import { get, writable } from 'svelte/store';
+import { numberLocale } from '$lib/i18n';
 import type { UserGrouping } from '$lib/presets/user-grouping';
 
 export type Units = 'mm' | 'in';
@@ -550,7 +551,7 @@ export function currentPreferences(): AppPreferences {
 // — Choix mémorisés (Orca : « Clear my choice on… ») ————————————————————
 /** Choix « Ne plus afficher » remis à zéro par « Effacer mes choix ». */
 export const REMEMBERED_CHOICES: { key: string; label: string }[] = [
-	{ key: 'web-slicer.recenter', label: 'Déplacement sans origine (Appareil)' }
+	{ key: 'web-slicer.recenter', label: 'Move without origin (Device)' }
 ];
 
 /** Efface les choix mémorisés ; renvoie le nombre de choix effacés. */
@@ -567,9 +568,9 @@ export function clearRememberedChoices(): number {
 	return n;
 }
 
-/** Montant formaté avec la devise (« 0,08 € »). */
-export function formatMoney(value: number, currency: string): string {
-	const n = value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+/** Montant formaté avec la devise (« 0,08 € » en français, « 0.08 € » en anglais — audit 40 A4). */
+export function formatMoney(value: number, currency: string, loc = numberLocale()): string {
+	const n = value.toLocaleString(loc, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 	return currency ? `${n} ${currency}` : n;
 }
 

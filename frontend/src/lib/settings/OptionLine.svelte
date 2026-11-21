@@ -140,7 +140,8 @@
 				rel="noopener noreferrer"
 				class="underline-offset-2 hover:text-primary hover:underline focus-visible:text-primary focus-visible:underline"
 				data-testid="option-wiki-link"
-				aria-label={`${$t(def.label)} — aide du wiki OrcaSlicer (nouvel onglet)`}>{$t(def.label)}</a
+				aria-label={$t('{label} — OrcaSlicer wiki help (new tab)', { label: $t(def.label) })}
+				>{$t(def.label)}</a
 			>
 			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		{:else}
@@ -153,8 +154,9 @@
 			<span
 				class="ws-badge ml-1 normal-case"
 				data-testid="option-variant-badge"
-				title="Valeur propre à chaque variante de buse : choisissez la variante en haut de l’onglet Filament."
-				>par buse</span
+				title={$t(
+					'Value specific to each nozzle variant: choose the variant at the top of the Filament tab.'
+				)}>{$t('per nozzle')}</span
 			>
 		{/if}
 	</span>
@@ -164,7 +166,7 @@
 			data-override-toggle
 			checked={overrideEnabled}
 			onchange={toggleOverride}
-			aria-label={`Activer ${$t(def.label)}`}
+			aria-label={$t('Enable {label}', { label: $t(def.label) })}
 			class="h-4 w-4 shrink-0 rounded border-border-strong"
 		/>
 	{/if}
@@ -176,8 +178,8 @@
 				<button
 					type="button"
 					class="ws-icon-btn ws-icon-btn-xs text-content-subtle"
-					data-tip="Différent du preset système — cliquer pour reprendre la valeur système"
-					aria-label={`Valeur système pour ${$t(def.label)}`}
+					data-tip={$t('Different from the system preset — click to restore the system value')}
+					aria-label={$t('System value for {label}', { label: $t(def.label) })}
 					data-testid="option-reset-system"
 					{disabled}
 					onclick={() => system && resetTo(system)}
@@ -188,8 +190,8 @@
 				<button
 					type="button"
 					class="ws-icon-btn ws-icon-btn-xs text-warning-content"
-					data-tip="Modifié — cliquer pour revenir à la valeur enregistrée"
-					aria-label={`Revenir à la valeur enregistrée pour ${$t(def.label)}`}
+					data-tip={$t('Modified — click to revert to the saved value')}
+					aria-label={$t('Revert to the saved value for {label}', { label: $t(def.label) })}
 					data-testid="option-reset-saved"
 					{disabled}
 					onclick={() => saved && resetTo(saved)}

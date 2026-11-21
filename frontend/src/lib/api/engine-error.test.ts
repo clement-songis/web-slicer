@@ -1,9 +1,13 @@
-import { describe, expect, test } from 'vitest';
+import { afterAll, beforeAll, describe, expect, test } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import { isTechnicalEngineMessage, readableServerMessage } from './engine-error';
 import { ApiError } from './client';
 
 const RAW =
 	"3MF projet illisible : lecture libslic3r : worker sorti en code 1 — stderr :  — stdout : E invalid_model The supplied file couldn't be read because it's empty\n";
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('messages serveur lisibles (phase 38)', () => {
 	test('3MF vide : contexte gardé, cause lisible, sans trace du worker', () => {

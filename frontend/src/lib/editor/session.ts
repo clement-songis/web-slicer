@@ -4,6 +4,7 @@
 // qu'appliquer ces transitions et rendre l'état. Les erreurs sont **figées** :
 // une fois en `error`, les événements suivants ne l'écrasent pas.
 import type { ServerEvent, SliceWarning } from '../api/types';
+import { tr } from '$lib/i18n';
 
 /** Phase du cycle de tranchage. */
 export type SlicePhase = 'prepare' | 'slicing' | 'preview' | 'error';
@@ -78,7 +79,7 @@ export function applyJobEvent(session: SliceSession, event: ServerEvent): SliceS
 	if (event.event === 'job.finished') {
 		if (!session.jobIds.includes(event.id)) return session;
 		if (!event.gcode_id) {
-			return { ...session, phase: 'error', error: 'tranchage terminé sans G-code' };
+			return { ...session, phase: 'error', error: tr('slicing finished without G-code') };
 		}
 		return { ...session, phase: 'preview', progress: 1, gcodeId: event.gcode_id };
 	}
@@ -103,7 +104,7 @@ function errorMessage(error: unknown, status: string): string {
 				? (error as { message: string }).message
 				: '';
 	if (raw.trim() !== '') return friendlySliceError(raw);
-	return status === 'cancelled' ? 'tranchage annulé' : 'échec du tranchage';
+	return status === 'cancelled' ? tr('slicing cancelled') : tr('slicing failed');
 }
 
 /**
@@ -132,7 +133,10 @@ export function engineWarnings(raw: string): string[] {
 		const floating = /^It seems object (.+?) has floating regions/i.exec(text);
 		out.push(
 			floating
-				? `« ${floating[1]} » a des zones flottantes (rien en dessous) : réorientez-le, posez-le sur le plateau ou activez les supports.`
+				? tr(
+						'“{name}” has floating regions (nothing below): reorient it, place it on the plate or enable supports.',
+						{ name: floating[1] }
+					)
 				: text
 		);
 	}
@@ -143,7 +147,10 @@ function withEngineWarnings(raw: string, msg: string): string {
 	if (msg !== '' && !/^errors?\.?$/i.test(msg)) return msg;
 	const warnings = engineWarnings(raw);
 	if (warnings.length === 0) return msg;
-	return `Le moteur a échoué (${msg || 'erreur'}). ${warnings.join(' ')}`;
+	return tr('The engine failed ({msg}). {warnings}', {
+		msg: msg || tr('error'),
+		warnings: warnings.join(' ')
+	});
 }
 
 function friendlySliceErrorCore(raw: string): string {
@@ -168,11 +175,19 @@ function friendlySliceErrorCore(raw: string): string {
 		...msg.matchAll(/(\S(?:.*?\S)?) is too close to others, and collisions may be caused\.?/gi)
 	].map((m) => `« ${m[1].trim()} »`);
 	if (close.length)
-		return `${close.join(', ')} ${close.length > 1 ? 'sont trop près' : 'est trop près'} des autres objets : en impression objet par objet, la tête heurterait les objets déjà imprimés. Écartez-les (« Disposer » les espace automatiquement) ou repassez en impression couche par couche.`;
+		return tr(
+			close.length > 1
+				? '{names} are too close to the other objects: in by-object printing, the head would hit the objects already printed. Move them apart (“Arrange” spaces them automatically) or switch back to by-layer printing.'
+				: '{names} is too close to the other objects: in by-object printing, the head would hit the objects already printed. Move them apart (“Arrange” spaces them automatically) or switch back to by-layer printing.',
+			{ names: close.join(', ') }
+		);
 	const tall = [
 		...msg.matchAll(/(\S(?:.*?\S)?) is too tall, and collisions will be caused\.?/gi)
 	].map((m) => `« ${m[1].trim()} »`);
 	if (tall.length)
-		return `${tall.join(', ')} : trop haut pour l'impression objet par objet (dégagement de la tête dépassé) ; imprimez-le en dernier ou repassez en impression couche par couche.`;
+		return tr(
+			'{names}: too tall for by-object printing (head clearance exceeded); print it last or switch back to by-layer printing.',
+			{ names: tall.join(', ') }
+		);
 	return msg;
 }

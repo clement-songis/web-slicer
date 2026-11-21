@@ -1,5 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import { DEFAULT_PREFERENCES, formatLength, formatMoney, parsePreferences } from './preferences';
+
+// Montants au format de la langue (audit 40 A4) : valeurs attendues en français.
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('préférences', () => {
 	it('valeurs par défaut et lecture tolérante', () => {

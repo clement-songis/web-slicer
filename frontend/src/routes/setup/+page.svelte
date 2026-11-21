@@ -4,15 +4,12 @@
 	// entre dans la bibliothèque. Aucune sortie sans imprimante (Confirmer inactif
 	// à 0) : la garde `requireOnboardedUser` ramène ici tant qu'aucune n'existe.
 	import { goto } from '$app/navigation';
+	import { t, tr } from '$lib/i18n';
 	import { resolve } from '$app/paths';
 	import { ApiError } from '$lib/api/client';
 	import { createPrinter } from '$lib/api/printers';
 	import { getResolvedPreset, listPresets } from '$lib/api/presets';
-	import {
-		currentPreferences,
-		flushPreferences,
-		savePreferences
-	} from '$lib/settings/preferences';
+	import { currentPreferences, flushPreferences, savePreferences } from '$lib/settings/preferences';
 	import {
 		defaultSelection,
 		filamentChoices,
@@ -52,6 +49,8 @@
 		})
 	);
 	let machineNames: Promise<Map<string, string>> | null = null;
+	// Cache de requêtes, non affiché : pas besoin de réactivité.
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity
 	const perMachine = new Map<string, Promise<{ list: PresetSummary[]; def: unknown }>>();
 	function machineData(id: string) {
 		let entry = perMachine.get(id);
@@ -116,7 +115,10 @@
 				const ids = nozzles?.[`${m.vendor}::${m.model}`] ?? [m.default_machine_preset_id];
 				for (const id of ids) {
 					const nozzle = m.variants.find((v) => v.machine_preset_id === id)?.nozzle;
-					const name = ids.length > 1 && nozzle ? `${m.model} (buse ${nozzle} mm)` : m.model;
+					const name =
+						ids.length > 1 && nozzle
+							? tr('{model} ({nozzle} mm nozzle)', { model: m.model, nozzle })
+							: m.model;
 					await createPrinter({ name, machine_preset_id: id });
 				}
 			}
@@ -126,14 +128,14 @@
 			}
 			await goto(resolve('/library'));
 		} catch (e) {
-			error = e instanceof ApiError ? e.message : 'Erreur inattendue';
+			error = e instanceof ApiError ? e.message : tr('Unexpected error');
 		} finally {
 			busy = false;
 		}
 	}
 </script>
 
-<svelte:head><title>Sélection de l'imprimante — Web-Slicer</title></svelte:head>
+<svelte:head><title>{$t('Printer selection')} — Web-Slicer</title></svelte:head>
 
 <div class="flex h-screen bg-surface text-content">
 	<AppSidebar email={data.user.email} />
@@ -141,9 +143,9 @@
 	<main class="flex min-w-0 flex-1 flex-col p-4">
 		<div class="mx-auto flex min-h-0 w-full max-w-6xl flex-1 flex-col">
 			<header class="mb-3 text-center">
-				<h1 class="ws-page-title">Sélection de l'imprimante</h1>
+				<h1 class="ws-page-title">{$t('Printer selection')}</h1>
 				<p class="text-sm text-content-muted">
-					Choisissez la ou les imprimantes que vous possédez, puis vos filaments, pour commencer.
+					{$t('Choose the printer(s) you own, then your filaments, to get started.')}
 				</p>
 			</header>
 
@@ -158,7 +160,7 @@
 					<PrinterCatalog
 						vendors={data.catalog}
 						onconfirm={confirm}
-						confirmLabel="Confirmer"
+						confirmLabel={$t('Confirm')}
 						chooseNozzle
 						{onpick}
 						{busy}
@@ -168,40 +170,41 @@
 				<aside
 					class="flex min-h-0 w-80 shrink-0 flex-col rounded border border-border bg-surface-raised"
 					data-testid="wizard-filaments"
-					aria-label="Filaments"
+					aria-label={$t('Filaments')}
 				>
 					<div class="border-b border-border p-3">
-						<h2 class="ws-section-title">Filaments</h2>
+						<h2 class="ws-section-title">{$t('Filaments')}</h2>
 						<p class="text-xs text-content-muted">
 							{#if pickedIds.length === 0}
-								Cochez une imprimante : ses filaments compatibles s’affichent ici.
+								{$t('Check a printer: its compatible filaments are shown here.')}
 							{:else}
-								Filaments que vous possédez ; le premier compatible devient le filament des
-								nouveaux projets.
+								{$t(
+									'Filaments you own; the first compatible one becomes the filament of new projects.'
+								)}
 							{/if}
 						</p>
 						{#if choices.length > 0}
 							<div class="mt-2 flex gap-1.5">
 								<input
 									class="ws-field ws-field-sm min-w-0 flex-1"
-									placeholder="Rechercher un filament…"
-									aria-label="Rechercher un filament"
+									placeholder={$t('Search filaments…')}
+									aria-label={$t('Search filaments')}
 									data-testid="wizard-filament-search"
 									bind:value={filamentQuery}
 								/>
 								<select
 									class="ws-field ws-field-sm w-24"
-									aria-label="Type de filament"
+									aria-label={$t('Filament type')}
 									data-testid="wizard-filament-type"
 									bind:value={filamentType}
 								>
-									<option value="">Tous</option>
-									{#each types as t (t)}<option value={t}>{t}</option>{/each}
+									<option value="">{$t('All')}</option>
+									{#each types as ty (ty)}<option value={ty}>{ty}</option>{/each}
 								</select>
 							</div>
 							<label class="mt-1.5 flex items-center gap-1.5 text-xs text-content-muted">
 								<input type="checkbox" bind:checked={onlyChosen} />
-								Cochés seulement
+								{$t('Checked only')}
 								<span class="ml-auto" data-testid="wizard-filament-count"
 									>{chosen.length} / {choices.length}</span
 								>
@@ -210,7 +213,7 @@
 					</div>
 					<div class="min-h-0 flex-1 overflow-y-auto p-1.5">
 						{#if loadingFilaments && choices.length === 0}
-							<p class="p-2 text-xs text-content-muted">Chargement des filaments…</p>
+							<p class="p-2 text-xs text-content-muted">{$t('Loading filaments…')}</p>
 						{/if}
 						{#each shown as c (c.name)}
 							<label

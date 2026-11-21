@@ -3,6 +3,8 @@
 // SVG → contours → extrusion) est une opération moteur (libslic3r/FFI, phase
 // P5) ; ici on modélise et on valide les paramètres, purs et testables.
 
+import { tr } from '$lib/i18n';
+
 /** Source d'un volume en relief. */
 export type EmbossSource = 'text' | 'svg';
 
@@ -49,7 +51,7 @@ export function embossPartOffset(
 export function defaultEmbossParams(): EmbossParams {
 	return {
 		source: 'text',
-		text: 'Texte',
+		text: tr('Text||emboss-default'),
 		svg: '',
 		font: 'noto-sans',
 		boldness: 0,
@@ -66,12 +68,12 @@ export function defaultEmbossParams(): EmbossParams {
  * Renvoie `null` si valide, sinon un message d'erreur.
  */
 export function validateEmboss(p: EmbossParams): string | null {
-	if (!(p.depth > 0)) return 'la profondeur doit être positive';
+	if (!(p.depth > 0)) return tr('the depth must be positive');
 	if (p.source === 'text') {
-		if (p.text.trim() === '') return 'le texte est vide';
-		if (!(p.fontSize > 0)) return 'la taille de police doit être positive';
+		if (p.text.trim() === '') return tr('the text is empty');
+		if (!(p.fontSize > 0)) return tr('the font size must be positive');
 	} else if (p.svg.trim() === '') {
-		return 'le contenu SVG est vide';
+		return tr('the SVG content is empty');
 	}
 	return null;
 }
@@ -112,5 +114,5 @@ export function paramsFromEmboss(e: unknown): EmbossParams | null {
 /** Libellé du menu (Orca : « Edit text » / « Edit SVG »). */
 export function embossEditLabel(e: unknown): string | null {
 	const p = paramsFromEmboss(e);
-	return p ? (p.source === 'svg' ? 'Modifier le SVG' : 'Modifier le texte') : null;
+	return p ? (p.source === 'svg' ? tr('Edit SVG') : tr('Edit text')) : null;
 }

@@ -21,7 +21,7 @@
 		value={pickerValue}
 		oninput={(e) => (value = e.currentTarget.value)}
 		{disabled}
-		aria-label="{$t(def.label)} (sélecteur)"
+		aria-label={$t('{label} (picker)', { label: $t(def.label) })}
 		class="h-8 w-10 rounded border border-border-strong"
 	/>
 	<input

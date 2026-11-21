@@ -5,6 +5,7 @@
 	// automatiquement et confirme brièvement le rétablissement. Orca est une
 	// application locale : équivalent web de ses notifications de connexion.
 	import { onMount } from 'svelte';
+	import { t } from '$lib/i18n';
 	import { connection, probeNow, watchBrowserConnectivity } from '$lib/api/connectivity';
 
 	let restoredVisible = $state(false);
@@ -54,10 +55,10 @@
 		></span>
 		<span class="min-w-0 flex-1">
 			<strong class="font-semibold">
-				{$connection.browserOffline ? 'Hors ligne.' : 'Serveur injoignable.'}
+				{$connection.browserOffline ? $t('Offline.') : $t('Server unreachable.')}
 			</strong>
-			Votre travail reste affiché ; vous pourrez enregistrer et trancher dès le retour de la connexion.
-			<span class="text-content-muted">Nouvelle tentative automatique…</span>
+			{$t('Your work stays on screen; you can save and slice as soon as the connection is back.')}
+			<span class="text-content-muted">{$t('Retrying automatically…')}</span>
 		</span>
 		<button
 			type="button"
@@ -66,7 +67,7 @@
 			disabled={checking}
 			data-testid="connection-retry"
 		>
-			{checking ? 'Vérification…' : 'Réessayer'}
+			{checking ? $t('Checking…') : $t('Retry')}
 		</button>
 	</div>
 {:else if restoredVisible}
@@ -76,6 +77,6 @@
 		aria-live="polite"
 		data-testid="connection-restored"
 	>
-		Connexion au serveur rétablie.
+		{$t('Connection to the server restored.')}
 	</div>
 {/if}

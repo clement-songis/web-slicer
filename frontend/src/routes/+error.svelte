@@ -5,17 +5,20 @@
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
 	import { probeNow } from '$lib/api/connectivity';
+	import { t } from '$lib/i18n';
 
 	const code = $derived(page.error?.code ?? '');
 	const offline = $derived(code === 'network' || code === 'unavailable');
 	const title = $derived(
-		offline
-			? 'Serveur injoignable'
-			: page.status === 404
-				? 'Page introuvable'
-				: page.status === 403
-					? 'Accès refusé'
-					: 'Une erreur est survenue'
+		$t(
+			offline
+				? 'Server unreachable'
+				: page.status === 404
+					? 'Page not found'
+					: page.status === 403
+						? 'Access denied'
+						: 'An error occurred'
+		)
 	);
 	let retrying = $state(false);
 
@@ -37,12 +40,13 @@
 		<h1 class="ws-page-title mb-2">{title}</h1>
 		<p class="mb-1 text-sm text-content-muted">
 			{#if offline}
-				La page n'a pas pu être chargée : le serveur ne répond pas ou la connexion est coupée. Rien
-				n'est perdu côté serveur ; réessayez dans quelques instants.
+				{$t(
+					'The page could not be loaded: the server is not responding or the connection is down. Nothing is lost on the server; try again in a few moments.'
+				)}
 			{:else if page.status === 404}
-				Cette adresse ne correspond à aucune page (projet supprimé ou lien erroné).
+				{$t('This address does not match any page (deleted project or wrong link).')}
 			{:else}
-				{page.error?.message ?? 'Erreur inattendue.'}
+				{page.error?.message ?? $t('Unexpected error.')}
 			{/if}
 		</p>
 		{#if !offline && page.status !== 404}
@@ -56,9 +60,9 @@
 				disabled={retrying}
 				data-testid="error-retry"
 			>
-				{retrying ? 'Nouvel essai…' : 'Réessayer'}
+				{retrying ? $t('Retrying…') : $t('Retry')}
 			</button>
-			<a href={resolve('/library')} class="ws-btn ws-btn-secondary">Bibliothèque</a>
+			<a href={resolve('/library')} class="ws-btn ws-btn-secondary">{$t('Library')}</a>
 		</div>
 	</div>
 </main>

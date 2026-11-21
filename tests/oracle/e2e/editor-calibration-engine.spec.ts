@@ -12,7 +12,7 @@ test('Calibration › Rétraction : longueur croissante par paliers @F:editor.ca
 	const sourceId = await bootstrap(page);
 
 	await page.getByRole('button', { name: 'Calibration', exact: true }).click();
-	await page.getByRole('menuitem', { name: 'Retraction test' }).click();
+	await page.getByRole('menuitem', { name: 'Test de rétraction' }).click();
 	const dialog = page.getByTestId('engine-calib-dialog');
 	await expect(dialog).toBeVisible();
 	await dialog.getByTestId('calib-start').fill('0.5');

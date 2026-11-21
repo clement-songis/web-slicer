@@ -29,7 +29,7 @@
 			class="ws-dialog max-h-[85vh] w-full max-w-3xl overflow-y-auto p-6"
 			role="dialog"
 			aria-modal="true"
-			aria-label="Raccourcis clavier"
+			aria-label={$t('Keyboard Shortcuts')}
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.stopPropagation()}
 			tabindex="-1"

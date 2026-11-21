@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest';
+import { afterAll, beforeAll, describe, it, expect } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import {
 	sortByUpdated,
 	formatDate,
@@ -22,6 +23,9 @@ function project(over: Partial<ProjectResponse>): ProjectResponse {
 		...over
 	};
 }
+
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
 
 describe('sortByUpdated', () => {
 	it('classe du plus récent au plus ancien sans muter la source', () => {

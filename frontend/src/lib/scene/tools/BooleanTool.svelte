@@ -8,6 +8,8 @@
 	// calcul est fait par mcut (`MeshBoolean::mcut::make_boolean`) dans le worker
 	// moteur via `POST /api/projects/{id}/boolean` ; le composant choisit
 	// l'opération et l'émet.
+	import { t } from '$lib/i18n';
+
 	interface Props {
 		onapply: (op: BooleanOp) => void;
 		/** Vrai quand l'opération est applicable (deux objets prêts sélectionnés). */
@@ -17,28 +19,23 @@
 		busy?: boolean;
 	}
 
-	let {
-		onapply,
-		available = false,
-		hint = 'Sélectionnez deux objets (A puis B).',
-		busy = false
-	}: Props = $props();
+	let { onapply, available = false, hint, busy = false }: Props = $props();
 
 	let op = $state<BooleanOp>('union');
 	const ops: BooleanOp[] = ['union', 'difference', 'intersection'];
 	const labels: Record<BooleanOp, string> = {
 		union: 'Union',
-		difference: 'Différence',
+		difference: 'Difference',
 		intersection: 'Intersection'
 	};
 </script>
 
 <div class="flex flex-col gap-2 text-sm">
 	<label class="flex items-center gap-2">
-		<span class="text-content-muted">Opération</span>
+		<span class="text-content-muted">{$t('Operation')}</span>
 		<select data-testid="boolean-op" bind:value={op} class="ws-field ws-field-sm">
 			{#each ops as key (key)}
-				<option value={key}>{labels[key]}</option>
+				<option value={key}>{$t(labels[key])}</option>
 			{/each}
 		</select>
 	</label>
@@ -48,10 +45,10 @@
 		class="ws-btn ws-btn-primary self-start"
 		data-testid="boolean-apply"
 		disabled={!available || busy}
-		onclick={() => onapply(op)}>Appliquer</button
+		onclick={() => onapply(op)}>{$t('Apply')}</button
 	>
 
 	{#if !available}
-		<p class="text-content-subtle">{hint}</p>
+		<p class="text-content-subtle">{hint ?? $t('Select two objects (A then B).')}</p>
 	{/if}
 </div>

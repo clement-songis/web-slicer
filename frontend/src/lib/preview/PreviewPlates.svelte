@@ -5,6 +5,7 @@
 	// Ici : une puce par plateau (✓ tranché, clic = aperçu de ce plateau) et les
 	// totaux temps / filament / coût des plateaux tranchés.
 	import { formatMoney } from '$lib/settings/preferences';
+	import { locale, numberLocale, t } from '$lib/i18n';
 	import { formatDuration } from './stats';
 	import type { PlatesTotals } from './plates-summary';
 	import type { PlatesStatsResponse } from './engine-data';
@@ -39,10 +40,10 @@
 <section
 	class="mb-4 flex flex-col gap-2 border-b border-border pb-4"
 	data-testid="preview-plates"
-	aria-label="Plateaux"
+	aria-label={$t('Plates')}
 >
-	<h2 class="ws-section-title">Plateaux</h2>
-	<div class="flex flex-wrap gap-1.5" role="group" aria-label="Aperçu du plateau">
+	<h2 class="ws-section-title">{$t('Plates')}</h2>
+	<div class="flex flex-wrap gap-1.5" role="group" aria-label={$t('Plate preview')}>
 		{#each plates as plate (plate.id)}
 			{@const done = sliced.includes(plate.id)}
 			<button
@@ -53,15 +54,15 @@
 				data-plate-id={plate.id}
 				data-sliced={done ? 'true' : 'false'}
 				data-tip={done
-					? 'Tranché : afficher son aperçu'
+					? $t('Sliced: show its preview')
 					: plate.objects
-						? 'Pas encore tranché'
-						: 'Plateau vide'}
+						? $t('Not sliced yet')
+						: $t('Empty plate')}
 				data-tip-side="bottom"
 				onclick={() => onselect(plate.id)}
 			>
 				{plate.name}
-				{#if done}<span class="text-success-text" aria-label="tranché">✓</span>{/if}
+				{#if done}<span class="text-success-text" aria-label={$t('sliced')}>✓</span>{/if}
 			</button>
 		{/each}
 	</div>
@@ -70,9 +71,9 @@
 		     (modèle / support / purge / tour), coût figé des tranchages. -->
 		<div class="flex flex-col gap-1" data-testid="preview-plates-all">
 			<p class="text-xs text-content-muted tabular-nums" data-testid="preview-plates-totals">
-				<span class="text-content">Tous les plateaux ({all.plate_count})</span> ·
+				<span class="text-content">{$t('All plates ({n})', { n: all.plate_count })}</span> ·
 				{formatDuration(all.time[0])} ·
-				{all.total.total.g.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} g{#if all.total_cost > 0}
+				{all.total.total.g.toLocaleString(numberLocale($locale), { maximumFractionDigits: 2 })} g{#if all.total_cost > 0}
 					· {formatMoney(all.total_cost, currency)}{/if}
 			</p>
 			<button
@@ -81,7 +82,7 @@
 				aria-expanded={detail}
 				data-testid="preview-plates-detail"
 				onclick={() => (detail = !detail)}
-				>{detail ? 'Masquer le détail par filament' : 'Détail par filament'}</button
+				>{detail ? $t('Hide the per-filament detail') : $t('Per-filament detail')}</button
 			>
 			{#if detail}
 				<FilamentTable table={all} testid="preview-plates-filaments" />
@@ -89,9 +90,9 @@
 		</div>
 	{:else if totals && totals.plates > 1}
 		<p class="text-xs text-content-muted tabular-nums" data-testid="preview-plates-totals">
-			<span class="text-content">Tous les plateaux ({totals.plates})</span> ·
+			<span class="text-content">{$t('All plates ({n})', { n: totals.plates })}</span> ·
 			{formatDuration(totals.timeSeconds)} ·
-			{totals.grams.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} g{#if totals.cost > 0}
+			{totals.grams.toLocaleString(numberLocale($locale), { maximumFractionDigits: 2 })} g{#if totals.cost > 0}
 				· {formatMoney(totals.cost, currency)}{/if}
 		</p>
 	{/if}
@@ -101,9 +102,9 @@
 			class="ws-link self-start text-xs"
 			data-testid="preview-plates-slice-all"
 			onclick={onsliceall}
-			>Trancher tout ({pending} plateau{pending > 1 ? 'x' : ''} restant{pending > 1
-				? 's'
-				: ''})</button
+			>{$t(pending > 1 ? 'Slice all ({n} plates left)' : 'Slice all ({n} plate left)', {
+				n: pending
+			})}</button
 		>
 	{/if}
 </section>

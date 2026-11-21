@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { beforeAll, afterAll, describe, expect, it } from 'vitest';
+import { setLocale } from '$lib/i18n';
 import {
 	colorPrintColor,
 	DUMMY_COLOR,
@@ -228,3 +229,7 @@ describe('engine-data (lot 31)', () => {
 		expect(statsFromProcessed({ stats: { layer_count: 3 }, footer: null }).layer_count).toBe(3);
 	});
 });
+
+// Les libellés de ces modules sont traduits (tr) : valeurs attendues en français.
+beforeAll(() => setLocale('fr'));
+afterAll(() => setLocale('en'));
