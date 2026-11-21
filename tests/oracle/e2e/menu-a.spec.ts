@@ -223,14 +223,13 @@ test('exports G-code, plateau(s) et trajectoires OBJ @F:menu.export-g-code @F:me
 	await importModel(page, 'cube20');
 	await ready(page);
 	await sliceInUi(page);
-	for (const pattern of [
-		/export g-code|exporter le g-code/i,
-		/export plate sliced|fichier tranché du plateau/i,
-	]) {
-		const file = await download(page, () => menu(page, FILE, pattern, EXPORT), 60_000);
-		expect(file.name).toMatch(/\.gcode$/);
-		expect(file.bytes.toString('utf8')).toContain('G1');
-	}
+	const file = await download(page, () => menu(page, FILE, /export g-code|exporter le g-code/i, EXPORT), 60_000);
+	expect(file.name).toMatch(/\.gcode$/);
+	expect(file.bytes.toString('utf8')).toContain('G1');
+	// « Export plate sliced file » d'Orca : archive .gcode.3mf du plateau.
+	const plate = await download(page, () => menu(page, FILE, /export plate sliced|fichier tranché du plateau/i, EXPORT), 60_000);
+	expect(plate.name).toMatch(/\.gcode\.3mf$/);
+	expect(zipNames(plate.bytes)).toContain('Metadata/plate_1.gcode');
 	const all = await download(
 		page,
 		() => menu(page, FILE, /all plate sliced|tous les plateaux/i, EXPORT),

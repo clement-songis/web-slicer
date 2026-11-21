@@ -115,6 +115,10 @@ export interface ProcessedGcode {
 	stats: ProcessedStats;
 	footer: GcodeStats | null;
 	meta: EngineMeta;
+	/** .gcode.3mf (lot 44) : plateau ouvert (1-based) … */
+	plate?: number;
+	/** … et plateaux tranchés de l'archive. */
+	plates?: number[];
 }
 
 /**

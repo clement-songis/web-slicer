@@ -101,18 +101,79 @@
 						{$t(item.label)}
 					</div>
 					{#each item.items as sub, j (j)}
-						<button
-							type="button"
-							class="ws-menu-item flex items-baseline justify-between gap-3"
-							role="menuitem"
-							data-action={sub.action}
-							onclick={() => pick(sub.action)}
-						>
-							<span>{$t(sub.label)}</span>
-							{#if sub.hint && sub.hint !== item.label}<span class="text-xs text-content-subtle"
-									>{$t(sub.hint)}</span
-								>{/if}
-						</button>
+						{#if sub.split && sub.items}
+							<!-- Action + sous-menu (audit 43 M1-a) : libellé = action d'origine,
+							     flèche = formes d'Orca (Charger…, Cube… SVG), dépliées sur place. -->
+							<div class="flex items-stretch" data-testid="menu-split-{sub.action}">
+								<!-- Clavier : → déplie les formes, ← les replie (menus natifs). -->
+								<button
+									type="button"
+									class="ws-menu-item min-w-0 flex-1"
+									role="menuitem"
+									aria-haspopup="menu"
+									aria-expanded={expanded === sub.action}
+									data-action={sub.action}
+									onclick={() => pick(sub.action)}
+									onkeydown={(e) => {
+										if (
+											(e.key === 'ArrowRight' && expanded !== sub.action) ||
+											(e.key === 'ArrowLeft' && expanded === sub.action)
+										) {
+											e.preventDefault();
+											toggle(sub.action);
+										}
+									}}
+								>
+									{$t(sub.label)}
+								</button>
+								<!-- Flèche à la souris : bouton hors de la liste des entrées (tabindex -1). -->
+								<button
+									type="button"
+									tabindex="-1"
+									class="ws-menu-item w-8 shrink-0 text-center text-content-subtle"
+									aria-label={$t('Shapes')}
+									title={$t('Shapes')}
+									data-testid="menu-sub-{sub.action}"
+									onclick={() => toggle(sub.action)}
+								>
+									{expanded === sub.action ? '▾' : '▸'}
+								</button>
+							</div>
+							{#if expanded === sub.action}
+								<div
+									role="group"
+									aria-label={$t(sub.label)}
+									class="ml-2 border-l border-border pl-1"
+									data-testid="menu-shapes-{sub.action}"
+								>
+									{#each sub.items as leaf, k (leaf.action)}
+										{#if k === 1}<div class="my-1 h-px bg-border"></div>{/if}
+										<button
+											type="button"
+											class="ws-menu-item"
+											role="menuitem"
+											data-action={leaf.action}
+											onclick={() => pick(leaf.action)}
+										>
+											{$t(leaf.label)}
+										</button>
+									{/each}
+								</div>
+							{/if}
+						{:else}
+							<button
+								type="button"
+								class="ws-menu-item flex items-baseline justify-between gap-3"
+								role="menuitem"
+								data-action={sub.action}
+								onclick={() => pick(sub.action)}
+							>
+								<span>{$t(sub.label)}</span>
+								{#if sub.hint && sub.hint !== item.label}<span class="text-xs text-content-subtle"
+										>{$t(sub.hint)}</span
+									>{/if}
+							</button>
+						{/if}
 					{/each}
 				</div>
 			{:else if item.items}

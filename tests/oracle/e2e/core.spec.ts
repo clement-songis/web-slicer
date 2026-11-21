@@ -96,6 +96,12 @@ test('export G-code depuis l’UI identique à Orca et à l’API de harness @F:
 	const { ref, base } = needRefs();
 	await bootstrap(page);
 	await importModel(page, MODEL);
+	// La référence CLI tranche sans curr_bed_type (Cool Plate) ; l'interface prend
+	// désormais le type par défaut de l'imprimante comme Orca (Voron : High Temp).
+	await page.getByRole('button', { name: 'Objets', exact: true }).click();
+	await page
+		.getByRole('combobox', { name: 'Type de plaque', exact: true })
+		.selectOption('Cool Plate / PLA Plate');
 	await sliceInUi(page);
 	const fromUi = await downloadGcode(page);
 	expectSameGcode(fromUi, ref, 'G-code exporté depuis l’UI');

@@ -122,7 +122,9 @@
 			{/each}
 		</dl>
 	{/if}
-	<div class="flex items-center gap-2">
+	<!-- Phase 44b : les groupes insécables passent à la ligne quand la vue est
+	     étroite (la ligne débordait de la fenêtre à 760 × 490). -->
+	<div class="flex flex-wrap items-center gap-x-2 gap-y-0.5">
 		<button
 			type="button"
 			class="ws-icon-btn ws-icon-btn-xs"

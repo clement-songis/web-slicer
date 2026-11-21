@@ -37,6 +37,8 @@ export interface SceneNode {
 	emboss?: Record<string, unknown>;
 	/** Lot 37 — pièce issue d'une coupe (Orca `ModelObject::cut_id`). */
 	cutId?: CutObjectId;
+	/** Audit 43 F-a — groupe d'instances (cf. `instances.ts`) ; absent = objet seul. */
+	instanceGroup?: string;
 }
 
 function cloneNode(n: SceneNode): SceneNode {

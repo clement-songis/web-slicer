@@ -353,7 +353,8 @@ test("aperçu : curseurs, mode une couche, G-code, accélérations et export/imp
 
   const download = page.waitForEvent("download");
   await page.keyboard.press("Control+g");
-  expect((await download).suggestedFilename()).toMatch(/\.gcode$/);
+  // Orca 2.4.1 : Ctrl+G = « Export plate sliced file » (.gcode.3mf, MainFrame.cpp:2786).
+  expect((await download).suggestedFilename()).toMatch(/\.gcode\.3mf$/);
   await page.keyboard.press("Control+Shift+G");
   await expect(page.getByTestId("send-dialog")).toBeVisible();
   await page.keyboard.press("Escape");

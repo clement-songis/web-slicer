@@ -66,6 +66,22 @@
 	const I18N_KEY: Record<string, string> = { addplate: 'Add plate||toolbar' };
 	const labelOf = (item: ToolbarButton) => I18N_KEY[item.id] ?? item.label;
 
+	// Audit 43 S-a : la barre consomme le clic droit (GLToolbar d'Orca) — jamais
+	// le menu de la scène, y compris sur le fond ou un bouton grisé. Sur
+	// « Disposer », il ouvre les options d'arrangement (_render_arrange_menu).
+	// Écouteur natif : `oncontextmenu` est délégué par Svelte à la racine, que
+	// stopPropagation n'atteindrait plus.
+	function swallowContextMenu(node: HTMLElement) {
+		const stop = (e: MouseEvent) => {
+			e.preventDefault();
+			e.stopPropagation();
+			const button = (e.target as Element | null)?.closest('button');
+			if (button?.dataset.testid === 'toolbar-arrange' && !disabled('arrange')) onaction('arrange');
+		};
+		node.addEventListener('contextmenu', stop);
+		return { destroy: () => node.removeEventListener('contextmenu', stop) };
+	}
+
 	function disabled(id: string): boolean {
 		if (NEEDS_SELECTION.has(id)) return !hasSelection;
 		if (NEEDS_OBJECTS.has(id)) return !hasObjects;
@@ -74,9 +90,10 @@
 </script>
 
 <div
-	class="ws-floating flex items-center gap-0.5 p-1"
+	class="ws-floating flex max-w-full flex-wrap items-center justify-center gap-0.5 p-1"
 	role="toolbar"
 	aria-label={$t('Plate toolbar')}
+	use:swallowContextMenu
 >
 	{#each ITEMS as item (item.id)}
 		{@const Icon = ICONS[item.id]}

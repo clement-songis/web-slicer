@@ -248,9 +248,18 @@
 		type PlateView
 	} from '$lib/scene/plate-layout';
 	import { planSceneRestore } from '$lib/scene/document';
+	import { DEFAULT_PLATE_TYPE } from '$lib/scene/plates.svelte';
+	import { PLATE_TYPES } from '$lib/settings/special/dialogs';
+	import { plateTypeToBedType, printerDefaultPlateType } from '$lib/scene/bed-type';
+	import { gcode3mfRefusal, gcodeFilePlates, gcodeFileText } from '$lib/editor/gcode-3mf';
+	import Gcode3mfOfferDialog from '$lib/editor/Gcode3mfOfferDialog.svelte';
+	import { parseVolumeShapeAction, type VolumeShape } from '$lib/scene/menus';
 	import {
 		VOLUME_ACTIONS,
 		defaultVolume,
+		genericVolumePlacement,
+		primitiveBedSize,
+		worldVolumeSize,
 		volumeTypeName,
 		volumeTransform,
 		applyVolumeTransform,
@@ -633,6 +642,18 @@
 		supportFilamentAfterRemoval
 	} from '$lib/editor/presets';
 	import Dialog from '$lib/ui/Dialog.svelte';
+	import InstanceCountDialog from '$lib/scene/InstanceCountDialog.svelte';
+	import {
+		instanceCountPlan,
+		instanceGroups,
+		instancePositions,
+		instanceStep,
+		mapPlatePoints,
+		newInstanceGroupId,
+		planInstanceSync,
+		planMemberSync,
+		rememberMembers
+	} from '$lib/scene/instances';
 	import { uniqueCopyName } from '$lib/editor/presets';
 	import type { PageData } from './$types';
 	import IconPencil from '~icons/lucide/pencil';
@@ -885,6 +906,20 @@
 	// Modèle de scène (mutations en place → proxysées par `$state`, réactives).
 	let tree = $state(new ObjectTree());
 	let plates = $state(new PlateSet());
+	// Type de plaque par défaut de l'imprimante (phase 44b, Orca
+	// Preset::get_default_bed_type) : type des nouveaux plateaux / projets.
+	let printerPlateType = $state(DEFAULT_PLATE_TYPE);
+	// Le serveur (lot 44b, `ResolvedPreset.default_plate_type`) fait foi quand il
+	// le fournit ; sinon même règle portée côté client (lib/scene/bed-type.ts).
+	function syncPrinterPlateType(printerChanged: boolean, fromServer?: unknown) {
+		const next =
+			typeof fromServer === 'string' && PLATE_TYPES.some((p) => p.label === fromServer)
+				? fromServer
+				: printerDefaultPlateType(machineValues);
+		const previous = printerPlateType;
+		printerPlateType = next;
+		plates.followDefaultPlateType(next, printerChanged ? previous : null);
+	}
 	// Maillages rendus dans la scène 3D : peuplés à l'ouverture depuis les modèles
 	// du projet (T092) puis par les imports (T089).
 	let sceneObjects = $state<SceneObject[]>([]);
@@ -2206,7 +2241,7 @@
 		// dupliquait les nœuds, imports et maillages à chaque « Recharger ».
 		sceneGeneration += 1;
 		tree = new ObjectTree();
-		plates = new PlateSet();
+		plates = new PlateSet(printerPlateType);
 		sceneObjects = [];
 		imports = [];
 		paintings = {};
@@ -2244,10 +2279,13 @@
 		// Restaure la structure de plateaux (noms, types, plateau actif) mais vide
 		// les affectations : elles référencent d'anciens ids, réattribués ci-dessous.
 		if ((saved.plates.plates ?? []).length > 0) {
-			plates = PlateSet.deserialize({
-				activeId: saved.plates.activeId ?? null,
-				plates: saved.plates.plates.map((p) => ({ ...p, objectIds: [] }))
-			});
+			plates = PlateSet.deserialize(
+				{
+					activeId: saved.plates.activeId ?? null,
+					plates: saved.plates.plates.map((p) => ({ ...p, objectIds: [] }))
+				},
+				printerPlateType
+			);
 		}
 		const restoredImports: ImportItem[] = [];
 		const track = (objectId: string, modelId: string) => {
@@ -2277,6 +2315,7 @@
 				if (restored.meshName) node.meshName = restored.meshName;
 				if (restored.emboss) node.emboss = restored.emboss;
 				if (restored.cutId) node.cutId = restored.cutId;
+				if (restored.instanceGroup) node.instanceGroup = restored.instanceGroup;
 			}
 			paintings[objectId] = restored.painting;
 			layerProfiles[objectId] = restored.layerProfile;
@@ -2901,6 +2940,8 @@
 			if (kind === 'filament') stashFilamentDraft(slot);
 			const stored = pendingOverridesFor(pendingOverrides, kind, slot, requestedId);
 			pendingOverrides = withoutPending(pendingOverrides, kind, slot);
+			const printerChanged =
+				kind === 'machine' && editLoadedId.machine !== null && editLoadedId.machine !== requestedId;
 			editLoadedId[kind] = requestedId;
 			if (kind === 'filament') filamentLoadedSlot = slot;
 			setValuesForKind(kind, resolved.values);
@@ -2911,10 +2952,16 @@
 				else if (kind === 'filament') filamentValues = next;
 				else machineValues = next;
 			}
+			// Imprimante résolue (ouverture) : les plateaux automatiques prennent son
+			// type de plaque sans rendre la scène « non enregistrée » ; un changement
+			// d'imprimante, lui, modifie la scène (à enregistrer avant le tranchage).
+			const serverPlateType = (resolved as { default_plate_type?: unknown }).default_plate_type;
+			if (kind === 'machine' && !printerChanged) syncPrinterPlateType(false, serverPlateType);
 			if (wasClean) {
 				savedSignature = saveSignature();
 				currentSignature = savedSignature;
 			}
+			if (printerChanged) syncPrinterPlateType(true, serverPlateType);
 			// « Transférer » (changement de preset avec modifications) : les
 			// différences du brouillon précédent sont posées sur le nouveau preset.
 			const transfer = pendingTransfer[kind];
@@ -3081,6 +3128,7 @@
 
 	function onEvent(event: ServerEvent) {
 		earlyJobEvents.offer(event, jobTracked);
+		if (event.event === 'job.finished' && event.gcode_id) jobByGcode.set(event.gcode_id, event.id);
 		const wasPreview = layout.tab === 'preview';
 		if (
 			sliceBatch &&
@@ -3475,6 +3523,10 @@
 				try {
 					return await importThreeMf(file, objectId, generation);
 				} catch (e) {
+					// Fichier tranché .gcode.3mf (lot 44, 422 « gcode_3mf ») : l'import
+					// échoue (aucun objet) mais l'aperçu G-code est proposé.
+					const sliced = gcode3mfRefusal(e);
+					if (sliced) gcode3mfOffer = { file, plates: sliced.plates };
 					// Backend sans la route (déploiement antérieur) : import monobloc.
 					if (!(e instanceof ApiError && (e.status === 404 || e.status === 405))) throw e;
 				}
@@ -3562,6 +3614,10 @@
 				: resolveConversion(model.id);
 		if (res.objects.length === 1) {
 			const model = modelById.get(res.objects[0].modelId)!;
+			// Audit 43 I2 : nom de l'objet du 3MF (Orca ModelObject::name, ex.
+			// « cube20.stl »), pas celui du fichier 3MF.
+			const objectName = res.objects[0].name?.trim();
+			if (objectName && tree.get(objectId)) tree.rename(objectId, objectName);
 			patchImport(objectId, (i) => markUploaded(i, model.id, model.conversion_pending));
 			await watch(model);
 			return true;
@@ -3617,6 +3673,7 @@
 				if (restored.meshName) node.meshName = restored.meshName;
 				if (restored.emboss) node.emboss = restored.emboss;
 				if (restored.cutId) node.cutId = restored.cutId;
+				if (restored.instanceGroup) node.instanceGroup = restored.instanceGroup;
 			}
 			paintings[id] = restored.painting;
 			layerProfiles[id] = restored.layerProfile;
@@ -4637,7 +4694,8 @@
 					params.source === 'svg' ? svgVolumeName(params.svgFileName) : textVolumeName(params.text);
 				const volume: SceneVolume = {
 					id: crypto.randomUUID(),
-					type: 'part',
+					// Audit 43 M1-a : rôle choisi dans « Ajouter un modificateur ▸ Texte ».
+					type: embossVolumeType,
 					name,
 					shape: 'mesh',
 					modelId: part.model.id,
@@ -4650,6 +4708,7 @@
 					...volumesByObject,
 					[host.id]: [...(volumesByObject[host.id] ?? []), volume]
 				};
+				embossVolumeType = 'part';
 				ws = setSelection(ws, new Set([host.id]));
 				saveMessage = tr('{label}: part “{name}” added to “{host}”.', {
 					label,
@@ -4826,6 +4885,8 @@
 	}
 	$effect(() => {
 		if (tools.active !== 'emboss' && tools.active !== 'svg' && embossEdit) embossEdit = null;
+		if (tools.active !== 'emboss' && tools.active !== 'svg' && embossVolumeType !== 'part')
+			embossVolumeType = 'part';
 	});
 
 	/** Z monde de la face supérieure (rotation ignorée : objets posés). */
@@ -5773,6 +5834,10 @@
 				extruder: snap.extruder,
 				settings: { ...snap.settings }
 			}).id;
+		// Copie = objet indépendant (Orca : cloner / coller un objet) ; les
+		// instances (`addInstances`) rejoignent ensuite le groupe de la source.
+		const copyNode = tree.get(copyId);
+		if (copyNode) delete copyNode.instanceGroup;
 		if (snap.importItem) imports = [...imports, { ...snap.importItem, objectId: copyId }];
 		if (plateId) plates.assign(copyId, plateId);
 		if (snap.painting) paintings[copyId] = TrianglePainting.deserialize(snap.painting);
@@ -5802,6 +5867,7 @@
 		const node = tree.duplicate(id);
 		if (!node) return null;
 		const copyId = node.id;
+		delete node.instanceGroup;
 		imports = [...imports, { ...importItem, objectId: copyId }];
 		const t = savedTransformByObject[id];
 		if (t)
@@ -5896,6 +5962,113 @@
 			name: volume.name,
 			size: volume.size.join(' × ')
 		});
+	}
+
+	// Audit 43 M1-a — sous-menu de formes d'« Ajouter une pièce / un volume
+	// négatif / un modificateur / un bloqueur / un forceur » (Orca
+	// append_submenu_add_generic) : Charger… (load_subobject : fichier importé
+	// comme volume), Cube… Tore (load_generic_subobject : maillage its_make_* du
+	// moteur, côté = 10 % du plateau, nommé « Générique-Cube »), Texte / SVG
+	// (outil Emboss / SVG, la pièce créée prend le rôle choisi).
+	let volumeLoadInput: HTMLInputElement | null = null;
+	let volumeLoadTarget: { objectId: string; type: VolumeType } | null = null;
+	let embossVolumeType = $state<VolumeType>('part');
+
+	async function addShapedVolume(id: string, base: string, shape: VolumeShape) {
+		const spec = VOLUME_ACTIONS[base];
+		if (!spec || !sceneObjects.some((o) => o.id === id)) return;
+		ws = setSelection(ws, new Set([id]));
+		if (shape === 'load') {
+			volumeLoadTarget = { objectId: id, type: spec.type };
+			volumeLoadInput?.click();
+			return;
+		}
+		if (shape === 'text' || shape === 'svg') {
+			embossVolumeType = spec.type;
+			tools = setTool(tools, shape === 'text' ? 'emboss' : 'svg');
+			return;
+		}
+		try {
+			// Phase 44b : échelle (uniforme) de l'objet annulée comme Orca.
+			const scale = sceneObjects.find((o) => o.id === id)?.scale ?? [1, 1, 1];
+			const res = await createPrimitive(data.project.id, {
+				shape,
+				bed_size_mm: primitiveBedSize(bed, scale)
+			});
+			const label = shape.charAt(0).toUpperCase() + shape.slice(1);
+			await addMeshVolume(id, spec.type, res.parts[0].model.id, `${tr('Generic')}-${tr(label)}`);
+		} catch (e) {
+			saveMessage = tr('{name}: {msg}', {
+				name: tr(spec.label),
+				msg: e instanceof ApiError ? e.message : tr('creation failed')
+			});
+		}
+	}
+
+	// Volume maillé (`shape: 'mesh'`) posé comme une forme générique d'Orca.
+	async function addMeshVolume(id: string, type: VolumeType, modelId: string, name: string) {
+		// Conversion moteur asynchrone (fichier chargé) : `/mesh` répond 409 tant qu'elle tourne.
+		let loaded: { mesh: SceneMesh } | null = null;
+		for (let attempt = 0; !loaded; attempt++) {
+			try {
+				loaded = await loadCenteredMesh(modelId);
+			} catch (err) {
+				if (!(err instanceof ApiError && err.status === 409) || attempt >= 120) throw err;
+				await new Promise((resolve) => setTimeout(resolve, 500));
+			}
+		}
+		const object = sceneObjects.find((o) => o.id === id);
+		if (!object) return;
+		const { mesh } = loaded;
+		projectModelIds.add(modelId);
+		volumeMeshRequests.add(modelId);
+		volumeMeshes = { ...volumeMeshes, [modelId]: mesh };
+		const b = meshBounds(mesh);
+		const size = [0, 1, 2].map((a) => Math.round((b.max[a] - b.min[a]) * 1000) / 1000) as [
+			number,
+			number,
+			number
+		];
+		const volume: SceneVolume = {
+			id: crypto.randomUUID(),
+			type,
+			name,
+			shape: 'mesh',
+			modelId,
+			size,
+			...genericVolumePlacement(
+				object.mesh.positions,
+				objectTransform(object),
+				worldVolumeSize(size, objectTransform(object).scale)
+			),
+			settings: {}
+		};
+		volumesByObject = { ...volumesByObject, [id]: [...(volumesByObject[id] ?? []), volume] };
+		ws = setSelection(ws, new Set([id]));
+		selectedVolumeId = volume.id;
+		configTab = 'objects';
+		saveMessage = tr('{name} added ({size} mm).', { name: volume.name, size: size.join(' × ') });
+	}
+
+	async function onVolumeFilePicked(e: Event) {
+		const input = e.currentTarget as HTMLInputElement;
+		const files = [...(input.files ?? [])];
+		input.value = '';
+		const target = volumeLoadTarget;
+		volumeLoadTarget = null;
+		if (!target) return;
+		for (const file of files) {
+			try {
+				const model = await uploadModel(data.project.id, file);
+				// Orca load_from_files : volume nommé d'après le fichier.
+				await addMeshVolume(target.objectId, target.type, model.id, file.name);
+			} catch (err) {
+				saveMessage = tr('Load: {msg}', {
+					msg: err instanceof ApiError ? err.message : tr('unreadable mesh')
+				});
+				return;
+			}
+		}
 	}
 
 	// Objet › Height range Modifier (Orca) : nouvelle plage de hauteur
@@ -6187,7 +6360,16 @@
 		return n > 0 ? rank : null;
 	});
 	// Valeurs des presets que suit un plateau sans surcharge (option « Profil (…) »).
-	const plateInherited = $derived({ ...machineValues, ...processValues });
+	// Type de plaque : celui du plateau (sélecteur « Type de plaque », par défaut
+	// celui de l'imprimante) — Orca « Same as Global Plate Type ».
+	const plateInherited = $derived({
+		...machineValues,
+		...processValues,
+		curr_bed_type:
+			plateTypeToBedType(activePlate?.plateType ?? printerPlateType) ??
+			processValues.curr_bed_type ??
+			machineValues.curr_bed_type
+	});
 	// — Validation en direct (phase 29) : Print::validate côté serveur
 	//   (POST /validate), rejouée après chaque modification avec un délai comme
 	//   Plater::priv::update_background_process. Remplace l'estimation locale
@@ -6415,6 +6597,172 @@
 		const copyId = instantiateSnapshot(snap, [pos[0] + 10, pos[1] + 10, pos[2]]);
 		ws = setSelection(ws, new Set([copyId]));
 	}
+
+	// Audit 43 F-a — instances (lib/scene/instances.ts, Orca increase/decrease_
+	// instances, set_number_of_copies). Membres du groupe d'instances de l'objet
+	// dans l'ordre de l'arbre ; objet sans groupe → lui seul.
+	function instanceIdsOf(id: string): string[] {
+		const group = tree.get(id)?.instanceGroup;
+		if (!group) return [id];
+		return tree
+			.list()
+			.filter((n) => n.kind === 'object' && n.instanceGroup === group)
+			.map((n) => n.id);
+	}
+
+	// Ajoute `num` instances depuis la dernière, décalées de k × 5 % du plus
+	// grand côté du plateau en X et Y (jamais superposées), même nom, réglages,
+	// volumes et peinture ; la dernière ajoutée est sélectionnée.
+	function addInstances(id: string, num: number): string[] {
+		const members = instanceIdsOf(id);
+		const lastId = members[members.length - 1];
+		const snap = snapshotObject(lastId);
+		if (!snap || num <= 0) return [];
+		const source = tree.get(id);
+		const group = source?.instanceGroup ?? newInstanceGroupId();
+		if (source) source.instanceGroup = group;
+		const name = tree.get(lastId)?.name ?? snap.name;
+		const pos = snap.object.position ?? [0, 0, 0];
+		const added = instancePositions([pos[0], pos[1], pos[2]], num, instanceStep(bed)).map((p) => {
+			const copyId = instantiateSnapshot(snap, p);
+			const copy = tree.get(copyId);
+			if (copy) {
+				copy.name = name;
+				copy.instanceGroup = group;
+			}
+			return copyId;
+		});
+		if (added.length) ws = setSelection(ws, new Set([added[added.length - 1]]));
+		return added;
+	}
+
+	// Retire les `num` dernières instances (toutes → l'objet disparaît).
+	function removeInstances(id: string, num: number) {
+		const members = instanceIdsOf(id);
+		const victims = members.slice(Math.max(0, members.length - num));
+		for (const victim of victims) removeObject(victim);
+		const remaining = members.filter((m) => !victims.includes(m));
+		if (remaining.length) ws = setSelection(ws, new Set([remaining[remaining.length - 1]]));
+	}
+
+	// « Définir le nombre d'instances… » : dialogue de l'application (0–1000).
+	let instanceDialog = $state<{ id: string; current: number; name: string } | null>(null);
+	function openInstanceDialog(id: string) {
+		if (!tree.get(id)) return;
+		instanceDialog = { id, current: instanceIdsOf(id).length, name: tree.get(id)?.name ?? '' };
+	}
+	function applyInstanceCount(count: number) {
+		const dialog = instanceDialog;
+		instanceDialog = null;
+		if (!dialog || !tree.get(dialog.id)) return;
+		const plan = instanceCountPlan(instanceIdsOf(dialog.id).length, count);
+		if (plan.add) addInstances(dialog.id, plan.add);
+		else if (plan.remove) removeInstances(dialog.id, plan.remove);
+	}
+
+	// Données partagées par les instances d'un groupe (celles d'un ModelObject
+	// d'Orca) : nom, extrudeur, réglages, volumes, plages de hauteur. Le membre
+	// modifié fait foi et est recopié sur les autres ; la transformation et
+	// l'état imprimable restent propres à chaque instance.
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- mémoire de l'effet, non réactive
+	const instanceSyncMemory = new Map<string, string>();
+	$effect(() => {
+		const groups = instanceGroups(tree.list().filter((n) => n.kind === 'object'));
+		if (groups.size === 0) {
+			instanceSyncMemory.clear();
+			return;
+		}
+		const signature = (id: string) => {
+			const node = tree.get(id);
+			return JSON.stringify([
+				node?.name,
+				node?.extruder,
+				node?.settings,
+				volumesByObject[id] ?? [],
+				layerRangesByObject[id] ?? []
+			]);
+		};
+		const plan = planInstanceSync(groups, signature, instanceSyncMemory);
+		if (!plan.length) return;
+		untrack(() => {
+			for (const { source, targets } of plan) {
+				const src = tree.get(source);
+				if (!src) continue;
+				const volumes = $state.snapshot(volumesByObject[source] ?? []) as SceneVolume[];
+				const ranges = $state.snapshot(layerRangesByObject[source] ?? []) as HeightRange[];
+				for (const target of targets) {
+					const node = tree.get(target);
+					if (!node) continue;
+					node.name = src.name;
+					node.extruder = src.extruder;
+					node.settings = { ...src.settings };
+					volumesByObject[target] = structuredClone(volumes);
+					layerRangesByObject[target] = structuredClone(ranges);
+				}
+			}
+		});
+	});
+
+	// Phase 44b : peinture, oreilles de bordure et profil de hauteur de couche,
+	// partagés eux aussi par les instances d'Orca (ModelVolume, ModelObject::
+	// brim_points / layer_height_profile). Mémoire par membre : le membre peint /
+	// modifié fait foi ; les oreilles (points plateau) sont reportées dans le
+	// repère de chaque instance. Les déplacements n'entrent pas en jeu
+	// (transformations lues hors suivi).
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- mémoire de l'effet, non réactive
+	const instanceHeavyMemory = new Map<string, string>();
+	$effect(() => {
+		const groups = instanceGroups(tree.list().filter((n) => n.kind === 'object'));
+		const painted = paintings;
+		const ears = brimEarsByObject;
+		const profiles = layerProfiles;
+		if (groups.size === 0) {
+			instanceHeavyMemory.clear();
+			return;
+		}
+		const signature = (id: string) =>
+			JSON.stringify([
+				painted[id]?.serialize() ?? null,
+				ears[id]?.serialize() ?? null,
+				$state.snapshot(profiles[id] ?? null)
+			]);
+		// Signatures lues sous suivi (clés des enregistrements, profils en profondeur).
+		const plan = planMemberSync(groups, signature, instanceHeavyMemory);
+		if (!plan.length) return;
+		untrack(() => {
+			const touched: string[] = [];
+			for (const { source, targets } of plan) {
+				const srcObject = sceneObjects.find((o) => o.id === source);
+				const paint = paintings[source]?.serialize() ?? null;
+				const earsDoc = brimEarsByObject[source]?.serialize() ?? null;
+				const profile = layerProfiles[source]
+					? (structuredClone($state.snapshot(layerProfiles[source])) as LayerBand[])
+					: null;
+				for (const target of targets) {
+					if (paint) paintings[target] = TrianglePainting.deserialize(paint);
+					else delete paintings[target];
+					const tgtObject = sceneObjects.find((o) => o.id === target);
+					if (earsDoc && srcObject && tgtObject)
+						brimEarsByObject[target] = BrimEars.deserialize({
+							points: mapPlatePoints(
+								earsDoc.points,
+								objectTransform(srcObject),
+								objectTransform(tgtObject)
+							)
+						});
+					else if (!earsDoc) delete brimEarsByObject[target];
+					if (profile) layerProfiles[target] = structuredClone(profile);
+					else delete layerProfiles[target];
+					touched.push(target);
+				}
+				touched.push(source);
+			}
+			paintings = { ...paintings };
+			brimEarsByObject = { ...brimEarsByObject };
+			layerProfiles = { ...layerProfiles };
+			rememberMembers(touched, signature, instanceHeavyMemory);
+		});
+	});
 
 	// — Découpes serveur (split / cut / boolean, worker moteur `mesh-op`) —
 	// Chaque pièce est un nouveau modèle serveur au maillage prêt : on l'ajoute
@@ -7087,9 +7435,10 @@
 		}
 	}
 
-	// Ajoute une instance de l'objet sélectionné (clone d'arbre + copie de scène décalée).
+	// Ajoute une instance de l'objet sélectionné (Orca increase_instances : même
+	// objet, décalée en escalier de 5 % du plateau).
 	function duplicateSelected() {
-		if (selId) duplicateObject(selId);
+		if (selId) addInstances(selId, 1);
 	}
 
 	// Retire l'objet sélectionné (arbre + scène + sélection vidée).
@@ -7266,7 +7615,11 @@
 				saveMessage = tr('Add instance: the object is marked as not printable.');
 				return;
 			}
-			duplicateObject(selId);
+			addInstances(selId, 1);
+			return;
+		}
+		if (instanceIdsOf(selId).length > 1) {
+			removeInstances(selId, 1);
 			return;
 		}
 		const modelId = imports.find((i) => i.objectId === selId)?.modelId;
@@ -7689,6 +8042,9 @@
 			const model = await uploadModel(data.project.id, sceneMeshToStlFile(object.mesh, name));
 			projectModelIds.add(model.id);
 			patchImport(id, (item) => markConverted(markUploaded(item, model.id, false)));
+			// Audit 43 F-a : l'instance quitte son groupe (Orca : nouvel objet).
+			const node = tree.get(id);
+			if (node) delete node.instanceGroup;
 			saveMessage = tr('{name} is now an individual object.', { name });
 		} catch (e) {
 			saveMessage = tr('Individual object: {msg}', {
@@ -7765,6 +8121,12 @@
 			openEmbossEdit(id);
 			return;
 		}
+		// Audit 43 M1-a : « Ajouter un modificateur ▸ Cylindre » (formes d'Orca).
+		const shapeAction = parseVolumeShapeAction(action);
+		if (shapeAction && VOLUME_ACTIONS[shapeAction.base]) {
+			await addShapedVolume(id, shapeAction.base, shapeAction.shape);
+			return;
+		}
 		// Phase 37 : type de pièce, tableau des paramètres, informations de coupe.
 		if (action.startsWith('volume.type:')) {
 			if (selectedVolumeId)
@@ -7801,12 +8163,18 @@
 				configTab = 'objects';
 				objectSettingsAdding = true;
 				break;
-			case 'object.clone':
 			case 'object.addInstance':
+				addInstances(id, 1);
+				break;
+			case 'object.clone':
 				duplicateObject(id);
-				if (action === 'object.clone' && currentPreferences().autoArrange) void arrangeActive();
+				if (currentPreferences().autoArrange) void arrangeActive();
 				break;
 			case 'object.removeInstance': {
+				if (instanceIdsOf(id).length > 1) {
+					removeInstances(id, 1);
+					break;
+				}
 				// Instance = objet partageant le même modèle serveur. Comme Orca
 				// (entrée désactivée à 1 instance), la dernière n'est pas supprimée.
 				const modelId = imports.find((i) => i.objectId === id)?.modelId;
@@ -7888,14 +8256,9 @@
 			case 'object.exportDrcs':
 				await exportDrc(action === 'object.exportDrcs', ws.selection.has(id) ? selectedIds : [id]);
 				break;
-			case 'object.setInstances': {
-				const input = window.prompt('Nombre d’instances', '2');
-				const count = input === null ? NaN : Math.floor(Number(input));
-				if (!Number.isFinite(count) || count < 1 || count > 100) break;
-				// Pas d'instances partagées côté scène : N − 1 copies de l'objet.
-				for (let i = 1; i < count; i++) duplicateObject(id);
+			case 'object.setInstances':
+				openInstanceDialog(id);
 				break;
-			}
 			case 'object.addHeightRange':
 				addLayerRange(id);
 				break;
@@ -8027,13 +8390,44 @@
 		await exportMeshes('stl', split, ids);
 	}
 
-	// Export plate sliced file : G-code du dernier tranchage (plateau actif).
-	function exportPlateGcode() {
+	// Export plate sliced file (Ctrl+G) : comme Orca 2.4.1 (MainFrame.cpp:2786,
+	// EVT_GLTOOLBAR_EXPORT_SLICED_FILE → Plater::export_gcode_3mf), un
+	// .gcode.3mf du plateau actif écrit par libslic3r (POST /export/sliced avec
+	// le job du dernier tranchage). G-code ouvert depuis un fichier (aucun job) :
+	// le G-code lui-même.
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- table non réactive gcode → job
+	const jobByGcode = new Map<string, string>();
+	async function exportPlateGcode() {
 		if (!session.gcodeId) {
 			saveMessage = tr('Plate export: slice the plate first.');
 			return;
 		}
-		downloadUrl(`/api/gcodes/${session.gcodeId}/download`);
+		const jobId = jobByGcode.get(session.gcodeId);
+		if (!jobId) {
+			downloadUrl(`/api/gcodes/${session.gcodeId}/download`);
+			return;
+		}
+		try {
+			const resp = await fetch(`/api/projects/${data.project.id}/export/sliced`, {
+				method: 'POST',
+				credentials: 'include',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ job_ids: [jobId] })
+			});
+			if (!resp.ok) {
+				const err = (await resp.json().catch(() => ({}))) as { message?: string };
+				throw new ApiError(resp.status, 'error', err.message ?? resp.statusText);
+			}
+			const name =
+				/filename="([^"]+)"/.exec(resp.headers.get('content-disposition') ?? '')?.[1] ??
+				`${safeFileName(projectName || data.project.name, 'gcode')}.3mf`;
+			downloadBlob(await resp.blob(), name);
+		} catch (e) {
+			saveMessage = tr('{label}: {msg}', {
+				label: tr('Plate export'),
+				msg: e instanceof Error ? e.message : tr('failed')
+			});
+		}
 	}
 
 	// Tranche tous les plateaux (« Slice all ») après sauvegarde et attend les
@@ -8238,36 +8632,67 @@
 	let loadedGcodeFile: File | null = null;
 	// Temps écrit dans le pied du G-code ouvert (comparé à la simulation).
 	let openedDeclaredTime = $state<string | null>(null);
-	async function openLocalGcode(file: File) {
+	// Phase 44b : .gcode.3mf ouvert → plateaux tranchés de l'archive et plateau
+	// affiché (sélecteur si plusieurs). Vides pour un G-code texte.
+	let openedGcodePlates = $state<number[]>([]);
+	let openedGcodePlate = $state<number | null>(null);
+	// Aperçu (phase 44b) : la légende se place sous la barre de coloration, qui
+	// passe sur plusieurs lignes dans une vue étroite (4 rem sur une ligne).
+	let previewToolbarHeight = $state(0);
+	const legendTop = $derived(`max(4rem, ${12 + previewToolbarHeight + 4}px)`);
+	/** Sélecteur de plateau d'un .gcode.3mf ouvert : rouvre l'aperçu sur ce plateau. */
+	async function showOpenedGcodePlate(plate: number) {
+		if (loadedGcodeFile && plate !== openedGcodePlate) await openLocalGcode(loadedGcodeFile, plate);
+	}
+	async function openLocalGcode(file: File, plate: number | null = null) {
 		try {
 			// Lot 31 : le fichier est aussi simulé par GCodeProcessor (comme la
 			// visionneuse d'Orca) → statistiques réelles, méta moteur, mouvements
 			// et coutures par jeton. Repli : pied de G-code relu côté client.
-			const [meta, processed] = await Promise.all([
-				localGcodeMeta(file),
-				processLocalGcode(file).catch(() => null)
+			// Lot 44 : un .gcode.3mf est accepté (`?plate=<n>`, défaut : 1er plateau).
+			const [meta, processed, archived] = await Promise.all([
+				localGcodeMeta(file, plate),
+				processLocalGcode(file, plate).catch(() => null),
+				gcodeFilePlates(file)
 			]);
+			const platesInFile = processed?.plates ?? archived;
+			const shownPlate =
+				processed?.plate ??
+				(platesInFile.length
+					? plate && platesInFile.includes(plate)
+						? plate
+						: platesInFile[0]
+					: null);
 			loadedGcodeFile = file;
+			openedGcodePlates = platesInFile;
+			openedGcodePlate = shownPlate;
 			previewMeta = meta;
 			loader = new LazyPreviewLoader({
 				layerCount: meta.layer_count,
-				fetchRange: (from, to) => localGcodeLayers(file, from, to)
+				fetchRange: (from, to) => localGcodeLayers(file, from, to, shownPlate)
 			});
 			engineSource = processed ? openedEngineSource(processed.token, processed.meta) : null;
 			openedDeclaredTime = processed?.footer?.estimated_time_text ?? null;
 			rawStats = processed
 				? statsFromProcessed(processed)
-				: parseGcodeFooterStats(await file.text());
-			setGcodeSource(() => file.text());
+				: parseGcodeFooterStats(await gcodeFileText(file, shownPlate));
+			setGcodeSource(() => gcodeFileText(file, shownPlate));
 			layerRange = makeLayerRange(meta.layer_count);
 			session = { ...prepareSession(), phase: 'preview', progress: 1 };
 			previewLoadedFor = null;
 			layout = setTab(layout, 'preview');
 			await refreshGeometry();
-			saveMessage = tr('G-code “{file}” opened ({n} layers).', {
-				file: file.name,
-				n: meta.layer_count
-			});
+			saveMessage =
+				shownPlate !== null
+					? tr('G-code “{file}” opened — plate {plate} ({n} layers).', {
+							file: file.name,
+							plate: shownPlate,
+							n: meta.layer_count
+						})
+					: tr('G-code “{file}” opened ({n} layers).', {
+							file: file.name,
+							n: meta.layer_count
+						});
 		} catch (e) {
 			saveMessage = tr('Opening G-code: {msg}', {
 				msg: e instanceof ApiError ? e.message : tr('failed')
@@ -8426,6 +8851,8 @@
 	// (determine_load_type) ; le rapport d'import (avertissement G-code,
 	// métadonnées) passe par sessionStorage à la page du projet créé. —
 	let open3mf = $state<File | null>(null);
+	// Projet refusé car fichier tranché (.gcode.3mf) : proposition d'aperçu.
+	let gcode3mfOffer = $state<{ file: File; plates: number[] } | null>(null);
 	let importReport = $state<ImportReport | null>(null);
 
 	async function openProjectFile(file: File) {
@@ -8452,6 +8879,13 @@
 			if (project.import) stashImportReport(project.id, project.import);
 			window.location.assign(resolve('/projects/[id]', { id: project.id }));
 		} catch (e) {
+			// Lot 44 (X-f) : fichier tranché .gcode.3mf → proposer l'aperçu G-code.
+			const sliced = gcode3mfRefusal(e);
+			if (sliced) {
+				saveMessage = null;
+				gcode3mfOffer = { file, plates: sliced.plates };
+				return;
+			}
 			saveMessage = tr('Opening project: {msg}', {
 				msg: e instanceof ApiError ? e.message : tr('failed')
 			});
@@ -8667,8 +9101,13 @@
 				configFileInput?.click();
 				break;
 			case 'export.gcode':
+				// Orca « Export G-code… » : G-code brut du plateau actif.
+				if (!session.gcodeId) saveMessage = tr('Plate export: slice the plate first.');
+				else downloadUrl(`/api/gcodes/${session.gcodeId}/download`);
+				break;
 			case 'export.plate':
-				exportPlateGcode();
+				// Orca « Export plate sliced file » (Ctrl+G) : archive .gcode.3mf.
+				void exportPlateGcode();
 				break;
 			case 'export.print':
 				showTab('preview');
@@ -8723,7 +9162,7 @@
 				showPresetBundle = true;
 				break;
 			case 'project.reload':
-				if (loadedGcodeFile) await openLocalGcode(loadedGcodeFile);
+				if (loadedGcodeFile) await openLocalGcode(loadedGcodeFile, openedGcodePlate);
 				else gcodeFileInput?.click();
 				break;
 			// — Édition (T108) —
@@ -9074,6 +9513,8 @@
 	async function loadPreview(gcodeId: string) {
 		engineSource = gcodeEngineSource(gcodeId);
 		openedDeclaredTime = null;
+		openedGcodePlates = [];
+		openedGcodePlate = null;
 		// Projet rouvert (pas d'événement job.finished dans cette session) : les
 		// statistiques du G-code alimentent le « Résultat du tranchage ».
 		if (!rawStats) {
@@ -9339,6 +9780,7 @@
 					meshName: tree.get(o.id)?.meshName,
 					emboss: tree.get(o.id)?.emboss,
 					cutId: tree.get(o.id)?.cutId,
+					instanceGroup: tree.get(o.id)?.instanceGroup,
 					printable: tree.isPrintable(o.id),
 					offBed: !!objectOutside[o.id],
 					settings: { ...(tree.get(o.id)?.settings ?? {}) },
@@ -9532,8 +9974,11 @@
 
 <div class="flex h-screen flex-col bg-surface text-content">
 	<!-- Barre supérieure : onglets de vue (parité OrcaSlicer) + actions plateau. -->
+	<!-- Audit 43 U-a : sous 2xl, la barre passe sur deux lignes quand menus + onglets
+	     et actions ne tiennent plus (≥ 760 px de large, taille minimale d'Orca
+	     76 × 49 em) — jamais d'onglet recouvert par Importer / Trancher. -->
 	<header
-		class="flex items-center justify-between gap-3 border-b border-border px-2 py-2 2xl:px-4"
+		class="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-b border-border px-2 py-2 2xl:px-4"
 		data-testid="editor-topbar"
 		data-preset-switch-pending={presetSwitchPending ?? undefined}
 		aria-busy={presetSwitchPending ? 'true' : undefined}
@@ -9544,7 +9989,7 @@
 		<!-- overflow-x-clip (et non overflow-hidden) : la barre reste coupée en largeur
 		     sur écran étroit, mais les menus déroulants (Fichier, Édition…) débordent
 		     vers le bas ; overflow-hidden les rendait invisibles. -->
-		<div class="flex min-w-0 flex-1 items-center gap-2 overflow-x-clip 2xl:gap-4">
+		<div class="flex min-w-0 flex-1 items-center gap-2 overflow-x-clip max-2xl:min-w-fit 2xl:gap-4">
 			<a
 				href={resolve('/library')}
 				class="text-sm text-primary hover:underline"
@@ -9584,7 +10029,9 @@
 			>
 		</div>
 
-		<div class="flex shrink-0 items-center gap-2 whitespace-nowrap">
+		<div
+			class="flex shrink-0 items-center gap-2 whitespace-nowrap max-2xl:ml-auto max-2xl:min-w-0 max-2xl:shrink max-2xl:flex-wrap max-2xl:justify-end max-2xl:gap-y-1"
+		>
 			<button class="ws-btn ws-btn-secondary" onclick={() => fileInput?.click()}>
 				{$t('Import')}
 			</button>
@@ -9596,6 +10043,15 @@
 				accept={ACCEPT}
 				class="hidden"
 				onchange={onFilePicked}
+			/>
+			<input
+				bind:this={volumeLoadInput}
+				type="file"
+				data-testid="volume-load-input"
+				multiple
+				accept={ACCEPT}
+				class="hidden"
+				onchange={onVolumeFilePicked}
 			/>
 			<input
 				bind:this={replacementInput}
@@ -9899,12 +10355,23 @@
 		bind:this={gcodeFileInput}
 		type="file"
 		data-testid="gcode-open-input"
-		accept=".gcode,.gco,.g"
+		accept=".gcode,.gco,.g,.3mf"
 		class="hidden"
 		onchange={(e) => {
 			const file = e.currentTarget.files?.[0];
 			if (file) void openLocalGcode(file);
 			e.currentTarget.value = '';
+		}}
+	/>
+	<Gcode3mfOfferDialog
+		open={gcode3mfOffer !== null}
+		filename={gcode3mfOffer?.file.name ?? ''}
+		plates={gcode3mfOffer?.plates ?? []}
+		onclose={() => (gcode3mfOffer = null)}
+		onopen={() => {
+			const offer = gcode3mfOffer;
+			gcode3mfOffer = null;
+			if (offer) void openLocalGcode(offer.file);
 		}}
 	/>
 	<CalibrationDialog
@@ -10075,6 +10542,13 @@
 		onaction={onLayerMenuAction}
 		onclose={() => (layerMenu = { ...layerMenu, open: false })}
 	/>
+	<InstanceCountDialog
+		open={instanceDialog !== null}
+		current={instanceDialog?.current ?? 1}
+		name={instanceDialog?.name ?? ''}
+		onconfirm={applyInstanceCount}
+		onclose={() => (instanceDialog = null)}
+	/>
 	<Dialog
 		open={customGcodeEdit !== null}
 		label={$t('Custom G-code')}
@@ -10240,7 +10714,7 @@
 		<!-- Zone gauche : colonne de configuration (objets / réglages). -->
 		<aside
 			aria-label="Configuration"
-			class="flex w-96 flex-col border-r border-border bg-surface-raised"
+			class="flex w-96 flex-col border-r border-border bg-surface-raised max-lg:w-80"
 			class:hidden={preferences.sidebarCollapsed}
 		>
 			<div class="flex border-b border-border px-1">
@@ -10302,6 +10776,22 @@
 								>
 							</div>
 						</div>
+						{#if openedGcodePlates.length > 1}
+							<!-- .gcode.3mf à plusieurs plateaux tranchés (phase 44b) : plateau affiché. -->
+							<label class="flex items-center justify-between gap-2 text-sm">
+								<span class="text-content-muted">{$t('Plate')}</span>
+								<select
+									class="ws-field ws-field-sm"
+									data-testid="gcode-plate-select"
+									value={openedGcodePlate ?? openedGcodePlates[0]}
+									onchange={(e) => void showOpenedGcodePlate(Number(e.currentTarget.value))}
+								>
+									{#each openedGcodePlates as n (n)}
+										<option value={n}>{$t('Plate {n}', { n })}</option>
+									{/each}
+								</select>
+							</label>
+						{/if}
 						<!-- Un seul résumé : simulation Orca (moteur) si disponible, sinon
 						     relecture texte du G-code signalée « estimation approchée ». -->
 						<EngineSummary
@@ -11182,7 +11672,9 @@
 				<!-- Barre d'outils de plateau (T106) : horizontale, en haut au centre,
 				     précédée d'Annuler / Rétablir avec la liste des étapes (Orca) — le coin
 				     de la vue reste libre pour le clic droit sur le plateau. -->
-				<div class="absolute top-3 left-1/2 z-10 flex -translate-x-1/2 items-start gap-2">
+				<div
+					class="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-wrap items-start justify-center gap-2 *:pointer-events-auto"
+				>
 					<UndoHistory
 						entries={() => sceneHistory.entries()}
 						version={historyVersion}
@@ -11570,9 +12062,11 @@
 							{/if}
 
 							{#if previewTool}
-								<!-- Position de l'outil (fenêtre ToolPosition d'Orca, bas de la vue). -->
+								<!-- Position de l'outil (fenêtre ToolPosition d'Orca, bas de la vue).
+								     Phase 44b : au-dessus de la légende (vue basse : la carte, repliée
+								     sur plusieurs lignes, la touche). -->
 								<div
-									class="absolute bottom-16 left-1/2 z-10 w-max max-w-[calc(100%-16rem)] -translate-x-1/2"
+									class="absolute bottom-16 left-1/2 z-20 w-max max-w-[calc(100%-16rem)] -translate-x-1/2"
 								>
 									<ToolPositionCard tool={previewTool} {coloration} time={previewToolTime} />
 								</div>
@@ -11606,9 +12100,12 @@
 								{/if}
 							</div>
 
-							<!-- Sélecteur de coloration (T116, FR-041). -->
+							<!-- Sélecteur de coloration (T116, FR-041). Phase 44b : borné par le
+							     panneau des couches et replié sur deux lignes dans une vue étroite
+							     (débordait de ~320 px à 760 × 490 → défilement horizontal de la page). -->
 							<div
-								class="ws-floating absolute left-3 top-3 flex items-center gap-2 p-2 text-xs text-content-muted"
+								class="ws-floating absolute left-3 top-3 flex max-w-[calc(100%-8.5rem)] flex-wrap items-center gap-2 p-2 text-xs text-content-muted"
+								bind:offsetHeight={previewToolbarHeight}
 							>
 								<span>{$t('Color')}</span>
 								<select
@@ -11670,7 +12167,7 @@
 							     numéro et Z des deux poignées, temps de couche, ± sur la poignée active. -->
 							{#if previewMeta.layer_count > 1}
 								<div
-									class="ws-floating absolute top-3 right-3 bottom-16 z-10 flex w-24 flex-col items-center gap-1.5 p-2 text-xs text-content-muted"
+									class="ws-floating absolute top-3 right-3 bottom-16 z-10 flex w-24 flex-col items-center gap-1.5 overflow-y-auto p-2 text-xs text-content-muted"
 									data-testid="preview-layer-panel"
 								>
 									<span class="tabular-nums"
@@ -11714,7 +12211,9 @@
 									<!-- Une seule piste, deux poignées (comme Orca) : deux curseurs natifs
 									     superposés (clavier, aria et data-testid conservés), seules les
 									     poignées captent la souris ; plage entre les poignées surlignée. -->
-									<div class="preview-track relative min-h-0 w-6 flex-1 py-1">
+									<!-- Phase 44b : piste d'au moins 7 rem (fenêtre basse : le panneau
+									     défile, le curseur reste utilisable au lieu de 11 px à 760 × 490). -->
+									<div class="preview-track relative min-h-28 w-6 flex-1 shrink-0 py-1">
 										<div
 											class="absolute inset-y-1 left-1/2 w-1.5 -translate-x-1/2 rounded-full bg-overlay"
 											aria-hidden="true"
@@ -11909,7 +12408,9 @@
 							<!-- Légende + options d'affichage : panneau flottant repliable (coin haut
 							     gauche, comme la légende d'Orca), la scène garde toute la hauteur. -->
 							<div
-								class="ws-floating absolute top-16 left-3 z-10 flex max-h-[calc(100%-9rem)] w-[26rem] max-w-[calc(100%-9rem)] flex-col overflow-hidden"
+								class="ws-floating absolute left-3 z-10 flex w-[26rem] max-w-[calc(100%-9rem)] flex-col overflow-hidden"
+								style:top={legendTop}
+								style:max-height="calc(100% - {legendTop} - 8.5rem)"
 								data-testid="preview-legend-panel"
 							>
 								<button
@@ -12015,7 +12516,7 @@
 		{#if layout.tab === 'prepare'}
 			<aside
 				aria-label={$t('Tools')}
-				class="flex flex-col items-center border-l border-border bg-surface-raised p-2"
+				class="flex min-h-0 flex-col items-center overflow-y-auto border-l border-border bg-surface-raised p-2"
 			>
 				<ToolRail active={tools.active} onselect={selectTool} />
 			</aside>

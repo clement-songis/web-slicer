@@ -1,4 +1,9 @@
-import type { Transform } from './transform';
+import {
+	eulerDegFromQuaternion,
+	quaternionFromEulerDeg,
+	rotateVectorByEulerDeg,
+	type Transform
+} from './transform';
 import { tr } from '$lib/i18n';
 // Volumes ajoutés à un objet (Orca : Add part / negative volume / modifier /
 // support blocker / support enforcer). Primitive pavé, exprimée dans le repère
@@ -105,6 +110,51 @@ export function defaultVolume(
 		number
 	];
 	return { id, type, name, shape: 'box', size, offset: [0, 0, 0], settings: {} };
+}
+
+/**
+ * Audit 43 M1-a — pose d'une forme générique ajoutée à un objet (Orca
+ * ObjectList::load_generic_subobject, GUI_ObjectList.cpp:2441) : la forme est
+ * alignée sur le plateau (rotation inverse de celle de l'objet) et son centre
+ * placé au coin avant droit de la boîte englobante de l'objet, posé sur le
+ * plateau : (max.x, min.y, min.z) + ½ taille, exprimé dans le repère recentré de
+ * l'objet (local = S⁻¹·R⁻¹·(monde − position), matrice T·R·S de l'éditeur).
+ * Seule différence : un volume web n'a pas d'échelle propre, il suit donc
+ * l'échelle de l'objet (Orca l'annule).
+ */
+export function genericVolumePlacement(
+	positions: ArrayLike<number>,
+	transform: Transform,
+	size: [number, number, number]
+): { offset: [number, number, number]; rotation?: [number, number, number] } {
+	const { position, rotation, scale } = transform;
+	const min = [Infinity, Infinity, Infinity];
+	const max = [-Infinity, -Infinity, -Infinity];
+	for (let i = 0; i + 2 < positions.length; i += 3) {
+		const local: [number, number, number] = [
+			positions[i] * scale[0],
+			positions[i + 1] * scale[1],
+			positions[i + 2] * scale[2]
+		];
+		const w = rotateVectorByEulerDeg(rotation, local);
+		for (let a = 0; a < 3; a++) {
+			min[a] = Math.min(min[a], w[a] + position[a]);
+			max[a] = Math.max(max[a], w[a] + position[a]);
+		}
+	}
+	if (!Number.isFinite(min[0])) for (let a = 0; a < 3; a++) min[a] = max[a] = position[a];
+	const target = [max[0] + size[0] / 2, min[1] + size[1] / 2, min[2] + size[2] / 2];
+	const [x, y, z, w] = quaternionFromEulerDeg(rotation);
+	const inverse = eulerDegFromQuaternion([-x, -y, -z, w]);
+	const d = rotateVectorByEulerDeg(inverse, [
+		target[0] - position[0],
+		target[1] - position[1],
+		target[2] - position[2]
+	]);
+	const round = (v: number) => Math.round(v * 10000) / 10000 || 0;
+	const offset = [0, 1, 2].map((a) => round(d[a] / (scale[a] || 1))) as [number, number, number];
+	const rot = inverse.map(round) as [number, number, number];
+	return rot.some((r) => r !== 0) ? { offset, rotation: rot } : { offset };
 }
 
 /** Normalise une liste de volumes lue d'un document (entrées invalides écartées). */
@@ -222,4 +272,37 @@ export function applyVolumeTransform(v: SceneVolume, t: Transform): SceneVolume 
 		size,
 		...(rotation.some((r) => r !== 0) ? { rotation } : {})
 	};
+}
+
+/**
+ * Phase 44b — forme générique (Cube…Tore) d'un objet mis à l'échelle : Orca
+ * annule l'échelle de l'instance (`ObjectList::load_generic_subobject` →
+ * `Transformation::volume_to_bed_transformation`), la forme garde 10 % du
+ * plateau à l'écran quelle que soit l'échelle de l'objet. Un volume web n'a pas
+ * d'échelle propre (le serveur ne lit que `offset` / `rotation`) : pour une
+ * échelle **uniforme** `s`, la primitive est demandée pour un plateau ÷ s
+ * (côté = 10 % × plateau / s), ce qui donne exactement le même résultat. Échelle
+ * non uniforme : `null` (la forme suit l'échelle de l'objet, écart documenté).
+ */
+export function uniformScale(scale: readonly number[]): number | null {
+	const s = scale[0];
+	if (!(s > 0) || scale.some((v) => Math.abs(v - s) > 1e-9 * Math.max(1, Math.abs(s)))) return null;
+	return s;
+}
+
+/** Taille du plateau à demander à `POST /primitive` pour annuler l'échelle de l'objet. */
+export function primitiveBedSize(
+	bed: { width: number; depth: number },
+	objectScale: readonly number[]
+): [number, number] {
+	const s = uniformScale(objectScale) ?? 1;
+	return [bed.width / s, bed.depth / s];
+}
+
+/** Emprise à l'écran (repère plateau) d'un volume de taille locale `size` dans un objet d'échelle `scale`. */
+export function worldVolumeSize(
+	size: readonly number[],
+	scale: readonly number[]
+): [number, number, number] {
+	return [0, 1, 2].map((a) => size[a] * (scale[a] ?? 1)) as [number, number, number];
 }

@@ -107,6 +107,54 @@ export interface ObjectMenuItem {
 	 * inatteignables, la section garde donc chaque action à un clic.
 	 */
 	section?: true;
+	/**
+	 * Audit 43 M1-a — entrée qui est **à la fois** une action et un sous-menu
+	 * (« Ajouter un modificateur » ▸ Charger…, Cube…). Le clic sur le libellé
+	 * garde l'action d'origine (pavé, specs gelés) ; la flèche déplie les formes
+	 * d'Orca (`append_submenu_add_generic`).
+	 */
+	split?: true;
+}
+
+/**
+ * Formes du sous-menu « Ajouter une pièce / un volume négatif / un modificateur /
+ * un bloqueur / un forceur » (MenuFactory::append_submenu_add_generic,
+ * GUI_Factories.cpp:541) : Charger…, Cube, Cylindre, Sphère, Cône, Disque, Tore,
+ * Texte, SVG — même ordre qu'Orca.
+ */
+export const VOLUME_SHAPES = [
+	{ label: 'Load...', shape: 'load' },
+	{ label: 'Cube', shape: 'cube' },
+	{ label: 'Cylinder', shape: 'cylinder' },
+	{ label: 'Sphere', shape: 'sphere' },
+	{ label: 'Cone', shape: 'cone' },
+	{ label: 'Disc', shape: 'disc' },
+	{ label: 'Torus', shape: 'torus' },
+	{ label: 'Text', shape: 'text' },
+	{ label: 'SVG', shape: 'svg' }
+] as const;
+
+export type VolumeShape = (typeof VOLUME_SHAPES)[number]['shape'];
+
+/** Entrées du sous-menu de formes d'une action d'ajout de volume. */
+export function volumeShapeItems(action: string): ObjectMenuItem[] {
+	return VOLUME_SHAPES.map((s) => ({ label: s.label, action: `${action}:${s.shape}` }));
+}
+
+/** `object.addModifier:cylinder` → { base: 'object.addModifier', shape: 'cylinder' }. */
+export function parseVolumeShapeAction(
+	action: string
+): { base: string; shape: VolumeShape } | null {
+	const i = action.lastIndexOf(':');
+	if (i < 0) return null;
+	const shape = action.slice(i + 1);
+	const found = VOLUME_SHAPES.find((s) => s.shape === shape);
+	return found ? { base: action.slice(0, i), shape: found.shape } : null;
+}
+
+/** Entrée d'ajout de volume avec son sous-menu de formes. */
+function addVolumeItem(label: string, action: string): ObjectMenuItem {
+	return { label, action, split: true, items: volumeShapeItems(action) };
 }
 
 /** Entrée du menu contextuel objet, avec séparateurs. */
@@ -175,12 +223,12 @@ export const OBJECT_CONTEXT_ITEMS: ObjectMenuEntry[] = [
 		action: 'section.parts',
 		section: true,
 		items: [
-			{ label: 'Add part', action: 'object.addPart' },
-			{ label: 'Add negative volume', action: 'object.addNegativeVolume' },
-			{ label: 'Add modifier', action: 'object.addModifier' },
+			addVolumeItem('Add part', 'object.addPart'),
+			addVolumeItem('Add negative volume', 'object.addNegativeVolume'),
+			addVolumeItem('Add modifier', 'object.addModifier'),
 			{ label: 'Height range Modifier', action: 'object.addHeightRange' },
-			{ label: 'Add support blocker', action: 'object.addSupportBlocker' },
-			{ label: 'Add support enforcer', action: 'object.addSupportEnforcer' }
+			addVolumeItem('Add support blocker', 'object.addSupportBlocker'),
+			addVolumeItem('Add support enforcer', 'object.addSupportEnforcer')
 		]
 	},
 	{
@@ -227,7 +275,7 @@ export const OBJECT_CONTEXT_ITEMS: ObjectMenuEntry[] = [
 /** Actions feuilles d'un menu (sections et sous-menus dépliés), dans l'ordre. */
 export function menuLeaves(entries: readonly ObjectMenuEntry[]): ObjectMenuItem[] {
 	return entries.flatMap((e) =>
-		e === 'separator' ? [] : e.items ? menuLeaves(e.items) : [e]
+		e === 'separator' ? [] : e.items && !e.split ? menuLeaves(e.items) : [e]
 	);
 }
 

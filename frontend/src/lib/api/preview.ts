@@ -105,10 +105,16 @@ export function openedEngineSource(token: string, meta?: EngineMeta): EngineSour
 
 /**
  * G-code externe simulé par le moteur (lot 31) : `POST /api/gcode/process`
- * → jeton + statistiques GCodeProcessor + pied + méta d'aperçu.
+ * → jeton + statistiques GCodeProcessor + pied + méta d'aperçu. Un .gcode.3mf
+ * est accepté (lot 44) : G-code du plateau `plate` (1-based, défaut : premier
+ * plateau tranché) ; la réponse indique alors `plate` et `plates`.
  */
-export async function processLocalGcode(file: Blob): Promise<ProcessedGcode> {
-	const res = await fetch(`${API_BASE}/gcode/process`, {
+export async function processLocalGcode(
+	file: Blob,
+	plate?: number | null
+): Promise<ProcessedGcode> {
+	const query = plate ? `?plate=${plate}` : '';
+	const res = await fetch(`${API_BASE}/gcode/process${query}`, {
 		method: 'POST',
 		credentials: 'include',
 		headers: { 'content-type': 'text/plain' },
@@ -159,15 +165,21 @@ async function postLocalGcode(file: Blob, query: string): Promise<Response> {
 	return res;
 }
 
-export async function localGcodeMeta(file: Blob): Promise<PreviewMeta> {
-	return (await (await postLocalGcode(file, 'meta=1')).json()) as PreviewMeta;
+/** `&plate=<n>` d'un .gcode.3mf (lot 44), vide sinon. */
+function plateQuery(plate?: number | null): string {
+	return plate ? `&plate=${plate}` : '';
+}
+
+export async function localGcodeMeta(file: Blob, plate?: number | null): Promise<PreviewMeta> {
+	return (await (await postLocalGcode(file, `meta=1${plateQuery(plate)}`)).json()) as PreviewMeta;
 }
 
 export async function localGcodeLayers(
 	file: Blob,
 	from: number,
-	to: number
+	to: number,
+	plate?: number | null
 ): Promise<PreviewSegments> {
-	const res = await postLocalGcode(file, `from=${from}&to=${to}`);
+	const res = await postLocalGcode(file, `from=${from}&to=${to}${plateQuery(plate)}`);
 	return decodePreview(await res.arrayBuffer());
 }

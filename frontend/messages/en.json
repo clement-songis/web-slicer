@@ -2396,5 +2396,18 @@
 	"p43_outside_full": "{name} is outside the plate: move it onto the plate (or onto another plate) before slicing.",
 	"p43_slice_outside": "An object is outside the printable area: move it onto the plate before slicing",
 	"p43_waiting_conn": "waiting for the connection…",
-	"p43_import_conn_lost": "Connection lost while importing {files}: the import will resume automatically when the connection is back."
+	"p43_import_conn_lost": "Connection lost while importing {files}: the import will resume automatically when the connection is back.",
+	"p44_copies_title": "Copies of the selected object",
+	"p44_copies_prompt": "Number of copies:",
+	"p44_copies_invalid": "Enter a whole number from 0 to {max}.",
+	"p44_generic": "Generic",
+	"p44_shapes": "Shapes",
+	"p44_svg": "SVG",
+	"p44_load_failed": "Load: {msg}",
+	"p44_name_msg": "{name}: {msg}",
+	"p44_plate_export": "Plate export",
+	"p44b_sliced_file": "Sliced file",
+	"p44b_sliced_offer": "“{file}” is a sliced file (.gcode.3mf): it contains the G-code of {n} plate(s) but no model to import. Open it in the G-code preview?",
+	"p44b_open_preview": "Open in G-code preview",
+	"p44b_gcode_opened_plate": "G-code “{file}” opened — plate {plate} ({n} layers)."
 }

@@ -282,8 +282,9 @@ test.describe("menus contextuels (parité Orca)", () => {
       "aria-pressed",
       "true",
     );
-    page.once("dialog", (d) => d.accept("3"));
     await contextItem(page, /Set number of instances|nombre d.instances/i);
+    await page.getByTestId("instance-count-input").fill("3");
+    await page.getByTestId("instance-count-ok").click();
     await expect(page.getByTestId("object-row")).toHaveCount(3);
   });
 

@@ -55,9 +55,45 @@ export class PlateSet {
 	private plates = $state<Plate[]>([]);
 	private counter = 0;
 	activeId = $state<string | null>(null);
+	/** Type de plaque d'un nouveau plateau : celui de l'imprimante (phase 44b,
+	 *  Orca `Preset::get_default_bed_type`), « Cool Plate » tant qu'il est inconnu. */
+	private defaultType: string;
+	/** Plateaux dont le type vient du défaut et n'a pas été choisi (Orca : plateau
+	 *  « par défaut », qui suit le type du projet). Non persisté. */
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- ensemble interne, non affiché
+	private autoTyped = new Set<string>();
 
-	constructor() {
+	constructor(defaultPlateType: string = DEFAULT_PLATE_TYPE) {
+		this.defaultType = defaultPlateType;
 		this.activeId = this.addPlate().id;
+	}
+
+	/** Type de plaque donné aux nouveaux plateaux. */
+	get defaultPlateType(): string {
+		return this.defaultType;
+	}
+
+	/**
+	 * Nouveau type par défaut (imprimante résolue ou changée) : les plateaux au
+	 * type automatique le prennent ; `previous` (changement d'imprimante) le
+	 * donne aussi aux plateaux encore au défaut de l'imprimante précédente
+	 * (Orca : le type du projet est réinitialisé, les plateaux « par défaut »
+	 * suivent ; un type choisi explicitement est conservé). Renvoie les ids
+	 * des plateaux modifiés.
+	 */
+	followDefaultPlateType(next: string, previous: string | null = null): string[] {
+		this.defaultType = next;
+		const changed: string[] = [];
+		for (const p of this.plates) {
+			const follows = this.autoTyped.has(p.id) || (previous !== null && p.plateType === previous);
+			if (!follows) continue;
+			this.autoTyped.add(p.id);
+			if (p.plateType !== next) {
+				p.plateType = next;
+				changed.push(p.id);
+			}
+		}
+		return changed;
 	}
 
 	// Ne réémet jamais un id déjà présent : après désérialisation ou suppression,
@@ -83,10 +119,11 @@ export class PlateSet {
 		const plate: Plate = {
 			id: this.nextId(),
 			name: this.freeName(),
-			plateType: DEFAULT_PLATE_TYPE,
+			plateType: this.defaultType,
 			objectIds: []
 		};
 		this.plates.push(plate);
+		this.autoTyped.add(plate.id);
 		return plate;
 	}
 
@@ -191,7 +228,9 @@ export class PlateSet {
 
 	setPlateType(id: string, plateType: string): void {
 		const plate = this.get(id);
-		if (plate) plate.plateType = plateType;
+		if (!plate) return;
+		plate.plateType = plateType;
+		this.autoTyped.delete(id);
 	}
 
 	/** Définit (ou efface si `undefined`) un réglage du plateau. */
@@ -265,9 +304,11 @@ export class PlateSet {
 		};
 	}
 
-	static deserialize(doc: PlatesDocument): PlateSet {
-		const set = new PlateSet();
+	static deserialize(doc: PlatesDocument, defaultPlateType?: string): PlateSet {
+		const set = new PlateSet(defaultPlateType);
 		set.plates = (doc.plates ?? []).map(clonePlate);
+		// Types relus : choisis (Orca ne touche pas au type d'un projet chargé).
+		set.autoTyped.clear();
 		// Compteur = plus grand suffixe `plate-<n>` existant (et non le nombre de
 		// plateaux, qui recréait un id déjà présent après une suppression).
 		set.counter = set.plates.reduce((max, p) => {

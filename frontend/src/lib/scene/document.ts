@@ -53,6 +53,10 @@ export interface SceneObjectDoc {
 	 *  cheval, Orca check_outside_state) : le serveur refuse de trancher
 	 *  (`off_bed_ids`). Recalculé à chaque enregistrement ; absent = dedans. */
 	off_bed?: boolean;
+	/** Audit 43 F-a — groupe d'instances (Orca ModelObject::instances) : les
+	 *  objets du même groupe partagent réglages, volumes et plages ; absent =
+	 *  objet seul. */
+	instanceGroup?: string;
 }
 
 /**
@@ -103,6 +107,8 @@ export interface SceneObjectState {
 	cutId?: CutObjectId | null;
 	/** Audit 42 I1 — hors du volume imprimable (sérialisé `off_bed`). */
 	offBed?: boolean;
+	/** Audit 43 F-a — groupe d'instances (sérialisé `instanceGroup`). */
+	instanceGroup?: string;
 }
 
 /** Sérialise un objet vivant en document. */
@@ -123,6 +129,7 @@ export function serializeObject(o: SceneObjectState): SceneObjectDoc {
 		...(o.emboss ? { emboss: JSON.parse(JSON.stringify(o.emboss)) } : {}),
 		...(o.cutId ? { cutId: { ...o.cutId } } : {}),
 		...(o.offBed ? { off_bed: true } : {}),
+		...(o.instanceGroup ? { instanceGroup: o.instanceGroup } : {}),
 		...(o.volumes && o.volumes.length > 0 ? { volumes: structuredClone(o.volumes) } : {}),
 		...(o.layerRanges && o.layerRanges.length > 0
 			? { layerRanges: structuredClone(o.layerRanges) }
@@ -148,6 +155,9 @@ export function deserializeObject(doc: SceneObjectDoc): SceneObjectState {
 			? { emboss: { ...doc.emboss } }
 			: {}),
 		...(parseCutId(doc.cutId) ? { cutId: parseCutId(doc.cutId)! } : {}),
+		...(typeof doc.instanceGroup === 'string' && doc.instanceGroup
+			? { instanceGroup: doc.instanceGroup }
+			: {}),
 		volumes: parseVolumes(doc.volumes),
 		layerRanges: parseLayerRanges(doc.layerRanges)
 	};
