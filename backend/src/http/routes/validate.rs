@@ -37,6 +37,11 @@ use crate::slicing::{
     scene_custom_gcodes, SceneObjectRef,
 };
 
+/// Objet entièrement hors du plateau : Orca ne le tranche pas sans message
+/// (« BBS: turn off the warning when fully outside ») ; ici le plateau qui le
+/// contient est refusé avec ce message du serveur.
+const OUTSIDE_MESSAGE: &str = "objet hors plateau : repositionner avant de trancher";
+
 /// Délai maximal d'une validation (apply + validate, sans tranchage).
 const VALIDATE_TIMEOUT: Duration = Duration::from_secs(120);
 
@@ -51,6 +56,12 @@ pub struct ValidateResponse {
     /// Avertissements de configuration, identiques à ceux de `POST …/slice`
     /// (bornes clampées, post-traitement, compatibilité des filaments).
     pub warnings: Vec<SliceWarning>,
+    /// État de chaque objet des plateaux ciblés vis-à-vis du volume
+    /// d'impression (lot 43, I1 : dedans, à cheval / trop haut, dehors).
+    /// Optionnel côté TS : absent quand aucun objet n'est classé.
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    #[ts(optional, as = "Option<Vec<super::placement::ObjectPlacement>>")]
+    pub objects: Vec<super::placement::ObjectPlacement>,
 }
 
 /// Validation d'un plateau.
@@ -95,6 +106,11 @@ pub struct ValidationIssue {
     #[serde(skip_serializing_if = "Vec::is_empty")]
     #[ts(optional, as = "Option<Vec<String>>")]
     pub params: Vec<String>,
+    /// `object_outside_plate` calculé par le serveur : état de l'objet
+    /// (`partly_outside` : à cheval / trop haut ; `outside` : hors du plateau).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub placement: Option<crate::build_volume::PrintVolumeState>,
 }
 
 impl ValidationIssue {
@@ -106,6 +122,7 @@ impl ValidationIssue {
             object_id: None,
             object_name: None,
             params: Vec::new(),
+            placement: None,
         }
     }
 }
@@ -139,14 +156,30 @@ pub async fn validate(
     )
     .await?;
 
+    // Lot 43 (I1) : état de chaque objet vis-à-vis du volume d'impression,
+    // calculé par le serveur (pas de drapeau client).
+    let objects = super::placement::object_placements(
+        &state,
+        user.id,
+        project_id,
+        scene,
+        &config.resolved,
+        body.plate_index.filter(|_| targets.len() == 1),
+    )
+    .await?;
     let checks = targets
         .iter()
-        .map(|&t| validate_plate(&state, user.id, project_id, scene, &config, t));
+        .map(|&t| validate_plate(&state, user.id, project_id, scene, &config, &objects, t));
     let plates = futures_util::future::try_join_all(checks).await?;
+    let objects = objects
+        .into_iter()
+        .filter(|o| targets.contains(&o.plate_index))
+        .collect();
     Ok(Json(ValidateResponse {
         valid: plates.iter().all(|p| p.valid),
         plates,
         warnings: config.warnings,
+        objects,
     }))
 }
 
@@ -159,6 +192,7 @@ async fn validate_plate(
     project_id: ProjectId,
     scene: &Value,
     config: &SliceConfig,
+    placements: &[super::placement::ObjectPlacement],
     t: i64,
 ) -> ApiResult<PlateValidation> {
     let ids = plate_scene_ids(scene, t);
@@ -172,17 +206,42 @@ async fn validate_plate(
             Vec::new(),
         ));
     }
+    // Lot 43 (I1) : objets à cheval / trop hauts (message d'Orca,
+    // GLCanvas3D construct_error_string, « Trancher » grisé sans lancer
+    // Print::validate) ou hors du plateau, calculés par le serveur. Le
+    // drapeau off_bed du client ne sert que pour un objet dont le serveur ne
+    // connaît pas la géométrie.
     let off_bed = off_bed_ids(scene);
+    let known = |id: &str| {
+        placements
+            .iter()
+            .any(|o| o.object_id == id && o.state.is_some())
+    };
     let outside: Vec<ValidationIssue> = ids
         .iter()
-        .filter(|id| off_bed.contains(*id))
-        .map(|id| ValidationIssue {
-            object_id: Some(id.clone()),
-            object_name: scene_object_name(scene, id),
-            ..ValidationIssue::new(
-                "object_outside_plate",
-                "objet hors plateau : repositionner avant de trancher",
-            )
+        .filter_map(|id| {
+            if let Some(o) = placements
+                .iter()
+                .find(|o| o.plate_index == t && &o.object_id == id && o.blocks_slicing())
+            {
+                let message = match o.state {
+                    Some(crate::build_volume::PrintVolumeState::PartlyOutside) => {
+                        super::placement::clashed_message(&o.object_name)
+                    }
+                    _ => OUTSIDE_MESSAGE.to_string(),
+                };
+                return Some(ValidationIssue {
+                    object_id: Some(o.object_id.clone()),
+                    object_name: Some(o.object_name.clone()),
+                    placement: o.state,
+                    ..ValidationIssue::new("object_outside_plate", message)
+                });
+            }
+            (off_bed.contains(id) && !known(id)).then(|| ValidationIssue {
+                object_id: Some(id.clone()),
+                object_name: scene_object_name(scene, id),
+                ..ValidationIssue::new("object_outside_plate", OUTSIDE_MESSAGE)
+            })
         })
         .collect();
     if !outside.is_empty() {
@@ -345,6 +404,7 @@ fn to_issue(
         object_id: object.and_then(|o| o.id.clone()),
         object_name: object.map(|o| o.name.clone()),
         params: issue.params,
+        placement: None,
     }
 }
 

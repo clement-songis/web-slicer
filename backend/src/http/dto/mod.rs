@@ -470,6 +470,14 @@ pub struct ModelResponse {
     pub conversion_error: Option<String>,
     /// Vrai si un maillage affichable est disponible (`…/mesh`).
     pub has_mesh: bool,
+    /// `GET /api/projects/{id}/models` seulement (lot 43, audit 42 C1) : le
+    /// modèle est référencé par la scène enregistrée (ou par un tranchage en
+    /// cours / le dernier G-code d'un plateau). `false` = import non encore
+    /// enregistré (connexion perdue, onglet fermé) : à reprendre
+    /// (`GET /api/models/{id}/mesh`) plutôt qu'à réimporter.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub referenced: Option<bool>,
 }
 
 impl From<Model> for ModelResponse {
@@ -491,6 +499,7 @@ impl From<Model> for ModelResponse {
             conversion_pending,
             conversion_error,
             has_mesh: m.mesh_path.is_some(),
+            referenced: None,
         }
     }
 }

@@ -17,6 +17,7 @@ pub mod metadata;
 pub mod models;
 pub(crate) mod overrides;
 pub mod paint;
+pub mod placement;
 pub mod preferences;
 pub mod presets;
 pub mod preview;
@@ -168,6 +169,10 @@ where
             get(slice::slice_signature),
         )
         .route("/api/projects/{id}/validate", post(validate::validate))
+        .route(
+            "/api/projects/{id}/object-states",
+            post(placement::object_states),
+        )
         .route("/api/projects/{id}/export/3mf", get(export::export_3mf))
         .route(
             "/api/projects/{id}/plates/{index}/thumbnail",

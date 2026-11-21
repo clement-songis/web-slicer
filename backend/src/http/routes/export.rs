@@ -68,6 +68,8 @@ pub async fn export_3mf(
 
     let mut plates = scene_project_plates(&project.scene);
     attach_plate_thumbnails(&state, user.id, project_id, &model, &config, &mut plates).await;
+    // Positions du 3MF dans le repère monde d'Orca (plateau k décalé), lot 43.
+    to_orca_world(&mut model, &config, plates.len());
     // Écrit par libslic3r (store_bbs_3mf) comme « Save project » d'Orca.
     // Fichiers auxiliaires du projet (Auxiliaries/), comme « Save project » d'Orca.
     let aux_dir = state.files.auxiliaries_dir(user.id, project.id);
@@ -598,6 +600,47 @@ pub async fn delete_plate_thumbnail(
 /// (`curr_bed_type`) et réglages par plateau optionnels `plate.settings`
 /// restreints à `engine::threemf::PLATE_SETTING_KEYS` (seules clés qu'Orca
 /// persiste par plateau). Même ordre que `scene_object_specs` (index = plateau).
+/// Nombre de plateaux de la scène (deux formes de document tolérées).
+pub(crate) fn scene_plate_count(scene: &Value) -> usize {
+    scene_project_plates(scene).len()
+}
+
+/// Lot 43 : inverse de projects::to_plate_local. La scène place chaque objet
+/// dans le repère de son plateau ; un 3MF d'Orca porte les positions monde de
+/// la GUI, où le plateau k est décalé de PartPlateList::compute_shape_position
+/// (grille compute_colum_count, pas = largeur × 1,2). Sans plateau dans la
+/// config ou avec un seul plateau : inchangé.
+pub(crate) fn to_orca_world(
+    model: &mut engine::api::Model,
+    config: &engine::api::DynamicPrintConfig,
+    plate_count: usize,
+) {
+    if plate_count < 2 {
+        return;
+    }
+    let mut config = config.clone();
+    super::presets::fill_registry_defaults(&mut config);
+    let Some(volume) = crate::build_volume::BuildVolume::from_config(&config) else {
+        return;
+    };
+    let (width, depth) = volume.size();
+    for instance in model
+        .objects
+        .iter_mut()
+        .flat_map(|o| o.instances.iter_mut())
+    {
+        let [dx, dy] = crate::build_volume::plate_origin(
+            instance.plate_index as usize,
+            plate_count,
+            width,
+            depth,
+        );
+        if dx != 0.0 || dy != 0.0 {
+            instance.matrix = DMat4::from_translation(DVec3::new(dx, dy, 0.0)) * instance.matrix;
+        }
+    }
+}
+
 fn scene_project_plates(scene: &Value) -> Vec<engine::threemf::ProjectPlate> {
     let plates = match scene.get("plates") {
         Some(Value::Array(plates)) => plates,

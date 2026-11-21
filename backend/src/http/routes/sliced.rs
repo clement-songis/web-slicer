@@ -229,7 +229,7 @@ async fn sliced_bundle(
         .scene
         .clone()
         .unwrap_or_else(|| jobs.project.scene.clone());
-    let model = crate::slicing::build_scene_model(state, user, project_id, &scene, None)
+    let mut model = crate::slicing::build_scene_model(state, user, project_id, &scene, None)
         .await
         .map_err(|e| {
             tracing::error!(error = %e, "modèle des plateaux tranchés");
@@ -239,6 +239,12 @@ async fn sliced_bundle(
         tracing::error!(error = %e, "config figée des plateaux tranchés");
         ApiError::internal()
     })?;
+    // Positions monde d'Orca dans le 3MF (plateau k décalé), lot 43.
+    super::export::to_orca_world(
+        &mut model,
+        &config,
+        super::export::scene_plate_count(&scene),
+    );
     let SlicedJobs { project, latest } = jobs;
     let gcode_ids = latest.values().map(|(_, gcode)| gcode.id).collect();
     let (gcodes, stats) = latest

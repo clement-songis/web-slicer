@@ -24,4 +24,12 @@ conversion_error?: string,
 /**
  * Vrai si un maillage affichable est disponible (`…/mesh`).
  */
-has_mesh: boolean, };
+has_mesh: boolean, 
+/**
+ * `GET /api/projects/{id}/models` seulement (lot 43, audit 42 C1) : le
+ * modèle est référencé par la scène enregistrée (ou par un tranchage en
+ * cours / le dernier G-code d'un plateau). `false` = import non encore
+ * enregistré (connexion perdue, onglet fermé) : à reprendre
+ * (`GET /api/models/{id}/mesh`) plutôt qu'à réimporter.
+ */
+referenced?: boolean, };

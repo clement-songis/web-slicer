@@ -6,6 +6,7 @@
 
 pub mod adapters;
 pub mod auth;
+pub mod build_volume;
 pub mod domain;
 pub mod engine;
 pub mod gcode;

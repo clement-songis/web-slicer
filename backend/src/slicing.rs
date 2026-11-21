@@ -468,6 +468,121 @@ pub(crate) async fn build_scene_model_indexed(
     Ok((model, refs))
 }
 
+/// Objet de scène classé par rapport au volume d'impression (lot 43, I1).
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ScenePlacement {
+    /// objects[].id de la scène.
+    pub id: String,
+    /// Nom affiché (objects[].name, sinon nom du fichier).
+    pub name: String,
+    /// Plateau (0-based) de l'objet.
+    pub plate_index: u32,
+    /// Objet imprimable (Orca : un objet non imprimable n'est jamais tranché).
+    pub printable: bool,
+    /// État vis-à-vis du volume ; None si la géométrie n'est pas disponible
+    /// (modèle absent ou conversion en cours) : rien n'est affirmé.
+    pub state: Option<crate::build_volume::PrintVolumeState>,
+}
+
+/// État de chaque objet de la scène vis-à-vis du volume d'impression
+/// (ModelInstance::calc_print_volume_state d'Orca), plateau par plateau,
+/// repère du plateau de l'objet. plate_index : seulement ce plateau.
+/// Volumes « pièce » seulement (objet + pièces ajoutées / maillées), même
+/// maillage recentré et même matrice que le modèle tranché.
+pub(crate) async fn scene_object_placements(
+    state: &AppState,
+    user: UserId,
+    project_id: ProjectId,
+    scene: &Value,
+    plate_index: Option<u32>,
+    volume: &crate::build_volume::BuildVolume,
+) -> anyhow::Result<Vec<ScenePlacement>> {
+    use engine::api::VolumeRole;
+    let Some(specs) = scene_object_specs(scene, plate_index) else {
+        return Ok(Vec::new());
+    };
+    if specs.is_empty() {
+        return Ok(Vec::new());
+    }
+    let models = state.storage.models().list(user, Some(project_id)).await?;
+    // Un maillage par modèle (plusieurs objets peuvent partager un modèle) ;
+    // booléen = déjà recentré (lecture libslic3r du fichier source).
+    let mut cache: std::collections::HashMap<String, Option<(TriangleMesh, bool)>> =
+        std::collections::HashMap::new();
+    let mut out = Vec::with_capacity(specs.len());
+    for spec in specs {
+        let Some(id) = spec.scene_id.clone() else {
+            continue;
+        };
+        let mut meshes: Vec<(TriangleMesh, DMat4)> = Vec::new();
+        let mut complete = true;
+        let mut wanted = vec![(spec.model_id.clone(), DMat4::IDENTITY, spec.centered)];
+        for reference in &spec.mesh_volumes {
+            if reference.volume.role == VolumeRole::ModelPart {
+                wanted.push((reference.model_id.clone(), reference.volume.matrix, true));
+            }
+        }
+        for (model_id, matrix, centered) in wanted {
+            if !cache.contains_key(&model_id) {
+                let mesh = match models.iter().find(|m| m.id.to_string() == model_id) {
+                    Some(source) => match load_triangle_mesh(state, source).await {
+                        Ok(mesh) => Some((mesh, false)),
+                        // Conversion en cours : maillage lu par libslic3r dans
+                        // le fichier source, comme le tranchage (recentré).
+                        Err(_) => crate::engine::raw_model::centered_part_volume(
+                            FsPath::new(&source.file_path),
+                            source.format,
+                        )
+                        .await
+                        .map(|(mesh, _)| (mesh, true)),
+                    },
+                    None => None,
+                };
+                cache.insert(model_id.clone(), mesh);
+            }
+            match cache.get(&model_id).cloned().flatten() {
+                Some((mut mesh, already_centered)) => {
+                    if centered && !already_centered {
+                        center_mesh(&mut mesh);
+                    }
+                    meshes.push((mesh, spec.matrix * matrix));
+                }
+                None => complete = false,
+            }
+        }
+        for part in spec
+            .volumes
+            .iter()
+            .filter(|v| v.role == VolumeRole::ModelPart)
+        {
+            meshes.push((part.mesh.clone(), spec.matrix * part.matrix));
+        }
+        let name = spec.scene_name.clone().unwrap_or_else(|| {
+            models
+                .iter()
+                .find(|m| m.id.to_string() == spec.model_id)
+                .map(|m| m.filename.clone())
+                .unwrap_or_default()
+        });
+        let parts: Vec<crate::build_volume::PartVolume<'_>> = meshes
+            .iter()
+            .map(|(mesh, matrix)| crate::build_volume::PartVolume {
+                vertices: &mesh.vertices,
+                indices: &mesh.indices,
+                matrix: *matrix,
+            })
+            .collect();
+        out.push(ScenePlacement {
+            id,
+            name,
+            plate_index: spec.plate_index,
+            printable: spec.printable,
+            state: complete.then(|| volume.instance_state(&parts)),
+        });
+    }
+    Ok(out)
+}
+
 /// Nombre de triangles du maillage servi à l'éditeur (garde-fou : la peinture
 /// indexe ces triangles ; 0 si illisible → le maillage Orca n'est pas retenu).
 async fn load_triangle_count(state: &AppState, model: &crate::domain::Model) -> usize {

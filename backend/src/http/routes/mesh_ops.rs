@@ -611,14 +611,11 @@ pub async fn layer_profile(
         .await?;
     let mesh = centered(load_mesh(&state, &source).await?);
     let matrix = match req.matrix.as_deref() {
-        None => glam::DMat4::IDENTITY,
+        None => None,
         Some(m) if m.len() == 16 && m.iter().all(|v| v.is_finite()) => {
             let mut cols = [0.0; 16];
             cols.copy_from_slice(m);
-            // Translation ignorée : le profil est relatif au bas de l'objet.
-            let mut mat = glam::DMat4::from_cols_array(&cols);
-            mat.w_axis = glam::DVec4::new(0.0, 0.0, 0.0, 1.0);
-            mat
+            Some(glam::DMat4::from_cols_array(&cols))
         }
         Some(_) => {
             return Err(ApiError::validation(
@@ -627,6 +624,7 @@ pub async fn layer_profile(
             ))
         }
     };
+    let matrix = layer_profile_matrix(&mesh, matrix);
     let mut model = engine::api::Model::default();
     model.add_object(source.filename.clone(), mesh).instances[0].matrix = matrix;
     let request = engine::api::layer_profile::LayerProfileRequest {
@@ -638,6 +636,41 @@ pub async fn layer_profile(
         .await
         .map_err(worker_api_error)?;
     Ok(Json(LayerProfileHttpResponse { profile }))
+}
+
+/// Matrice d'instance de l'outil « Variable layer height » : XY ignorés (le
+/// profil ne dépend que de la hauteur) ; Z placé comme l'objet d'Orca, posé
+/// sur le plateau (min z = 0) ou enfoncé s'il l'est dans la scène (min z < 0
+/// conservé). Lot 43 (audit 42 S1) : la translation était entièrement
+/// annulée, l'objet recentré allait de −h/2 à +h/2 et le profil ne couvrait
+/// que sa moitié haute (z ∈ [0, h/2]).
+pub(crate) fn layer_profile_matrix(
+    mesh: &engine::api::TriangleMesh,
+    matrix: Option<glam::DMat4>,
+) -> glam::DMat4 {
+    let given = matrix.unwrap_or(glam::DMat4::IDENTITY);
+    let mut linear = given;
+    linear.w_axis = glam::DVec4::new(0.0, 0.0, 0.0, 1.0);
+    let min_z = mesh
+        .vertices
+        .iter()
+        .map(|v| {
+            linear
+                .transform_point3(glam::DVec3::new(v[0] as f64, v[1] as f64, v[2] as f64))
+                .z
+        })
+        .fold(f64::INFINITY, f64::min);
+    if !min_z.is_finite() {
+        return linear;
+    }
+    // Sans matrice : objet posé (ensure_on_bed). Avec : sa hauteur dans la
+    // scène, sans jamais flotter au-dessus du plateau.
+    let placed = match matrix {
+        Some(_) => (min_z + given.w_axis.z).min(0.0),
+        None => 0.0,
+    };
+    linear.w_axis = glam::DVec4::new(0.0, 0.0, placed - min_z, 1.0);
+    linear
 }
 
 fn parse_model_id(raw: &str) -> ApiResult<ModelId> {

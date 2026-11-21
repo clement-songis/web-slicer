@@ -1388,11 +1388,16 @@ async fn validate_runs_orca_print_validate_per_object() {
     let body = body_json(resp).await;
     assert_eq!(body["valid"], false, "{body}");
     let error = &body["plates"][0]["errors"][0];
+    // Lot 43 (I1) : comme la GUI d'Orca, l'objet plus haut que le volume est
+    // « à cheval » (BuildVolume, EWarning::ObjectClashed) : « Trancher » est
+    // grisé avant même Print::validate.
+    assert_eq!(error["kind"], "object_outside_plate", "{body}");
+    assert_eq!(error["placement"], "partly_outside", "{body}");
     assert!(
         error["message"]
             .as_str()
             .unwrap()
-            .contains("exceeds the maximum build volume height"),
+            .contains("exceeds the height limit"),
         "{body}"
     );
     assert_eq!(error["object_id"], "L", "{body}");
@@ -1533,7 +1538,10 @@ async fn validate_and_slice_use_the_unsaved_scene_from_the_body() {
     // la scène du corps, projet non sauvegardé.
     let unsaved = json!({
         "schema_version": 1,
-        "objects": [{ "id": "o1", "modelId": model, "name": "Cube" }, { "id": "o2", "modelId": model }],
+        "objects": [
+            { "id": "o1", "modelId": model, "name": "Cube", "transform": { "position": [100.0, 100.0, 3.0] } },
+            { "id": "o2", "modelId": model, "transform": { "position": [100.0, 100.0, 3.0] } }
+        ],
         "plates": [{ "id": "p1", "objectIds": ["o1"] }, { "id": "p2", "objectIds": ["o2"] }]
     });
     let resp = app

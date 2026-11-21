@@ -272,7 +272,15 @@ pub async fn import(
         None
     };
     let metadata = match load {
-        ImportLoadMode::Project => imported.metadata.take(),
+        ImportLoadMode::Project => {
+            // Positions monde d'Orca → repère du plateau de chaque objet
+            // (lot 43) : plateau de l'imprimante du projet.
+            if let Some((width, depth)) = bed_rect(&imported.config) {
+                to_plate_local(&mut imported, width, depth);
+            }
+            plates_follow_project_bed_type(&mut imported);
+            imported.metadata.take()
+        }
         ImportLoadMode::Geometry => {
             geometry_only(&mut imported);
             None
@@ -514,6 +522,73 @@ pub(crate) fn geometry_only(imported: &mut crate::models::threemf::ImportedProje
     imported.filament_colours = missing_filament_colours(&imported.objects);
     if let Some((width, depth)) = bed {
         reassign_plates_by_position(imported, width, depth);
+        to_plate_local(imported, width, depth);
+    }
+}
+
+/// Lot 43 (audit 42 I3) : `curr_bed_type` est une option **projet** d'Orca
+/// (project_settings.config), pas une option de preset : un plateau sans type
+/// propre (PartPlate « btDefault ») suit celui du projet. Sans cette reprise,
+/// un projet ouvert avec son process nommé tranchait sur le type par défaut
+/// du registre (Cool Plate : plateau à 35 °C au lieu de 55 °C sur arbre.3mf).
+/// Le type du projet devient le réglage explicite des plateaux qui n'en ont pas.
+pub(crate) fn plates_follow_project_bed_type(
+    imported: &mut crate::models::threemf::ImportedProject,
+) {
+    let Some(bed) = raw_text(imported.config.get("curr_bed_type")).filter(|b| !b.is_empty()) else {
+        return;
+    };
+    for plate in &mut imported.plates {
+        if !plate.settings.contains_key("curr_bed_type") {
+            plate
+                .settings
+                .insert("curr_bed_type".into(), Value::String(bed.clone()));
+            plate.plate_type = crate::models::threemf::bed_type_to_plate_type(&bed);
+        }
+    }
+}
+
+/// Lot 43 (audit 42 I1) : un 3MF d'Orca écrit les positions dans le repère
+/// monde de la GUI, où le plateau k est décalé de
+/// PartPlateList::compute_shape_position (grille compute_colum_count, pas =
+/// largeur × 1,2 en X et −profondeur × 1,2 en Y). La scène web place chaque
+/// objet dans le repère de **son** plateau (plate-layout.ts : le plateau
+/// actif est à l'origine) et le moteur tranche ces coordonnées telles
+/// quelles : sans cette conversion, un objet du plateau 2 était tranché à
+/// X + 420 (G-code hors course, audit 42). Les objets non déclarés restent
+/// sur le plateau 1 (origine nulle). L'export ajoute à nouveau l'origine
+/// (export::to_orca_world).
+pub(crate) fn to_plate_local(
+    imported: &mut crate::models::threemf::ImportedProject,
+    width: f64,
+    depth: f64,
+) {
+    let count = imported.plates.len();
+    if count < 2 {
+        return;
+    }
+    let plate_of = |source: &str, instance: usize| {
+        imported.plates.iter().position(|plate| {
+            plate
+                .instances
+                .iter()
+                .any(|(id, index)| id == source && *index == instance)
+        })
+    };
+    let shifts: Vec<[f64; 2]> = imported
+        .objects
+        .iter()
+        .map(
+            |object| match plate_of(&object.source_id, object.instance_index) {
+                Some(index) => crate::build_volume::plate_origin(index, count, width, depth),
+                None => [0.0, 0.0],
+            },
+        )
+        .collect();
+    for (object, [dx, dy]) in imported.objects.iter_mut().zip(shifts) {
+        if dx != 0.0 || dy != 0.0 {
+            object.matrix = DMat4::from_translation(DVec3::new(-dx, -dy, 0.0)) * object.matrix;
+        }
     }
 }
 
@@ -552,27 +627,25 @@ fn parse_point(part: &str) -> Option<(f64, f64)> {
     Some((x.trim().parse().ok()?, y.trim().parse().ok()?))
 }
 
-/// `PartPlateList::reload_all_objects` (grille mono-rangée d'Orca) : chaque
-/// instance rejoint le premier plateau dont le rectangle `[k × stride,
-/// k × stride + largeur] × [0, profondeur]` croise sa boîte englobante
-/// monde. `stride = largeur × 1,2` (`LOGICAL_PART_PLATE_GAP = 1/5`).
+/// `PartPlateList::reload_all_objects` : chaque instance rejoint le premier
+/// plateau dont le rectangle `origine(k) + [0, largeur] × [0, profondeur]`
+/// croise sa boîte englobante monde ; origine = grille d'Orca
+/// (`compute_shape_position`, lot 43 : rangées comprises au-delà de 2
+/// plateaux, pas = largeur × 1,2, `LOGICAL_PART_PLATE_GAP = 1/5`).
 fn reassign_plates_by_position(
     imported: &mut crate::models::threemf::ImportedProject,
     width: f64,
     depth: f64,
 ) {
-    let stride = width * (1.0 + LOGICAL_PART_PLATE_GAP);
     let count = imported.plates.len();
     let mut members: Vec<Vec<(String, usize)>> = vec![Vec::new(); count];
     for object in &imported.objects {
         let bbox = world_bbox_xy(object);
         let target = (0..count).find(|&k| {
-            let x0 = k as f64 * stride;
-            bbox.is_none()
-                || (bbox.unwrap().0 < x0 + width
-                    && bbox.unwrap().1 > x0
-                    && bbox.unwrap().3 > 0.0
-                    && bbox.unwrap().2 < depth)
+            let [x0, y0] = crate::build_volume::plate_origin(k, count, width, depth);
+            bbox.is_none_or(|(min_x, max_x, min_y, max_y)| {
+                min_x < x0 + width && max_x > x0 && max_y > y0 && min_y < y0 + depth
+            })
         });
         let key = (object.source_id.clone(), object.instance_index);
         match target {
@@ -629,8 +702,6 @@ const FILAMENT_SYSTEM_COLORS: [&str; 16] = [
 
 /// `MAXIMUM_EXTRUDER_NUMBER` d'Orca.
 const MAXIMUM_EXTRUDER_NUMBER: usize = 16;
-/// `LOGICAL_PART_PLATE_GAP` d'Orca (PartPlate.cpp).
-const LOGICAL_PART_PLATE_GAP: f64 = 1.0 / 5.0;
 
 /// Filaments manquants (Plater.cpp, « add extruder … if only import
 /// geometry ») : le plus grand extrudeur utilisé par les objets, volumes et
@@ -850,6 +921,25 @@ pub(crate) async fn import_3mf_contents(
                     serde_json::to_value(overrides).map_err(|_| ApiError::internal())?;
             }
         }
+        // Lot 43 (I3) : valeurs filament du projet ≠ preset filament retenu →
+        // surcharges du filament (preset « (modifié) »), comme
+        // load_external_preset d'Orca, quel que soit le preset process.
+        let filament_overrides = imported_filament_overrides(
+            state,
+            user_id,
+            &imported.config,
+            &active_presets,
+            &filaments,
+        )
+        .await?;
+        if filament_overrides.iter().any(Option::is_some) {
+            let mut draft = super::overrides::overrides_of(&active_presets)?.unwrap_or_default();
+            draft.filaments = Some(filament_overrides);
+            if let Some(draft) = super::overrides::compact(draft) {
+                active_presets[super::overrides::OVERRIDES_KEY] =
+                    serde_json::to_value(draft).map_err(|_| ApiError::internal())?;
+            }
+        }
     }
 
     let mut models: Vec<(crate::domain::Model, engine::api::TriangleMesh)> =
@@ -975,12 +1065,19 @@ pub(crate) async fn import_3mf_contents(
                 }
             }
         }
-        plates.push(json!({
+        let mut document = json!({
             "id": Uuid::new_v4().to_string(),
             "name": plate.name,
             "plateType": plate.plate_type,
             "objectIds": ids,
-        }));
+        });
+        // Réglages du plateau (PLATE_SETTING_KEYS : type de plaque, séquence…),
+        // appliqués au tranchage de ce plateau (slice::with_plate_settings).
+        // Lot 43 : ils étaient lus puis perdus à l'ouverture.
+        if !plate.settings.is_empty() {
+            document["settings"] = Value::Object(plate.settings.clone());
+        }
+        plates.push(document);
     }
     let active_id = plates.first().and_then(|plate| plate["id"].as_str());
     let mut scene = json!({
@@ -1335,44 +1432,7 @@ async fn import_project_presets(
             filaments.push(preset.id);
             continue;
         }
-        // Valeurs du filament `index` (load_config_file_config : scalaires
-        // copiés, vecteurs → élément i ; vecteurs par variante d'extrudeur
-        // → éléments dont filament_self_index vaut i + 1).
-        let mut values = Map::new();
-        for key in ORCA_FILAMENT_OPTIONS {
-            // Clés propres au preset : jamais reprises des valeurs brutes du
-            // projet (Orca les tire des vecteurs *_group, ci-dessous).
-            if matches!(
-                key,
-                "inherits"
-                    | "compatible_printers"
-                    | "compatible_prints"
-                    | "compatible_printers_condition"
-                    | "compatible_prints_condition"
-            ) {
-                continue;
-            }
-            let Some(value) = config.get(key) else {
-                continue;
-            };
-            let picked = match value {
-                Value::Array(items) if items.len() == count => {
-                    Value::Array(vec![items[index].clone()])
-                }
-                Value::Array(items) if self_index.len() == items.len() && items.len() > count => {
-                    Value::Array(
-                        items
-                            .iter()
-                            .zip(&self_index)
-                            .filter(|(_, owner)| **owner == index + 1)
-                            .map(|(item, _)| item.clone())
-                            .collect(),
-                    )
-                }
-                other => other.clone(),
-            };
-            values.insert(key.to_string(), picked);
-        }
+        let mut values = filament_slot_values(config, index, count, &self_index);
         if let Some(colour) = colours.get(index) {
             values.insert("filament_colour".into(), json!([colour]));
         }
@@ -1413,6 +1473,131 @@ async fn import_project_presets(
         filaments.push(preset.id);
     }
     Ok((printer, filaments))
+}
+
+/// Valeurs du filament `index` d'une config 3MF (load_config_file_config :
+/// scalaires copiés, vecteurs → élément i ; vecteurs par variante
+/// d'extrudeur → éléments dont filament_self_index vaut i + 1). Clés propres
+/// au preset (héritage, compatibilités) jamais reprises : Orca les tire des
+/// vecteurs *_group.
+fn filament_slot_values(
+    config: &Map<String, Value>,
+    index: usize,
+    count: usize,
+    self_index: &[usize],
+) -> Map<String, Value> {
+    let mut values = Map::new();
+    for key in ORCA_FILAMENT_OPTIONS {
+        if matches!(
+            key,
+            "inherits"
+                | "compatible_printers"
+                | "compatible_prints"
+                | "compatible_printers_condition"
+                | "compatible_prints_condition"
+        ) {
+            continue;
+        }
+        let Some(value) = config.get(key) else {
+            continue;
+        };
+        let picked = match value {
+            Value::Array(items) if items.len() == count => Value::Array(vec![items[index].clone()]),
+            Value::Array(items) if self_index.len() == items.len() && items.len() > count => {
+                Value::Array(
+                    items
+                        .iter()
+                        .zip(self_index)
+                        .filter(|(_, owner)| **owner == index + 1)
+                        .map(|(item, _)| item.clone())
+                        .collect(),
+                )
+            }
+            other => other.clone(),
+        };
+        values.insert(key.to_string(), picked);
+    }
+    values
+}
+
+/// Lot 43 (audit 42 I3) : surcharges filament d'un projet 3MF. Orca
+/// (PresetCollection::load_external_preset) sélectionne le preset filament
+/// nommé puis lui applique les valeurs du projet : toute valeur du filament i
+/// du project_settings.config qui diffère reste en vigueur et le preset
+/// apparaît « (modifié) » — y compris quand different_settings_to_system est
+/// vide (ex. filament_flow_ratio = 1 sur « Generic PLA @System » qui vaut
+/// 0,98). Comparaison avec l'élément i de la config **effective** des presets
+/// retenus (active, surcharges process / imprimante comprises) : seules les
+/// valeurs qui changeraient le tranchage deviennent des surcharges. Une
+/// entrée par filament, None si identique.
+async fn imported_filament_overrides(
+    state: &AppState,
+    user_id: UserId,
+    config: &Map<String, Value>,
+    active: &Value,
+    filaments: &[PresetId],
+) -> ApiResult<Vec<Option<Map<String, Value>>>> {
+    let count = raw_items(config.get("filament_colour")).len();
+    let (merged, _) = super::slice::resolve_active_config(state, user_id, active).await?;
+    let merged_json = super::presets::config_to_json(&merged);
+    let merged_self_index: Vec<usize> = match merged_json.get("filament_self_index") {
+        Some(Value::Array(items)) => items
+            .iter()
+            .filter_map(|v| v.as_u64().map(|n| n as usize))
+            .collect(),
+        _ => Vec::new(),
+    };
+    let different = raw_items(config.get("different_settings_to_system"));
+    let self_index: Vec<usize> = raw_items(config.get("filament_self_index"))
+        .iter()
+        .filter_map(|v| v.trim().parse().ok())
+        .collect();
+    let mut out = Vec::with_capacity(filaments.len());
+    for index in 0..filaments.len() {
+        if index >= count {
+            out.push(None);
+            continue;
+        }
+        let values = filament_slot_values(config, index, count, &self_index);
+        let project = engine::presets::resolve_preset_chain(&[engine::api::RawPreset {
+            name: "3MF".into(),
+            inherits: None,
+            values,
+        }])
+        .map_err(|e| {
+            tracing::warn!(error = %e, "filament 3MF non résolu");
+            ApiError::validation("configuration 3MF illisible", json!({}))
+        })?;
+        // Élément i de la config effective, même découpe que le projet.
+        let effective_values =
+            filament_slot_values(&merged_json, index, filaments.len(), &merged_self_index);
+        let preset = engine::presets::resolve_preset_chain(&[engine::api::RawPreset {
+            name: "effective".into(),
+            inherits: None,
+            values: effective_values,
+        }])
+        .map_err(|e| {
+            tracing::error!(error = %e, "config filament effective");
+            ApiError::internal()
+        })?;
+        let listed: Vec<String> = different
+            .get(1 + index)
+            .map(|keys| {
+                keys.split(';')
+                    .map(|k| k.trim().trim_matches('"').to_string())
+                    .filter(|k| !k.is_empty())
+                    .collect()
+            })
+            .unwrap_or_default();
+        out.push(super::overrides::modified_values(
+            &project,
+            &preset,
+            &ORCA_FILAMENT_OPTIONS,
+            &listed,
+            &["filament_extruder_variant", "default_filament_colour"],
+        ));
+    }
+    Ok(out)
 }
 
 /// Preset process visible nommé par le projet (`print_settings_id`, sinon

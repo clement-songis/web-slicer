@@ -54,20 +54,13 @@ pub async fn slice(
         targets => targets,
     };
 
-    // Garde avant slice : chaque plateau ciblé doit contenir des objets, tous
-    // sur le plateau (FR-032, « hors plateau → erreur avant slice »).
-    let off_bed = off_bed_ids(scene);
+    // Garde avant slice : chaque plateau ciblé doit contenir des objets (les
+    // objets hors plateau sont refusés plus bas, une fois le plateau de la
+    // config connu).
     for &t in &targets {
-        let ids = plate_scene_ids(scene, t);
-        if ids.is_empty() {
+        if plate_scene_ids(scene, t).is_empty() {
             return Err(ApiError::validation(
                 "plateau vide (aucun objet à trancher)",
-                json!({ "plate_index": t }),
-            ));
-        }
-        if ids.iter().any(|id| off_bed.contains(id)) {
-            return Err(ApiError::validation(
-                "objet hors plateau : repositionner avant de trancher",
                 json!({ "plate_index": t }),
             ));
         }
@@ -104,6 +97,43 @@ pub async fn slice(
         &body,
     )
     .await?;
+    // Lot 43 (audit 42 I1) : objets à cheval sur le bord, trop hauts ou hors
+    // du plateau, calculés par le serveur (BuildVolume / calc_print_volume_state
+    // d'Orca) sur la scène et le plateau de la config tranchée : refus avant
+    // tout job, comme Orca grise « Trancher ».
+    let placements = super::placement::object_placements(
+        &state,
+        user.id,
+        project_id,
+        scene,
+        &resolved,
+        body.plate_index.filter(|_| targets.len() == 1),
+    )
+    .await?;
+    // Drapeau off_bed du client : pris en compte seulement pour un objet dont
+    // le serveur ne connaît pas la géométrie (modèle absent).
+    let off_bed = off_bed_ids(scene);
+    for &t in &targets {
+        let blocking: Vec<&super::placement::ObjectPlacement> = placements
+            .iter()
+            .filter(|o| o.plate_index == t && o.blocks_slicing())
+            .collect();
+        if !blocking.is_empty() {
+            return Err(super::placement::outside_error(t, &blocking));
+        }
+        let unknown_flagged = plate_scene_ids(scene, t).into_iter().any(|id| {
+            off_bed.contains(&id)
+                && !placements
+                    .iter()
+                    .any(|o| o.object_id == id && o.state.is_some())
+        });
+        if unknown_flagged {
+            return Err(ApiError::validation(
+                "objet hors plateau : repositionner avant de trancher",
+                json!({ "plate_index": t }),
+            ));
+        }
+    }
     // Instantané de scène du job : options de tranchage hors config Orca.
     let mut job_scene = scene.clone();
     if allow_mixed {
@@ -1270,6 +1300,8 @@ pub(crate) fn unknown_scene_models(scene: &Value, known: &HashSet<String>) -> Ve
 }
 
 /// Identifiants d'objets marqués hors plateau (`off_bed: true`) par le client.
+/// Lot 43 : seulement un repli quand le serveur ne peut pas classer l'objet
+/// (géométrie inconnue) ; sinon l'état calculé (placement.rs) fait foi.
 pub(crate) fn off_bed_ids(scene: &Value) -> HashSet<String> {
     scene
         .get("objects")

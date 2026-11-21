@@ -761,6 +761,34 @@ void write_gcode_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
         throw std::runtime_error("échec d'écriture du .gcode.3mf : " + out);
 }
 
+// Config de l'outil « Variable layer height » : défauts complets
+// (full_print_config, comme la GUI) + valeurs résolues de l'éditeur.
+// Lot 43 (audit 42 S1) : les valeurs étaient désérialisées directement sur
+// la config par défaut ; `set_deserialize` sur une option existante plante
+// dans libslic3r pour certains vecteurs d'enums (`extruder_type` = « Direct
+// Drive » des imprimantes Voron → SIGSEGV, 500 « Erreur interne » sur
+// Adaptatif / Lisser). Même voie sûre que le tranchage (slice.cpp,
+// load_config) : désérialisation sur une config vide (clés inconnues
+// ignorées), puis apply par-dessus les défauts.
+static Slic3r::DynamicPrintConfig layer_profile_config(rust::Str config_json)
+{
+    Slic3r::DynamicPrintConfig config = Slic3r::DynamicPrintConfig::full_print_config();
+    if (config_json.empty())
+        return config;
+    const auto j = nlohmann::json::parse(std::string(config_json));
+    Slic3r::ConfigSubstitutionContext ctx(Slic3r::ForwardCompatibilitySubstitutionRule::Enable);
+    Slic3r::DynamicPrintConfig overrides;
+    for (auto it = j.begin(); it != j.end(); ++it) {
+        try {
+            overrides.set_deserialize(it.key(), it.value().get<std::string>(), ctx);
+        } catch (const std::exception &) {
+            // clé hors registre runtime : ignorée (comme handle_legacy).
+        }
+    }
+    config.apply(overrides, /*ignore_nonexistent=*/true);
+    return config;
+}
+
 // Outil « Variable layer height » d'Orca (GLCanvas3D::LayersEditing) :
 // - SlicingParameters = PrintObject::slicing_parameters(full_config, object,
 //   object->max_z(), shrinkage) comme update_slicing_parameters (GLCanvas3D.cpp:719) ;
@@ -779,9 +807,7 @@ rust::Vec<double> layer_profile_raw(const rust::Vec<RawObject> &objects, rust::S
     if (object.instances.empty())
         throw std::runtime_error("objet sans instance");
 
-    Slic3r::DynamicPrintConfig config = Slic3r::DynamicPrintConfig::full_print_config();
-    if (!config_json.empty())
-        config_from_json(config, std::string(config_json));
+    const Slic3r::DynamicPrintConfig config = layer_profile_config(config_json);
 
     const float max_z = static_cast<float>(object.max_z());
     if (!(max_z > 0.f))
@@ -826,9 +852,7 @@ rust::Vec<double> adjust_layer_profile_raw(const rust::Vec<RawObject> &objects,
     Slic3r::ModelObject &object = *model.objects.front();
     if (object.instances.empty())
         throw std::runtime_error("objet sans instance");
-    Slic3r::DynamicPrintConfig config = Slic3r::DynamicPrintConfig::full_print_config();
-    if (!config_json.empty())
-        config_from_json(config, std::string(config_json));
+    const Slic3r::DynamicPrintConfig config = layer_profile_config(config_json);
     const float max_z = static_cast<float>(object.max_z());
     if (!(max_z > 0.f))
         throw std::runtime_error("objet de hauteur nulle");

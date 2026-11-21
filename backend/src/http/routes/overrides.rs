@@ -174,29 +174,8 @@ pub(crate) fn imported_overrides(
     process_listed: &[String],
     printer_listed: &[String],
 ) -> Option<SliceDraft> {
-    let mut base = presets.clone();
-    super::presets::fill_registry_defaults(&mut base);
     let pick = |keys: &[&str], listed: &[String]| -> Option<Map<String, Value>> {
-        let mut out = Map::new();
-        for key in keys {
-            if NOT_OVERRIDABLE.contains(key) {
-                continue;
-            }
-            let Some(value) = project.0.get(*key) else {
-                continue;
-            };
-            let modified = match base.0.get(*key) {
-                Some(current) => canonical(current) != canonical(value),
-                None => !is_blank(value) && listed.iter().any(|k| k == key),
-            };
-            if modified {
-                out.insert(
-                    (*key).to_string(),
-                    super::presets::config_value_to_json(value),
-                );
-            }
-        }
-        (!out.is_empty()).then_some(out)
+        modified_values(project, presets, keys, listed, &[])
     };
     compact(SliceDraft {
         process: pick(&ORCA_PRINT_OPTIONS, process_listed),
@@ -207,6 +186,41 @@ pub(crate) fn imported_overrides(
         },
         filaments: None,
     })
+}
+
+/// Valeurs de `project` (options `keys`, hors `NOT_OVERRIDABLE` et
+/// `excluded`) qui diffèrent de `presets` (défaut du registre à défaut) ;
+/// une clé que ni le preset ni le registre ne valuent n'est retenue que si le
+/// projet la déclare modifiée (`listed`). None si rien ne diffère.
+pub(crate) fn modified_values(
+    project: &DynamicPrintConfig,
+    presets: &DynamicPrintConfig,
+    keys: &[&str],
+    listed: &[String],
+    excluded: &[&str],
+) -> Option<Map<String, Value>> {
+    let mut base = presets.clone();
+    super::presets::fill_registry_defaults(&mut base);
+    let mut out = Map::new();
+    for key in keys {
+        if NOT_OVERRIDABLE.contains(key) || excluded.contains(key) {
+            continue;
+        }
+        let Some(value) = project.0.get(*key) else {
+            continue;
+        };
+        let modified = match base.0.get(*key) {
+            Some(current) => canonical(current) != canonical(value),
+            None => !is_blank(value) && listed.iter().any(|k| k == key),
+        };
+        if modified {
+            out.insert(
+                (*key).to_string(),
+                super::presets::config_value_to_json(value),
+            );
+        }
+    }
+    (!out.is_empty()).then_some(out)
 }
 
 /// `different_settings_to_system` du `project_settings.config` exporté

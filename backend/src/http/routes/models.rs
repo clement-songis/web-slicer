@@ -347,19 +347,139 @@ pub(crate) const EXPORT_CONVERSION_WAIT_SECS: u64 = MESH_WAIT_MAX_SECS;
 
 /// `GET /api/projects/{id}/models` — modèles rattachés à un projet (T092), pour
 /// repeupler la scène à l'ouverture. Isolation : projet d'autrui → 404 (SC-008).
+///
+/// Lot 43 (audit 42 C1) : chaque modèle porte `referenced` (scène
+/// enregistrée, tranchage en cours ou dernier G-code d'un plateau). Un import
+/// interrompu (connexion perdue après le 201) reste non référencé et
+/// **inconnu** de la scène enregistrée (`knownModels`) : l'éditeur le
+/// restaure à l'ouverture (reprise, `planSceneRestore`). Un modèle que la
+/// scène enregistrée **connaît** sans le référencer a été retiré par
+/// l'utilisateur puis le projet enregistré : orphelin définitif, supprimé ici
+/// (fichier source, maillage, ligne) pour libérer le quota — à l'ouverture
+/// seulement, quand plus aucune session d'édition ne peut l'annuler.
 pub async fn list_for_project(
     CurrentUser(user): CurrentUser,
     State(state): State<AppState>,
     Path(project_raw): Path<String>,
 ) -> ApiResult<Json<Vec<ModelResponse>>> {
     let project_id = parse_project_id(&project_raw)?;
-    state.storage.projects().get(user.id, project_id).await?; // 404 si autre compte
+    let project = state.storage.projects().get(user.id, project_id).await?; // 404 si autre compte
     let models = state
         .storage
         .models()
         .list(user.id, Some(project_id))
         .await?;
-    Ok(Json(models.into_iter().map(Into::into).collect()))
+    let jobs = state.storage.jobs().list(user.id).await?;
+    let referenced = referenced_model_ids(&project.scene, project_id, &jobs);
+    let known = known_model_ids(&project.scene, project_id);
+    let mut out = Vec::with_capacity(models.len());
+    for model in models {
+        let id = model.id.to_string();
+        if known.contains(&id) && !referenced.contains(&id) {
+            delete_model_files(&state, user.id, &model).await;
+            continue;
+        }
+        let mut response: ModelResponse = model.into();
+        response.referenced = Some(referenced.contains(&id));
+        out.push(response);
+    }
+    Ok(Json(out))
+}
+
+/// Modèles que l'éditeur connaissait à l'enregistrement de la scène
+/// (`knownModels = { projectId, ids }`, frontend scene/document.ts).
+pub(crate) fn known_model_ids(
+    scene: &serde_json::Value,
+    project_id: ProjectId,
+) -> std::collections::HashSet<String> {
+    let Some(known) = scene.get("knownModels") else {
+        return Default::default();
+    };
+    if known.get("projectId").and_then(serde_json::Value::as_str)
+        != Some(project_id.to_string().as_str())
+    {
+        return Default::default();
+    }
+    known
+        .get("ids")
+        .and_then(serde_json::Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(serde_json::Value::as_str)
+        .map(str::to_string)
+        .collect()
+}
+
+/// Toute chaîne d'un document de scène (hors `knownModels`) : les modèles y
+/// apparaissent par `modelId` (objets, volumes maillés…) ; un balayage
+/// complet couvre aussi les références futures.
+fn collect_strings(value: &serde_json::Value, out: &mut std::collections::HashSet<String>) {
+    match value {
+        serde_json::Value::String(s) => {
+            out.insert(s.clone());
+        }
+        serde_json::Value::Array(items) => items.iter().for_each(|v| collect_strings(v, out)),
+        serde_json::Value::Object(map) => {
+            for (key, v) in map {
+                if key != "knownModels" {
+                    collect_strings(v, out);
+                }
+            }
+        }
+        _ => {}
+    }
+}
+
+/// Identifiants référencés par la scène enregistrée et par les scènes figées
+/// des tranchages du projet encore utiles (en file / en cours, et dernier
+/// tranchage réussi de chaque plateau : export du 3MF tranché).
+pub(crate) fn referenced_model_ids(
+    scene: &serde_json::Value,
+    project_id: ProjectId,
+    jobs: &[crate::domain::SlicingJob],
+) -> std::collections::HashSet<String> {
+    use crate::domain::JobStatus;
+    let mut out = std::collections::HashSet::new();
+    collect_strings(scene, &mut out);
+    let mut latest: std::collections::HashMap<i64, &crate::domain::SlicingJob> =
+        std::collections::HashMap::new();
+    for job in jobs.iter().filter(|j| j.project_id == project_id) {
+        match job.status {
+            JobStatus::Queued | JobStatus::Running => {
+                if let Some(scene) = &job.scene {
+                    collect_strings(scene, &mut out);
+                }
+            }
+            JobStatus::Succeeded => {
+                let newer = latest
+                    .get(&job.plate_index)
+                    .is_none_or(|prev| job.created_at > prev.created_at);
+                if newer {
+                    latest.insert(job.plate_index, job);
+                }
+            }
+            _ => {}
+        }
+    }
+    for job in latest.values() {
+        if let Some(scene) = &job.scene {
+            collect_strings(scene, &mut out);
+        }
+    }
+    out
+}
+
+/// Supprime un modèle orphelin : ligne puis fichiers (source, maillage).
+async fn delete_model_files(state: &AppState, user: UserId, model: &Model) {
+    if let Err(error) = state.storage.models().delete(user, model.id).await {
+        tracing::warn!(%error, model = %model.id, "modèle orphelin non supprimé");
+        return;
+    }
+    let _ = tokio::fs::remove_file(&model.file_path).await;
+    if let Some(path) = model.mesh_path.as_deref() {
+        let _ = tokio::fs::remove_file(path).await;
+    }
+    tracing::info!(model = %model.id, "modèle orphelin supprimé (retiré de la scène enregistrée)");
 }
 
 /// `GET /api/models/{id}/file` — fichier source brut (T092) : permet à
