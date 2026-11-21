@@ -49,6 +49,10 @@ export interface SceneObjectDoc {
 	emboss?: Record<string, unknown>;
 	/** Lot 37 — pièce issue d'une coupe (Orca `ModelObject::cut_id`). */
 	cutId?: CutObjectId;
+	/** Audit 42 I1 — objet hors du volume imprimable de son plateau (dehors ou à
+	 *  cheval, Orca check_outside_state) : le serveur refuse de trancher
+	 *  (`off_bed_ids`). Recalculé à chaque enregistrement ; absent = dedans. */
+	off_bed?: boolean;
 }
 
 /**
@@ -97,6 +101,8 @@ export interface SceneObjectState {
 	meshName?: string;
 	emboss?: Record<string, unknown>;
 	cutId?: CutObjectId | null;
+	/** Audit 42 I1 — hors du volume imprimable (sérialisé `off_bed`). */
+	offBed?: boolean;
 }
 
 /** Sérialise un objet vivant en document. */
@@ -116,6 +122,7 @@ export function serializeObject(o: SceneObjectState): SceneObjectDoc {
 		// Copie JSON : l'objet peut être un proxy réactif (non clonable par structuredClone).
 		...(o.emboss ? { emboss: JSON.parse(JSON.stringify(o.emboss)) } : {}),
 		...(o.cutId ? { cutId: { ...o.cutId } } : {}),
+		...(o.offBed ? { off_bed: true } : {}),
 		...(o.volumes && o.volumes.length > 0 ? { volumes: structuredClone(o.volumes) } : {}),
 		...(o.layerRanges && o.layerRanges.length > 0
 			? { layerRanges: structuredClone(o.layerRanges) }
@@ -221,12 +228,14 @@ export interface SceneRestorePlan {
 /**
  * Calcule la restauration d'une scène : **un objet par `scene.objects`** (et
  * non un par modèle, ce qui perdait les instances partageant un modèle), puis
- * les modèles orphelins. Un orphelin n'est restauré que s'il est postérieur à
- * la dernière sauvegarde (absent de `knownModels` du même projet) ou si la
- * scène n'a jamais été sauvegardée par l'éditeur ; dans une scène sauvegardée
- * sans liste exploitable (ancien format, copie d'un autre projet), les
- * orphelins correspondent à des suppressions sauvegardées et restent masqués.
- * Pur.
+ * les modèles orphelins. Audit 42 C3 : une scène enregistrée par l'éditeur est
+ * rouverte **exactement** telle qu'enregistrée (Orca : fermer sans enregistrer
+ * rend le projet enregistré) — un import, un texte ou une forme ajoutés puis
+ * abandonnés (« Quitter sans enregistrer ») ne réapparaissent plus, sur le
+ * plateau 1 et sous leur nom de fichier serveur, dans un état hybride. Seule
+ * une scène vierge (jamais enregistrée par l'éditeur : ni objet ni plateau)
+ * affiche les modèles du projet (import puis rechargement d'un projet neuf,
+ * phase 32). Pur.
  */
 export function planSceneRestore(
 	scene: SceneDocument,
@@ -239,16 +248,10 @@ export function planSceneRestore(
 	);
 	const referenced = new Set(scene.objects.map((o) => o?.modelId));
 	const orphans = projectModelIds.filter((id) => !referenced.has(id));
-	let orphanModelIds: string[];
-	if (scene.knownModels && scene.knownModels.projectId === projectId) {
-		const known = new Set(scene.knownModels.ids);
-		orphanModelIds = orphans.filter((id) => !known.has(id));
-	} else if (scene.objects.length === 0 && scene.plates.plates.length === 0) {
-		// Scène vierge (jamais sauvegardée par l'éditeur) : tout est à afficher.
-		orphanModelIds = orphans;
-	} else {
-		orphanModelIds = [];
-	}
+	// Scène vierge (jamais sauvegardée par l'éditeur) : tout est à afficher.
+	const virgin = scene.objects.length === 0 && scene.plates.plates.length === 0;
+	void projectId; // `knownModels` reste écrit (historique), plus lu ici.
+	const orphanModelIds = virgin ? orphans : [];
 	const modelIds = [...new Set([...objects.map((o) => o.modelId), ...orphanModelIds])];
 	return { objects, orphanModelIds, modelIds };
 }

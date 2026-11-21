@@ -5,6 +5,7 @@
 	import { T, useThrelte } from '@threlte/core';
 	import type { IntersectionEvent } from '@threlte/extras';
 	import * as THREE from 'three';
+	import { attachPrintVolume, printVolumeUniforms } from './print-volume-shader';
 	import type { MeshPick, SceneMesh } from './mesh';
 	import type { SceneVolume, VolumeType } from './volumes';
 	import { overhangIndices } from './overhang';
@@ -71,6 +72,9 @@
 		/** Phase 39 — fil de fer (arêtes des triangles, peinture comprise) :
 		 *  « Toggle Wireframe » d'Orca, Alt+Maj+Entrée en peinture MMU. */
 		wireframe?: boolean;
+		/** Audit 42 I1 — objet à cheval : boîte du volume imprimable (repère du
+		 *  plateau) ; la partie hors volume est assombrie comme dans Orca. */
+		printVolume?: { min: [number, number, number]; max: [number, number, number] } | null;
 	}
 
 	// Couleurs par rôle, proches du rendu Orca (GLVolume) : pièce opaque,
@@ -108,8 +112,10 @@
 		hoverPreview = null,
 		realistic = null,
 		partSelect = false,
-		wireframe = false
+		wireframe = false,
+		printVolume = null
 	}: Props = $props();
+	const pvUniforms = printVolumeUniforms();
 
 	// Aperçu au survol (Orca : triangles « is_selected_by_seed_fill »).
 	const previewGeometry = $derived.by(() => {
@@ -246,6 +252,22 @@
 			return new THREE.MeshLambertMaterial();
 		return new THREE.MeshStandardMaterial({ metalness: 0.1, roughness: 0.7 });
 	});
+	// Audit 42 I1 : assombrissement hors volume (gouraud.fs d'Orca), uniformes
+	// partagés par les matériaux successifs de cet objet.
+	$effect(() => {
+		attachPrintVolume(surface, pvUniforms);
+		surface.needsUpdate = true;
+	});
+	$effect(() => {
+		const box = printVolume;
+		pvUniforms.uPvOn.value = box ? 1 : 0;
+		if (box) {
+			pvUniforms.uPvMin.value.set(...box.min);
+			pvUniforms.uPvMax.value.set(...box.max);
+		}
+		if (ref) pvUniforms.uPvMatrix.value = ref.matrix;
+		invalidate();
+	});
 	$effect(() => {
 		const m = surface;
 		return () => m.dispose();
@@ -364,14 +386,17 @@
 		onmeshpick?.({ point: [0, 0, 0], localPoint: [0, 0, 0], triangle: null, phase: 'up' });
 	}
 	function onpointerdown(event: IntersectionEvent<PointerEvent>) {
-		if (!paintstroke || !onmeshpick || event.nativeEvent.button !== 0) return;
+		// Bouton gauche ou droit (Orca : droit = bloquer / gomme selon le gizmo,
+		// audit 42 S2) ; la page décide si l'appui peint (`mouseStrokeState`).
+		const button = event.nativeEvent.button;
+		if (!paintstroke || !onmeshpick || (button !== 0 && button !== 2)) return;
 		const hit = meshHit(event);
 		if (!hit) return;
 		event.stopPropagation();
 		stroking = true;
 		paintAssist?.onhover?.(null);
-		onpick?.(false);
-		onmeshpick({ ...hit, phase: 'down' });
+		if (button === 0) onpick?.(false);
+		onmeshpick({ ...hit, phase: 'down', button, shift: event.nativeEvent.shiftKey });
 		const mode = paintAssist?.constraint ?? null;
 		const element = event.nativeEvent.target;
 		if (mode && element instanceof Element) {

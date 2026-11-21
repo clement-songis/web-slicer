@@ -247,6 +247,14 @@ export const MAIN_MENUS: Menu[] = [fileMenu, editMenu, viewMenu, calibrationMenu
 export const RECENT_ACTION = 'project.openRecent:';
 
 /**
+ * Audit 42 V-a : liste « Recent files » d'Orca (add_to_recent_projects) — le
+ * projet ouvert en tête, puis les autres dans l'ordre donné, sans doublon.
+ */
+export function recentFirst<T extends { id: string }>(projects: readonly T[], current: T): T[] {
+	return [current, ...projects.filter((p) => p.id !== current.id)];
+}
+
+/**
  * Menus avec le sous-menu « Recent files » rempli : projets les plus récemment
  * modifiés (hors projet courant), bornés à `max` (Orca max_recent_count) ;
  * liste vide → entrée « No recent projects » sans effet.

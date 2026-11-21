@@ -2,7 +2,14 @@
 import { describe, expect, test } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { MAIN_MENUS, RECENT_ACTION, allMenuLabels, menuLabels, withRecentProjects } from './menus';
+import {
+	MAIN_MENUS,
+	RECENT_ACTION,
+	allMenuLabels,
+	menuLabels,
+	recentFirst,
+	withRecentProjects
+} from './menus';
 import { SHORTCUT_GROUPS, totalShortcuts } from './shortcuts';
 import type { MenuItem } from './menus';
 import { isSaveChord, resolveShortcut, type KeyChord } from '../editor/shortcuts';
@@ -192,6 +199,21 @@ describe('Fichier › Fichiers récents (audit 41 P2, Orca MainFrame « Recent f
 		expect(items.map((i) => i.label)).toEqual(['Undo 0', 'Undo 1', 'Undo 2']);
 		expect(items.every((i) => i.raw)).toBe(true);
 		expect(items[0].action).toBe(RECENT_ACTION + 'p0');
+	});
+	test('audit 42 V-a : projet ouvert en tête, sans doublon (compte à un seul projet)', () => {
+		const cur = { id: 'a', name: 'Seul' };
+		expect(recentFirst([], cur)).toEqual([cur]);
+		expect(
+			recentFirst(
+				[
+					{ id: 'b', name: 'B' },
+					{ id: 'a', name: 'ancien nom' }
+				],
+				cur
+			)
+		).toEqual([cur, { id: 'b', name: 'B' }]);
+		const items = recentItems(withRecentProjects(MAIN_MENUS, recentFirst([], cur), 18));
+		expect(items.map((i) => i.label)).toEqual(['Seul']);
 	});
 	test('liste vide → « No recent projects »', () => {
 		const items = recentItems(withRecentProjects(MAIN_MENUS, [], 18));

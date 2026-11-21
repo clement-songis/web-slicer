@@ -123,6 +123,18 @@ export function translate(loc: Locale, key: string, params?: MessageParams): str
 /** Locale courante (store réactif) ; synchronisée avec Paraglide. */
 export const locale = writable<Locale>(currentLocale());
 
+/** A3 (audit 42) : `<html lang>` suit la langue de l'interface (lecteurs
+ *  d'écran, césure, guillemets) ; `app.html` ne porte que la valeur SSR. */
+export function syncDocumentLang(
+	loc: Locale,
+	doc: { documentElement?: { lang: string } } | undefined = typeof document === 'undefined'
+		? undefined
+		: document
+): void {
+	if (doc?.documentElement && doc.documentElement.lang !== loc) doc.documentElement.lang = loc;
+}
+locale.subscribe((loc) => syncDocumentLang(loc));
+
 /**
  * Helper réactif : `$t('New Project')`. Se réévalue au changement de locale et
  * à l'arrivée d'un dictionnaire paresseux.

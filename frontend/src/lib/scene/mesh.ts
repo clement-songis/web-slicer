@@ -23,6 +23,10 @@ export interface MeshPick {
 	localCamera?: [number, number, number];
 	/** Trait glissé (peinture) : appui, déplacement, relâchement ; absent = clic. */
 	phase?: 'down' | 'move' | 'up';
+	/** Appui (`phase: 'down'`) ou clic : bouton (0 gauche, 2 droit) et Maj —
+	 *  peinture d'Orca : droit = bloquer / gomme, Maj = effacer (audit 42 S2). */
+	button?: number;
+	shift?: boolean;
 }
 
 /** Un objet placé sur le plateau : maillage + transformation (repère plateau). */

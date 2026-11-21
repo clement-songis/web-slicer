@@ -161,6 +161,15 @@
 	<p class="pl-18 text-xs text-content-subtle" data-testid="paint-tool-hint">
 		{$t(PAINT_TOOL_HINTS[tool])}
 	</p>
+	<!-- Audit 42 S2 : rappel des boutons de la souris (Orca : « Left mouse
+	     button / Right mouse button / Shift + Left mouse button »). -->
+	<p class="pl-18 text-xs text-content-subtle" data-testid="paint-mouse-hint">
+		{channel === 'mmu'
+			? $t('Left button: paint the selected filament · Shift: erase')
+			: channel === 'fuzzy'
+				? $t('Left button: paint · Right button or Shift: erase')
+				: $t('Left button: enforce · Right button: block · Shift: erase')}
+	</p>
 
 	{#if channel !== 'mmu'}
 		<div class="flex items-center gap-2">

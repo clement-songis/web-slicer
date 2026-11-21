@@ -16,9 +16,13 @@
 		save: () => Promise<SaveOutcome>;
 		/** Modifications non enregistrées depuis la dernière sauvegarde. */
 		unsaved?: boolean;
+		/** Audit 42 C2 — conflit : recharger le projet enregistré ailleurs. */
+		onreload?: () => void;
+		/** Audit 42 C2 — conflit : écraser la version enregistrée ailleurs. */
+		overwrite?: () => Promise<SaveOutcome>;
 	}
 
-	let { save, unsaved = false }: Props = $props();
+	let { save, unsaved = false, onreload, overwrite }: Props = $props();
 
 	type SaveState = 'idle' | 'saving' | 'saved' | 'conflict' | 'error';
 	let saveState = $state<SaveState>('idle');
@@ -28,6 +32,13 @@
 		if (saveState === 'saving') return;
 		saveState = 'saving';
 		const outcome = await save();
+		saveState = outcome.status === 'saved' ? 'saved' : outcome.status;
+		message = outcome.status === 'error' ? outcome.message : '';
+	}
+	async function runOverwrite() {
+		if (!overwrite || saveState === 'saving') return;
+		saveState = 'saving';
+		const outcome = await overwrite();
 		saveState = outcome.status === 'saved' ? 'saved' : outcome.status;
 		message = outcome.status === 'error' ? outcome.message : '';
 	}
@@ -83,11 +94,29 @@
 	<!-- Succès : annoncé par la barre de message de l'éditeur (évite le doublon
 	     et le décalage de la barre d'en-tête). -->
 	{#if saveState === 'conflict'}
-		<p class="text-warning" role="alert">
-			{$t(
-				'Conflict: the project was modified in another tab. Reload before saving so as not to overwrite those changes.'
-			)}
-		</p>
+		<!-- Audit 42 C2 : l'autre écriture peut venir d'un autre onglet ou d'un autre
+		     appareil ; deux actions explicites plutôt qu'une consigne. -->
+		<div class="flex flex-col gap-1" role="alert" data-testid="save-conflict">
+			<p class="text-warning">
+				{$t(
+					'Conflict: the project was modified elsewhere (another tab or device). Reload to see those changes (yours will be lost), or overwrite them with your version.'
+				)}
+			</p>
+			<div class="flex gap-2">
+				{#if onreload}<button
+						type="button"
+						class="ws-btn ws-btn-secondary ws-btn-sm"
+						data-testid="save-conflict-reload"
+						onclick={() => onreload?.()}>{$t('Reload')}</button
+					>{/if}
+				{#if overwrite}<button
+						type="button"
+						class="ws-btn ws-btn-danger ws-btn-sm"
+						data-testid="save-conflict-overwrite"
+						onclick={runOverwrite}>{$t('Overwrite||conflict')}</button
+					>{/if}
+			</div>
+		</div>
 	{:else if saveState === 'error'}
 		<p class="text-danger" role="alert">{message}</p>
 	{/if}

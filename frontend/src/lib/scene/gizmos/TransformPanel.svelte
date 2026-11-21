@@ -5,7 +5,7 @@
 	// Audit 40 B3 : échelle en % (Orca « Scale ratios », 100 %) et ligne Taille
 	// en mm, verrou d'échelle uniforme fermé par défaut (Orca m_uniform_scale).
 	import { normalizeAngle, type Transform } from '../transform';
-	import { t } from '$lib/i18n';
+	import { fmtDec, locale, t } from '$lib/i18n';
 	import IconLock from '~icons/lucide/lock';
 	import IconUnlock from '~icons/lucide/lock-open';
 	import {
@@ -79,7 +79,19 @@
 		return transform[field][i];
 	}
 
+	/** Audit 42 V-b : en pouces, longueurs affichées avec le séparateur décimal
+	 *  de la langue (« 0,7874 » en français, comme les champs d'Orca) : champ
+	 *  texte décimal au lieu d'un champ number (point imposé par le navigateur). */
+	const localized = (field: Field) => units === 'in' && (field === 'position' || field === 'size');
+	function display(field: Field, i: number): string | number {
+		const v = shown(field, i);
+		return localized(field) ? fmtDec(v, 4, $locale) : v;
+	}
+
 	function setAxis(field: Field, index: number, raw: string) {
+		// Saisie texte (pouces) : on n'applique qu'un nombre complet (« 0, » en
+		// cours de frappe reste affiché tel quel).
+		if (localized(field) && !/^\s*-?\d*(?:[.,]\d+)?\s*$/.test(raw)) return;
 		const typed = Number(raw.replace(',', '.'));
 		if (!Number.isFinite(typed) || raw.trim() === '') return;
 		// Longueurs saisies dans l'unité affichée, appliquées en mm.
@@ -134,9 +146,10 @@
 						aria-hidden="true">{axis}</span
 					>
 					<input
-						type="number"
-						step={row.step}
-						value={shown(row.field, i)}
+						type={localized(row.field) ? 'text' : 'number'}
+						inputmode={localized(row.field) ? 'decimal' : undefined}
+						step={localized(row.field) ? undefined : row.step}
+						value={display(row.field, i)}
 						oninput={(e) => setAxis(row.field, i, e.currentTarget.value)}
 						class="ws-field ws-field-sm w-full min-w-0 pr-1.5 pl-4 text-right"
 						aria-label={`${row.name} ${axis}`}

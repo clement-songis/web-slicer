@@ -3,8 +3,10 @@
 	// Vue, Calibration, Aide) en menus déroulants. Présentational : émet
 	// l'identifiant d'action stable ; la page (`routes/projects/[id]`) le dispatche
 	// vers les commandes réelles. Libellés localisés via `$t` (repli anglais).
+	import { tick } from 'svelte';
 	import type { Menu } from './menus';
 	import { t } from '$lib/i18n';
+	import { altLetter, menuForMnemonic, menuMnemonic, moveIndex } from './menu-keys';
 
 	interface Props {
 		menus: Menu[];
@@ -51,12 +53,126 @@
 		if (openSub === label && Date.now() - openedAt > 400) openSub = null;
 		else openSubNow(label);
 	}
+
+	// — Audit 42 A2 : clavier (motif WAI-ARIA « menubar », menus natifs d'Orca) —
+	// Titres : ↓ / Entrée / Espace ouvrent le menu sur son 1er élément, ↑ sur le
+	// dernier, ← / → passent au titre voisin. Menu ouvert : ↑ / ↓ / Début / Fin
+	// parcourent les éléments, → déplie un sous-menu (sinon menu suivant), ←
+	// replie (sinon menu précédent), Échap / Tab referment et rendent le focus au
+	// titre. Alt+lettre (première lettre du titre affiché) ouvre un menu.
+	const titleEls: HTMLButtonElement[] = [];
+	let menuEl = $state<HTMLDivElement | null>(null);
+	const items = (): HTMLButtonElement[] =>
+		menuEl ? Array.from(menuEl.querySelectorAll<HTMLButtonElement>(':scope > button')) : [];
+	async function openAt(index: number, focus: 'first' | 'last' | 'none' = 'first') {
+		const n = menus.length;
+		if (n === 0) return;
+		const menu = menus[((index % n) + n) % n];
+		if (openTitle !== menu.title) {
+			openTitle = menu.title;
+			openSub = null;
+			onopen?.(menu.title);
+		}
+		await tick();
+		const list = items();
+		if (focus === 'first') list[0]?.focus();
+		else if (focus === 'last') list[list.length - 1]?.focus();
+	}
+	function closeToTitle() {
+		const index = menus.findIndex((m) => m.title === openTitle);
+		close();
+		if (index >= 0) titleEls[index]?.focus();
+	}
+	function onTitleKey(e: KeyboardEvent, index: number) {
+		const n = menus.length;
+		// Touches de navigation consommées ici : pas de raccourci d'éditeur
+		// (flèches = déplacer l'objet sélectionné).
+		if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Enter', ' '].includes(e.key))
+			e.stopPropagation();
+		if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+			e.preventDefault();
+			void openAt(index, 'first');
+		} else if (e.key === 'ArrowUp') {
+			e.preventDefault();
+			void openAt(index, 'last');
+		} else if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') {
+			e.preventDefault();
+			const next = (index + (e.key === 'ArrowRight' ? 1 : -1) + n) % n;
+			titleEls[next]?.focus();
+			if (openTitle) void openAt(next, 'none');
+		}
+	}
+	async function onMenuKey(e: KeyboardEvent, index: number) {
+		const list = items();
+		const current = list.indexOf(document.activeElement as HTMLButtonElement);
+		const focused = current >= 0 ? list[current] : null;
+		if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key))
+			e.stopPropagation();
+		switch (e.key) {
+			case 'ArrowDown':
+			case 'ArrowUp':
+			case 'Home':
+			case 'End':
+				e.preventDefault();
+				list[moveIndex(current, list.length, e.key)]?.focus();
+				break;
+			case 'ArrowRight': {
+				e.preventDefault();
+				const sub = focused?.dataset.subTrigger;
+				if (sub !== undefined) {
+					openSubNow(sub);
+					await tick();
+					const after = items();
+					after[after.indexOf(focused!) + 1]?.focus();
+				} else void openAt(index + 1, 'first');
+				break;
+			}
+			case 'ArrowLeft': {
+				e.preventDefault();
+				const parent = focused?.dataset.subOf;
+				if (parent !== undefined) {
+					openSub = null;
+					await tick();
+					items()
+						.find((b) => b.dataset.subTrigger === parent)
+						?.focus();
+				} else void openAt(index - 1, 'first');
+				break;
+			}
+			case 'Escape':
+			case 'Tab':
+				e.preventDefault();
+				e.stopPropagation();
+				closeToTitle();
+				break;
+		}
+	}
+	function onWindowKey(e: KeyboardEvent) {
+		if (openTitle && e.key === 'Escape') {
+			close();
+			return;
+		}
+		const letter = altLetter(e);
+		if (!letter) return;
+		const index = menuForMnemonic(
+			menus.map((m) => $t(m.title)),
+			letter
+		);
+		if (index < 0) return;
+		e.preventDefault();
+		e.stopPropagation();
+		titleEls[index]?.focus();
+		void openAt(index, 'first');
+	}
 </script>
 
 <div class="relative flex items-center">
-	{#each menus as menu (menu.title)}
+	{#each menus as menu, mi (menu.title)}
 		<div class="relative">
 			<button
+				bind:this={titleEls[mi]}
+				aria-keyshortcuts={'Alt+' + menuMnemonic($t(menu.title)).toUpperCase()}
+				onkeydown={(e) => onTitleKey(e, mi)}
 				type="button"
 				class="ws-btn ws-btn-ghost px-2 font-normal {openTitle === menu.title
 					? 'bg-overlay text-content'
@@ -76,6 +192,9 @@
 						? 'w-80'
 						: 'min-w-56'}"
 					role="menu"
+					tabindex="-1"
+					bind:this={menuEl}
+					onkeydown={(e) => void onMenuKey(e, mi)}
 				>
 					{#each menu.entries as entry, i (i)}
 						{#if entry === 'separator'}
@@ -87,6 +206,7 @@
 								class="ws-menu-item justify-between"
 								aria-haspopup="menu"
 								aria-expanded={openSub === entry.label}
+								data-sub-trigger={entry.label}
 								onpointerenter={() => hoverSub(entry.label)}
 								onpointerleave={() => clearTimeout(hoverTimer)}
 								onclick={() => clickSub(entry.label)}
@@ -100,6 +220,7 @@
 										type="button"
 										class="ws-menu-item justify-between pl-6"
 										role="menuitem"
+										data-sub-of={entry.label}
 										onclick={() => pick(sub.action)}
 									>
 										<span class={sub.raw ? 'truncate' : ''}
@@ -141,7 +262,7 @@
 </div>
 
 <!-- Échap referme le menu déroulant ouvert (comportement natif des barres de menus). -->
-<svelte:window onkeydown={(e) => openTitle && e.key === 'Escape' && close()} />
+<svelte:window onkeydown={onWindowKey} />
 
 <!-- Fond transparent : referme la barre au clic extérieur. -->
 {#if openTitle}

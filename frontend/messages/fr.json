@@ -2385,5 +2385,16 @@
 	"p42b_proposed_names": "Noms proposés",
 	"p42b_ext_required": "Extension imposée par l'hôte d'impression",
 	"p42b_base_name_hint": "Nom de base commun à tous les plateaux (suffixes _2, _3… si plusieurs fichiers sont envoyés) ; vide = noms proposés.",
-	"p42b_uploads": "Envois"
+	"p42b_uploads": "Envois",
+	"p43_paint_mouse_mmu": "Clic gauche : peindre avec le filament choisi · Maj : effacer",
+	"p43_paint_mouse_fuzzy": "Clic gauche : peindre · clic droit ou Maj : effacer",
+	"p43_paint_mouse_supports": "Clic gauche : forcer · clic droit : bloquer · Maj : effacer",
+	"p43_conflict_actions": "Conflit : le projet a été modifié ailleurs (autre onglet ou appareil). Rechargez pour voir ces changements (les vôtres seront perdus), ou écrasez-les avec votre version.",
+	"p43_overwrite": "Écraser",
+	"p43_conflict_short": "Conflit : le projet a été modifié ailleurs (autre onglet ou appareil).",
+	"p43_outside_partly": "Les objets suivants dépassent les limites de la plaque ou dépassent la limite de hauteur :\n{name}\nVeuillez résoudre le problème en le déplaçant entièrement sur ou hors de la plaque, et en confirmant que la hauteur est dans le volume de construction.",
+	"p43_outside_full": "{name} est hors du plateau : déplacez-le sur le plateau (ou sur un autre plateau) avant de trancher.",
+	"p43_slice_outside": "Un objet est hors de la zone imprimable : replacez-le sur le plateau avant de trancher",
+	"p43_waiting_conn": "en attente de la connexion…",
+	"p43_import_conn_lost": "Connexion perdue pendant l'import de {files} : l'import reprendra automatiquement au retour de la connexion."
 }

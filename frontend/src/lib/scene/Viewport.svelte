@@ -9,6 +9,7 @@
 	import type { ScreenBox, SectionPlane } from './screen-select';
 	import Bed from './Bed.svelte';
 	import type { BedShape } from './bed';
+	import { printVolumeBox } from './print-volume';
 	import {
 		frameBox,
 		orthoZoom,
@@ -66,6 +67,8 @@
 		printOrder?: Record<string, number> | null;
 		/** Objets désignés par la validation (phase 29), niveau le plus grave. */
 		issueObjects?: Record<string, 'error' | 'warning'> | null;
+		/** Audit 42 I1 — objets hors du volume imprimable (à cheval / dehors). */
+		outsideObjects?: Record<string, 'partly' | 'outside'> | null;
 		/** Multi-filament : couleur par extrudeur et extrudeur effectif par objet. */
 		extruderColors?: readonly string[] | null;
 		objectExtruders?: Record<string, number> | null;
@@ -158,6 +161,7 @@
 		labels = null,
 		printOrder = null,
 		issueObjects = null,
+		outsideObjects = null,
 		extruderColors = null,
 		objectExtruders = null,
 		paintOverlays = null,
@@ -214,6 +218,8 @@
 	});
 	// Étiquettes de plateau : milieu du bord arrière, juste derrière le plateau
 	// (nom de plateau d'Orca) — reste à l'écran au cadrage par défaut.
+	// Audit 42 I1 : boîte du volume imprimable (objets à cheval assombris).
+	const pvBox = $derived(printVolumeBox(bed));
 	const labelAt = (offset: [number, number]): [number, number, number] => [
 		bed.center.x + offset[0],
 		bed.center.y + bed.depth / 2 + offset[1] + Math.max(4, bed.depth * 0.03),
@@ -740,6 +746,7 @@
 		selected={selection.has(obj.id)}
 		printable={obj.printable}
 		issue={issueObjects?.[obj.id] ?? null}
+		printVolume={outsideObjects?.[obj.id] === 'partly' ? pvBox : null}
 		clipPlane={clipAll || selection.has(obj.id) ? clipPlane : null}
 		{partSelect}
 		wireframe={wireframe && selection.has(obj.id)}

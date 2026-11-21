@@ -51,6 +51,8 @@
 		printOrder?: Record<string, number> | null;
 		/** Objets désignés par la validation (phase 29), niveau le plus grave. */
 		issueObjects?: Record<string, 'error' | 'warning'> | null;
+		/** Audit 42 I1 — objets hors du volume imprimable (à cheval / dehors). */
+		outsideObjects?: Record<string, 'partly' | 'outside'> | null;
 		extruderColors?: readonly string[] | null;
 		objectExtruders?: Record<string, number> | null;
 		/** Peinture visible par objet (supports/couture/fuzzy/MMU). */
@@ -123,6 +125,7 @@
 		labels = null,
 		printOrder = null,
 		issueObjects = null,
+		outsideObjects = null,
 		extruderColors = null,
 		objectExtruders = null,
 		paintOverlays = null,
@@ -231,8 +234,11 @@
 	const frameMeter = new FrameMeter();
 </script>
 
+<!-- I4 (audit 42) : `isolate` confine les z-index géants des étiquettes HTML
+     de threlte (zIndexRange 16 777 271) à la scène : elles ne passent plus
+     au-dessus des dialogues, menus et voiles de l'interface. -->
 <div
-	class="relative h-full w-full"
+	class="relative isolate h-full w-full"
 	bind:this={container}
 	onpointerdowncapture={onRectDown}
 	onpointermovecapture={onRectMove}
@@ -279,6 +285,11 @@
 	data-overhang-faces={overhangNormalZ === null ? undefined : overhangFaces}
 	data-labels={labels ? Object.keys(labels).length : undefined}
 	data-print-order={printOrder ? Object.keys(printOrder).length : undefined}
+	data-outside-objects={outsideObjects
+		? Object.entries(outsideObjects)
+				.map(([id, state]) => id + ':' + state)
+				.join(';') || undefined
+		: undefined}
 	data-issue-objects={issueObjects
 		? Object.entries(issueObjects)
 				.map(([id, level]) => id + ':' + level)
@@ -323,6 +334,7 @@
 				{labels}
 				{printOrder}
 				{issueObjects}
+				{outsideObjects}
 				{extruderColors}
 				{objectExtruders}
 				{paintOverlays}

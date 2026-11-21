@@ -18,7 +18,7 @@ const hullCache = new WeakMap<SceneMesh, Float32Array>();
 /** Au-delà, l'enveloppe 3D est calculée sur un échantillon régulier de sommets. */
 const MAX_HULL_INPUT = 200_000;
 
-function hullPoints(mesh: SceneMesh): Float32Array {
+export function hullPoints(mesh: SceneMesh): Float32Array {
 	const cached = hullCache.get(mesh);
 	if (cached) return cached;
 	const pos = mesh.positions;

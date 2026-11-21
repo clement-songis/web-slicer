@@ -77,7 +77,7 @@
 	import FilamentMapDialog from '$lib/editor/FilamentMapDialog.svelte';
 	import { buildZip } from '$lib/export/zip';
 	import { modelsFromZip, presetsFromFiles } from '$lib/editor/menu-files';
-	import { tabTogglesView } from '$lib/editor/tab-focus';
+	import { pointerFocusesView, tabTogglesView, VIEW_ZONE_SELECTOR } from '$lib/editor/tab-focus';
 	import { isDefaultProjectName, projectNameFromFile } from '$lib/editor/project-name';
 	import GcodeWindow from '$lib/preview/GcodeWindow.svelte';
 	import { nextNotice, type Notice } from '$lib/editor/notice';
@@ -120,7 +120,8 @@
 		serverSliceFreshness,
 		shouldRestore
 	} from '$lib/editor/slice-signature-store';
-	import { connection } from '$lib/api/connectivity';
+	import { connection, reportUnreachable } from '$lib/api/connectivity';
+	import { clearWaiting, isConnectionError, markWaiting } from '$lib/editor/imports';
 	import type { JobResponse, SliceRequest } from '$lib/api/types';
 	import type { Projection } from '$lib/scene/camera';
 	import { cameraSpaceNudge, clampZoom } from '$lib/scene/camera';
@@ -169,7 +170,7 @@
 		type NozzleFlow
 	} from '$lib/settings/nozzle-flow';
 	import DevicePanel from '$lib/printers/DevicePanel.svelte';
-	import { MAIN_MENUS, RECENT_ACTION, withRecentProjects } from '$lib/menus/menus';
+	import { MAIN_MENUS, RECENT_ACTION, recentFirst, withRecentProjects } from '$lib/menus/menus';
 	import { sortByUpdated } from '$lib/library/library';
 	import { draftStore, type DraftRecord } from '$lib/stores/draft';
 	import {
@@ -384,7 +385,8 @@
 		duplicateProject,
 		renameProject,
 		importProject,
-		listProjects
+		listProjects,
+		getProject
 	} from '$lib/api/projects';
 	import {
 		isNameConflict,
@@ -436,6 +438,10 @@
 		type PaintOverlay
 	} from '$lib/scene/gizmos/painting/paint-overlay';
 	import { StrokeRecorder } from '$lib/scene/gizmos/painting/stroke';
+	import { mouseStrokeState } from '$lib/scene/gizmos/painting/mouse-state';
+	import { outsideStates } from '$lib/scene/print-volume';
+	import { importedPlates } from '$lib/scene/import-plates';
+	import { outsideNotices } from '$lib/editor/outside-notices';
 	import { CutSession } from '$lib/scene/tools/cut-session.svelte';
 	import { cutPartLabel } from '$lib/scene/tools/cut-plan';
 	import { nearestFreeCell } from '$lib/scene/arrange';
@@ -884,6 +890,32 @@
 	let sceneObjects = $state<SceneObject[]>([]);
 	const activePlate = $derived(plates.activeId ? (plates.get(plates.activeId) ?? null) : null);
 	const activeSceneObjects = $derived(objectsOnPlate(sceneObjects, activePlate));
+	// Audit 42 I1 — objets hors du volume imprimable (Orca check_outside_state) :
+	// coloration, notification, drapeau `off_bed` de la scène, tranchage et
+	// export bloqués tant qu'un objet du plateau est dehors ou à cheval.
+	const objectOutside = $derived.by(() =>
+		outsideStates(
+			sceneObjects.filter((o) => tree.isPrintable(o.id)),
+			bed
+		)
+	);
+	const outsideList = $derived.by(() => {
+		const list = plates.list();
+		return Object.entries(objectOutside).map(([id, state]) => ({
+			id,
+			state,
+			name: tree.get(id)?.name ?? id,
+			plateIndex: Math.max(
+				0,
+				list.findIndex((p) => p.objectIds.includes(id))
+			)
+		}));
+	});
+	const activeOutside = $derived(activeSceneObjects.filter((o) => objectOutside[o.id]));
+	const outsideNoticeList = $derived.by(() => {
+		void $locale; // textes traduits par tr() : recalcul au changement de langue
+		return outsideNotices(outsideList, plates.list().length);
+	});
 	// Badges de la liste d'objets : réglages surchargés (objet + pièces), plages
 	// de hauteur et pièces/modificateurs de chaque objet.
 	const objectOverrideCounts = $derived.by(() => {
@@ -1945,6 +1977,7 @@
 	const ACCEPT = '.stl,.obj,.mtl,.3mf,.oltp,.step,.stp,.amf,.svg,.drc';
 	const canSliceNow = $derived(
 		activeSceneObjects.length > 0 &&
+			activeOutside.length === 0 &&
 			!imports.some((item) => isPending(item)) &&
 			!!activePresets.process &&
 			activePresets.filaments.length > 0
@@ -1952,6 +1985,7 @@
 	// « Trancher tout » : au moins un objet sur un plateau (les plateaux vides sont sautés).
 	const canSliceAll = $derived(
 		sceneObjects.length > 0 &&
+			outsideList.length === 0 &&
 			!imports.some((item) => isPending(item)) &&
 			!!activePresets.process &&
 			activePresets.filaments.length > 0
@@ -1960,11 +1994,13 @@
 	const sliceBlocker = $derived(
 		activeSceneObjects.length === 0
 			? $t('Add an object to slice')
-			: !activePresets.process
-				? $t('Choose a process profile')
-				: activePresets.filaments.length === 0
-					? $t('Choose a filament')
-					: $t('Import in progress…')
+			: activeOutside.length > 0
+				? $t('An object is outside the printable area: move it onto the plate before slicing')
+				: !activePresets.process
+					? $t('Choose a process profile')
+					: activePresets.filaments.length === 0
+						? $t('Choose a filament')
+						: $t('Import in progress…')
 	);
 
 	// Profils par défaut d'un nouveau projet (comme Orca : default_print_profile /
@@ -2142,7 +2178,10 @@
 		const unsubConnection = connection.subscribe((c) => {
 			if (c.restored === lastRestored) return;
 			lastRestored = c.restored;
-			if (c.restored > 0) void resyncSessionJobs();
+			if (c.restored > 0) {
+				void resyncSessionJobs();
+				void resumeWaitingImports();
+			}
 		});
 		return () => {
 			alive = false;
@@ -3455,8 +3494,55 @@
 			return true;
 		} catch (e) {
 			if (generation !== sceneGeneration) return false;
+			// Audit 42 C1 : liaison perdue pendant l'envoi — l'objet reste affiché
+			// en attente, l'envoi est relancé au retour de la connexion.
+			if (isConnectionError(e, typeof navigator !== 'undefined' && navigator.onLine === false)) {
+				const item = imports.find((i) => i.objectId === objectId);
+				if (item && !item.modelId) waitingUploads.set(objectId, file);
+				if (item) waitForConnection([item]);
+				return false;
+			}
 			failImport(objectId, e instanceof ApiError ? e.message : tr('upload failed'));
 			return false;
+		}
+	}
+
+	// — Audit 42 C1 : imports interrompus par la perte de connexion —————————
+	// Fichiers dont l'envoi n'a pas abouti (objet en attente → fichier).
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity -- non affiché
+	const waitingUploads = new Map<string, File>();
+	function waitForConnection(items: ImportItem[]) {
+		if (items.length === 0) return;
+		reportUnreachable();
+		for (const item of items) patchImport(item.objectId, markWaiting);
+		importError = tr(
+			'Connection lost while importing {files}: the import will resume automatically when the connection is back.',
+			{ files: [...new Set(items.map((i) => '« ' + i.filename + ' »'))].join(', ') }
+		);
+	}
+	let resuming = false;
+	async function resumeWaitingImports() {
+		if (resuming) return;
+		const waiting = imports.filter((i) => i.waiting);
+		if (waiting.length === 0) return;
+		resuming = true;
+		try {
+			importError = null;
+			// Envois à refaire : l'objet provisoire est remplacé par un nouvel import.
+			for (const item of waiting.filter((i) => !i.modelId)) {
+				const file = waitingUploads.get(item.objectId);
+				waitingUploads.delete(item.objectId);
+				rollbackImportIds.delete(item.objectId);
+				removeObject(item.objectId);
+				imports = imports.filter((i) => i.objectId !== item.objectId);
+				if (file) void importOne(file);
+			}
+			// Maillages à recharger (modèle déjà sur le serveur).
+			const models = [...new Set(waiting.map((i) => i.modelId).filter((m): m is string => !!m))];
+			for (const item of waiting) if (item.modelId) patchImport(item.objectId, clearWaiting);
+			for (const modelId of models) await resolveConversion(modelId);
+		} finally {
+			resuming = false;
 		}
 	}
 
@@ -3487,11 +3573,39 @@
 		imports = imports.filter((i) => i.objectId !== objectId);
 		rollbackImportIds.delete(objectId);
 		const added: ImportItem[] = [];
-		for (const doc of res.objects) {
-			const model = modelById.get(doc.modelId);
+		// Audit 42 I1 : 3MF multi-plateaux — chaque objet retrouve son plateau
+		// d'origine (position dans la grille d'Orca), ramené dans son repère ;
+		// le 1er plateau du 3MF va sur le plateau actif, les suivants sur de
+		// nouveaux plateaux.
+		const placements = importedPlates(
+			res.objects.map((d) => [d.transform.position[0], d.transform.position[1]]),
+			bed
+		);
+		// eslint-disable-next-line svelte/prefer-svelte-reactivity -- table locale
+		const importedPlateIds = new Map<number, string>();
+		const plateFor = (k: number): string | null => {
+			if (k === 0) return plateId;
+			let id = importedPlateIds.get(k);
+			if (!id) {
+				id = plates.addPlate().id;
+				importedPlateIds.set(k, id);
+			}
+			return id;
+		};
+		for (const [index, source] of res.objects.entries()) {
+			const model = modelById.get(source.modelId);
 			if (!model) continue;
+			const placement = placements[index];
+			const doc: SceneObjectDoc = {
+				...source,
+				transform: {
+					...source.transform,
+					position: [placement.local[0], placement.local[1], source.transform.position[2]]
+				}
+			};
 			const id = tree.add(doc.name || model.filename).id;
-			if (plateId) plates.assign(id, plateId);
+			const target = plateFor(placement.plate);
+			if (target) plates.assign(id, target);
 			const restored = deserializeObject(doc);
 			savedTransformByObject[id] = restored.transform;
 			savedDocumentByObject[id] = doc;
@@ -3608,6 +3722,13 @@
 			if (generation !== sceneGeneration) return;
 			// 409 = pas encore prêt : rester en « conversion en cours ».
 			if (e instanceof ApiError && e.status === 409) return;
+			// Audit 42 C1 : liaison perdue pendant le chargement du maillage — le
+			// modèle est bien sur le serveur : l'objet reste en attente et le
+			// chargement reprend au retour de la connexion (resumeWaitingImports).
+			if (isConnectionError(e, typeof navigator !== 'undefined' && navigator.onLine === false)) {
+				waitForConnection(imports.filter((i) => i.modelId === modelId && i.status !== 'failed'));
+				return;
+			}
 			// Cause du moteur (lot 27 : details.cause, traduite par le catalogue d'Orca).
 			const failed = e instanceof ApiError && e.code === 'conversion_failed';
 			if (failed) orcaCatalog ??= await loadOrcaCatalog().catch(() => null);
@@ -4779,6 +4900,8 @@
 		channel: PaintChannel;
 		before: Record<string, string>;
 		recorder: StrokeRecorder;
+		/** État peint par ce trait (bouton / Maj, audit 42 S2). */
+		state: number;
 	} | null = null;
 	let paintDragging = $state(false);
 	// Angle d'arrêt du pot de peinture (défaut Orca `m_smart_fill_angle` = 30°).
@@ -4809,7 +4932,8 @@
 		channel: PaintChannel,
 		before: Record<string, string>,
 		recorder: StrokeRecorder,
-		fields: StrokeToolFields
+		fields: StrokeToolFields,
+		state: number = paintState
 	) {
 		const modelId = objectModelId(id);
 		if (!modelId || recorder.length === 0) return;
@@ -4818,7 +4942,7 @@
 		const common = {
 			camera_pos: camera ?? recorder.points[0],
 			radius: paintRadius,
-			state: paintState,
+			state,
 			trafo: worldMatrix(objectTransform(object)),
 			// Outil d'Orca (cercle / sphère / triangle / plage de hauteur / remplissages).
 			...fields,
@@ -4866,15 +4990,31 @@
 			const doc = paintingFor(id);
 			// Comblement : rien au clic (bouton « Combler » de la barre).
 			if (!paintsOnClick(paintTool)) return;
+			// Audit 42 S2 — boutons d'Orca : gauche = état de la barre, droit =
+			// bloquer (supports, couture) / gomme (surface floue), Maj = effacer ;
+			// droit non géré en multi-matériaux.
+			const pressState =
+				pick.phase === 'down' || !pick.phase
+					? mouseStrokeState(paintChannel, pick.button ?? 0, !!pick.shift, paintState)
+					: null;
 			if (paintTool === 'fill') {
 				// Remplissages d'Orca (smart fill des supports / fuzzy / couture, pot
 				// du MMU avec ou sans arêtes) : calcul moteur seul, l'aperçu au
 				// survol a déjà montré la zone.
 				if (pick.phase === 'move' || pick.phase === 'up' || pick.triangle === null) return;
+				if (pressState === null) return;
 				const recorder = new StrokeRecorder(0);
 				recorder.add(pick);
 				const before = doc.serialize()[paintChannel] ?? {};
-				commitEngineStroke(id, object, paintChannel, before, recorder, currentStrokeFields());
+				commitEngineStroke(
+					id,
+					object,
+					paintChannel,
+					before,
+					recorder,
+					currentStrokeFields(),
+					pressState
+				);
 				clearHoverPreview();
 				return;
 			}
@@ -4884,17 +5024,30 @@
 				activeStroke = null;
 				const target = stroke ? sceneObjects.find((o) => o.id === stroke.id) : undefined;
 				if (stroke && target) {
-					const { channel, before, recorder } = stroke;
-					commitEngineStroke(stroke.id, target, channel, before, recorder, currentStrokeFields());
+					const { channel, before, recorder, state } = stroke;
+					commitEngineStroke(
+						stroke.id,
+						target,
+						channel,
+						before,
+						recorder,
+						currentStrokeFields(),
+						state
+					);
 				}
 				return;
 			}
 			if (pick.phase === 'down' || !pick.phase) {
+				if (pressState === null) {
+					activeStroke = null;
+					return;
+				}
 				activeStroke = {
 					id,
 					channel: paintChannel,
 					before: doc.serialize()[paintChannel] ?? {},
-					recorder: new StrokeRecorder(paintRadius * 0.1)
+					recorder: new StrokeRecorder(paintRadius * 0.1),
+					state: pressState
 				};
 				paintDragging = pick.phase === 'down';
 			}
@@ -4911,7 +5064,7 @@
 						? []
 						: trianglesInRadius(object.mesh, pick.localPoint, paintRadius);
 			if (preview.length) {
-				doc.paint(paintChannel, preview, paintState);
+				doc.paint(paintChannel, preview, activeStroke.state);
 				paintings = { ...paintings };
 			}
 			// Clic simple (sans phases) : trait d'un point, commit immédiat.
@@ -6107,16 +6260,23 @@
 			if (seq === validationSeq) validationBusy = false;
 		}
 	}
-	const validationNotices = $derived(
-		validation
+	const validationNotices = $derived([
+		// Audit 42 I1 : hors plateau calculé ici (immédiat, géométrie vivante) ;
+		// la notification équivalente du serveur (drapeau off_bed) est écartée.
+		...outsideNoticeList,
+		...(validation
 			? buildNotices(validation, {
 					// Catalogue d'Orca (fr) seulement en français : messages du moteur en anglais sinon.
 					catalog: $locale === 'fr' ? orcaCatalog : null,
 					liveId: (id) => persistedToLive.get(id) ?? (tree.get(id) ? id : undefined),
 					plateCount: plates.list().length
-				})
-			: []
-	);
+				}).filter(
+					// Doublon d'une notification locale (même objet) : écartée ; un
+					// désaccord (objet signalé par le seul serveur) reste visible.
+					(n) => n.kind !== 'object_outside_plate' || !n.objectId || !objectOutside[n.objectId]
+				)
+			: [])
+	]);
 	const validationByObject = $derived(issuesByObject(validationNotices));
 	const sceneIssueObjects = $derived.by(() => {
 		const out: Record<string, 'error' | 'warning'> = {};
@@ -7283,18 +7443,23 @@
 		return true;
 	}
 
-	// Interaction utilisateur depuis l'ouverture (souris ou touche autre que Tab).
-	let editorInteracted = false;
+	// A1 (audit 42) : la zone 3D « a le focus » après un clic dedans (hors
+	// contrôles posés dessus) ; un clic ailleurs ou un focus clavier sur un
+	// élément de l'interface le lui retire (Orca : Tab capté par le canevas).
+	let viewFocused = false;
 	onMount(() => {
-		const mark = (e: Event) => {
-			if (e instanceof KeyboardEvent && e.key === 'Tab') return;
-			editorInteracted = true;
+		const onPointer = (e: Event) => {
+			viewFocused = pointerFocusesView(e.target as Element | null);
 		};
-		window.addEventListener('pointerdown', mark, true);
-		window.addEventListener('keydown', mark, true);
+		const onFocusIn = (e: Event) => {
+			const t = e.target as Element | null;
+			if (t && t !== document.body && !t.closest?.(VIEW_ZONE_SELECTOR)) viewFocused = false;
+		};
+		window.addEventListener('pointerdown', onPointer, true);
+		window.addEventListener('focusin', onFocusIn, true);
 		return () => {
-			window.removeEventListener('pointerdown', mark, true);
-			window.removeEventListener('keydown', mark, true);
+			window.removeEventListener('pointerdown', onPointer, true);
+			window.removeEventListener('focusin', onFocusIn, true);
 		};
 	});
 
@@ -7316,18 +7481,15 @@
 			return;
 		}
 		if (isEditableTarget(e.target)) return;
-		// Tab ne bascule Préparer/Aperçu que depuis la zone 3D (ou sans focus) ;
-		// ailleurs il garde la navigation clavier native.
-		// Premier Tab après l'ouverture, sans autre interaction : navigation native,
-		// pour qu'un utilisateur clavier puisse entrer dans la page (sinon Tab
-		// depuis <body> bascule la vue et le focus n'avance jamais).
+		// Tab ne bascule Préparer/Aperçu que quand la zone 3D a le focus (A1) ;
+		// ailleurs — page tout juste ouverte comprise — il garde la navigation
+		// clavier native.
 		const nativeTab =
 			e.key === 'Tab' &&
 			!e.ctrlKey &&
 			!e.altKey &&
 			!e.metaKey &&
-			(!tabTogglesView(document.activeElement) ||
-				(!editorInteracted && document.activeElement === document.body));
+			!tabTogglesView(document.activeElement, viewFocused);
 		if (nativeTab) return;
 		// En Aperçu, les touches de navigation de couches priment sur les outils.
 		if (layout.tab === 'preview' && handlePreviewKey(e)) return;
@@ -7389,6 +7551,9 @@
 	function onSceneContext(e: MouseEvent) {
 		if (layout.tab !== 'prepare') return;
 		e.preventDefault();
+		// Audit 42 S2 : gizmo de peinture ouvert → le bouton droit peint (Orca
+		// GLGizmoPainterBase), pas de menu contextuel.
+		if (paintChannel) return;
 		if (selId) openContext(selId, e.clientX, e.clientY);
 		else addMenu = { open: true, x: e.clientX, y: e.clientY, scene: true };
 	}
@@ -8430,9 +8595,13 @@
 	let recentProjects = $state<{ id: string; name: string }[]>([]);
 	async function refreshRecentProjects() {
 		try {
-			recentProjects = sortByUpdated(await listProjects())
-				.filter((p) => p.id !== data.project.id)
-				.map((p) => ({ id: p.id, name: p.name }));
+			// Audit 42 V-a : le projet ouvert est en tête (Orca
+			// MainFrame::add_to_recent_projects l'ajoute dès l'ouverture /
+			// l'enregistrement), puis les autres par date de modification.
+			recentProjects = recentFirst(
+				sortByUpdated(await listProjects()).map((p) => ({ id: p.id, name: p.name })),
+				{ id: data.project.id, name: projectName || data.project.name }
+			);
 		} catch {
 			// Liste de confort : le menu garde la dernière liste connue.
 		}
@@ -8822,6 +8991,13 @@
 	// Lance le tranchage du plateau actif et affiche la progression dans l'aperçu
 	// (scène affichée envoyée telle quelle, cf. requestSlice).
 	async function sliceActive() {
+		// Audit 42 I1 : raccourci Ctrl+R compris — jamais de G-code hors plateau.
+		if (activeOutside.length > 0) {
+			saveMessage = tr(
+				'An object is outside the printable area: move it onto the plate before slicing'
+			);
+			return;
+		}
 		// Module de l'aperçu chargé pendant le tranchage (pas à l'ouverture).
 		void loadPreviewScene();
 		await editorReady;
@@ -8858,6 +9034,12 @@
 	let sliceMenuOpen = $state(false);
 	async function sliceAll() {
 		sliceMenuOpen = false;
+		if (outsideList.length > 0) {
+			saveMessage = tr(
+				'An object is outside the printable area: move it onto the plate before slicing'
+			);
+			return;
+		}
 		void loadPreviewScene();
 		await editorReady;
 		await presetSwitches;
@@ -9158,6 +9340,7 @@
 					emboss: tree.get(o.id)?.emboss,
 					cutId: tree.get(o.id)?.cutId,
 					printable: tree.isPrintable(o.id),
+					offBed: !!objectOutside[o.id],
 					settings: { ...(tree.get(o.id)?.settings ?? {}) },
 					painting:
 						paintings[o.id] ??
@@ -9264,6 +9447,21 @@
 	// scène ; sans file, un « Trancher » pendant cet enregistrement partait avec
 	// la même version attendue et finissait en faux conflit 409.
 	let saveChain: Promise<unknown> = Promise.resolve();
+	// Audit 42 C2 — conflit de version : « Recharger » rouvre la version
+	// enregistrée ailleurs (l'alerte de sortie protège les modifications) ;
+	// « Écraser » adopte la version courante du serveur puis enregistre.
+	function reloadAfterConflict() {
+		window.location.reload();
+	}
+	async function overwriteSave(): Promise<SaveOutcome> {
+		try {
+			const latest = await getProject(data.project.id);
+			data.project.version = BigInt(latest.version);
+		} catch (e) {
+			return { status: 'error', message: e instanceof Error ? e.message : String(e) };
+		}
+		return save();
+	}
 	function save(opts: { quiet?: boolean } = {}): Promise<SaveOutcome> {
 		const run = saveChain.then(() => saveNow(opts));
 		saveChain = run.catch(() => {});
@@ -9312,7 +9510,7 @@
 			outcome.status === 'saved'
 				? tr('Project saved.')
 				: outcome.status === 'conflict'
-					? tr('Conflict: the project was modified in another tab.')
+					? tr('Conflict: the project was modified elsewhere (another tab or device).')
 					: outcome.message;
 		return outcome;
 	}
@@ -9513,19 +9711,19 @@
 					</div>
 				{/if}
 			</div>
-			<SaveControls {save} {unsaved} />
+			<SaveControls {save} {unsaved} onreload={reloadAfterConflict} overwrite={overwriteSave} />
 			<button
 				type="button"
 				class="ws-btn ws-btn-secondary"
 				data-testid="export-gcode-button"
-				disabled={!session.gcodeId}
+				disabled={!session.gcodeId || activeOutside.length > 0}
 				onclick={() => session.gcodeId && downloadUrl(`/api/gcodes/${session.gcodeId}/download`)}
 			>
 				<span class="min-[1920px]:hidden">G-code…</span>
 				<span class="hidden min-[1920px]:inline">{$t('Export G-code…')}</span>
 			</button>
 			<SendToPrinter
-				gcodeId={session.gcodeId}
+				gcodeId={activeOutside.length > 0 ? null : session.gcodeId}
 				openRequest={printDialogRequest}
 				plateCount={plates.list().length}
 				sendAll={sendAllPlates}
@@ -10942,6 +11140,7 @@
 							labels={objectLabels}
 							printOrder={scenePrintOrder}
 							issueObjects={sceneIssueObjects}
+							outsideObjects={objectOutside}
 							extruderColors={filamentSlotColors}
 							paintOverlays={scenePaintOverlays}
 							objectExtruders={sceneObjectExtruders}

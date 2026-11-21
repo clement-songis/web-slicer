@@ -2385,5 +2385,16 @@
 	"p42b_proposed_names": "Proposed names",
 	"p42b_ext_required": "Extension required by the printer host",
 	"p42b_base_name_hint": "Common base name for all plates (suffixes _2, _3… when several files are sent); empty = proposed names.",
-	"p42b_uploads": "Uploads"
+	"p42b_uploads": "Uploads",
+	"p43_paint_mouse_mmu": "Left button: paint the selected filament · Shift: erase",
+	"p43_paint_mouse_fuzzy": "Left button: paint · Right button or Shift: erase",
+	"p43_paint_mouse_supports": "Left button: enforce · Right button: block · Shift: erase",
+	"p43_conflict_actions": "Conflict: the project was modified elsewhere (another tab or device). Reload to see those changes (yours will be lost), or overwrite them with your version.",
+	"p43_overwrite": "Overwrite||conflict",
+	"p43_conflict_short": "Conflict: the project was modified elsewhere (another tab or device).",
+	"p43_outside_partly": "Following objects are laid over the boundary of plate or exceeds the height limit:\n{name}\nPlease solve the problem by moving it totally on or off the plate, and confirming that the height is within the build volume.",
+	"p43_outside_full": "{name} is outside the plate: move it onto the plate (or onto another plate) before slicing.",
+	"p43_slice_outside": "An object is outside the printable area: move it onto the plate before slicing",
+	"p43_waiting_conn": "waiting for the connection…",
+	"p43_import_conn_lost": "Connection lost while importing {files}: the import will resume automatically when the connection is back."
 }

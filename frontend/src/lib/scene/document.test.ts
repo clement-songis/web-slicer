@@ -141,16 +141,17 @@ describe('planSceneRestore', () => {
 		expect(planSceneRestore(scene, 'p1', ['m1', 'm-supprime']).orphanModelIds).toEqual([]);
 	});
 
-	test('restaure un modèle téléversé après la dernière sauvegarde', () => {
+	test('audit 42 C3 : import abandonné après une sauvegarde → scène enregistrée seule', () => {
 		const scene = parseScene({
 			schemaVersion: 1,
 			plates,
 			objects: [obj('o1', 'm1')],
 			knownModels: { projectId: 'p1', ids: ['m1'] }
 		});
-		const plan = planSceneRestore(scene, 'p1', ['m1', 'm-nouveau']);
-		expect(plan.orphanModelIds).toEqual(['m-nouveau']);
-		expect(plan.modelIds).toEqual(['m1', 'm-nouveau']);
+		const plan = planSceneRestore(scene, 'p1', ['m1', 'm-nouveau', 'm-texte']);
+		expect(plan.orphanModelIds).toEqual([]);
+		expect(plan.modelIds).toEqual(['m1']);
+		expect(plan.objects.map((o) => o.id)).toEqual(['o1']);
 	});
 
 	test('scène vierge (jamais sauvegardée) : tous les modèles sont restaurés', () => {
