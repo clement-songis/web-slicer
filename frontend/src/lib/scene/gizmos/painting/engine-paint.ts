@@ -4,26 +4,10 @@
 // Le TS ne fait que l'aperçu instantané ; la réponse du moteur remplace l'état
 // et c'est elle qui est persistée. Requêtes corrélées par `seq`.
 import type { PaintChannel } from './painting';
+import type { EngineStroke, PreviewReply } from './engine-paint-protocol';
 
-type Vec3 = [number, number, number];
-
-/** Trait de pinceau (repère du maillage recentré de l'objet). */
-export interface EngineStroke {
-	points: Vec3[];
-	facets: number[];
-	camera_pos: Vec3;
-	radius: number;
-	cursor: 'circle' | 'sphere';
-	state: number;
-	/** Matrice monde colonne-major (16). */
-	trafo: number[];
-	splitting?: boolean;
-	highlight_deg?: number;
-	/** Pinceau (défaut), smart fill ou pot de peinture (`ToolType` d'Orca). */
-	tool?: 'brush' | 'smart_fill' | 'bucket_fill';
-	/** Angle d'arrêt des remplissages (°, défaut Orca 30). */
-	fill_angle?: number;
-}
+// Types des messages : écrits à la main dans engine-paint-protocol.ts (pas ts-rs).
+export type { EngineCursor, EngineStroke, EngineTool, PreviewReply } from './engine-paint-protocol';
 
 export type LayerEditAction = 'increase' | 'decrease' | 'reduce' | 'smooth';
 
@@ -46,6 +30,8 @@ export class EnginePaintClient {
 	private seq = 0;
 	private readonly pending = new Map<number, Pending>();
 	private readonly opened = new Map<string, string>(); // object_id → model_id
+	/** Dernier aperçu demandé : les réponses plus anciennes sont dites « stale ». */
+	private previewTicket = 0;
 
 	constructor(
 		private readonly url: string,
@@ -119,6 +105,72 @@ export class EnginePaintClient {
 			stroke: { splitting: true, highlight_deg: 0, ...stroke }
 		});
 		return (res.facets ?? {}) as Record<string, string>;
+	}
+
+	/** Comblement des interstices (aire 0–5 mm², « Perform » d'Orca). */
+	async gapFill(
+		objectId: string,
+		modelId: string,
+		channel: PaintChannel,
+		facets: Record<string, string>,
+		area: number
+	): Promise<Record<string, string>> {
+		await this.open(objectId, modelId);
+		const res = await this.request({
+			type: 'gap_fill',
+			object_id: objectId,
+			channel,
+			facets,
+			area
+		});
+		return (res.facets ?? {}) as Record<string, string>;
+	}
+
+	/** Remappage MMU (`map[i]` = destination 1-based de l'extrudeur i + 1). */
+	async remap(
+		objectId: string,
+		modelId: string,
+		facets: Record<string, string>,
+		map: number[]
+	): Promise<Record<string, string>> {
+		await this.open(objectId, modelId);
+		const res = await this.request({
+			type: 'remap',
+			object_id: objectId,
+			channel: 'mmu',
+			facets,
+			map
+		});
+		return (res.facets ?? {}) as Record<string, string>;
+	}
+
+	/**
+	 * Aperçu au survol : triangles que le clic peindrait (9 flottants par
+	 * triangle, repère maillage). `stale` : un aperçu plus récent a été demandé
+	 * depuis (réponse à ignorer, conseil LOT38 §3).
+	 */
+	async preview(
+		objectId: string,
+		modelId: string,
+		channel: PaintChannel,
+		facets: Record<string, string>,
+		stroke: EngineStroke
+	): Promise<PreviewReply & { stale: boolean }> {
+		await this.open(objectId, modelId);
+		const seq = ++this.previewTicket;
+		const res = await this.request({
+			type: 'preview',
+			object_id: objectId,
+			channel,
+			facets,
+			stroke: { splitting: true, highlight_deg: 0, ...stroke }
+		});
+		return { ...(res as unknown as PreviewReply), stale: seq !== this.previewTicket };
+	}
+
+	/** Invalide les aperçus en vol (sortie du survol, clic). */
+	cancelPreviews(): void {
+		this.previewTicket++;
 	}
 
 	/** Pinceau de hauteur de couche (`adjust_layer_height_profile`). */

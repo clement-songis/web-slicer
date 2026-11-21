@@ -15,6 +15,8 @@
 	import { FrameMeter, rendererFactory } from './render-settings';
 	import { appPreferences } from '$lib/settings/preferences';
 	import type { PaintOverlay } from './gizmos/painting/paint-overlay';
+	import type { HoverPreview, PaintAssist } from './gizmos/painting/paint-tools';
+	import type { RealisticOptions } from './realistic';
 	import { overhangIndices } from './overhang';
 	import type { Footprint, PlateView } from './plate-layout';
 	import {
@@ -93,6 +95,12 @@
 		onactivateplate?: (plateId: string, objectId: string | null) => void;
 		onobjectdrop?: (objectId: string, footprint: Footprint) => void;
 		recenterKey?: string | null;
+		/** Peinture : survol (aperçu) et contrainte de souris (lot 38). */
+		paintAssist?: PaintAssist | null;
+		/** Aperçu au survol par objet. */
+		hoverPreviews?: Record<string, HoverPreview | null> | null;
+		/** Vue réaliste effective (null = rendu standard). */
+		realistic?: RealisticOptions | null;
 	}
 
 	let {
@@ -133,7 +141,10 @@
 		activePlate = null,
 		onactivateplate,
 		onobjectdrop,
-		recenterKey = null
+		recenterKey = null,
+		paintAssist = null,
+		hoverPreviews = null,
+		realistic = null
 	}: Props = $props();
 
 	// Emprises écran projetées (objets, et pièces « objet/volume »).
@@ -231,6 +242,20 @@
 	data-guide-connectors={guides?.plane?.connectors?.length ?? undefined}
 	data-guide-pickable={guides?.plane?.onclick ? 'true' : undefined}
 	data-testid="scene-canvas"
+	data-realistic={realistic
+		? [
+				'realistic',
+				realistic.phong ? 'phong' : 'gouraud',
+				realistic.shadows ? 'shadows' : '',
+				realistic.smoothNormals ? 'smooth' : ''
+			]
+				.filter(Boolean)
+				.join(' ')
+		: 'off'}
+	data-hover-preview={hoverPreviews &&
+	Object.values(hoverPreviews).some((p) => p && p.positions.length >= 9)
+		? 'true'
+		: 'false'}
 	data-plates={otherPlates.length + 1}
 	data-plate-offsets={otherPlates.length
 		? otherPlates.map((p) => `${p.index}:${p.offset.map((n) => n.toFixed(1)).join(',')}`).join(';')
@@ -313,6 +338,9 @@
 				{onactivateplate}
 				{onobjectdrop}
 				{recenterKey}
+				{paintAssist}
+				{hoverPreviews}
+				{realistic}
 			/>
 		</Canvas>
 	{/key}

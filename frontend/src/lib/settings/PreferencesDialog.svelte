@@ -3,7 +3,7 @@
 	// onglets : Général, Caméra et souris, Comportement, Presets. Chaque réglage
 	// s'applique immédiatement et est mémorisé pour l'utilisateur connecté.
 	import { THEME_PREFS, themePref, setTheme, type ThemePref } from '$lib/theme';
-	import { LOCALES, locale, setLocale, type Locale } from '$lib/i18n';
+	import { LOCALES, languageName, locale, setLocale, type Locale } from '$lib/i18n';
 	import {
 		CAMERA_DEFAULTS,
 		REMEMBERED_CHOICES,
@@ -182,7 +182,7 @@
 							onchange={(e) => setLocale(e.currentTarget.value as Locale)}
 						>
 							{#each LOCALES as code (code)}
-								<option value={code}>{code}</option>
+								<option value={code}>{languageName(code)}</option>
 							{/each}
 						</select>
 					{/snippet}
@@ -674,6 +674,71 @@
 						'Repère X (rouge), Y (vert), Z (bleu) à l’origine du plateau.',
 						axesCtl,
 						'show-axes'
+					)}
+					<!-- Phase 38 — Orca Preferences › Graphics › Realistic View. -->
+					<h3 class="ws-section-title mt-3">Vue réaliste</h3>
+					{#snippet realisticCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-realistic-view"
+							aria-labelledby="pref-realistic-view-label"
+							checked={prefs.graphics.realisticView}
+							onchange={(e) => updateGraphics({ realisticView: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Activer la vue réaliste',
+						'Ombrage plus fin des modèles en préparation (aussi dans le menu Vue). Suspendue pendant la peinture des supports, de la couture et du fuzzy skin pour bien voir la peinture.',
+						realisticCtl,
+						'realistic-view'
+					)}
+					{#snippet phongCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-realistic-phong"
+							aria-labelledby="pref-realistic-phong-label"
+							disabled={!prefs.graphics.realisticView}
+							checked={prefs.graphics.realisticPhong}
+							onchange={(e) => updateGraphics({ realisticPhong: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Ombrage Phong',
+						'Éclairage calculé par pixel, avec reflets. Décoché : ombrage mat sans reflets (« Gouraud » d’Orca), plus léger.',
+						phongCtl,
+						'realistic-phong'
+					)}
+					{#snippet shadowsCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-realistic-shadows"
+							aria-labelledby="pref-realistic-shadows-label"
+							disabled={!prefs.graphics.realisticView}
+							checked={prefs.graphics.realisticShadows}
+							onchange={(e) => updateGraphics({ realisticShadows: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Ombres sur le plateau',
+						'Les objets projettent leur ombre sur le plateau (lumière qui suit la caméra).',
+						shadowsCtl,
+						'realistic-shadows'
+					)}
+					{#snippet smoothCtl()}
+						<input
+							type="checkbox"
+							data-testid="pref-realistic-smooth"
+							aria-labelledby="pref-realistic-smooth-label"
+							disabled={!prefs.graphics.realisticView}
+							checked={prefs.graphics.realisticSmoothNormals}
+							onchange={(e) => updateGraphics({ realisticSmoothNormals: e.currentTarget.checked })}
+						/>
+					{/snippet}
+					{@render row(
+						'Lisser les surfaces courbes',
+						'Adoucit les facettes des surfaces arrondies ; les arêtes vives (plus de 5°) restent nettes.',
+						smoothCtl,
+						'realistic-smooth'
 					)}
 				{:else}
 					{#snippet groupCtl()}

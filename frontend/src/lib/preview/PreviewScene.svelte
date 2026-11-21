@@ -3,9 +3,12 @@
 	// éclairage neutre et lignes d'extrusion colorées (PreviewLines). Pendant du
 	// `Scene.svelte` de préparation, réutilisé par le workspace éditeur.
 	import { Canvas, T } from '@threlte/core';
+	import { untrack } from 'svelte';
 	import CameraControls from '$lib/scene/CameraControls.svelte';
 	import Bed from '$lib/scene/Bed.svelte';
 	import { frameBed, frameBox, type BedShape } from '$lib/scene';
+	import { viewPose, viewUp, type NamedView } from '$lib/scene/camera';
+	import CameraDirection from '$lib/scene/CameraDirection.svelte';
 	import PreviewLines from './PreviewLines.svelte';
 	import PreviewPoints from './PreviewPoints.svelte';
 	import PreviewExtrusions from './PreviewExtrusions.svelte';
@@ -29,6 +32,11 @@
 		renderMode?: 'volumes' | 'lines';
 		/** Marqueur de l'outil (sommet courant du curseur horizontal, Orca ToolMarker). */
 		tool?: [number, number, number] | null;
+		/** Vue nommée du navigateur 3D (phase 38) ; `viewKey` change à chaque choix. */
+		view?: NamedView | null;
+		viewKey?: number;
+		/** Direction de vue (navigateur 3D). */
+		oncameradir?: (forward: [number, number, number]) => void;
 	}
 
 	let {
@@ -39,8 +47,27 @@
 		fit = 'objects',
 		frameKey = 0,
 		renderMode = 'volumes',
-		tool = null
+		tool = null,
+		view = null,
+		viewKey = 0,
+		oncameradir
 	}: Props = $props();
+	// Dernière demande gagnante : vue nommée (cube) ou cadrage (objets / plateau).
+	let shownView = $state<NamedView | null>(null);
+	let seenFrameKey = untrack(() => frameKey);
+	let seenViewKey = untrack(() => viewKey);
+	$effect(() => {
+		if (viewKey !== seenViewKey) {
+			seenViewKey = viewKey;
+			shownView = view;
+		}
+	});
+	$effect(() => {
+		if (frameKey !== seenFrameKey) {
+			seenFrameKey = frameKey;
+			shownView = null;
+		}
+	});
 	// Marqueur : cône pointe en bas posé sur le sommet (comme le ToolMarker de
 	// libvgcode : blanc translucide, toujours visible au-dessus des parcours).
 	const MARKER_H = 4;
@@ -58,8 +85,13 @@
 	})();
 
 	const pose = $derived(
-		fit === 'objects' && frame ? frameBox(frame.min, frame.max) : frameBed(bed)
+		shownView
+			? viewPose(bed, shownView)
+			: fit === 'objects' && frame
+				? frameBox(frame.min, frame.max)
+				: frameBed(bed)
 	);
+	const up = $derived<[number, number, number]>(shownView ? viewUp(shownView) : [0, 0, 1]);
 	// Phase 34 : graphismes (MSAA, plafond et compteur d'images/s).
 	const frameMeter = new FrameMeter();
 </script>
@@ -75,18 +107,21 @@
 >
 	{#key $appPreferences.graphics.antialias}
 		<Canvas createRenderer={rendererFactory($appPreferences.graphics.antialias, frameMeter)}>
-			{#key frameKey}
+			{#key `${frameKey}:${shownView ?? ''}:${viewKey}`}
 				<T.PerspectiveCamera
 					makeDefault
 					position={pose.position}
-					up={[0, 0, 1]}
+					{up}
 					fov={50}
 					near={1}
 					far={20000}
 				>
-					<CameraControls target={pose.target} />
+					<CameraControls target={pose.target} {up} />
 				</T.PerspectiveCamera>
 			{/key}
+			{#if oncameradir}
+				<CameraDirection {oncameradir} />
+			{/if}
 			<!-- Plateau sous les parcours (Orca GCodeViewer : le lit reste affiché en aperçu). -->
 			<Bed {bed} showAxes={$appPreferences.showAxes} />
 			{#if renderMode === 'volumes'}

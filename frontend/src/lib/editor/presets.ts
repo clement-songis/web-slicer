@@ -175,6 +175,24 @@ export function remapExtruderAfterMerge(extruder: number, removed: number, targe
 	return remapExtruderAfterRemoval(extruder, removed);
 }
 
+/** Réglages de filament de support renumérotés à la suppression d'un slot. */
+export const SUPPORT_FILAMENT_KEYS = ['support_filament', 'support_interface_filament'] as const;
+
+/**
+ * Orca Plater::on_filaments_delete : support_filament /
+ * support_interface_filament (1-based, 0 = « Défaut ») égal au filament retiré
+ * → effacé (« Défaut ») ; au-delà → décalé d'un cran ; sinon inchangé — y
+ * compris lors d'une fusion (Orca ne les reporte pas sur le filament cible).
+ * `removed` est 0-based ; renvoie null si la valeur n'est pas un entier.
+ */
+export function supportFilamentAfterRemoval(value: unknown, removed: number): number | null {
+	const n = typeof value === 'string' ? Number(value.trim()) : value;
+	if (typeof n !== 'number' || !Number.isInteger(n)) return null;
+	if (n <= 0) return n;
+	if (n === removed + 1) return 0;
+	return n > removed + 1 ? n - 1 : n;
+}
+
 /** Extrudeur hors des slots existants → auto (`0`) ; sinon inchangé. */
 export function clampExtruder(extruder: number, slotCount: number): number {
 	return extruder > 0 && extruder <= slotCount ? extruder : 0;

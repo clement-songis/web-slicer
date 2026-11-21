@@ -61,3 +61,45 @@ export function decodeFacet(str: string): number {
 	}
 	return bits[2] | (bits[3] << 1);
 }
+
+/**
+ * Renumérote les états des feuilles d'un triangle (chaîne hex Orca, triangles
+ * subdivisés compris), comme TriangleSelector::deserialize(…, to_delete_filament,
+ * replace_filament) / remap_triangle_state : l'état NONE (0) n'est jamais
+ * changé, la structure de subdivision est conservée. `map(état) → état` ;
+ * 0 efface la feuille. Renvoie '' si le triangle entier devient non peint.
+ */
+export function remapFacetStates(hex: string, map: (state: number) => number): string {
+	const nibbles = hex
+		.split('')
+		.reverse()
+		.map((ch) => parseInt(ch, 16));
+	const out: number[] = [];
+	for (let i = 0; i < nibbles.length;) {
+		const code = nibbles[i++];
+		if ((code & 0b11) !== 0) {
+			// Nœud subdivisé : côté spécial + nombre de côtés scindés, recopié.
+			out.push(code);
+			continue;
+		}
+		const state = (code & 0b1100) === 0b1100 ? (nibbles[i++] ?? 0) + 3 : code >> 2;
+		const next = state === 0 ? 0 : Math.max(0, Math.min(18, map(state)));
+		if (next < 3) out.push(next << 2);
+		else out.push(0b1100, next - 3);
+	}
+	if (out.length === 1 && out[0] === 0) return '';
+	return out.map(hexDigit).reverse().join('');
+}
+
+/** Renumérote tout un canal (triangle → chaîne hex) ; triangles devenus vides retirés. */
+export function remapChannelStates(
+	facets: Record<string, string>,
+	map: (state: number) => number
+): Record<string, string> {
+	const out: Record<string, string> = {};
+	for (const [tri, hex] of Object.entries(facets)) {
+		const next = remapFacetStates(hex, map);
+		if (next) out[tri] = next;
+	}
+	return out;
+}

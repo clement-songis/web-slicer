@@ -107,6 +107,7 @@
 				})
 			: compact && printer
 				? filterPresetList(presets, {
+						query,
 						printer,
 						showAll: true,
 						selectedId,
@@ -115,6 +116,20 @@
 					})
 				: null
 	);
+	// Phase 38 — liste compacte longue (filaments : ~280 profils système) :
+	// loupe qui déplie un champ de recherche au-dessus du menu, sans alourdir
+	// chaque ligne de filament. Échap / re-clic : referme et vide la recherche.
+	const SEARCH_THRESHOLD = 30;
+	const longList = $derived(
+		compact && !searchable && !!printer && presets.length > SEARCH_THRESHOLD
+	);
+	let searchOpen = $state(false);
+	let searchInput = $state<HTMLInputElement>();
+	function toggleSearch() {
+		searchOpen = !searchOpen;
+		if (!searchOpen) query = '';
+		else queueMicrotask(() => searchInput?.focus());
+	}
 	const selected = $derived(presets.find((p) => p.id === selectedId) ?? null);
 	const badge = $derived(selected ? inheritanceLabel(selected) : null);
 	const isUser = $derived(selected?.origin === 'user');
@@ -212,15 +227,73 @@
 
 {#if compact}
 	{#if searchable}{@render search()}{/if}
-	<select
-		bind:value={selectedId}
-		aria-label={label}
-		class={FIELD}
-		data-testid={testid}
-		data-modified={modified ? 'true' : 'false'}
-	>
-		{@render options()}
-	</select>
+	{#if longList}
+		{#if searchOpen}
+			<div class="mb-1 flex items-center gap-1">
+				<input
+					bind:this={searchInput}
+					type="search"
+					bind:value={query}
+					placeholder="Rechercher un profil…"
+					aria-label="Rechercher : {label}"
+					class={FIELD}
+					data-testid={testid ? `${testid}-search` : undefined}
+					onkeydown={(e) => {
+						if (e.key === 'Escape') {
+							e.stopPropagation();
+							toggleSearch();
+						}
+					}}
+				/>
+				{#if filtered}
+					<span
+						class="shrink-0 text-xs text-content-muted tabular-nums"
+						data-testid={testid ? `${testid}-count` : undefined}
+						>{filtered.shown}/{filtered.total}</span
+					>
+				{/if}
+			</div>
+		{/if}
+		<div class="flex items-center gap-1">
+			<select
+				bind:value={selectedId}
+				aria-label={label}
+				class={FIELD}
+				data-testid={testid}
+				data-modified={modified ? 'true' : 'false'}
+			>
+				{@render options()}
+			</select>
+			<button
+				type="button"
+				class="ws-btn ws-btn-sm ws-btn-ghost shrink-0 px-1.5 {searchOpen ? 'text-primary' : ''}"
+				aria-label="Rechercher : {label}"
+				aria-pressed={searchOpen}
+				title="Rechercher dans la liste"
+				data-testid={testid ? `${testid}-search-toggle` : undefined}
+				onclick={toggleSearch}
+			>
+				<svg
+					viewBox="0 0 24 24"
+					class="size-3.5"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+					aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg
+				>
+			</button>
+		</div>
+	{:else}
+		<select
+			bind:value={selectedId}
+			aria-label={label}
+			class={FIELD}
+			data-testid={testid}
+			data-modified={modified ? 'true' : 'false'}
+		>
+			{@render options()}
+		</select>
+	{/if}
 {:else}
 	<div class="flex flex-col gap-1">
 		{@render search()}

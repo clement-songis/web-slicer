@@ -11,6 +11,13 @@
 	import { sceneColors } from './scene-colors';
 	import type { SectionPlane } from './screen-select';
 	import type { PaintOverlay } from './gizmos/painting/paint-overlay';
+	import {
+		constrainPointer,
+		type HoverPreview,
+		type PaintAssist,
+		type PointerConstraint
+	} from './gizmos/painting/paint-tools';
+	import { creasedGeometry, type RealisticOptions } from './realistic';
 
 	interface Props {
 		mesh: SceneMesh;
@@ -52,6 +59,12 @@
 		/** Objet désigné par la validation (phase 29) : lueur rouge (erreur) ou
 		 *  orange (avertissement), visible même sélectionné ou teinté filament. */
 		issue?: 'error' | 'warning' | null;
+		/** Survol / contrainte du pinceau (gizmos de peinture). */
+		paintAssist?: PaintAssist | null;
+		/** Triangles que le clic peindrait (remplissage, triangle). */
+		hoverPreview?: HoverPreview | null;
+		/** Vue réaliste (Phong / Gouraud, normales lissées, ombres), null = rendu standard. */
+		realistic?: RealisticOptions | null;
 	}
 
 	// Couleurs par rôle, proches du rendu Orca (GLVolume) : pièce opaque,
@@ -84,8 +97,23 @@
 		extruderColors = null,
 		extruder = 1,
 		paintOverlay = null,
-		issue = null
+		issue = null,
+		paintAssist = null,
+		hoverPreview = null,
+		realistic = null
 	}: Props = $props();
+
+	// Aperçu au survol (Orca : triangles « is_selected_by_seed_fill »).
+	const previewGeometry = $derived.by(() => {
+		if (!hoverPreview || hoverPreview.positions.length < 9) return null;
+		const g = new THREE.BufferGeometry();
+		g.setAttribute('position', new THREE.BufferAttribute(hoverPreview.positions, 3));
+		return g;
+	});
+	$effect(() => {
+		const g = previewGeometry;
+		return () => g?.dispose();
+	});
 
 	// Peinture : triangles feuilles à couleur par sommet, posés sur la surface.
 	const paintGeometry = $derived.by(() => {
@@ -144,7 +172,7 @@
 		return () => onref?.(null);
 	});
 
-	const geometry = $derived.by(() => {
+	const baseGeometry = $derived.by(() => {
 		const g = new THREE.BufferGeometry();
 		g.setAttribute('position', new THREE.BufferAttribute(mesh.positions, 3));
 		if (mesh.normals.length) {
@@ -154,10 +182,49 @@
 		if (!mesh.normals.length) g.computeVertexNormals();
 		return g;
 	});
+	// Vue réaliste + normales lissées : per_corner_normals(5°) d'Orca. Géométrie
+	// non indexée, même ordre de triangles (faceIndex du picking inchangé).
+	const smooth = $derived(!!realistic?.smoothNormals);
+	const geometry = $derived(smooth ? creasedGeometry(baseGeometry) : baseGeometry);
+	$effect(() => {
+		const g = geometry;
+		const base = baseGeometry;
+		return () => {
+			if (g !== base) g.dispose();
+		};
+	});
+	// Matériau commun (standard, Phong ou Gouraud selon la vue).
+	const materialProps = $derived({
+		color: printable
+			? tint
+				? tint
+				: selected
+					? $sceneColors.partSelected
+					: $sceneColors.part
+			: $sceneColors.partUnprintable,
+		emissive: issue
+			? issue === 'error'
+				? $sceneColors.issueError
+				: $sceneColors.issueWarning
+			: tint && selected && printable
+				? $sceneColors.emissiveActive
+				: $sceneColors.emissiveNone,
+		emissiveIntensity: issue
+			? issue === 'error'
+				? 0.55
+				: 0.4
+			: tint && selected && printable
+				? 0.35
+				: 0,
+		transparent: !printable,
+		opacity: printable ? 1 : 0.45,
+		clippingPlanes,
+		side: clipPlane === null ? THREE.FrontSide : THREE.DoubleSide
+	});
 
 	// Libère la géométrie précédente quand elle change / au démontage.
 	$effect(() => {
-		const g = geometry;
+		const g = baseGeometry;
 		return () => g.dispose();
 	});
 
@@ -206,7 +273,43 @@
 	// Trait glissé : chaque `pointermove` sur l'objet pendant l'appui est un
 	// échantillon ; le relâchement (même hors de l'objet) clôt le trait.
 	let stroking = false;
+	// Trait contraint (« Verticale / Horizontale ») : le glisser est suivi sur
+	// la fenêtre et re-lancé depuis la caméra au point écran contraint.
+	let constrained: {
+		camera: THREE.Camera;
+		element: Element;
+		first: [number, number];
+		mode: PointerConstraint;
+	} | null = null;
+	const raycaster = new THREE.Raycaster();
+	function constrainedMove(e: PointerEvent) {
+		const c = constrained;
+		if (!c || !ref || !onmeshpick) return;
+		const rect = c.element.getBoundingClientRect();
+		const ndc = constrainPointer(
+			c.first,
+			[
+				((e.clientX - rect.left) / rect.width) * 2 - 1,
+				-((e.clientY - rect.top) / rect.height) * 2 + 1
+			],
+			c.mode
+		);
+		raycaster.setFromCamera(new THREE.Vector2(ndc[0], ndc[1]), c.camera);
+		const [hit] = raycaster.intersectObject(ref, false);
+		if (!hit) return;
+		const local = ref.worldToLocal(hit.point.clone());
+		const cam = ref.worldToLocal(raycaster.ray.origin.clone());
+		onmeshpick({
+			point: [hit.point.x, hit.point.y, hit.point.z],
+			localPoint: [local.x, local.y, local.z],
+			triangle: hit.faceIndex ?? null,
+			localCamera: [cam.x, cam.y, cam.z],
+			phase: 'move'
+		});
+	}
 	function endStroke() {
+		if (constrained) window.removeEventListener('pointermove', constrainedMove);
+		constrained = null;
 		if (!stroking) return;
 		stroking = false;
 		onmeshpick?.({ point: [0, 0, 0], localPoint: [0, 0, 0], triangle: null, phase: 'up' });
@@ -217,15 +320,41 @@
 		if (!hit) return;
 		event.stopPropagation();
 		stroking = true;
+		paintAssist?.onhover?.(null);
 		onpick?.(false);
 		onmeshpick({ ...hit, phase: 'down' });
+		const mode = paintAssist?.constraint ?? null;
+		const element = event.nativeEvent.target;
+		if (mode && element instanceof Element) {
+			constrained = {
+				camera: event.camera,
+				element,
+				first: [event.pointer.x, event.pointer.y],
+				mode
+			};
+			window.addEventListener('pointermove', constrainedMove);
+		}
 		window.addEventListener('pointerup', endStroke, { once: true });
 	}
 	function onpointermove(event: IntersectionEvent<PointerEvent>) {
-		if (!stroking || !onmeshpick) return;
+		if (!stroking) {
+			// Survol (aperçu des remplissages / du triangle).
+			if (paintstroke && paintAssist?.onhover) {
+				const hit = meshHit(event);
+				paintAssist.onhover(hit);
+			}
+			return;
+		}
+		if (!onmeshpick || constrained) return;
 		const hit = meshHit(event);
 		if (hit) onmeshpick({ ...hit, phase: 'move' });
 	}
+	function onpointerleave() {
+		if (!stroking) paintAssist?.onhover?.(null);
+	}
+	$effect(() => () => {
+		window.removeEventListener('pointermove', constrainedMove);
+	});
 
 	function onclick(event: IntersectionEvent<MouseEvent>) {
 		event.stopPropagation();
@@ -257,36 +386,17 @@
 	{onclick}
 	{onpointerdown}
 	{onpointermove}
+	{onpointerleave}
 >
-	<T.MeshStandardMaterial
-		color={printable
-			? tint
-				? tint
-				: selected
-					? $sceneColors.partSelected
-					: $sceneColors.part
-			: $sceneColors.partUnprintable}
-		emissive={issue
-			? issue === 'error'
-				? $sceneColors.issueError
-				: $sceneColors.issueWarning
-			: tint && selected && printable
-				? $sceneColors.emissiveActive
-				: $sceneColors.emissiveNone}
-		emissiveIntensity={issue
-			? issue === 'error'
-				? 0.55
-				: 0.4
-			: tint && selected && printable
-				? 0.35
-				: 0}
-		transparent={!printable}
-		opacity={printable ? 1 : 0.45}
-		metalness={0.1}
-		roughness={0.7}
-		{clippingPlanes}
-		side={clipPlane === null ? THREE.FrontSide : THREE.DoubleSide}
-	/>
+	{#if realistic?.phong}
+		<!-- Vue réaliste, Phong (shader « phong » d'Orca). -->
+		<T.MeshPhongMaterial {...materialProps} shininess={40} specular="#3a3a3a" />
+	{:else if realistic}
+		<!-- Vue réaliste sans Phong (« gouraud » d'Orca) : ombrage mat, sans reflets. -->
+		<T.MeshLambertMaterial {...materialProps} />
+	{:else}
+		<T.MeshStandardMaterial {...materialProps} metalness={0.1} roughness={0.7} />
+	{/if}
 	{#if overhangGeometry}
 		<!-- Surplombs : teinte rouge par-dessus (gouraud.fs : 50 % LightRed). -->
 		<T.Mesh geometry={overhangGeometry} renderOrder={2}>
@@ -307,6 +417,22 @@
 				polygonOffset
 				polygonOffsetFactor={-2}
 				polygonOffsetUnits={-2}
+				{clippingPlanes}
+			/>
+		</T.Mesh>
+	{/if}
+	{#if previewGeometry && hoverPreview}
+		<!-- Aperçu au survol : zone que le clic peindrait (non pickable). -->
+		<T.Mesh geometry={previewGeometry} renderOrder={4} raycast={() => {}}>
+			<T.MeshBasicMaterial
+				color={hoverPreview.color}
+				transparent
+				opacity={0.55}
+				depthWrite={false}
+				side={THREE.DoubleSide}
+				polygonOffset
+				polygonOffsetFactor={-3}
+				polygonOffsetUnits={-3}
 				{clippingPlanes}
 			/>
 		</T.Mesh>

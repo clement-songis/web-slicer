@@ -124,6 +124,8 @@ const viewMenu: Menu = {
 		// Orca MainFrame : « Show &Labels\tCtrl+E ».
 		{ label: 'Show Labels', shortcut: 'Ctrl+E', action: 'view.labels' },
 		{ label: 'Show Overhang', action: 'view.overhang' },
+		// Orca menu du canevas « Realistic View » (opengl_realistic_mode, phase 38).
+		{ label: 'Realistic View', action: 'view.realistic' },
 		{ label: 'Show Selected Outline (beta)', action: 'view.selectedOutline' }
 	]
 };

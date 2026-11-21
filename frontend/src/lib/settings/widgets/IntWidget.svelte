@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
+	import { unitLabel } from './unit-label';
 	// Entier (coInt*), bornes min/max du registre appliquées.
 	import { FIELD_CLASS, unitText, type WidgetProps } from './types';
 
@@ -19,6 +20,6 @@
 		class={FIELD_CLASS}
 	/>
 	{#if unitText(def.sidetext)}
-		<span class="text-xs whitespace-nowrap text-content-subtle">{$t(unitText(def.sidetext))}</span>
+		<span class="text-xs whitespace-nowrap text-content-subtle">{$unitLabel(def.sidetext)}</span>
 	{/if}
 </span>

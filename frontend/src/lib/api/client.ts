@@ -4,19 +4,26 @@
 import type { ErrorBody } from './types';
 import { reportReachable, reportUnreachable, unreachableMessage } from './connectivity';
 import { apiErrorMessage } from './quota';
+import { readableServerMessage } from './engine-error';
 
 /** Préfixe des routes API (le proxy Vite renvoie vers le backend en dev). */
 export const API_BASE = '/api';
 
-/** Erreur applicative portant le statut HTTP et le code stable du backend. */
+/**
+ * Erreur applicative portant le statut HTTP et le code stable du backend. Le
+ * message affiché est rendu lisible (sortie brute du worker moteur remplacée
+ * par sa cause, phase 38) ; `technical` garde le message d'origine.
+ */
 export class ApiError extends Error {
+	readonly technical: string;
 	constructor(
 		readonly status: number,
 		readonly code: string,
 		message: string,
 		readonly details?: unknown
 	) {
-		super(message);
+		super(readableServerMessage(message));
+		this.technical = message;
 		this.name = 'ApiError';
 	}
 }

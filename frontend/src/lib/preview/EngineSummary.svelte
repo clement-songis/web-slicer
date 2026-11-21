@@ -15,6 +15,7 @@
 	import { OPTION_COLORS, SEGMENT_ROLE_COLORS, type Rgb } from './colorations';
 	import { hasFilamentBreakdown } from './engine-data';
 	import FilamentTable from './FilamentTable.svelte';
+	import { hasEvents, partialTimes, type PartialKind } from './partial-times';
 
 	interface Props {
 		/** Méta du moteur (simulation Orca) ; null → repli sur `fallback`. */
@@ -77,6 +78,14 @@
 	};
 
 	const view = $derived(meta ? summaryView(meta, ORCA_ROLES, mode) : null);
+	// Tronçons d'impression entre pauses / changements de couleur (Orca
+	// generate_partial_times) : pas d'« événement » pour le tronçon final.
+	const partials = $derived(view ? partialTimes(view.colorChangeTimes, view.customGcodes) : []);
+	const PARTIAL_LABELS: Record<PartialKind, string> = {
+		print: 'Impression',
+		pause: 'Pause',
+		color_change: 'Changement de couleur'
+	};
 
 	type Row = {
 		key: string;
@@ -365,7 +374,7 @@
 	{/if}
 
 	<!-- G-code personnalisés, pauses, changements de couleur -->
-	{#if view && (view.customGcodes.length || view.colorChangeTimes.length)}
+	{#if view && (view.customGcodes.length || hasEvents(partials))}
 		<div class="flex flex-col gap-1">
 			<h3 class="ws-section-title">Événements</h3>
 			{#if view.customGcodes.length}
@@ -378,14 +387,41 @@
 					{/each}
 				</ul>
 			{/if}
-			{#each view.colorChangeTimes as c, i (i)}
-				<div class="flex justify-between gap-2 text-content-muted">
-					<span>{CUSTOM_LABELS[c.type] ?? c.type} à</span>
-					<span class="tabular-nums"
-						>{formatDuration(c.time)} (reste {formatDuration(c.remaining)})</span
-					>
-				</div>
-			{/each}
+			{#if hasEvents(partials)}
+				<table class="w-full text-xs" data-testid="engine-partial-times">
+					<thead>
+						<tr class="text-content-subtle">
+							<th class="text-left font-normal">Étape</th>
+							<th class="text-right font-normal">Restant</th>
+							<th class="text-right font-normal">Durée</th>
+						</tr>
+					</thead>
+					<tbody>
+						{#each partials as p, i (i)}
+							<tr class={p.kind === 'print' ? 'text-content-muted' : 'text-content'}>
+								<td>
+									<span class="inline-flex items-center gap-1">
+										{#if p.kind === 'color_change' && p.color}
+											<span
+												class="inline-block size-2.5 rounded-sm border border-border-strong"
+												style:background-color={p.color}
+												aria-hidden="true"
+											></span>
+										{/if}
+										{PARTIAL_LABELS[p.kind]}
+									</span>
+								</td>
+								<td class="text-right tabular-nums">
+									{p.kind === 'print' ? formatDuration(p.remaining) : ''}
+								</td>
+								<td class="text-right tabular-nums">
+									{p.kind === 'print' ? formatDuration(p.duration) : ''}
+								</td>
+							</tr>
+						{/each}
+					</tbody>
+				</table>
+			{/if}
 		</div>
 	{/if}
 </div>

@@ -47,20 +47,33 @@ export interface CameraPreferences {
 /**
  * Orca Preferences › Graphismes, version navigateur (phase 34) : MSAA du
  * contexte WebGL (anticrénelage), plafond d'images/s (Orca `max_fps`, 0 =
- * illimité) et compteur d'images/s. La vue « réaliste » (Phong, SSAO, ombres)
- * d'Orca n'a pas d'équivalent dans le rendu three.js.
+ * illimité) et compteur d'images/s ; vue réaliste (phase 38, Orca « Realistic
+ * View » : opengl_realistic_mode / _phong / phong_basic_plate_shadows /
+ * phong_smooth_normals, mêmes défauts). Le SSAO d'Orca n'est pas repris.
  */
 export interface GraphicsPreferences {
 	antialias: boolean;
 	/** 0 = illimité ; sinon 10–240. */
 	fpsCap: number;
 	showFps: boolean;
+	/** Orca opengl_realistic_mode (défaut faux) : vue réaliste (aussi au menu Vue). */
+	realisticView: boolean;
+	/** Orca opengl_realistic_phong (défaut vrai) : Phong, sinon Gouraud. */
+	realisticPhong: boolean;
+	/** Orca opengl_phong_basic_plate_shadows (défaut faux) : ombres sur le plateau. */
+	realisticShadows: boolean;
+	/** Orca opengl_phong_smooth_normals (défaut faux) : normales lissées sous 5°. */
+	realisticSmoothNormals: boolean;
 }
 
 export const GRAPHICS_DEFAULTS: GraphicsPreferences = {
 	antialias: true,
 	fpsCap: 0,
-	showFps: false
+	showFps: false,
+	realisticView: false,
+	realisticPhong: true,
+	realisticShadows: false,
+	realisticSmoothNormals: false
 };
 
 /**
@@ -236,7 +249,11 @@ function parseGraphics(raw: unknown): GraphicsPreferences {
 	return {
 		antialias: bool(g.antialias, GRAPHICS_DEFAULTS.antialias),
 		fpsCap: typeof g.fpsCap === 'number' ? clampFpsCap(g.fpsCap) : GRAPHICS_DEFAULTS.fpsCap,
-		showFps: bool(g.showFps, GRAPHICS_DEFAULTS.showFps)
+		showFps: bool(g.showFps, GRAPHICS_DEFAULTS.showFps),
+		realisticView: bool(g.realisticView, GRAPHICS_DEFAULTS.realisticView),
+		realisticPhong: bool(g.realisticPhong, GRAPHICS_DEFAULTS.realisticPhong),
+		realisticShadows: bool(g.realisticShadows, GRAPHICS_DEFAULTS.realisticShadows),
+		realisticSmoothNormals: bool(g.realisticSmoothNormals, GRAPHICS_DEFAULTS.realisticSmoothNormals)
 	};
 }
 

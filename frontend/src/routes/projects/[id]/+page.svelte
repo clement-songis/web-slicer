@@ -381,7 +381,24 @@
 	} from '$lib/api/scene';
 	import { meshOpErrorMessage, placeSourcePart, worldMatrix } from '$lib/scene/tools/mesh-ops';
 	import { EnginePaintClient, paintWsUrl } from '$lib/scene/gizmos/painting/engine-paint';
-	import { BLOCKER, ENFORCER } from '$lib/scene/gizmos/painting/facets';
+	import { BLOCKER, ENFORCER, remapChannelStates } from '$lib/scene/gizmos/painting/facets';
+	import {
+		PAINT_PARAM_DEFAULTS,
+		coerceTool,
+		hasHoverPreview,
+		paintsOnClick,
+		remapBaseExtruder,
+		remapMessageMap,
+		strokeFields,
+		wheelParams,
+		type HoverPreview,
+		type PaintAssist,
+		type PaintTool,
+		type PointerConstraint,
+		type StrokeToolFields
+	} from '$lib/scene/gizmos/painting/paint-tools';
+	import { effectiveRealistic } from '$lib/scene/realistic';
+	import { overlappingCount } from '$lib/scene/footprint-overlap';
 	import {
 		PAINT_BLOCKER_COLOUR,
 		PAINT_ENFORCER_COLOUR,
@@ -566,7 +583,9 @@
 		remapExtruderAfterMerge,
 		remapExtruderAfterRemoval,
 		removeFilamentSlot,
-		slotAfterRemoval
+		slotAfterRemoval,
+		SUPPORT_FILAMENT_KEYS,
+		supportFilamentAfterRemoval
 	} from '$lib/editor/presets';
 	import Dialog from '$lib/ui/Dialog.svelte';
 	import { uniqueCopyName } from '$lib/editor/presets';
@@ -593,8 +612,15 @@
 	// Peinture au triangle (T105) : canal piloté par l'outil de peinture actif ;
 	// outil (pinceau/sphère/remplissage), rayon et état peint réglés par la barre.
 	const paintChannel = $derived(paintChannelOf(tools.active));
-	let paintTool = $state<'brush' | 'sphere' | 'fill'>('brush');
+	let paintTool = $state<PaintTool>('brush');
 	let paintRadius = $state(2);
+	// Lot 38 — paramètres des autres outils (hauteur de plage, comblement, pot
+	// MMU sans arêtes) et contrainte « Verticale / Horizontale » de la souris.
+	let paintHeight = $state(PAINT_PARAM_DEFAULTS.height);
+	let paintGapArea = $state(PAINT_PARAM_DEFAULTS.gapArea);
+	let paintEdgeDetection = $state(PAINT_PARAM_DEFAULTS.edgeDetection);
+	let paintConstraint = $state<PointerConstraint>(null);
+	let paintBusy = $state(false);
 	// Plan de coupe des gizmos de peinture (Alt+molette, ratio 0..1, 0 = inactif).
 	let sectionRatio = $state(0);
 	// Normale du plan (direction de vue au premier cran, conservée ensuite).
@@ -785,6 +811,10 @@
 	let meshWarningsByObject = $state<Record<string, MeshWarning>>({});
 	// Direction de vue (réactive) pour le navigateur 3D.
 	let navForward = $state<[number, number, number]>([0, 1, -0.6]);
+	// Phase 38 — navigateur 3D de l'Aperçu : vue choisie au cube, direction caméra.
+	let previewNamedView = $state<NamedView | null>(null);
+	let previewViewKey = $state(0);
+	let previewForward = $state<[number, number, number]>([0.6, 0.8, -0.7]);
 
 	// Modèle de scène (mutations en place → proxysées par `$state`, réactives).
 	let tree = $state(new ObjectTree());
@@ -812,24 +842,12 @@
 		}
 		return out;
 	});
-	// Objets du plateau actif dont l'empreinte au sol en chevauche une autre
-	// (boîtes XY, rotation ignorée ; > 0,5 mm d'intersection sur les deux axes).
-	const overlapCount = $derived.by(() => {
-		const fp = activeSceneObjects.map((o) => objectFootprint(o, [bed.center.x, bed.center.y]));
-		const hit = new SvelteSet<number>();
-		for (let i = 0; i < fp.length; i++)
-			for (let j = i + 1; j < fp.length; j++) {
-				const a = fp[i];
-				const b = fp[j];
-				const ox = (a.width + b.width) / 2 - Math.abs(a.x - b.x);
-				const oy = (a.depth + b.depth) / 2 - Math.abs(a.y - b.y);
-				if (ox > 0.5 && oy > 0.5) {
-					hit.add(i);
-					hit.add(j);
-				}
-			}
-		return hit.size;
-	});
+	// Objets du plateau actif dont l'empreinte au sol en chevauche une autre de
+	// plus de 0,5 mm (phase 38 : enveloppes convexes XY, rotation et échelle
+	// comprises — plus de faux positif après l'arrangement d'objets tournés).
+	const overlapCount = $derived.by(() =>
+		overlappingCount(activeSceneObjects, [bed.center.x, bed.center.y])
+	);
 	const visibleSceneObjects = $derived.by(() => {
 		const visible = viewportObjects(sceneObjects, activePlate, (id) => tree.isHidden(id));
 		const displaced = assemblyExploded
@@ -1059,6 +1077,7 @@
 				if (ex !== (v.extruder ?? 0))
 					updateVolume(objectId, v.id, { extruder: ex > 0 ? ex : undefined });
 			}
+		afterFilamentSlotRemoved(slot, (s) => remapExtruderAfterRemoval(s, slot));
 		projectFilament = afterSlotRemoved(projectFilament, slot);
 		filamentSlot = slotAfterRemoval(filamentSlot, slot, next.filaments.length);
 		activePresets = next;
@@ -1087,10 +1106,59 @@
 					plate.id,
 					remapCodesAfterFilamentRemoval(plate.customGcodes, slot, target)
 				);
+		const repainted = afterFilamentSlotRemoved(slot, (s) =>
+			remapExtruderAfterMerge(s, slot, target)
+		);
 		projectFilament = afterSlotRemoved(projectFilament, slot);
 		filamentSlot = slotAfterRemoval(filamentSlot, slot, next.filaments.length);
 		activePresets = next;
-		saveMessage = `Filament ${slot + 1} fusionné avec le filament ${target + 1} : objets et pièces réaffectés.`;
+		saveMessage = `Filament ${slot + 1} fusionné avec le filament ${target + 1} : objets, pièces${repainted ? ', peinture' : ''} et filaments de support réaffectés.`;
+	}
+
+	/**
+	 * Phase 38 — suite d'un retrait de slot (Orca Plater::on_filaments_delete) :
+	 * peinture MMU renumérotée (TriangleSelector::deserialize avec
+	 * to_delete / replace : feuilles du filament retiré → cible ou non peintes,
+	 * suivantes décalées), puis support_filament / support_interface_filament
+	 * (process et réglages par objet / pièce) : retiré → « Défaut », suivants
+	 * décalés. Renvoie le nombre d'objets dont la peinture a changé.
+	 */
+	function afterFilamentSlotRemoved(removed: number, remapState: (s: number) => number): number {
+		let repainted = 0;
+		for (const doc of Object.values(paintings)) {
+			const mmu = doc.serialize().mmu;
+			if (!mmu || Object.keys(mmu).length === 0) continue;
+			const next = remapChannelStates(mmu, remapState);
+			if (JSON.stringify(next) === JSON.stringify(mmu)) continue;
+			doc.replaceChannel('mmu', next);
+			repainted++;
+		}
+		if (repainted) paintings = { ...paintings };
+		const processLoaded = Object.keys(processValues).length > 0;
+		for (const key of SUPPORT_FILAMENT_KEYS) {
+			const current = processValues[key] ?? processResolvedValues[key];
+			const nextValue = supportFilamentAfterRemoval(current, removed);
+			if (processLoaded && nextValue !== null && String(nextValue) !== String(current)) {
+				processValues = { ...processValues, [key]: nextValue };
+				editTouched.process.set(key, ++editTouchSeq);
+				const presetId = activePresetOf('process')?.id;
+				if (presetId) editTouchedPreset.process.set(key, presetId);
+			}
+			for (const node of tree.list()) {
+				if (!(key in (node.settings ?? {}))) continue;
+				const v = supportFilamentAfterRemoval(node.settings[key], removed);
+				if (v !== null && String(v) !== String(node.settings[key]))
+					tree.setSetting(node.id, key, v);
+			}
+			for (const [objectId, volumes] of Object.entries(volumesByObject))
+				for (const vol of volumes) {
+					if (!vol.settings || !(key in vol.settings)) continue;
+					const v = supportFilamentAfterRemoval(vol.settings[key], removed);
+					if (v !== null && String(v) !== String(vol.settings[key]))
+						updateVolume(objectId, vol.id, { settings: { ...vol.settings, [key]: v } });
+				}
+		}
+		return repainted;
 	}
 
 	// Phase 37 — « Déplacer le plateau vers l'avant » (PartPlate, icône 7).
@@ -3224,7 +3292,7 @@
 			const cause = failed
 				? conversionCause(
 						(e.details as { cause?: string } | undefined)?.cause ??
-							e.message.replace(/^.*?moteur\s*:\s*/, ''),
+							e.technical.replace(/^.*?moteur\s*:\s*/, ''),
 						orcaCatalog
 					)
 				: null;
@@ -4217,7 +4285,7 @@
 		channel: PaintChannel,
 		before: Record<string, string>,
 		recorder: StrokeRecorder,
-		tool: 'brush' | 'bucket_fill'
+		fields: StrokeToolFields
 	) {
 		const modelId = objectModelId(id);
 		if (!modelId || recorder.length === 0) return;
@@ -4226,11 +4294,11 @@
 		const common = {
 			camera_pos: camera ?? recorder.points[0],
 			radius: paintRadius,
-			cursor: (paintTool === 'sphere' || !camera ? 'sphere' : 'circle') as 'sphere' | 'circle',
 			state: paintState,
 			trafo: worldMatrix(objectTransform(object)),
-			tool,
-			fill_angle: paintFillAngle
+			// Outil d'Orca (cercle / sphère / triangle / plage de hauteur / remplissages).
+			...fields,
+			...(fields.cursor === 'circle' && !camera ? { cursor: 'sphere' as const } : {})
 		};
 		const batches = recorder.batches();
 		const previous = paintQueues.get(key);
@@ -4270,14 +4338,18 @@
 		if (!object) return;
 		if (paintChannel) {
 			const doc = paintingFor(id);
+			// Comblement : rien au clic (bouton « Combler » de la barre).
+			if (!paintsOnClick(paintTool)) return;
 			if (paintTool === 'fill') {
-				// Pot de peinture d'Orca (bucket_fill, angle d'arrêt) : calcul moteur
-				// seul, sans aperçu TS (une région TS serait fausse).
+				// Remplissages d'Orca (smart fill des supports / fuzzy / couture, pot
+				// du MMU avec ou sans arêtes) : calcul moteur seul, l'aperçu au
+				// survol a déjà montré la zone.
 				if (pick.phase === 'move' || pick.phase === 'up' || pick.triangle === null) return;
 				const recorder = new StrokeRecorder(0);
 				recorder.add(pick);
 				const before = doc.serialize()[paintChannel] ?? {};
-				commitEngineStroke(id, object, paintChannel, before, recorder, 'bucket_fill');
+				commitEngineStroke(id, object, paintChannel, before, recorder, currentStrokeFields());
+				clearHoverPreview();
 				return;
 			}
 			if (pick.phase === 'up') {
@@ -4287,7 +4359,7 @@
 				const target = stroke ? sceneObjects.find((o) => o.id === stroke.id) : undefined;
 				if (stroke && target) {
 					const { channel, before, recorder } = stroke;
-					commitEngineStroke(stroke.id, target, channel, before, recorder, 'brush');
+					commitEngineStroke(stroke.id, target, channel, before, recorder, currentStrokeFields());
 				}
 				return;
 			}
@@ -4301,10 +4373,21 @@
 				paintDragging = pick.phase === 'down';
 			}
 			if (!activeStroke || activeStroke.id !== id || !activeStroke.recorder.add(pick)) return;
-			// Aperçu instantané (facettes entières, TS) pendant le glisser.
-			const preview = trianglesInRadius(object.mesh, pick.localPoint, paintRadius);
-			doc.paint(paintChannel, preview, paintState);
-			paintings = { ...paintings };
+			// Aperçu instantané (facettes entières, TS) pendant le glisser : disque /
+			// sphère, ou le seul triangle touché (outil Triangle). La plage de
+			// hauteur attend la réponse du moteur.
+			const preview =
+				paintTool === 'pointer'
+					? pick.triangle !== null
+						? [pick.triangle]
+						: []
+					: paintTool === 'height'
+						? []
+						: trianglesInRadius(object.mesh, pick.localPoint, paintRadius);
+			if (preview.length) {
+				doc.paint(paintChannel, preview, paintState);
+				paintings = { ...paintings };
+			}
 			// Clic simple (sans phases) : trait d'un point, commit immédiat.
 			if (!pick.phase) onMeshPick(id, { ...pick, phase: 'up' });
 			return;
@@ -4387,6 +4470,203 @@
 		doc.clear(paintChannel);
 		paintings = { ...paintings };
 	}
+
+	// — Lot 38 : outils des gizmos de peinture d'Orca ———————————————————
+	const paintParams = $derived({
+		radius: paintRadius,
+		height: paintHeight,
+		fillAngle: paintFillAngle,
+		edgeDetection: paintEdgeDetection,
+		gapArea: paintGapArea
+	});
+	function currentStrokeFields(): StrokeToolFields {
+		return strokeFields(paintChannel ?? 'supports', paintTool, paintParams);
+	}
+	// Outil absent du canal ouvert (ex. Plage de hauteur hors MMU) → pinceau.
+	$effect(() => {
+		if (paintChannel) {
+			const tool = coerceTool(paintChannel, paintTool);
+			if (tool !== paintTool) paintTool = tool;
+		}
+	});
+
+	/**
+	 * Opération moteur sur tout un canal (comblement, remappage) : sérialisée
+	 * derrière les traits en cours du même objet / canal, une entrée d'annulation.
+	 */
+	function runPaintOp(
+		id: string,
+		channel: PaintChannel,
+		op: (modelId: string, facets: Record<string, string>) => Promise<Record<string, string>>,
+		done?: (before: Record<string, string>, after: Record<string, string>) => void
+	): boolean {
+		const modelId = objectModelId(id);
+		if (!modelId) {
+			saveMessage = 'Peinture : l’objet n’est pas encore enregistré sur le serveur.';
+			return false;
+		}
+		const key = `${id}/${channel}`;
+		const before = paintingFor(id).serialize()[channel] ?? {};
+		const previous = paintQueues.get(key);
+		paintBusy = true;
+		const tail = (previous ?? Promise.resolve())
+			.then(async () => {
+				const base = previous ? (paintings[id]?.serialize()[channel] ?? before) : before;
+				const after = await op(modelId, base);
+				paintings[id]?.replaceChannel(channel, after);
+				paintings = { ...paintings };
+				done?.(base, after);
+			})
+			.catch((e) => {
+				saveMessage = 'Peinture (moteur) : ' + (e instanceof Error ? e.message : String(e));
+			})
+			.finally(() => {
+				paintBusy = false;
+			});
+		paintQueues.set(key, tail);
+		void tail.finally(() => {
+			if (paintQueues.get(key) === tail) paintQueues.delete(key);
+		});
+		paintUndo.push({ id, channel, facets: before });
+		paintRedo = [];
+		return true;
+	}
+
+	/** « Combler » (Orca Gap fill › Perform) sur l'objet sélectionné. */
+	function performGapFill() {
+		const id = selId;
+		const channel = paintChannel;
+		if (!id || !channel || paintGapArea <= 0) return;
+		const area = paintGapArea;
+		runPaintOp(
+			id,
+			channel,
+			(modelId, facets) => enginePaintClient().gapFill(id, modelId, channel, facets, area),
+			(before, after) => {
+				const changed = JSON.stringify(before) !== JSON.stringify(after);
+				saveMessage = changed
+					? `Comblement : zones de moins de ${area.toLocaleString('fr-FR')} mm² absorbées.`
+					: 'Comblement : aucune zone assez petite.';
+			}
+		);
+	}
+
+	/**
+	 * « Remapper les filaments » (Orca remap_filament_assignments) : peinture
+	 * MMU de l'objet par le moteur (remap_triangle_state), puis extrudeur de
+	 * base avec la même table — celui de chaque pièce qui a le sien, sinon celui
+	 * de l'objet.
+	 */
+	function remapPaintFilaments(table: number[]) {
+		const id = selId;
+		const map = remapMessageMap(table);
+		if (!id || !map) return;
+		const mmu = paintings[id]?.serialize().mmu ?? {};
+		if (Object.keys(mmu).length > 0)
+			runPaintOp(id, 'mmu', (modelId, facets) =>
+				enginePaintClient().remap(id, modelId, facets, map)
+			);
+		const node = tree.get(id);
+		let baseChanged = false;
+		const volumes = volumesByObject[id] ?? [];
+		for (const v of volumes) {
+			if (v.type !== 'part' || !v.extruder) continue;
+			const dst = remapBaseExtruder(v.extruder, table);
+			if (dst !== null) {
+				updateVolume(id, v.id, { extruder: dst });
+				baseChanged = true;
+			}
+		}
+		if (node) {
+			const dst = remapBaseExtruder(node.extruder, table);
+			if (dst !== null) {
+				tree.setExtruder(id, dst);
+				baseChanged = true;
+			}
+		}
+		saveMessage = `Filaments remappés${Object.keys(mmu).length ? ' (peinture' + (baseChanged ? ' et filament de base)' : ')') : baseChanged ? ' (filament de base)' : ''}.`;
+	}
+
+	// Aperçu au survol (Orca : surbrillance de la zone avant le clic) — envoyé
+	// au seul changement de facette / d'outil ; réponses dépassées ignorées.
+	let hoverPreview = $state<{ id: string; preview: HoverPreview } | null>(null);
+	let hoverKey = '';
+	function clearHoverPreview() {
+		hoverKey = '';
+		enginePaint?.cancelPreviews();
+		if (hoverPreview) hoverPreview = null;
+	}
+	// Couleur de l'aperçu : celle de l'état peint, éclaircie (Orca surligne la
+	// sélection du remplissage) pour rester visible sur un objet de même couleur.
+	function paintStateColour(channel: PaintChannel, state: number): string {
+		const base =
+			channel === 'mmu'
+				? (filamentSlotColors[state - 1] ?? '#f59e0b')
+				: state === BLOCKER
+					? PAINT_BLOCKER_COLOUR
+					: PAINT_ENFORCER_COLOUR;
+		const m = /^#?([0-9a-f]{6})$/i.exec(base);
+		if (!m) return base;
+		const n = parseInt(m[1], 16);
+		const mix = (v: number) => Math.round(v + (255 - v) * 0.55);
+		const rgb = [mix(n >> 16), mix((n >> 8) & 255), mix(n & 255)];
+		return '#' + rgb.map((v) => v.toString(16).padStart(2, '0')).join('');
+	}
+	function onPaintHover(pick: MeshPick | null) {
+		const id = selId;
+		const channel = paintChannel;
+		if (!pick || pick.triangle === null || !id || !channel || !hasHoverPreview(paintTool)) {
+			clearHoverPreview();
+			return;
+		}
+		const object = sceneObjects.find((o) => o.id === id);
+		const modelId = objectModelId(id);
+		if (!object || !modelId) return;
+		const fields = currentStrokeFields();
+		const key = `${id}/${channel}/${pick.triangle}/${fields.tool}/${fields.fill_angle ?? ''}/${paintState}`;
+		if (key === hoverKey) return;
+		hoverKey = key;
+		const facets = paintings[id]?.serialize()[channel] ?? {};
+		const colour = paintStateColour(channel, paintState);
+		void enginePaintClient()
+			.preview(id, modelId, channel, facets, {
+				points: [pick.localPoint],
+				facets: [pick.triangle],
+				camera_pos: pick.localCamera ?? pick.localPoint,
+				radius: paintRadius,
+				state: paintState,
+				trafo: worldMatrix(objectTransform(object)),
+				...fields
+			})
+			.then((res) => {
+				if (res.stale || hoverKey !== key) return;
+				hoverPreview = {
+					id,
+					preview: { positions: new Float32Array(res.vertices ?? []), color: colour }
+				};
+			})
+			.catch(() => {
+				// Aperçu facultatif : une erreur ne doit pas gêner la peinture.
+			});
+	}
+	// Outil, canal ou réglages changés : l'aperçu courant n'est plus valable.
+	$effect(() => {
+		void paintTool;
+		void paintChannel;
+		void paintFillAngle;
+		void paintEdgeDetection;
+		void paintState;
+		untrack(clearHoverPreview);
+	});
+	const sceneHoverPreviews = $derived(
+		hoverPreview && paintChannel ? { [hoverPreview.id]: hoverPreview.preview } : null
+	);
+	const scenePaintAssist = $derived<PaintAssist | null>(
+		paintChannel ? { constraint: paintConstraint, onhover: onPaintHover } : null
+	);
+	// Vue réaliste (préférence + menu Vue), suspendue pendant les gizmos
+	// Supports / Couture / Fuzzy comme dans Orca.
+	const realisticView = $derived(effectiveRealistic($appPreferences.graphics, paintChannel));
 
 	// Items de la barre de plateau en état actif (bascules visuelles).
 	const plateToolActive = $derived(
@@ -7664,6 +7944,18 @@
 				saveMessage = show ? 'Navigateur 3D affiché.' : 'Navigateur 3D masqué.';
 				break;
 			}
+			// Phase 38 : vue réaliste (Orca « Realistic View », préférence opengl_realistic_mode).
+			case 'view.realistic': {
+				const prefs = currentPreferences();
+				const on = !prefs.graphics.realisticView;
+				savePreferences({ ...prefs, graphics: { ...prefs.graphics, realisticView: on } });
+				saveMessage = on
+					? paintChannel && paintChannel !== 'mmu'
+						? 'Vue réaliste activée (reprend à la fermeture de l’outil de peinture).'
+						: 'Vue réaliste activée.'
+					: 'Vue réaliste désactivée.';
+				break;
+			}
 			case 'view.axes': {
 				const show = !currentPreferences().showAxes;
 				savePreferences({ ...currentPreferences(), showAxes: show });
@@ -8017,7 +8309,12 @@
 		}
 		if (!e.ctrlKey) return;
 		e.preventDefault();
-		paintRadius = Math.max(0.2, Math.min(20, paintRadius + (e.deltaY < 0 ? 0.2 : -0.2)));
+		// Ctrl + molette : paramètre de l'outil actif (rayon, hauteur, angle, aire).
+		const next = wheelParams(paintTool, paintParams, e.deltaY < 0);
+		paintRadius = next.radius;
+		paintHeight = next.height;
+		paintFillAngle = next.fillAngle;
+		paintGapArea = next.gapArea;
 	}
 	// La coupe ne vit que pendant la peinture (réinitialisée à la fermeture du gizmo).
 	$effect(() => {
@@ -9810,6 +10107,9 @@
 							onpickvolume={pickVolume}
 							onmeshpick={onMeshPick}
 							paintstroke={!!paintChannel}
+							paintAssist={scenePaintAssist}
+							hoverPreviews={sceneHoverPreviews}
+							realistic={realisticView}
 							suspendcontrols={paintDragging}
 							flattenMode={tools.active === 'flatten'}
 							onflatten={flattenOnFace}
@@ -9982,6 +10282,14 @@
 								bind:tool={paintTool}
 								bind:radius={paintRadius}
 								bind:state={paintState}
+								bind:height={paintHeight}
+								bind:fillAngle={paintFillAngle}
+								bind:edgeDetection={paintEdgeDetection}
+								bind:gapArea={paintGapArea}
+								bind:constraint={paintConstraint}
+								busy={paintBusy}
+								ongapfill={performGapFill}
+								onremap={remapPaintFilaments}
 								filamentColours={filamentSlotColors}
 							/>
 							<div class="mt-3 flex items-center justify-between text-xs text-content-subtle">
@@ -10150,8 +10458,29 @@
 									frameKey={previewFrameKey}
 									renderMode={effectiveRender}
 									tool={previewTool?.position ?? null}
+									view={previewNamedView}
+									viewKey={previewViewKey}
+									oncameradir={(forward) => (previewForward = forward)}
 								/>
 							{/await}
+							{#if $appPreferences.show3dNavigator}
+								<!-- Phase 38 — navigateur 3D aussi en Aperçu (Orca ViewManipulate, en bas
+								     à gauche) ; à droite quand la fenêtre G-code occupe ce coin. -->
+								<div
+									class="absolute bottom-16 z-10 {showGcodeWindow && gcodeLines.length > 0
+										? 'right-32'
+										: 'left-3'}"
+									data-testid="preview-view-cube"
+								>
+									<ViewCube
+										forward={previewForward}
+										onselect={(v) => {
+											previewNamedView = v;
+											previewViewKey++;
+										}}
+									/>
+								</div>
+							{/if}
 							{#if showGcodeWindow && gcodeLines.length > 0}
 								<div class="absolute bottom-16 left-3 z-20">
 									<GcodeWindow lines={gcodeLines} layer={layerRange.high} />

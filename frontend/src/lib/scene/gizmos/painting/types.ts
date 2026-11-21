@@ -1,14 +1,7 @@
-// Types du gizmo de peinture (T056).
+// Types du gizmo de peinture (T056 ; outils du lot 38 dans paint-tools.ts).
 import type { PaintChannel } from './painting';
 
-/** Outil de peinture : pinceau (rayon), sphère (volume), remplissage (région). */
-export type PaintTool = 'brush' | 'sphere' | 'fill';
-
-export const PAINT_TOOL_LABELS: Record<PaintTool, string> = {
-	brush: 'Pinceau',
-	sphere: 'Sphère',
-	fill: 'Remplissage'
-};
+export { PAINT_TOOL_LABELS, type PaintTool } from './paint-tools';
 
 export const CHANNEL_LABELS: Record<PaintChannel, string> = {
 	supports: 'Supports',

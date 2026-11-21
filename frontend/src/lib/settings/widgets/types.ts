@@ -56,6 +56,23 @@ export function unitText(sidetext: string | null | undefined): string {
 }
 
 /**
+ * Unité affichée, traduite ; les unités monétaires d'Orca (« money/kg »,
+ * « money/h » : la devise n'est pas fixée par Orca) suivent la devise des
+ * préférences (« €/kg », « €/h ») au lieu de « argent/kg ».
+ */
+export function displayUnit(
+	sidetext: string | null | undefined,
+	translate: (key: string) => string,
+	currency: string
+): string {
+	const unit = unitText(sidetext);
+	if (!unit) return '';
+	const money = /^money\/(.+)$/.exec(unit);
+	if (money) return `${currency.trim() || '€'}/${money[1]}`;
+	return translate(unit);
+}
+
+/**
  * Phase 28 — séparateur décimal homogène : les champs numériques natifs
  * (input type=number) affichent celui de la langue du navigateur (« 0,2 » en
  * français) ; les champs texte « mm ou % » / « % » affichent désormais le même.

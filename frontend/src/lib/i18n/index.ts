@@ -25,6 +25,21 @@ export type Locale = (typeof locales)[number];
 
 export const LOCALES: readonly Locale[] = locales;
 
+/**
+ * Nom d'une langue dans cette langue (Orca : « English », « Français » dans
+ * Preferences › Language), jamais son code brut.
+ */
+const LANGUAGE_NAMES: Record<string, string> = { en: 'English', fr: 'Français' };
+export function languageName(code: string): string {
+	if (LANGUAGE_NAMES[code]) return LANGUAGE_NAMES[code];
+	try {
+		const name = new Intl.DisplayNames([code], { type: 'language' }).of(code);
+		return name ? name.charAt(0).toLocaleUpperCase(code) + name.slice(1) : code;
+	} catch {
+		return code;
+	}
+}
+
 /** Signature d'une fonction de message Paraglide (nos messages sont sans paramètre). */
 type MessageFn = (inputs?: Record<string, never>, options?: { locale?: Locale }) => string;
 

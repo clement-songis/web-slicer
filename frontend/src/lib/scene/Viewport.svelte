@@ -36,6 +36,9 @@
 	import { guideRotation, markerWorldRadius, MARKER_PX, type SceneGuides } from './guides';
 	import type { Footprint, PlateView } from './plate-layout';
 	import { appPreferences } from '$lib/settings/preferences';
+	import type { HoverPreview, PaintAssist } from './gizmos/painting/paint-tools';
+	import type { RealisticOptions } from './realistic';
+	import RealisticLight from './RealisticLight.svelte';
 
 	interface Props {
 		bed: BedShape;
@@ -126,6 +129,12 @@
 		onobjectdrop?: (objectId: string, footprint: Footprint) => void;
 		/** Change à chaque changement de plateau actif : la caméra recadre ce plateau. */
 		recenterKey?: string | null;
+		/** Peinture : survol (aperçu) et contrainte de souris (lot 38). */
+		paintAssist?: PaintAssist | null;
+		/** Aperçu au survol par objet (triangles que le clic peindrait). */
+		hoverPreviews?: Record<string, HoverPreview | null> | null;
+		/** Vue réaliste (préférence + menu Vue), null = rendu standard. */
+		realistic?: RealisticOptions | null;
 	}
 
 	let {
@@ -169,7 +178,10 @@
 		activePlate = null,
 		onactivateplate,
 		onobjectdrop,
-		recenterKey = null
+		recenterKey = null,
+		paintAssist = null,
+		hoverPreviews = null,
+		realistic = null
 	}: Props = $props();
 
 	// Cadre du plateau actif (multi-plateaux) : contour légèrement surélevé.
@@ -624,12 +636,18 @@
 	</T.PerspectiveCamera>
 {/if}
 
-<T.AmbientLight intensity={0.6} />
-<T.DirectionalLight
-	position={[bed.center.x + 200, bed.center.y - 200, 400]}
-	intensity={1.2}
-	castShadow
-/>
+{#if realistic}
+	<!-- Vue réaliste : lumière fixe dans le repère caméra (Orca), ombres en option. -->
+	<T.AmbientLight intensity={0.45} />
+	<RealisticLight {bed} shadows={realistic.shadows} />
+{:else}
+	<T.AmbientLight intensity={0.6} />
+	<T.DirectionalLight
+		position={[bed.center.x + 200, bed.center.y - 200, 400]}
+		intensity={1.2}
+		castShadow
+	/>
+{/if}
 
 <Bed {bed} {showGrid} showAxes={$appPreferences.showAxes} />
 
@@ -666,6 +684,7 @@
 					volumeMeshes={obj.volumeMeshes}
 					printable={obj.printable}
 					issue={issueObjects?.[obj.id] ?? null}
+					{realistic}
 					onpick={() => onactivateplate?.(plate.id, obj.id)}
 				/>
 			{/each}
@@ -711,6 +730,9 @@
 		onpick={(additive) => pick(obj.id, additive)}
 		onmeshpick={onmeshpick ? (meshPick) => onmeshpick(obj.id, meshPick) : undefined}
 		{paintstroke}
+		{realistic}
+		paintAssist={paintstroke && selection.has(obj.id) ? paintAssist : null}
+		hoverPreview={hoverPreviews?.[obj.id] ?? null}
 		onref={(o) => setRef(obj.id, o)}
 	/>
 	{#if labels?.[obj.id] && !printOrder?.[obj.id]}

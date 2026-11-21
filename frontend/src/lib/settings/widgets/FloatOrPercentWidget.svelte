@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
+	import { unitLabel } from './unit-label';
 	// FloatOrPercent (coFloatOrPercent*) : valeur absolue ou relative, éditée en
 	// texte (« 0.4 » ou « 40% ») — le suffixe « % » bascule l'interprétation,
 	// rapportée à `ratioOver` (parité Orca).
@@ -31,6 +32,6 @@
 		class={FIELD_CLASS}
 	/>
 	{#if unitText(def.sidetext)}
-		<span class="text-xs whitespace-nowrap text-content-subtle">{$t(unitText(def.sidetext))}</span>
+		<span class="text-xs whitespace-nowrap text-content-subtle">{$unitLabel(def.sidetext)}</span>
 	{/if}
 </span>
