@@ -20,6 +20,36 @@ use super::{PaintChannel, TriangleMesh};
 /// l'exige `set_triangle_from_string`.
 pub type PaintFacets = BTreeMap<u32, String>;
 
+/// Désérialise des `PaintFacets` depuis des clés JSON chaînes (`"5"`).
+///
+/// Dans une énumération serde étiquetée (`tag = …`) ou un `flatten`, serde
+/// met le contenu en tampon et ne sait plus convertir une clé chaîne en
+/// `u32` (« invalid type: string "5", expected u32 ») : toute facette non
+/// vide était refusée. À utiliser via `deserialize_with`.
+pub fn de_facets<'de, D>(de: D) -> Result<PaintFacets, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw: BTreeMap<String, String> = Deserialize::deserialize(de)?;
+    raw.into_iter()
+        .map(|(k, v)| {
+            k.parse::<u32>()
+                .map(|k| (k, v))
+                .map_err(|_| serde::de::Error::custom(format!("indice de facette invalide : {k}")))
+        })
+        .collect()
+}
+
+/// Variante optionnelle de [`de_facets`].
+pub fn de_opt_facets<'de, D>(de: D) -> Result<Option<PaintFacets>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    struct W(#[serde(deserialize_with = "de_facets")] PaintFacets);
+    Ok(Option::<W>::deserialize(de)?.map(|w| w.0))
+}
+
 /// Curseur du pinceau (`TriangleSelector::CursorType`, mêmes valeurs) :
 /// CIRCLE, SPHERE, POINTER (outil « Triangles » : un seul triangle, au niveau
 /// de subdivision touché) et HEIGHT_RANGE (« Plage de hauteur » : tout ce qui
@@ -178,7 +208,7 @@ pub enum ServeOp {
     PaintStroke {
         session: String,
         channel: PaintChannel,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "de_opt_facets")]
         facets: Option<PaintFacets>,
         stroke: PaintStroke,
     },
@@ -188,7 +218,7 @@ pub enum ServeOp {
     PaintGapFill {
         session: String,
         channel: PaintChannel,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "de_opt_facets")]
         facets: Option<PaintFacets>,
         area: f32,
     },
@@ -198,7 +228,7 @@ pub enum ServeOp {
     PaintRemap {
         session: String,
         channel: PaintChannel,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "de_opt_facets")]
         facets: Option<PaintFacets>,
         map: Vec<u8>,
     },
@@ -208,7 +238,7 @@ pub enum ServeOp {
     PaintPreview {
         session: String,
         channel: PaintChannel,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "de_opt_facets")]
         facets: Option<PaintFacets>,
         stroke: PaintStroke,
     },
@@ -372,6 +402,15 @@ mod tests {
         .unwrap();
         assert_eq!(req.id, 7);
         assert!(matches!(req.op, ServeOp::PaintStroke { facets: None, .. }));
+        // Facettes non vides à travers flatten + enum étiqueté (régression).
+        let req: ServeRequest = serde_json::from_value(serde_json::json!({
+            "id": 8, "op": "paint_remap", "session": "p/o", "channel": "mmu",
+            "facets": { "5": "4", "12": "8" }, "map": [2, 1]
+        }))
+        .unwrap();
+        assert!(
+            matches!(req.op, ServeOp::PaintRemap { facets: Some(ref f), .. } if f.get(&12).map(String::as_str) == Some("8"))
+        );
         let resp = ServeResponse {
             facets: Some(PaintFacets::from([(3, "4".to_string())])),
             ..ServeResponse::ok(7)

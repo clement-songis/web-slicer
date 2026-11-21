@@ -60,7 +60,7 @@ enum ClientMsg {
         seq: u64,
         object_id: String,
         channel: PaintChannel,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "engine::api::paint::de_facets")]
         facets: PaintFacets,
         stroke: PaintStroke,
     },
@@ -68,7 +68,7 @@ enum ClientMsg {
         seq: u64,
         object_id: String,
         channel: PaintChannel,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "engine::api::paint::de_facets")]
         facets: PaintFacets,
         area: f32,
     },
@@ -76,7 +76,7 @@ enum ClientMsg {
         seq: u64,
         object_id: String,
         channel: PaintChannel,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "engine::api::paint::de_facets")]
         facets: PaintFacets,
         map: Vec<u8>,
     },
@@ -84,7 +84,7 @@ enum ClientMsg {
         seq: u64,
         object_id: String,
         channel: PaintChannel,
-        #[serde(default)]
+        #[serde(default, deserialize_with = "engine::api::paint::de_facets")]
         facets: PaintFacets,
         stroke: PaintStroke,
     },
@@ -527,5 +527,19 @@ mod tests {
         }))
         .unwrap();
         assert!(matches!(m, ClientMsg::Preview { .. }));
+        // Facettes non vides : clés chaînes du JSON (régression phase 38).
+        let m: ClientMsg = serde_json::from_value(json!({
+            "type": "gap_fill", "seq": 7, "object_id": "o", "channel": "mmu", "area": 1.0,
+            "facets": { "5": "4", "12": "8" }
+        }))
+        .unwrap();
+        assert!(
+            matches!(m, ClientMsg::GapFill { ref facets, .. } if facets.get(&5).map(String::as_str) == Some("4") && facets.len() == 2)
+        );
+        assert!(serde_json::from_value::<ClientMsg>(json!({
+            "type": "remap", "seq": 8, "object_id": "o", "channel": "mmu", "map": [1],
+            "facets": { "x": "4" }
+        }))
+        .is_err());
     }
 }
