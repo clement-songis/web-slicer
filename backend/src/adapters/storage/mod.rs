@@ -122,8 +122,11 @@ pub(crate) fn collect_uuid_strings(value: &Value, ids: &mut HashSet<Uuid>) {
             }
         }
         Value::Object(values) => {
-            for value in values.values() {
-                collect_uuid_strings(value, ids);
+            // `overrides` (lot 40) : valeurs de réglages, pas des références.
+            for (key, value) in values {
+                if key != "overrides" {
+                    collect_uuid_strings(value, ids);
+                }
             }
         }
         _ => {}

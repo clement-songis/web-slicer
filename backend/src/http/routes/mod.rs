@@ -15,6 +15,7 @@ pub mod jobs;
 pub mod mesh_ops;
 pub mod metadata;
 pub mod models;
+pub(crate) mod overrides;
 pub mod paint;
 pub mod preferences;
 pub mod presets;

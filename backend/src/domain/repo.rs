@@ -163,6 +163,11 @@ pub trait PresetRepo: Send + Sync {
     /// filtre d'instanciation ni de compatibilité — pour reconstruire une
     /// chaîne d'héritage (parents abstraits inclus).
     async fn list_by_kind(&self, kind: PresetKind, user: UserId) -> StorageResult<Vec<Preset>>;
+    /// Presets **utilisateur** d'un type appartenant à `user` (sans les
+    /// presets système), triés par nom — complément du cache des presets
+    /// système pour les listes compatibles.
+    async fn list_user_by_kind(&self, kind: PresetKind, user: UserId)
+        -> StorageResult<Vec<Preset>>;
     /// Presets visibles (système + ceux de l'utilisateur) d'un type portant ce
     /// nom exact — un maillon de chaîne d'héritage, sans charger tout le type
     /// (~7000 filaments système).

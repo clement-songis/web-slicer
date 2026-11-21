@@ -22,6 +22,7 @@ use crate::http::dto::{
 };
 use crate::http::error::{ApiError, ApiResult};
 use crate::http::extract::CurrentUser;
+use crate::http::preset_cache;
 use crate::http::state::AppState;
 
 /// Champs méta d'un profil Orca, exclus des valeurs de config à l'import.
@@ -92,18 +93,70 @@ pub async fn list(
     // filtre de liste historique (FR-021).
     if matches!(kind, PresetKind::Process | PresetKind::Filament) {
         if let Some(name) = q.printer.as_deref() {
+            let started = std::time::Instant::now();
             if let Some(printer) = active_printer(&state, user.id, name).await? {
-                let presets = list_compatible_exact(&state, user.id, kind, &printer).await?;
-                return Ok(Json(presets.into_iter().map(Into::into).collect()));
+                let printer_ms = started.elapsed().as_millis() as u64;
+                let presets = list_compatible_cached(&state, user.id, kind, &printer).await?;
+                tracing::debug!(
+                    ?kind,
+                    printer_ms,
+                    total_ms = started.elapsed().as_millis() as u64,
+                    count = presets.len(),
+                    "liste de presets compatibles"
+                );
+                return Ok(Json(presets));
             }
         }
     }
-    let presets = state
+    Ok(Json(
+        list_visible_cached(&state, user.id, kind, q.printer.as_deref()).await?,
+    ))
+}
+
+/// Filtre de liste historique (FR-021, `PresetRepo::list_compatible`) servi
+/// par le cache des presets système (lot 41) : instanciables, système puis
+/// utilisateur par nom (`ORDER BY origin, name`), `compatible_printers`
+/// absent ou contenant `printer`. Liste SQL si le cache ne peut pas
+/// reproduire l'ordre (homonymes instanciables).
+async fn list_visible_cached(
+    state: &AppState,
+    user: UserId,
+    kind: PresetKind,
+    printer: Option<&str>,
+) -> ApiResult<Vec<PresetSummary>> {
+    let system = state
+        .preset_cache
+        .system(state.storage.as_ref(), kind)
+        .await?;
+    if system.instantiable_homonyms {
+        let presets = state
+            .storage
+            .presets()
+            .list_compatible(kind, printer, user)
+            .await?;
+        return Ok(presets.into_iter().map(Into::into).collect());
+    }
+    let own = state
         .storage
         .presets()
-        .list_compatible(kind, q.printer.as_deref(), user.id)
+        .list_user_by_kind(kind, user)
         .await?;
-    Ok(Json(presets.into_iter().map(Into::into).collect()))
+    let listed = |p: &&Preset| {
+        p.instantiation
+            && match (printer, &p.compatible_printers) {
+                (Some(name), Some(Value::Array(list))) => {
+                    list.iter().any(|v| v.as_str() == Some(name))
+                }
+                _ => true,
+            }
+    };
+    Ok(system
+        .presets
+        .iter()
+        .filter(listed)
+        .chain(own.iter().filter(listed))
+        .map(|p| PresetSummary::from(p.clone()))
+        .collect())
 }
 
 /// Imprimante active par nom (système en priorité, sinon copie utilisateur),
@@ -152,6 +205,85 @@ async fn active_printer(
         user_parent,
         values,
     )))
+}
+
+/// Liste compatible servie par le cache des presets système (lot 41) :
+/// presets système chargés une fois par génération de reseed (compatibilité
+/// résolue d'avance), presets de l'utilisateur lus à chaque requête, verdict
+/// de chaque condition distincte évalué une fois. Réponse identique à
+/// `list_compatible_exact`, qui reste le chemin suivi quand un preset
+/// utilisateur porte le nom (ou l'id) d'un preset système ou d'une cible
+/// `inherits` système — il pourrait alors s'insérer dans une chaîne système
+/// ou concurrencer un parent selon l'ordre SQL.
+async fn list_compatible_cached(
+    state: &AppState,
+    user: UserId,
+    kind: PresetKind,
+    printer: &ActivePrinter,
+) -> ApiResult<Vec<PresetSummary>> {
+    let system = state
+        .preset_cache
+        .system(state.storage.as_ref(), kind)
+        .await?;
+    let own = state
+        .storage
+        .presets()
+        .list_user_by_kind(kind, user)
+        .await?;
+    if own
+        .iter()
+        .any(|p| system.reserved.contains(&p.name) || system.reserved.contains(&p.id.to_string()))
+    {
+        let presets = list_compatible_exact(state, user, kind, printer).await?;
+        return Ok(presets.into_iter().map(Into::into).collect());
+    }
+    let mut cache = RegexCache::default();
+    // Une condition ne dépend que de la config de l'imprimante : même verdict
+    // pour tous les presets qui la partagent.
+    let mut verdicts: HashMap<String, bool> = HashMap::new();
+    let mut compatible = |spec: &preset_compat::CompatSpec| -> bool {
+        if !spec.compatible_printers.is_empty() || spec.condition.is_empty() {
+            return preset_compat::is_compatible(spec, printer, &mut cache);
+        }
+        if let Some(&v) = verdicts.get(spec.condition.as_str()) {
+            return v;
+        }
+        let v = preset_compat::is_compatible(spec, printer, &mut cache);
+        verdicts.insert(spec.condition.clone(), v);
+        v
+    };
+    let mut system_out: Vec<&Preset> = system
+        .presets
+        .iter()
+        .zip(&system.specs)
+        .filter_map(|(p, spec)| spec.as_ref().filter(|s| compatible(s)).map(|_| p))
+        .collect();
+    system_out.sort_by(|a, b| a.name.cmp(&b.name));
+    // Aucun nom utilisateur ne recoupe un nom système : les homonymes d'un
+    // maillon sont soit le preset utilisateur, soit les presets système.
+    let user_by_name: HashMap<&str, &Preset> = own.iter().map(|p| (p.name.as_str(), p)).collect();
+    let user_by_id: HashMap<String, &Preset> = own.iter().map(|p| (p.id.to_string(), p)).collect();
+    let mut user_out: Vec<&Preset> = own
+        .iter()
+        .filter(|p| p.instantiation)
+        .filter(|leaf| {
+            let spec = preset_cache::compat_spec(
+                leaf,
+                |name| match user_by_name.get(name) {
+                    Some(p) => Some(vec![*p]),
+                    None => system.candidates(name),
+                },
+                |id| user_by_id.get(id).copied().or_else(|| system.get_id(id)),
+            );
+            compatible(&spec)
+        })
+        .collect();
+    user_out.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(system_out
+        .into_iter()
+        .chain(user_out)
+        .map(|p| PresetSummary::from(p.clone()))
+        .collect())
 }
 
 /// Presets instanciables d'un type compatibles avec `printer` selon
@@ -837,7 +969,10 @@ pub(crate) async fn load_chain(
 }
 
 /// Choisit le parent : même vendeur que l'enfant en priorité, sinon l'unique.
-fn pick_parent<'a>(candidates: Option<&Vec<&'a Preset>>, child: &Preset) -> Option<&'a Preset> {
+pub(crate) fn pick_parent<'a>(
+    candidates: Option<&Vec<&'a Preset>>,
+    child: &Preset,
+) -> Option<&'a Preset> {
     // Un preset utilisateur peut porter le nom de son parent (copie d'imprimante
     // « même nom → même modèle ») : il ne peut pas être son propre parent.
     let candidates: Vec<&'a Preset> = candidates?
@@ -906,5 +1041,296 @@ pub(crate) fn config_value_to_json(value: &ConfigValue) -> Value {
         ),
         ConfigValue::Strings(v) => Value::from(v.clone()),
         ConfigValue::Points(v) => Value::Array(v.iter().map(|p| Value::from(p.clone())).collect()),
+    }
+}
+
+#[cfg(test)]
+mod cache_tests {
+    //! Lot 41 : la liste servie par le cache (`list_compatible_cached`) est
+    //! identique à celle du chemin complet (`list_compatible_exact`) sur les
+    //! profils réels d'OrcaSlicer — sans presets utilisateur, avec héritage
+    //! d'un système, liste propre, condition propre, imprimante utilisateur,
+    //! homonyme d'un parent système (repli), puis après modification,
+    //! suppression et reseed (invalidation par génération).
+    use super::*;
+    use crate::adapters::files::FileStore;
+    use crate::adapters::storage::AnyStorage;
+    use crate::domain::{NewUser, Role};
+    use std::sync::Arc;
+
+    async fn assert_same(state: &AppState, user: UserId, printers: &[String]) -> usize {
+        let mut checked = 0;
+        for name in printers {
+            let Some(printer) = active_printer(state, user, name).await.unwrap() else {
+                panic!("imprimante inconnue : {name}");
+            };
+            for kind in [PresetKind::Filament, PresetKind::Process] {
+                let exact: Vec<PresetSummary> = list_compatible_exact(state, user, kind, &printer)
+                    .await
+                    .unwrap()
+                    .into_iter()
+                    .map(Into::into)
+                    .collect();
+                let cached = list_compatible_cached(state, user, kind, &printer)
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    serde_json::to_value(&exact).unwrap(),
+                    serde_json::to_value(&cached).unwrap(),
+                    "{kind:?} / {name}"
+                );
+                checked += 1;
+            }
+        }
+        checked
+    }
+
+    /// Filtre de liste historique : cache identique à `list_compatible` (SQL).
+    async fn assert_plain_same(state: &AppState, user: UserId, printers: &[Option<&str>]) {
+        for kind in [
+            PresetKind::MachineModel,
+            PresetKind::Machine,
+            PresetKind::Filament,
+            PresetKind::Process,
+        ] {
+            for printer in printers {
+                let sql: Vec<PresetSummary> = state
+                    .storage
+                    .presets()
+                    .list_compatible(kind, *printer, user)
+                    .await
+                    .unwrap()
+                    .into_iter()
+                    .map(Into::into)
+                    .collect();
+                let cached = list_visible_cached(state, user, kind, *printer)
+                    .await
+                    .unwrap();
+                assert_eq!(
+                    serde_json::to_value(&sql).unwrap(),
+                    serde_json::to_value(&cached).unwrap(),
+                    "{kind:?} / {printer:?}"
+                );
+            }
+        }
+    }
+
+    async fn names(state: &AppState, user: UserId, kind: PresetKind, printer: &str) -> Vec<String> {
+        let printer = active_printer(state, user, printer).await.unwrap().unwrap();
+        list_compatible_cached(state, user, kind, &printer)
+            .await
+            .unwrap()
+            .into_iter()
+            .map(|p| p.name)
+            .collect()
+    }
+
+    async fn add(
+        state: &AppState,
+        user: UserId,
+        kind: PresetKind,
+        name: &str,
+        inherits: Option<&str>,
+        values: Value,
+    ) -> Preset {
+        let preset = new_user_preset(user, kind, name, inherits.map(String::from), values).unwrap();
+        state
+            .storage
+            .presets()
+            .create_user_preset(user, preset)
+            .await
+            .unwrap()
+    }
+
+    #[tokio::test]
+    async fn cached_list_matches_full_path() {
+        let Ok(imported) =
+            engine::presets::import_profiles(&crate::http::state::default_profiles_dir())
+        else {
+            return; // profils absents (build hors dépôt)
+        };
+        let dir = tempfile::tempdir().unwrap();
+        let url = format!("sqlite://{}", dir.path().join("cache.db").display());
+        let storage = AnyStorage::connect_test(&url).await.unwrap();
+        crate::domain::presets::reseed_system_presets(&storage, &imported.presets)
+            .await
+            .unwrap();
+        let state = AppState::new(Arc::new(storage), FileStore::new(dir.path().join("data")));
+        let user = state
+            .storage
+            .users()
+            .create(NewUser {
+                email: "cache@test.local".into(),
+                password_hash: "x".into(),
+                role: Role::User,
+            })
+            .await
+            .unwrap()
+            .id;
+
+        // Échantillon d'imprimantes système (tous vendeurs) + références.
+        let machines = state
+            .storage
+            .presets()
+            .list_compatible(PresetKind::Machine, None, user)
+            .await
+            .unwrap();
+        let mut printers: Vec<String> = machines
+            .iter()
+            .step_by(120)
+            .map(|m| m.name.clone())
+            .collect();
+        let reference = [
+            "Voron 2.4 350 0.4 nozzle",
+            "Bambu Lab X1 Carbon 0.4 nozzle",
+            "Prusa MK4S 0.4 nozzle",
+            "Prusa MK4S HF0.4 nozzle",
+        ];
+        printers.extend(reference.iter().map(|s| s.to_string()));
+        assert!(assert_same(&state, user, &printers).await >= 20);
+        let plain = [None, Some("Voron 2.4 350 0.4 nozzle")];
+        assert_plain_same(&state, user, &plain).await;
+
+        // Presets utilisateur : héritage système, liste propre, condition
+        // propre, imprimante utilisateur copiée d'un modèle système.
+        add(
+            &state,
+            user,
+            PresetKind::Filament,
+            "Mon PLA",
+            Some("Generic PLA @System"),
+            serde_json::json!({}),
+        )
+        .await;
+        let own_list = add(
+            &state,
+            user,
+            PresetKind::Process,
+            "Mon process",
+            Some("0.20mm Standard @Voron"),
+            serde_json::json!({ "compatible_printers": ["Prusa MK4S 0.4 nozzle"] }),
+        )
+        .await;
+        add(
+            &state,
+            user,
+            PresetKind::Process,
+            "Process 0.6",
+            None,
+            serde_json::json!({ "compatible_printers_condition": "nozzle_diameter[0]==0.6" }),
+        )
+        .await;
+        add(
+            &state,
+            user,
+            PresetKind::Machine,
+            "Mon Voron",
+            Some("Voron 2.4 350 0.4 nozzle"),
+            serde_json::json!({}),
+        )
+        .await;
+        // Rondes suivantes : imprimantes concernées par les presets utilisateur.
+        let small: Vec<String> = [
+            "Voron 2.4 350 0.4 nozzle",
+            "Prusa MK4S 0.4 nozzle",
+            "Bambu Lab X1 Carbon 0.4 nozzle",
+            "Mon Voron",
+        ]
+        .iter()
+        .map(|s| s.to_string())
+        .collect();
+        assert_same(&state, user, &small).await;
+        assert_plain_same(&state, user, &plain).await;
+        assert!(
+            names(&state, user, PresetKind::Process, "Prusa MK4S 0.4 nozzle")
+                .await
+                .contains(&"Mon process".to_string())
+        );
+        assert!(names(&state, user, PresetKind::Filament, "Mon Voron")
+            .await
+            .contains(&"Mon PLA".to_string()));
+
+        // Homonyme d'un parent système : chemin complet (repli), même réponse.
+        let clash = add(
+            &state,
+            user,
+            PresetKind::Filament,
+            "fdm_filament_pla",
+            None,
+            serde_json::json!({ "compatible_printers": ["Bambu Lab X1 Carbon 0.4 nozzle"] }),
+        )
+        .await;
+        assert_same(&state, user, &small).await;
+        state
+            .storage
+            .presets()
+            .delete_user_preset(user, clash.id)
+            .await
+            .unwrap();
+        assert_same(&state, user, &small).await;
+
+        // Modification : la liste propre vidée rend le process universel.
+        state
+            .storage
+            .presets()
+            .update_user_preset(
+                user,
+                own_list.id,
+                "Mon process",
+                serde_json::json!({ "compatible_printers": [] }),
+            )
+            .await
+            .unwrap();
+        assert_same(&state, user, &small).await;
+        assert!(names(
+            &state,
+            user,
+            PresetKind::Process,
+            "Bambu Lab X1 Carbon 0.4 nozzle"
+        )
+        .await
+        .contains(&"Mon process".to_string()));
+        state
+            .storage
+            .presets()
+            .delete_user_preset(user, own_list.id)
+            .await
+            .unwrap();
+        assert!(
+            !names(&state, user, PresetKind::Process, "Prusa MK4S 0.4 nozzle")
+                .await
+                .contains(&"Mon process".to_string())
+        );
+
+        // Reseed sans les process « @Voron » : le cache est reconstruit.
+        let before = names(
+            &state,
+            user,
+            PresetKind::Process,
+            "Voron 2.4 350 0.4 nozzle",
+        )
+        .await;
+        assert!(before.iter().any(|n| n.ends_with("@Voron")));
+        let kept: Vec<_> = imported
+            .presets
+            .iter()
+            .filter(|p| {
+                !(p.kind == engine::presets::PresetKind::Process && p.name.ends_with("@Voron"))
+            })
+            .cloned()
+            .collect();
+        crate::domain::presets::reseed_system_presets(state.storage.as_ref(), &kept)
+            .await
+            .unwrap();
+        let after = names(
+            &state,
+            user,
+            PresetKind::Process,
+            "Voron 2.4 350 0.4 nozzle",
+        )
+        .await;
+        assert!(!after.iter().any(|n| n.ends_with("@Voron")), "{after:?}");
+        assert_same(&state, user, &small).await;
+        assert_plain_same(&state, user, &plain).await;
     }
 }

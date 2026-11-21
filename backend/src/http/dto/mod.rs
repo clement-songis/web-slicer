@@ -690,27 +690,54 @@ pub struct SliceRequest {
     /// ids de presets) : filament ajouté / imprimante ou process changés sans
     /// sauvegarde. Orca tranche la configuration éditée, pas celle du projet
     /// enregistré. Absent ⇒ presets actifs enregistrés du projet. Mêmes gardes
-    /// (visibilité des presets, possession de l'imprimante) ; le brouillon
-    /// `draft` s'applique ensuite par-dessus.
-    #[ts(
-        optional,
-        type = "{ printer?: string; process?: string; filaments?: Array<string> }"
-    )]
+    /// (visibilité des presets, possession de l'imprimante). Réglages
+    /// modifiés (lot 40) : `draft` présent ⇒ il **remplace** les surcharges
+    /// `overrides` des presets actifs retenus ; absent ⇒ les surcharges de
+    /// ces presets (corps ou projet enregistré) s'appliquent.
+    #[ts(optional, as = "Option<ActivePresets>")]
     pub active_presets: Option<serde_json::Value>,
+}
+
+/// Document `active_presets` d'un projet (`ProjectResponse.active_presets`,
+/// corps de `PUT`/`PATCH /api/projects/{id}`, `SliceRequest.active_presets`).
+/// Lot 40 : `overrides` porte les réglages **modifiés sans être enregistrés
+/// en preset** (preset « (modifié) » d'Orca), par type de preset, au format de
+/// `SliceDraft`. Ils font partie du projet : config effective = presets +
+/// `overrides` (+ réglages projet / plateau), utilisée par le tranchage, la
+/// validation, l'export 3MF (`project_settings.config`), la scène (plateau)
+/// et relue à l'ouverture d'un 3MF Orca. Absent ⇒ aucune modification.
+#[derive(Debug, Clone, Default, Serialize, TS)]
+#[ts(export)]
+pub struct ActivePresets {
+    /// Id du preset imprimante.
+    #[ts(optional)]
+    pub printer: Option<String>,
+    /// Id du preset process.
+    #[ts(optional)]
+    pub process: Option<String>,
+    /// Ids des presets filament (ordre de la barre de filaments).
+    #[ts(optional)]
+    pub filaments: Option<Vec<String>>,
+    /// Réglages modifiés non enregistrés, par type de preset.
+    #[ts(optional)]
+    pub overrides: Option<SliceDraft>,
 }
 
 /// Brouillon de presets appliqué au tranchage, par-dessus les presets actifs
 /// et avant la config projet / plateau (ordre d'Orca). Valeurs au format des
 /// presets (chaînes Orca ou JSON typé de `/resolved`).
-#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize, TS)]
 #[ts(export)]
 pub struct SliceDraft {
     #[ts(optional, type = "Record<string, unknown>")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub process: Option<serde_json::Map<String, serde_json::Value>>,
     #[ts(optional, type = "Record<string, unknown>")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub printer: Option<serde_json::Map<String, serde_json::Value>>,
     /// Par filament (index de la barre de filaments) ; `null` = inchangé.
     #[ts(optional, type = "Array<Record<string, unknown> | null>")]
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub filaments: Option<Vec<Option<serde_json::Map<String, serde_json::Value>>>>,
 }
 

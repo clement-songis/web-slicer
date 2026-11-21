@@ -41,7 +41,8 @@ pub async fn export_3mf(
     // Géométrie : maillages STL décodés côté serveur.
     let mut model = build_project_model(&state, user.id, project_id, None).await?;
 
-    // Configuration figée : presets actifs résolus.
+    // Configuration figée : presets actifs résolus + réglages modifiés non
+    // enregistrés du projet (`overrides`, lot 40 : config éditée d'Orca).
     let (mut config, _warnings) =
         super::slice::resolve_active_config(&state, user.id, &project.active_presets).await?;
     // Réglages du projet (couleurs, purges) par-dessus les presets, comme au tranchage.
@@ -61,6 +62,9 @@ pub async fn export_3mf(
     // Clés « par preset » regroupées comme `PresetBundle::full_fff_config`.
     let groups = preset_groups(&state, user.id, &project.active_presets).await?;
     apply_full_config_groups(&mut config, &groups);
+    // Presets « modifiés » : clés surchargées dans different_settings_to_system.
+    let overrides = super::overrides::overrides_of(&project.active_presets)?;
+    super::overrides::apply_different_settings(&mut config, overrides.as_ref());
 
     let mut plates = scene_project_plates(&project.scene);
     attach_plate_thumbnails(&state, user.id, project_id, &model, &config, &mut plates).await;

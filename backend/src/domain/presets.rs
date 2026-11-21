@@ -4,10 +4,30 @@
 //! disque est faite en amont (composition root / handler admin) et le résultat
 //! passé ici — le domaine reste sans dépendance filesystem.
 
+use std::sync::atomic::{AtomicU64, Ordering};
+
 use engine::presets::{ImportedPreset, PresetKind as EngineKind};
 use serde_json::Value;
 
 use super::{Preset, PresetId, PresetKind, PresetOrigin, Storage, StorageResult};
+
+/// Génération des presets système : incrémentée par chaque `reseed_system`
+/// abouti (tous adaptateurs). Les caches de presets système (listes
+/// compatibles, `http::preset_cache`) la relisent avant chaque usage et se
+/// reconstruisent si elle a changé. Compteur de processus : partagé par toutes
+/// les bases d'un même processus (tests), une incrémentation de trop ne coûte
+/// qu'une reconstruction.
+static SYSTEM_PRESETS_GENERATION: AtomicU64 = AtomicU64::new(0);
+
+/// Génération courante des presets système (voir `bump_system_generation`).
+pub fn system_generation() -> u64 {
+    SYSTEM_PRESETS_GENERATION.load(Ordering::Acquire)
+}
+
+/// À appeler après tout changement validé des presets système.
+pub fn bump_system_generation() {
+    SYSTEM_PRESETS_GENERATION.fetch_add(1, Ordering::AcqRel);
+}
 
 fn map_kind(kind: EngineKind) -> PresetKind {
     match kind {

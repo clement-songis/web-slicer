@@ -1696,6 +1696,12 @@ async fn upload_l(app: &Router, project: &str, session: &str) -> String {
 
 /// Tranche le L via HTTP + file + vrai worker, puis retourne le G-code stocké.
 async fn slice_l_over_http(scale_x: f64) -> String {
+    slice_l_over_http_with(scale_x, None).await
+}
+
+/// Idem, avec des réglages modifiés non enregistrés (`active_presets.overrides`,
+/// lot 40) enregistrés avec le projet.
+async fn slice_l_over_http_with(scale_x: f64, overrides: Option<Value>) -> String {
     use backend::http::state::AppState;
     use backend::queue::{Queue, QueueConfig};
     use backend::slicing::SliceRunner;
@@ -1728,7 +1734,14 @@ async fn slice_l_over_http(scale_x: f64) -> String {
             backend::domain::ProjectId(uuid::Uuid::parse_str(&project).unwrap()),
             1,
             scene,
-            json!({"printer": machine, "process": process, "filaments": [filament]}),
+            {
+                let mut active =
+                    json!({"printer": machine, "process": process, "filaments": [filament]});
+                if let Some(overrides) = overrides {
+                    active["overrides"] = overrides;
+                }
+                active
+            },
             None,
         )
         .await
@@ -1853,6 +1866,40 @@ async fn http_slice_of_negative_scale_is_the_mirror_image() {
     };
     assert!(arm(&a)[1] < 95., "bras original à gauche : {:?}", arm(&a));
     assert!(arm(&b)[0] > 105., "bras miroir à droite : {:?}", arm(&b));
+}
+
+/// Lot 40, vrai worker, G-code stocké **non filtré** (contrairement aux tests
+/// golden qui retirent les blocs de vignettes) :
+/// - A1 : un preset machine qui ne définit pas `thumbnails` (cas des profils
+///   Voron) reçoit les vignettes du défaut d'Orca 48x48/PNG,300x300/PNG, comme
+///   le G-code exporté par la GUI d'Orca (`export_thumbnails_to_file`) ;
+/// - D1 : les réglages modifiés enregistrés avec le projet
+///   (`active_presets.overrides`) sont tranchés sans brouillon dans le corps.
+#[tokio::test]
+async fn http_slice_writes_default_thumbnails_and_saved_overrides() {
+    let worker = std::env::var_os("ENGINE_WORKER_BIN")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| {
+            std::env::current_exe()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("engine-worker")
+        });
+    if !worker.exists() {
+        eprintln!("engine-worker absent — test vignettes ignoré");
+        return;
+    }
+    let gcode = slice_l_over_http_with(1., Some(json!({ "process": { "wall_loops": "5" } }))).await;
+    assert!(gcode.contains("; thumbnails = 48x48/PNG,300x300/PNG"));
+    assert_eq!(gcode.matches("; THUMBNAIL_BLOCK_START").count(), 2);
+    assert!(gcode.contains("; thumbnail begin 48x48 "));
+    assert!(gcode.contains("; thumbnail begin 300x300 "));
+    let header_end = gcode.find("; HEADER_BLOCK_END").unwrap();
+    assert!(gcode.find("; THUMBNAIL_BLOCK_START").unwrap() > header_end);
+    assert!(gcode.contains("; wall_loops = 5"), "surcharge non tranchée");
 }
 
 /// Deux cubes de 10 mm disjoints (x ∈ [0,10] et [20,30]), STL ASCII.

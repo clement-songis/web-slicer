@@ -734,6 +734,7 @@ impl PresetRepo for PgPresetRepo {
             }
         }
         tx.commit().await.map_err(map_pg)?;
+        crate::domain::presets::bump_system_generation();
         Ok(presets.len() as u64)
     }
 
@@ -802,6 +803,21 @@ impl PresetRepo for PgPresetRepo {
         .fetch_all(&self.pool)
         .await
         .map_err(map_pg)?;
+        rows.iter().map(row_to_preset).collect()
+    }
+
+    async fn list_user_by_kind(
+        &self,
+        kind: PresetKind,
+        user: UserId,
+    ) -> StorageResult<Vec<Preset>> {
+        let rows =
+            sqlx::query("SELECT * FROM presets WHERE kind = $1 AND user_id = $2 ORDER BY name")
+                .bind(enum_str(&kind))
+                .bind(uid(user))
+                .fetch_all(&self.pool)
+                .await
+                .map_err(map_pg)?;
         rows.iter().map(row_to_preset).collect()
     }
 

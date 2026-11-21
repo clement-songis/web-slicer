@@ -7,6 +7,7 @@ use std::sync::Arc;
 use crate::adapters::files::FileStore;
 use crate::auth::SecretBox;
 use crate::domain::Storage;
+use crate::http::preset_cache::PresetListCache;
 use crate::http::printer_relay::PrinterRelays;
 use crate::http::ws::EventHub;
 use crate::models::{ModelConverter, WorkerMeshDecoder};
@@ -37,6 +38,9 @@ pub struct AppState {
     pub relays: Arc<PrinterRelays>,
     /// Service de conversion de modèle (décodage moteur → maillage, T123/T124).
     pub converter: ModelConverter,
+    /// Presets système pour les listes compatibles (lot 41), invalidé par
+    /// génération de reseed.
+    pub preset_cache: Arc<PresetListCache>,
 }
 
 impl AppState {
@@ -57,6 +61,7 @@ impl AppState {
             secrets: SecretBox::from_env(),
             relays: Arc::new(PrinterRelays::new()),
             converter,
+            preset_cache: Arc::default(),
         }
     }
 

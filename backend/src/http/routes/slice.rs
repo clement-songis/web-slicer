@@ -279,6 +279,16 @@ pub(crate) async fn resolve_slice_config(
     active_presets: &Value,
     body: &SliceRequest,
 ) -> ApiResult<SliceConfig> {
+    // Brouillon de l'éditeur fourni : il remplace les surcharges enregistrées
+    // des presets actifs (il porte l'état édité complet), sinon elles
+    // s'appliquent (lot 40).
+    let stripped;
+    let active_presets = if body.draft.is_some() {
+        stripped = super::overrides::without_overrides(active_presets);
+        &stripped
+    } else {
+        active_presets
+    };
     let (mut merged, mut warnings) = resolve_active_config(state, user, active_presets).await?;
     if let Some(draft) = &body.draft {
         apply_draft(&mut merged, draft)?;
@@ -575,8 +585,9 @@ fn set_filament_value(
     }
 }
 
-/// Résout les presets actifs (`{printer, process, filaments[]}`) en une config
-/// unique figée ; les valeurs hors bornes sont clampées et signalées (FR-032).
+/// Résout les presets actifs (`{printer, process, filaments[], overrides?}`) en
+/// une config unique figée, surcharges `overrides` comprises (lot 40) ; les
+/// valeurs hors bornes sont clampées et signalées (FR-032).
 /// Résout les presets actifs en `DynamicPrintConfig` typée (tranchage, export
 /// 3MF, T072).
 pub(crate) async fn resolve_active_config(
@@ -678,6 +689,11 @@ pub(crate) async fn resolve_active_config(
             "filament_settings_id".into(),
             ConfigValue::Strings(filament_names),
         );
+    }
+    // Réglages modifiés non enregistrés du projet (lot 40) : preset
+    // « (modifié) » d'Orca, par-dessus les presets résolus.
+    if let Some(overrides) = super::overrides::overrides_of(active)? {
+        apply_draft(&mut merged, &overrides)?;
     }
 
     let warnings = merged

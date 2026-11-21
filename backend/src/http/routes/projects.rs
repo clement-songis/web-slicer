@@ -165,7 +165,9 @@ pub async fn create(
         NewProject {
             name: name.to_string(),
             scene: body.scene.unwrap_or_else(default_scene),
-            active_presets: body.active_presets.unwrap_or_else(|| json!({})),
+            active_presets: super::overrides::normalize_active_presets(
+                body.active_presets.unwrap_or_else(|| json!({})),
+            )?,
             thumbnail_path: None,
         },
     )
@@ -754,8 +756,24 @@ pub(crate) async fn import_3mf_contents(
         // avant le process qui consomme la configuration.
         let (printer, filaments) =
             import_project_presets(state, user_id, project_name, &imported.config).await?;
-        let preset = create_imported_preset(state, user_id, project_name, imported.config).await?;
-        active_presets = json!({ "process": preset.id.to_string() });
+        // Lot 40 : comme Orca (load_external_preset, LoadAndSelect::Always),
+        // imprimante posée + process nommé connu → ce preset est sélectionné
+        // et les valeurs du projet qui en diffèrent deviennent des surcharges
+        // (preset « modifié »). Sinon (imprimante non posée, process inconnu),
+        // la config aplatie reste portée par un preset importé.
+        let named_process = match printer {
+            Some(_) => named_process_preset(state, user_id, &imported.config).await?,
+            None => None,
+        };
+        let process = match named_process {
+            Some(process) => process,
+            None => {
+                create_imported_preset(state, user_id, project_name, imported.config.clone())
+                    .await?
+                    .id
+            }
+        };
+        active_presets = json!({ "process": process.to_string() });
         if let Some(printer) = printer {
             active_presets["printer"] = json!(printer.to_string());
         }
@@ -764,6 +782,47 @@ pub(crate) async fn import_3mf_contents(
                 .iter()
                 .map(ToString::to_string)
                 .collect::<Vec<_>>());
+        }
+        if named_process.is_some() {
+            let (resolved, _) =
+                super::slice::resolve_active_config(state, user_id, &active_presets).await?;
+            let project = engine::presets::resolve_preset_chain(&[engine::api::RawPreset {
+                name: "3MF".into(),
+                inherits: None,
+                values: imported.config.clone(),
+            }])
+            .map_err(|e| {
+                tracing::warn!(error = %e, "configuration 3MF non résolue");
+                ApiError::validation("configuration 3MF illisible", json!({}))
+            })?;
+            // Clés déclarées modifiées par Orca : [process, filaments…, imprimante].
+            let different = raw_items(imported.config.get("different_settings_to_system"));
+            let listed = |entry: Option<&String>| -> Vec<String> {
+                entry
+                    .map(|keys| {
+                        keys.split(';')
+                            .map(|k| k.trim().trim_matches('"').to_string())
+                            .filter(|k| !k.is_empty())
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            };
+            let process_listed = listed(different.first());
+            let printer_listed = if different.len() >= 2 {
+                listed(different.last())
+            } else {
+                Vec::new()
+            };
+            if let Some(overrides) = super::overrides::imported_overrides(
+                &project,
+                &resolved,
+                printer.is_some(),
+                &process_listed,
+                &printer_listed,
+            ) {
+                active_presets[super::overrides::OVERRIDES_KEY] =
+                    serde_json::to_value(overrides).map_err(|_| ApiError::internal())?;
+            }
         }
     }
 
@@ -1330,6 +1389,33 @@ async fn import_project_presets(
     Ok((printer, filaments))
 }
 
+/// Preset process visible nommé par le projet (`print_settings_id`, sinon
+/// `inherits_group[0]`), anciens noms compris (`find_preset_renamed`) ; preset
+/// utilisateur du même nom prioritaire, comme pour l'imprimante.
+async fn named_process_preset(
+    state: &AppState,
+    user_id: UserId,
+    config: &Map<String, Value>,
+) -> ApiResult<Option<PresetId>> {
+    let inherits = raw_items(config.get("inherits_group"));
+    let candidates = [
+        raw_text(config.get("print_settings_id")).filter(|n| !n.is_empty()),
+        inherits.first().cloned().filter(|n| !n.is_empty()),
+    ];
+    let visible = state
+        .storage
+        .presets()
+        .list_by_kind(PresetKind::Process, user_id)
+        .await?;
+    Ok(candidates.iter().flatten().find_map(|name| {
+        visible
+            .iter()
+            .filter(|p| p.instantiation && (&p.name == name || p.renamed_from.contains(name)))
+            .max_by_key(|p| (p.name == *name, p.origin == PresetOrigin::User))
+            .map(|p| p.id)
+    }))
+}
+
 /// Preset utilisateur à partir de valeurs brutes Orca (clés hors registre
 /// filtrées comme pour le process importé), nom rendu unique par suffixe.
 async fn create_user_preset_from_raw(
@@ -1535,7 +1621,8 @@ pub async fn save(
             id,
             body.expected_version,
             body.scene,
-            body.active_presets,
+            // Surcharges (réglages modifiés non enregistrés, lot 40) vérifiées.
+            super::overrides::normalize_active_presets(body.active_presets)?,
             None,
         )
         .await?;
@@ -1572,6 +1659,10 @@ pub async fn patch(
     };
     // Projet d'autrui ou absent → 404 avant toute écriture.
     let mut project = state.storage.projects().get(user.id, id).await?;
+    let active_presets = body
+        .active_presets
+        .map(super::overrides::normalize_active_presets)
+        .transpose()?;
     if touches_content {
         let Some(expected_version) = body.expected_version else {
             return Err(ApiError::validation(
@@ -1587,7 +1678,7 @@ pub async fn patch(
                 id,
                 expected_version,
                 body.scene.unwrap_or(project.scene),
-                body.active_presets.unwrap_or(project.active_presets),
+                active_presets.unwrap_or(project.active_presets),
                 None,
             )
             .await?;

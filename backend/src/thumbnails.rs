@@ -76,6 +76,29 @@ fn config_text(config: &DynamicPrintConfig, key: &str) -> String {
     }
 }
 
+/// Valeur de `key`, ou à défaut celle par défaut d'Orca (registre,
+/// `PrintConfigDef`) : le snapshot d'un job ne porte que les clés des presets,
+/// le moteur complète par les défauts (`thumbnails` = « 48x48/PNG,300x300/PNG »
+/// pour un profil qui ne la définit pas, Voron…) — lot 40, audit A1.
+fn config_text_or_default(config: &DynamicPrintConfig, key: &str) -> String {
+    if config.0.contains_key(key) {
+        return config_text(config, key);
+    }
+    engine::params::get(key)
+        .and_then(|def| def.default_json)
+        .and_then(|raw| serde_json::from_str::<serde_json::Value>(raw).ok())
+        .map(|value| match value {
+            serde_json::Value::String(s) => s,
+            serde_json::Value::Array(items) => items
+                .iter()
+                .filter_map(serde_json::Value::as_str)
+                .collect::<Vec<_>>()
+                .join(","),
+            _ => String::new(),
+        })
+        .unwrap_or_default()
+}
+
 pub(crate) fn parse_colour(hex: &str) -> [f64; 3] {
     let hex = hex.trim().trim_start_matches('#');
     let channel = |i: usize| {
@@ -740,8 +763,8 @@ pub fn encode_colpic_gl(pixels: &[u8], width: u32, height: u32) -> String {
 /// Section de vignettes à insérer (vide si aucune n'est demandée/encodable).
 pub fn thumbnails_section(model: &Model, config: &DynamicPrintConfig) -> String {
     let list = thumbnail_list(
-        &config_text(config, "thumbnails"),
-        &config_text(config, "thumbnails_format"),
+        &config_text_or_default(config, "thumbnails"),
+        &config_text_or_default(config, "thumbnails_format"),
     );
     if list.is_empty() {
         return String::new();
@@ -914,6 +937,37 @@ mod tests {
                 "{w}x{h} flat={flat}"
             );
         }
+    }
+
+    /// Lot 40 (audit A1) : un profil qui ne définit pas `thumbnails` (Voron…)
+    /// prend le défaut d'Orca 48x48/PNG,300x300/PNG, comme l'export GUI
+    /// (`GCode::_do_export` → `export_thumbnails_to_file`) ; une liste vide
+    /// explicite n'en écrit aucune.
+    #[test]
+    fn thumbnails_default_to_orca_value_when_the_snapshot_omits_them() {
+        let model = engine::api::Model::default();
+        let section = thumbnails_section(&model, &DynamicPrintConfig::new());
+        assert!(
+            section.contains("; thumbnail begin 48x48 "),
+            "{section:.200}"
+        );
+        assert!(section.contains("; thumbnail begin 300x300 "));
+        assert_eq!(section.matches("; THUMBNAIL_BLOCK_START").count(), 2);
+
+        let mut config = DynamicPrintConfig::new();
+        config
+            .0
+            .insert("thumbnails".into(), ConfigValue::String(String::new()));
+        assert!(thumbnails_section(&model, &config).is_empty());
+
+        config
+            .0
+            .insert("thumbnails".into(), ConfigValue::String("96x96".into()));
+        config.0.insert(
+            "thumbnails_format".into(),
+            ConfigValue::String("QOI".into()),
+        );
+        assert!(thumbnails_section(&model, &config).contains("; thumbnail_QOI begin 96x96 "));
     }
 
     #[test]
