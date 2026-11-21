@@ -10,11 +10,15 @@ use std::sync::Arc;
 use async_trait::async_trait;
 
 use super::entities::{
-    Gcode, InstanceSettings, Invitation, Model, NewPaCalibration, PaCalibration, Preset,
-    PresetKind, Printer, Project, RegistrationPolicy, Role, SlicingJob, User, UserStatus,
+    Gcode, InstanceSettings, Invitation, Model, NewPaCalibration, NewPrinterUpload, PaCalibration,
+    Preset, PresetKind, Printer, PrinterUpload, Project, RegistrationPolicy, Role, SlicingJob,
+    UploadOutcome, User, UserStatus,
 };
 use super::error::StorageResult;
-use super::id::{GcodeId, JobId, ModelId, PaCalibrationId, PresetId, PrinterId, ProjectId, UserId};
+use super::id::{
+    GcodeId, JobId, ModelId, PaCalibrationId, PresetId, PrinterId, PrinterUploadId, ProjectId,
+    UserId,
+};
 
 /// Point d'accès unique aux repos (constitution III : le métier ne connaît ni
 /// SQL ni SGBD).
@@ -28,6 +32,7 @@ pub trait Storage: Send + Sync {
     fn gcodes(&self) -> &dyn GcodeRepo;
     fn instance(&self) -> &dyn InstanceRepo;
     fn pa_calibrations(&self) -> &dyn PaCalibrationRepo;
+    fn printer_uploads(&self) -> &dyn PrinterUploadRepo;
     /// Handle partagé du dépôt de modèles — le service de conversion (T123) le
     /// capture dans une tâche `tokio` détachée (durée de vie indépendante de la
     /// requête d'upload).
@@ -257,6 +262,34 @@ pub trait PaCalibrationRepo: Send + Sync {
         data: NewPaCalibration,
     ) -> StorageResult<PaCalibration>;
     async fn delete(&self, owner: UserId, id: PaCalibrationId) -> StorageResult<()>;
+}
+
+/// Envois conservés par imprimante (les plus anciens sont purgés au-delà).
+pub const PRINTER_UPLOADS_KEPT: i64 = 200;
+
+/// Historique des envois vers les hôtes d'impression (lot 42 ; « Print host
+/// upload queue » d'Orca, conservée ici au-delà de la session).
+#[async_trait]
+pub trait PrinterUploadRepo: Send + Sync {
+    /// Enregistre un envoi qui part (`uploading`). `NotFound` si l'imprimante
+    /// n'est pas au compte. Purge au-delà de [`PRINTER_UPLOADS_KEPT`] envois.
+    async fn start(&self, owner: UserId, data: NewPrinterUpload) -> StorageResult<PrinterUpload>;
+    /// Clôt un envoi (`completed` / `error`, date de fin).
+    async fn finish(
+        &self,
+        owner: UserId,
+        id: PrinterUploadId,
+        outcome: UploadOutcome,
+    ) -> StorageResult<PrinterUpload>;
+    /// Plus récents d'abord ; `printer` absent = toutes les imprimantes.
+    async fn list(
+        &self,
+        owner: UserId,
+        printer: Option<PrinterId>,
+        limit: i64,
+    ) -> StorageResult<Vec<PrinterUpload>>;
+    /// Vide l'historique d'une imprimante ; renvoie le nombre d'envois retirés.
+    async fn clear(&self, owner: UserId, printer: PrinterId) -> StorageResult<u64>;
 }
 
 #[derive(Debug, Clone)]

@@ -23,8 +23,8 @@ use crate::domain::repo::NewPrinter;
 use crate::domain::{GcodeId, PresetKind, Printer, PrinterId};
 use crate::http::dto::{
     PrinterCatalogModel, PrinterCatalogVariant, PrinterCatalogVendor, PrinterResponse,
-    PrinterStatusResponse, PrinterUploadResponse, SavePrinterRequest, TestPrinterResponse,
-    UploadToPrinterRequest,
+    PrinterStatusResponse, PrinterUploadEntry, PrinterUploadResponse, SavePrinterRequest,
+    TestPrinterResponse, UploadNameRequest, UploadNameResponse, UploadToPrinterRequest,
 };
 use crate::http::error::{ApiError, ApiResult};
 use crate::http::extract::CurrentUser;
@@ -118,6 +118,7 @@ pub(crate) async fn host_client(
             "Imprimante non connectée (aucune adresse d'hôte)",
         ));
     };
+    ensure_usable_host(&host)?;
     let preset = machine_preset_values(state, printer).await;
     let api_key = printer
         .api_key
@@ -218,13 +219,49 @@ fn to_new_printer(state: &AppState, body: SavePrinterRequest) -> ApiResult<NewPr
         .filter(|k| !k.is_empty())
         .map(|k| state.secrets.encrypt(&k));
     // URL vide (champ laissé blanc dans le formulaire) = imprimante non connectée.
-    let moonraker_url = body.moonraker_url.filter(|u| !u.is_empty());
+    // Sinon adresse validée comme Orca la lit (trim + make_url + curl) : 422
+    // lisible au lieu d'une adresse inutilisable enregistrée (audit 41, M1).
+    let moonraker_url = match body.moonraker_url.as_deref() {
+        None => None,
+        Some(raw) => crate::print_host_url::normalize_host_url(raw).map_err(|why| {
+            ApiError::validation(
+                why.message(raw),
+                serde_json::json!({
+                    "field": "moonraker_url",
+                    "reason": why.reason(),
+                    "value": raw,
+                }),
+            )
+        })?,
+    };
     Ok(NewPrinter {
         name: body.name,
         moonraker_url,
         api_key,
         machine_preset_id,
     })
+}
+
+/// Adresse enregistrée avant la validation du lot 42 et inutilisable
+/// (« pas une url ») : 409 `printer_not_connected` comme une imprimante sans
+/// adresse — l'interface propose alors de la saisir à nouveau — au lieu d'un
+/// 502 « injoignable » trompeur.
+fn ensure_usable_host(host: &str) -> ApiResult<()> {
+    match crate::print_host_url::normalize_host_url(host) {
+        Ok(Some(_)) => Ok(()),
+        Ok(None) => Err(ApiError::printer_not_connected(
+            "Imprimante non connectée (aucune adresse d'hôte)",
+        )),
+        Err(why) => {
+            let mut e = ApiError::printer_not_connected(why.message(host));
+            e.body.details = Some(serde_json::json!({
+                "field": "moonraker_url",
+                "reason": why.reason(),
+                "value": host,
+            }));
+            Err(e)
+        }
+    }
 }
 
 /// Charge une imprimante du compte et construit son client Moonraker (clé API
@@ -250,6 +287,7 @@ pub(crate) async fn load_client(
             "Imprimante non connectée (aucune URL Moonraker)",
         ));
     };
+    ensure_usable_host(&url)?;
     let api_key = printer
         .api_key
         .as_deref()
@@ -532,35 +570,344 @@ pub async fn upload(
             tracing::error!(error = %e, "lecture du G-code (envoi imprimante)");
             ApiError::internal()
         })?;
-    // Nom d'Orca (`Plater::send_gcode_legacy` : même nom que l'export,
-    // `filename_format` évalué par libslic3r au tranchage), base = nom du
-    // projet ; job ou projet supprimé depuis : base « Untitled » comme Orca.
-    let project_name = match state.storage.jobs().get(user.id, gcode.job_id).await {
-        Ok(job) => state
-            .storage
-            .projects()
-            .get(user.id, job.project_id)
-            .await
-            .map(|p| p.name)
-            .unwrap_or_default(),
-        Err(_) => String::new(),
+    let (project_id, proposed) = proposed_upload_name(&state, user.id, &gcode, &bytes).await;
+    // Nom choisi dans la boîte d'envoi (PrintHostSendDialog : modifiable,
+    // extension imposée) ; absent ou vide = nom proposé.
+    let filename = match body.filename.as_deref().filter(|f| !f.is_empty()) {
+        Some(raw) => crate::gcode_filename::upload_name(
+            raw,
+            crate::gcode_filename::upload_extension(&proposed),
+        )
+        .map_err(|why| upload_name_error(&why, raw))?,
+        None => proposed,
     };
-    let filename = crate::gcode_filename::for_gcode(&gcode.stats, &bytes, &project_name);
 
     let printer = state.storage.printers().get(user.id, id).await?; // 404, SC-008
     let action = post_upload_action(&printer, body.start_now, body.queue.unwrap_or(false))?;
-    if let Some(host) = host_client(&state, &printer).await? {
-        let up = host
-            .upload_with(&filename, bytes, action, body.storage.as_deref())
-            .await?;
-        return Ok(Json(PrinterUploadResponse {
-            path: up.path,
-            print_started: up.print_started,
+    let target = UploadTarget::connect(&state, user.id, &printer).await?;
+    let response = target
+        .send(
+            &state,
+            user.id,
+            &printer,
+            UploadJob {
+                filename,
+                bytes,
+                action,
+                storage: body.storage.clone(),
+                gcode_id: Some(gcode_id),
+                project_id,
+            },
+        )
+        .await?;
+    Ok(Json(response))
+}
+
+/// Nom d'Orca d'un G-code stocké (`Plater::send_gcode_legacy` : même nom que
+/// l'export, `filename_format` évalué par libslic3r au tranchage), base = nom
+/// du projet ; job ou projet supprimé depuis : base « Untitled » comme Orca.
+async fn proposed_upload_name(
+    state: &AppState,
+    user: crate::domain::UserId,
+    gcode: &crate::domain::Gcode,
+    bytes: &[u8],
+) -> (Option<crate::domain::ProjectId>, String) {
+    let (project_id, project_name) = match state.storage.jobs().get(user, gcode.job_id).await {
+        Ok(job) => (
+            Some(job.project_id),
+            state
+                .storage
+                .projects()
+                .get(user, job.project_id)
+                .await
+                .map(|p| p.name)
+                .unwrap_or_default(),
+        ),
+        Err(_) => (None, String::new()),
+    };
+    (
+        project_id,
+        crate::gcode_filename::for_gcode(&gcode.stats, bytes, &project_name),
+    )
+}
+
+/// 422 lisible d'un nom d'envoi refusé (`details.field` = `filename`).
+pub(crate) fn upload_name_error(
+    why: &crate::gcode_filename::UploadNameError,
+    raw: &str,
+) -> ApiError {
+    ApiError::validation(
+        why.message(),
+        serde_json::json!({ "field": "filename", "reason": why.reason(), "value": raw }),
+    )
+}
+
+/// Un fichier à envoyer (une ligne de l'historique).
+pub(crate) struct UploadJob {
+    pub filename: String,
+    pub bytes: Vec<u8>,
+    pub action: crate::adapters::print_host::PostUploadAction,
+    pub storage: Option<String>,
+    pub gcode_id: Option<GcodeId>,
+    pub project_id: Option<crate::domain::ProjectId>,
+}
+
+/// Hôte joignable d'une imprimante : client Orca (OctoPrint, PrusaLink…) ou
+/// client Moonraker dédié.
+#[derive(Clone)]
+pub(crate) enum UploadTarget {
+    Host(Arc<crate::adapters::print_host::HostClient>),
+    Moonraker(MoonrakerClient),
+}
+
+impl UploadTarget {
+    /// Client de l'imprimante (409 si non connectée / adresse inutilisable).
+    pub(crate) async fn connect(
+        state: &AppState,
+        user: crate::domain::UserId,
+        printer: &Printer,
+    ) -> ApiResult<Self> {
+        if let Some(host) = host_client(state, printer).await? {
+            return Ok(Self::Host(Arc::new(host)));
+        }
+        let (_printer, client) = load_client(state, user, printer.id).await?;
+        Ok(Self::Moonraker(client))
+    }
+
+    /// Envoie un fichier et l'inscrit dans l'historique de l'imprimante
+    /// (`uploading` puis `completed` / `error`, comme la file d'envoi d'Orca).
+    /// L'envoi et sa clôture tournent dans une tâche détachée : un client qui
+    /// se déconnecte ne laisse pas d'envoi « en cours » orphelin.
+    pub(crate) async fn send(
+        &self,
+        state: &AppState,
+        user: crate::domain::UserId,
+        printer: &Printer,
+        job: UploadJob,
+    ) -> ApiResult<PrinterUploadResponse> {
+        use crate::adapters::print_host::PostUploadAction;
+        let record = state
+            .storage
+            .printer_uploads()
+            .start(
+                user,
+                crate::domain::NewPrinterUpload {
+                    printer_id: printer.id,
+                    gcode_id: job.gcode_id,
+                    project_id: job.project_id,
+                    filename: job.filename.clone(),
+                    host: printer.moonraker_url.clone().unwrap_or_default(),
+                    host_type: printer.host_type.clone(),
+                    size_bytes: job.bytes.len() as i64,
+                    action: match job.action {
+                        PostUploadAction::None => "upload",
+                        PostUploadAction::StartPrint => "print",
+                        PostUploadAction::QueuePrint => "queue",
+                    }
+                    .into(),
+                },
+            )
+            .await
+            .map_err(|e| tracing::warn!(error = %e, "historique des envois : inscription"))
+            .ok()
+            .map(|r| r.id);
+        let target = self.clone();
+        let storage = state.storage.clone();
+        let task = tokio::spawn(async move {
+            let filename = job.filename.clone();
+            let result: ApiResult<PrinterUploadResponse> = match &target {
+                Self::Host(host) => host
+                    .upload_with(&job.filename, job.bytes, job.action, job.storage.as_deref())
+                    .await
+                    .map(|up| PrinterUploadResponse {
+                        path: up.path,
+                        print_started: up.print_started,
+                        filename: None,
+                        upload_id: None,
+                    })
+                    .map_err(ApiError::from),
+                Self::Moonraker(client) => client
+                    .upload(
+                        &job.filename,
+                        job.bytes,
+                        job.action == PostUploadAction::StartPrint,
+                    )
+                    .await
+                    .map(PrinterUploadResponse::from)
+                    .map_err(ApiError::from),
+            };
+            if let Some(id) = record {
+                let outcome = match &result {
+                    Ok(up) => crate::domain::UploadOutcome::Completed {
+                        path: up.path.clone(),
+                        print_started: up.print_started,
+                    },
+                    Err(e) => crate::domain::UploadOutcome::Failed {
+                        error: e.body.message.clone(),
+                    },
+                };
+                if let Err(e) = storage.printer_uploads().finish(user, id, outcome).await {
+                    tracing::warn!(error = %e, "historique des envois : clôture");
+                }
+            }
+            result.map(|mut up| {
+                up.filename = Some(filename);
+                up.upload_id = record.map(|id| id.to_string());
+                up
+            })
+        });
+        task.await.map_err(|_| ApiError::internal())?
+    }
+}
+
+/// Plafond de `?limit=` des listes d'envois.
+const UPLOADS_LIST_MAX: i64 = 200;
+
+#[derive(Debug, serde::Deserialize)]
+pub struct UploadsQuery {
+    pub limit: Option<i64>,
+}
+
+fn uploads_limit(q: &UploadsQuery) -> i64 {
+    q.limit.unwrap_or(50).clamp(1, UPLOADS_LIST_MAX)
+}
+
+/// `GET /api/printers/{id}/uploads` — historique des envois de l'imprimante,
+/// plus récents d'abord (`?limit=`, 50 par défaut, 200 au plus).
+pub async fn list_uploads(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    axum::extract::Query(q): axum::extract::Query<UploadsQuery>,
+) -> ApiResult<Json<Vec<PrinterUploadEntry>>> {
+    let id = parse_printer_id(&id)?;
+    let printer = state.storage.printers().get(user.id, id).await?; // 404, SC-008
+    let items = state
+        .storage
+        .printer_uploads()
+        .list(user.id, Some(id), uploads_limit(&q))
+        .await?;
+    Ok(Json(
+        items
+            .into_iter()
+            .map(|u| {
+                let mut e = PrinterUploadEntry::from(u);
+                e.printer_name = Some(printer.name.clone());
+                e
+            })
+            .collect(),
+    ))
+}
+
+/// `DELETE /api/printers/{id}/uploads` — vide l'historique de l'imprimante.
+pub async fn clear_uploads(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+) -> ApiResult<StatusCode> {
+    let id = parse_printer_id(&id)?;
+    state.storage.printer_uploads().clear(user.id, id).await?; // 404, SC-008
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// `GET /api/printer-uploads` — envois de toutes les imprimantes du compte
+/// (vue unique comme la « Print host upload queue » d'Orca).
+pub async fn all_uploads(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    axum::extract::Query(q): axum::extract::Query<UploadsQuery>,
+) -> ApiResult<Json<Vec<PrinterUploadEntry>>> {
+    let names: std::collections::HashMap<PrinterId, String> = state
+        .storage
+        .printers()
+        .list(user.id)
+        .await?
+        .into_iter()
+        .map(|p| (p.id, p.name))
+        .collect();
+    let items = state
+        .storage
+        .printer_uploads()
+        .list(user.id, None, uploads_limit(&q))
+        .await?;
+    Ok(Json(
+        items
+            .into_iter()
+            .map(|u| {
+                let name = names.get(&u.data.printer_id).cloned();
+                let mut e = PrinterUploadEntry::from(u);
+                e.printer_name = name;
+                e
+            })
+            .collect(),
+    ))
+}
+
+/// `POST /api/printers/{id}/upload-name` — nom proposé pour l'envoi (pré-rempli
+/// et modifiable dans la boîte d'envoi, comme Orca) et, si `filename` est
+/// fourni, validation du nom saisi sans rien envoyer (422 lisible).
+pub async fn upload_name(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(id): Path<String>,
+    Json(body): Json<UploadNameRequest>,
+) -> ApiResult<Json<UploadNameResponse>> {
+    let id = parse_printer_id(&id)?;
+    state.storage.printers().get(user.id, id).await?; // 404, SC-008
+    let custom = body.filename.as_deref().filter(|f| !f.is_empty());
+    if let Some(raw) = body.gcode_id.as_deref() {
+        let gcode_id = uuid::Uuid::parse_str(raw)
+            .map(GcodeId)
+            .map_err(|_| ApiError::not_found("G-code"))?;
+        let gcode = state.storage.gcodes().get(user.id, gcode_id).await?;
+        let bytes = if gcode.stats.get("output_filename").is_some() {
+            Vec::new()
+        } else {
+            state
+                .files
+                .read(FsPath::new(&gcode.file_path))
+                .await
+                .map_err(|_| ApiError::internal())?
+        };
+        let (_, proposed) = proposed_upload_name(&state, user.id, &gcode, &bytes).await;
+        let extension = crate::gcode_filename::upload_extension(&proposed);
+        let filename = match custom {
+            Some(raw) => crate::gcode_filename::upload_name(raw, extension)
+                .map_err(|why| upload_name_error(&why, raw))?,
+            None => proposed,
+        };
+        return Ok(Json(UploadNameResponse {
+            files: vec![filename.clone()],
+            filename,
+            extension: extension.into(),
         }));
     }
-    let (_printer, client) = load_client(&state, user.id, id).await?;
-    let result = client.upload(&filename, bytes, body.start_now).await?;
-    Ok(Json(PrinterUploadResponse::from(result)))
+    let (Some(project), Some(job_ids)) = (body.project_id.as_deref(), body.job_ids.as_deref())
+    else {
+        return Err(ApiError::validation(
+            "gcode_id, ou project_id et job_ids, requis",
+            serde_json::json!({ "field": "gcode_id" }),
+        ));
+    };
+    let project_id = uuid::Uuid::parse_str(project)
+        .map(crate::domain::ProjectId)
+        .map_err(|_| ApiError::not_found("Projet"))?;
+    let jobs = super::sliced::sliced_jobs(&state, user.id, project_id, job_ids).await?;
+    let use_3mf = jobs.uses_3mf()?;
+    let defaults = jobs.default_names(&state).await?;
+    let files = super::sliced::planned_upload_names(&defaults, use_3mf, custom)?;
+    let extension = if use_3mf { ".gcode.3mf" } else { ".gcode" };
+    let filename = match custom {
+        // Nom saisi validé (base commune des plateaux).
+        Some(raw) => crate::gcode_filename::upload_name(raw, extension)
+            .map_err(|why| upload_name_error(&why, raw))?,
+        None => files.first().cloned().unwrap_or_default(),
+    };
+    Ok(Json(UploadNameResponse {
+        filename,
+        extension: extension.into(),
+        files,
+    }))
 }
 
 /// Action d'envoi demandée (boîte d'envoi d'Orca : Upload / Upload and Print /

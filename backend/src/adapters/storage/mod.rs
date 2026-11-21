@@ -14,7 +14,7 @@ use uuid::Uuid;
 
 use crate::domain::{
     GcodeRepo, InstanceRepo, JobRepo, ModelRepo, PaCalibrationRepo, PresetRepo, PrinterRepo,
-    ProjectRepo, Storage, StorageResult, UserRepo,
+    PrinterUploadRepo, ProjectRepo, Storage, StorageResult, UserRepo,
 };
 
 /// Stockage choisi à l'exécution selon le schéma de l'URL : `sqlite://…`
@@ -102,6 +102,9 @@ impl Storage for AnyStorage {
     }
     fn pa_calibrations(&self) -> &dyn PaCalibrationRepo {
         self.inner().pa_calibrations()
+    }
+    fn printer_uploads(&self) -> &dyn PrinterUploadRepo {
+        self.inner().printer_uploads()
     }
 }
 

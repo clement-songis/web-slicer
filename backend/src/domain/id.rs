@@ -81,6 +81,10 @@ typed_id!(
     GcodeId
 );
 typed_id!(
+    /// Identifiant d'un envoi vers un hôte d'impression (historique des envois).
+    PrinterUploadId
+);
+typed_id!(
     /// Identifiant d'invitation.
     InvitationId
 );

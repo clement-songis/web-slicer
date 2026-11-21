@@ -256,6 +256,111 @@ pub fn dedupe(names: &mut [String]) {
     }
 }
 
+/// Refus d'un nom de fichier d'envoi choisi par l'utilisateur.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UploadNameError {
+    /// Nom vide (ou seulement l'extension).
+    Empty,
+    /// Caractères interdits (séparateurs de chemin, réservés FAT/Windows,
+    /// caractères de contrôle) — liste des caractères fautifs.
+    Chars(String),
+    /// Nom commençant par « . » (fichier caché, ignoré par Moonraker/OctoPrint).
+    Hidden,
+    /// Plus de 200 octets (limite prudente des systèmes de fichiers des hôtes).
+    TooLong,
+}
+
+impl UploadNameError {
+    /// Code machine (`details.reason`).
+    pub fn reason(&self) -> &'static str {
+        match self {
+            Self::Empty => "empty",
+            Self::Chars(_) => "chars",
+            Self::Hidden => "hidden",
+            Self::TooLong => "too_long",
+        }
+    }
+
+    /// Message lisible (FR-032).
+    pub fn message(&self) -> String {
+        match self {
+            Self::Empty => "Nom de fichier requis.".into(),
+            Self::Chars(bad) => format!(
+                "Nom de fichier invalide : caractères interdits {bad} (/ \\ : * ? \" < > | et caractères de contrôle)."
+            ),
+            Self::Hidden => "Nom de fichier invalide : il ne doit pas commencer par « . ».".into(),
+            Self::TooLong => "Nom de fichier trop long (200 octets au plus).".into(),
+        }
+    }
+}
+
+/// Longueur maximale (octets) d'un nom d'envoi.
+pub const MAX_UPLOAD_NAME_BYTES: usize = 200;
+
+/// Nom d'envoi choisi dans la boîte d'envoi (Orca `PrintHostSendDialog` :
+/// nom modifiable, l'extension attendue est celle du nom proposé — `.gcode` ou
+/// `.gcode.3mf`). Orca demande confirmation si l'extension manque ; ici elle
+/// est **ajoutée** (`extension`, comparaison sans casse) pour que l'hôte
+/// reconnaisse toujours le fichier. Contrairement à Orca, les sous-dossiers
+/// (« / ») sont refusés : Moonraker les ignore dans Orca 2.4.1 (Moonraker.cpp
+/// n'envoie que `upload_path.filename()`) et un nom de fichier seul reste
+/// valable pour tous les hôtes. Caractères réservés refusés (mêmes que le
+/// repli `sanitize` des noms automatiques) ; les accents sont gardés tels quels.
+pub fn upload_name(raw: &str, extension: &str) -> Result<String, UploadNameError> {
+    let name = raw.trim();
+    let mut bad: Vec<char> = name
+        .chars()
+        .filter(|c| {
+            c.is_control() || matches!(c, '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|')
+        })
+        .collect();
+    bad.dedup();
+    if !bad.is_empty() {
+        let shown: Vec<String> = bad
+            .iter()
+            .map(|c| {
+                if c.is_control() {
+                    format!("U+{:04X}", *c as u32)
+                } else {
+                    format!("« {c} »")
+                }
+            })
+            .collect();
+        return Err(UploadNameError::Chars(shown.join(" ")));
+    }
+    let lower = name.to_lowercase();
+    let ext_lower = extension.to_lowercase();
+    let full = if lower.ends_with(&ext_lower) {
+        name.to_string()
+    } else if ext_lower == ".gcode.3mf" && lower.ends_with(".gcode") {
+        format!("{name}.3mf")
+    } else {
+        format!("{name}{extension}")
+    };
+    let stem_len = full.len() - extension.len();
+    if full[..stem_len].trim().is_empty() {
+        return Err(UploadNameError::Empty);
+    }
+    if full.starts_with('.') {
+        return Err(UploadNameError::Hidden);
+    }
+    if full.len() > MAX_UPLOAD_NAME_BYTES {
+        return Err(UploadNameError::TooLong);
+    }
+    Ok(full)
+}
+
+/// Extension d'un nom d'envoi proposé (`.gcode.3mf` prioritaire sur `.gcode`),
+/// comme `m_valid_suffix` d'Orca (dernier point du nom proposé, ici étendu au
+/// double suffixe du G-code 3MF).
+pub fn upload_extension(default_name: &str) -> &'static str {
+    if default_name.to_lowercase().ends_with(".gcode.3mf") {
+        ".gcode.3mf"
+    } else {
+        ".gcode"
+    }
+}
+
 /// Nom de téléchargement du G-code `gcode` pour un projet nommé `filename_base`.
 /// Repli pour les G-code sans nom calculé par le moteur (antérieurs, ou
 /// ouverts depuis un fichier) : sous-ensemble du PlaceholderParser.
@@ -403,5 +508,54 @@ mod tests {
     fn initial_tool_selects_filament() {
         let g = sample(None).replace("T0\n", "T1\n");
         assert_eq!(output_filename(&g, "x"), "x_PETG_8m52s.gcode");
+    }
+
+    #[test]
+    fn upload_name_forces_the_extension_and_keeps_accents() {
+        assert_eq!(upload_name(" pièce ", ".gcode").unwrap(), "pièce.gcode");
+        assert_eq!(upload_name("cube.GCODE", ".gcode").unwrap(), "cube.GCODE");
+        assert_eq!(upload_name("cube.gco", ".gcode").unwrap(), "cube.gco.gcode");
+        assert_eq!(
+            upload_name("cube.gcode", ".gcode.3mf").unwrap(),
+            "cube.gcode.3mf"
+        );
+        assert_eq!(upload_name("cube", ".gcode.3mf").unwrap(), "cube.gcode.3mf");
+        assert_eq!(
+            upload_name("v1.2 test", ".gcode").unwrap(),
+            "v1.2 test.gcode"
+        );
+    }
+
+    #[test]
+    fn upload_name_refuses_unsafe_names() {
+        assert_eq!(upload_name("  ", ".gcode"), Err(UploadNameError::Empty));
+        assert_eq!(upload_name(".gcode", ".gcode"), Err(UploadNameError::Empty));
+        assert_eq!(
+            upload_name(".hidden", ".gcode"),
+            Err(UploadNameError::Hidden)
+        );
+        assert_eq!(upload_name("a/b", ".gcode").unwrap_err().reason(), "chars");
+        assert_eq!(
+            upload_name("..\\x", ".gcode").unwrap_err().reason(),
+            "chars"
+        );
+        assert_eq!(upload_name("a\nb", ".gcode").unwrap_err().reason(), "chars");
+        let err = upload_name("a<b>?", ".gcode").unwrap_err();
+        assert!(
+            err.message().contains("« < »") && err.message().contains("« ? »"),
+            "{}",
+            err.message()
+        );
+        assert_eq!(
+            upload_name(&"x".repeat(200), ".gcode"),
+            Err(UploadNameError::TooLong)
+        );
+        assert!(upload_name(&"x".repeat(194), ".gcode").is_ok());
+    }
+
+    #[test]
+    fn upload_extension_follows_the_proposed_name() {
+        assert_eq!(upload_extension("a_PLA_1h.gcode"), ".gcode");
+        assert_eq!(upload_extension("a_PLA_1h.gcode.3mf"), ".gcode.3mf");
     }
 }

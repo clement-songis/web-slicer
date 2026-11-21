@@ -6,7 +6,8 @@ use serde_json::Value;
 use time::OffsetDateTime;
 
 use super::id::{
-    GcodeId, InvitationId, JobId, ModelId, PaCalibrationId, PresetId, PrinterId, ProjectId, UserId,
+    GcodeId, InvitationId, JobId, ModelId, PaCalibrationId, PresetId, PrinterId, PrinterUploadId,
+    ProjectId, UserId,
 };
 
 // --- Utilisateurs & instance -------------------------------------------------
@@ -244,6 +245,61 @@ pub struct NewPaCalibration {
     /// Nom affiché (Orca : nom du résultat) et note libre.
     pub name: String,
     pub note: Option<String>,
+}
+
+// --- Historique des envois vers les hôtes d'impression (lot 42) --------------
+
+/// État d'un envoi, comme `PrintHostQueueDialog::JobState` d'Orca
+/// (ST_PROGRESS / ST_COMPLETED / ST_ERROR ; l'envoi web est synchrone, sans
+/// file ni annulation).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum UploadStatus {
+    Uploading,
+    Completed,
+    Error,
+}
+
+/// Champs d'un envoi au moment où il part (colonnes « Host », « Size »,
+/// « Filename » de la « Print host upload queue » d'Orca).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct NewPrinterUpload {
+    pub printer_id: PrinterId,
+    /// G-code envoyé (envoi d'un plateau) ; `None` pour un G-code 3MF groupé.
+    pub gcode_id: Option<GcodeId>,
+    pub project_id: Option<ProjectId>,
+    /// Nom de fichier demandé.
+    pub filename: String,
+    /// Adresse et type de l'hôte au moment de l'envoi.
+    pub host: String,
+    pub host_type: String,
+    pub size_bytes: i64,
+    /// Action après envoi : `upload` | `print` | `queue` (PrintHostPostUploadAction).
+    pub action: String,
+}
+
+/// Envoi enregistré dans l'historique d'une imprimante.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct PrinterUpload {
+    pub id: PrinterUploadId,
+    pub user_id: UserId,
+    #[serde(flatten)]
+    pub data: NewPrinterUpload,
+    pub status: UploadStatus,
+    /// Chemin retenu par l'hôte (peut différer du nom demandé).
+    pub path: Option<String>,
+    pub print_started: bool,
+    /// Message d'erreur (colonne « Message » d'Orca).
+    pub error: Option<String>,
+    pub created_at: OffsetDateTime,
+    pub finished_at: Option<OffsetDateTime>,
+}
+
+/// Issue d'un envoi.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UploadOutcome {
+    Completed { path: String, print_started: bool },
+    Failed { error: String },
 }
 
 // --- File de tranchage & G-code ---------------------------------------------

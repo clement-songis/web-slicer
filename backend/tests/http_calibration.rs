@@ -477,3 +477,76 @@ async fn flow_pass1_object_settings_are_typed() {
         }
     }
 }
+
+/// Lot 42 (audit 41 K1) : deux calibrations du même type → noms uniques
+/// produits par le serveur (« … (2) »), plus de nom provisoire ni de 409.
+#[tokio::test]
+async fn repeated_calibration_gets_a_unique_readable_name() {
+    if !backend::engine::worker_binary().exists() {
+        eprintln!("engine-worker absent — ignoré");
+        return;
+    }
+    let (_d, app) = app().await;
+    let user = register(&app, "calib2@test.local").await;
+    let mut names = Vec::new();
+    for label in ["Calibration pa_tower", "Calibration pa_pattern"] {
+        let project = json_body(
+            send(
+                &app,
+                request(
+                    "POST",
+                    "/api/projects",
+                    json!({ "name": label }),
+                    Some(&user),
+                ),
+            )
+            .await,
+        )
+        .await;
+        let id = project["id"].as_str().unwrap().to_string();
+        let resp = send(
+            &app,
+            request(
+                "POST",
+                &format!("/api/projects/{id}/calibration"),
+                json!({ "kind": "pa_tower", "start": 0, "end": 0.1, "step": 0.002 }),
+                Some(&user),
+            ),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::CREATED);
+        let body = json_body(resp).await;
+        assert_eq!(body["calibration_name"], "Pressure Advance Test");
+        let saved = json_body(
+            send(
+                &app,
+                request(
+                    "GET",
+                    &format!("/api/projects/{id}"),
+                    json!({}),
+                    Some(&user),
+                ),
+            )
+            .await,
+        )
+        .await;
+        assert_eq!(saved["name"], body["name"], "titre posé par le serveur");
+        // Renommage du client vers `name` (flux existant) : pas de 409.
+        let resp = send(
+            &app,
+            request(
+                "PATCH",
+                &format!("/api/projects/{id}/rename"),
+                json!({ "name": body["name"] }),
+                Some(&user),
+            ),
+        )
+        .await;
+        assert_eq!(resp.status(), StatusCode::OK);
+        names.push(body["name"].as_str().unwrap().to_string());
+    }
+    assert_eq!(
+        names,
+        vec!["Pressure Advance Test", "Pressure Advance Test (2)"]
+    );
+}

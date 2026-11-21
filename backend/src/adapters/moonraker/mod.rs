@@ -345,7 +345,10 @@ pub struct MoonrakerClient {
 impl MoonrakerClient {
     /// Construit un client pour l'URL déclarée et sa clé API éventuelle.
     pub fn new(base_url: impl Into<String>, api_key: Option<String>) -> Self {
-        let base_url = base_url.into().trim_end_matches('/').to_string();
+        // Adresse sans schéma (« 192.168.1.20:7125 ») : http:// comme make_url d'Orca.
+        let base_url = crate::print_host_url::with_scheme(base_url.into().trim())
+            .trim_end_matches('/')
+            .to_string();
         let http = reqwest::Client::builder()
             .timeout(Duration::from_secs(30))
             .build()

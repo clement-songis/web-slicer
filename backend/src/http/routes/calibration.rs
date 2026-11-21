@@ -133,6 +133,13 @@ pub async fn create_project_calibration(
             project.thumbnail_path.clone(),
         )
         .await?;
+    // Titre du projet = nom du modèle de calibration (Orca : le projet prend
+    // le nom du modèle chargé, « Pressure Advance Test »…), rendu unique côté
+    // serveur (« … (2) ») : une calibration relancée n'échoue plus en 409 au
+    // renommage et ne garde pas le nom provisoire du client (audit 41, K1).
+    let title = calibration_title(&calib.name, &request.kind);
+    let renamed =
+        super::projects::rename_unique_project(&state, user.id, project_id, &title).await?;
     for (model, mesh) in models {
         let converter = state.converter.clone();
         tokio::spawn(async move { converter.convert_mesh(model, mesh).await });
@@ -140,13 +147,43 @@ pub async fn create_project_calibration(
     Ok((
         StatusCode::CREATED,
         Json(json!({
-            "name": calib.name,
-            "version": updated.version,
+            // Nom final du projet (unique) ; `calibration_name` = nom brut d'Orca.
+            "name": renamed.name,
+            "calibration_name": calib.name,
+            "version": updated.version.max(renamed.version),
             "scene": scene,
             "calibration": calib.calib,
             "overrides": overrides,
         })),
     ))
+}
+
+/// Titre lisible d'un projet de calibration : nom du modèle d'Orca, sinon
+/// libellé du menu Calibration d'Orca pour le type (jamais la clé interne).
+fn calibration_title(name: &str, kind: &str) -> String {
+    let name = name.trim();
+    if !name.is_empty() {
+        return name.to_string();
+    }
+    // Libellés du menu Calibration d'Orca 2.4.1 (MainFrame.cpp).
+    match kind {
+        "temp_tower" => "Temperature".into(),
+        "pa_tower" | "pa_pattern" | "pa_line" => "Pressure advance".into(),
+        "flow_pass1" | "flow_pass2" | "flow_yolo" | "flow_yolo_fine" => "Flow rate".into(),
+        "max_vol_speed" => "Max flowrate".into(),
+        "retraction" => "Retraction test".into(),
+        "vfa" => "VFA".into(),
+        "is_freq" | "is_damp" => "Input Shaping".into(),
+        "cornering" => "Cornering".into(),
+        other => {
+            let words = other.replace('_', " ");
+            let mut chars = words.chars();
+            match chars.next() {
+                Some(first) => format!("Calibration {}{}", first.to_uppercase(), chars.as_str()),
+                None => "Calibration".into(),
+            }
+        }
+    }
 }
 
 // --- Historique PA -----------------------------------------------------------
@@ -333,4 +370,27 @@ pub async fn delete_pa(
     let id: PaCalibrationId = parse(&raw, "Calibration")?;
     state.storage.pa_calibrations().delete(user.id, id).await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[cfg(test)]
+mod title_tests {
+    #[test]
+    fn calibration_titles_are_readable() {
+        assert_eq!(
+            super::calibration_title(" Pressure Advance Test ", "pa_pattern"),
+            "Pressure Advance Test"
+        );
+        for kind in engine::api::calib::CALIB_KINDS {
+            let title = super::calibration_title("", kind);
+            assert!(!title.contains('_'), "{kind} → {title}");
+        }
+        assert_eq!(
+            super::calibration_title("", "pa_pattern"),
+            "Pressure advance"
+        );
+        assert_eq!(
+            super::calibration_title("", "new_kind"),
+            "Calibration New kind"
+        );
+    }
 }

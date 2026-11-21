@@ -18,7 +18,10 @@ use serde_json::{json, Value};
 
 use super::presets;
 use crate::domain::{NewJob, PresetId, ProjectId};
-use crate::http::dto::{JobResponse, SliceRequest, SliceResponse, SliceWarning};
+use crate::http::dto::{
+    JobResponse, PlateSliceSignature, SliceRequest, SliceResponse, SliceSignatureResponse,
+    SliceWarning,
+};
 use crate::http::error::{ApiError, ApiResult};
 use crate::http::extract::CurrentUser;
 use crate::http::state::AppState;
@@ -126,6 +129,16 @@ pub async fn slice(
         // séquence d'impression, ordre de la 1re couche…) figés dans le
         // snapshot de ce plateau, par-dessus les presets.
         let resolved = with_plate_settings(&resolved, scene, t);
+        // Signature de tranchage du plateau (lot 42, V1) figée avec le job :
+        // l'interface la compare à celle du projet rouvert
+        // (`GET /api/projects/{id}/slice-signature`).
+        let mut plate_scene = job_scene.clone();
+        if let Value::Object(map) = &mut plate_scene {
+            map.insert(
+                crate::slice_signature::SCENE_KEY.into(),
+                Value::String(crate::slice_signature::plate_signature(&resolved, scene, t)),
+            );
+        }
         let job = state
             .storage
             .jobs()
@@ -136,13 +149,71 @@ pub async fn slice(
                     plate_index: t,
                     resolved_settings: resolved.clone(),
                 },
-                job_scene.clone(),
+                plate_scene,
             )
             .await?;
         jobs.push(JobResponse::from(job));
     }
 
     Ok((StatusCode::CREATED, Json(SliceResponse { jobs, warnings })))
+}
+
+/// `GET /api/projects/{id}/slice-signature` — signature de tranchage de chaque
+/// plateau non vide du projet **enregistré** (presets actifs + surcharges +
+/// réglages projet / plateau + objets du plateau, calcul documenté dans
+/// `slice_signature.rs`) et dernier job réussi du plateau avec `fresh` : à la
+/// réouverture, l'interface ne restaure le dernier G-code que s'il est `fresh`
+/// (Orca ne rouvre jamais un résultat périmé).
+pub async fn slice_signature(
+    CurrentUser(user): CurrentUser,
+    State(state): State<AppState>,
+    Path(project_raw): Path<String>,
+) -> ApiResult<Json<SliceSignatureResponse>> {
+    let project_id = parse_project_id(&project_raw)?;
+    let project = state.storage.projects().get(user.id, project_id).await?; // 404, SC-008
+    let scene = &project.scene;
+    let targets = plate_targets(scene, None)?;
+    let saved = SliceRequest {
+        plate_index: None,
+        all: None,
+        draft: None,
+        allow_mixed_temperatures: None,
+        scene: None,
+        active_presets: None,
+    };
+    let jobs = state.storage.jobs().list(user.id).await?;
+    let mut plates = Vec::with_capacity(targets.len());
+    if !targets.is_empty() {
+        let SliceConfig { resolved, .. } =
+            resolve_slice_config(&state, user.id, scene, &project.active_presets, &saved).await?;
+        for t in targets {
+            let settings = with_plate_settings(&resolved, scene, t);
+            let signature = crate::slice_signature::plate_signature(&settings, scene, t);
+            let last = jobs
+                .iter()
+                .filter(|j| {
+                    j.project_id == project_id
+                        && j.plate_index == t
+                        && j.status == crate::domain::JobStatus::Succeeded
+                        && j.gcode_id.is_some()
+                })
+                .max_by_key(|j| j.created_at);
+            let last_signature =
+                last.and_then(|j| crate::slice_signature::of_job_scene(j.scene.as_ref()));
+            plates.push(PlateSliceSignature {
+                plate_index: t,
+                fresh: last_signature.as_deref() == Some(signature.as_str()),
+                signature,
+                last_job_id: last.map(|j| j.id.to_string()),
+                last_gcode_id: last.and_then(|j| j.gcode_id).map(|g| g.to_string()),
+                last_signature,
+            });
+        }
+    }
+    Ok(Json(SliceSignatureResponse {
+        version: crate::slice_signature::SIGNATURE_VERSION.into(),
+        plates,
+    }))
 }
 
 /// Scène à valider / trancher : `scene` du corps (état non enregistré de

@@ -17,4 +17,11 @@ start_now: boolean,
  * PrusaConnect : champ `to_queue=True`) ; exclusif de `start_now`, refusé
  * (422) pour les hôtes qui ne le proposent pas.
  */
-queue?: boolean, };
+queue?: boolean, 
+/**
+ * Nom de fichier choisi dans la boîte d'envoi (Orca PrintHostSendDialog :
+ * nom modifiable). Absent = nom proposé (`POST …/upload-name`). Caractères
+ * réservés refusés (422 `details.reason` = `chars` | `empty` | `hidden` |
+ * `too_long`), extension `.gcode` ajoutée si elle manque.
+ */
+filename?: string, };

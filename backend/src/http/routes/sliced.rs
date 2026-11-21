@@ -46,6 +46,11 @@ pub struct UploadSlicedRequest {
     /// `UploadToPrinterRequest::queue`.
     #[serde(default)]
     pub queue: bool,
+    /// Nom choisi dans la boîte d'envoi (lot 42, Orca PrintHostSendDialog) :
+    /// nom du fichier unique (.gcode.3mf ou plateau unique), ou base commune
+    /// des G-code par plateau (suffixes `_2`, `_3`… comme les noms proposés).
+    #[serde(default)]
+    pub filename: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -68,15 +73,114 @@ struct SlicedBundle {
     gcodes: Vec<PlateGcode>,
     /// `gcodes.stats` de chaque plateau (même ordre que `gcodes`) : nom Orca.
     stats: Vec<serde_json::Value>,
+    /// G-code stocké de chaque plateau (même ordre que `gcodes`).
+    gcode_ids: Vec<crate::domain::GcodeId>,
     project_name: String,
 }
 
-async fn sliced_bundle(
+/// Jobs validés d'un envoi / export groupé : le plus récent par plateau.
+pub(crate) struct SlicedJobs {
+    project: crate::domain::Project,
+    latest: BTreeMap<i64, (SlicingJob, crate::domain::Gcode)>,
+}
+
+impl SlicedJobs {
+    /// Job le plus récent (config figée de l'envoi).
+    fn newest(&self) -> &SlicingJob {
+        self.latest
+            .values()
+            .map(|(job, _)| job)
+            .max_by_key(|job| job.created_at)
+            .expect("au moins un job")
+    }
+
+    /// `use_3mf` de l'imprimante figée dans le job le plus récent.
+    pub(crate) fn uses_3mf(&self) -> ApiResult<bool> {
+        let config = crate::slicing::config_from_snapshot(&self.newest().resolved_settings)
+            .map_err(|e| {
+                tracing::error!(error = %e, "config figée des plateaux tranchés");
+                ApiError::internal()
+            })?;
+        Ok(printer_uses_3mf(&config))
+    }
+
+    /// Noms d'Orca proposés par plateau (`filename_format` évalué au
+    /// tranchage) ; le G-code n'est relu que s'il n'a pas de nom calculé.
+    pub(crate) async fn default_names(&self, state: &AppState) -> ApiResult<Vec<String>> {
+        let mut names = Vec::with_capacity(self.latest.len());
+        for (_, gcode) in self.latest.values() {
+            let bytes = if gcode.stats.get("output_filename").is_some() {
+                Vec::new()
+            } else {
+                read_gcode(state, &gcode.file_path).await?
+            };
+            names.push(crate::gcode_filename::for_gcode(
+                &gcode.stats,
+                &bytes,
+                &self.project.name,
+            ));
+        }
+        Ok(names)
+    }
+}
+
+async fn read_gcode(state: &AppState, path: &str) -> ApiResult<Vec<u8>> {
+    state
+        .files
+        .read(std::path::Path::new(path))
+        .await
+        .map_err(|e| {
+            tracing::error!(error = %e, "lecture du G-code (envoi de tous les plateaux)");
+            ApiError::internal()
+        })
+}
+
+/// Noms réellement envoyés (« Send all ») à partir des noms proposés par
+/// plateau : un seul `.gcode.3mf` (base du premier plateau) si l'imprimante
+/// prend le 3MF, sinon un G-code par plateau dédoublonné (`_2`…). `custom` =
+/// nom choisi dans la boîte d'envoi (validé, extension imposée).
+pub(crate) fn planned_upload_names(
+    defaults: &[String],
+    use_3mf: bool,
+    custom: Option<&str>,
+) -> ApiResult<Vec<String>> {
+    // Chaîne vide = nom proposé ; blancs seuls = 422 « nom requis ».
+    let custom = custom.filter(|c| !c.is_empty());
+    let checked = |raw: &str, ext: &str| {
+        crate::gcode_filename::upload_name(raw, ext)
+            .map_err(|why| super::printers::upload_name_error(&why, raw))
+    };
+    if use_3mf {
+        let name = match custom {
+            Some(raw) => checked(raw, ".gcode.3mf")?,
+            None => {
+                let first = defaults
+                    .first()
+                    .map(String::as_str)
+                    .unwrap_or("Untitled.gcode");
+                let stem = first.strip_suffix(".gcode").unwrap_or(first);
+                format!("{stem}.gcode.3mf")
+            }
+        };
+        return Ok(vec![name]);
+    }
+    let mut names: Vec<String> = match custom {
+        Some(raw) => {
+            let name = checked(raw, ".gcode")?;
+            vec![name; defaults.len().max(1)]
+        }
+        None => defaults.to_vec(),
+    };
+    crate::gcode_filename::dedupe(&mut names);
+    Ok(names)
+}
+
+pub(crate) async fn sliced_jobs(
     state: &AppState,
     user: UserId,
     project_id: ProjectId,
     job_ids: &[String],
-) -> ApiResult<SlicedBundle> {
+) -> ApiResult<SlicedJobs> {
     let project = state.storage.projects().get(user, project_id).await?; // 404, SC-008
     if job_ids.is_empty() {
         return Err(validation(
@@ -110,15 +214,21 @@ async fn sliced_bundle(
             latest.insert(job.plate_index, (job, gcode));
         }
     }
-    let newest = latest
-        .values()
-        .map(|(job, _)| job)
-        .max_by_key(|job| job.created_at)
-        .expect("au moins un job");
+    Ok(SlicedJobs { project, latest })
+}
+
+async fn sliced_bundle(
+    state: &AppState,
+    user: UserId,
+    project_id: ProjectId,
+    job_ids: &[String],
+) -> ApiResult<SlicedBundle> {
+    let jobs = sliced_jobs(state, user, project_id, job_ids).await?;
+    let newest = jobs.newest();
     let scene = newest
         .scene
         .clone()
-        .unwrap_or_else(|| project.scene.clone());
+        .unwrap_or_else(|| jobs.project.scene.clone());
     let model = crate::slicing::build_scene_model(state, user, project_id, &scene, None)
         .await
         .map_err(|e| {
@@ -129,6 +239,8 @@ async fn sliced_bundle(
         tracing::error!(error = %e, "config figée des plateaux tranchés");
         ApiError::internal()
     })?;
+    let SlicedJobs { project, latest } = jobs;
+    let gcode_ids = latest.values().map(|(_, gcode)| gcode.id).collect();
     let (gcodes, stats) = latest
         .into_iter()
         .map(|(plate, (_, gcode))| {
@@ -146,6 +258,7 @@ async fn sliced_bundle(
         config,
         gcodes,
         stats,
+        gcode_ids,
         project_name: project.name,
     })
 }
@@ -225,6 +338,10 @@ pub async fn upload_sliced(
     let bundle = sliced_bundle(&state, user.id, project_id, &body.job_ids).await?;
     let use_3mf = printer_uses_3mf(&bundle.config);
     let file_count = if use_3mf { 1 } else { bundle.gcodes.len() };
+    // Nom choisi validé avant tout travail (422 lisible).
+    if let Some(raw) = body.filename.as_deref() {
+        planned_upload_names(&[String::new()], use_3mf, Some(raw))?;
+    }
     if body.start_now && file_count > 1 {
         return Err(validation(
             "démarrage immédiat impossible avec plusieurs fichiers",
@@ -244,48 +361,91 @@ pub async fn upload_sliced(
         let name = crate::gcode_filename::for_gcode(stats, &bytes, &bundle.project_name);
         gcode_files.push((name, bytes));
     }
-    let mut uploads: Vec<(String, Vec<u8>)> = Vec::with_capacity(file_count);
+    let defaults: Vec<String> = gcode_files.iter().map(|(n, _)| n.clone()).collect();
+    let names = planned_upload_names(&defaults, use_3mf, body.filename.as_deref())?;
+    // (nom, octets, G-code du plateau) ; le .gcode.3mf groupé n'a pas de G-code unique.
+    let mut uploads: Vec<(String, Vec<u8>, Option<crate::domain::GcodeId>)> =
+        Vec::with_capacity(file_count);
     if use_3mf {
         let bytes = gcode_3mf_bytes(&bundle, None).await?;
-        let first = gcode_files
-            .first()
-            .map(|(n, _)| n.as_str())
-            .unwrap_or("Untitled.gcode");
-        let stem = first.strip_suffix(".gcode").unwrap_or(first);
-        uploads.push((format!("{stem}.gcode.3mf"), bytes));
+        uploads.push((names[0].clone(), bytes, None));
     } else {
-        let mut names: Vec<String> = gcode_files.iter().map(|(n, _)| n.clone()).collect();
-        crate::gcode_filename::dedupe(&mut names);
         uploads.extend(
             names
                 .into_iter()
-                .zip(gcode_files.into_iter().map(|(_, b)| b)),
+                .zip(gcode_files.into_iter().map(|(_, b)| b))
+                .zip(bundle.gcode_ids.iter().copied())
+                .map(|((name, bytes), id)| (name, bytes, Some(id))),
         );
     }
     let printer = state.storage.printers().get(user.id, printer_id).await?; // 404, SC-008
     let action = super::printers::post_upload_action(&printer, body.start_now, body.queue)?;
-    if let Some(host) = super::printers::host_client(&state, &printer).await? {
-        let mut files = Vec::with_capacity(uploads.len());
-        for (name, bytes) in uploads {
-            let up = host.upload_with(&name, bytes, action, None).await?;
-            files.push(PrinterUploadResponse {
-                path: up.path,
-                print_started: up.print_started,
-            });
-        }
-        return Ok(Json(UploadSlicedResponse {
-            format: if use_3mf { "gcode_3mf" } else { "gcode" },
-            files,
-        }));
-    }
-    let (_printer, client) = super::printers::load_client(&state, user.id, printer_id).await?;
+    let target = super::printers::UploadTarget::connect(&state, user.id, &printer).await?;
     let mut files = Vec::with_capacity(uploads.len());
-    for (name, bytes) in uploads {
-        let result = client.upload(&name, bytes, body.start_now).await?;
-        files.push(PrinterUploadResponse::from(result));
+    for (name, bytes, gcode_id) in uploads {
+        let up = target
+            .send(
+                &state,
+                user.id,
+                &printer,
+                super::printers::UploadJob {
+                    filename: name,
+                    bytes,
+                    action,
+                    storage: None,
+                    gcode_id,
+                    project_id: Some(project_id),
+                },
+            )
+            .await?;
+        files.push(up);
     }
     Ok(Json(UploadSlicedResponse {
         format: if use_3mf { "gcode_3mf" } else { "gcode" },
         files,
     }))
+}
+
+#[cfg(test)]
+mod upload_name_tests {
+    use super::planned_upload_names;
+
+    fn names(v: &[&str]) -> Vec<String> {
+        v.iter().map(|s| s.to_string()).collect()
+    }
+
+    #[test]
+    fn default_names_are_kept_and_deduplicated() {
+        let d = names(&["P_PLA_1h.gcode", "P_PLA_1h.gcode", "P_PLA_2h.gcode"]);
+        assert_eq!(
+            planned_upload_names(&d, false, None).unwrap(),
+            names(&["P_PLA_1h.gcode", "P_PLA_1h_2.gcode", "P_PLA_2h.gcode"])
+        );
+        assert_eq!(
+            planned_upload_names(&d, true, None).unwrap(),
+            names(&["P_PLA_1h.gcode.3mf"])
+        );
+        // Chaîne vide = nom proposé.
+        assert_eq!(
+            planned_upload_names(&d[..1], false, Some("")).unwrap(),
+            names(&["P_PLA_1h.gcode"])
+        );
+    }
+
+    #[test]
+    fn chosen_name_is_the_common_base_with_forced_extension() {
+        let d = names(&["a.gcode", "b.gcode"]);
+        assert_eq!(
+            planned_upload_names(&d, false, Some("Lot")).unwrap(),
+            names(&["Lot.gcode", "Lot_2.gcode"])
+        );
+        assert_eq!(
+            planned_upload_names(&d, true, Some("Lot.gcode")).unwrap(),
+            names(&["Lot.gcode.3mf"])
+        );
+        let err = planned_upload_names(&d, false, Some("a|b")).unwrap_err();
+        assert_eq!(err.status, axum::http::StatusCode::UNPROCESSABLE_ENTITY);
+        assert_eq!(err.body.details.unwrap()["reason"], "chars");
+        assert!(planned_upload_names(&d, false, Some("  ")).is_err());
+    }
 }

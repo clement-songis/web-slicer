@@ -8,6 +8,7 @@
 
 mod pa_calib;
 mod repos;
+mod uploads;
 
 use std::sync::Arc;
 
@@ -18,7 +19,7 @@ use sqlx::PgPool;
 
 use crate::domain::{
     GcodeRepo, InstanceRepo, JobRepo, ModelRepo, PaCalibrationRepo, PresetRepo, PrinterRepo,
-    ProjectRepo, Storage, StorageError, StorageResult, UserRepo,
+    PrinterUploadRepo, ProjectRepo, Storage, StorageError, StorageResult, UserRepo,
 };
 
 use repos::{
@@ -37,6 +38,7 @@ pub struct PostgresStorage {
     gcodes: PgGcodeRepo,
     instance: PgInstanceRepo,
     pa_calibrations: pa_calib::PgPaCalibrationRepo,
+    printer_uploads: uploads::PgPrinterUploadRepo,
 }
 
 impl PostgresStorage {
@@ -96,6 +98,7 @@ impl PostgresStorage {
             jobs: PgJobRepo::new(pool.clone()),
             gcodes: PgGcodeRepo::new(pool.clone()),
             pa_calibrations: pa_calib::PgPaCalibrationRepo::new(pool.clone()),
+            printer_uploads: uploads::PgPrinterUploadRepo::new(pool.clone()),
             instance: PgInstanceRepo::new(pool),
         }
     }
@@ -131,6 +134,9 @@ impl Storage for PostgresStorage {
     }
     fn pa_calibrations(&self) -> &dyn PaCalibrationRepo {
         &self.pa_calibrations
+    }
+    fn printer_uploads(&self) -> &dyn PrinterUploadRepo {
+        &self.printer_uploads
     }
 }
 

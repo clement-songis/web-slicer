@@ -11,4 +11,12 @@ path: string,
 /**
  * Impression démarrée immédiatement.
  */
-print_started: boolean, };
+print_started: boolean, 
+/**
+ * Nom de fichier envoyé (après validation / extension ajoutée).
+ */
+filename?: string, 
+/**
+ * Entrée de l'historique des envois (`GET /api/printers/{id}/uploads`).
+ */
+upload_id?: string, };

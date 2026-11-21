@@ -640,6 +640,12 @@ pub struct JobResponse {
     /// Dates au format RFC 3339 (tri file/historique).
     pub created_at: String,
     pub updated_at: String,
+    /// Signature de tranchage du plateau au lancement (lot 42 ; calcul :
+    /// `backend/src/slice_signature.rs`). Égale à celle du projet
+    /// (`GET /api/projects/{id}/slice-signature`) ⇔ le G-code correspond
+    /// encore au projet. Absente pour les jobs antérieurs.
+    #[ts(optional)]
+    pub slice_signature: Option<String>,
 }
 
 impl From<crate::domain::SlicingJob> for JobResponse {
@@ -656,8 +662,39 @@ impl From<crate::domain::SlicingJob> for JobResponse {
             error: j.error,
             created_at: j.created_at.format(&rfc3339).unwrap_or_default(),
             updated_at: j.updated_at.format(&rfc3339).unwrap_or_default(),
+            slice_signature: crate::slice_signature::of_job_scene(j.scene.as_ref()),
         }
     }
+}
+
+/// Signature de tranchage courante d'un plateau du projet enregistré et
+/// dernier job réussi de ce plateau (`GET /api/projects/{id}/slice-signature`).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct PlateSliceSignature {
+    pub plate_index: i64,
+    /// Signature que produirait un tranchage du projet enregistré maintenant.
+    pub signature: String,
+    /// Dernier job réussi du plateau (G-code restaurable s'il est `fresh`).
+    #[ts(optional)]
+    pub last_job_id: Option<String>,
+    #[ts(optional)]
+    pub last_gcode_id: Option<String>,
+    #[ts(optional)]
+    pub last_signature: Option<String>,
+    /// `last_signature == signature` : le dernier G-code correspond encore au
+    /// projet (faux sans job réussi ou pour un job antérieur au lot 42).
+    pub fresh: bool,
+}
+
+/// Réponse de `GET /api/projects/{id}/slice-signature`.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct SliceSignatureResponse {
+    /// Version du calcul (`v1`).
+    pub version: String,
+    /// Plateaux non vides du projet enregistré.
+    pub plates: Vec<PlateSliceSignature>,
 }
 
 /// Corps de `POST /api/projects/{id}/slice` : cible un plateau ou tous.
@@ -1262,6 +1299,13 @@ pub struct UploadToPrinterRequest {
     #[serde(default)]
     #[ts(optional)]
     pub queue: Option<bool>,
+    /// Nom de fichier choisi dans la boîte d'envoi (Orca PrintHostSendDialog :
+    /// nom modifiable). Absent = nom proposé (`POST …/upload-name`). Caractères
+    /// réservés refusés (422 `details.reason` = `chars` | `empty` | `hidden` |
+    /// `too_long`), extension `.gcode` ajoutée si elle manque.
+    #[serde(default)]
+    #[ts(optional)]
+    pub filename: Option<String>,
 }
 
 /// Résultat d'un envoi vers l'imprimante (`POST /api/printers/{id}/upload`).
@@ -1272,6 +1316,14 @@ pub struct PrinterUploadResponse {
     pub path: String,
     /// Impression démarrée immédiatement.
     pub print_started: bool,
+    /// Nom de fichier envoyé (après validation / extension ajoutée).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub filename: Option<String>,
+    /// Entrée de l'historique des envois (`GET /api/printers/{id}/uploads`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub upload_id: Option<String>,
 }
 
 impl From<crate::adapters::moonraker::UploadResult> for PrinterUploadResponse {
@@ -1279,8 +1331,107 @@ impl From<crate::adapters::moonraker::UploadResult> for PrinterUploadResponse {
         Self {
             path: r.path,
             print_started: r.print_started,
+            filename: None,
+            upload_id: None,
         }
     }
+}
+
+/// Entrée de l'historique des envois d'une imprimante (lot 42) — colonnes de
+/// la « Print host upload queue » d'Orca (PrintHostQueueDialog : ID, état,
+/// hôte, taille, fichier, message) + date et action.
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct PrinterUploadEntry {
+    pub id: String,
+    pub printer_id: String,
+    /// Nom de l'imprimante (liste de toutes les imprimantes ; absent si elle
+    /// n'est plus lisible).
+    #[ts(optional)]
+    pub printer_name: Option<String>,
+    /// Nom de fichier demandé.
+    pub filename: String,
+    /// Chemin retenu par l'hôte (envois terminés).
+    #[ts(optional)]
+    pub path: Option<String>,
+    /// Adresse et type de l'hôte au moment de l'envoi.
+    pub host: String,
+    pub host_type: String,
+    pub size_bytes: i64,
+    /// `upload` | `print` | `queue` (Upload / Upload and Print / Upload to Queue).
+    pub action: String,
+    /// `uploading` | `completed` | `error`.
+    pub status: String,
+    pub print_started: bool,
+    /// Message d'erreur lisible (envois en échec).
+    #[ts(optional)]
+    pub error: Option<String>,
+    #[ts(optional)]
+    pub gcode_id: Option<String>,
+    #[ts(optional)]
+    pub project_id: Option<String>,
+    /// RFC 3339.
+    pub created_at: String,
+    #[ts(optional)]
+    pub finished_at: Option<String>,
+}
+
+impl From<crate::domain::PrinterUpload> for PrinterUploadEntry {
+    fn from(u: crate::domain::PrinterUpload) -> Self {
+        let rfc3339 = time::format_description::well_known::Rfc3339;
+        Self {
+            id: u.id.to_string(),
+            printer_id: u.data.printer_id.to_string(),
+            printer_name: None,
+            filename: u.data.filename,
+            path: u.path,
+            host: u.data.host,
+            host_type: u.data.host_type,
+            size_bytes: u.data.size_bytes,
+            action: u.data.action,
+            status: json_lower(&u.status),
+            print_started: u.print_started,
+            error: u.error,
+            gcode_id: u.data.gcode_id.map(|g| g.to_string()),
+            project_id: u.data.project_id.map(|p| p.to_string()),
+            created_at: u.created_at.format(&rfc3339).unwrap_or_default(),
+            finished_at: u.finished_at.and_then(|t| t.format(&rfc3339).ok()),
+        }
+    }
+}
+
+/// Corps de `POST /api/printers/{id}/upload-name` : nom proposé pour un envoi
+/// (`gcode_id` = un plateau, comme `…/upload` ; `project_id` + `job_ids` =
+/// tous les plateaux, comme `…/upload-sliced`).
+#[derive(Debug, Clone, Default, Deserialize, TS)]
+#[ts(export)]
+pub struct UploadNameRequest {
+    #[serde(default)]
+    #[ts(optional)]
+    pub gcode_id: Option<String>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub project_id: Option<String>,
+    #[serde(default)]
+    #[ts(optional)]
+    pub job_ids: Option<Vec<String>>,
+    /// Nom saisi à valider sans envoyer (même règles que l'envoi).
+    #[serde(default)]
+    #[ts(optional)]
+    pub filename: Option<String>,
+}
+
+/// Nom proposé pour l'envoi (Orca : `default_output_file` pré-rempli dans
+/// PrintHostSendDialog, partie modifiable = le nom sans l'extension).
+#[derive(Debug, Clone, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct UploadNameResponse {
+    /// Nom complet proposé (ou nom saisi validé si `filename` est fourni).
+    pub filename: String,
+    /// Extension imposée (`.gcode` ou `.gcode.3mf`).
+    pub extension: String,
+    /// Noms réellement envoyés (plusieurs plateaux : suffixes `_2`, `_3`…).
+    pub files: Vec<String>,
 }
 
 /// État d'impression instantané (`GET /api/printers/{id}/status`).

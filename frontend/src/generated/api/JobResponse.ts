@@ -19,4 +19,11 @@ error?: unknown,
 /**
  * Dates au format RFC 3339 (tri file/historique).
  */
-created_at: string, updated_at: string, };
+created_at: string, updated_at: string, 
+/**
+ * Signature de tranchage du plateau au lancement (lot 42 ; calcul :
+ * `backend/src/slice_signature.rs`). Égale à celle du projet
+ * (`GET /api/projects/{id}/slice-signature`) ⇔ le G-code correspond
+ * encore au projet. Absente pour les jobs antérieurs.
+ */
+slice_signature?: string, };

@@ -779,7 +779,8 @@ async fn freezes_multi_filament_vectors_and_scene_at_enqueue() {
     let jobs = storage.jobs().list(owner).await.unwrap();
     assert_eq!(jobs.len(), 1);
     let job = &jobs[0];
-    assert_eq!(job.scene, Some(original_scene));
+    // Lot 42 : l'instantané porte aussi la signature de tranchage du plateau.
+    assert_eq!(without_signature(job.scene.clone()), Some(original_scene));
     assert_eq!(
         job.resolved_settings["filament_type"],
         json!(["PLA", "PETG"])
@@ -1553,7 +1554,10 @@ async fn validate_and_slice_use_the_unsaved_scene_from_the_body() {
     let jobs = storage.jobs().list(owner).await.unwrap();
     assert_eq!(jobs.len(), 1);
     assert_eq!(jobs[0].plate_index, 1);
-    assert_eq!(jobs[0].scene, Some(unsaved.clone()));
+    assert_eq!(
+        without_signature(jobs[0].scene.clone()),
+        Some(unsaved.clone())
+    );
     let saved = storage.projects().get(owner, pid).await.unwrap();
     assert_eq!(saved.version, version, "aucune sauvegarde forcée");
     assert_eq!(saved.scene, empty);
@@ -2328,4 +2332,22 @@ async fn layer_config_ranges_change_the_layer_heights_of_their_z_range() {
             .unwrap();
     }
     assert!(xml.contains("layer_height"), "{xml}");
+}
+
+/// Instantané de scène d'un job sans la signature de tranchage ajoutée au
+/// lancement (lot 42, `sliceSignature`), qui doit être présente.
+fn without_signature(scene: Option<Value>) -> Option<Value> {
+    scene.map(|mut s| {
+        let removed = s
+            .as_object_mut()
+            .and_then(|m| m.remove(backend::slice_signature::SCENE_KEY));
+        assert!(
+            removed
+                .as_ref()
+                .and_then(Value::as_str)
+                .is_some_and(|v| v.starts_with("v1:")),
+            "signature de tranchage figée avec le job"
+        );
+        s
+    })
 }

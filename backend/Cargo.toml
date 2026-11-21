@@ -48,6 +48,10 @@ tokio-tungstenite = { version = "0.29", default-features = false, features = [
     "handshake",
 ] }
 futures-util = "0.3"
+# Validation des adresses d'hôte d'impression (lot 42, même analyseur que reqwest).
+url = "2"
+# Signature de tranchage des jobs (lot 42, V1).
+sha2 = "0.10"
 # Lecture des archives 3MF projet (géométrie OPC + métadonnées Orca).
 quick-xml = "0.41"
 zip = "8"

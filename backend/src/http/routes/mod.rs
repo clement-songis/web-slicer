@@ -163,6 +163,10 @@ where
         )
         .route("/api/projects/{id}/orient", post(scene::orient))
         .route("/api/projects/{id}/slice", post(slice::slice))
+        .route(
+            "/api/projects/{id}/slice-signature",
+            get(slice::slice_signature),
+        )
         .route("/api/projects/{id}/validate", post(validate::validate))
         .route("/api/projects/{id}/export/3mf", get(export::export_3mf))
         .route(
@@ -269,6 +273,15 @@ where
             get(printers::host_printers),
         )
         .route("/api/printers/{id}/upload", post(printers::upload))
+        .route(
+            "/api/printers/{id}/upload-name",
+            post(printers::upload_name),
+        )
+        .route(
+            "/api/printers/{id}/uploads",
+            get(printers::list_uploads).delete(printers::clear_uploads),
+        )
+        .route("/api/printer-uploads", get(printers::all_uploads))
         .route(
             "/api/printers/{id}/upload-sliced",
             post(sliced::upload_sliced),

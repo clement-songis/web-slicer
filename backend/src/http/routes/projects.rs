@@ -105,6 +105,32 @@ pub(crate) async fn create_unique_project(
     ))
 }
 
+/// Renomme un projet sous un nom **unique** du compte (lot 42) : nom demandé
+/// s'il est libre (ou déjà le sien), sinon « nom (2) », « nom (3) »… comme
+/// [`create_unique_project`]. Pour les noms produits par le serveur (projet de
+/// calibration) : jamais de 409.
+pub(crate) async fn rename_unique_project(
+    state: &AppState,
+    owner: UserId,
+    id: ProjectId,
+    name: &str,
+) -> ApiResult<Project> {
+    let mut candidate = name.to_string();
+    for _ in 0..8 {
+        match state.storage.projects().rename(owner, id, &candidate).await {
+            Ok(project) => return Ok(project),
+            Err(StorageError::Conflict(_)) => {
+                let taken = taken_names(state, owner).await?;
+                candidate = next_free_name(name, &taken);
+            }
+            Err(e) => return Err(e.into()),
+        }
+    }
+    Err(ApiError::conflict(
+        "impossible d'attribuer un nom de projet libre",
+    ))
+}
+
 /// Renomme un projet du compte ; nom pris par un **autre** projet du compte →
 /// 409 `name_taken` avec `details.suggestion` (premier nom libre).
 async fn rename_project(

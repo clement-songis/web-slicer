@@ -5,6 +5,7 @@
 
 mod pa_calib;
 mod repos;
+mod uploads;
 
 use std::str::FromStr;
 use std::sync::Arc;
@@ -20,7 +21,7 @@ use uuid::Uuid;
 
 use crate::domain::{
     GcodeRepo, InstanceRepo, JobRepo, ModelRepo, PaCalibrationRepo, PresetRepo, PrinterRepo,
-    ProjectRepo, Storage, StorageError, StorageResult, UserRepo,
+    PrinterUploadRepo, ProjectRepo, Storage, StorageError, StorageResult, UserRepo,
 };
 
 use repos::{
@@ -39,6 +40,7 @@ pub struct SqliteStorage {
     gcodes: SqliteGcodeRepo,
     instance: SqliteInstanceRepo,
     pa_calibrations: pa_calib::SqlitePaCalibrationRepo,
+    printer_uploads: uploads::SqlitePrinterUploadRepo,
 }
 
 impl SqliteStorage {
@@ -79,6 +81,7 @@ impl SqliteStorage {
             jobs: SqliteJobRepo::new(pool.clone()),
             gcodes: SqliteGcodeRepo::new(pool.clone()),
             pa_calibrations: pa_calib::SqlitePaCalibrationRepo::new(pool.clone()),
+            printer_uploads: uploads::SqlitePrinterUploadRepo::new(pool.clone()),
             instance: SqliteInstanceRepo::new(pool),
         }
     }
@@ -114,6 +117,9 @@ impl Storage for SqliteStorage {
     }
     fn pa_calibrations(&self) -> &dyn PaCalibrationRepo {
         &self.pa_calibrations
+    }
+    fn printer_uploads(&self) -> &dyn PrinterUploadRepo {
+        &self.printer_uploads
     }
 }
 
