@@ -30,6 +30,9 @@
 		/** Variante de buse éditée (filament multi-buses, Orca m_variant_combo) :
 		 *  index du vecteur pour les options par variante ; 0 sinon. */
 		variantIndex?: number;
+		/** Libellé remplaçant celui de `def` dans une ligne composée d'Orca
+		 *  (ex. « Target » pour chamber_temperature, Tab.cpp). */
+		label?: string;
 	}
 
 	let {
@@ -39,8 +42,10 @@
 		compact = false,
 		saved = null,
 		system = null,
-		variantIndex
+		variantIndex,
+		label
 	}: Props = $props();
+	const shownLabel = $derived(label ?? def.label);
 
 	// Phase 34 : clic sur le libellé → wiki d'Orca (OptionsGroup::get_url).
 	const wiki = $derived(wikiUrl(def.key));
@@ -140,12 +145,12 @@
 				rel="noopener noreferrer"
 				class="underline-offset-2 hover:text-primary hover:underline focus-visible:text-primary focus-visible:underline"
 				data-testid="option-wiki-link"
-				aria-label={$t('{label} — OrcaSlicer wiki help (new tab)', { label: $t(def.label) })}
-				>{$t(def.label)}</a
+				aria-label={$t('{label} — OrcaSlicer wiki help (new tab)', { label: $t(shownLabel) })}
+				>{$t(shownLabel)}</a
 			>
 			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		{:else}
-			{$t(def.label)}
+			{$t(shownLabel)}
 		{/if}
 		{#if def.tooltip}
 			<span class="ml-1 cursor-help text-content-subtle" aria-hidden="true">ⓘ</span>

@@ -122,7 +122,9 @@ export function serializeObject(o: SceneObjectState): SceneObjectDoc {
 		settings: { ...o.settings },
 		painting: o.painting.serialize(),
 		layerProfile: serializeLayerProfile(o.layerProfile),
-		brimEars: o.brimEars.serialize(),
+		// Audit 45 EARS-a : oreilles dans le repère de l'objet (`ears`, + rayon)
+		// et positions plateau courantes (`points`), lues par le serveur.
+		brimEars: o.brimEars.serialize(o.transform),
 		printable: o.printable,
 		...(o.meshName ? { meshName: o.meshName } : {}),
 		// Copie JSON : l'objet peut être un proxy réactif (non clonable par structuredClone).
@@ -148,7 +150,7 @@ export function deserializeObject(doc: SceneObjectDoc): SceneObjectState {
 		settings: { ...(doc.settings ?? {}) },
 		painting: TrianglePainting.deserialize(doc.painting ?? {}),
 		layerProfile: deserializeLayerProfile(doc.layerProfile ?? []),
-		brimEars: BrimEars.deserialize(doc.brimEars ?? { points: [] }),
+		brimEars: BrimEars.deserialize(doc.brimEars ?? { points: [] }, doc.transform ?? IDENTITY),
 		printable: doc.printable ?? true,
 		...(typeof doc.meshName === 'string' && doc.meshName ? { meshName: doc.meshName } : {}),
 		...(doc.emboss && typeof doc.emboss === 'object' && !Array.isArray(doc.emboss)

@@ -144,13 +144,23 @@ describe('buildNotices', () => {
 		});
 		expect(notices[1].text).toMatch(/hauteur de la couche/i);
 	});
-	it('avertissement de configuration (racine), sans option inconnue', () => {
+	it('avertissement de configuration (racine), lien vers l’option seulement si elle est affichée', () => {
+		// Lot 47 (FIL-a) : `post_process` figure désormais dans le layout, comme
+		// dans Orca (TabPrint › Others › « Post-processing Scripts ») : l'avertissement
+		// mène à l'option (Tab::activate_option).
 		expect(notices[2]).toMatchObject({
 			kind: 'config_warning',
 			plateIndex: null,
-			optKey: undefined
+			optKey: 'post_process',
+			optKind: 'process'
 		});
 		expect(notices[2].text).toBe('Scripts de post-traitement ignorés');
+		// Clé inconnue du registre : pas de lien.
+		const unknown = buildNotices(
+			{ ...r, plates: [], warnings: [{ key: 'zz_unknown_option', message: 'x' }] },
+			{ catalog }
+		);
+		expect(unknown[0]).toMatchObject({ kind: 'config_warning', optKey: undefined });
 	});
 	it('surlignage et résumé', () => {
 		expect(issuesByObject(notices)).toEqual({

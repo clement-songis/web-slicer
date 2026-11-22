@@ -172,6 +172,11 @@ export interface AppPreferences {
 	 * quantification de l'export DRC ; 0 = sans perte, sinon 8 à 30.
 	 */
 	dracoBits: number;
+	/** Orca `backup_switch` (« Sauvegarde automatique », défaut activé) :
+	 *  brouillon local du projet non enregistré, proposé à la réouverture. */
+	autoBackup: boolean;
+	/** Orca `backup_interval` (secondes, défaut 10). */
+	backupInterval: number;
 }
 
 export const PREFERENCES_KEY = 'web-slicer.preferences';
@@ -210,7 +215,9 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
 	arrange: { ...ARRANGE_DEFAULTS },
 	show3dNavigator: true,
 	showAxes: true,
-	dracoBits: 0
+	dracoBits: 0,
+	autoBackup: true,
+	backupInterval: 10
 };
 
 /** DRC.hpp d'Orca : DRC_BITS_MIN 8, DRC_BITS_MAX 30, défaut 0 (sans perte). */
@@ -343,7 +350,13 @@ export function parsePreferences(raw: string | null): AppPreferences {
 			arrange: parseArrange(value.arrange),
 			show3dNavigator: bool(value.show3dNavigator, d.show3dNavigator),
 			showAxes: bool(value.showAxes, d.showAxes),
-			dracoBits: typeof value.dracoBits === 'number' ? clampDracoBits(value.dracoBits) : d.dracoBits
+			dracoBits:
+				typeof value.dracoBits === 'number' ? clampDracoBits(value.dracoBits) : d.dracoBits,
+			autoBackup: bool(value.autoBackup, d.autoBackup),
+			backupInterval:
+				typeof value.backupInterval === 'number' && Number.isFinite(value.backupInterval)
+					? Math.min(3600, Math.max(1, Math.round(value.backupInterval)))
+					: d.backupInterval
 		};
 	} catch {
 		return {

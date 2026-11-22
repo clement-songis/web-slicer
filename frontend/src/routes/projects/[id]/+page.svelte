@@ -46,6 +46,7 @@
 		type UnitSource
 	} from '$lib/editor/units';
 	import { autoFlushResult, changedSlots, type FlushSnapshot } from '$lib/editor/auto-flush';
+	import { gcodeCheckError, isNozzleRangeError } from '$lib/editor/nozzle-range-error';
 	import { detachPreset } from '$lib/api/presets';
 	// Lot 21 : brouillon au tranchage, peinture conservée, températures, buses.
 	import { buildProjectOverrides } from '$lib/editor/slice-draft';
@@ -293,6 +294,25 @@
 	} from '$lib/scene/assembly-info';
 	import type { PaintDocument } from '$lib/scene/gizmos/painting/painting';
 	import type { BrimEarsDocument } from '$lib/scene/gizmos/brim-ears';
+	import {
+		clearBackup,
+		readBackup,
+		shouldOfferRestore,
+		writeBackup,
+		type ProjectBackup
+	} from '$lib/scene/auto-backup';
+	import type { SceneDocument as BackupSceneDocument } from '$lib/scene/document';
+	import {
+		DEFAULT_DETECTION_RADIUS,
+		DEFAULT_MAX_ANGLE,
+		autoGeneratePoints,
+		defaultHeadDiameter,
+		detectionRadiusMax,
+		earToWorld,
+		firstLayerContours,
+		invalidEars,
+		worldToEar
+	} from '$lib/scene/gizmos/brim-ears';
 	import { PresetSettingsDialog } from '$lib/settings';
 	import PlateSettingsDialog from '$lib/settings/PlateSettingsDialog.svelte';
 	import {
@@ -453,7 +473,7 @@
 	import { outsideNotices } from '$lib/editor/outside-notices';
 	import { CutSession } from '$lib/scene/tools/cut-session.svelte';
 	import { cutPartLabel } from '$lib/scene/tools/cut-plan';
-	import { nearestFreeCell } from '$lib/scene/arrange';
+	import { arrangeAllScopes, nearestFreeCell } from '$lib/scene/arrange';
 	import { emptyFirstLayerSuspects, isEmptyFirstLayerError } from '$lib/editor/first-layer';
 	import { conflictMessage, parseConflict } from '$lib/editor/gcode-conflict';
 	import { effectiveOptions, optionsBody } from '$lib/scene/arrange-options';
@@ -553,7 +573,11 @@
 		type ObjColorPlan,
 		type ObjColorsResponse
 	} from '$lib/editor/obj-colors';
-	import { computeFlushVolumes, flushVolumesAvailable } from '$lib/api/flush';
+	import {
+		computeFlushVolumes,
+		effectiveFlushVolumes,
+		flushVolumesAvailable
+	} from '$lib/api/flush';
 	import {
 		afterSlotAdded,
 		nextFilamentColour,
@@ -656,7 +680,6 @@
 		instanceGroups,
 		instancePositions,
 		instanceStep,
-		mapPlatePoints,
 		newInstanceGroupId,
 		planInstanceSync,
 		planMemberSync,
@@ -706,6 +729,13 @@
 	// l'objet sélectionné, sérialisable au format 3MF Orca via `serialize`.
 	let paintings = $state<Record<string, TrianglePainting>>({});
 	let brimEarsByObject = $state<Record<string, BrimEars>>({});
+	// Audit 45 EARS-b — paramètres du gizmo Oreilles (session, comme Orca).
+	let earHeadDiameterSet = $state<number | null>(null);
+	let earMaxAngle = $state(DEFAULT_MAX_ANGLE);
+	let earDetectionRadius = $state(DEFAULT_DETECTION_RADIUS);
+	let earSelected = $state<Set<number>>(new Set());
+	let earSection = $state(0);
+	let earSectionNormal = $state<[number, number, number] | null>(null);
 	// Plages de hauteur à réglages propres (Orca `layer_config_ranges`), par objet.
 	let layerRangesByObject = $state<Record<string, HeightRange[]>>({});
 	// Maillages recentrés des volumes `mesh` (« Split to parts »), par modèle.
@@ -753,6 +783,15 @@
 		}
 		if (tools.active === 'measure' && measuredPoints.length > 0)
 			return measureGuides(measuredPoints);
+		if (tools.active === 'brim-ears' && earRows.length > 0)
+			return {
+				ears: earRows.map((r, i) => ({
+					center: [r.wx, r.wy, earLayerZ] as [number, number, number],
+					radius: r.r,
+					selected: earSelected.has(i),
+					invalid: earInvalid.includes(i)
+				}))
+			};
 		return null;
 	});
 	const measurement = $derived(
@@ -4279,6 +4318,67 @@
 	// Contexte des panneaux d'outils (T104) : objet unique sélectionné + dérivés.
 	const selId = $derived(ws.selection.size === 1 ? [...ws.selection][0] : null);
 	const activeObject = $derived(selId ? (sceneObjects.find((o) => o.id === selId) ?? null) : null);
+	// Audit 45 EARS-b — état dérivé du gizmo Oreilles (objet sélectionné).
+	const earHeadDiameter = $derived(
+		earHeadDiameterSet ??
+			defaultHeadDiameter(processValues.initial_layer_line_width, machineValues.nozzle_diameter)
+	);
+	// 1ʳᵉ couche de l'objet sélectionné (first_layer_slicer), outil ouvert seulement.
+	const earLayer = $derived.by(() =>
+		tools.active === 'brim-ears' && activeObject
+			? firstLayerContours(
+					activeObject.mesh.positions,
+					activeObject.mesh.indices,
+					objectTransform(activeObject)
+				)
+			: []
+	);
+	const earLayerZ = 0;
+	const earRows = $derived.by(() => {
+		if (tools.active !== 'brim-ears' || !activeObject) return [];
+		const t = objectTransform(activeObject);
+		return (brimEarsByObject[activeObject.id]?.list() ?? []).map((p) => {
+			const w = earToWorld(p, t);
+			return { ...p, wx: w[0], wy: w[1] };
+		});
+	});
+	const earInvalid = $derived(
+		earRows.length && earLayer.length
+			? invalidEars(
+					earRows.map((r) => ({ center: [r.wx, r.wy] as [number, number], r: r.r })),
+					earLayer
+				)
+			: []
+	);
+	const earBrimPainted = $derived(
+		String(
+			(activeObject ? tree.get(activeObject.id)?.settings?.brim_type : undefined) ??
+				processValues.brim_type ??
+				''
+		) === 'painted'
+	);
+	// Vue en coupe du gizmo (object_clipper) : normale = direction de vue figée
+	// au premier réglage, remise à zéro à la fermeture ou au changement d'objet.
+	const earsClip = $derived.by(() => {
+		if (tools.active !== 'brim-ears' || !activeObject || earSection <= 0) return null;
+		const radius =
+			Math.hypot(...worldSize(activeObject.mesh, activeObject.rotation, activeObject.scale)) / 2;
+		return sectionPlane(
+			earSectionNormal ?? sectionNormal(cameraForward),
+			activeObject.position ?? [0, 0, 0],
+			radius,
+			earSection
+		);
+	});
+	const earObjectId = $derived(activeObject?.id ?? null);
+	$effect(() => {
+		void earObjectId;
+		if (tools.active !== 'brim-ears') {
+			earSection = 0;
+			earSectionNormal = null;
+		}
+		earSelected = new Set();
+	});
 	const activeGizmoMode = $derived(
 		selId && canTransformObject(selId, activePlate, objectLocked) ? gizmoMode : null
 	);
@@ -5232,18 +5332,44 @@
 			saveMessage = tr('Assembly applied.');
 		}
 		if (tools.active === 'brim-ears') {
-			const ears = brimEarsByObject[id] ?? new BrimEars();
-			ears.add(pick.point[0], pick.point[1]);
-			brimEarsByObject = { ...brimEarsByObject, [id]: ears };
+			// Audit 45 EARS-a/b : point du clic dans le repère de l'objet, rayon =
+			// diamètre de tête / 2 (GLGizmoBrimEars::add_point_to_cache).
+			const ears = (brimEarsByObject[id] ?? new BrimEars()).clone();
+			const [x, y, z] = worldToEar(pick.point, objectTransform(object));
+			if (ears.add(x, y, z, earHeadDiameter / 2)) {
+				brimEarsByObject = { ...brimEarsByObject, [id]: ears };
+				earSelected = new Set([ears.count - 1]);
+			}
 		}
 	}
 
 	function removeBrimEar(index: number) {
 		if (!selId) return;
-		const ears = brimEarsByObject[selId];
+		const ears = brimEarsByObject[selId]?.clone();
 		if (!ears) return;
 		ears.removeAt(index);
-		brimEarsByObject = { ...brimEarsByObject };
+		brimEarsByObject = { ...brimEarsByObject, [selId]: ears };
+		earSelected = new Set();
+	}
+	function updateBrimEars(fn: (ears: BrimEars) => void) {
+		if (!selId) return;
+		const ears = (brimEarsByObject[selId] ?? new BrimEars()).clone();
+		fn(ears);
+		brimEarsByObject = { ...brimEarsByObject, [selId]: ears };
+	}
+	// Auto-générer (GLGizmoBrimEars::auto_generate) : sommets de la 1ʳᵉ couche
+	// selon l'angle max et le rayon de détection, rayon = diamètre de tête / 2.
+	function autoGenerateBrimEars() {
+		if (!activeObject) return;
+		const t = objectTransform(activeObject);
+		const pts = autoGeneratePoints(earLayer, earDetectionRadius, earMaxAngle);
+		updateBrimEars((ears) => {
+			for (const [wx, wy] of pts) {
+				const [x, y, z] = worldToEar([wx, wy, earLayerZ], t);
+				ears.add(x, y, z, earHeadDiameter / 2);
+			}
+		});
+		saveMessage = tr('{n} brim ear(s) generated.', { n: pts.length });
 	}
 	// Efface le canal actif de l'objet sélectionné (réaffecte l'index → réactif).
 	function clearActivePaint() {
@@ -5604,6 +5730,12 @@
 	const gcodeConflict = $derived(
 		parseConflict((rawStats as { conflict?: unknown } | null)?.conflict ?? null)
 	);
+	// Lot 47c (H2D-a, comme l'interface d'Orca) : trajets hors de la zone d'une
+	// buse — tranchage réussi, aperçu affiché, erreur SLICING_LIMIT_ERROR qui
+	// bloque export et envoi (serveur : 409 « gcode_check »).
+	const gcodeCheckBlocked = $derived(
+		gcodeCheckError((rawStats as { gcode_check?: unknown } | null)?.gcode_check ?? null)
+	);
 	const conflictObjectId = $derived.by(() => {
 		if (!gcodeConflict) return null;
 		const names = [gcodeConflict.object2, gcodeConflict.object1];
@@ -5753,6 +5885,12 @@
 					parseAreaPoints(machineValues.bed_exclude_area)
 				),
 				max_height: bed.height,
+				// Audit 45 SEQ-a : séquence globale (traitement, brouillon compris ;
+				// Orca ArrangeSettings::is_seq_print) et dégagements de la tête
+				// (valeurs machine du brouillon). En « Arranger ce plateau », le
+				// serveur prend la séquence réelle du plateau (init_arrange_params).
+				...sequentialArrangeFields(machineValues, processValues),
+				is_seq_print: processValues.print_sequence === 'by object',
 				options: optionsBody(arrangeSaved),
 				scope,
 				plate_index: activeIndex
@@ -5763,6 +5901,22 @@
 		} finally {
 			arrangeBusy = false;
 		}
+	}
+
+	// « A » / « Tout arranger » (SEQ-a) : arrangement global d'Orca, puis le
+	// plateau actif avec sa propre séquence s'il diffère du traitement (Orca le
+	// verrouille pendant l'arrangement global : rien ne bougeait).
+	async function arrangeAll() {
+		for (const scope of arrangeAllScopes(
+			activePlate?.settings?.print_sequence,
+			processValues.print_sequence
+		))
+			await arrangeGui(scope);
+	}
+	// Boutons « Disposer » des erreurs « trop proche » : plateau concerné, en
+	// respectant sa séquence (rayon de dégagement en objet par objet).
+	function arrangeForErrors(): Promise<void> {
+		return sequentialPrint ? arrangeGui('plate') : arrangeActive();
 	}
 
 	function applyGuiArrangeResult(res: ArrangeResponse) {
@@ -6815,15 +6969,9 @@
 				for (const target of targets) {
 					if (paint) paintings[target] = TrianglePainting.deserialize(paint);
 					else delete paintings[target];
-					const tgtObject = sceneObjects.find((o) => o.id === target);
-					if (earsDoc && srcObject && tgtObject)
-						brimEarsByObject[target] = BrimEars.deserialize({
-							points: mapPlatePoints(
-								earsDoc.points,
-								objectTransform(srcObject),
-								objectTransform(tgtObject)
-							)
-						});
+					// Oreilles dans le repère de l'objet (EARS-a) : partagées telles
+					// quelles par les instances (Orca ModelObject::brim_points).
+					if (earsDoc && srcObject) brimEarsByObject[target] = BrimEars.deserialize(earsDoc);
 					else if (!earsDoc) delete brimEarsByObject[target];
 					if (profile) layerProfiles[target] = structuredClone(profile);
 					else delete layerProfiles[target];
@@ -7594,7 +7742,7 @@
 	// transformées courantes côté serveur, options mémorisées) — A = tous les
 	// plateaux (EVT_GLCANVAS_ARRANGE), Maj+A = plateau actif (…_PARTPLATE).
 	function dispatchShortcut(action: string, shift = false) {
-		if (action === 'arrange') void arrangeGui(shift ? 'plate' : 'all');
+		if (action === 'arrange') void (shift ? arrangeGui('plate') : arrangeAll());
 		else if (action === 'orient') void onPlateAction(action);
 		else if (isToolAction(action)) selectTool(action as EditorTool);
 		else if (!dispatchEditorShortcut(action)) void onMenuAction(action);
@@ -9240,15 +9388,18 @@
 			case 'export.gcode':
 				// Orca « Export G-code… » : G-code brut du plateau actif.
 				if (!session.gcodeId) saveMessage = tr('Plate export: slice the plate first.');
+				else if (gcodeCheckBlocked) saveMessage = gcodeCheckBlocked;
 				else downloadUrl(`/api/gcodes/${session.gcodeId}/download`);
 				break;
 			case 'export.plate':
 				// Orca « Export plate sliced file » (Ctrl+G) : archive .gcode.3mf.
-				void exportPlateGcode();
+				if (gcodeCheckBlocked) saveMessage = gcodeCheckBlocked;
+				else void exportPlateGcode();
 				break;
 			case 'export.print':
 				showTab('preview');
-				if (session.gcodeId) printDialogRequest += 1;
+				if (gcodeCheckBlocked) saveMessage = gcodeCheckBlocked;
+				else if (session.gcodeId) printDialogRequest += 1;
 				else saveMessage = tr('Print plate: slice the plate first.');
 				break;
 			case 'export.allPlates':
@@ -9663,7 +9814,10 @@
 				.catch(() => {});
 		}
 		setGcodeSource(async () => {
-			const resp = await fetch(`/api/gcodes/${gcodeId}/download`, { credentials: 'include' });
+			// Lecture pour l'aperçu (lot 47c : permise même si l'export est bloqué).
+			const resp = await fetch(`/api/gcodes/${gcodeId}/download?preview=1`, {
+				credentials: 'include'
+			});
 			if (!resp.ok) throw new ApiError(resp.status, 'error', resp.statusText);
 			return resp.text();
 		});
@@ -10022,6 +10176,69 @@
 		return saveSignature() !== savedSignature;
 	}
 
+	// — Audit 45 PREF-b : sauvegarde automatique (Orca « Auto backup ») — tant
+	// que le projet a des modifications non enregistrées, copie périodique de la
+	// scène dans le stockage local ; à la réouverture, restauration proposée
+	// (« Previous unsaved project detected, do you want to restore it? »).
+	let backupOffer = $state<ProjectBackup | null>(null);
+	let backupChecked = false;
+	$effect(() => {
+		if (!baselineReady || backupChecked) return;
+		if (imports.some((item) => isPending(item))) return;
+		backupChecked = true;
+		untrack(() => {
+			const backup = readBackup(data.project.id);
+			if (
+				shouldOfferRestore(
+					backup,
+					String(data.project.version),
+					buildSceneForSave(),
+					serializeActivePresets(projectActivePresets())
+				)
+			)
+				backupOffer = backup;
+			else if (backup) clearBackup(data.project.id);
+		});
+	});
+	$effect(() => {
+		if (!baselineReady || !preferences.autoBackup || backupOffer) return;
+		const timer = setInterval(() => {
+			if (unsavedNow())
+				writeBackup(data.project.id, {
+					version: String(data.project.version),
+					savedAt: Date.now(),
+					scene: buildSceneForSave(),
+					activePresets: serializeActivePresets(projectActivePresets())
+				});
+			else clearBackup(data.project.id);
+		}, preferences.backupInterval * 1000);
+		return () => clearInterval(timer);
+	});
+	async function restoreBackup() {
+		const backup = backupOffer;
+		backupOffer = null;
+		if (!backup) return;
+		const outcome = await saveScene(
+			data.project.id,
+			Number(data.project.version),
+			backup.scene as BackupSceneDocument,
+			backup.activePresets
+		);
+		if (outcome.status === 'saved') {
+			clearBackup(data.project.id);
+			// Le brouillon devient le projet enregistré : rechargement complet.
+			location.reload();
+		} else
+			saveMessage =
+				outcome.status === 'conflict'
+					? tr('Conflict: the project was modified elsewhere (another tab or device).')
+					: outcome.message;
+	}
+	function discardBackup() {
+		backupOffer = null;
+		clearBackup(data.project.id);
+	}
+
 	// Sauvegardes sérialisées (phase 29) : la validation en direct enregistre la
 	// scène ; sans file, un « Trancher » pendant cet enregistrement partait avec
 	// la même version attendue et finissait en faux conflit 409.
@@ -10214,6 +10431,36 @@
 					class="hidden min-[1920px]:inline">{$t('Plate')}</span
 				>
 			</button>
+			<Dialog
+				open={backupOffer !== null}
+				label={$t('Restore')}
+				title={$t('Restore')}
+				onclose={discardBackup}
+				data-testid="backup-restore-dialog"
+			>
+				<p class="text-sm">
+					{$t('Previous unsaved project detected, do you want to restore it?')}
+				</p>
+				{#if backupOffer}
+					<p class="mt-1 text-xs text-content-subtle">
+						{new Date(backupOffer.savedAt).toLocaleString($locale)}
+					</p>
+				{/if}
+				{#snippet footer()}
+					<button
+						type="button"
+						class="ws-btn ws-btn-secondary"
+						data-testid="backup-restore-no"
+						onclick={discardBackup}>{$t('No')}</button
+					>
+					<button
+						type="button"
+						class="ws-btn ws-btn-primary"
+						data-testid="backup-restore-yes"
+						onclick={() => void restoreBackup()}>{$t('Yes')}</button
+					>
+				{/snippet}
+			</Dialog>
 			<PlateSettingsDialog
 				open={plateSettingsOpen}
 				settings={plates.list().find((p) => p.id === plates.activeId)?.settings ?? {}}
@@ -10309,14 +10556,15 @@
 				type="button"
 				class="ws-btn ws-btn-secondary"
 				data-testid="export-gcode-button"
-				disabled={!session.gcodeId || activeOutside.length > 0}
+				disabled={!session.gcodeId || activeOutside.length > 0 || !!gcodeCheckBlocked}
+				title={gcodeCheckBlocked ?? undefined}
 				onclick={() => session.gcodeId && downloadUrl(`/api/gcodes/${session.gcodeId}/download`)}
 			>
 				<span class="min-[1920px]:hidden">G-code…</span>
 				<span class="hidden min-[1920px]:inline">{$t('Export G-code…')}</span>
 			</button>
 			<SendToPrinter
-				gcodeId={activeOutside.length > 0 ? null : session.gcodeId}
+				gcodeId={activeOutside.length > 0 || gcodeCheckBlocked ? null : session.gcodeId}
 				openRequest={printDialogRequest}
 				plateCount={plates.list().length}
 				sendAll={sendAllPlates}
@@ -10398,7 +10646,7 @@
 		onarrange={(scope) => {
 			// Le panneau reste ouvert : Orca garde son menu d'arrangement actif
 			// tant que l'utilisateur ne le ferme pas (ré-arrangement en un clic).
-			void arrangeGui(scope);
+			void (scope === 'all' ? arrangeAll() : arrangeGui(scope));
 		}}
 		onclose={() => (arrangePanel = false)}
 	/>
@@ -10902,7 +11150,7 @@
 								<button
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-secondary"
-									disabled={!session.gcodeId}
+									disabled={!session.gcodeId || !!gcodeCheckBlocked}
 									onclick={() =>
 										session.gcodeId && downloadUrl(`/api/gcodes/${session.gcodeId}/download`)}
 									>{$t('Export')}</button
@@ -10910,7 +11158,7 @@
 								<button
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-primary"
-									disabled={!session.gcodeId}
+									disabled={!session.gcodeId || !!gcodeCheckBlocked}
 									onclick={() => session.gcodeId && (printDialogRequest += 1)}>{$t('Send')}</button
 								>
 							</div>
@@ -11356,12 +11604,22 @@
 							compute={async (colours, multiplier) =>
 								(await computeFlushVolumes(colours, multiplier, data.project.id)).matrix}
 							computeAvailable={flushVolumesAvailable}
-							onapply={(matrix, multiplier) =>
-								(projectFilament = {
+							effective={async () =>
+								// Phase 47b : matrice du tranchage du projet enregistré ; projet
+								// modifié non enregistré (couleurs, presets…) → calcul local.
+								savedSignature === null || saveSignature() !== savedSignature
+									? null
+									: await effectiveFlushVolumes(data.project.id)}
+							onapply={(matrix, multiplier) => {
+								// MM-a : undefined = inchangé (seules les cellules modifiées
+								// sont réécrites ; sans matrice, le tranchage la calcule).
+								if (!matrix && multiplier === undefined) return;
+								projectFilament = {
 									...projectFilament,
-									flush_volumes_matrix: matrix,
-									flush_multiplier: multiplier
-								})}
+									flush_volumes_matrix: matrix ?? projectFilament.flush_volumes_matrix,
+									flush_multiplier: multiplier ?? projectFilament.flush_multiplier
+								};
+							}}
 						/>
 						<!-- Traitement : dropdown + réglages en ligne (onglets), sans bouton d’enregistrement. -->
 						<section class="flex flex-col gap-2">
@@ -11758,7 +12016,7 @@
 						ongotoobject={gotoIssueObject}
 						ongotooption={gotoIssueOption}
 						ongotoplate={gotoIssuePlate}
-						onarrange={() => void arrangeActive()}
+						onarrange={() => void arrangeForErrors()}
 					/>
 				</div>
 			{/if}
@@ -11807,7 +12065,7 @@
 							onvolumechange={replaceVolume}
 							ondragchange={onGizmoDragChange}
 							{sectionRatio}
-							clipPlane={cutClip ?? sectionClip ?? assemblyClip}
+							clipPlane={cutClip ?? sectionClip ?? earsClip ?? assemblyClip}
 							clipAll={!cutClip && !sectionClip && !!assemblyClip}
 							partSelect={tools.active === 'assembly' && assemblySelectMode === 'part'}
 							wireframe={paintWireframe && paintChannel === 'mmu'}
@@ -11955,14 +12213,50 @@
 							/>
 						{:else if tools.active === 'brim-ears'}
 							<BrimEarsTool
-								points={activeObject ? (brimEarsByObject[activeObject.id]?.list() ?? []) : []}
+								points={earRows}
+								selected={earSelected}
+								invalid={earInvalid}
+								headDiameter={earHeadDiameter}
+								maxAngle={earMaxAngle}
+								detectionRadius={earDetectionRadius}
+								detectionRadiusMax={detectionRadiusMax(earLayer)}
+								section={earSection}
+								brimPainted={earBrimPainted}
 								onremove={removeBrimEar}
 								onclear={() => {
-									if (activeObject) {
-										brimEarsByObject[activeObject.id]?.clear();
-										brimEarsByObject = { ...brimEarsByObject };
+									updateBrimEars((ears) => ears.clear());
+									earSelected = new Set();
+								}}
+								onremoveselected={() => {
+									const drop = earSelected;
+									updateBrimEars((ears) => ears.removeMany(drop));
+									earSelected = new Set();
+								}}
+								onselect={(i, additive) => {
+									const next = new Set(additive ? earSelected : []);
+									if (next.has(i) && additive) next.delete(i);
+									else next.add(i);
+									earSelected = next;
+								}}
+								onheaddiameter={(v) => {
+									earHeadDiameterSet = v;
+									// Orca : le curseur s'applique aussi aux oreilles sélectionnées.
+									if (earSelected.size) {
+										const sel = earSelected;
+										updateBrimEars((ears) => ears.setRadius(sel, v / 2));
 									}
 								}}
+								onmaxangle={(v) => (earMaxAngle = v)}
+								ondetectionradius={(v) => (earDetectionRadius = v)}
+								onsection={(v) => {
+									earSectionNormal ??= sectionNormal(cameraForward);
+									earSection = v;
+								}}
+								onautogenerate={autoGenerateBrimEars}
+								onsetpainted={() => {
+									if (activeObject) tree.setSetting(activeObject.id, 'brim_type', 'painted');
+								}}
+								ondone={closeTool}
 							/>
 						{:else if tools.active === 'measure'}
 							<MeasureTool
@@ -12146,6 +12440,19 @@
 							{/if}
 						</div>
 					{/if}
+					{#if session.phase === 'preview' && gcodeCheckBlocked}
+						<div
+							class="flex flex-col gap-1 border-b border-danger/40 bg-danger-soft px-4 py-2 text-sm text-danger-content"
+							role="alert"
+							data-testid="slice-gcode-check"
+							data-kind="nozzle-range"
+						>
+							<p class="whitespace-pre-line">⛔ {gcodeCheckBlocked}</p>
+							<p class="text-xs" data-testid="slice-gcode-check-blocked">
+								{$t('Export and printing are unavailable until this is fixed.')}
+							</p>
+						</div>
+					{/if}
 					{#if session.phase === 'slicing'}
 						<div
 							class="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-content-muted"
@@ -12168,14 +12475,22 @@
 								class="flex max-w-xl flex-col gap-3 rounded-lg border border-danger/40 bg-danger-soft px-5 py-4 text-sm text-danger-content shadow-sm"
 								role="alert"
 								data-testid="slice-error"
+								data-kind={isNozzleRangeError(session.error) ? 'nozzle-range' : undefined}
 							>
-								<p>
+								<p class="whitespace-pre-line">
 									{session.error && session.error !== $t('slicing failed')
 										? $t('Slicing failed: {error}', { error: session.error })
 										: $t(
 												'Slicing failed. Check the printer, the filament and the process profile, then try again.'
 											)}
 								</p>
+								{#if isNozzleRangeError(session.error)}
+									<!-- Lot 47 H2D-a : comme Orca (SLICING_LIMIT_ERROR), pas d'export
+									     ni d'envoi : aucun G-code n'est produit pour ce plateau. -->
+									<p class="text-xs" data-testid="slice-error-print-blocked">
+										{$t('Export and printing are unavailable until this is fixed.')}
+									</p>
+								{/if}
 								{#if emptyLayerObjects.length}
 									<p data-testid="slice-error-objects">
 										{$t('Object: {names}', {
@@ -12205,7 +12520,7 @@
 											data-testid="slice-error-arrange"
 											onclick={async () => {
 												showTab('prepare');
-												await arrangeActive();
+												await arrangeForErrors();
 											}}>{$t('Arrange objects')}</button
 										>
 									{/if}

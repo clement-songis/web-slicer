@@ -897,6 +897,23 @@
 		/>
 	</T.Mesh>
 {/each}
+{#each guides?.ears ?? [] as ear, i (i)}
+	<!-- Oreilles de bord : disques à plat sur le plateau, toujours visibles. -->
+	<T.Mesh
+		position={[ear.center[0], ear.center[1], ear.center[2] + 0.05]}
+		rotation={[Math.PI / 2, 0, 0]}
+		renderOrder={6}
+		userData={{ guide: 'brim-ear' }}
+	>
+		<T.CylinderGeometry args={[ear.radius, ear.radius, 0.2, 32]} />
+		<T.MeshBasicMaterial
+			color={ear.invalid ? '#e5484d' : ear.selected ? '#f5a524' : '#4f8df7'}
+			opacity={0.65}
+			depthTest={false}
+			transparent
+		/>
+	</T.Mesh>
+{/each}
 {#if measureLine}
 	<T.Line geometry={measureLine} renderOrder={6}>
 		<T.LineBasicMaterial color={$sceneColors.measureFirst} depthTest={false} transparent />

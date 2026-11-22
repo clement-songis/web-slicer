@@ -37,6 +37,10 @@ export interface GuidePlane {
 export interface SceneGuides {
 	plane?: GuidePlane | null;
 	points?: Vec3[];
+	/** Audit 45 EARS-b — oreilles de bord de l'objet (GLGizmoBrimEars::
+	 *  render_points) : centre monde au niveau du plateau, rayon de tête,
+	 *  sélection, invalide (rouge). */
+	ears?: { center: Vec3; radius: number; selected: boolean; invalid: boolean }[];
 }
 
 /** Repère de l'objet : origine monde du maillage recentré et échelle. */

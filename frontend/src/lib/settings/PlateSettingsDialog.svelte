@@ -18,6 +18,21 @@
 	import { t } from '$lib/i18n';
 	import { modeAllows, type DisplayMode } from './filter';
 	import { isOpenEnum } from './widgets/types';
+	import FilamentOrderEditor from './FilamentOrderEditor.svelte';
+	import {
+		MAX_LAYER_VALUE,
+		MIN_LAYER_VALUE,
+		defaultOrder,
+		formatOrder,
+		formatOtherLayersSequence,
+		newRange,
+		normalizeOrder,
+		parseFirstLayerSequence,
+		parseOtherLayersSequence,
+		rangeValid,
+		sortRanges,
+		type LayerSeqRange
+	} from './plate-sequence';
 
 	interface Props {
 		open?: boolean;
@@ -87,6 +102,59 @@
 	});
 	const showMap = $derived(extruders > 1 && filamentColours.length > 0);
 
+	// Audit 45 MM-b — « Personnaliser » (Orca PlateSettingsDialog) : ordre des
+	// filaments de la 1ʳᵉ couche (DragCanvas) et plages « Couche … à … » des
+	// autres couches avec leur ordre (OtherLayersSeqPanel). Brouillon pris à
+	// l'ouverture, écrit par « Enregistrer » (first_layer_print_sequence,
+	// other_layers_print_sequence[_nums]) ; « Auto » les retire.
+	let firstOrder = $state<number[]>([]);
+	let otherRanges = $state<LayerSeqRange[]>([]);
+	let rangeError = $state<string | null>(null);
+	$effect(() => {
+		if (!open) return;
+		untrack(() => {
+			const n = filamentColours.length;
+			firstOrder =
+				parseFirstLayerSequence(settings?.first_layer_print_sequence, n) ?? defaultOrder(n);
+			const ranges = parseOtherLayersSequence(
+				settings?.other_layers_print_sequence,
+				settings?.other_layers_print_sequence_nums,
+				n
+			);
+			otherRanges = ranges.length ? ranges : [newRange(0, n)];
+			rangeError = null;
+		});
+	});
+	// Filament ajouté / retiré dialogue ouvert : ordres complétés.
+	$effect(() => {
+		const n = filamentColours.length;
+		if (!open) return;
+		untrack(() => {
+			if (firstOrder.length !== n) firstOrder = normalizeOrder(firstOrder, n);
+			if (otherRanges.some((r) => r.order.length !== n))
+				otherRanges = otherRanges.map((r) => ({ ...r, order: normalizeOrder(r.order, n) }));
+		});
+	});
+	function setRange(i: number, patch: Partial<LayerSeqRange>) {
+		otherRanges = otherRanges.map((r, k) => (k === i ? { ...r, ...patch } : r));
+		rangeError = null;
+	}
+	function setBegin(i: number, raw: string) {
+		const v = Math.max(MIN_LAYER_VALUE, Math.round(Number(raw)) || MIN_LAYER_VALUE);
+		const r = otherRanges[i];
+		// LayerNumberTextInput : fin repoussée au début si elle le précède.
+		setRange(i, { begin: v, end: r.end < v ? v : r.end });
+		otherRanges = sortRanges(otherRanges);
+	}
+	function setEnd(i: number, raw: string) {
+		const r = otherRanges[i];
+		const v = Math.max(MIN_LAYER_VALUE, Math.round(Number(raw)) || MIN_LAYER_VALUE);
+		// Orca : une fin inférieure au début est refusée (valeur précédente).
+		if (v < r.begin) return;
+		setRange(i, { end: v });
+		otherRanges = sortRanges(otherRanges);
+	}
+
 	/** Options du dialogue Orca, dans son ordre. */
 	const PLATE_KEYS = [
 		'curr_bed_type',
@@ -123,6 +191,12 @@
 	);
 
 	function apply() {
+		const firstCustom = draft.first_layer_sequence_choice === 'Customize';
+		const otherCustom = draft.other_layers_sequence_choice === 'Customize';
+		if (otherCustom && !otherRanges.every(rangeValid)) {
+			rangeError = $t('Please input layer value (>= 2).');
+			return;
+		}
 		for (const key of PLATE_KEYS) {
 			const before = settings?.[key];
 			const was = before === undefined || before === null ? '' : String(before);
@@ -136,6 +210,20 @@
 			if (JSON.stringify(next ?? null) !== JSON.stringify(prev ?? null))
 				onsetting('filament_map', next);
 		}
+		// Séquences (Plater : set_first_layer_print_sequence / set_other_layers_…,
+		// vides quand le choix est « Auto »).
+		const writeIfChanged = (key: string, value: string | undefined) => {
+			const before = settings?.[key];
+			const was = before === undefined || before === null ? undefined : String(before);
+			if (was !== value) onsetting(key, value);
+		};
+		writeIfChanged(
+			'first_layer_print_sequence',
+			firstCustom && firstOrder.length ? formatOrder(firstOrder) : undefined
+		);
+		const other = otherCustom && otherRanges.length ? formatOtherLayersSequence(otherRanges) : null;
+		writeIfChanged('other_layers_print_sequence', other?.sequence);
+		writeIfChanged('other_layers_print_sequence_nums', other?.nums);
 		onClose();
 	}
 </script>
@@ -172,8 +260,11 @@
 			<div class="flex flex-col divide-y divide-border">
 				{#each visible as key (key)}
 					{@const def = PARAMS[key]}
-					<label class="flex items-center justify-between gap-2 py-1.5 text-sm" data-param={key}>
-						<span class="text-content-muted">{$t(def.label)}</span>
+					<label
+						class="flex flex-wrap items-center justify-between gap-2 py-1.5 text-sm"
+						data-param={key}
+					>
+						<span class="min-w-0 text-content-muted">{$t(def.label)}</span>
 						{#if def.type === 'coBool'}
 							<select class="ws-field ws-field-sm w-48 shrink-0" bind:value={draft[key]}>
 								<option value="">{profileLabel(key)}</option>
@@ -188,7 +279,7 @@
 								bind:value={draft[key]}
 							/>
 						{:else}
-							<select class="ws-field ws-field-sm w-48 shrink-0" bind:value={draft[key]}>
+							<select class="ws-field ws-field-sm w-48 max-w-full min-w-0" bind:value={draft[key]}>
 								<option value="">{profileLabel(key)}</option>
 								{#each def.enumValues as v, i (v)}
 									<option value={v}>{$t(def.enumLabels[i] || v)}</option>
@@ -202,6 +293,103 @@
 								'By object: the order of the object list is the print order (drag an object onto another to change it).'
 							)}
 						</p>
+					{/if}
+					{#if key === 'first_layer_sequence_choice' && draft[key] === 'Customize' && filamentColours.length}
+						<div class="flex flex-col gap-1 pb-2" data-testid="plate-first-layer-sequence">
+							<span class="text-xs text-content-subtle"
+								>{$t('Drag the filaments to set their print order on the first layer.')}</span
+							>
+							<FilamentOrderEditor
+								order={firstOrder}
+								colours={filamentColours}
+								label={$t('First layer filament sequence')}
+								testid="plate-first-layer-order"
+								onchange={(o) => (firstOrder = o)}
+							/>
+						</div>
+					{/if}
+					{#if key === 'other_layers_sequence_choice' && draft[key] === 'Customize' && filamentColours.length}
+						<div class="flex flex-col gap-2 pb-2" data-testid="plate-other-layers-sequence">
+							{#each otherRanges as range, i (i)}
+								<div
+									class="flex flex-wrap items-center gap-2 text-sm"
+									data-testid="plate-layer-range"
+								>
+									<span class="text-content-muted">{$t('Layer')}</span>
+									<input
+										type="number"
+										min={MIN_LAYER_VALUE}
+										step="1"
+										class="ws-field ws-field-sm w-16 tabular-nums"
+										aria-label={$t('First layer of range {n}', { n: i + 1 })}
+										data-testid="plate-layer-range-begin"
+										value={range.begin}
+										onchange={(e) => setBegin(i, e.currentTarget.value)}
+									/>
+									<span class="text-content-muted">{$t('to')}</span>
+									<select
+										class="ws-field ws-field-sm w-28"
+										aria-label={$t('Last layer of range {n}', { n: i + 1 })}
+										data-testid="plate-layer-range-end-kind"
+										value={range.end === MAX_LAYER_VALUE ? 'end' : 'custom'}
+										onchange={(e) =>
+											setRange(i, {
+												end:
+													e.currentTarget.value === 'end'
+														? MAX_LAYER_VALUE
+														: Math.max(range.begin, MIN_LAYER_VALUE)
+											})}
+									>
+										<option value="end">{$t('End')}</option>
+										<option value="custom">{$t('Customize')}</option>
+									</select>
+									{#if range.end !== MAX_LAYER_VALUE}
+										<input
+											type="number"
+											min={range.begin}
+											step="1"
+											class="ws-field ws-field-sm w-16 tabular-nums"
+											aria-label={$t('Last layer of range {n}', { n: i + 1 })}
+											data-testid="plate-layer-range-end"
+											value={range.end}
+											onchange={(e) => setEnd(i, e.currentTarget.value)}
+										/>
+									{/if}
+									<FilamentOrderEditor
+										order={range.order}
+										colours={filamentColours}
+										label={$t('Filament sequence of layers {a} to {b}', {
+											a: range.begin,
+											b: range.end === MAX_LAYER_VALUE ? $t('End') : range.end
+										})}
+										testid="plate-layer-range-order"
+										onchange={(o) => setRange(i, { order: o })}
+									/>
+								</div>
+							{/each}
+							<div class="flex gap-2">
+								<button
+									type="button"
+									class="ws-btn ws-btn-sm ws-btn-secondary"
+									data-testid="plate-layer-range-add"
+									onclick={() =>
+										(otherRanges = [
+											...otherRanges,
+											newRange(otherRanges.length, filamentColours.length)
+										])}>{$t('Add')}</button
+								>
+								<button
+									type="button"
+									class="ws-btn ws-btn-sm ws-btn-ghost"
+									data-testid="plate-layer-range-delete"
+									disabled={otherRanges.length <= 1}
+									onclick={() => (otherRanges = otherRanges.slice(0, -1))}>{$t('Delete')}</button
+								>
+							</div>
+							{#if rangeError}
+								<p class="text-xs text-danger" role="alert">{rangeError}</p>
+							{/if}
+						</div>
 					{/if}
 				{/each}
 			</div>

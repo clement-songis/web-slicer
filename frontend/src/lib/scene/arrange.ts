@@ -124,3 +124,35 @@ export function nearestFreeCell(
 	const off = 0.05 * Math.max(bed.width, bed.depth);
 	return [cx + off, cy + off];
 }
+
+/** Séquence d'impression normalisée (`print_sequence` d'Orca). */
+export type PrintSequence = 'by layer' | 'by object';
+
+function normSequence(v: unknown): PrintSequence | null {
+	return v === 'by layer' || v === 'by object' ? v : null;
+}
+
+/**
+ * Séquence réelle d'un plateau (PartPlate::get_real_print_seq) : surcharge du
+ * plateau (« par défaut » / vide = aucune), sinon la séquence globale du
+ * traitement (défaut Orca : par couche).
+ */
+export function realPlateSequence(plateValue: unknown, globalValue: unknown): PrintSequence {
+	return normSequence(plateValue) ?? normSequence(globalValue) ?? 'by layer';
+}
+
+/**
+ * Audit 45 SEQ-a — appels d'arrangement pour « A » / « Tout arranger ».
+ * ArrangeJob::prepare_all d'Orca verrouille le temps de l'arrangement les
+ * plateaux dont la séquence diffère de la séquence globale
+ * (m_uncompatible_plates) : un plateau réglé « par objet » sous un traitement
+ * « par couche » ne bougeait donc pas du tout, erreurs « trop proche »
+ * comprises. On garde l'arrangement global d'Orca pour les autres plateaux,
+ * puis on arrange le plateau actif avec sa propre séquence
+ * (init_arrange_params, PREPARE_STATE_MENU : is_seq_print = séquence réelle du
+ * plateau, rayon de dégagement + jupe, BED_SHRINK_SEQ_PRINT).
+ */
+export function arrangeAllScopes(plateValue: unknown, globalValue: unknown): ('all' | 'plate')[] {
+	const global = normSequence(globalValue) ?? 'by layer';
+	return realPlateSequence(plateValue, globalValue) === global ? ['all'] : ['all', 'plate'];
+}

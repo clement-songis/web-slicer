@@ -51,7 +51,7 @@ describe('document scène', () => {
 			{ z: 0, height: 0.2 },
 			{ z: 5, height: 0.1 }
 		]);
-		expect(round.brimEars.list()[0]).toEqual({ x: 1, y: 2 });
+		expect(round.brimEars.list()[0]).toMatchObject({ x: 1, y: 2 });
 		expect(round.printable).toBe(false);
 		expect(deserializeObject({ ...doc, printable: undefined }).printable).toBe(true);
 	});

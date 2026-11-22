@@ -34,7 +34,7 @@ describe('BrimEars', () => {
 		ears.add(3, 4);
 		expect(ears.count).toBe(2);
 		ears.removeAt(0);
-		expect(ears.list()[0]).toEqual({ x: 3, y: 4 });
+		expect(ears.list()[0]).toMatchObject({ x: 3, y: 4 });
 		ears.removeAt(99); // hors limites : ignoré
 		expect(ears.count).toBe(1);
 	});
@@ -43,9 +43,10 @@ describe('BrimEars', () => {
 		const ears = new BrimEars();
 		ears.add(1.5, -2.5);
 		const doc = ears.serialize();
-		expect(doc).toEqual({ points: [[1.5, -2.5]] });
+		// Phase 47 (EARS-a) : oreilles dans le repère objet + rayon de tête.
+		expect(doc).toEqual({ points: [[1.5, -2.5, 8]], ears: [[1.5, -2.5, 0, 4]] });
 		const back = BrimEars.deserialize(doc);
-		expect(back.list()[0]).toEqual({ x: 1.5, y: -2.5 });
+		expect(back.list()[0]).toEqual({ x: 1.5, y: -2.5, z: 0, r: 4 });
 	});
 });
 

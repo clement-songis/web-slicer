@@ -15,6 +15,21 @@ export const SETTINGS_FR_EXTRA: Record<string, string> = {
 	'Textured Cool Plate': 'Plaque Cool plate texturée',
 	'Smooth Cool Plate': 'Plaque Cool plate lisse',
 	'Cool Plate (SuperTack)': 'Cool Plate (SuperTack)',
+	// Libellés des lignes composées d'Orca (UI_LINES, Tab.cpp) : msgstr d'OrcaSlicer_fr.po
+	// (« Target » / « Minimal » n'y sont pas : traduction directe).
+	Nozzle: 'Buse',
+	'Cool Plate': 'Cool Plate/Plaque PLA',
+	'Smooth PEI Plate / High Temp Plate': 'Plateau PEI lisse / Plateau haute température',
+	'Recommended nozzle temperature': 'Température de buse recommandée',
+	Target: 'Cible',
+	Minimal: 'Minimale',
+	'Min fan speed threshold': 'Seuil de vitesse mini du ventilateur',
+	'Max fan speed threshold': 'Seuil de vitesse maximale du ventilateur',
+	'Complete print': 'Après l’impression',
+	'Fan speed-up time': 'Durée d’accélération du ventilateur',
+	'Resonance Avoidance Speed': 'Vitesse d’évitement de résonance',
+	Frequency: 'Fréquence',
+	Damping: 'Amortissement',
 	// Unités (sidetext) sans msgid exact dans le .po d'Orca.
 	// (msgstr d'OrcaSlicer_fr.po pour ces unités, absentes du dictionnaire généré)
 	'mm or %': 'mm ou %',

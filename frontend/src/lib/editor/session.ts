@@ -5,6 +5,7 @@
 // une fois en `error`, les événements suivants ne l'écrasent pas.
 import type { ServerEvent, SliceWarning } from '../api/types';
 import { tr } from '$lib/i18n';
+import { nozzleRangeError } from './nozzle-range-error';
 
 /** Phase du cycle de tranchage. */
 export type SlicePhase = 'prepare' | 'slicing' | 'preview' | 'error';
@@ -153,7 +154,18 @@ function withEngineWarnings(raw: string, msg: string): string {
 	});
 }
 
+/** Lot 47 H2D-a : refus « trajet hors de la zone d'une buse » (texte d'Orca),
+ *  où qu'il soit dans la sortie du worker (après « E invalid_model »). */
+function nozzleRangeErrorIn(raw: string): string | null {
+	const at = raw.search(/tranchage impossible\s*:/i);
+	if (at < 0) return null;
+	const rest = raw.slice(at).replace(/\s+—\s*(?:stderr|stdout)\s*:[\s\S]*$/i, '');
+	return nozzleRangeError(rest);
+}
+
 function friendlySliceErrorCore(raw: string): string {
+	const nozzle = nozzleRangeErrorIn(raw);
+	if (nozzle) return nozzle;
 	let msg = raw.trim();
 	const invalid = /configuration invalide\s*:\s*([\s\S]*)$/i.exec(msg);
 	if (invalid) msg = invalid[1].trim();

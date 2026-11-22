@@ -19,6 +19,7 @@
 	import OptionLine from './OptionLine.svelte';
 	import { resolveDynamicOptions } from './dynamic-options';
 	import { variantLabels } from './filament-variants';
+	import { LINE_OPTION_LABELS, sectionLines, sectionRows } from './ui-lines';
 
 	// Layout généré + lignes dynamiques Orca résolues (notes, vignettes).
 	const LAYOUT = resolveDynamicOptions(UI_LAYOUT);
@@ -336,8 +337,37 @@
 		{/if}
 	</div>
 
-	{#snippet pageSections(sections: LinkedPage['sections'])}
-		{#each sections as section, si (si)}
+	{#snippet optionLine(section: LinkedSection, option: string, label?: string)}
+		{#if valuesByKind}
+			<OptionLine
+				def={PARAMS[option]}
+				{label}
+				bind:value={
+					() => valuesByKind?.[section.kind][option],
+					(v) => {
+						// Liaison par fonctions (audit 40 A5) : pas de bind: sur une
+						// propriété non liée par le parent (ownership_invalid_binding).
+						if (valuesByKind) valuesByKind[section.kind][option] = v;
+					}
+				}
+				saved={savedByKind?.[section.kind] ?? null}
+				system={systemByKind?.[section.kind] ?? null}
+				variantIndex={variantFor(section.kind)}
+			/>
+		{:else}
+			<OptionLine
+				def={PARAMS[option]}
+				{label}
+				bind:value={values[option]}
+				saved={savedByKind?.[kind] ?? null}
+				system={systemByKind?.[kind] ?? null}
+				variantIndex={variantFor(kind)}
+			/>
+		{/if}
+	{/snippet}
+
+	{#snippet pageSections(page: LinkedPage)}
+		{#each page.sections as section, si (si)}
 			<section>
 				{#if section.title || section.kind !== kind}
 					<h3 class="ws-section-title mb-1 flex items-center gap-2">
@@ -348,32 +378,27 @@
 					</h3>
 				{/if}
 				<div class="divide-y divide-border">
-					{#each section.options as option, oi (typeof option === 'string' ? option : `dyn:${oi}`)}
-						{#if typeof option === 'string' && PARAMS[option]}
-							{#if valuesByKind}
-								<OptionLine
-									def={PARAMS[option]}
-									bind:value={
-										() => valuesByKind?.[section.kind][option],
-										(v) => {
-											// Liaison par fonctions (audit 40 A5) : pas de bind: sur une
-											// propriété non liée par le parent (ownership_invalid_binding).
-											if (valuesByKind) valuesByKind[section.kind][option] = v;
-										}
-									}
-									saved={savedByKind?.[section.kind] ?? null}
-									system={systemByKind?.[section.kind] ?? null}
-									variantIndex={variantFor(section.kind)}
-								/>
-							{:else}
-								<OptionLine
-									def={PARAMS[option]}
-									bind:value={values[option]}
-									saved={savedByKind?.[kind] ?? null}
-									system={systemByKind?.[kind] ?? null}
-									variantIndex={variantFor(kind)}
-								/>
+					<!-- Lignes composées d'Orca (UI_LINES) : libellé commun (« Nozzle »,
+					     « Cool Plate »…) au-dessus de ses options (OptionsGroup::append_line). -->
+					{#each sectionRows(section.options, sectionLines(section.kind, page.title, section.title), (key) => PARAMS[key]?.label) as row (row.kind === 'line' ? `line:${row.line.label}` : typeof row.option === 'string' ? row.option : `dyn:${row.index}`)}
+						{#if row.kind === 'line'}
+							{#if row.options.some((key) => PARAMS[key])}
+								<div class="py-1" data-ui-line={row.line.label}>
+									<div
+										class="pt-1 text-sm font-medium text-content"
+										data-testid="settings-line-label"
+									>
+										{$t(row.line.label)}
+									</div>
+									<div class="divide-y divide-border pl-4">
+										{#each row.options.filter((key) => PARAMS[key]) as option (option)}
+											{@render optionLine(section, option, LINE_OPTION_LABELS[option])}
+										{/each}
+									</div>
+								</div>
 							{/if}
+						{:else if typeof row.option === 'string' && PARAMS[row.option]}
+							{@render optionLine(section, row.option)}
 						{/if}
 					{/each}
 				</div>
@@ -488,11 +513,11 @@
 									{$t(pageTitle(page.title))}{#if page.kind !== kind}
 										<span class="ws-badge ml-1 normal-case">{$t(KIND_LABELS[page.kind])}</span>{/if}
 								</h2>
-								{@render pageSections(page.sections)}
+								{@render pageSections(page)}
 							</div>
 						{/each}
 					{:else}
-						{@render pageSections(activePage.sections)}
+						{@render pageSections(activePage)}
 					{/if}
 				</div>
 			</fieldset>

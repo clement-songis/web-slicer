@@ -2,11 +2,16 @@
 	// Volumes de purge du projet (Orca : « Flushing volumes », config projet) :
 	// matrice départ → arrivée par paire de filaments, en-têtes aux couleurs des
 	// slots, multiplicateur global. Brouillon local appliqué par « Appliquer ».
+	// Audit 45 MM-a : sans matrice projet valide, le dialogue montre la matrice
+	// que le tranchage utilisera (calculée depuis les couleurs, comme Orca
+	// WipingDialog) et « Appliquer » ne réécrit que les cellules modifiées.
 	import { untrack } from 'svelte';
 	import Dialog from '$lib/ui/Dialog.svelte';
 	import { swatchStyle } from '$lib/ui/color';
 	import { t, tr } from '$lib/i18n';
 	import { DEFAULT_FLUSH, resizeFlushMatrix } from './multi-filament';
+	import { effectiveFlushView, flushApplyMatrix, usableFlushMatrix } from './auto-flush';
+	import type { EffectiveFlushResponse } from '$lib/api/flush';
 	import { appPreferences, savePreferences, type AutoFlush } from '$lib/settings/preferences';
 
 	interface Props {
@@ -18,11 +23,16 @@
 		/** Multiplicateur effectif sans surcharge projet (preset, défaut Orca 0,3). */
 		defaultMultiplier?: number;
 		onclose: () => void;
-		onapply: (matrix: number[], multiplier: number) => void;
+		/** undefined = inchangé (matrice du projet ou calcul automatique conservés). */
+		onapply: (matrix: number[] | undefined, multiplier: number | undefined) => void;
 		/** Calcul moteur depuis les couleurs (null = jamais disponible). */
 		compute?: ((colours: string[], multiplier: number) => Promise<number[]>) | null;
 		/** Sonde de disponibilité du calcul moteur. */
 		computeAvailable?: (() => Promise<boolean>) | null;
+		/** Phase 47b : matrice effective du projet enregistré (`POST /api/flush-volumes
+		 *  {project_id, effective: true}`), celle de l'export / du tranchage ;
+		 *  null = indisponible (projet modifié non enregistré : calcul local). */
+		effective?: (() => Promise<EffectiveFlushResponse | null>) | null;
 	}
 
 	let {
@@ -34,7 +44,8 @@
 		onclose,
 		onapply,
 		compute = null,
-		computeAvailable = null
+		computeAvailable = null,
+		effective = null
 	}: Props = $props();
 
 	let canCompute = $state<boolean | null>(null);
@@ -52,8 +63,10 @@
 		computeError = null;
 		try {
 			const m = await compute(colours, 1);
-			if (m.length === colours.length * colours.length) draft = m.map((v) => Math.round(v));
-			else computeError = tr('Unexpected engine response (matrix size).');
+			if (m.length === colours.length * colours.length) {
+				draft = m.map((v) => Math.round(v));
+				if (source === 'loading') source = 'auto';
+			} else computeError = tr('Unexpected engine response (matrix size).');
 		} catch (e) {
 			computeError = e instanceof Error ? e.message : tr('Calculation failed.');
 		} finally {
@@ -64,16 +77,96 @@
 	const n = $derived(colours.length);
 	let draft = $state<number[]>([]);
 	let factor = $state(1);
+	/** Matrice affichée à l'ouverture (= celle du tranchage) : référence des
+	 *  cellules modifiées. */
+	let base = $state<number[]>([]);
+	/** Sous-matrices des autres buses (matrice effective N² × buses) : réécrites
+	 *  telles quelles avec la 1ʳᵉ, seule éditée ici. */
+	let tail: number[] = [];
+	/** project : matrice du projet ; auto : calculée depuis les couleurs
+	 *  (tranchage sans matrice) ; loading : calcul en cours ; default : calcul
+	 *  indisponible, valeurs par défaut affichées. */
+	let source = $state<'project' | 'auto' | 'loading' | 'default'>('default');
+	let openSeq = 0;
 	// Brouillon réinitialisé à chaque ouverture seulement : un recalcul
 	// automatique reçu pendant la saisie (props modifiées) n'écrase ni les
 	// volumes saisis ni le multiplicateur ; « Appliquer » pose le brouillon.
 	$effect(() => {
 		if (!open) return;
 		untrack(() => {
-			draft = resizeFlushMatrix(matrix, colours.length);
+			const seq = ++openSeq;
+			const count = colours.length;
+			const own = usableFlushMatrix(matrix, count);
 			factor = multiplier;
+			computeError = null;
+			tail = [];
+			if (own) {
+				base = own;
+				draft = [...own];
+				source = 'project';
+				return;
+			}
+			base = resizeFlushMatrix(undefined, count);
+			draft = [...base];
+			if ((!compute && !effective) || count < 2) {
+				source = 'default';
+				return;
+			}
+			source = 'loading';
+			const fromColours = () => {
+				if (!compute) {
+					source = 'default';
+					return;
+				}
+				loadComputed(seq, count, compute);
+			};
+			if (!effective) {
+				fromColours();
+				return;
+			}
+			// Matrice effective (serveur) : la même que l'export / le tranchage,
+			// matrice du projet ou du preset comprise ; repli sur le calcul
+			// depuis les couleurs si elle n'est pas lisible.
+			void effective().then(
+				(res) => {
+					if (seq !== openSeq || source !== 'loading') return;
+					const view = effectiveFlushView(res, count);
+					if (!view) return fromColours();
+					base = view.base;
+					tail = view.tail;
+					draft = [...base];
+					source = view.source;
+				},
+				() => {
+					if (seq === openSeq && source === 'loading') fromColours();
+				}
+			);
 		});
 	});
+
+	function loadComputed(
+		seq: number,
+		count: number,
+		fn: (colours: string[], multiplier: number) => Promise<number[]>
+	) {
+		untrack(() => {
+			void fn([...colours], 1).then(
+				(m) => {
+					if (seq !== openSeq || source !== 'loading') return;
+					if (m.length !== count * count) {
+						source = 'default';
+						return;
+					}
+					base = m.map((v) => Math.round(v));
+					draft = [...base];
+					source = 'auto';
+				},
+				() => {
+					if (seq === openSeq && source === 'loading') source = 'default';
+				}
+			);
+		});
+	}
 
 	const at = (r: number, c: number) => draft[r * n + c] ?? 0;
 	function setCell(r: number, c: number, raw: string) {
@@ -101,7 +194,11 @@
 			)}
 		</p>
 		<div class="overflow-x-auto">
-			<table class="border-separate border-spacing-1 text-xs" data-testid="flush-matrix">
+			<table
+				class="border-separate border-spacing-1 text-xs"
+				data-testid="flush-matrix"
+				data-source={source}
+			>
 				<thead>
 					<tr>
 						<th scope="col" class="text-left font-normal text-content-subtle"
@@ -144,6 +241,7 @@
 											})}
 											data-testid={`flush-cell-${r + 1}-${c + 1}`}
 											value={at(r, c)}
+											disabled={source === 'loading'}
 											onchange={(e) => setCell(r, c, e.currentTarget.value)}
 										/>
 									{/if}
@@ -178,7 +276,7 @@
 				title={canCompute === false || !compute
 					? $t('Automatic calculation unavailable: the engine does not expose it yet.')
 					: $t('Volumes calculated by the engine from the colors (like Orca)')}
-				onclick={runCompute}>{computing ? $t('Calculating…') : $t('Calculate from colors')}</button
+				onclick={runCompute}>{computing ? $t('Calculating…') : $t('Re-calculate')}</button
 			>
 			<button
 				type="button"
@@ -205,6 +303,21 @@
 				<option value="disabled">{$t('Never')}</option>
 			</select>
 		</label>
+		{#if source === 'auto'}
+			<p class="text-xs text-content-subtle" data-testid="flush-source-auto">
+				{$t(
+					'Volumes calculated from the filament colors: these are the volumes used for slicing. Only the cells you change are saved.'
+				)}
+			</p>
+		{:else if source === 'loading'}
+			<p class="text-xs text-content-subtle">{$t('Calculating…')}</p>
+		{:else if source === 'default' && compute}
+			<p class="text-xs text-content-subtle" data-testid="flush-source-default">
+				{$t(
+					'The volumes calculated for slicing could not be read: default values are shown. Only the cells you change are saved.'
+				)}
+			</p>
+		{/if}
 		{#if computeError}
 			<p class="text-xs text-danger" role="alert">{computeError}</p>
 		{:else if canCompute === false}
@@ -221,8 +334,15 @@
 			type="button"
 			class="ws-btn ws-btn-primary"
 			data-testid="flush-apply"
+			disabled={source === 'loading'}
 			onclick={() => {
-				onapply(draft, factor > 0 ? factor : 1);
+				const first = flushApplyMatrix(base, draft, n);
+				// Autres buses (matrice effective N² × buses) conservées.
+				const next = first && tail.length ? [...first, ...tail] : first;
+				const f = factor > 0 ? factor : 1;
+				// Matrice écrite → multiplicateur écrit avec (X-d-bis) ; sinon
+				// seulement s'il a changé.
+				onapply(next, next || f !== multiplier ? f : undefined);
 				onclose();
 			}}>{$t('Apply')}</button
 		>

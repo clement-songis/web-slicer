@@ -19,6 +19,19 @@ export const computeFlushVolumes = (colours: string[], multiplier = 1, projectId
 		...(projectId ? { project_id: projectId } : {})
 	});
 
+/** Lot 47 (audit 45 MM-a) : matrice que le tranchage du projet **enregistré**
+ *  utilise réellement — matrice valide du projet / preset (`project`), sinon
+ *  calculée depuis les couleurs comme au tranchage (`computed` :
+ *  cli_update_flush_volumes, minimum nozzle_volume) ; N² × buses valeurs. */
+export interface EffectiveFlushResponse extends FlushVolumesResponse {
+	source: 'project' | 'computed';
+	nozzles: number;
+	multipliers: number[];
+}
+
+export const effectiveFlushVolumes = (projectId: string) =>
+	api.post<EffectiveFlushResponse>('/flush-volumes', { project_id: projectId, effective: true });
+
 let availability: Promise<boolean> | null = null;
 
 /** Route présente ? Sondée une fois par session (corps vide : 400 attendu si

@@ -44,6 +44,11 @@ describe('seuls les onglets d’éditeurs de texte se masquent', () => {
 		expect(editorOnly('process', 'Speed')).toBe(false);
 		expect(editorOnly('machine', 'Motion ability')).toBe(false);
 		expect(editorOnly('filament', 'Multimaterial')).toBe(false);
-		expect(titles('simple')).not.toContain('Motion ability');
+		// Lot 47 (FIL-a) : les limites machine (TabPrinter::append_option_line,
+		// machine_max_speed_* / _acceleration_* / _jerk_*) sont désormais
+		// extraites ; elles sont comSimple (PrintConfig.cpp), donc l'onglet
+		// « Motion ability » est visible dès le mode Simple, comme dans Orca
+		// (Page::update_visibility).
+		expect(titles('simple')).toContain('Motion ability');
 	});
 });

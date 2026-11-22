@@ -11,6 +11,7 @@ import { PARAMS } from '../../generated/params';
 import { UI_LAYOUT, type PresetKind } from '../../generated/ui-layout';
 import { api } from '$lib/api/client';
 import { tr } from '$lib/i18n';
+import { nozzleRangeError } from './nozzle-range-error';
 
 export type { ValidateResponse, ValidationIssue };
 
@@ -201,7 +202,11 @@ export function buildNotices(resp: ValidateResponse, ctx: NoticeContext): Valida
 						: issue.object_id
 					: undefined;
 				const optKind = issue.opt_key ? (optionKind(issue.opt_key) ?? undefined) : undefined;
-				const translated = translateOrcaMessage(issue.message, ctx.catalog);
+				// Lot 47c : trajets hors zone d'une buse (texte de la GUI d'Orca,
+				// une ligne par buse) traduit comme la notification d'Orca.
+				const translated =
+					(issue.kind === 'gcode_check' ? nozzleRangeError(issue.message) : null) ??
+					translateOrcaMessage(issue.message, ctx.catalog);
 				// Le message d'Orca commence souvent par le nom de l'objet : casse gardée.
 				const text =
 					issue.object_name && translated.startsWith(issue.object_name)
@@ -253,10 +258,11 @@ export function issuesByObject(
 	return out;
 }
 
-/** Erreurs bloquantes du plateau (Orca grise « Trancher le plateau »). */
+/** Erreurs bloquantes du plateau (Orca grise « Trancher le plateau »).
+ *  `gcode_check` (lot 47c) bloque l'impression / l'export, pas le tranchage. */
 export function plateBlocked(resp: ValidateResponse | null, plateIndex: number): boolean {
 	const plate = resp?.plates.find((p) => Number(p.plate_index) === plateIndex);
-	return !!plate && plate.errors.some((e) => e.kind !== 'empty_plate');
+	return !!plate && plate.errors.some((e) => e.kind !== 'empty_plate' && e.kind !== 'gcode_check');
 }
 
 /** Résumé court (« 2 erreurs · 1 avertissement »). */

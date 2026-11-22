@@ -47,14 +47,23 @@ test('multi-filament : couleurs, purge, extrudeur par volume, persistance @F:edi
 	await expect(page.getByTestId('filament-swatch').nth(1)).toHaveAttribute('data-colour', '#e11d48');
 	await expect(page.getByTestId('filament-swatch').nth(1)).toHaveAttribute('data-custom', 'true');
 
-	// Volumes de purge : matrice 2×2, multiplicateur.
+	// Volumes de purge : matrice 2×2 effective (celle du tranchage, audit 45
+	// MM-a), lue sur le projet enregistré ; multiplicateur.
+	await save(page, id);
+	const eff = await page.request.post('/api/flush-volumes', { data: { project_id: id, effective: true } });
+	expect(eff.status(), await eff.text()).toBe(200);
+	const effective = (await eff.json()) as { matrix: number[]; source: string };
+	expect(effective.source).toBe('computed');
+	const m = effective.matrix.slice(0, 4).map((v) => Math.round(v));
 	await page.getByTestId('open-flush-volumes').click();
 	const dlg = page.getByTestId('flush-dialog');
 	await expect(dlg.getByTestId('flush-matrix').locator('input')).toHaveCount(2);
+	await expect(dlg.getByTestId('flush-cell-1-2')).toHaveValue(String(m[1]));
+	await expect(dlg.getByTestId('flush-cell-2-1')).toHaveValue(String(m[2]));
 	await dlg.getByTestId('flush-cell-1-2').fill('150');
 	await dlg.getByTestId('flush-cell-1-2').press('Tab');
 	await dlg.getByTestId('flush-multiplier').fill('1.2');
-	await expect(dlg.getByTestId('flush-max')).toContainText('336');
+	await expect(dlg.getByTestId('flush-max')).toContainText(String(Math.round(Math.max(150, m[2]) * 1.2)));
 	await dlg.getByTestId('flush-apply').click();
 	await expect(dlg).toHaveCount(0);
 
@@ -78,7 +87,7 @@ test('multi-filament : couleurs, purge, extrudeur par volume, persistance @F:edi
 	let saved = await save(page, id);
 	expect(saved.projectConfig).toEqual({
 		filament_colour: ['', '#e11d48'],
-		flush_volumes_matrix: [0, 150, 280, 0],
+		flush_volumes_matrix: [0, 150, m[2], 0],
 		flush_multiplier: 1.2
 	});
 	expect(saved.objects.find((o) => o.name === 'cylinder.stl')?.extruder).toBe(2);

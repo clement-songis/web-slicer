@@ -52,15 +52,33 @@
 		dark: 'Dark',
 		system: 'System'
 	};
+	// Audit 45 PREF-a — libellés d'Orca (Preferences.cpp:1713-1719,
+	// ButtonDragActions = None / Pan / Rotate, left/middle/right_mouse_drag_action).
 	const DRAG_LABELS: Record<DragAction, string> = {
-		rotate: 'Rotation',
+		none: 'None',
 		pan: 'Pan',
-		none: 'None||drag action'
+		rotate: 'Rotate'
 	};
-	const BUTTONS: { key: 'leftDrag' | 'middleDrag' | 'rightDrag'; label: string }[] = [
-		{ key: 'leftDrag', label: 'Left button' },
-		{ key: 'middleDrag', label: 'Middle button' },
-		{ key: 'rightDrag', label: 'Right button' }
+	const BUTTONS: {
+		key: 'leftDrag' | 'middleDrag' | 'rightDrag';
+		label: string;
+		hint: string;
+	}[] = [
+		{
+			key: 'leftDrag',
+			label: 'Left Mouse Drag',
+			hint: 'Set the action that dragging the left mouse button should perform.'
+		},
+		{
+			key: 'middleDrag',
+			label: 'Middle Mouse Drag',
+			hint: 'Set the action that dragging the middle mouse button should perform.'
+		},
+		{
+			key: 'rightDrag',
+			label: 'Right Mouse Drag',
+			hint: 'Set the action that dragging the right mouse button should perform.'
+		}
 	];
 	const FLUSH_LABELS: Record<AutoFlush, string> = {
 		all: 'Color or filament',
@@ -237,6 +255,42 @@
 						closeCtl,
 						'confirm-close'
 					)}
+					<!-- Audit 45 PREF-b — Orca « Auto backup » (backup_switch / backup_interval). -->
+					{#snippet backupCtl()}
+						<div class="flex items-center gap-2">
+							<input
+								type="checkbox"
+								data-testid="pref-auto-backup"
+								aria-labelledby="pref-auto-backup-label"
+								checked={prefs.autoBackup}
+								onchange={(e) => update({ autoBackup: e.currentTarget.checked })}
+							/>
+							<input
+								type="number"
+								min="1"
+								max="3600"
+								step="1"
+								class="ws-field ws-field-sm w-16 text-center"
+								data-testid="pref-backup-interval"
+								aria-label={$t('The period of backup in seconds.')}
+								title={$t('The period of backup in seconds.')}
+								disabled={!prefs.autoBackup}
+								value={prefs.backupInterval}
+								onchange={(e) => {
+									const v = Math.round(Number(e.currentTarget.value));
+									if (Number.isFinite(v))
+										update({ backupInterval: Math.min(3600, Math.max(1, v)) });
+								}}
+							/>
+							<span class="text-xs text-content-subtle">{$t('s')}</span>
+						</div>
+					{/snippet}
+					{@render row(
+						'Auto backup',
+						'Backup your project periodically to help with restoring from an occasional crash.',
+						backupCtl,
+						'auto-backup'
+					)}
 					{#snippet startCtl()}
 						<select
 							data-testid="pref-default-page"
@@ -338,7 +392,7 @@
 									{/each}
 								</select>
 							{/snippet}
-							{@render row($t('{button} (drag)', { button: $t(b.label) }), null, dragCtl, b.key)}
+							{@render row(b.label, b.hint, dragCtl, b.key)}
 						{/each}
 						{#if noRotate}
 							<p
