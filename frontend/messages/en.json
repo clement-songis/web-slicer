@@ -2478,5 +2478,7 @@
 	"u_p48_auto_threshold": "Auto support threshold angle: {n}",
 	"u_p48_no_auto_support": "No auto support",
 	"u_p48_plate_height": "A G-code path goes beyond the max print height.",
-	"u_p48_export_sliced_sd": "Export plate sliced file (.gcode.3mf) for a microSD card"
+	"u_p48_export_sliced_sd": "Export plate sliced file (.gcode.3mf) for a microSD card",
+	"u_p49_fuzzy_disabled": "Warning: Fuzzy skin is disabled, painted fuzzy skin will not take effect!",
+	"u_p49_fuzzy_enable": "Enable painted fuzzy skin for this object"
 }

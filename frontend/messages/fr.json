@@ -2478,5 +2478,7 @@
 	"u_p48_auto_threshold": "Angle de seuil de support automatique : {n}",
 	"u_p48_no_auto_support": "Pas de support auto",
 	"u_p48_plate_height": "Un chemin du G-code dépasse la hauteur d’impression maximale.",
-	"u_p48_export_sliced_sd": "Exporter le fichier tranché du plateau (.gcode.3mf) pour une carte microSD"
+	"u_p48_export_sliced_sd": "Exporter le fichier tranché du plateau (.gcode.3mf) pour une carte microSD",
+	"u_p49_fuzzy_disabled": "Attention : La surface irrégulière est désactivée, la surface irrégulière peinte ne prendra pas effet !",
+	"u_p49_fuzzy_enable": "Activer la surface irrégulière peinte pour cet objet"
 }

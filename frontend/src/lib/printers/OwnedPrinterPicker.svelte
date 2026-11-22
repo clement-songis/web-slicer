@@ -27,6 +27,13 @@
 		machinePresets?: PresetSummary[];
 		/** Le brouillon machine diffère de sa configuration résolue. */
 		modified?: boolean;
+		/** Active d'office l'imprimante affichée quand aucun preset machine n'est
+		 *  actif (nouveau projet). Faux pendant la lecture d'un projet ouvert. */
+		autoselect?: boolean;
+		/** Audit 47 PROJ-a : imprimante du 3MF ouvert (printer_settings_id) quand
+		 *  le projet n'a pas de preset machine — affichée telle quelle, sans
+		 *  activer une imprimante possédée (Plater::load_files). */
+		projectPrinterName?: string | null;
 		/** Ouvre la grille d'ajout d'imprimante. */
 		onadd: () => void;
 		/** Ouvre le dialogue de réglages de l'imprimante. */
@@ -39,6 +46,8 @@
 		selectedMachinePresetId = $bindable(null),
 		machinePresets = [],
 		modified = false,
+		autoselect = true,
+		projectPrinterName = null,
 		onadd,
 		onedit
 	}: Props = $props();
@@ -60,20 +69,41 @@
 	// actif seul ne suffit pas à lever l'ambiguïté quand deux imprimantes partagent
 	// un modèle). Réaligné sur le preset actif tant qu'il n'est pas déjà cohérent.
 	let selectedPrinterId = $state<string | null>(null);
-	$effect(() => {
-		if (printers.some((p) => p.id === selectedPrinterId)) return;
-		// Priorité : l'imprimante dont la buse déclarée est exactement la buse
-		// active ; sinon celle du même modèle ; sinon la première déclarée.
+	// Imprimante hors de la liste possédée, affichée comme entrée propre : celle
+	// du 3MF ouvert (sans preset machine), ou un preset système actif dont le
+	// modèle n'est pas déclaré (préréglage du projet dans la liste d'Orca).
+	const foreignLabel = $derived.by(() => {
+		if (!selectedMachinePresetId) return projectPrinterName || null;
 		const key = modelKeyOf(selectedMachinePresetId);
-		const inferred =
-			printers.find((p) => p.machine_preset_id === selectedMachinePresetId) ??
-			printers.find((p) => modelKeyOf(p.machine_preset_id) === key) ??
-			printers[0];
-		selectedPrinterId = inferred?.id ?? null;
+		if (!key || printers.some((p) => modelKeyOf(p.machine_preset_id) === key)) return null;
+		return (
+			machinePresets.find((p) => p.id === selectedMachinePresetId)?.name ??
+			modelOf(selectedMachinePresetId)?.model ??
+			null
+		);
+	});
+	$effect(() => {
+		if (foreignLabel) {
+			selectedPrinterId = null;
+			return;
+		}
+		if (!printers.some((p) => p.id === selectedPrinterId)) {
+			// Priorité : l'imprimante dont la buse déclarée est exactement la buse
+			// active ; sinon celle du même modèle ; sinon la première déclarée.
+			const key = modelKeyOf(selectedMachinePresetId);
+			const inferred =
+				printers.find((p) => p.machine_preset_id === selectedMachinePresetId) ??
+				printers.find((p) => modelKeyOf(p.machine_preset_id) === key) ??
+				printers[0];
+			selectedPrinterId = inferred?.id ?? null;
+		}
 		// Nouveau projet : aucun preset machine actif alors qu'une imprimante est
 		// affichée — on l'active (buse déclarée), sinon le filtre de compatibilité
 		// filament/process et la buse restent vides (« Choisir… » partout).
-		if (!selectedMachinePresetId && inferred) selectedMachinePresetId = inferred.machine_preset_id;
+		if (!selectedMachinePresetId && autoselect) {
+			const shown = printers.find((p) => p.id === selectedPrinterId);
+			if (shown) selectedMachinePresetId = shown.machine_preset_id;
+		}
 	});
 
 	const selectedPrinter = $derived(printers.find((p) => p.id === selectedPrinterId) ?? null);
@@ -100,6 +130,7 @@
 
 	// Change d'imprimante : réinitialise la buse sur celle déclarée pour elle.
 	function onPrinterChange(id: string) {
+		if (!id) return;
 		selectedPrinterId = id;
 		const printer = printers.find((p) => p.id === id);
 		if (printer) selectedMachinePresetId = printer.machine_preset_id;
@@ -115,9 +146,14 @@
 		<select
 			class={FIELD}
 			aria-label={$t('Printer')}
-			value={selectedPrinterId}
+			data-testid="printer-picker"
+			data-project-printer={foreignLabel ? 'true' : undefined}
+			value={foreignLabel ? '' : selectedPrinterId}
 			onchange={(e) => onPrinterChange(e.currentTarget.value)}
 		>
+			{#if foreignLabel}
+				<option value="">{foreignLabel}</option>
+			{/if}
 			{#each printers as p (p.id)}
 				<option value={p.id}>{p.name}</option>
 			{/each}

@@ -126,6 +126,11 @@ const CANVAS_CHORDS: Record<string, string> = {
 	c: 'cut',
 	b: 'boolean',
 	h: 'fuzzy-paint',
+	// Audit 47 KEY-a : GLGizmoFdmSupports.cpp:81 (WXK_CONTROL_L) et
+	// GLGizmoMmuSegmentation.cpp:90 (WXK_CONTROL_N), touches simples
+	// (GLGizmosManager::handle_shortcut).
+	l: 'support-paint',
+	n: 'mm-paint',
 	p: 'seam-paint',
 	t: 'emboss',
 	u: 'measure',

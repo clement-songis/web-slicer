@@ -71,6 +71,11 @@
 		/** Seuil des supports automatiques (°), 0 = pas de support auto
 		 *  (infobulle du curseur d'Orca). */
 		supportThresholdAngle?: number;
+		/** Surface irrégulière effective de l'objet = « Désactivé » : avertissement
+		 *  d'Orca (GLGizmoFuzzySkin.cpp:331-357). */
+		fuzzyDisabled?: boolean;
+		/** Lien « Activer la surface irrégulière peinte pour cet objet ». */
+		onenablefuzzy?: () => void;
 	}
 
 	let {
@@ -90,8 +95,16 @@
 		wireframe = $bindable(false),
 		overhangOnly = $bindable(false),
 		highlightAngle = $bindable(0),
-		supportThresholdAngle = 0
+		supportThresholdAngle = 0,
+		fuzzyDisabled = false,
+		onenablefuzzy
 	}: Props = $props();
+	// Audit 47 FUZZ-b : la surface irrégulière n'a qu'un état peint
+	// (GLGizmoFuzzySkin.hpp:29 get_left_button_state_type = FUZZY_SKIN) — pas de
+	// choix Forcer / Bloquer ; un état « Bloquer » hérité des supports est levé.
+	$effect(() => {
+		if (channel === 'fuzzy' && painted !== ENFORCER) painted = ENFORCER;
+	});
 	const angleTip = $derived(
 		supportThresholdAngle > 0
 			? $t('Auto support threshold angle: {n}', { n: supportThresholdAngle })
@@ -191,8 +204,11 @@
 				: $t('Left button: enforce · Right button: block · Shift: erase')}
 	</p>
 
-	{#if channel !== 'mmu'}
-		<div class="flex items-center gap-2">
+	{#if channel === 'fuzzy'}
+		<!-- Orca : clic gauche « Add fuzzy skin », Maj + clic « Remove fuzzy skin »
+		     (GLGizmoFuzzySkin.cpp:49-54) — aucun choix d'état. -->
+	{:else if channel !== 'mmu'}
+		<div class="flex items-center gap-2" data-testid="paint-state">
 			<span class="w-16 text-content-muted">{$t('Paint||state')}</span>
 			<button
 				type="button"
@@ -415,6 +431,24 @@
 			<span>{$t('Show wireframe')}</span>
 			<kbd class="ml-auto text-[10px] text-content-subtle">{$t('Alt+Shift+Enter')}</kbd>
 		</label>
+	{/if}
+
+	{#if channel === 'fuzzy' && fuzzyDisabled}
+		<div
+			class="flex flex-col gap-1 border-t border-border pt-2 text-xs text-warning"
+			role="status"
+			data-testid="paint-fuzzy-disabled"
+		>
+			<p>
+				{$t('Warning: Fuzzy skin is disabled, painted fuzzy skin will not take effect!')}
+			</p>
+			<button
+				type="button"
+				class="self-start font-semibold text-primary underline"
+				data-testid="paint-fuzzy-enable"
+				onclick={() => onenablefuzzy?.()}>{$t('Enable painted fuzzy skin for this object')}</button
+			>
+		</div>
 	{/if}
 
 	{#if channel === 'mmu' && filamentColours.length > 1}

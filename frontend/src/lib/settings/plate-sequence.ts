@@ -96,30 +96,82 @@ export function formatOtherLayersSequence(ranges: readonly LayerSeqRange[]): {
 	return { sequence: seq.join(','), nums: String(ranges.length) };
 }
 
-/** Plage valide : début ≥ 2, fin ≥ début (LayerNumberTextInput). */
-export function rangeValid(r: LayerSeqRange): boolean {
-	return (
-		Number.isInteger(r.begin) &&
-		Number.isInteger(r.end) &&
-		r.begin >= MIN_LAYER_VALUE &&
-		r.end >= r.begin
-	);
+/** Champ de couche vide (LayerNumberTextInput : m_layer_number = −1). */
+export const EMPTY_LAYER = -1;
+
+/** Numéro de couche saisi (≥ 2) ; vide / invalide = EMPTY_LAYER. */
+export function layerSet(v: number): boolean {
+	return Number.isInteger(v) && v >= MIN_LAYER_VALUE;
 }
 
-/** Tri d'Orca (LayerSeqInfo::operator<) : par début puis fin. */
-export function sortRanges(ranges: readonly LayerSeqRange[]): LayerSeqRange[] {
-	return [...ranges].sort((a, b) => a.begin - b.begin || a.end - b.end);
+/** Plage valide : début ≥ 2, fin ≥ début (LayerNumberTextInput). */
+export function rangeValid(r: LayerSeqRange): boolean {
+	return layerSet(r.begin) && layerSet(r.end) && r.end >= r.begin;
+}
+
+/**
+ * Comparaison d'Orca (LayerSeqInfo::operator<) : par début puis fin, les
+ * champs vides (< MIN_LAYER_VALUE) en dernier.
+ */
+function layerSeqLess(a: LayerSeqRange, b: LayerSeqRange): boolean {
+	if (a.begin < MIN_LAYER_VALUE) return false;
+	if (b.begin < MIN_LAYER_VALUE) return true;
+	if (a.begin === b.begin) {
+		if (a.end < MIN_LAYER_VALUE) return false;
+		if (b.end < MIN_LAYER_VALUE) return true;
+		return a.end < b.end;
+	}
+	return a.begin < b.begin;
+}
+
+/**
+ * Tri d'Orca (EVT_NEED_RESORT_LAYERS : std::sort si la liste n'est pas déjà
+ * triée), stable ; les éléments gardent leur identité (lignes à clé stable).
+ */
+export function sortRanges<T extends LayerSeqRange>(ranges: readonly T[]): T[] {
+	return [...ranges].sort((a, b) => (layerSeqLess(a, b) ? -1 : layerSeqLess(b, a) ? 1 : 0));
+}
+
+function parseLayer(raw: string): number | null {
+	const s = raw.trim();
+	if (s === '') return null;
+	const v = Math.round(Number(s));
+	if (!Number.isFinite(v)) return null;
+	return Math.min(MAX_LAYER_VALUE, Math.max(MIN_LAYER_VALUE, v));
+}
+
+/**
+ * Validation du début saisi (LayerNumberTextInput::validate_input_value,
+ * Type::Begin) : vide → champ vide ; valeur bornée à [2, Fin] ; une fin
+ * renseignée inférieure est repoussée au début.
+ */
+export function commitBegin<T extends LayerSeqRange>(r: T, raw: string): T {
+	const v = parseLayer(raw);
+	if (v === null) return { ...r, begin: EMPTY_LAYER };
+	return { ...r, begin: v, end: layerSet(r.end) && v > r.end ? v : r.end };
+}
+
+/**
+ * Validation de la fin saisie (Type::End) : vide → champ vide ; inférieure
+ * au début → refusée (null : valeur précédente conservée) si la fin était
+ * renseignée, sinon fin = début.
+ */
+export function commitEnd<T extends LayerSeqRange>(r: T, raw: string): T | null {
+	const v = parseLayer(raw);
+	if (v === null) return { ...r, end: EMPTY_LAYER };
+	if (layerSet(r.begin) && r.begin > v) return layerSet(r.end) ? null : { ...r, end: r.begin };
+	return { ...r, end: v };
 }
 
 /**
  * Nouvelle plage (OtherLayersSeqPanel::append_layer) : la première couvre
- * « couche 2 → Fin », les suivantes sont à saisir (début = fin = 2 ici, pour
- * rester une plage valide), ordre par défaut.
+ * « couche 2 → Fin », les suivantes ont un début vide (à saisir) et une fin
+ * « Fin », ordre par défaut — vide, elle est triée après les autres.
  */
 export function newRange(existing: number, n: number): LayerSeqRange {
 	return existing === 0
 		? { begin: MIN_LAYER_VALUE, end: MAX_LAYER_VALUE, order: defaultOrder(n) }
-		: { begin: MIN_LAYER_VALUE, end: MIN_LAYER_VALUE, order: defaultOrder(n) };
+		: { begin: EMPTY_LAYER, end: MAX_LAYER_VALUE, order: defaultOrder(n) };
 }
 
 /** Déplace l'élément d'indice `from` à l'indice `to` (glisser-déposer). */

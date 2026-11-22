@@ -224,6 +224,14 @@ test.describe("audit 46 (FR)", () => {
     await expect(
       dialog.getByTestId("plate-layer-range-delete"),
     ).toBeInViewport();
+    // Orca refuse l'application tant qu'une plage est vide (« Please input
+    // layer value (>= 2). ») : on remplit les plages avant d'appliquer.
+    await apply.click();
+    await expect(dialog).toContainText(/saisir|input layer/i);
+    await dialog.getByTestId("plate-layer-range").nth(1).getByTestId("plate-layer-range-begin").fill("3");
+    await dialog.getByTestId("plate-layer-range").nth(1).getByTestId("plate-layer-range-begin").press("Tab");
+    await dialog.getByTestId("plate-layer-range").nth(2).getByTestId("plate-layer-range-begin").fill("5");
+    await dialog.getByTestId("plate-layer-range").nth(2).getByTestId("plate-layer-range-begin").press("Tab");
     await apply.click();
     await expect(dialog).toHaveCount(0);
   });
@@ -304,8 +312,10 @@ test.describe("audit 46 (FR)", () => {
     await page.getByTestId("slice-button").click();
     const error = page.getByTestId("slice-error");
     await expect(error).toBeVisible({ timeout: 170_000 });
+    // Phase 49 (audit 47 I18N-b) : nom de plaque traduit comme Orca
+    // (Print.cpp:1771 L(bed_type_name), OrcaSlicer_fr.po:10922).
     await expect(error).toContainText(
-      "Plaque 1 : Cool Plate ne prend pas en charge le filament 1",
+      "Plaque 1 : Cool Plate/Plaque PLA ne prend pas en charge le filament 1",
     );
     await expect(error).not.toContainText("does not support");
   });

@@ -1212,6 +1212,51 @@
 	});
 	// Projet 3MF ouvert (Orca load_project) : un slot par filament du fichier,
 	// presets lus dans `filament_settings_id` du process importé (lib/editor/presets).
+	// Audit 47 PROJ-a : projet ouvert d'un 3MF dont l'imprimante n'est pas
+	// posée chez l'utilisateur (pas de `printer` dans active_presets, la config
+	// du 3MF est portée par le preset process importé) — comme Plater::load_files,
+	// le panneau montre l'imprimante du 3MF (printer_settings_id) au lieu
+	// d'activer d'office la première imprimante possédée (dont les réglages
+	// compléteraient la config du projet), listes filament / process filtrées
+	// pour elle et plateau / réglages machine tirés de la config du 3MF.
+	// Presets rapportés par l'import serveur enrichi (lot 49) : un preset résolu
+	// à l'ouverture (ImportedPreset du backend), sinon indéfini (repli projet
+	// rechargé ci-dessous).
+	type ImportedPresetReport = {
+		id?: string;
+		name: string;
+		project_name: string;
+		origin?: string;
+		active: boolean;
+		modified: boolean;
+	};
+	let projectPrinter = $state<{ name: string; values: Record<string, unknown> } | null>(null);
+	let projectPrinterPending = $state(false);
+	async function loadProjectPrinter() {
+		try {
+			if (activePresets.printer || !activePresets.process) return;
+			// Réponse d'import enrichie (si présente) : imprimante du 3MF rapportée
+			// par le serveur, sinon `printer_settings_id` du process rechargé.
+			const reported = (
+				importReport as { presets?: { printer?: ImportedPresetReport | null } } | null
+			)?.presets?.printer;
+			const values = (await getResolvedPreset(activePresets.process)).values as Record<
+				string,
+				unknown
+			>;
+			const fromFile =
+				typeof values.printer_settings_id === 'string' ? values.printer_settings_id : '';
+			const name =
+				reported && !reported.active
+					? reported.project_name || reported.name || fromFile
+					: fromFile;
+			if (name && !activePresets.printer) projectPrinter = { name, values };
+		} catch {
+			// Process illisible : comportement d'un projet neuf.
+		} finally {
+			projectPrinterPending = false;
+		}
+	}
 	async function completeImportedFilaments() {
 		const count = projectFilament.filament_colour?.length ?? 0;
 		if (count <= activePresets.filaments.length || !activePresets.process) return;
@@ -2166,6 +2211,11 @@
 		};
 		pendingOverrides = opened;
 		persistedOverrides = opened.overrides;
+		projectPrinterPending = !opened.printer && !!opened.process;
+		// Rapport d'import 3MF lu AVANT l'initialisation de l'éditeur : sa
+		// réponse enrichie (presets du 3MF, lot 49 PROJ-a) guide l'affichage
+		// de l'imprimante du projet dans loadProjectPrinter.
+		importReport = takeImportReport(data.project.id);
 		filamentSlot = 0;
 		projectName = data.project.name;
 		savedName = data.project.name;
@@ -2175,6 +2225,7 @@
 		});
 		// Résout le plateau réel avant de restaurer ou importer des objets.
 		editorReady = (async () => {
+			if (projectPrinterPending) await loadProjectPrinter();
 			await loadPresetsShared();
 			await loadEditedValues('machine');
 			await loadProjectModels();
@@ -2681,7 +2732,9 @@
 			}
 			const ownedP = Promise.all([listPrinters(), getPrinterCatalog()]);
 			const machines = await listPresets('machine');
-			const printerName = machines.find((m) => m.id === activePresets.printer)?.name;
+			const printerName =
+				machines.find((m) => m.id === activePresets.printer)?.name ??
+				(activePresets.printer ? undefined : projectPrinter?.name);
 			const listsP = Promise.all([
 				listPresets('filament', printerName ?? undefined),
 				listPresets('process', printerName ?? undefined)
@@ -2954,7 +3007,13 @@
 		if (!preset) {
 			if (isCurrent()) {
 				editLoadedId[kind] = null;
-				setValuesForKind(kind, {});
+				// PROJ-a : sans imprimante, plateau et réglages machine du 3MF.
+				setValuesForKind(
+					kind,
+					kind === 'machine' && projectPrinter && !activePresets.printer
+						? projectPrinter.values
+						: {}
+				);
 			}
 			return;
 		}
@@ -4364,6 +4423,16 @@
 				processValues.brim_type ??
 				''
 		) === 'painted'
+	);
+	// Audit 47 FUZZ-a : surface irrégulière effective de l'objet (réglage
+	// d'objet, sinon traitement) — « Désactivé » = peinture sans effet
+	// (GLGizmoFuzzySkin.cpp:326-331).
+	const fuzzySkinDisabled = $derived(
+		String(
+			(activeObject ? tree.get(activeObject.id)?.settings?.fuzzy_skin : undefined) ??
+				processValues.fuzzy_skin ??
+				''
+		) === 'disabled_fuzzy'
 	);
 	// Vue en coupe du gizmo (object_clipper) : normale = direction de vue figée
 	// au premier réglage, remise à zéro à la fermeture ou au changement d'objet.
@@ -9017,9 +9086,9 @@
 	let preferences = $state<AppPreferences>(DEFAULT_PREFERENCES);
 	onMount(() => {
 		preferences = loadPreferences();
-		// Rapport d'import 3MF en attente (ouverture « comme projet ») : boîte
-		// « G-code modifié / Presets personnalisés » + renvoi vers l'onglet Projet.
-		importReport = takeImportReport(data.project.id);
+		// (Le rapport d'import 3MF est consommé au montage d'initialisation de
+		// l'éditeur ; la boîte « G-code modifié / Presets personnalisés » lit le
+		// même état `importReport`.)
 		// Préférences modifiées ailleurs (dialogue des purges…) : même état.
 		const unsubscribe = appPreferences.subscribe((p) => (preferences = p));
 		const warn = (event: BeforeUnloadEvent) => {
@@ -11338,6 +11407,8 @@
 									catalog={printerCatalog}
 									{machinePresets}
 									modified={machineModified}
+									autoselect={!projectPrinterPending}
+									projectPrinterName={activePresets.printer ? null : (projectPrinter?.name ?? null)}
 									bind:selectedMachinePresetId={activePresets.printer}
 									onadd={() => (showCatalog = true)}
 									onedit={() => openSettingsDialog('machine')}
@@ -12404,6 +12475,11 @@
 								bind:overhangOnly={paintOverhangOnly}
 								bind:highlightAngle={paintHighlightAngle}
 								supportThresholdAngle={supportAutoAngle}
+								fuzzyDisabled={fuzzySkinDisabled}
+								onenablefuzzy={() => {
+									// Lien d'Orca : l'objet passe en « Peint uniquement » (FuzzySkinType::None).
+									if (activeObject) tree.setSetting(activeObject.id, 'fuzzy_skin', 'none');
+								}}
 								busy={paintBusy}
 								ongapfill={performGapFill}
 								onremap={remapPaintFilaments}

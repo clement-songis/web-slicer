@@ -20,9 +20,13 @@
 	import { isOpenEnum } from './widgets/types';
 	import FilamentOrderEditor from './FilamentOrderEditor.svelte';
 	import {
+		EMPTY_LAYER,
 		MAX_LAYER_VALUE,
 		MIN_LAYER_VALUE,
+		commitBegin,
+		commitEnd,
 		defaultOrder,
+		layerSet,
 		formatOrder,
 		formatOtherLayersSequence,
 		newRange,
@@ -108,7 +112,13 @@
 	// l'ouverture, écrit par « Enregistrer » (first_layer_print_sequence,
 	// other_layers_print_sequence[_nums]) ; « Auto » les retire.
 	let firstOrder = $state<number[]>([]);
-	let otherRanges = $state<LayerSeqRange[]>([]);
+	// Lignes à identité stable : le tri (EVT_NEED_RESORT_LAYERS) déplace les
+	// lignes avec leurs champs au lieu de réaffecter les valeurs par indice
+	// (audit 47 PLATE-b : 2→4 / 5→9 affichés, 2→2 / 2→9 enregistrés).
+	type RangeRow = LayerSeqRange & { id: number };
+	let rowSeq = 0;
+	const withId = (r: LayerSeqRange): RangeRow => ({ ...r, id: ++rowSeq });
+	let otherRanges = $state<RangeRow[]>([]);
 	let rangeError = $state<string | null>(null);
 	$effect(() => {
 		if (!open) return;
@@ -121,7 +131,7 @@
 				settings?.other_layers_print_sequence_nums,
 				n
 			);
-			otherRanges = ranges.length ? ranges : [newRange(0, n)];
+			otherRanges = (ranges.length ? ranges : [newRange(0, n)]).map(withId);
 			rangeError = null;
 		});
 	});
@@ -135,24 +145,34 @@
 				otherRanges = otherRanges.map((r) => ({ ...r, order: normalizeOrder(r.order, n) }));
 		});
 	});
-	function setRange(i: number, patch: Partial<LayerSeqRange>) {
-		otherRanges = otherRanges.map((r, k) => (k === i ? { ...r, ...patch } : r));
+	const layerText = (v: number) => (layerSet(v) ? String(v) : '');
+	function setRange(id: number, patch: Partial<LayerSeqRange>) {
+		otherRanges = otherRanges.map((r) => (r.id === id ? { ...r, ...patch } : r));
 		rangeError = null;
 	}
-	function setBegin(i: number, raw: string) {
-		const v = Math.max(MIN_LAYER_VALUE, Math.round(Number(raw)) || MIN_LAYER_VALUE);
-		const r = otherRanges[i];
-		// LayerNumberTextInput : fin repoussée au début si elle le précède.
-		setRange(i, { begin: v, end: r.end < v ? v : r.end });
-		otherRanges = sortRanges(otherRanges);
+	// Validation à la saisie validée (Entrée / sortie du champ) puis tri, comme
+	// LayerNumberTextInput (commit_layer_number_from_gui → EVT_NEED_RESORT_LAYERS).
+	// Le champ affiche toujours la valeur retenue (bornée, refusée ou vidée).
+	function setBegin(id: number, el: HTMLInputElement) {
+		const r = otherRanges.find((x) => x.id === id);
+		if (!r) return;
+		const next = commitBegin(r, el.value);
+		el.value = layerText(next.begin);
+		otherRanges = sortRanges(otherRanges.map((x) => (x.id === id ? next : x)));
+		rangeError = null;
 	}
-	function setEnd(i: number, raw: string) {
-		const r = otherRanges[i];
-		const v = Math.max(MIN_LAYER_VALUE, Math.round(Number(raw)) || MIN_LAYER_VALUE);
-		// Orca : une fin inférieure au début est refusée (valeur précédente).
-		if (v < r.begin) return;
-		setRange(i, { end: v });
-		otherRanges = sortRanges(otherRanges);
+	function setEnd(id: number, el: HTMLInputElement) {
+		const r = otherRanges.find((x) => x.id === id);
+		if (!r) return;
+		const next = commitEnd(r, el.value);
+		if (!next) {
+			// Fin inférieure au début : valeur précédente conservée.
+			el.value = layerText(r.end);
+			return;
+		}
+		el.value = layerText(next.end);
+		otherRanges = sortRanges(otherRanges.map((x) => (x.id === id ? next : x)));
+		rangeError = null;
 	}
 
 	/** Options du dialogue Orca, dans son ordre. */
@@ -319,7 +339,7 @@
 						{/if}
 						{#if key === 'other_layers_sequence_choice' && draft[key] === 'Customize' && filamentColours.length}
 							<div class="flex flex-col gap-2 pb-2" data-testid="plate-other-layers-sequence">
-								{#each otherRanges as range, i (i)}
+								{#each otherRanges as range, i (range.id)}
 									<div
 										class="flex flex-wrap items-center gap-2 text-sm"
 										data-testid="plate-layer-range"
@@ -332,8 +352,8 @@
 											class="ws-field ws-field-sm w-16 tabular-nums"
 											aria-label={$t('First layer of range {n}', { n: i + 1 })}
 											data-testid="plate-layer-range-begin"
-											value={range.begin}
-											onchange={(e) => setBegin(i, e.currentTarget.value)}
+											value={layerText(range.begin)}
+											onchange={(e) => setBegin(range.id, e.currentTarget)}
 										/>
 										<span class="text-content-muted">{$t('to')}</span>
 										<select
@@ -342,11 +362,9 @@
 											data-testid="plate-layer-range-end-kind"
 											value={range.end === MAX_LAYER_VALUE ? 'end' : 'custom'}
 											onchange={(e) =>
-												setRange(i, {
-													end:
-														e.currentTarget.value === 'end'
-															? MAX_LAYER_VALUE
-															: Math.max(range.begin, MIN_LAYER_VALUE)
+												setRange(range.id, {
+													// LayerNumberTextInput : « Personnaliser » vide le champ.
+													end: e.currentTarget.value === 'end' ? MAX_LAYER_VALUE : EMPTY_LAYER
 												})}
 										>
 											<option value="end">{$t('End')}</option>
@@ -355,24 +373,24 @@
 										{#if range.end !== MAX_LAYER_VALUE}
 											<input
 												type="number"
-												min={range.begin}
+												min={layerSet(range.begin) ? range.begin : MIN_LAYER_VALUE}
 												step="1"
 												class="ws-field ws-field-sm w-16 tabular-nums"
 												aria-label={$t('Last layer of range {n}', { n: i + 1 })}
 												data-testid="plate-layer-range-end"
-												value={range.end}
-												onchange={(e) => setEnd(i, e.currentTarget.value)}
+												value={layerText(range.end)}
+												onchange={(e) => setEnd(range.id, e.currentTarget)}
 											/>
 										{/if}
 										<FilamentOrderEditor
 											order={range.order}
 											colours={filamentColours}
 											label={$t('Filament sequence of layers {a} to {b}', {
-												a: range.begin,
-												b: range.end === MAX_LAYER_VALUE ? $t('End') : range.end
+												a: layerText(range.begin),
+												b: range.end === MAX_LAYER_VALUE ? $t('End') : layerText(range.end)
 											})}
 											testid="plate-layer-range-order"
-											onchange={(o) => setRange(i, { order: o })}
+											onchange={(o) => setRange(range.id, { order: o })}
 										/>
 									</div>
 								{/each}
@@ -384,7 +402,7 @@
 										onclick={() =>
 											(otherRanges = [
 												...otherRanges,
-												newRange(otherRanges.length, filamentColours.length)
+												withId(newRange(otherRanges.length, filamentColours.length))
 											])}>{$t('Add')}</button
 									>
 									<button

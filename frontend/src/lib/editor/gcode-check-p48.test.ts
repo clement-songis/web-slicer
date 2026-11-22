@@ -57,7 +57,8 @@ describe('contrôle des trajets hors plateau', () => {
 describe('I18N-a : refus de plaque du tranchage traduit', () => {
 	test('« Plate 1: Cool Plate does not support filament 1 »', () => {
 		expect(translateOrcaMessage('Plate 1: Cool Plate does not support filament 1', catalog)).toBe(
-			'Plaque 1 : Cool Plate ne prend pas en charge le filament 1'
+			// Audit 47 I18N-b : nom de plaque traduit (OrcaSlicer_fr.po:10922).
+			'Plaque 1 : Cool Plate/Plaque PLA ne prend pas en charge le filament 1'
 		);
 	});
 });

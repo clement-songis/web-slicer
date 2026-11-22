@@ -43,6 +43,29 @@ const EXTRA: OrcaCatalog = {
 		'Un chemin du G-code dépasse la hauteur d’impression maximale.'
 };
 
+// Audit 47 I18N-b : noms de plaque passés à L() par Print.cpp:1771
+// (`L(bed_type_name)`, clés de s_keys_map_BedType) — msgstr actifs
+// d'OrcaSlicer_fr.po (10922, 10150, 10156, 10933) ; « High Temp Plate »
+// (obsolète dans le .po), « Supertack Plate », « Default Plate » restent en anglais.
+const BED_TYPE_NAMES: OrcaCatalog = {
+	'Cool Plate': 'Cool Plate/Plaque PLA',
+	'Engineering Plate': 'Plaque Engineering',
+	'Textured PEI Plate': 'Plaque PEI texturée',
+	'Textured Cool Plate': 'Plaque Cool plate texturée'
+};
+// Gabarits dont un paramètre est lui-même traduit (indice 0-based → table).
+const TRANSLATED_ARGS: Readonly<Record<string, Readonly<Record<number, OrcaCatalog>>>> = {
+	'Plate %d: %s does not support filament %s': { 1: BED_TYPE_NAMES },
+	// Plater.cpp:18313 : err.params[1] = L(bed_type_name) (déjà traduit).
+	"Plate %d: %s is not suggested to be used to print filament %s (%s). If you still want to do this print job, please set this filament's bed temperature to non-zero.":
+		{ 1: BED_TYPE_NAMES }
+};
+function translateArgs(id: string, args: string[]): string[] {
+	const map = TRANSLATED_ARGS[id];
+	if (!map) return args;
+	return args.map((a, i) => map[i]?.[a] ?? a);
+}
+
 // Spécificateurs de format : boost (%1%) et printf (%s, %d, %.2f, %ld…).
 const SPEC = /%(?:\d+%|[-+ #0]*\d*(?:\.\d+)?(?:ll|l|z|h)?[sdufgixXc])/g;
 const escapeRe = (s: string) => s.replace(/[.*+?^$()|[\]\\{}]/g, '\\$&');
@@ -108,7 +131,7 @@ export function translateOrcaMessage(message: string, catalog: OrcaCatalog | nul
 	const list = templates(catalog);
 	for (const t of list) {
 		const m = t.full.exec(msg);
-		if (m) return fillTemplate(t.tr, m.slice(1));
+		if (m) return fillTemplate(t.tr, translateArgs(t.id, m.slice(1)));
 	}
 	let out = msg;
 	for (const t of list) {
@@ -116,7 +139,7 @@ export function translateOrcaMessage(message: string, catalog: OrcaCatalog | nul
 		t.inner.lastIndex = 0;
 		out = out.replace(t.inner, (...m) => {
 			const groups = m.slice(1, -2).filter((g) => typeof g === 'string') as string[];
-			return fillTemplate(t.tr, groups);
+			return fillTemplate(t.tr, translateArgs(t.id, groups));
 		});
 	}
 	return out;
