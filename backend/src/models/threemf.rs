@@ -123,6 +123,11 @@ pub struct ImportedProject {
     pub plates: Vec<ImportedPlate>,
     /// Configuration Orca brute (chaînes ou tableaux de chaînes).
     pub config: Map<String, Value>,
+    /// Lot 49 (audit 47 RT-a) : défauts d'Orca 2.4.1 (`FullPrintConfig::defaults()`)
+    /// des clés que la config du projet ne porte pas, même format ; vide sans
+    /// config. `Plater::load_files` rouvre un projet sur ces défauts puis la
+    /// config du fichier : aucune clé n'est reprise des presets d'avant.
+    pub config_defaults: Map<String, Value>,
     /// Métadonnées du projet (Title, Designer, License…), `None` si aucune.
     pub metadata: Option<engine::threemf::ProjectMetadata>,
     /// Couleurs de filaments à exposer (`scene.projectConfig.filament_colour`)
@@ -216,6 +221,8 @@ struct ProjectView {
     objects: Vec<ViewObject>,
     #[serde(default)]
     config: Map<String, Value>,
+    #[serde(default)]
+    config_defaults: Map<String, Value>,
     #[serde(default)]
     plates: Vec<ViewPlate>,
     #[serde(default)]
@@ -515,6 +522,7 @@ fn convert_view(view: ProjectView) -> ImportResult<ImportedProject> {
         objects,
         plates,
         config: view.config,
+        config_defaults: view.config_defaults,
         metadata: view.metadata,
         filament_colours: Vec::new(),
     })

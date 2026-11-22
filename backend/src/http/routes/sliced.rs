@@ -73,6 +73,15 @@ struct SlicedBundle {
     gcodes: Vec<PlateGcode>,
     /// Réglages de chaque plateau (index = plateau), lot 44.
     plate_settings: Vec<engine::api::DynamicPrintConfig>,
+    /// Vignette de chaque plateau (index = plateau), lot 49 (BBL-b) :
+    /// Metadata/plate_<n>.png (+ _small) du .gcode.3mf.
+    thumbnails: Vec<Vec<u8>>,
+    /// Origine monde de chaque plateau (lot 43), lot 49 (BBL-b) : boîtes de
+    /// plate_<n>.json relatives au plateau.
+    plate_origins: Vec<(f64, f64)>,
+    /// `model_id` vendeur de l'imprimante (BL-P001…), lot 49 (BBL-b) :
+    /// slice_info.config.
+    printer_model_id: String,
     /// `gcodes.stats` de chaque plateau (même ordre que `gcodes`) : nom Orca.
     stats: Vec<serde_json::Value>,
     /// G-code stocké de chaque plateau (même ordre que `gcodes`).
@@ -261,6 +270,22 @@ async fn sliced_bundle(
         })?;
     // Lot 44 (X-d) : matrice de purge réellement purgée (n² × buses).
     super::flush::complete_flush_matrix(&mut config).await?;
+    // Lot 49 (audit 47 BBL-b) : vignettes par plateau (capture du compte sinon
+    // rendu serveur), avant le décalage monde — comme l'export de projet.
+    let mut plates_3mf = super::export::scene_project_plates(&scene);
+    super::export::attach_plate_thumbnails(
+        state,
+        user,
+        project_id,
+        &model,
+        &config,
+        &mut plates_3mf,
+    )
+    .await;
+    let thumbnails: Vec<Vec<u8>> = plates_3mf.iter().map(|p| p.thumbnail_png.clone()).collect();
+    let plate_origins =
+        super::export::plate_world_origins(&config, super::export::scene_plate_count(&scene));
+    let printer_model_id = vendor_printer_model_id(&config);
     // Positions monde d'Orca dans le 3MF (plateau k décalé), lot 43.
     super::export::to_orca_world(
         &mut model,
@@ -283,19 +308,69 @@ async fn sliced_bundle(
         .unzip();
     // Lot 44 (B-1) : type de plaque et réglages de chaque plateau, comme les
     // PartPlate d'Orca dans model_settings.config du .gcode.3mf.
-    let plate_settings = super::export::scene_project_plates(&scene)
-        .into_iter()
-        .map(|plate| plate.settings)
-        .collect();
+    let plate_settings = plates_3mf.into_iter().map(|plate| plate.settings).collect();
     Ok(SlicedBundle {
         model,
         config,
         gcodes,
         plate_settings,
+        thumbnails,
+        plate_origins,
+        printer_model_id,
         stats,
         gcode_ids,
         project_name: project.name,
     })
+}
+
+/// Lot 49 (audit 47 BBL-b) : `model_id` vendeur du modèle d'imprimante actif,
+/// comme `Preset::get_printer_type` d'Orca (`printer_model` du preset → fiche
+/// machine_model du profil vendeur, ex. `BL-P001` pour l'X1 Carbon). Les
+/// fiches sont des méta hors presets (import) : relues du répertoire des
+/// profils vendeur, en cache (données statiques).
+fn vendor_printer_model_id(config: &engine::api::DynamicPrintConfig) -> String {
+    use std::collections::HashMap;
+    use std::sync::OnceLock;
+    let model = match config.get("printer_model") {
+        Some(engine::api::ConfigValue::String(name)) => name.clone(),
+        _ => return String::new(),
+    };
+    static CACHE: OnceLock<HashMap<String, String>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| {
+        let mut map = HashMap::new();
+        let dir = crate::http::state::default_profiles_dir();
+        let Ok(vendors) = std::fs::read_dir(&dir) else {
+            return map;
+        };
+        for vendor in vendors.flatten() {
+            let Ok(files) = std::fs::read_dir(vendor.path().join("machine")) else {
+                continue;
+            };
+            for file in files.flatten() {
+                let path = file.path();
+                if path.extension().and_then(|e| e.to_str()) != Some("json") {
+                    continue;
+                }
+                let Ok(bytes) = std::fs::read(&path) else {
+                    continue;
+                };
+                let Ok(json) = serde_json::from_slice::<serde_json::Value>(&bytes) else {
+                    continue;
+                };
+                if json.get("type").and_then(|t| t.as_str()) != Some("machine_model") {
+                    continue;
+                }
+                if let (Some(name), Some(id)) = (
+                    json.get("name").and_then(|n| n.as_str()),
+                    json.get("model_id").and_then(|i| i.as_str()),
+                ) {
+                    map.insert(name.to_string(), id.to_string());
+                }
+            }
+        }
+        map
+    });
+    cache.get(&model).cloned().unwrap_or_default()
 }
 
 async fn gcode_3mf_bytes(bundle: &SlicedBundle, plate: Option<u32>) -> ApiResult<Vec<u8>> {
@@ -313,6 +388,9 @@ async fn gcode_3mf_bytes(bundle: &SlicedBundle, plate: Option<u32>) -> ApiResult
         &bundle.gcodes,
         &bundle.plate_settings,
         plate,
+        &bundle.thumbnails,
+        &bundle.plate_origins,
+        &bundle.printer_model_id,
     )
     .await
     .map_err(|error| {

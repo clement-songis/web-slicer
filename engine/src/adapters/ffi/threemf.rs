@@ -135,9 +135,15 @@ pub fn read_project_3mf_import(path: &Path) -> EngineResult<serde_json::Value> {
             Err(_) => Value::Null,
         }
     };
-    Ok(
-        json!({ "objects": objects, "config": text_map(&raw.project_config_json), "plates": plates, "metadata": metadata }),
-    )
+    Ok(json!({
+        "objects": objects,
+        "config": text_map(&raw.project_config_json),
+        // Lot 49 (RT-a) : défauts d'Orca des clés absentes du projet
+        // (Plater::load_files : FullPrintConfig::defaults() + config du 3MF).
+        "config_defaults": text_map(&raw.config_defaults_json),
+        "plates": plates,
+        "metadata": metadata
+    }))
 }
 
 pub fn write_project_3mf(
@@ -273,18 +279,42 @@ pub fn write_gcode_3mf(
     export_plate: Option<u32>,
     out: &Path,
 ) -> EngineResult<()> {
-    write_gcode_3mf_with_settings(model, config, gcodes, &[], export_plate, out)
+    write_gcode_3mf_with_settings(
+        model,
+        config,
+        gcodes,
+        &[],
+        export_plate,
+        Gcode3mfExtras::default(),
+        out,
+    )
+}
+
+/// Extras du .gcode.3mf (lot 49, audit 47 BBL-b).
+#[derive(Default)]
+pub struct Gcode3mfExtras<'a> {
+    /// Vignette PNG par plateau (index = plateau, 0-based ; vide = aucune) :
+    /// `Metadata/plate_<n>.png` (+ `_small`) par `_add_thumbnail_file_to_archive`.
+    pub thumbnails: &'a [Vec<u8>],
+    /// Origine de chaque plateau dans le repère monde d'Orca (lot 43) : les
+    /// boîtes de `plate_<n>.json` y sont relatives (`PartPlate::get_origin`).
+    pub plate_origins: &'a [(f64, f64)],
+    /// `model_id` du vendeur (`BL-P001`…) pour `slice_info.config`
+    /// (`Preset::get_printer_type`) ; vide = aucun.
+    pub printer_model_id: &'a str,
 }
 
 /// `write_gcode_3mf` avec les réglages de chaque plateau (`plate_settings[k]`
 /// = plateau k, 0-based) écrits dans `model_settings.config` comme les
-/// `PartPlate` d'Orca (lot 44 : `bed_type` du plateau tranché).
+/// `PartPlate` d'Orca (lot 44 : `bed_type` du plateau tranché) et les extras
+/// BBL-b de [`Gcode3mfExtras`].
 pub fn write_gcode_3mf_with_settings(
     model: &Model,
     config: &DynamicPrintConfig,
     gcodes: &[PlateGcode],
     plate_settings: &[DynamicPrintConfig],
     export_plate: Option<u32>,
+    extras: Gcode3mfExtras<'_>,
     out: &Path,
 ) -> EngineResult<()> {
     if gcodes.is_empty() {
@@ -320,11 +350,24 @@ pub fn write_gcode_3mf_with_settings(
                 .filter(|settings| !settings.0.is_empty())
                 .map(config_to_orca_json)
                 .unwrap_or_default();
+            let thumbnail_png = extras
+                .thumbnails
+                .get(plate as usize)
+                .cloned()
+                .unwrap_or_default();
+            let (origin_x, origin_y) = extras
+                .plate_origins
+                .get(plate as usize)
+                .copied()
+                .unwrap_or((0.0, 0.0));
             ffi::RawPlateGcode {
                 plate_index: plate,
                 gcode_path,
                 obj_inst,
                 config_json,
+                thumbnail_png,
+                origin_x,
+                origin_y,
             }
         })
         .collect();
@@ -337,6 +380,7 @@ pub fn write_gcode_3mf_with_settings(
         &json,
         &plates,
         export_idx,
+        extras.printer_model_id,
         &out.to_string_lossy(),
     )
     .map_err(|e| EngineError::new(EngineErrorCode::Io, e.to_string()))

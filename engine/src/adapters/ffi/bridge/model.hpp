@@ -56,7 +56,7 @@ rust::Vec<rust::String> read_project_auxiliaries_raw(rust::Str path, rust::Str o
 struct RawPlateGcode;
 void write_gcode_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
                          const rust::Vec<RawPlateGcode> &plates, int32_t export_plate_idx,
-                         rust::Str out_path);
+                         rust::Str printer_model_id, rust::Str out_path);
 
 RawRepairResult repair_mesh_raw(const RawMesh &mesh);
 

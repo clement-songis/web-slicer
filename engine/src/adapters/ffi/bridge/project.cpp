@@ -13,6 +13,9 @@
 #include "libslic3r/Slicing.hpp"
 #include "libslic3r/PrintConfig.hpp"
 #include "libslic3r/TriangleMesh.hpp"
+// lot 49 (BBL-b) : tranche la 1re couche d'un objet pour plate_<n>.json
+#include "libslic3r/ClipperUtils.hpp"
+#include "libslic3r/TriangleMeshSlicer.hpp"
 // après Model.hpp (dépendances de déclaration)
 #include "libslic3r/Format/bbs_3mf.hpp"
 #include "libslic3r/GCode/GCodeProcessor.hpp"
@@ -21,11 +24,13 @@
 
 #include <boost/filesystem.hpp>
 #include <cstdio>
+#include <fstream>
 
 #include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <cctype>
+#include <set>
 #include <cmath>
 #include <stdexcept>
 #include <string>
@@ -45,6 +50,40 @@ std::string config_to_json(const Slic3r::DynamicPrintConfig &config)
     for (const std::string &key : config.keys())
         j[key] = config.opt_serialize(key);
     return j.dump();
+}
+
+// Lot 49 (audit 47 RT-a) : clés de `FullPrintConfig::defaults()` absentes de
+// `config`, avec leur valeur par défaut. `PresetBundle::full_fff_config`
+// (PresetBundle.cpp:3873) part de ces défauts : le project_settings.config
+// d'Orca porte donc aussi les clés vides (time_lapse_gcode, post_process,
+// printer_notes…), et `Plater::load_files` (Plater.cpp:6280) rouvre un 3MF
+// sur ces mêmes défaults (« config.apply(FullPrintConfig::defaults()) ; config
+// += config_loaded »). `skip` : clés que full_fff_config efface
+// (PresetBundle.cpp:4097-4103) et n'écrit que non vides.
+Slic3r::DynamicPrintConfig missing_full_defaults(const Slic3r::DynamicPrintConfig &config,
+                                                 const std::set<std::string> &skip = {})
+{
+    Slic3r::DynamicPrintConfig out;
+    for (const std::string &key : Slic3r::FullPrintConfig::defaults().keys()) {
+        if (config.has(key) || skip.count(key) != 0)
+            continue;
+        const Slic3r::ConfigOptionDef *def = Slic3r::print_config_def.get(key);
+        if (def != nullptr && def->default_value)
+            out.set_key_value(key, def->default_value->clone());
+    }
+    return out;
+}
+
+// Config écrite dans project_settings.config : complétée comme full_fff_config
+// (config vide = 3MF autonome d'objet, laissé sans config).
+void complete_project_config(Slic3r::DynamicPrintConfig &config)
+{
+    if (config.empty())
+        return;
+    static const std::set<std::string> erased{"compatible_prints", "compatible_prints_condition",
+                                              "compatible_printers", "compatible_printers_condition",
+                                              "inherits", "different_settings_to_system"};
+    config.apply(missing_full_defaults(config, erased));
 }
 
 template <typename TConfig>
@@ -381,6 +420,20 @@ RawProject read_project_3mf_raw(rust::Str path)
         project.project_config_json = j.dump();
     }
     project.model_info_json = model_info_to_json(model);
+    // Lot 49 (RT-a) : défauts d'Orca des clés que le projet ne porte pas
+    // (Plater::load_files), même format ; vide sans config de projet.
+    if (!config.empty()) {
+        const Slic3r::DynamicPrintConfig defaults = missing_full_defaults(config);
+        nlohmann::json j = nlohmann::json::object();
+        for (const std::string &key : defaults.keys()) {
+            const Slic3r::ConfigOption *opt = defaults.option(key);
+            if (opt != nullptr && opt->is_vector())
+                j[key] = static_cast<const Slic3r::ConfigOptionVectorBase *>(opt)->vserialize();
+            else
+                j[key] = defaults.opt_serialize(key);
+        }
+        project.config_defaults_json = j.dump();
+    }
     return project;
 }
 
@@ -513,6 +566,7 @@ void write_project_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config
     Slic3r::DynamicPrintConfig config;
     if (!config_json.empty())
         config_from_json(config, std::string(config_json));
+    complete_project_config(config);
 
     const std::string out(out_path);
     Slic3r::StoreParams params;
@@ -637,6 +691,7 @@ void write_project_plates_raw(const rust::Vec<RawObject> &objects, rust::Str con
     DynamicPrintConfig config;
     if (!config_json.empty())
         config_from_json(config, std::string(config_json));
+    complete_project_config(config);
 
     PlateDataPtrs plate_data;
     struct Guard {
@@ -695,9 +750,13 @@ void write_project_plates_raw(const rust::Vec<RawObject> &objects, rust::Str con
 // PartPlateList::store_to_3mf_structure : prédiction = temps du mode Normal,
 // poids = somme des grammes, filaments via PlateData::parse_filament_info, le
 // résultat venant de GCodeProcessor::process_file sur le G-code du plateau.
+// Lot 49 (audit 47 BBL-b) : vignettes Metadata/plate_<n>.png (+ _small par
+// _add_thumbnail_file_to_archive), Metadata/plate_<n>.json (PlateBBoxData de
+// Plater::priv::generate_first_layer_bbox) et printer_model_id de
+// slice_info.config (Preset::get_printer_type côté interface).
 void write_gcode_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config_json,
                          const rust::Vec<RawPlateGcode> &plates, int32_t export_plate_idx,
-                         rust::Str out_path)
+                         rust::Str printer_model_id_str, rust::Str out_path)
 {
     using namespace Slic3r;
     Model model;
@@ -725,10 +784,15 @@ void write_gcode_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
         PlateDataPtrs &p;
         ~Guard() { release_PlateData_list(p); }
     } guard{plate_data};
+    // Lot 49 (BBL-b) : une fiche PlateBBoxData par plateau (Metadata/plate_<n>.json),
+    // remplie pour les plateaux tranchés exportés.
+    std::vector<PlateBBoxData> plate_bboxes(plates.size());
+    const std::string printer_model_id(printer_model_id_str);
     for (const RawPlateGcode &raw : plates) {
         auto *plate = new PlateData();
         plate_data.push_back(plate);
         plate->plate_index = static_cast<int>(raw.plate_index);
+        plate->printer_model_id = printer_model_id;
         for (size_t i = 0; i + 1 < raw.obj_inst.size(); i += 2)
             plate->objects_and_instances.emplace_back(static_cast<int>(raw.obj_inst[i]),
                                                       static_cast<int>(raw.obj_inst[i + 1]));
@@ -783,6 +847,129 @@ void write_gcode_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
             std::snprintf(buf, sizeof(buf), "%.2f", weight);
             plate->gcode_weight = buf;
         }
+        // Lot 49 (BBL-b) : Metadata/plate_<n>.json comme
+        // Plater::priv::generate_first_layer_bbox + PartPlate::store_to_3mf_structure.
+        PlateBBoxData &bbox = plate_bboxes[plate_data.size() - 1];
+        plate->first_layer_time = std::to_string(result.initial_layer_time);
+        bbox.first_layer_time = result.initial_layer_time;
+        // Plateau « par objet » (réglage du plateau sinon global).
+        const auto seq_of = [](const DynamicPrintConfig &cfg) {
+            const auto *seq = cfg.option<ConfigOptionEnum<PrintSequence>>("print_sequence");
+            return seq != nullptr ? seq->value : PrintSequence::ByLayer;
+        };
+        bbox.is_seq_print = seq_of(plate->config) == PrintSequence::ByObject ||
+                            seq_of(config) == PrintSequence::ByObject;
+        // Type de plaque du plateau (curr_bed_type), sinon celui de la config.
+        const auto bed_of = [](const DynamicPrintConfig &cfg) -> std::string {
+            const auto *bed = cfg.option<ConfigOptionEnum<BedType>>("curr_bed_type");
+            return bed != nullptr ? bed_type_to_gcode_string(bed->value) : std::string();
+        };
+        bbox.bed_type = !bed_of(plate->config).empty() ? bed_of(plate->config) : bed_of(config);
+        // Première buse du plateau : premier changement d'outil du G-code
+        // (Print::get_tool_ordering().first_extruder côté GUI).
+        bbox.first_extruder = 0;
+        {
+            std::ifstream in(gcode);
+            std::string line;
+            while (std::getline(in, line)) {
+                const char *t = line.c_str();
+                while (*t == ' ' || *t == '\t')
+                    ++t;
+                if (t[0] == 'T' && t[1] >= '0' && t[1] <= '9') {
+                    bbox.first_extruder = std::atoi(t + 1);
+                    break;
+                }
+            }
+        }
+        if (const auto *nozzle = config.option<ConfigOptionFloats>("nozzle_diameter");
+            nozzle != nullptr && !nozzle->values.empty())
+            bbox.nozzle_diameter = static_cast<float>(
+                nozzle->values[std::min<size_t>(bbox.first_extruder, nozzle->values.size() - 1)]);
+        // Filaments du plateau (couleurs remplies comme plus haut).
+        for (const FilamentInfo &f : plate->slice_filaments_info) {
+            bbox.filament_ids.push_back(f.id);
+            bbox.filament_colors.push_back(f.color);
+        }
+        // Une BBoxData par objet (1re instance du plateau, comme
+        // PrintObject + « only work for object with single instance »).
+        BoundingBoxf bbox_all;
+        bool any_object = false;
+        std::set<int> seen_objects;
+        for (const std::pair<int, int> &object_instance : plate->objects_and_instances) {
+            const int obj_id = object_instance.first;
+            const int inst_id = object_instance.second;
+            if (obj_id < 0 || static_cast<size_t>(obj_id) >= model.objects.size() ||
+                !seen_objects.insert(obj_id).second)
+                continue;
+            const ModelObject &object = *model.objects[static_cast<size_t>(obj_id)];
+            if (object.instances.empty() || object.volumes.empty())
+                continue;
+            const size_t inst = static_cast<size_t>(std::max(0, inst_id)) < object.instances.size()
+                ? static_cast<size_t>(std::max(0, inst_id))
+                : 0;
+            TriangleMesh mesh = object.raw_mesh();
+            mesh.transform(object.instances[inst]->get_matrix());
+            if (mesh.its.vertices.empty())
+                continue;
+            // Hauteurs de l'objet (réglage d'objet prioritaire) : couche 0 du
+            // PrintObject (print_z = first_layer_height, slice_z = sa moitié).
+            // NB : pas d'opt_float(clé, défaut) dans ConfigBase (l'indice
+            // unsigned compilerait et planterait sur un scalaire) — lecture
+            // explicite avec repli.
+            double lh = 0.2;
+            if (const auto *o = config.option<ConfigOptionFloat>("layer_height"))
+                if (o->value > 0)
+                    lh = o->value;
+            if (const auto *o = object.config.get().option<ConfigOptionFloat>("layer_height"))
+                if (o->value > 0)
+                    lh = o->value;
+            double flh = lh;
+            if (const auto *o =
+                    object.config.get().option<ConfigOptionFloatOrPercent>("first_layer_height"))
+                flh = o->get_abs_value(lh);
+            else if (const auto *o = config.option<ConfigOptionFloatOrPercent>("first_layer_height"))
+                flh = o->get_abs_value(lh);
+            const BoundingBoxf3 raw_bb = mesh.bounding_box();
+            double plane_z = 0.5 * (raw_bb.min.z() + raw_bb.max.z());
+            if (raw_bb.max.z() - raw_bb.min.z() > 1e-9)
+                plane_z = std::min(raw_bb.min.z() + 0.5 * flh, raw_bb.max.z() - 1e-6);
+            const ExPolygons slices = union_ex(
+                slice_mesh(mesh.its, static_cast<float>(plane_z), MeshSlicingParams{}));
+            if (slices.empty())
+                continue;
+            BoundingBox scaled;
+            double area = 0.0;
+            for (const ExPolygon &slice : slices) {
+                scaled.merge(slice.contour.bounding_box());
+                area += slice.area();
+            }
+            const BoundingBoxf bb(
+                Vec2d(scaled.min.x() * SCALING_FACTOR, scaled.min.y() * SCALING_FACTOR),
+                Vec2d(scaled.max.x() * SCALING_FACTOR, scaled.max.y() * SCALING_FACTOR));
+            BBoxData data;
+            data.id = object.id().id;
+            data.name = object.name;
+            data.area = static_cast<float>(area * SCALING_FACTOR * SCALING_FACTOR);
+            data.layer_height = static_cast<float>(flh);
+            data.bbox = {bb.min.x() - raw.origin_x, bb.min.y() - raw.origin_y,
+                         bb.max.x() - raw.origin_x, bb.max.y() - raw.origin_y};
+            bbox_all.merge(BoundingBoxf(Vec2d(data.bbox[0], data.bbox[1]),
+                                        Vec2d(data.bbox[2], data.bbox[3])));
+            any_object = true;
+            bbox.bbox_objs.push_back(data);
+        }
+        if (any_object)
+            bbox.bbox_all = {bbox_all.min.x(), bbox_all.min.y(), bbox_all.max.x(), bbox_all.max.y()};
+    }
+
+    // Vignettes par plateau (Plater::priv::export_3mf → thumbnail_data, une
+    // entrée par plateau ; store_bbs_3mf écrit plate_<n>.png + _small).
+    std::vector<ThumbnailData> thumbnails;
+    thumbnails.reserve(plates.size());
+    bool any_thumbnail = false;
+    for (const RawPlateGcode &raw : plates) {
+        thumbnails.push_back(thumbnail_from_png(raw.thumbnail_png));
+        any_thumbnail |= thumbnails.back().is_valid();
     }
 
     const std::string out(out_path);
@@ -795,6 +982,14 @@ void write_gcode_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
     params.config = &config;
     params.strategy = SaveStrategy::Silence | SaveStrategy::SplitModel | SaveStrategy::WithGcode |
                       SaveStrategy::SkipModel;
+    if (any_thumbnail)
+        for (ThumbnailData &thumbnail : thumbnails)
+            params.thumbnail_data.push_back(&thumbnail);
+    // plate_<n>.json seulement pour les plateaux valides (comme la GUI :
+    // _add_bbox_file_to_archive si id_bboxes[index]->is_valid()).
+    for (PlateBBoxData &bbox : plate_bboxes)
+        if (bbox.is_valid())
+            params.id_bboxes.push_back(&bbox);
     if (!store_bbs_3mf(params))
         throw std::runtime_error("échec d'écriture du .gcode.3mf : " + out);
 }

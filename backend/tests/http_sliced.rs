@@ -496,6 +496,86 @@ async fn export_all_plates_sliced_file_embeds_each_plate_gcode() {
     );
 }
 
+/// Lot 49 (audit 47 BBL-b) : le .gcode.3mf porte les vignettes du plateau
+/// (`Metadata/plate_1.png` 512 × 512 + `plate_1_small.png` 128 × 128, comme
+/// `_add_thumbnail_file_to_archive`), `Metadata/plate_1.json` (boîtes de la
+/// 1re couche, `generate_first_layer_bbox` : structure de la référence
+/// `two_plates.orca.gcode.3mf`) et le `printer_model_id` du vendeur dans
+/// `slice_info.config` (`Preset::get_printer_type` : BL-P001 pour une X1C).
+#[tokio::test]
+async fn export_sliced_file_has_thumbnails_plate_json_and_printer_model_id() {
+    let resolved = json!({
+        "printer_model": "Bambu Lab X1 Carbon",
+        "curr_bed_type": "Cool Plate",
+        "nozzle_diameter": "0.4",
+        "filament_colour": "#F2754E",
+    });
+    let Some(s) = sliced_project(resolved).await else {
+        return;
+    };
+    let resp = export(&s, json!({ "job_ids": s.jobs, "plate_index": 0 })).await;
+    assert_eq!(resp.status(), StatusCode::OK);
+    let entries = zip_entries(&to_bytes(resp.into_body(), usize::MAX).await.unwrap());
+    // Vignettes : PNG 512 × 512 (THUMBNAIL_SIZE_3MF) et 128 × 128 (_small).
+    let png_size = |name: &str| -> (u32, u32) {
+        let bytes = &entries[name];
+        assert_eq!(
+            (bytes[0], bytes[1], bytes[2], bytes[3]),
+            (0x89, b'P', b'N', b'G'),
+            "{name} : signature PNG"
+        );
+        (
+            u32::from_be_bytes(bytes[16..20].try_into().unwrap()),
+            u32::from_be_bytes(bytes[20..24].try_into().unwrap()),
+        )
+    };
+    assert_eq!(png_size("Metadata/plate_1.png"), (512, 512));
+    assert_eq!(png_size("Metadata/plate_1_small.png"), (128, 128));
+    // plate_1.json : cube 20 mm en (175, 175) → 1re couche 165..185, 400 mm².
+    let plate: Value = serde_json::from_slice(&entries["Metadata/plate_1.json"]).unwrap();
+    assert_eq!(plate["version"], 2, "{plate}");
+    assert_eq!(plate["bed_type"], "cool_plate", "{plate}");
+    assert_eq!(plate["first_extruder"], 0, "{plate}");
+    assert_eq!(plate["is_seq_print"], false, "{plate}");
+    assert!(
+        (plate["nozzle_diameter"].as_f64().unwrap() - 0.4).abs() < 1e-6,
+        "{plate}"
+    );
+    let objects = plate["bbox_objects"].as_array().unwrap();
+    assert_eq!(objects.len(), 1, "{plate}");
+    assert!(objects[0]["name"].as_str().is_some_and(|n| !n.is_empty()));
+    assert!(
+        (objects[0]["area"].as_f64().unwrap() - 400.0).abs() < 1.0,
+        "{plate}"
+    );
+    let bbox = objects[0]["bbox"].as_array().unwrap();
+    assert!((bbox[0].as_f64().unwrap() - 165.0).abs() < 0.5, "{plate}");
+    assert!((bbox[1].as_f64().unwrap() - 165.0).abs() < 0.5, "{plate}");
+    assert!((bbox[2].as_f64().unwrap() - 185.0).abs() < 0.5, "{plate}");
+    assert!((bbox[3].as_f64().unwrap() - 185.0).abs() < 0.5, "{plate}");
+    assert_eq!(plate["bbox_all"].as_array().unwrap().len(), 4, "{plate}");
+    assert!(
+        plate["first_layer_time"].as_f64().unwrap() < 1e6,
+        "première couche déraisonnable : {plate}"
+    );
+    // slice_info.config : model_id vendeur + temps de 1re couche remplis.
+    let info = String::from_utf8_lossy(&entries["Metadata/slice_info.config"]).into_owned();
+    assert!(
+        info.contains("printer_model_id\" value=\"BL-P001\""),
+        "printer_model_id absent : {info}"
+    );
+    let first_layer_time = info
+        .split("first_layer_time\" value=\"")
+        .nth(1)
+        .and_then(|rest| rest.split('"').next())
+        .and_then(|v| v.parse::<f64>().ok())
+        .unwrap_or(f64::NAN);
+    assert!(
+        first_layer_time.is_finite() && first_layer_time < 1e6,
+        "{info}"
+    );
+}
+
 #[tokio::test]
 async fn export_one_plate_sliced_file_and_validation_errors() {
     let Some(s) = sliced_project(json!({})).await else {

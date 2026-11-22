@@ -145,6 +145,13 @@ pub(crate) mod ffi {
         /// Réglages du plateau (`PartPlate` : curr_bed_type, print_sequence…)
         /// au format JSON {clé → texte Orca} ; vide = aucun.
         config_json: String,
+        /// Vignette du plateau (PNG RGB/RGBA) pour Metadata/plate_<n>.png
+        /// (+ _small, lot 49 BBL-b) ; vide = pas de vignette.
+        thumbnail_png: Vec<u8>,
+        /// Origine du plateau dans le repère monde d'Orca (lot 43) : les
+        /// boîtes de plate_<n>.json y sont relatives (Plater::get_origin).
+        origin_x: f64,
+        origin_y: f64,
     }
 
     /// Objet complet de la scène.
@@ -183,6 +190,10 @@ pub(crate) mod ffi {
         /// Métadonnées du projet (Model::model_info / design_info /
         /// profile_info) en JSON ; vide = aucune.
         model_info_json: String,
+        /// Lot 49 : défauts d'Orca (`FullPrintConfig::defaults()`) des clés
+        /// absentes du projet, même format que `project_config_json` ;
+        /// vide sans config de projet (Plater::load_files).
+        config_defaults_json: String,
     }
 
     /// Résultat de tranchage : chemin du G-code + statistiques minimales.
@@ -564,12 +575,14 @@ pub(crate) mod ffi {
         fn read_project_auxiliaries_raw(path: &str, out_dir: &str) -> Result<Vec<String>>;
 
         /// Écrit un .gcode.3mf comme « Export (all) plate sliced file » d'Orca
-        /// (`export_plate_idx` < 0 = tous les plateaux).
+        /// (`export_plate_idx` < 0 = tous les plateaux). `printer_model_id` :
+        /// model_id du vendeur (BL-P001…, lot 49 BBL-b) pour slice_info.config.
         fn write_gcode_3mf_raw(
             objects: &Vec<RawObject>,
             config_json: &str,
             plates: &Vec<RawPlateGcode>,
             export_plate_idx: i32,
+            printer_model_id: &str,
             out_path: &str,
         ) -> Result<()>;
 

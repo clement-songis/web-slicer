@@ -43,5 +43,5 @@ pub use split::{run_mesh_op, run_mesh_op_pieces};
 pub use threemf::{
     read_project_3mf, read_project_3mf_import, read_project_auxiliaries, write_gcode_3mf,
     write_gcode_3mf_with_settings, write_project_3mf, write_project_3mf_full,
-    write_project_3mf_with_auxiliaries, write_project_3mf_with_plates, PlateGcode,
+    write_project_3mf_with_auxiliaries, write_project_3mf_with_plates, Gcode3mfExtras, PlateGcode,
 };

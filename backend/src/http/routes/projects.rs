@@ -287,6 +287,16 @@ pub async fn import(
         }
     };
 
+    // Noms des presets portés par le 3MF (rapport PROJ-a), lus avant que la
+    // config ne soit consommée.
+    let project_preset_names = (!imported.config.is_empty()).then(|| {
+        (
+            raw_text(imported.config.get("printer_settings_id")).unwrap_or_default(),
+            raw_text(imported.config.get("print_settings_id")).unwrap_or_default(),
+            raw_items(imported.config.get("filament_settings_id")),
+        )
+    });
+
     let project = create_unique_project(
         &state,
         user.id,
@@ -351,13 +361,131 @@ pub async fn import(
             converter.convert_mesh(model, mesh).await;
         });
     }
+    let presets = match &project_preset_names {
+        Some(names) => {
+            Some(imported_presets_report(&state, user.id, names, &project.active_presets).await?)
+        }
+        None => None,
+    };
     let mut response: ProjectResponse = project.into();
     response.import = Some(ImportReport {
         load,
         gcode_warning,
         has_metadata,
+        presets,
     });
     Ok((StatusCode::CREATED, Json(response)))
+}
+
+/// Lot 49 (audit 47 PROJ-a) : presets actifs résolus d'un projet ouvert, pour
+/// que l'interface affiche l'imprimante / le process / les filaments du 3MF
+/// (Orca : `load_config_file_config` sélectionne les presets du projet) et
+/// non ceux du projet précédent. `names` : (printer_settings_id,
+/// print_settings_id, filament_settings_id) du fichier.
+async fn imported_presets_report(
+    state: &AppState,
+    user_id: UserId,
+    names: &(String, String, Vec<String>),
+    active: &Value,
+) -> ApiResult<crate::http::dto::ImportedPresets> {
+    use crate::http::dto::{ImportedPreset, ImportedPresets};
+    let overrides = super::overrides::overrides_of(active)?;
+    let describe = |preset: Option<&crate::domain::Preset>,
+                    project_name: &str,
+                    is_active: bool,
+                    modified: bool| {
+        ImportedPreset {
+            id: preset.map(|p| p.id.to_string()),
+            name: preset.map_or_else(|| project_name.to_string(), |p| p.name.clone()),
+            project_name: project_name.to_string(),
+            origin: preset.map(|p| {
+                match p.origin {
+                    PresetOrigin::System => "system",
+                    PresetOrigin::User => "user",
+                }
+                .to_string()
+            }),
+            active: is_active,
+            modified,
+        }
+    };
+    let id_of = |key: &str| -> Option<PresetId> {
+        active
+            .get(key)
+            .and_then(Value::as_str)
+            .and_then(|s| uuid::Uuid::parse_str(s).ok())
+            .map(PresetId)
+    };
+    let fetch = |id: PresetId| async move { state.storage.presets().get(id).await.ok() };
+
+    // Imprimante : posée, sinon preset visible du même nom (non posé).
+    let (printer_name, process_name, filament_names) = names;
+    let printer = match id_of("printer") {
+        Some(id) => {
+            let preset = fetch(id).await;
+            let modified = overrides.as_ref().is_some_and(|o| o.printer.is_some());
+            Some(describe(preset.as_ref(), printer_name, true, modified))
+        }
+        None if !printer_name.is_empty() => {
+            let machines = state
+                .storage
+                .presets()
+                .list_by_kind(PresetKind::Machine, user_id)
+                .await?;
+            let preset = machines
+                .iter()
+                .filter(|p| &p.name == printer_name && p.instantiation)
+                .max_by_key(|p| p.origin == PresetOrigin::User);
+            Some(describe(preset, printer_name, false, false))
+        }
+        None => None,
+    };
+    let process = match id_of("process") {
+        Some(id) => {
+            let preset = fetch(id).await;
+            let modified = overrides.as_ref().is_some_and(|o| o.process.is_some());
+            Some(describe(preset.as_ref(), process_name, true, modified))
+        }
+        None => None,
+    };
+    let mut filaments = Vec::new();
+    let ids: Vec<Option<PresetId>> = active
+        .get("filaments")
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .map(|v| {
+                    v.as_str()
+                        .and_then(|s| uuid::Uuid::parse_str(s).ok())
+                        .map(PresetId)
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+    for (index, id) in ids.iter().enumerate() {
+        let preset = match id {
+            Some(id) => fetch(*id).await,
+            None => None,
+        };
+        let modified = overrides
+            .as_ref()
+            .and_then(|o| o.filaments.as_ref())
+            .and_then(|f| f.get(index))
+            .is_some_and(Option::is_some);
+        let project_name = filament_names.get(index).cloned().unwrap_or_default();
+        filaments.push(describe(
+            preset.as_ref(),
+            &project_name,
+            id.is_some(),
+            modified,
+        ));
+    }
+    Ok(ImportedPresets {
+        printer,
+        process,
+        filaments,
+    })
 }
 
 /// Préférence `project_load_behaviour` d'Orca (AppConfig.hpp,
@@ -511,6 +639,7 @@ pub(crate) fn validate_presets(
 pub(crate) fn geometry_only(imported: &mut crate::models::threemf::ImportedProject) {
     let bed = bed_rect(&imported.config);
     imported.config.clear();
+    imported.config_defaults.clear();
     imported.metadata = None;
     for plate in &mut imported.plates {
         plate.name.clear();
@@ -797,6 +926,7 @@ pub async fn import_into(
         .await
         .map_err(|e| project_3mf_error(&bytes, &filename, e))?;
     imported.config.clear();
+    imported.config_defaults.clear();
     let name = project_name_from(&filename);
     let (scene, _, models) =
         import_3mf_contents(&state, user.id, project.id, &name, &filename, imported).await?;
@@ -878,23 +1008,30 @@ pub(crate) async fn import_3mf_contents(
         );
     }
     if !imported.config.is_empty() {
+        // Lot 49 (audit 47 RT-a) : config complète du projet, comme
+        // Plater::load_files (« config.apply(FullPrintConfig::defaults()) ;
+        // config += config_loaded ») avant load_config_file_config : une clé
+        // que le 3MF ne porte pas prend le défaut d'Orca, jamais la valeur
+        // d'un preset du projet précédent (timelapse Bambu dans un G-code
+        // Voron).
+        let config = full_project_config(&imported);
         // Presets filament / imprimante du projet (lot 25, audit J2-a/J2-h),
         // avant le process qui consomme la configuration.
         let (printer, filaments) =
-            import_project_presets(state, user_id, project_name, &imported.config).await?;
+            import_project_presets(state, user_id, project_name, &config).await?;
         // Lot 40 : comme Orca (load_external_preset, LoadAndSelect::Always),
         // imprimante posée + process nommé connu → ce preset est sélectionné
         // et les valeurs du projet qui en diffèrent deviennent des surcharges
         // (preset « modifié »). Sinon (imprimante non posée, process inconnu),
         // la config aplatie reste portée par un preset importé.
         let named_process = match printer {
-            Some(_) => named_process_preset(state, user_id, &imported.config).await?,
+            Some(_) => named_process_preset(state, user_id, &config).await?,
             None => None,
         };
         let process = match named_process {
             Some(process) => process,
             None => {
-                create_imported_preset(state, user_id, project_name, imported.config.clone())
+                create_imported_preset(state, user_id, project_name, config.clone())
                     .await?
                     .id
             }
@@ -912,6 +1049,11 @@ pub(crate) async fn import_3mf_contents(
         if named_process.is_some() {
             let (resolved, _) =
                 super::slice::resolve_active_config(state, user_id, &active_presets).await?;
+            // Lot 49 (RT-a) : les surcharges ne retiennent que les clés
+            // **portées par le fichier** (comme Orca, dont le marqueur
+            // `different_settings_to_system` ne liste que des clés du 3MF) —
+            // les clés complétées par les défauts (vecteurs vides…) ne créent
+            // pas de preset « (modifié) ».
             let project = engine::presets::resolve_preset_chain(&[engine::api::RawPreset {
                 name: "3MF".into(),
                 inherits: None,
@@ -922,7 +1064,7 @@ pub(crate) async fn import_3mf_contents(
                 ApiError::validation("configuration 3MF illisible", json!({}))
             })?;
             // Clés déclarées modifiées par Orca : [process, filaments…, imprimante].
-            let different = raw_items(imported.config.get("different_settings_to_system"));
+            let different = raw_items(config.get("different_settings_to_system"));
             let listed = |entry: Option<&String>| -> Vec<String> {
                 entry
                     .map(|keys| {
@@ -1168,6 +1310,17 @@ pub(crate) async fn import_3mf_contents(
         scene["projectConfig"] = Value::Object(project_config);
     }
     Ok((scene, active_presets, models))
+}
+
+/// Lot 49 (audit 47 RT-a) : config du projet complétée par les défauts
+/// d'Orca des clés absentes (`ImportedProject::config_defaults`, lus par
+/// libslic3r) — la config du 3MF fait foi pour toutes les clés.
+fn full_project_config(imported: &crate::models::threemf::ImportedProject) -> Map<String, Value> {
+    let mut config = imported.config_defaults.clone();
+    for (key, value) in &imported.config {
+        config.insert(key.clone(), value.clone());
+    }
+    config
 }
 
 /// `scene.projectConfig` depuis la config Orca d'un 3MF (chaînes ou tableaux
@@ -2618,6 +2771,7 @@ mod import_3mf_tests {
             config: config(base()),
             metadata: Some(engine::threemf::ProjectMetadata::default()),
             filament_colours: Vec::new(),
+            config_defaults: Map::new(),
         };
         geometry_only(&mut imported);
         assert!(imported.config.is_empty());
@@ -2721,6 +2875,7 @@ mod import_3mf_tests {
             config: config(cfg),
             metadata: None,
             filament_colours: Vec::new(),
+            config_defaults: Map::new(),
         };
         geometry_only(&mut imported);
         assert_eq!(imported.plates[0].instances, vec![("1".into(), 0)]);
@@ -2738,6 +2893,7 @@ mod import_3mf_tests {
             config: config(base()),
             metadata: None,
             filament_colours: Vec::new(),
+            config_defaults: Map::new(),
         };
         geometry_only(&mut imported);
         assert_eq!(
@@ -2892,6 +3048,7 @@ mod lot44b_tests {
             config: Map::new(),
             metadata: None,
             filament_colours: Vec::new(),
+            config_defaults: Map::new(),
         }
     }
 

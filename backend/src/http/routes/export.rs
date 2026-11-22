@@ -515,7 +515,7 @@ pub(crate) fn plate_settings_config(plate: &Value) -> engine::api::DynamicPrintC
 /// Vignette de chaque plateau (Orca : Metadata/plate_<n>.png + _small, une par
 /// plateau) : capture envoyée par l'interface
 /// (`PUT /api/projects/{id}/plates/{n}/thumbnail`) sinon rendu serveur 512 × 512.
-async fn attach_plate_thumbnails(
+pub(crate) async fn attach_plate_thumbnails(
     state: &AppState,
     user: crate::domain::UserId,
     project: ProjectId,
@@ -655,6 +655,31 @@ pub(crate) fn to_orca_world(
             instance.matrix = DMat4::from_translation(DVec3::new(dx, dy, 0.0)) * instance.matrix;
         }
     }
+}
+
+/// Origine de chaque plateau dans le repère monde d'Orca (lot 43, même
+/// calcul que [`to_orca_world`]) : (0, 0) en mono-plateau. Lot 49 (BBL-b) :
+/// les boîtes de `plate_<n>.json` du .gcode.3mf y sont relatives
+/// (`PartPlate::get_origin` côté GUI).
+pub(crate) fn plate_world_origins(
+    config: &engine::api::DynamicPrintConfig,
+    plate_count: usize,
+) -> Vec<(f64, f64)> {
+    (0..plate_count.max(1))
+        .map(|index| {
+            if plate_count < 2 {
+                return (0.0, 0.0);
+            }
+            let mut config = config.clone();
+            super::presets::fill_registry_defaults(&mut config);
+            let Some(volume) = crate::build_volume::BuildVolume::from_config(&config) else {
+                return (0.0, 0.0);
+            };
+            let (width, depth) = volume.size();
+            let [dx, dy] = crate::build_volume::plate_origin(index, plate_count, width, depth);
+            (dx, dy)
+        })
+        .collect()
 }
 
 pub(crate) fn scene_project_plates(scene: &Value) -> Vec<engine::threemf::ProjectPlate> {

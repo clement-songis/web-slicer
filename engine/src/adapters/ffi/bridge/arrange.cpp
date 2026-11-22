@@ -35,6 +35,33 @@ static void config_from_json(Slic3r::DynamicPrintConfig &config, const std::stri
     config_from_json_print(config, json_text);
 }
 
+// Lot 49 (audit 47 ARR-a) : config d'arrangement complétée comme
+// `PresetBundle::full_fff_config` (PresetBundle.cpp:3883-3891, ce que
+// ArrangeJob lit via `preset_bundle->full_config()` et ce qu'a déjà reçu le
+// Print du plateau dont init_arrange_params tire object_skirt_offset) :
+// `filament_map` a exactement une entrée par filament (complétée par 1).
+// Sans cela `Print::apply` (print_config_diffs → compute_filament_override_value,
+// PrintConfig.cpp:10323) appelait ConfigOptionVector::apply_override avec une
+// carte d'une entrée pour des surcharges filament de N entrées : assertion
+// `default_index.size() == rhs_vec->size()` (Config.hpp:739), worker abattu,
+// HTTP 500 sur « Disposer » dès 2 filaments (A1 mini, Voron). Nombre de
+// filaments = taille de filament_diameter, comme le tranchage (slice.cpp).
+static void resize_filament_map(Slic3r::DynamicPrintConfig &config)
+{
+    using namespace Slic3r;
+    const DynamicPrintConfig &view = config;
+    size_t filaments = 1;
+    if (const auto *diameters = view.option<ConfigOptionFloats>("filament_diameter"))
+        filaments = std::max<size_t>(1, diameters->values.size());
+    std::vector<int> maps;
+    if (const auto *current = view.option<ConfigOptionInts>("filament_map"))
+        maps = current->values;
+    if (maps.size() == filaments)
+        return;
+    maps.resize(filaments, 1);
+    config.set_key_value("filament_map", new ConfigOptionInts(maps));
+}
+
 namespace {
 
 // ArrangeJob::prepare_wipe_tower (lot 35) : réserve la place de la tour
@@ -351,6 +378,7 @@ RawArrangeResult arrange_orca_raw(const rust::Vec<RawObject> &objects, const rus
         if (def != nullptr && def->default_value)
             config.set_key_value(key, def->default_value->clone());
     }
+    resize_filament_map(config);
     // Contour du plateau demandé = printable_area (lu par get_shrink_bedpts).
     {
         Pointfs area;
@@ -472,6 +500,7 @@ RawGuiArrangeResult arrange_gui_raw(const rust::Vec<RawObject> &objects, const r
         if (def != nullptr && def->default_value)
             config.set_key_value(key, def->default_value->clone());
     }
+    resize_filament_map(config);
     {
         Pointfs area;
         for (const Point &p : bed)
@@ -812,6 +841,7 @@ rust::Vec<RawObject> fill_bed_raw(const rust::Vec<RawObject> &objects, const rus
         if (def != nullptr && def->default_value)
             config.set_key_value(key, def->default_value->clone());
     }
+    resize_filament_map(config);
     {
         Pointfs area;
         for (const Point &p : bed)

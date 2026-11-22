@@ -391,6 +391,57 @@ pub struct ImportReport {
     pub gcode_warning: Option<GcodeWarning>,
     /// Métadonnées (Title, Designer…) lues et conservées (`GET …/metadata`).
     pub has_metadata: bool,
+    /// Lot 49 (audit 47 PROJ-a) : presets actifs résolus du projet ouvert
+    /// (imprimante, process, filaments), comme les listes de la barre latérale
+    /// d'Orca après `PresetBundle::load_config_file_config`. Absent en
+    /// géométrie seule ou sans config de projet.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub presets: Option<ImportedPresets>,
+}
+
+/// Presets d'un projet 3MF ouvert (`ImportReport::presets`).
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ImportedPresets {
+    /// Imprimante : `printer_settings_id` du 3MF. `active` faux quand elle
+    /// n'est pas posée sur le projet (aucune imprimante du compte de ce
+    /// modèle) : `id` désigne alors le preset visible du même nom, s'il existe.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub printer: Option<ImportedPreset>,
+    /// Process : preset nommé du 3MF (`print_settings_id`) ou preset
+    /// « <projet> (configuration 3MF) » créé depuis la config du fichier.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub process: Option<ImportedPreset>,
+    /// Un élément par filament du projet, dans l'ordre.
+    pub filaments: Vec<ImportedPreset>,
+}
+
+/// Un preset résolu à l'ouverture d'un projet.
+#[derive(Debug, Clone, Default, Serialize, Deserialize, TS)]
+#[ts(export)]
+pub struct ImportedPreset {
+    /// Id du preset (`GET /api/presets/{id}`) ; absent si aucun preset ne
+    /// correspond (imprimante inconnue non posée).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub id: Option<String>,
+    /// Nom à afficher : celui du preset retenu, sinon celui du 3MF.
+    pub name: String,
+    /// Nom porté par le 3MF (`printer_settings_id`, `print_settings_id`,
+    /// `filament_settings_id[i]`), vide s'il n'en porte pas.
+    pub project_name: String,
+    /// `system` ou `user` (preset créé depuis le 3MF compris) ; absent sans preset.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[ts(optional)]
+    pub origin: Option<String>,
+    /// Vrai si le preset est posé dans `active_presets` du projet.
+    pub active: bool,
+    /// Vrai si le projet porte des surcharges pour ce preset
+    /// (`active_presets.overrides`, preset affiché « (modifié) »).
+    pub modified: bool,
 }
 
 /// Métadonnées 3MF d'un projet (Orca : onglet « Projet », ModelInfo /

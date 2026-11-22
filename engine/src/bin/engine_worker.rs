@@ -176,6 +176,17 @@ struct Gcode3mfRequest {
     plate_settings: Vec<engine::api::DynamicPrintConfig>,
     #[serde(default)]
     export_plate: Option<u32>,
+    /// Lot 49 (audit 47 BBL-b) : vignette PNG par plateau (index = plateau,
+    /// 0-based ; vide = aucune) pour Metadata/plate_<n>.png (+ _small).
+    #[serde(default)]
+    thumbnails: Vec<Vec<u8>>,
+    /// Origine de chaque plateau dans le repère monde d'Orca (lot 43) :
+    /// boîtes de Metadata/plate_<n>.json relatives au plateau.
+    #[serde(default)]
+    plate_origins: Vec<(f64, f64)>,
+    /// model_id du vendeur (BL-P001…) pour slice_info.config ; vide = aucun.
+    #[serde(default)]
+    printer_model_id: String,
     output_path: PathBuf,
 }
 
@@ -987,6 +998,11 @@ fn run_export_gcode_3mf(path: &Path) -> engine::api::EngineResult<Gcode3mfRespon
         &request.gcodes,
         &request.plate_settings,
         request.export_plate,
+        engine::adapters::ffi::Gcode3mfExtras {
+            thumbnails: &request.thumbnails,
+            plate_origins: &request.plate_origins,
+            printer_model_id: &request.printer_model_id,
+        },
         &request.output_path,
     )?;
     Ok(Gcode3mfResponse {
