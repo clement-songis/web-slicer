@@ -61,6 +61,9 @@
 		machinePreset?: MachinePresetRef | null;
 		/** Presets machine connus (résolution de l'héritage pour la comparaison). */
 		machinePresets?: readonly MachinePresetRef[];
+		/** Audit 46 BBL-a : « Export plate sliced file » (.gcode.3mf, carte SD),
+		 *  proposé quand l'envoi direct est impossible (imprimantes Bambu Lab). */
+		onexportsliced?: () => void;
 	}
 
 	let {
@@ -69,7 +72,8 @@
 		plateCount = 1,
 		sendAll,
 		machinePreset = null,
-		machinePresets = []
+		machinePresets = [],
+		onexportsliced
 	}: Props = $props();
 
 	const canSendAll = $derived(!!sendAll && plateCount > 1);
@@ -594,6 +598,30 @@
 							void saveUrl();
 						}}
 					>
+						<!-- Audit 46 BBL-a : l'explication (réseau Bambu non pris en charge)
+						     et l'alternative carte SD avant le champ d'adresse. -->
+						{#if selected && hintFor(selected)}
+							<div
+								class="flex flex-col gap-2 rounded border border-warning/40 bg-warning-soft px-3 py-2"
+								data-testid="send-connection-help"
+							>
+								<p class="text-xs text-warning-text" data-testid="send-connection-hint">
+									{hintFor(selected)}
+								</p>
+								{#if onexportsliced}
+									<button
+										type="button"
+										class="ws-btn ws-btn-sm ws-btn-secondary self-start"
+										disabled={!gcodeId}
+										data-testid="send-export-sliced"
+										onclick={() => {
+											open = false;
+											onexportsliced?.();
+										}}>{$t('Export plate sliced file (.gcode.3mf) for a microSD card')}</button
+									>
+								{/if}
+							</div>
+						{/if}
 						<label class="flex flex-col gap-1">
 							<span class="text-content-muted"
 								>{$t('{field} of {name}', {
@@ -648,11 +676,6 @@
 								</button>
 							</div>
 						</div>
-						{#if selected && hintFor(selected)}
-							<p class="text-xs text-warning-text" data-testid="send-connection-hint">
-								{hintFor(selected)}
-							</p>
-						{/if}
 						{#if urlError}
 							<p class="text-xs text-danger" role="alert" data-testid="send-url-error">
 								{urlError}

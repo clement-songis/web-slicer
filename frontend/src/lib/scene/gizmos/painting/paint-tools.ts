@@ -162,6 +162,9 @@ export interface PaintParams {
 	/** Case « Détection des arêtes » du pot MMU (décochée → fill_angle = -1). */
 	edgeDetection: boolean;
 	gapArea: number;
+	/** Supports : angle de « Seulement sur les surplombs en évidence » (°),
+	 *  0 = peinture partout (Orca `m_paint_on_overhangs_only` décochée). */
+	overhangOnlyDeg?: number;
 }
 
 export const PAINT_PARAM_DEFAULTS: PaintParams = {
@@ -198,6 +201,31 @@ export interface StrokeToolFields {
 	tool: EngineTool;
 	fill_angle?: number;
 	height?: number;
+	/** `highlight_by_angle_deg` de `TriangleSelector::select_patch` /
+	 *  `seed_fill_select_triangles` (0 = sans restriction). */
+	highlight_deg?: number;
+}
+
+/** Angle de surplomb (°) d'Orca : curseur 0–90 du gizmo Peinture de supports. */
+export const OVERHANG_ANGLE_MIN = 0;
+export const OVERHANG_ANGLE_MAX = 90;
+export function clampOverhangAngle(deg: number): number {
+	if (!Number.isFinite(deg)) return 0;
+	return Math.min(OVERHANG_ANGLE_MAX, Math.max(OVERHANG_ANGLE_MIN, deg));
+}
+
+/**
+ * Angle initial de « Mettre en évidence les zones en surplomb » à l'ouverture
+ * du gizmo (Orca `get_selection_support_threshold_angle`,
+ * GLGizmoFdmSupports.cpp:512-526) : seuil des supports automatiques s'ils sont
+ * activés (`enable_support` et `support_type` normal/tree auto), sinon 0.
+ */
+export function supportHighlightAngle(values: Record<string, unknown>): number {
+	const flag = (v: unknown) => v === true || v === 1 || v === '1' || v === 'true';
+	const type = String(values.support_type ?? '');
+	if (!flag(values.enable_support) || !/\(auto\)$/.test(type)) return 0;
+	const angle = Number(values.support_threshold_angle);
+	return Number.isFinite(angle) ? clampOverhangAngle(angle) : 0;
 }
 
 /**
@@ -211,6 +239,19 @@ export function strokeFields(
 	tool: PaintTool,
 	p: PaintParams,
 	hasCamera = true
+): StrokeToolFields {
+	const fields = toolFields(channel, tool, p, hasCamera);
+	// Audit 46 SUPP-a : « On highlighted overhangs only » (GLGizmoPainterBase :
+	// `m_paint_on_overhangs_only ? m_highlight_by_angle_threshold_deg : 0`).
+	const deg = channel === 'supports' ? clampOverhangAngle(p.overhangOnlyDeg ?? 0) : 0;
+	return deg > 0 ? { ...fields, highlight_deg: deg } : fields;
+}
+
+function toolFields(
+	channel: PaintChannel,
+	tool: PaintTool,
+	p: PaintParams,
+	hasCamera: boolean
 ): StrokeToolFields {
 	switch (tool) {
 		case 'fill':

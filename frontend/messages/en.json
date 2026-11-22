@@ -2469,5 +2469,14 @@
 	"u_p47b_right_nozzle": "right nozzle",
 	"u_p47b_tool_n": "Tool {n}",
 	"u_p47b_open_wiki": "Open wiki for more information.",
-	"u_p47b_print_blocked": "Export and printing are unavailable until this is fixed."
+	"u_p47b_print_blocked": "Export and printing are unavailable until this is fixed.",
+	"u_p48_plate_boundary": "A G-code path goes beyond the plate boundaries.",
+	"u_p48_overhangs_only": "On highlighted overhangs only",
+	"u_p48_highlight_overhang": "Highlight overhang areas",
+	"u_p48_overhangs_only_tip": "Allows painting only on facets selected by: \"{name}\"",
+	"u_p48_highlight_tip": "Highlight faces according to overhang angle.",
+	"u_p48_auto_threshold": "Auto support threshold angle: {n}",
+	"u_p48_no_auto_support": "No auto support",
+	"u_p48_plate_height": "A G-code path goes beyond the max print height.",
+	"u_p48_export_sliced_sd": "Export plate sliced file (.gcode.3mf) for a microSD card"
 }

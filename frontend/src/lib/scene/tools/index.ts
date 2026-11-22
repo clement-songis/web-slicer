@@ -16,6 +16,7 @@ export {
 	deserialize as deserializeLayerProfile,
 	clampHeight,
 	meshMaxZ,
+	layerZMax,
 	type LayerBand
 } from './layer-height';
 export { sceneCenter, explode, type AssemblyPart } from './assembly';

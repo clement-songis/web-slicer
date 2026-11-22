@@ -235,7 +235,7 @@
 		onclick={onClose}
 	>
 		<div
-			class="ws-dialog flex w-full max-w-lg flex-col gap-3 p-4"
+			class="ws-dialog flex max-h-full w-full max-w-lg flex-col gap-3 p-4"
 			role="dialog"
 			aria-modal="true"
 			aria-label={$t('Plate settings')}
@@ -257,201 +257,211 @@
 					>
 				{/each}
 			</div>
-			<div class="flex flex-col divide-y divide-border">
-				{#each visible as key (key)}
-					{@const def = PARAMS[key]}
-					<label
-						class="flex flex-wrap items-center justify-between gap-2 py-1.5 text-sm"
-						data-param={key}
-					>
-						<span class="min-w-0 text-content-muted">{$t(def.label)}</span>
-						{#if def.type === 'coBool'}
-							<select class="ws-field ws-field-sm w-48 shrink-0" bind:value={draft[key]}>
-								<option value="">{profileLabel(key)}</option>
-								<option value="1">{$t('Yes')}</option>
-								<option value="0">{$t('No')}</option>
-							</select>
-						{:else if isOpenEnum(def)}
-							<input
-								type="text"
-								class="ws-field ws-field-sm w-48 shrink-0"
-								placeholder={$t('Profile')}
-								bind:value={draft[key]}
-							/>
-						{:else}
-							<select class="ws-field ws-field-sm w-48 max-w-full min-w-0" bind:value={draft[key]}>
-								<option value="">{profileLabel(key)}</option>
-								{#each def.enumValues as v, i (v)}
-									<option value={v}>{$t(def.enumLabels[i] || v)}</option>
-								{/each}
-							</select>
-						{/if}
-					</label>
-					{#if key === 'print_sequence' && draft[key] === 'by object'}
-						<p class="pb-1.5 text-xs text-content-subtle" data-testid="plate-sequence-hint">
-							{$t(
-								'By object: the order of the object list is the print order (drag an object onto another to change it).'
-							)}
-						</p>
-					{/if}
-					{#if key === 'first_layer_sequence_choice' && draft[key] === 'Customize' && filamentColours.length}
-						<div class="flex flex-col gap-1 pb-2" data-testid="plate-first-layer-sequence">
-							<span class="text-xs text-content-subtle"
-								>{$t('Drag the filaments to set their print order on the first layer.')}</span
-							>
-							<FilamentOrderEditor
-								order={firstOrder}
-								colours={filamentColours}
-								label={$t('First layer filament sequence')}
-								testid="plate-first-layer-order"
-								onchange={(o) => (firstOrder = o)}
-							/>
-						</div>
-					{/if}
-					{#if key === 'other_layers_sequence_choice' && draft[key] === 'Customize' && filamentColours.length}
-						<div class="flex flex-col gap-2 pb-2" data-testid="plate-other-layers-sequence">
-							{#each otherRanges as range, i (i)}
-								<div
-									class="flex flex-wrap items-center gap-2 text-sm"
-									data-testid="plate-layer-range"
+			<!-- Audit 46 PLATE-a : corps défilant (OtherLayersSeqPanel d'Orca =
+			     wxScrolledWindow), titre et boutons toujours visibles en 800×500. -->
+			<div
+				class="-mx-1 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-1"
+				data-testid="plate-settings-body"
+			>
+				<div class="flex flex-col divide-y divide-border">
+					{#each visible as key (key)}
+						{@const def = PARAMS[key]}
+						<label
+							class="flex flex-wrap items-center justify-between gap-2 py-1.5 text-sm"
+							data-param={key}
+						>
+							<span class="min-w-0 text-content-muted">{$t(def.label)}</span>
+							{#if def.type === 'coBool'}
+								<select class="ws-field ws-field-sm w-48 shrink-0" bind:value={draft[key]}>
+									<option value="">{profileLabel(key)}</option>
+									<option value="1">{$t('Yes')}</option>
+									<option value="0">{$t('No')}</option>
+								</select>
+							{:else if isOpenEnum(def)}
+								<input
+									type="text"
+									class="ws-field ws-field-sm w-48 shrink-0"
+									placeholder={$t('Profile')}
+									bind:value={draft[key]}
+								/>
+							{:else}
+								<select
+									class="ws-field ws-field-sm w-48 max-w-full min-w-0"
+									bind:value={draft[key]}
 								>
-									<span class="text-content-muted">{$t('Layer')}</span>
-									<input
-										type="number"
-										min={MIN_LAYER_VALUE}
-										step="1"
-										class="ws-field ws-field-sm w-16 tabular-nums"
-										aria-label={$t('First layer of range {n}', { n: i + 1 })}
-										data-testid="plate-layer-range-begin"
-										value={range.begin}
-										onchange={(e) => setBegin(i, e.currentTarget.value)}
-									/>
-									<span class="text-content-muted">{$t('to')}</span>
-									<select
-										class="ws-field ws-field-sm w-28"
-										aria-label={$t('Last layer of range {n}', { n: i + 1 })}
-										data-testid="plate-layer-range-end-kind"
-										value={range.end === MAX_LAYER_VALUE ? 'end' : 'custom'}
-										onchange={(e) =>
-											setRange(i, {
-												end:
-													e.currentTarget.value === 'end'
-														? MAX_LAYER_VALUE
-														: Math.max(range.begin, MIN_LAYER_VALUE)
-											})}
+									<option value="">{profileLabel(key)}</option>
+									{#each def.enumValues as v, i (v)}
+										<option value={v}>{$t(def.enumLabels[i] || v)}</option>
+									{/each}
+								</select>
+							{/if}
+						</label>
+						{#if key === 'print_sequence' && draft[key] === 'by object'}
+							<p class="pb-1.5 text-xs text-content-subtle" data-testid="plate-sequence-hint">
+								{$t(
+									'By object: the order of the object list is the print order (drag an object onto another to change it).'
+								)}
+							</p>
+						{/if}
+						{#if key === 'first_layer_sequence_choice' && draft[key] === 'Customize' && filamentColours.length}
+							<div class="flex flex-col gap-1 pb-2" data-testid="plate-first-layer-sequence">
+								<span class="text-xs text-content-subtle"
+									>{$t('Drag the filaments to set their print order on the first layer.')}</span
+								>
+								<FilamentOrderEditor
+									order={firstOrder}
+									colours={filamentColours}
+									label={$t('First layer filament sequence')}
+									testid="plate-first-layer-order"
+									onchange={(o) => (firstOrder = o)}
+								/>
+							</div>
+						{/if}
+						{#if key === 'other_layers_sequence_choice' && draft[key] === 'Customize' && filamentColours.length}
+							<div class="flex flex-col gap-2 pb-2" data-testid="plate-other-layers-sequence">
+								{#each otherRanges as range, i (i)}
+									<div
+										class="flex flex-wrap items-center gap-2 text-sm"
+										data-testid="plate-layer-range"
 									>
-										<option value="end">{$t('End')}</option>
-										<option value="custom">{$t('Customize')}</option>
-									</select>
-									{#if range.end !== MAX_LAYER_VALUE}
+										<span class="text-content-muted">{$t('Layer')}</span>
 										<input
 											type="number"
-											min={range.begin}
+											min={MIN_LAYER_VALUE}
 											step="1"
 											class="ws-field ws-field-sm w-16 tabular-nums"
-											aria-label={$t('Last layer of range {n}', { n: i + 1 })}
-											data-testid="plate-layer-range-end"
-											value={range.end}
-											onchange={(e) => setEnd(i, e.currentTarget.value)}
+											aria-label={$t('First layer of range {n}', { n: i + 1 })}
+											data-testid="plate-layer-range-begin"
+											value={range.begin}
+											onchange={(e) => setBegin(i, e.currentTarget.value)}
 										/>
-									{/if}
-									<FilamentOrderEditor
-										order={range.order}
-										colours={filamentColours}
-										label={$t('Filament sequence of layers {a} to {b}', {
-											a: range.begin,
-											b: range.end === MAX_LAYER_VALUE ? $t('End') : range.end
-										})}
-										testid="plate-layer-range-order"
-										onchange={(o) => setRange(i, { order: o })}
-									/>
-								</div>
-							{/each}
-							<div class="flex gap-2">
-								<button
-									type="button"
-									class="ws-btn ws-btn-sm ws-btn-secondary"
-									data-testid="plate-layer-range-add"
-									onclick={() =>
-										(otherRanges = [
-											...otherRanges,
-											newRange(otherRanges.length, filamentColours.length)
-										])}>{$t('Add')}</button
-								>
-								<button
-									type="button"
-									class="ws-btn ws-btn-sm ws-btn-ghost"
-									data-testid="plate-layer-range-delete"
-									disabled={otherRanges.length <= 1}
-									onclick={() => (otherRanges = otherRanges.slice(0, -1))}>{$t('Delete')}</button
-								>
-							</div>
-							{#if rangeError}
-								<p class="text-xs text-danger" role="alert">{rangeError}</p>
-							{/if}
-						</div>
-					{/if}
-				{/each}
-			</div>
-			{#if showMap}
-				<section
-					class="flex flex-col gap-2 border-t border-border pt-3"
-					data-testid="plate-filament-map"
-				>
-					<div class="flex items-center justify-between gap-2">
-						<h3 class="ws-section-title">{$t('Filaments per nozzle')}</h3>
-						<select
-							class="ws-field ws-field-sm w-60"
-							data-testid="plate-filament-map-mode"
-							aria-label={$t('Grouping mode')}
-							bind:value={mapMode}
-						>
-							<option value="">{$t('Profile')}</option>
-							{#each FILAMENT_MAP_MODES as m (m.value)}
-								<option value={m.value}>{$t(m.label)}</option>
-							{/each}
-						</select>
-					</div>
-					<p class="text-xs text-content-subtle">
-						{$t(
-							FILAMENT_MAP_MODES.find((m) => m.value === mapMode)?.hint ??
-								'Follows the mode saved in the profile (automatic, less flushing, default).'
-						)}
-					</p>
-					{#if mapMode === 'Manual'}
-						<ul class="flex flex-col gap-1.5" data-testid="plate-filament-map-list">
-							{#each map as nozzle, i (i)}
-								<li class="flex items-center justify-between gap-2 text-sm">
-									<span class="flex items-center gap-2">
-										<span
-											class="h-4 w-4 rounded border border-border-strong"
-											style={swatchStyle(filamentColours[i])}
-										></span>
-										{$t('Filament {n}', { n: i + 1 })}
-									</span>
-									<span
-										class="ws-seg"
-										role="radiogroup"
-										aria-label={$t('Nozzle of filament {n}', { n: i + 1 })}
+										<span class="text-content-muted">{$t('to')}</span>
+										<select
+											class="ws-field ws-field-sm w-28"
+											aria-label={$t('Last layer of range {n}', { n: i + 1 })}
+											data-testid="plate-layer-range-end-kind"
+											value={range.end === MAX_LAYER_VALUE ? 'end' : 'custom'}
+											onchange={(e) =>
+												setRange(i, {
+													end:
+														e.currentTarget.value === 'end'
+															? MAX_LAYER_VALUE
+															: Math.max(range.begin, MIN_LAYER_VALUE)
+												})}
+										>
+											<option value="end">{$t('End')}</option>
+											<option value="custom">{$t('Customize')}</option>
+										</select>
+										{#if range.end !== MAX_LAYER_VALUE}
+											<input
+												type="number"
+												min={range.begin}
+												step="1"
+												class="ws-field ws-field-sm w-16 tabular-nums"
+												aria-label={$t('Last layer of range {n}', { n: i + 1 })}
+												data-testid="plate-layer-range-end"
+												value={range.end}
+												onchange={(e) => setEnd(i, e.currentTarget.value)}
+											/>
+										{/if}
+										<FilamentOrderEditor
+											order={range.order}
+											colours={filamentColours}
+											label={$t('Filament sequence of layers {a} to {b}', {
+												a: range.begin,
+												b: range.end === MAX_LAYER_VALUE ? $t('End') : range.end
+											})}
+											testid="plate-layer-range-order"
+											onchange={(o) => setRange(i, { order: o })}
+										/>
+									</div>
+								{/each}
+								<div class="flex gap-2">
+									<button
+										type="button"
+										class="ws-btn ws-btn-sm ws-btn-secondary"
+										data-testid="plate-layer-range-add"
+										onclick={() =>
+											(otherRanges = [
+												...otherRanges,
+												newRange(otherRanges.length, filamentColours.length)
+											])}>{$t('Add')}</button
 									>
-										{#each Array.from({ length: extruders }, (_, k) => k + 1) as n (n)}
-											<button
-												type="button"
-												role="radio"
-												aria-checked={nozzle === n}
-												data-testid="plate-filament-map-{i + 1}-{n}"
-												class="ws-seg-item {nozzle === n ? 'ws-seg-on' : ''}"
-												onclick={() => (map[i] = n)}>{nozzleLabel(n, extruders)}</button
-											>
-										{/each}
-									</span>
-								</li>
-							{/each}
-						</ul>
-					{/if}
-				</section>
-			{/if}
-			<div class="flex justify-end gap-2">
+									<button
+										type="button"
+										class="ws-btn ws-btn-sm ws-btn-ghost"
+										data-testid="plate-layer-range-delete"
+										disabled={otherRanges.length <= 1}
+										onclick={() => (otherRanges = otherRanges.slice(0, -1))}>{$t('Delete')}</button
+									>
+								</div>
+								{#if rangeError}
+									<p class="text-xs text-danger" role="alert">{rangeError}</p>
+								{/if}
+							</div>
+						{/if}
+					{/each}
+				</div>
+				{#if showMap}
+					<section
+						class="flex flex-col gap-2 border-t border-border pt-3"
+						data-testid="plate-filament-map"
+					>
+						<div class="flex items-center justify-between gap-2">
+							<h3 class="ws-section-title">{$t('Filaments per nozzle')}</h3>
+							<select
+								class="ws-field ws-field-sm w-60"
+								data-testid="plate-filament-map-mode"
+								aria-label={$t('Grouping mode')}
+								bind:value={mapMode}
+							>
+								<option value="">{$t('Profile')}</option>
+								{#each FILAMENT_MAP_MODES as m (m.value)}
+									<option value={m.value}>{$t(m.label)}</option>
+								{/each}
+							</select>
+						</div>
+						<p class="text-xs text-content-subtle">
+							{$t(
+								FILAMENT_MAP_MODES.find((m) => m.value === mapMode)?.hint ??
+									'Follows the mode saved in the profile (automatic, less flushing, default).'
+							)}
+						</p>
+						{#if mapMode === 'Manual'}
+							<ul class="flex flex-col gap-1.5" data-testid="plate-filament-map-list">
+								{#each map as nozzle, i (i)}
+									<li class="flex items-center justify-between gap-2 text-sm">
+										<span class="flex items-center gap-2">
+											<span
+												class="h-4 w-4 rounded border border-border-strong"
+												style={swatchStyle(filamentColours[i])}
+											></span>
+											{$t('Filament {n}', { n: i + 1 })}
+										</span>
+										<span
+											class="ws-seg"
+											role="radiogroup"
+											aria-label={$t('Nozzle of filament {n}', { n: i + 1 })}
+										>
+											{#each Array.from({ length: extruders }, (_, k) => k + 1) as n (n)}
+												<button
+													type="button"
+													role="radio"
+													aria-checked={nozzle === n}
+													data-testid="plate-filament-map-{i + 1}-{n}"
+													class="ws-seg-item {nozzle === n ? 'ws-seg-on' : ''}"
+													onclick={() => (map[i] = n)}>{nozzleLabel(n, extruders)}</button
+												>
+											{/each}
+										</span>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+					</section>
+				{/if}
+			</div>
+			<div class="flex shrink-0 justify-end gap-2">
 				<button type="button" class="ws-btn ws-btn-secondary" onclick={onClose}
 					>{$t('Close')}</button
 				>

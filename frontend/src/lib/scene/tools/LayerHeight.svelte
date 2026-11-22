@@ -65,6 +65,22 @@
 	function onBarMove(event: PointerEvent) {
 		if (brush.active) brush.move(zAt(event));
 	}
+	// Clic droit = épaissir (barre d'Orca) : jamais le menu de la scène
+	// (audit 46 PREF-c). Écouteur natif : `oncontextmenu` est délégué par
+	// Svelte à la racine, où le gestionnaire de la vue le recevrait aussi.
+	function swallowContextMenu(node: Element, enabled: boolean) {
+		let active = enabled;
+		const stop = (e: Event) => {
+			if (!active) return;
+			e.preventDefault();
+			e.stopPropagation();
+		};
+		node.addEventListener('contextmenu', stop);
+		return {
+			update: (next: boolean) => (active = next),
+			destroy: () => node.removeEventListener('contextmenu', stop)
+		};
+	}
 
 	// Défauts de la GUI d'Orca : qualité 0,5, rayon 5, « keep min » décoché.
 	let quality = $state(0.5);
@@ -112,7 +128,7 @@
 		tabindex="-1"
 		onpointerdown={onBarDown}
 		onpointermove={onBarMove}
-		oncontextmenu={(e) => onbrush && e.preventDefault()}
+		use:swallowContextMenu={!!onbrush}
 	>
 		<polyline
 			points={samples}

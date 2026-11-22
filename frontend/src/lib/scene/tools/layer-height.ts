@@ -93,6 +93,29 @@ export function deserialize(flat: number[]): LayerBand[] {
 	return sorted(profile);
 }
 
+/**
+ * Hauteur (mm) couverte par le profil d'un objet placé : celle de l'objet
+ * transformé (échelle, rotation) posé sur le plateau, ou enfoncé s'il l'est
+ * dans la scène — `m_object_max_z` de `GLCanvas3D::LayersEditing` (Orca :
+ * `instance_bounding_box(0).max.z()`), même placement que le moteur
+ * (`layer_profile_matrix`). `matrix` : matrice monde colonne-major
+ * (`worldMatrix`). Un profil qui ne finit pas à cette cote est effacé par
+ * `PrintObject::update_layer_height_profile` (couches uniformes).
+ */
+export function layerZMax(mesh: SceneMesh, matrix: ArrayLike<number>): number {
+	const p = mesh.positions;
+	let lo = Infinity;
+	let hi = -Infinity;
+	for (let i = 0; i + 2 < p.length; i += 3) {
+		const z = matrix[2] * p[i] + matrix[6] * p[i + 1] + matrix[10] * p[i + 2];
+		if (z < lo) lo = z;
+		if (z > hi) hi = z;
+	}
+	if (!Number.isFinite(lo)) return 0;
+	const placed = Math.min(lo + (matrix[14] ?? 0), 0);
+	return hi - lo + placed;
+}
+
 /** Cote Z maximale d'un maillage (borne haute du profil). */
 export function meshMaxZ(mesh: SceneMesh): number {
 	let maxZ = 0;

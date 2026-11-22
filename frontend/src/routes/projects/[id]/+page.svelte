@@ -46,7 +46,11 @@
 		type UnitSource
 	} from '$lib/editor/units';
 	import { autoFlushResult, changedSlots, type FlushSnapshot } from '$lib/editor/auto-flush';
-	import { gcodeCheckError, isNozzleRangeError } from '$lib/editor/nozzle-range-error';
+	import {
+		gcodeCheckError,
+		gcodeCheckKind,
+		isNozzleRangeError
+	} from '$lib/editor/nozzle-range-error';
 	import { detachPreset } from '$lib/api/presets';
 	// Lot 21 : brouillon au tranchage, peinture conservée, températures, buses.
 	import { buildProjectOverrides } from '$lib/editor/slice-draft';
@@ -105,6 +109,7 @@
 		loadOrcaCatalog,
 		optionPage,
 		plateBlocked,
+		translateOrcaMessage,
 		validateProject,
 		type OrcaCatalog,
 		type ValidateResponse,
@@ -126,6 +131,7 @@
 	import type { JobResponse, SliceRequest } from '$lib/api/types';
 	import type { Projection } from '$lib/scene/camera';
 	import { cameraSpaceNudge, clampZoom } from '$lib/scene/camera';
+	import { RightClickGuard } from '$lib/scene/right-click';
 	// Phase 34 : Page préc./suiv. (rotation ±45°), « + »/« − » (instances, ou
 	// changement de couleur en Aperçu).
 	import { rotationFromAction } from '$lib/editor/shortcuts';
@@ -203,6 +209,7 @@
 		uniformProfile,
 		serializeLayerProfile,
 		deserializeLayerProfile,
+		layerZMax,
 		type LayerBand,
 		PaintToolbar,
 		TrianglePainting,
@@ -451,6 +458,7 @@
 		remapBaseExtruder,
 		remapMessageMap,
 		strokeFields,
+		supportHighlightAngle,
 		wheelParams,
 		type HoverPreview,
 		type PaintAssist,
@@ -5104,6 +5112,23 @@
 	let paintDragging = $state(false);
 	// Angle d'arrêt du pot de peinture (défaut Orca `m_smart_fill_angle` = 30°).
 	let paintFillAngle = $state(30);
+	// Audit 46 SUPP-a — Peinture de supports : « Mettre en évidence les zones en
+	// surplomb » (angle, réinitialisé au seuil des supports auto à chaque
+	// ouverture, GLGizmoFdmSupports::on_render_input_window) et « Seulement sur
+	// les surplombs en évidence » (highlight_deg des traits).
+	let paintOverhangOnly = $state(false);
+	let paintHighlightAngle = $state(0);
+	const supportPaintValues = $derived({
+		...processValues,
+		...((selId ? tree.get(selId)?.settings : undefined) ?? {})
+	} as Record<string, unknown>);
+	const supportAutoAngle = $derived(supportHighlightAngle(supportPaintValues));
+	let supportsGizmoOpen = false;
+	$effect(() => {
+		const open = paintChannel === 'supports';
+		if (open && !supportsGizmoOpen) paintHighlightAngle = untrack(() => supportAutoAngle);
+		supportsGizmoOpen = open;
+	});
 	// Annulation propre à la peinture : une entrée par trait (état d'avant).
 	type PaintHistoryEntry = { id: string; channel: PaintChannel; facets: Record<string, string> };
 	let paintUndo: PaintHistoryEntry[] = [];
@@ -5391,7 +5416,8 @@
 		height: paintHeight,
 		fillAngle: paintFillAngle,
 		edgeDetection: paintEdgeDetection,
-		gapArea: paintGapArea
+		gapArea: paintGapArea,
+		overhangOnlyDeg: paintOverhangOnly ? paintHighlightAngle : 0
 	});
 	function currentStrokeFields(): StrokeToolFields {
 		return strokeFields(paintChannel ?? 'supports', paintTool, paintParams);
@@ -5582,6 +5608,8 @@
 		void paintFillAngle;
 		void paintEdgeDetection;
 		void paintState;
+		void paintOverhangOnly;
+		void paintHighlightAngle;
 		untrack(clearHoverPreview);
 	});
 	const sceneHoverPreviews = $derived(
@@ -5601,8 +5629,12 @@
 			...(tools.active === 'assembly' ? ['assembly_view'] : [])
 		])
 	);
-	// Étendue Z (mm) de l'objet sélectionné, pour l'éditeur de hauteur de couche.
-	const activeZMax = $derived(activeBounds.max[2] - activeBounds.min[2] || 10);
+	// Hauteur (mm) de l'objet sélectionné une fois transformé et posé, pour
+	// l'éditeur de hauteur de couche (m_object_max_z d'Orca) : le profil doit
+	// finir au sommet de l'objet, sinon le tranchage l'ignore (audit 46 VLH-a).
+	const activeZMax = $derived(
+		activeObject ? layerZMax(activeObject.mesh, worldMatrix(objectTransform(activeObject))) : 0
+	);
 	// Profil de couche courant (par objet, uniforme par défaut).
 	const activeLayerProfile = $derived(
 		selId
@@ -5735,6 +5767,11 @@
 	// bloque export et envoi (serveur : 409 « gcode_check »).
 	const gcodeCheckBlocked = $derived(
 		gcodeCheckError((rawStats as { gcode_check?: unknown } | null)?.gcode_check ?? null)
+	);
+	// Audit 46 GCHK-a : trajet hors du plateau (bit 2, tour de purge comprise)
+	// ou hors de la zone d'une buse — même bandeau, même blocage.
+	const gcodeCheckBlockKind = $derived(
+		gcodeCheckKind((rawStats as { gcode_check?: unknown } | null)?.gcode_check ?? null)
 	);
 	const conflictObjectId = $derived.by(() => {
 		if (!gcodeConflict) return null;
@@ -6609,6 +6646,20 @@
 	let validationBusy = $state(false);
 	let validationBlocked = $state<string | null>(null);
 	let orcaCatalog = $state<OrcaCatalog | null>(null);
+	// Audit 46 I18N-a : refus de `Print::validate` remontés par le tranchage
+	// (« Plate 1: Cool Plate does not support filament 1 ») traduits par le
+	// catalogue d'Orca, comme la notice de validation.
+	$effect(() => {
+		if (session.phase !== 'error' || $locale !== 'fr' || orcaCatalog) return;
+		void loadOrcaCatalog()
+			.then((c) => (orcaCatalog = c))
+			.catch(() => {});
+	});
+	const sliceErrorText = $derived(
+		session.error && $locale === 'fr' && orcaCatalog
+			? translateOrcaMessage(session.error, orcaCatalog)
+			: session.error
+	);
 	// Ids persistés (scene.objects[].id) → ids vivants : l'arbre régénère les
 	// ids à l'ouverture ; la première sauvegarde les aligne (carte vidée).
 	const persistedToLive = new SvelteMap<string, string>();
@@ -8126,14 +8177,37 @@
 	}
 	// Clic droit sur la scène : menu objet si un objet est sélectionné, sinon menu
 	// d'ajout (plateau vide) — parité OrcaSlicer.
+	// Audit 46 PREF-c : glisser au bouton droit (caméra déplacée) → pas de
+	// menu au relâchement (Orca `ignore_right_up`, voir right-click.ts).
+	const rightClick = new RightClickGuard(() => {
+		const cam = $appPreferences.camera;
+		return cam.style !== 'touchpad' && cam.rightDrag !== 'none';
+	});
+	$effect(() => {
+		const down = (e: PointerEvent) => rightClick.pointerDown(e.button, e.clientX, e.clientY);
+		const move = (e: PointerEvent) => rightClick.pointerMove(e.buttons, e.clientX, e.clientY);
+		const up = (e: PointerEvent) => rightClick.pointerUp(e.button);
+		window.addEventListener('pointerdown', down, true);
+		window.addEventListener('pointermove', move, true);
+		window.addEventListener('pointerup', up, true);
+		return () => {
+			window.removeEventListener('pointerdown', down, true);
+			window.removeEventListener('pointermove', move, true);
+			window.removeEventListener('pointerup', up, true);
+		};
+	});
 	function onSceneContext(e: MouseEvent) {
 		if (layout.tab !== 'prepare') return;
 		e.preventDefault();
 		// Audit 42 S2 : gizmo de peinture ouvert → le bouton droit peint (Orca
 		// GLGizmoPainterBase), pas de menu contextuel.
 		if (paintChannel) return;
-		if (selId) openContext(selId, e.clientX, e.clientY);
-		else addMenu = { open: true, x: e.clientX, y: e.clientY, scene: true };
+		const { clientX: x, clientY: y } = e;
+		rightClick.contextMenu(() => {
+			if (layout.tab !== 'prepare' || paintChannel) return;
+			if (selId) openContext(selId, x, y);
+			else addMenu = { open: true, x, y, scene: true };
+		});
 	}
 	function closeAddMenu() {
 		addMenu = { ...addMenu, open: false };
@@ -8965,7 +9039,13 @@
 	let showLabels = $state(false);
 	let showOverhang = $state(false);
 	const overhangNormalZ = $derived(
-		showOverhang ? supportNormalZ({ ...machineValues, ...processValues }) : null
+		paintChannel === 'supports'
+			? paintHighlightAngle > 0
+				? -Math.cos((paintHighlightAngle * Math.PI) / 180)
+				: null
+			: showOverhang
+				? supportNormalZ({ ...machineValues, ...processValues })
+				: null
 	);
 	const objectLabels = $derived(
 		showLabels
@@ -10570,6 +10650,10 @@
 				sendAll={sendAllPlates}
 				machinePreset={activePresetOf('machine') ?? null}
 				{machinePresets}
+				onexportsliced={() => {
+					if (gcodeCheckBlocked) saveMessage = gcodeCheckBlocked;
+					else void exportPlateGcode();
+				}}
 			/>
 			<!-- Export projet 3MF (FR-044) : ressource API backend, pas une route SvelteKit. -->
 			<!-- eslint-disable svelte/no-navigation-without-resolve -->
@@ -12317,6 +12401,9 @@
 								bind:gapArea={paintGapArea}
 								bind:constraint={paintConstraint}
 								bind:wireframe={paintWireframe}
+								bind:overhangOnly={paintOverhangOnly}
+								bind:highlightAngle={paintHighlightAngle}
+								supportThresholdAngle={supportAutoAngle}
 								busy={paintBusy}
 								ongapfill={performGapFill}
 								onremap={remapPaintFilaments}
@@ -12445,7 +12532,7 @@
 							class="flex flex-col gap-1 border-b border-danger/40 bg-danger-soft px-4 py-2 text-sm text-danger-content"
 							role="alert"
 							data-testid="slice-gcode-check"
-							data-kind="nozzle-range"
+							data-kind={gcodeCheckBlockKind ?? 'nozzle-range'}
 						>
 							<p class="whitespace-pre-line">⛔ {gcodeCheckBlocked}</p>
 							<p class="text-xs" data-testid="slice-gcode-check-blocked">
@@ -12479,7 +12566,7 @@
 							>
 								<p class="whitespace-pre-line">
 									{session.error && session.error !== $t('slicing failed')
-										? $t('Slicing failed: {error}', { error: session.error })
+										? $t('Slicing failed: {error}', { error: sliceErrorText ?? session.error })
 										: $t(
 												'Slicing failed. Check the printer, the filament and the process profile, then try again.'
 											)}

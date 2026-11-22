@@ -145,6 +145,7 @@ export {
 	smooth,
 	serializeLayerProfile,
 	deserializeLayerProfile,
+	layerZMax,
 	explode,
 	type CutPlane,
 	type LayerBand,

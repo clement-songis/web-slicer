@@ -21,8 +21,11 @@
 		HEIGHT_MIN,
 		PAINT_TOOL_HINTS,
 		PAINT_TOOL_LABELS,
+		OVERHANG_ANGLE_MAX,
+		OVERHANG_ANGLE_MIN,
 		RADIUS_MAX,
 		RADIUS_MIN,
+		clampOverhangAngle,
 		constraintsFor,
 		remapMessageMap,
 		toolsFor,
@@ -59,6 +62,15 @@
 		/** Phase 39 — fil de fer (« Toggle Wireframe » d'Orca, Alt+Maj+Entrée). Orca
 		 *  ne le dessine qu'en peinture multi-matériaux (set_wireframe_needed). */
 		wireframe?: boolean;
+		/** Supports — « Seulement sur les surplombs en évidence » (Orca
+		 *  `m_paint_on_overhangs_only`). */
+		overhangOnly?: boolean;
+		/** Supports — « Mettre en évidence les zones en surplomb » : angle (°)
+		 *  0–90, 0 = rien en évidence (`m_highlight_by_angle_threshold_deg`). */
+		highlightAngle?: number;
+		/** Seuil des supports automatiques (°), 0 = pas de support auto
+		 *  (infobulle du curseur d'Orca). */
+		supportThresholdAngle?: number;
 	}
 
 	let {
@@ -75,8 +87,16 @@
 		ongapfill,
 		onremap,
 		busy = false,
-		wireframe = $bindable(false)
+		wireframe = $bindable(false),
+		overhangOnly = $bindable(false),
+		highlightAngle = $bindable(0),
+		supportThresholdAngle = 0
 	}: Props = $props();
+	const angleTip = $derived(
+		supportThresholdAngle > 0
+			? $t('Auto support threshold angle: {n}', { n: supportThresholdAngle })
+			: $t('No auto support')
+	);
 
 	const tools = $derived(toolsFor(channel));
 	const constraints = $derived(constraintsFor(channel, tool));
@@ -313,6 +333,50 @@
 				data-testid="paint-gap-apply"
 				onclick={() => ongapfill?.()}>{$t('Fill gaps')}</button
 			>
+		</div>
+	{/if}
+
+	{#if channel === 'supports'}
+		<!-- Audit 46 SUPP-a : GLGizmoFdmSupports (« On highlighted overhangs only »,
+		     masquée pour le comblement ; « Highlight overhang areas » 0–90°). -->
+		<div class="flex flex-col gap-1 border-t border-border pt-2" data-testid="paint-overhang">
+			{#if tool !== 'gap'}
+				<label
+					class="flex items-center gap-2 text-xs"
+					title={$t('Allows painting only on facets selected by: "{name}"', {
+						name: $t('Highlight overhang areas')
+					})}
+				>
+					<input type="checkbox" bind:checked={overhangOnly} data-testid="paint-overhang-only" />
+					{$t('On highlighted overhangs only')}
+				</label>
+			{/if}
+			<span class="text-xs text-content-muted">{$t('Highlight overhang areas')}</span>
+			<div class="flex items-center gap-2" title={angleTip}>
+				<input
+					type="range"
+					min={OVERHANG_ANGLE_MIN}
+					max={OVERHANG_ANGLE_MAX}
+					step={1}
+					bind:value={highlightAngle}
+					class="flex-1"
+					aria-label={$t('Highlight overhang areas')}
+					title={$t('Highlight faces according to overhang angle.')}
+					data-testid="paint-overhang-angle"
+				/>
+				<input
+					type="number"
+					min={OVERHANG_ANGLE_MIN}
+					max={OVERHANG_ANGLE_MAX}
+					step={0.05}
+					value={highlightAngle}
+					onchange={(e) => (highlightAngle = clampOverhangAngle(e.currentTarget.valueAsNumber))}
+					class="ws-field ws-field-sm w-16 text-right tabular-nums"
+					aria-label={$t('Highlight overhang areas')}
+					data-testid="paint-overhang-angle-input"
+				/>
+				<span class="text-content-muted">°</span>
+			</div>
 		</div>
 	{/if}
 

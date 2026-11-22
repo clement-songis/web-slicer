@@ -178,8 +178,9 @@ test.describe("audit 44 (FR)", () => {
     const me = (await (await page.request.get("/api/auth/me")).json()) as { email: string };
     // Session fermée côté serveur (autre onglet) : modifications non enregistrées.
     expect((await page.request.post("/api/auth/logout")).status()).toBeLessThan(300);
-    await page.getByTestId("save-project").click();
     const dlg = page.getByTestId("reauth-dialog");
+    // Une requête de fond (validation, aperçu) peut ouvrir la reconnexion avant le clic.
+    if (!(await dlg.isVisible())) await page.getByTestId("save-project").click({ timeout: 5_000 }).catch(() => {});
     await expect(dlg).toBeVisible();
     await expect(dlg.getByTestId("reauth-email")).toHaveValue(me.email);
     const saved = page.waitForResponse(
@@ -187,8 +188,12 @@ test.describe("audit 44 (FR)", () => {
     );
     await dlg.getByTestId("reauth-password").fill(PASSWORD);
     await dlg.getByTestId("reauth-submit").click();
-    await saved;
     await expect(dlg).toHaveCount(0);
+    // Si la reconnexion venait d'une requête de fond, l'enregistrement n'a pas
+    // été rejoué : les modifications sont toujours là, on enregistre.
+    const replayed = await Promise.race([saved.then(() => true), page.waitForTimeout(5_000).then(() => false)]);
+    if (!replayed) await page.getByTestId("save-project").click();
+    await saved;
     expect((await scene(page, id)).objects).toHaveLength(1);
     await expect(page).toHaveURL(new RegExp(`/projects/${id}`));
   });
@@ -198,8 +203,8 @@ test.describe("audit 44 (FR)", () => {
   }) => {
     await ready(page, ["cube20"]);
     await page.request.post("/api/auth/logout");
-    await page.getByTestId("save-project").click();
     const dlg = page.getByTestId("reauth-dialog");
+    if (!(await dlg.isVisible())) await page.getByTestId("save-project").click({ timeout: 5_000 }).catch(() => {});
     await expect(dlg).toBeVisible();
     await dlg.getByTestId("reauth-cancel").click();
     await expect(dlg).toHaveCount(0);

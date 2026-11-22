@@ -34,7 +34,13 @@ export function loadOrcaCatalog(): Promise<OrcaCatalog> {
 // Messages du moteur / du worker absents du .po d'Orca (préfixes de causes).
 const EXTRA: OrcaCatalog = {
 	'Failed loading the input model': 'Échec du chargement du modèle',
-	'Failed loading the input model:': 'Échec du chargement du modèle :'
+	'Failed loading the input model:': 'Échec du chargement du modèle :',
+	// Audit 46 GCHK-a : notice `gcode_check` « trajet hors du plateau »
+	// (msgstr d'OrcaSlicer_fr.po:5901, absent du catalogue généré).
+	'A G-code path goes beyond the plate boundaries.':
+		'Un chemin du G-code va au-delà de la limite du plateau.',
+	'A G-code path goes beyond the max print height.':
+		'Un chemin du G-code dépasse la hauteur d’impression maximale.'
 };
 
 // Spécificateurs de format : boost (%1%) et printf (%s, %d, %.2f, %ld…).

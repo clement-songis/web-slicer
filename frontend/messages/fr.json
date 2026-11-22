@@ -2469,5 +2469,14 @@
 	"u_p47b_right_nozzle": "buse droite",
 	"u_p47b_tool_n": "Outil {n}",
 	"u_p47b_open_wiki": "Ouvrir le wiki pour plus d'informations.",
-	"u_p47b_print_blocked": "Export et impression indisponibles tant que ce problème n'est pas corrigé."
+	"u_p47b_print_blocked": "Export et impression indisponibles tant que ce problème n'est pas corrigé.",
+	"u_p48_plate_boundary": "Un chemin du G-code va au-delà de la limite du plateau.",
+	"u_p48_overhangs_only": "Uniquement sur les surplombs mis en évidence",
+	"u_p48_highlight_overhang": "Mettre en surbrillance les zones en surplomb",
+	"u_p48_overhangs_only_tip": "Permet de peindre uniquement sur les facettes sélectionnées par : \"{name}\"",
+	"u_p48_highlight_tip": "Mettre en surbrillance les faces en fonction de l'angle de surplomb.",
+	"u_p48_auto_threshold": "Angle de seuil de support automatique : {n}",
+	"u_p48_no_auto_support": "Pas de support auto",
+	"u_p48_plate_height": "Un chemin du G-code dépasse la hauteur d’impression maximale.",
+	"u_p48_export_sliced_sd": "Exporter le fichier tranché du plateau (.gcode.3mf) pour une carte microSD"
 }
