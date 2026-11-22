@@ -1497,6 +1497,37 @@ mod tests {
     }
 
     #[test]
+    fn plate_settings_skip_invalid_other_layers_sequence_but_keep_the_rest() {
+        // Audit 49 PLATE49-a (volet serveur) : une valeur de plages « autres
+        // couches » invalide (plage vide sérialisée par un vieux client, ex.
+        // entrée vide dans la liste d'entiers) ne doit pas faire perdre les
+        // autres réglages du plateau — Orca ignore les plages non remplies
+        // (OtherLayersSeqPanel ne lit que les contrôles remplis) ; le stockage
+        // PUT est verbatim, ce test fixe le comportement au tranchage.
+        let resolved = json!({ "print_sequence": "by layer", "layer_height": 0.2 });
+        let scene = json!({ "plates": { "plates": [
+            { "id": "a", "objectIds": [],
+              "settings": { "print_sequence": "by object",
+                            "first_layer_print_sequence": "2,1",
+                            "other_layers_print_sequence": "2,4,2,1,,2147483646,2,1",
+                            "other_layers_sequence_choice": "Customize",
+                            "curr_bed_type": "Engineering Plate" } }
+        ] } });
+        let a = super::with_plate_settings(&resolved, &scene, 0);
+        assert_eq!(a["print_sequence"], json!("by object"));
+        assert_eq!(a["first_layer_print_sequence"], json!([2, 1]));
+        assert_eq!(a["other_layers_sequence_choice"], json!("Customize"));
+        assert_eq!(a["curr_bed_type"], json!("Engineering Plate"));
+        // L'entrée vide de la plage non remplie est écartée par le parse
+        // (comme la désérialisation d'entiers d'Orca), les autres valeurs
+        // de la liste sont conservées : la clé ne fait perdre rien d'autre.
+        assert_eq!(
+            a["other_layers_print_sequence"],
+            json!([2, 4, 2, 1, 2147483646, 2, 1])
+        );
+    }
+
+    #[test]
     fn plate_type_sets_the_sliced_bed_type_unless_overridden_or_default() {
         let resolved = json!({ "curr_bed_type": "Cool Plate", "layer_height": 0.2 });
         let scene = json!({ "plates": { "plates": [

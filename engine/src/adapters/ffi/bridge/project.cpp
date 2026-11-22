@@ -963,13 +963,30 @@ void write_gcode_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
     }
 
     // Vignettes par plateau (Plater::priv::export_3mf → thumbnail_data, une
-    // entrée par plateau ; store_bbs_3mf écrit plate_<n>.png + _small).
+    // entrée par plateau ; store_bbs_3mf écrit plate_<n>.png + _small à
+    // l'index du plateau). Audit 49 X1C49-a : un .gcode.3mf d'un seul
+    // plateau n'emporte QUE la vignette de ce plateau — le vecteur reste
+    // dense (une entrée par plateau, invalides ailleurs) pour que le nom
+    // plate_<n>.png reste aligné sur l'index du plateau (une vignette par
+    // plateau dont le G-code est inclus, comme Orca exporte le plateau
+    // courant ; _rels ne référence que Metadata/plate_<n+1>.png).
     std::vector<ThumbnailData> thumbnails;
     thumbnails.reserve(plates.size());
     bool any_thumbnail = false;
     for (const RawPlateGcode &raw : plates) {
         thumbnails.push_back(thumbnail_from_png(raw.thumbnail_png));
         any_thumbnail |= thumbnails.back().is_valid();
+    }
+    if (export_plate_idx >= 0) {
+        for (size_t i = 0; i < thumbnails.size(); ++i) {
+            if (thumbnails[i].is_valid() && static_cast<int>(i) != export_plate_idx) {
+                thumbnails[i] = ThumbnailData();
+                // La vignette du plateau exporté seule suffit.
+            }
+        }
+        any_thumbnail = false;
+        for (const ThumbnailData &thumbnail : thumbnails)
+            any_thumbnail |= thumbnail.is_valid();
     }
 
     const std::string out(out_path);
@@ -985,11 +1002,16 @@ void write_gcode_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
     if (any_thumbnail)
         for (ThumbnailData &thumbnail : thumbnails)
             params.thumbnail_data.push_back(&thumbnail);
-    // plate_<n>.json seulement pour les plateaux valides (comme la GUI :
-    // _add_bbox_file_to_archive si id_bboxes[index]->is_valid()).
+    // Audit 49 X1C49-a : id_bboxes DENSE, une entrée par plateau comme la
+    // GUI (Plater::export_3mf : store_params.id_bboxes = plate_bboxes) —
+    // store_bbs_3mf nomme Metadata/plate_<index+1>.json d'après la POSITION
+    // dans le vecteur et n'écrit que les entrées valides (plateaux exportés).
+    // Compacter aux seules valides renommait la fiche du plateau 2 en
+    // plate_1.json (audit x1c49b) ; denser garde l'alignement plateau ↔
+    // fichier, avec plate_<n>.json seulement pour les plateaux tranchés
+    // dont le G-code est inclus.
     for (PlateBBoxData &bbox : plate_bboxes)
-        if (bbox.is_valid())
-            params.id_bboxes.push_back(&bbox);
+        params.id_bboxes.push_back(&bbox);
     if (!store_bbs_3mf(params))
         throw std::runtime_error("échec d'écriture du .gcode.3mf : " + out);
 }

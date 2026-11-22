@@ -12,7 +12,9 @@ use std::collections::BTreeMap;
 use std::io::Read;
 use std::path::{Path, PathBuf};
 
-use engine::adapters::ffi::{read_project_3mf, write_gcode_3mf, PlateGcode};
+use engine::adapters::ffi::{
+    read_project_3mf, write_gcode_3mf, write_gcode_3mf_with_settings, Gcode3mfExtras, PlateGcode,
+};
 use regex::Regex;
 
 fn fixtures() -> PathBuf {
@@ -115,7 +117,27 @@ fn single_plate_sliced_file_embeds_only_that_plate() {
     });
     let dir = tempfile::tempdir().unwrap();
     let out = dir.path().join("p2.gcode.3mf");
-    write_gcode_3mf(&model, &config, &gcodes, Some(1), &out).unwrap();
+    // Audit 49 X1C49-a : vignettes des deux plateaux en entrée — le fichier
+    // exporté (plateau 2 seul) ne doit emporter que la vignette et la fiche
+    // Metadata/plate_2.{png,json} de CE plateau (une par plateau dont le
+    // G-code est inclus), pas celles du plateau 1 exclu.
+    let thumbnails = [
+        std::fs::read(fixtures().join("plate_1.png")).unwrap(),
+        std::fs::read(fixtures().join("plate_2.png")).unwrap(),
+    ];
+    write_gcode_3mf_with_settings(
+        &model,
+        &config,
+        &gcodes,
+        &[],
+        Some(1),
+        Gcode3mfExtras {
+            thumbnails: &thumbnails,
+            ..Gcode3mfExtras::default()
+        },
+        &out,
+    )
+    .unwrap();
     let ours = entries(&out);
     let orca = entries(&fixtures().join("two_plates.orca.gcode.3mf"));
     assert!(!ours.contains_key("Metadata/plate_1.gcode"));
@@ -123,7 +145,72 @@ fn single_plate_sliced_file_embeds_only_that_plate() {
         ours.get("Metadata/plate_2.gcode"),
         orca.get("Metadata/plate_2.gcode")
     );
+    // Vignettes : uniquement celles du plateau exporté (index aligné).
+    assert!(
+        !ours.contains_key("Metadata/plate_1.png"),
+        "vignette du plateau exclu : {:?}",
+        ours.keys().collect::<Vec<_>>()
+    );
+    assert!(!ours.contains_key("Metadata/plate_1_small.png"));
+    assert!(ours.contains_key("Metadata/plate_2.png"));
+    assert!(ours.contains_key("Metadata/plate_2_small.png"));
+    // Fiches plate_<n>.json : uniquement celle du plateau exporté, SOUS SON
+    // PROPRE NUMÉRO (le défaut d'audit compactait id_bboxes → la fiche du
+    // plateau 2 était écrite en Metadata/plate_1.json).
+    assert!(
+        !ours.contains_key("Metadata/plate_1.json"),
+        "fiche du plateau exclu : {:?}",
+        ours.keys().collect::<Vec<_>>()
+    );
+    let plate2 = ours["Metadata/plate_2.json"].clone();
+    let text = String::from_utf8_lossy(&plate2).to_string();
+    assert!(text.contains("cylinder"), "fiche du plateau 2 : {text}");
+    assert!(!text.contains("cube20"), "fiche du plateau 2 : {text}");
     let info = slice_info(&ours["Metadata/slice_info.config"]);
     assert_eq!(info.len(), 1, "{info:?}");
     assert_eq!(info[0], slice_info(&orca["Metadata/slice_info.config"])[1]);
+}
+
+#[test]
+fn all_plates_sliced_file_keeps_thumbnails_aligned_by_plate() {
+    // Audit 49 X1C49-a (export de tous les plateaux) : vignettes denses, une
+    // par plateau, plate_<n>.png alignée sur l'index (la vignette du plateau 1
+    // reste plate_1.png même si un plateau non tranché la précède).
+    let (model, config) = two_plate_model();
+    let gcodes = [1u32, 2].map(|n| PlateGcode {
+        plate_index: n - 1,
+        gcode_path: fixtures().join(format!("plate_{n}.orca.gcode")),
+    });
+    let thumbnails = [
+        std::fs::read(fixtures().join("plate_1.png")).unwrap(),
+        std::fs::read(fixtures().join("plate_2.png")).unwrap(),
+    ];
+    let dir = tempfile::tempdir().unwrap();
+    let out = dir.path().join("all_thumbs.gcode.3mf");
+    write_gcode_3mf_with_settings(
+        &model,
+        &config,
+        &gcodes,
+        &[],
+        None,
+        Gcode3mfExtras {
+            thumbnails: &thumbnails,
+            ..Gcode3mfExtras::default()
+        },
+        &out,
+    )
+    .unwrap();
+    let ours = entries(&out);
+    assert_eq!(
+        ours.get("Metadata/plate_1.png").map(Vec::as_slice),
+        Some(thumbnails[0].as_slice()),
+        "plate_1.png doit être la vignette du plateau 1"
+    );
+    assert_eq!(
+        ours.get("Metadata/plate_2.png").map(Vec::as_slice),
+        Some(thumbnails[1].as_slice()),
+        "plate_2.png doit être la vignette du plateau 2"
+    );
+    assert!(ours.contains_key("Metadata/plate_1.json"));
+    assert!(ours.contains_key("Metadata/plate_2.json"));
 }
