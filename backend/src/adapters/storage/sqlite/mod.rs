@@ -41,6 +41,8 @@ pub struct SqliteStorage {
     instance: SqliteInstanceRepo,
     pa_calibrations: pa_calib::SqlitePaCalibrationRepo,
     printer_uploads: uploads::SqlitePrinterUploadRepo,
+    /// Lot 46 : chemins de fichiers relatifs au répertoire de données.
+    paths: super::paths::DataPaths,
 }
 
 impl SqliteStorage {
@@ -71,15 +73,64 @@ impl SqliteStorage {
         self.users.pool()
     }
 
+    /// Codec des chemins de fichiers (racine fixée par `AnyStorage::set_data_root`).
+    pub fn data_paths(&self) -> &super::paths::DataPaths {
+        &self.paths
+    }
+
+    /// Lot 46 (OLD-a) : réécrit en relatif (`users/<uid>/…`) les chemins
+    /// absolus stockés, relocalisés depuis un ancien répertoire de données
+    /// quand le fichier existe sous la racine courante. Idempotent ; renvoie
+    /// le nombre de valeurs réécrites.
+    pub async fn relativize_paths(&self) -> StorageResult<u64> {
+        let pool = self.users.pool();
+        let mut changed = 0u64;
+        for (table, column) in super::paths::PATH_COLUMNS {
+            // Noms de table / colonne : constantes de PATH_COLUMNS.
+            let rows: Vec<(String, String)> = sqlx::query_as(sqlx::AssertSqlSafe(format!(
+                "SELECT id, {column} FROM {table} WHERE {column} LIKE '/%'"
+            )))
+            .fetch_all(&pool)
+            .await
+            .map_err(map_sqlx)?;
+            let updates: Vec<(String, String)> = rows
+                .into_iter()
+                .filter_map(|(id, old)| {
+                    let new = self.paths.encode(&old);
+                    (new != old).then_some((id, new))
+                })
+                .collect();
+            if updates.is_empty() {
+                continue;
+            }
+            let mut tx = begin_write(&pool).await.map_err(map_sqlx)?;
+            for (id, new) in &updates {
+                sqlx::query(sqlx::AssertSqlSafe(format!(
+                    "UPDATE {table} SET {column} = ? WHERE id = ?"
+                )))
+                .bind(new)
+                .bind(id)
+                .execute(&mut *tx)
+                .await
+                .map_err(map_sqlx)?;
+            }
+            tx.commit().await.map_err(map_sqlx)?;
+            changed += updates.len() as u64;
+        }
+        Ok(changed)
+    }
+
     fn from_pool(pool: SqlitePool) -> Self {
+        let paths = super::paths::DataPaths::default();
         Self {
+            paths: paths.clone(),
             users: SqliteUserRepo::new(pool.clone()),
-            projects: SqliteProjectRepo::new(pool.clone()),
-            models: Arc::new(SqliteModelRepo::new(pool.clone())),
+            projects: SqliteProjectRepo::with_paths(pool.clone(), paths.clone()),
+            models: Arc::new(SqliteModelRepo::with_paths(pool.clone(), paths.clone())),
             presets: SqlitePresetRepo::new(pool.clone()),
             printers: SqlitePrinterRepo::new(pool.clone()),
             jobs: SqliteJobRepo::new(pool.clone()),
-            gcodes: SqliteGcodeRepo::new(pool.clone()),
+            gcodes: SqliteGcodeRepo::with_paths(pool.clone(), paths),
             pa_calibrations: pa_calib::SqlitePaCalibrationRepo::new(pool.clone()),
             printer_uploads: uploads::SqlitePrinterUploadRepo::new(pool.clone()),
             instance: SqliteInstanceRepo::new(pool),

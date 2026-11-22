@@ -24,6 +24,17 @@ pub async fn build_app(database_url: &str, data_dir: PathBuf) -> anyhow::Result<
     let storage = AnyStorage::connect(database_url)
         .await
         .map_err(|e| anyhow::anyhow!("stockage : {e}"))?;
+    // Lot 46 (audit 44 OLD-a) : chemins de fichiers relatifs au répertoire de
+    // données ; anciens chemins absolus (répertoire déplacé) rattrapés.
+    let data_dir = std::path::absolute(&data_dir).unwrap_or(data_dir);
+    match storage.set_data_root(&data_dir).await {
+        Ok(0) => {}
+        Ok(n) => tracing::info!(
+            rewritten = n,
+            "chemins de fichiers rendus relatifs (lot 46)"
+        ),
+        Err(e) => tracing::warn!(error = %e, "rattrapage des chemins de fichiers"),
+    }
 
     let profiles_dir = default_profiles_dir();
     seed_presets_if_empty(&storage, &profiles_dir).await?;

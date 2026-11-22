@@ -141,8 +141,13 @@ impl SliceRunner {
             job.id,
             &gcode_text,
             result.output_filename.clone(),
+            result.conflict.as_ref(),
         )
         .await?;
+        if let Some(conflict) = &result.conflict {
+            // GUI d'Orca : avertissement grave non bloquant (CLI : −101).
+            tracing::warn!(job = %job.id, message = %conflict.message(), "conflit de trajets G-code");
+        }
 
         Ok((gcode.stats, gcode.id))
     }

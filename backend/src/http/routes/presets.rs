@@ -867,13 +867,30 @@ pub async fn create_options(
 
 /// `POST /api/presets/import` — importe un profil JSON Orca, clés legacy
 /// converties (FR-023), stocké comme preset utilisateur.
+///
+/// Lot 46 (audit 44 PR1-a) : comme `PresetBundle::import_json_presets`, le
+/// type suit `*_settings_id` (sinon `kind`), seules les clés du type sont
+/// gardées (`Preset::remove_invalid_keys`), au format texte d'Orca, et seules
+/// les différences avec le parent (`inherits`) sont stockées.
 pub async fn import(
     CurrentUser(user): CurrentUser,
     State(state): State<AppState>,
     Json(body): Json<ImportPresetRequest>,
 ) -> ApiResult<(StatusCode, Json<PresetDetail>)> {
-    let kind = parse_kind(&body.kind)?;
-    let values = convert_legacy(&body.values);
+    let declared = parse_kind(&body.kind)?;
+    let input = match &body.values {
+        Value::Object(m) => m.clone(),
+        _ => Map::new(),
+    };
+    let kind = super::preset_bundle::detect_kind(declared, &input);
+    let values = super::preset_bundle::import_values(
+        &state,
+        user.id,
+        kind,
+        body.inherits.as_deref(),
+        &input,
+    )
+    .await?;
     let preset = new_user_preset(
         user.id,
         kind,
@@ -889,7 +906,9 @@ pub async fn import(
     Ok((StatusCode::CREATED, Json(created.into())))
 }
 
-/// `GET /api/presets/{id}/export` — profil au format JSON Orca.
+/// `GET /api/presets/{id}/export` — profil au format de fichier de preset
+/// Orca (lot 46 : `Preset::save` — clés du type, différences avec l'ancêtre
+/// système, `from`/`version`/`inherits`).
 pub async fn export(
     CurrentUser(user): CurrentUser,
     State(state): State<AppState>,
@@ -897,30 +916,11 @@ pub async fn export(
 ) -> ApiResult<Json<Value>> {
     let id = parse_preset_id(&id)?;
     let preset = load_visible(&state, user.id, id).await?;
-    let mut out = Map::new();
-    out.insert("type".into(), Value::String(kind_str(preset.kind).into()));
-    out.insert("name".into(), Value::String(preset.name));
-    if let Some(parent) = preset.inherits {
-        out.insert("inherits".into(), Value::String(parent));
-    }
-    if let Value::Object(values) = preset.values {
-        for (k, v) in values {
-            out.insert(k, v);
-        }
-    }
-    Ok(Json(Value::Object(out)))
+    let file = super::preset_bundle::orca_preset_file(&state, user.id, &preset, None).await?;
+    Ok(Json(Value::Object(file)))
 }
 
 // --- Aides -------------------------------------------------------------------
-
-fn kind_str(kind: PresetKind) -> &'static str {
-    match kind {
-        PresetKind::MachineModel => "machine_model",
-        PresetKind::Machine => "machine",
-        PresetKind::Filament => "filament",
-        PresetKind::Process => "process",
-    }
-}
 
 fn new_user_preset(
     user: UserId,
@@ -958,10 +958,7 @@ fn new_user_preset(
 /// Convertit les clés/valeurs legacy d'un profil Orca (FR-023). Les clés méta
 /// sont ignorées ; les clés inconnues du registre sont abandonnées comme le
 /// fait `handle_legacy`.
-fn convert_legacy(values: &Value) -> Map<String, Value> {
-    let Value::Object(input) = values else {
-        return Map::new();
-    };
+pub(crate) fn convert_legacy_values(input: &Map<String, Value>) -> Map<String, Value> {
     let mut out = Map::new();
     for (key, value) in input {
         if META_FIELDS.contains(&key.as_str()) {
@@ -1023,6 +1020,20 @@ pub(crate) async fn load_chain(
     user: UserId,
     leaf: &Preset,
 ) -> ApiResult<Vec<RawPreset>> {
+    Ok(load_chain_presets(state, user, leaf)
+        .await?
+        .iter()
+        .map(to_raw)
+        .collect())
+}
+
+/// Chaîne racine → feuille sous forme de presets (origine conservée : le lot
+/// de préréglages exporte relativement à l'ancêtre système le plus proche).
+pub(crate) async fn load_chain_presets(
+    state: &AppState,
+    user: UserId,
+    leaf: &Preset,
+) -> ApiResult<Vec<Preset>> {
     let repo = state.storage.presets();
     let mut chain = Vec::new();
     let mut seen: HashSet<String> = HashSet::new();
@@ -1031,7 +1042,7 @@ pub(crate) async fn load_chain(
         if !seen.insert(current.id.to_string()) {
             break; // cycle
         }
-        chain.push(to_raw(&current));
+        chain.push(current.clone());
         let Some(parent) = current.inherits.clone() else {
             break;
         };
@@ -1088,6 +1099,9 @@ fn to_raw(p: &Preset) -> RawPreset {
         name: p.name.clone(),
         inherits: p.inherits.clone(),
         values: match &p.values {
+            // Pas de filtrage par type ici (lot 46) : le process importé d'un
+            // 3MF porte aussi les valeurs machine / projet du fichier (process
+            // aplati, cf. projects::import_project_presets).
             Value::Object(m) => m.clone(),
             _ => Map::new(),
         },

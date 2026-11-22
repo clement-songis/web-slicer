@@ -9,6 +9,7 @@ use sqlx::{Row, SqliteConnection, SqlitePool};
 
 use crate::domain::*;
 
+use super::super::paths::DataPaths;
 use super::super::{collect_uuid_strings, json_references_id};
 use super::{
     begin_write, enum_str, id_str, json_text, map_sqlx, now, parse_enum, parse_id, parse_json,
@@ -296,10 +297,15 @@ impl UserRepo for SqliteUserRepo {
 
 pub(crate) struct SqliteProjectRepo {
     pool: SqlitePool,
+    paths: DataPaths,
 }
 impl SqliteProjectRepo {
+    #[allow(dead_code)]
     pub(crate) fn new(pool: SqlitePool) -> Self {
-        Self { pool }
+        Self::with_paths(pool, DataPaths::default())
+    }
+    pub(crate) fn with_paths(pool: SqlitePool, paths: DataPaths) -> Self {
+        Self { pool, paths }
     }
 }
 
@@ -316,7 +322,7 @@ impl ProjectRepo for SqliteProjectRepo {
         .bind(id_str(id))
         .bind(id_str(owner))
         .bind(&project.name)
-        .bind(&project.thumbnail_path)
+        .bind(self.paths.encode_opt(project.thumbnail_path.as_deref()))
         .bind(json_text(&project.scene))
         .bind(json_text(&project.active_presets))
         .bind(&ts)
@@ -335,7 +341,7 @@ impl ProjectRepo for SqliteProjectRepo {
             .await
             .map_err(map_sqlx)?
             .ok_or(StorageError::NotFound)?;
-        row_to_project(&row)
+        self.paths.project(row_to_project(&row))
     }
 
     async fn list(&self, owner: UserId) -> StorageResult<Vec<Project>> {
@@ -344,7 +350,9 @@ impl ProjectRepo for SqliteProjectRepo {
             .fetch_all(&self.pool)
             .await
             .map_err(map_sqlx)?;
-        rows.iter().map(row_to_project).collect()
+        rows.iter()
+            .map(|r| self.paths.project(row_to_project(r)))
+            .collect()
     }
 
     async fn update(
@@ -363,7 +371,7 @@ impl ProjectRepo for SqliteProjectRepo {
         )
         .bind(json_text(&scene))
         .bind(json_text(&active_presets))
-        .bind(&thumbnail_path)
+        .bind(self.paths.encode_opt(thumbnail_path.as_deref()))
         .bind(now())
         .bind(id_str(id))
         .bind(id_str(owner))
@@ -373,7 +381,7 @@ impl ProjectRepo for SqliteProjectRepo {
         .map_err(map_sqlx)?;
 
         match row {
-            Some(r) => row_to_project(&r),
+            Some(r) => self.paths.project(row_to_project(&r)),
             None => {
                 // Distingue « introuvable » de « version périmée ».
                 let current = self.get(owner, id).await?;
@@ -397,7 +405,7 @@ impl ProjectRepo for SqliteProjectRepo {
         .await
         .map_err(map_sqlx)?
         .ok_or(StorageError::NotFound)?;
-        row_to_project(&row)
+        self.paths.project(row_to_project(&row))
     }
 
     async fn delete(&self, owner: UserId, id: ProjectId) -> StorageResult<()> {
@@ -419,10 +427,15 @@ impl ProjectRepo for SqliteProjectRepo {
 
 pub(crate) struct SqliteModelRepo {
     pool: SqlitePool,
+    paths: DataPaths,
 }
 impl SqliteModelRepo {
+    #[allow(dead_code)]
     pub(crate) fn new(pool: SqlitePool) -> Self {
-        Self { pool }
+        Self::with_paths(pool, DataPaths::default())
+    }
+    pub(crate) fn with_paths(pool: SqlitePool, paths: DataPaths) -> Self {
+        Self { pool, paths }
     }
 }
 
@@ -440,8 +453,8 @@ impl ModelRepo for SqliteModelRepo {
         .bind(model.project_id.map(id_str))
         .bind(&model.filename)
         .bind(enum_str(&model.format))
-        .bind(&model.file_path)
-        .bind(&model.mesh_path)
+        .bind(self.paths.encode(&model.file_path))
+        .bind(self.paths.encode_opt(model.mesh_path.as_deref()))
         .bind(model.size_bytes)
         .bind(model.triangle_count)
         .bind(model.repair_report.as_ref().map(json_text))
@@ -459,7 +472,7 @@ impl ModelRepo for SqliteModelRepo {
             .await
             .map_err(map_sqlx)?
             .ok_or(StorageError::NotFound)?;
-        row_to_model(&row)
+        self.paths.model(row_to_model(&row))
     }
 
     async fn list(&self, owner: UserId, project: Option<ProjectId>) -> StorageResult<Vec<Model>> {
@@ -479,7 +492,9 @@ impl ModelRepo for SqliteModelRepo {
             }
         }
         .map_err(map_sqlx)?;
-        rows.iter().map(row_to_model).collect()
+        rows.iter()
+            .map(|r| self.paths.model(row_to_model(r)))
+            .collect()
     }
 
     async fn delete(&self, owner: UserId, id: ModelId) -> StorageResult<()> {
@@ -507,7 +522,7 @@ impl ModelRepo for SqliteModelRepo {
             "UPDATE models SET mesh_path = ?, triangle_count = ?, conversion_error = NULL \
              WHERE id = ? AND user_id = ?",
         )
-        .bind(mesh_path)
+        .bind(self.paths.encode(mesh_path))
         .bind(triangle_count)
         .bind(id_str(id))
         .bind(id_str(owner))
@@ -553,7 +568,7 @@ impl ModelRepo for SqliteModelRepo {
             "UPDATE models SET mesh_path = ?, triangle_count = ?, repair_report = ?, ",
             "conversion_error = NULL WHERE id = ? AND user_id = ?"
         ))
-        .bind(mesh_path)
+        .bind(self.paths.encode(mesh_path))
         .bind(triangle_count)
         .bind(json_text(&repair_report))
         .bind(id_str(id))
@@ -1234,10 +1249,15 @@ impl JobRepo for SqliteJobRepo {
 
 pub(crate) struct SqliteGcodeRepo {
     pool: SqlitePool,
+    paths: DataPaths,
 }
 impl SqliteGcodeRepo {
+    #[allow(dead_code)]
     pub(crate) fn new(pool: SqlitePool) -> Self {
-        Self { pool }
+        Self::with_paths(pool, DataPaths::default())
+    }
+    pub(crate) fn with_paths(pool: SqlitePool, paths: DataPaths) -> Self {
+        Self { pool, paths }
     }
 }
 
@@ -1252,8 +1272,8 @@ impl GcodeRepo for SqliteGcodeRepo {
         .bind(id_str(id))
         .bind(id_str(owner))
         .bind(id_str(gcode.job_id))
-        .bind(&gcode.file_path)
-        .bind(&gcode.preview_path)
+        .bind(self.paths.encode(&gcode.file_path))
+        .bind(self.paths.encode(&gcode.preview_path))
         .bind(json_text(&gcode.stats))
         .bind(json_text(&gcode.thumbnails))
         .execute(&self.pool)
@@ -1270,7 +1290,7 @@ impl GcodeRepo for SqliteGcodeRepo {
             .await
             .map_err(map_sqlx)?
             .ok_or(StorageError::NotFound)?;
-        row_to_gcode(&row)
+        self.paths.gcode(row_to_gcode(&row))
     }
 
     async fn delete(&self, owner: UserId, id: GcodeId) -> StorageResult<()> {

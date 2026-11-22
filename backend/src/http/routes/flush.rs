@@ -201,16 +201,69 @@ pub(crate) async fn complete_flush_matrix(
     config
         .0
         .insert("flush_volumes_matrix".into(), ConfigValue::Floats(matrix));
+    // Lot 46 (audit 44 X-d-bis) : sans valeur du projet ni du preset, le
+    // multiplicateur est le défaut d'Orca (`flush_multiplier` = [0.3],
+    // PrintConfig.cpp:6849 ; project_config d'Orca) — il valait 1 ici, et la
+    // CLI / Orca purgeait 3,3 × plus que l'aperçu web. Seules les buses
+    // supplémentaires sont complétées à 1 (cli_update_flush_volumes,
+    // Plater.cpp:16786 `resize(nozzle_nums, 1.f)`).
+    complete_flush_multiplier(config, nozzles);
+    Ok(())
+}
+
+/// `flush_multiplier` écrit à côté de la matrice brute : valeur du projet /
+/// preset, sinon le défaut du registre (Orca : [0.3]) ; une entrée par buse,
+/// les buses manquantes complétées à 1 comme Orca.
+pub(crate) fn complete_flush_multiplier(
+    config: &mut engine::api::DynamicPrintConfig,
+    nozzles: usize,
+) {
+    use engine::api::ConfigValue;
     let mut multipliers = match config.get("flush_multiplier") {
-        Some(ConfigValue::Floats(v)) => v.clone(),
-        _ => Vec::new(),
+        Some(ConfigValue::Floats(v)) if !v.is_empty() => v.clone(),
+        _ => engine::params::get("flush_multiplier")
+            .and_then(|def| def.default_json)
+            .and_then(|json| serde_json::from_str::<Vec<f64>>(json).ok())
+            .filter(|v| !v.is_empty())
+            .unwrap_or_else(|| vec![0.3]),
     };
-    if multipliers.len() != nozzles {
-        // cli_update_flush_volumes : complété à 1 par buse.
-        multipliers.resize(nozzles, 1.0);
+    multipliers.resize(nozzles.max(1), 1.0);
+    config
+        .0
+        .insert("flush_multiplier".into(), ConfigValue::Floats(multipliers));
+}
+
+#[cfg(test)]
+mod lot46_tests {
+    use super::complete_flush_multiplier;
+    use engine::api::{ConfigValue, DynamicPrintConfig};
+
+    #[test]
+    fn missing_multiplier_takes_orca_default_not_one() {
+        let mut config = DynamicPrintConfig::new();
+        complete_flush_multiplier(&mut config, 1);
+        assert_eq!(
+            config.get("flush_multiplier"),
+            Some(&ConfigValue::Floats(vec![0.3]))
+        );
+        let mut two = DynamicPrintConfig::new();
+        complete_flush_multiplier(&mut two, 2);
+        assert_eq!(
+            two.get("flush_multiplier"),
+            Some(&ConfigValue::Floats(vec![0.3, 1.0]))
+        );
+    }
+
+    #[test]
+    fn project_multiplier_is_kept() {
+        let mut config = DynamicPrintConfig::new();
         config
             .0
-            .insert("flush_multiplier".into(), ConfigValue::Floats(multipliers));
+            .insert("flush_multiplier".into(), ConfigValue::Floats(vec![0.5]));
+        complete_flush_multiplier(&mut config, 1);
+        assert_eq!(
+            config.get("flush_multiplier"),
+            Some(&ConfigValue::Floats(vec![0.5]))
+        );
     }
-    Ok(())
 }

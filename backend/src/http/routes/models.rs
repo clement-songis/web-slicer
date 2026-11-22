@@ -141,6 +141,32 @@ pub(crate) async fn write_model_record(
     Ok(model)
 }
 
+/// Lot 46 (audit 44 OLD-a) : fichier d'un modèle absent du magasin (données
+/// déplacées / perdues) → 409 lisible (`details.reason` = `model_file_missing`)
+/// au lieu d'un 500 « Erreur interne ».
+pub(crate) fn missing_model_file(
+    e: crate::adapters::files::FilesError,
+    model: &Model,
+    context: &str,
+) -> ApiError {
+    let missing = matches!(&e, crate::adapters::files::FilesError::Io(io) if io.kind() == std::io::ErrorKind::NotFound);
+    tracing::error!(error = %e, model = %model.id, "{context}");
+    if !missing {
+        return ApiError::internal();
+    }
+    ApiError::conflict_with(
+        format!(
+            "Fichier du modèle « {} » introuvable sur le serveur",
+            model.filename
+        ),
+        serde_json::json!({
+            "reason": "model_file_missing",
+            "model": model.id.to_string(),
+            "filename": model.filename,
+        }),
+    )
+}
+
 /// Copie un modèle et tous ses artefacts sous de nouvelles clés. Le maillage
 /// prêt est copié directement ; l'état d'erreur est conservé. Un modèle encore
 /// en attente sera converti par l'appelant après remappage de la scène.
@@ -154,17 +180,16 @@ pub(crate) async fn clone_model_record(
         .files
         .read(FsPath::new(&source.file_path))
         .await
-        .map_err(|e| {
-            tracing::error!(error = %e, model = %source.id, "lecture du modèle à dupliquer");
-            ApiError::internal()
-        })?;
-    let mesh = match source.mesh_path.as_deref() {
-        Some(path) => Some(state.files.read(FsPath::new(path)).await.map_err(|e| {
-            tracing::error!(error = %e, model = %source.id, "lecture du maillage à dupliquer");
-            ApiError::internal()
-        })?),
-        None => None,
-    };
+        .map_err(|e| missing_model_file(e, source, "lecture du modèle à dupliquer"))?;
+    let mesh =
+        match source.mesh_path.as_deref() {
+            Some(path) => {
+                Some(state.files.read(FsPath::new(path)).await.map_err(|e| {
+                    missing_model_file(e, source, "lecture du maillage à dupliquer")
+                })?)
+            }
+            None => None,
+        };
 
     let storage_key = ModelId::new();
     let file_path = state

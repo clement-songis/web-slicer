@@ -39,6 +39,9 @@ pub struct PostgresStorage {
     instance: PgInstanceRepo,
     pa_calibrations: pa_calib::PgPaCalibrationRepo,
     printer_uploads: uploads::PgPrinterUploadRepo,
+    /// Lot 46 : chemins de fichiers relatifs au répertoire de données.
+    paths: super::paths::DataPaths,
+    pool: PgPool,
 }
 
 impl PostgresStorage {
@@ -88,15 +91,53 @@ impl PostgresStorage {
         self.users.pool()
     }
 
+    /// Codec des chemins de fichiers (racine fixée par `AnyStorage::set_data_root`).
+    pub fn data_paths(&self) -> &super::paths::DataPaths {
+        &self.paths
+    }
+
+    /// Lot 46 (OLD-a) : voir `SqliteStorage::relativize_paths`.
+    pub async fn relativize_paths(&self) -> StorageResult<u64> {
+        let mut changed = 0u64;
+        for (table, column) in super::paths::PATH_COLUMNS {
+            // Noms de table / colonne : constantes de PATH_COLUMNS.
+            let rows: Vec<(String, String)> = sqlx::query_as(sqlx::AssertSqlSafe(format!(
+                "SELECT id::text, {column} FROM {table} WHERE {column} LIKE '/%'"
+            )))
+            .fetch_all(&self.pool)
+            .await
+            .map_err(|e| crate::domain::StorageError::Backend(e.to_string()))?;
+            for (id, old) in rows {
+                let new = self.paths.encode(&old);
+                if new == old {
+                    continue;
+                }
+                sqlx::query(sqlx::AssertSqlSafe(format!(
+                    "UPDATE {table} SET {column} = $1 WHERE id::text = $2"
+                )))
+                .bind(&new)
+                .bind(&id)
+                .execute(&self.pool)
+                .await
+                .map_err(|e| crate::domain::StorageError::Backend(e.to_string()))?;
+                changed += 1;
+            }
+        }
+        Ok(changed)
+    }
+
     fn from_pool(pool: PgPool) -> Self {
+        let paths = super::paths::DataPaths::default();
         Self {
+            paths: paths.clone(),
+            pool: pool.clone(),
             users: PgUserRepo::new(pool.clone()),
-            projects: PgProjectRepo::new(pool.clone()),
-            models: Arc::new(PgModelRepo::new(pool.clone())),
+            projects: PgProjectRepo::with_paths(pool.clone(), paths.clone()),
+            models: Arc::new(PgModelRepo::with_paths(pool.clone(), paths.clone())),
             presets: PgPresetRepo::new(pool.clone()),
             printers: PgPrinterRepo::new(pool.clone()),
             jobs: PgJobRepo::new(pool.clone()),
-            gcodes: PgGcodeRepo::new(pool.clone()),
+            gcodes: PgGcodeRepo::with_paths(pool.clone(), paths),
             pa_calibrations: pa_calib::PgPaCalibrationRepo::new(pool.clone()),
             printer_uploads: uploads::PgPrinterUploadRepo::new(pool.clone()),
             instance: PgInstanceRepo::new(pool),

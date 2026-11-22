@@ -19,6 +19,7 @@ pub(crate) mod overrides;
 pub mod paint;
 pub mod placement;
 pub mod preferences;
+pub mod preset_bundle;
 pub mod presets;
 pub mod preview;
 pub mod printers;
@@ -261,6 +262,14 @@ where
         .route("/api/presets/{id}/detach", post(presets::detach))
         .route("/api/presets/{id}/export", get(presets::export))
         .route("/api/presets/import", post(presets::import))
+        .route(
+            "/api/presets/import-bundle",
+            post(preset_bundle::import_bundle).layer(DefaultBodyLimit::max(16 * 1024 * 1024)),
+        )
+        .route(
+            "/api/presets/export-bundle",
+            post(preset_bundle::export_bundle),
+        )
         .route("/api/presets/create-options", get(presets::create_options))
         .route("/api/printer-catalog", get(printers::catalog))
         .route("/api/printers", get(printers::list).post(printers::create))

@@ -1121,6 +1121,32 @@ static RawSliceResult run_print(const rust::Vec<RawObject> &objects, rust::Str c
         raw.output_filename = rust::String();
     }
 
+    // Lot 46 (audit 44 CONFL-a) : conflit de trajets (ConflictChecker en fin
+    // de Print::process). Couche comme l'affiche la GUI : GCodeViewer::load →
+    // libvgcode Layers::get_layer_id_at(z), même upper_bound et même
+    // comparateur, sur le z de chaque couche du résultat GCodeProcessor.
+    raw.has_conflict = false;
+    raw.conflict_height = 0.0;
+    raw.conflict_layer = -1;
+    if (const auto conflict = print.get_conflict_result(); conflict.has_value()) {
+        raw.has_conflict = true;
+        raw.conflict_object1 = rust::String(conflict->_objName1);
+        raw.conflict_object2 = rust::String(conflict->_objName2);
+        raw.conflict_height = conflict->_height;
+        std::vector<float> layer_z;
+        for (const auto &mv : result.moves) {
+            if (mv.type != Slic3r::EMoveType::Extrude || mv.layer_id == 0)
+                continue;
+            const size_t index = mv.layer_id - 1;
+            if (layer_z.size() <= index)
+                layer_z.resize(index + 1, mv.position.z());
+        }
+        const float z = static_cast<float>(conflict->_height);
+        const auto iter = std::upper_bound(layer_z.begin(), layer_z.end(), z,
+                                           [](float zz, float item) { return item < zz; });
+        raw.conflict_layer = static_cast<int64_t>(std::distance(layer_z.begin(), iter));
+    }
+
     return raw;
 }
 

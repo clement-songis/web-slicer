@@ -386,6 +386,10 @@ pub async fn upload_sliced(
         gcode_files.push((name, bytes));
     }
     let defaults: Vec<String> = gcode_files.iter().map(|(n, _)| n.clone()).collect();
+    let gcode_configs: Vec<_> = gcode_files
+        .iter()
+        .map(|(_, bytes)| crate::gcode_filename::config_block(&String::from_utf8_lossy(bytes)))
+        .collect();
     let names = planned_upload_names(&defaults, use_3mf, body.filename.as_deref())?;
     // (nom, octets, G-code du plateau) ; le .gcode.3mf groupé n'a pas de G-code unique.
     let mut uploads: Vec<(String, Vec<u8>, Option<crate::domain::GcodeId>)> =
@@ -403,6 +407,10 @@ pub async fn upload_sliced(
         );
     }
     let printer = state.storage.printers().get(user.id, printer_id).await?; // 404, SC-008
+                                                                            // Lot 46 (audit 44 DEV1-a) : G-code d'une autre imprimante refusé (409).
+    for config in &gcode_configs {
+        super::printers::ensure_printer_matches_gcode(&state, &printer, config).await?;
+    }
     let action = super::printers::post_upload_action(&printer, body.start_now, body.queue)?;
     let target = super::printers::UploadTarget::connect(&state, user.id, &printer).await?;
     let mut files = Vec::with_capacity(uploads.len());

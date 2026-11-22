@@ -151,6 +151,72 @@ async fn machine_preset_values(
     }
 }
 
+/// Lot 46 (audit 44 DEV1-a) : contrôle d'Orca à l'envoi
+/// (`SendToPrinterDialog` / `SelectMachineDialog`, statut
+/// `PrintStatusUnsupportedPrinter` : « The selected printer is incompatible
+/// with the chosen printer presets. », bouton Envoyer désactivé). Le modèle
+/// d'imprimante (`printer_model`) du G-code doit être celui du preset machine
+/// de l'imprimante cible ; sans modèle des deux côtés (imprimantes
+/// personnalisées), le nom du preset (`printer_settings_id`, ou un ancêtre
+/// `inherits`) doit correspondre. Modèle connu d'un seul côté, G-code sans
+/// bloc de config ou preset introuvable : envoi autorisé.
+pub(crate) async fn ensure_printer_matches_gcode(
+    state: &AppState,
+    printer: &Printer,
+    gcode_config: &std::collections::HashMap<String, String>,
+) -> ApiResult<()> {
+    let gcode_model = gcode_config
+        .get("printer_model")
+        .map(|s| s.trim().to_string())
+        .unwrap_or_default();
+    let gcode_preset = gcode_config
+        .get("printer_settings_id")
+        .map(|s| s.trim().to_string())
+        .unwrap_or_default();
+    if gcode_model.is_empty() && gcode_preset.is_empty() {
+        return Ok(());
+    }
+    let Ok(leaf) = state.storage.presets().get(printer.machine_preset_id).await else {
+        return Ok(());
+    };
+    let values = machine_preset_values(state, printer).await;
+    let target_model = values
+        .get("printer_model")
+        .and_then(Value::as_str)
+        .map(|s| s.trim().to_string())
+        .unwrap_or_default();
+    let compatible = if !gcode_model.is_empty() && !target_model.is_empty() {
+        gcode_model == target_model
+    } else if !gcode_model.is_empty() || !target_model.is_empty() {
+        // Modèle connu d'un seul côté (imprimante personnalisée sans
+        // `printer_model`) : rien de fiable à comparer, envoi autorisé.
+        true
+    } else {
+        // Imprimantes sans modèle : même preset (nom) ou preset hérité.
+        let chain = super::presets::load_chain(state, printer.user_id, &leaf)
+            .await
+            .unwrap_or_default();
+        gcode_preset.is_empty()
+            || leaf.name == gcode_preset
+            || chain.iter().any(|raw| raw.name == gcode_preset)
+    };
+    if compatible {
+        return Ok(());
+    }
+    Err(ApiError::conflict_with(
+        "L'imprimante choisie est incompatible avec les préréglages d'imprimante du G-code \
+         (The selected printer is incompatible with the chosen printer presets.)",
+        serde_json::json!({
+            "reason": "printer_incompatible",
+            "printer": printer.name,
+            "printer_preset": leaf.name,
+            "printer_model": target_model,
+            "gcode_printer_model": gcode_model,
+            "gcode_printer_settings_id": gcode_preset,
+        }),
+    ))
+}
+
 /// Réglages d'hôte comme Orca (PrintHost::get_print_host lit la config de
 /// l'imprimante physique + preset machine) : `host_options` explicites
 /// d'abord, sinon clés Orca du preset machine — printhost_port,
@@ -583,6 +649,14 @@ pub async fn upload(
     };
 
     let printer = state.storage.printers().get(user.id, id).await?; // 404, SC-008
+                                                                    // Lot 46 (audit 44 DEV1-a) : G-code d'une autre imprimante refusé (409).
+    let text = String::from_utf8_lossy(&bytes);
+    ensure_printer_matches_gcode(
+        &state,
+        &printer,
+        &crate::gcode_filename::config_block(&text),
+    )
+    .await?;
     let action = post_upload_action(&printer, body.start_now, body.queue.unwrap_or(false))?;
     let target = UploadTarget::connect(&state, user.id, &printer).await?;
     let response = target

@@ -54,6 +54,10 @@ pub struct GcodeStats {
     /// base = `engine::api::OUTPUT_FILENAME_BASE_TOKEN` (cf. gcode_filename).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub output_filename: Option<String>,
+    /// Lot 46 (audit 44 CONFL-a) : conflit de trajets d'Orca (avertissement
+    /// grave « Conflicts of G-code paths… »), avec son message.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub conflict: Option<serde_json::Value>,
 }
 
 /// Vignette embarquée dans le G-code (PNG encodé base64).
@@ -555,6 +559,18 @@ fn apply_code(code: &str, st: &mut PreviewState, layer: &mut PreviewLayer) {
     }
 }
 
+/// Forme JSON d'un conflit de trajets (`stats.conflict`, `warnings` de /validate).
+pub fn conflict_json(conflict: &engine::api::GcodeConflict) -> serde_json::Value {
+    serde_json::json!({
+        "object1": conflict.object1,
+        "object2": conflict.object2,
+        "height": conflict.height,
+        "layer": conflict.layer,
+        "level": "serious_warning",
+        "message": conflict.message(),
+    })
+}
+
 /// Matérialise le résultat d'un job : écrit le G-code via le magasin puis crée la
 /// ligne `gcodes` avec `stats`/`thumbnails` figés. Le fichier est nommé par une
 /// clé de stockage propre — `file_path` fait foi (comme pour les modèles).
@@ -565,7 +581,7 @@ pub async fn store_gcode(
     job_id: JobId,
     gcode_text: &str,
 ) -> anyhow::Result<Gcode> {
-    store_gcode_named(files, gcodes, owner, job_id, gcode_text, None).await
+    store_gcode_named(files, gcodes, owner, job_id, gcode_text, None, None).await
 }
 
 /// Comme [`store_gcode`], avec le nom d'export d'Orca calculé au tranchage.
@@ -576,9 +592,11 @@ pub async fn store_gcode_named(
     job_id: JobId,
     gcode_text: &str,
     output_filename: Option<String>,
+    conflict: Option<&engine::api::GcodeConflict>,
 ) -> anyhow::Result<Gcode> {
     let mut stats = parse_stats(gcode_text);
     stats.output_filename = output_filename;
+    stats.conflict = conflict.map(conflict_json);
     let thumbnails = extract_thumbnails(gcode_text);
 
     let storage_key = GcodeId::new();

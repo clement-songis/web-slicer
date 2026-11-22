@@ -208,6 +208,33 @@ pub struct SliceResult {
     pub output_filename: Option<String>,
     /// Vignettes PNG embarquées (chemins dans work_dir).
     pub thumbnails: Vec<PathBuf>,
+    /// Lot 46 (audit 44 CONFL-a) : conflit de trajets détecté par
+    /// `ConflictChecker` à la fin de `Print::process` (`Print::get_conflict_result`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub conflict: Option<GcodeConflict>,
+}
+
+/// Conflit de trajets G-code entre deux objets (`ConflictResult` d'Orca) :
+/// avertissement grave de la GUI (« Conflicts of G-code paths… »,
+/// GLCanvas3D.cpp:10078), refus de la CLI (code −101).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GcodeConflict {
+    pub object1: String,
+    pub object2: String,
+    /// Hauteur Z du conflit (mm).
+    pub height: f64,
+    /// Couche affichée par Orca (`Layers::get_layer_id_at(height)` du visualiseur).
+    pub layer: i64,
+}
+
+impl GcodeConflict {
+    /// Message d'Orca 2.4.1 (GLCanvas3D.cpp:10089, msgid anglais).
+    pub fn message(&self) -> String {
+        format!(
+            "Conflicts of G-code paths have been found at layer {}, Z = {:.2}mm. Please separate the conflicted objects farther ({} <-> {}).",
+            self.layer, self.height, self.object1, self.object2
+        )
+    }
 }
 
 /// Origine d'une entrée de validation : `StringExceptionType` d'Orca

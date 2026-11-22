@@ -26,7 +26,7 @@ pub use model::{
 };
 pub use presets::{ArrangeParams, GuiArrangeOutcome, GuiArrangeSettings, RawPreset};
 pub use slice::{
-    BuildVolume, CalibMode, CalibParams, CancelToken, ProgressSink, ShaperType, SliceRequest,
-    SliceResult, SliceStats, ValidateIssue, ValidateIssueKind, ValidateResult,
+    BuildVolume, CalibMode, CalibParams, CancelToken, GcodeConflict, ProgressSink, ShaperType,
+    SliceRequest, SliceResult, SliceStats, ValidateIssue, ValidateIssueKind, ValidateResult,
     OUTPUT_FILENAME_BASE_TOKEN,
 };

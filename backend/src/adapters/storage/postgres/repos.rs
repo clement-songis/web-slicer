@@ -13,6 +13,7 @@ use uuid::Uuid;
 
 use crate::domain::*;
 
+use super::super::paths::DataPaths;
 use super::super::{collect_uuid_strings, json_references_id};
 use super::{enum_str, map_pg, parse_enum};
 
@@ -304,10 +305,15 @@ impl UserRepo for PgUserRepo {
 
 pub(crate) struct PgProjectRepo {
     pool: PgPool,
+    paths: DataPaths,
 }
 impl PgProjectRepo {
+    #[allow(dead_code)]
     pub(crate) fn new(pool: PgPool) -> Self {
-        Self { pool }
+        Self::with_paths(pool, DataPaths::default())
+    }
+    pub(crate) fn with_paths(pool: PgPool, paths: DataPaths) -> Self {
+        Self { pool, paths }
     }
 }
 
@@ -324,7 +330,7 @@ impl ProjectRepo for PgProjectRepo {
         .bind(uid(id))
         .bind(uid(owner))
         .bind(&project.name)
-        .bind(&project.thumbnail_path)
+        .bind(self.paths.encode_opt(project.thumbnail_path.as_deref()))
         .bind(project.scene.clone())
         .bind(project.active_presets.clone())
         .bind(ts)
@@ -343,7 +349,7 @@ impl ProjectRepo for PgProjectRepo {
             .await
             .map_err(map_pg)?
             .ok_or(StorageError::NotFound)?;
-        row_to_project(&row)
+        self.paths.project(row_to_project(&row))
     }
 
     async fn list(&self, owner: UserId) -> StorageResult<Vec<Project>> {
@@ -353,7 +359,9 @@ impl ProjectRepo for PgProjectRepo {
                 .fetch_all(&self.pool)
                 .await
                 .map_err(map_pg)?;
-        rows.iter().map(row_to_project).collect()
+        rows.iter()
+            .map(|r| self.paths.project(row_to_project(r)))
+            .collect()
     }
 
     async fn update(
@@ -372,7 +380,7 @@ impl ProjectRepo for PgProjectRepo {
         )
         .bind(scene)
         .bind(active_presets)
-        .bind(&thumbnail_path)
+        .bind(self.paths.encode_opt(thumbnail_path.as_deref()))
         .bind(now())
         .bind(uid(id))
         .bind(uid(owner))
@@ -382,7 +390,7 @@ impl ProjectRepo for PgProjectRepo {
         .map_err(map_pg)?;
 
         match row {
-            Some(r) => row_to_project(&r),
+            Some(r) => self.paths.project(row_to_project(&r)),
             None => {
                 // Distingue « introuvable » de « version périmée ».
                 let current = self.get(owner, id).await?;
@@ -407,7 +415,7 @@ impl ProjectRepo for PgProjectRepo {
         .await
         .map_err(map_pg)?
         .ok_or(StorageError::NotFound)?;
-        row_to_project(&row)
+        self.paths.project(row_to_project(&row))
     }
 
     async fn delete(&self, owner: UserId, id: ProjectId) -> StorageResult<()> {
@@ -429,10 +437,15 @@ impl ProjectRepo for PgProjectRepo {
 
 pub(crate) struct PgModelRepo {
     pool: PgPool,
+    paths: DataPaths,
 }
 impl PgModelRepo {
+    #[allow(dead_code)]
     pub(crate) fn new(pool: PgPool) -> Self {
-        Self { pool }
+        Self::with_paths(pool, DataPaths::default())
+    }
+    pub(crate) fn with_paths(pool: PgPool, paths: DataPaths) -> Self {
+        Self { pool, paths }
     }
 }
 
@@ -450,8 +463,8 @@ impl ModelRepo for PgModelRepo {
         .bind(model.project_id.map(uid))
         .bind(&model.filename)
         .bind(enum_str(&model.format))
-        .bind(&model.file_path)
-        .bind(&model.mesh_path)
+        .bind(self.paths.encode(&model.file_path))
+        .bind(self.paths.encode_opt(model.mesh_path.as_deref()))
         .bind(model.size_bytes)
         .bind(model.triangle_count)
         .bind(model.repair_report.clone())
@@ -469,7 +482,7 @@ impl ModelRepo for PgModelRepo {
             .await
             .map_err(map_pg)?
             .ok_or(StorageError::NotFound)?;
-        row_to_model(&row)
+        self.paths.model(row_to_model(&row))
     }
 
     async fn list(&self, owner: UserId, project: Option<ProjectId>) -> StorageResult<Vec<Model>> {
@@ -489,7 +502,9 @@ impl ModelRepo for PgModelRepo {
             }
         }
         .map_err(map_pg)?;
-        rows.iter().map(row_to_model).collect()
+        rows.iter()
+            .map(|r| self.paths.model(row_to_model(r)))
+            .collect()
     }
 
     async fn delete(&self, owner: UserId, id: ModelId) -> StorageResult<()> {
@@ -517,7 +532,7 @@ impl ModelRepo for PgModelRepo {
             "UPDATE models SET mesh_path = $1, triangle_count = $2, conversion_error = NULL \
              WHERE id = $3 AND user_id = $4",
         )
-        .bind(mesh_path)
+        .bind(self.paths.encode(mesh_path))
         .bind(triangle_count)
         .bind(uid(id))
         .bind(uid(owner))
@@ -564,7 +579,7 @@ impl ModelRepo for PgModelRepo {
             "UPDATE models SET mesh_path = $1, triangle_count = $2, repair_report = $3, ",
             "conversion_error = NULL WHERE id = $4 AND user_id = $5"
         ))
-        .bind(mesh_path)
+        .bind(self.paths.encode(mesh_path))
         .bind(triangle_count)
         .bind(repair_report)
         .bind(uid(id))
@@ -1249,10 +1264,15 @@ impl JobRepo for PgJobRepo {
 
 pub(crate) struct PgGcodeRepo {
     pool: PgPool,
+    paths: DataPaths,
 }
 impl PgGcodeRepo {
+    #[allow(dead_code)]
     pub(crate) fn new(pool: PgPool) -> Self {
-        Self { pool }
+        Self::with_paths(pool, DataPaths::default())
+    }
+    pub(crate) fn with_paths(pool: PgPool, paths: DataPaths) -> Self {
+        Self { pool, paths }
     }
 }
 
@@ -1267,8 +1287,8 @@ impl GcodeRepo for PgGcodeRepo {
         .bind(uid(id))
         .bind(uid(owner))
         .bind(uid(gcode.job_id))
-        .bind(&gcode.file_path)
-        .bind(&gcode.preview_path)
+        .bind(self.paths.encode(&gcode.file_path))
+        .bind(self.paths.encode(&gcode.preview_path))
         .bind(gcode.stats.clone())
         .bind(gcode.thumbnails.clone())
         .execute(&self.pool)
@@ -1285,7 +1305,7 @@ impl GcodeRepo for PgGcodeRepo {
             .await
             .map_err(map_pg)?
             .ok_or(StorageError::NotFound)?;
-        row_to_gcode(&row)
+        self.paths.gcode(row_to_gcode(&row))
     }
 
     async fn delete(&self, owner: UserId, id: GcodeId) -> StorageResult<()> {

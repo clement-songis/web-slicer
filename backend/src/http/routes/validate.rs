@@ -85,7 +85,7 @@ pub struct ValidationIssue {
     /// Origine : `StringExceptionType` d'Orca, contrôle de config / de
     /// cohérence, ou garde de scène du serveur.
     #[ts(
-        type = "\"general\" | \"filament_not_match_bed_type\" | \"filaments_different_temp\" | \"object_collision_in_seq_print\" | \"object_collision_in_layer_print\" | \"layer_height_exceeds_limit\" | \"config\" | \"consistency\" | \"empty_plate\" | \"object_outside_plate\""
+        type = "\"general\" | \"filament_not_match_bed_type\" | \"filaments_different_temp\" | \"object_collision_in_seq_print\" | \"object_collision_in_layer_print\" | \"layer_height_exceeds_limit\" | \"config\" | \"consistency\" | \"empty_plate\" | \"object_outside_plate\" | \"gcode_conflict\""
     )]
     pub kind: String,
     /// Message d'Orca (anglais, msgid à traduire côté client) ou du serveur.
@@ -341,7 +341,80 @@ async fn validate_plate(
             errors.push(issue);
         }
     }
+    if let Some(issue) = sliced_conflict(state, user, project_id, scene, &snapshot, t).await {
+        warnings.push(issue);
+    }
     Ok(plate_result(t, errors, warnings))
+}
+
+/// Lot 46 (audit 44 CONFL-a) : le conflit de trajets n'est connu d'Orca
+/// qu'après `Print::process` (ConflictChecker) — avertissement grave
+/// « Conflicts of G-code paths… » (GLCanvas3D.cpp:10078, non bloquant ; la
+/// CLI refuse, −101). /validate le rapporte (`kind` = `gcode_conflict`,
+/// `params` = [couche, Z, objet 1, objet 2]) tant que le dernier tranchage
+/// réussi du plateau est **à jour** (même signature que la scène validée).
+async fn sliced_conflict(
+    state: &AppState,
+    user: UserId,
+    project_id: ProjectId,
+    scene: &Value,
+    snapshot: &Value,
+    t: i64,
+) -> Option<ValidationIssue> {
+    let signature = crate::slice_signature::plate_signature(snapshot, scene, t);
+    let jobs = state.storage.jobs().list(user).await.ok()?;
+    let last = jobs
+        .iter()
+        .filter(|j| {
+            j.project_id == project_id
+                && j.plate_index == t
+                && j.status == crate::domain::JobStatus::Succeeded
+                && j.gcode_id.is_some()
+        })
+        .max_by_key(|j| j.created_at)?;
+    if crate::slice_signature::of_job_scene(last.scene.as_ref()).as_deref() != Some(&signature) {
+        return None;
+    }
+    let gcode = state
+        .storage
+        .gcodes()
+        .get(user, last.gcode_id?)
+        .await
+        .ok()?;
+    let conflict = gcode.stats.get("conflict")?;
+    let text = |k: &str| {
+        conflict.get(k).map(|v| match v {
+            Value::String(s) => s.clone(),
+            other => other.to_string(),
+        })
+    };
+    let object2 = text("object2").unwrap_or_default();
+    Some(ValidationIssue {
+        object_name: Some(object2.clone()).filter(|s| !s.is_empty()),
+        object_id: scene_object_id_by_name(scene, &object2),
+        params: vec![
+            text("layer").unwrap_or_default(),
+            conflict
+                .get("height")
+                .and_then(Value::as_f64)
+                .map(|h| format!("{h:.2}"))
+                .unwrap_or_default(),
+            text("object1").unwrap_or_default(),
+            object2,
+        ],
+        ..ValidationIssue::new("gcode_conflict", text("message").unwrap_or_default())
+    })
+}
+
+/// Id de scène de l'objet nommé `name` (lien « Jump to » d'Orca).
+fn scene_object_id_by_name(scene: &Value, name: &str) -> Option<String> {
+    scene
+        .get("objects")?
+        .as_array()?
+        .iter()
+        .find(|o| o.get("name").and_then(Value::as_str) == Some(name))
+        .and_then(|o| o.get("id").and_then(Value::as_str))
+        .map(str::to_string)
 }
 
 fn plate_result(

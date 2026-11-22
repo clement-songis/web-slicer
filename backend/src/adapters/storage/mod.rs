@@ -1,6 +1,7 @@
 //! Implémentations du trait `Storage` (contrat storage-trait.md). Sélection
 //! runtime par `DATABASE_URL` (sqlite:// par défaut, postgres:// via feature).
 
+pub mod paths;
 pub mod sqlite;
 
 #[cfg(feature = "postgres")]
@@ -56,6 +57,24 @@ impl AnyStorage {
         sqlite::SqliteStorage::connect(sqlite_url)
             .await
             .map(Self::Sqlite)
+    }
+
+    /// Lot 46 (audit 44 OLD-a) : fixe le répertoire de données (chemins de
+    /// fichiers stockés relatifs à cette racine) puis rattrape les anciens
+    /// enregistrements absolus. À appeler une fois au démarrage.
+    pub async fn set_data_root(&self, root: &std::path::Path) -> StorageResult<u64> {
+        let root = std::path::absolute(root).unwrap_or_else(|_| root.to_path_buf());
+        match self {
+            Self::Sqlite(s) => {
+                s.data_paths().set_root(root);
+                s.relativize_paths().await
+            }
+            #[cfg(feature = "postgres")]
+            Self::Postgres(s) => {
+                s.data_paths().set_root(root);
+                s.relativize_paths().await
+            }
+        }
     }
 
     fn inner(&self) -> &dyn Storage {

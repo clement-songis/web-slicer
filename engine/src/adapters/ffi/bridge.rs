@@ -199,6 +199,12 @@ pub(crate) mod ffi {
         /// évalué par le PlaceholderParser), base = OUTPUT_FILENAME_BASE_TOKEN ;
         /// vide si le gabarit n'a pas pu être évalué.
         output_filename: String,
+        /// Lot 46 : conflit de trajets (`Print::get_conflict_result`).
+        has_conflict: bool,
+        conflict_object1: String,
+        conflict_object2: String,
+        conflict_height: f64,
+        conflict_layer: i64,
     }
 
     /// Résultat de réparation : maillage corrigé + compteurs admesh.

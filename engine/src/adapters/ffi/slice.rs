@@ -173,5 +173,27 @@ pub fn run_in_worker(request_path: &Path) -> EngineResult<SliceResult> {
         },
         thumbnails: result.thumbnails.into_iter().map(PathBuf::from).collect(),
         output_filename: (!result.output_filename.is_empty()).then_some(result.output_filename),
+        conflict: result.has_conflict.then(|| {
+            engine_conflict(
+                result.conflict_object1,
+                result.conflict_object2,
+                result.conflict_height,
+                result.conflict_layer,
+            )
+        }),
     })
+}
+
+fn engine_conflict(
+    object1: String,
+    object2: String,
+    height: f64,
+    layer: i64,
+) -> crate::api::GcodeConflict {
+    crate::api::GcodeConflict {
+        object1,
+        object2,
+        height,
+        layer,
+    }
 }

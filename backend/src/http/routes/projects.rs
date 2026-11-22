@@ -1353,7 +1353,7 @@ fn imported_scene_object(
 /// `s_Preset_filament_options`, 127 clés, `filament_colour` commenté
 /// dans Orca : option projet). Sert à répartir la configuration aplatie d'un 3MF
 /// en presets filament comme `PresetBundle::load_config_file_config`.
-const ORCA_FILAMENT_OPTIONS: [&str; 127] = [
+pub(crate) const ORCA_FILAMENT_OPTIONS: [&str; 127] = [
     "default_filament_colour",
     "required_nozzle_HRC",
     "filament_diameter",

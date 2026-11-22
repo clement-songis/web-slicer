@@ -149,6 +149,97 @@ fn to_raw(p: &ImportedPreset) -> RawPreset {
     }
 }
 
+/// Lot 46 (audit 44 PR1-a) : valeur JSON d'un profil (éventuellement typée par
+/// l'interface : `25`, `true`, `[0.8]`) ramenée à la forme d'un fichier de
+/// preset Orca (`ConfigBase::save_to_json` : chaîne pour un scalaire,
+/// tableau de chaînes pour un vecteur). Une valeur déjà textuelle (chaîne ou
+/// tableau de chaînes) est conservée telle quelle si elle est valide pour le
+/// registre ; `None` si la clé est inconnue ou la valeur invalide.
+pub fn canonical_orca_json(key: &str, value: &serde_json::Value) -> Option<serde_json::Value> {
+    use serde_json::Value;
+    let def = params::get(key)?;
+    let textual = match value {
+        Value::String(_) => true,
+        Value::Array(items) => items.iter().all(Value::is_string),
+        _ => false,
+    };
+    let prepared = if textual {
+        value.clone()
+    } else {
+        let scalar = |v: &Value| -> Value {
+            match v {
+                Value::Bool(b) => Value::String(if *b { "1" } else { "0" }.into()),
+                Value::Number(n) => Value::String(n.to_string()),
+                Value::Null => Value::String("nil".into()),
+                Value::String(s) => Value::String(s.clone()),
+                Value::Object(o) => match (o.get("value"), o.get("percent")) {
+                    // FloatOrPercent typé : { value, percent }.
+                    (Some(Value::Number(n)), Some(Value::Bool(true))) => {
+                        Value::String(format!("{n}%"))
+                    }
+                    (Some(Value::Number(n)), _) => Value::String(n.to_string()),
+                    _ => Value::String(v.to_string()),
+                },
+                other => Value::String(other.to_string()),
+            }
+        };
+        match value {
+            Value::Array(items) => Value::Array(items.iter().map(scalar).collect()),
+            other => scalar(other),
+        }
+    };
+    let text = json_value_to_orca_text(&prepared, def);
+    let parsed = orca_values::parse_orca_value(def, &text)?;
+    if textual {
+        return Some(prepared);
+    }
+    Some(config_value_to_orca_json(def, &parsed))
+}
+
+/// `ConfigValue` typé → forme JSON d'un fichier de preset Orca (scalaire :
+/// chaîne `opt->serialize()` ; vecteur : un élément sérialisé par entrée,
+/// `vserialize()`).
+pub fn config_value_to_orca_json(
+    def: &params::ParamDef,
+    value: &crate::api::ConfigValue,
+) -> serde_json::Value {
+    use crate::api::ConfigValue as V;
+    use serde_json::Value;
+    let one = |v: V| Value::String(orca_values::serialize_orca_value_for(def, &v));
+    match value {
+        V::Bools(items) => Value::Array(items.iter().map(|b| one(V::Bools(vec![*b]))).collect()),
+        V::BoolsNullable(items) => Value::Array(
+            items
+                .iter()
+                .map(|b| one(V::BoolsNullable(vec![*b])))
+                .collect(),
+        ),
+        V::Ints(items) => Value::Array(items.iter().map(|i| one(V::Ints(vec![*i]))).collect()),
+        V::Floats(items) => Value::Array(items.iter().map(|f| one(V::Floats(vec![*f]))).collect()),
+        V::FloatsNullable(items) => Value::Array(
+            items
+                .iter()
+                .map(|f| one(V::FloatsNullable(vec![*f])))
+                .collect(),
+        ),
+        V::Points(items) => Value::Array(
+            items
+                .iter()
+                .map(|p| one(V::Points(vec![p.clone()])))
+                .collect(),
+        ),
+        // Vecteurs de chaînes / d'enums / groupes de points : éléments bruts.
+        V::Strings(items) if def.kind != params::ParamKind::String => {
+            if items.is_empty() && def.nullable && def.kind == params::ParamKind::Enums {
+                Value::Array(vec![Value::String("nil".into())])
+            } else {
+                Value::Array(items.iter().cloned().map(Value::String).collect())
+            }
+        }
+        other => Value::String(orca_values::serialize_orca_value_for(def, other)),
+    }
+}
+
 /// Les profils Orca sérialisent les vecteurs numériques en CSV et les vecteurs
 /// de chaînes avec `;`. Le séparateur dépend donc du type du registre.
 fn json_value_to_orca_text(value: &serde_json::Value, def: &params::ParamDef) -> String {

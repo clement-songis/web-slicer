@@ -9,7 +9,7 @@ export type ValidationIssue = {
  * Origine : `StringExceptionType` d'Orca, contrôle de config / de
  * cohérence, ou garde de scène du serveur.
  */
-kind: "general" | "filament_not_match_bed_type" | "filaments_different_temp" | "object_collision_in_seq_print" | "object_collision_in_layer_print" | "layer_height_exceeds_limit" | "config" | "consistency" | "empty_plate" | "object_outside_plate", 
+kind: "general" | "filament_not_match_bed_type" | "filaments_different_temp" | "object_collision_in_seq_print" | "object_collision_in_layer_print" | "layer_height_exceeds_limit" | "config" | "consistency" | "empty_plate" | "object_outside_plate" | "gcode_conflict", 
 /**
  * Message d'Orca (anglais, msgid à traduire côté client) ou du serveur.
  */
