@@ -4,6 +4,11 @@
 // traductions reprennent les msgstr d'Orca les plus proches (« Cool Plate »,
 // « Textured PEI Plate », « Engineering Plate »…). Repli anglais sinon.
 export const SETTINGS_FR_EXTRA: Record<string, string> = {
+	// Audit 48 DLG48-a : valeurs d'énumération de `timelapse_type` (dialogue
+	// « Réglages du plateau ») — OrcaSlicer_fr.po : « Traditional » →
+	// « Traditionnel », « Smooth » → « Lisse ».
+	Traditional: 'Traditionnel',
+	Smooth: 'Lisse',
 	'Cool Plate / PLA Plate': 'Cool Plate / Plaque PLA',
 	// msgid présente dans le .po (« Extrudeur ») mais écartée par le générateur
 	// (chaîne d'interface) : libellé de la clé `extruder` par objet / par plage.

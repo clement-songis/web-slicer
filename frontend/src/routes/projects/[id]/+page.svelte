@@ -634,6 +634,7 @@
 		buildWindowGeometry,
 		rangesFromMeta,
 		sliceRequestFor,
+		gcodeThumbnailOverrides,
 		startImport,
 		markUploaded,
 		markConverted,
@@ -6224,6 +6225,22 @@
 		return copyId;
 	}
 
+	// Audit 48 FIX1-a : rattache une copie fraîche au groupe d'instances de sa
+	// source — même nom, même `instanceGroup` — pour l'afficher comme une
+	// instance du même objet (Orca `ModelObject::add_instance`, FillBedJob
+	// `m_instances` vrai) et non un objet frère « (copie) ». La source sans
+	// groupe (première instance) en reçoit un nouveau ; « Définir comme objet
+	// individuel » détache ensuite l'instance voulue.
+	function joinInstanceGroup(sourceId: string, copyId: string) {
+		const source = tree.get(sourceId);
+		const copy = tree.get(copyId);
+		if (!source || !copy) return;
+		const group = source.instanceGroup ?? newInstanceGroupId();
+		source.instanceGroup = group;
+		copy.instanceGroup = group;
+		copy.name = source.name;
+	}
+
 	// Édition › Dupliquer le plateau courant : nouveau plateau (id et nom
 	// uniques) portant une copie de chaque instance du plateau actif, puis activé.
 	function duplicateActivePlate() {
@@ -8353,10 +8370,12 @@
 	// Remplit le plateau d'instances du même modèle, sur une grille sans collision.
 	// Les copies web partagent le modèle serveur (comme les instances Orca) tout en
 	// conservant une transformation et des réglages propres.
-	// « Remplir le plateau avec des instances » d'Orca (FillBedJob) : copies
-	// placées par l'arrangement libslic3r (POST …/arrange, fill_object_id)
+	// « Remplir le plateau » d'Orca (FillBedJob.cpp:190-198) : `instances` faux →
+	// objets frères « (copie) » (menu « … de copies »), vrai → instances du même
+	// objet rattachées à son groupe (menu « … d'instances », audit 48 FIX1-a).
+	// Placement par l'arrangement libslic3r (POST …/arrange, fill_object_id)
 	// autour des autres objets du plateau, qui restent fixes.
-	async function fillBedWithInstances(id: string) {
+	async function fillBed(id: string, instances: boolean) {
 		const object = sceneObjects.find((o) => o.id === id);
 		if (!object) return;
 		const others = movableObjectsOnPlate(sceneObjects, activePlate, objectLocked);
@@ -8396,8 +8415,13 @@
 			sceneObjects = sceneObjects.map((o) =>
 				o.id === id ? { ...o, position: [own.x, own.y, z] as [number, number, number] } : o
 			);
-		for (const p of added) instantiateSnapshot(snap, [p.x, p.y, z]);
+		for (const p of added) {
+			const copyId = instantiateSnapshot(snap, [p.x, p.y, z]);
+			if (instances) joinInstanceGroup(id, copyId);
+		}
 		ws = setSelection(ws, new Set([id]));
+		// Message inchangé pour les deux variantes (« {n} instances », figé par
+		// ctx-menus.spec.ts — la différence copies/instances est le regroupement).
 		saveMessage = tr('Fill bed: {n} instances.', { n: added.length + 1 });
 	}
 
@@ -8565,7 +8589,10 @@
 				await makeIndividualObject(id);
 				break;
 			case 'object.fillBed':
-				fillBedWithInstances(id);
+				void fillBed(id, false);
+				break;
+			case 'object.fillBedInstances':
+				void fillBed(id, true);
 				break;
 			case 'object.orient':
 				ws = setSelection(ws, new Set([id]));
@@ -9850,7 +9877,21 @@
 	// sauvegarde forcée de la phase 31 (activePresetsSaved).
 	// Lot 40 (D1) : surcharges comprises — ce document remplace celui du projet.
 	function activePresetsBody(): SliceRequest['active_presets'] {
-		return serializeActivePresets(projectActivePresets()) as SliceRequest['active_presets'];
+		const body = serializeActivePresets(projectActivePresets()) as SliceRequest['active_presets'] &
+			Record<string, unknown>;
+		// Préférence « Vignettes G-code » (audit 48 DLG48-b) : surcharge portée par
+		// la requête seule — la préférence vide n'écrit rien (défauts du moteur),
+		// et le réglage machine « Vignettes G-code » prime sur elle.
+		const thumbs = gcodeThumbnailOverrides(
+			currentPreferences().gcodeThumbnails,
+			machineValues.thumbnails
+		);
+		if (!thumbs) return body;
+		const overrides = {
+			...(body.overrides ?? {}),
+			printer: { ...(body.overrides?.printer ?? {}), ...thumbs }
+		};
+		return { ...body, overrides };
 	}
 	// Config projet hors objets (`scene.projectConfig` : couleurs des slots,
 	// matrice et multiplicateur de purge, position de la tour) : même règle que

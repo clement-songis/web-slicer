@@ -34,7 +34,12 @@ export {
 	type SlicePhase,
 	type SliceSession
 } from './session';
-export { buildWindowGeometry, rangesFromMeta, sliceRequestFor } from './preview';
+export {
+	buildWindowGeometry,
+	rangesFromMeta,
+	sliceRequestFor,
+	gcodeThumbnailOverrides
+} from './preview';
 export {
 	EDITOR_TABS,
 	initialLayout,

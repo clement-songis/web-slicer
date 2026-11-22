@@ -12,7 +12,9 @@
 	import { dialogFocus } from '$lib/ui/dialog-focus';
 	// Dialogue « Réglages du plateau » (parité Orca PlateSettingsDialog, ouvert
 	// par l'icône du plateau) : type de plaque, séquence d'impression, séquence
-	// des couches, vase spirale. Brouillon local appliqué par « Enregistrer » ;
+	// des couches, vase spirale, timelapse (audit 48 DLG48-a — réglage
+	// d'impression d'Orca, ici surchargé par plateau). Brouillon local appliqué
+	// par « Enregistrer » ;
 	// une valeur vide = suivre le profil (pas de surcharge du plateau).
 	import { PARAMS } from '../../generated/params';
 	import { t } from '$lib/i18n';
@@ -181,7 +183,10 @@
 		'print_sequence',
 		'first_layer_sequence_choice',
 		'other_layers_sequence_choice',
-		'spiral_mode'
+		'spiral_mode',
+		// Audit 48 DLG48-a : Timelapse (PrintConfig.cpp:5879, enum
+		// Traditional/Smooth — coEnum « simple »), exposé ici par plateau.
+		'timelapse_type'
 	] as const;
 	const MODES: DisplayMode[] = ['simple', 'advanced', 'expert', 'develop'];
 	/** Libellés des modes (clés i18n), identiques au dialogue de réglages (SettingsTabs). */

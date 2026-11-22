@@ -26,6 +26,16 @@
 		openSub = null;
 		if (openTitle) onopen?.(openTitle);
 	}
+	// Audit 48 D2 : barre « active » — un menu ouvert, puis survol d'un autre
+	// titre ⇒ ouverture immédiate de celui-ci (menus natifs d'Orca/wx : on
+	// parcourt les menus en glissant). Le premier menu s'ouvre toujours au clic
+	// ou au clavier ; ce survol ne fait rien tant qu'aucun menu n'est ouvert.
+	function hoverTitle(title: string) {
+		if (!openTitle || openTitle === title) return;
+		openTitle = title;
+		openSub = null;
+		onopen?.(openTitle);
+	}
 	function close() {
 		openTitle = null;
 		openSub = null;
@@ -176,10 +186,11 @@
 				type="button"
 				class="ws-btn ws-btn-ghost px-2 font-normal {openTitle === menu.title
 					? 'bg-overlay text-content'
-					: ''}"
+					: ''} {openTitle ? 'relative z-30' : ''}"
 				aria-haspopup="menu"
 				aria-expanded={openTitle === menu.title}
 				onclick={() => toggle(menu.title)}
+				onpointerenter={() => hoverTitle(menu.title)}
 			>
 				{$t(menu.title)}
 			</button>

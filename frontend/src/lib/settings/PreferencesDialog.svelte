@@ -7,11 +7,13 @@
 	import {
 		CAMERA_DEFAULTS,
 		REMEMBERED_CHOICES,
+		GCODE_THUMBNAILS_DEFAULT,
 		clampFpsCap,
 		clampDracoBits,
 		clampOrbitSpeed,
 		clampRecentCount,
 		clearRememberedChoices,
+		normalizeGcodeThumbnails,
 		savePreferences,
 		type AppPreferences,
 		type AutoFlush,
@@ -649,6 +651,28 @@
 						clearedText ?? REMEMBERED_CHOICES.map((c) => $t(c.label)).join(' · '),
 						clearCtl,
 						'clear-choices'
+					)}
+					{#snippet thumbsCtl()}
+						<input
+							type="text"
+							class="ws-field ws-field-sm w-64"
+							data-testid="pref-gcode-thumbnails"
+							aria-labelledby="pref-gcode-thumbnails-label"
+							placeholder={GCODE_THUMBNAILS_DEFAULT}
+							value={prefs.gcodeThumbnails}
+							onchange={(e) => {
+								// Vide = défauts (jamais écrits dans la préférence) — DLG48-b.
+								const list = normalizeGcodeThumbnails(e.currentTarget.value);
+								e.currentTarget.value = list;
+								update({ gcodeThumbnails: list });
+							}}
+						/>
+					{/snippet}
+					{@render row(
+						'G-code thumbnails',
+						'Thumbnail sizes written into the G-code, like 96x96/PNG. Empty = defaults (48x48/PNG,300x300/PNG). Formats: PNG, JPG, QOI, BTT_TFT, COLPIC.',
+						thumbsCtl,
+						'gcode-thumbnails'
 					)}
 				{:else if tab === 'graphics'}
 					{#snippet aaCtl()}

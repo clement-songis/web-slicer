@@ -191,7 +191,7 @@ export const OBJECT_CONTEXT_ITEMS: ObjectMenuEntry[] = [
 			{ label: 'Set number of instances…', action: 'object.setInstances' },
 			{ label: 'Set as an individual object', action: 'object.individual' },
 			{ label: 'Fill bed with copies', action: 'object.fillBed' },
-			{ label: 'Fill bed with instances…', action: 'object.fillBed' }
+			{ label: 'Fill bed with instances…', action: 'object.fillBedInstances' }
 		]
 	},
 	{

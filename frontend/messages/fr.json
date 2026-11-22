@@ -468,6 +468,8 @@
 	"u_engine_failure": "échec du moteur",
 	"u_fill_bed_no_extra_instance_fits_on_the_plate": "Remplir le plateau : aucune instance supplémentaire ne tient sur le plateau.",
 	"u_fill_bed_n_instances": "Remplissage du plateau : {n} instances.",
+	"p50_gcode_thumbnails": "Vignettes G-code",
+	"p50_gcode_thumbnails_hint": "Tailles des vignettes écrites dans le G-code, ex. 96x96/PNG. Vide = défauts (48x48/PNG,300x300/PNG). Formats : PNG, JPG, QOI, BTT_TFT, COLPIC.",
 	"u_name_is_now_an_individual_object": "{name} est maintenant un objet individuel.",
 	"u_individual_object_msg": "Objet individuel : {msg}",
 	"u_mesh_reloaded_from_disk": "Maillage rechargé depuis le disque.",

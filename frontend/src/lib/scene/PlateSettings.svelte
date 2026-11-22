@@ -37,7 +37,10 @@
 		// Libellés : clés i18n anglaises, traduites au rendu.
 		{ key: 'curr_bed_type', label: 'Bed type (override)' },
 		{ key: 'print_sequence', label: 'Print sequence' },
-		{ key: 'spiral_mode', label: 'Spiral vase' }
+		{ key: 'spiral_mode', label: 'Spiral vase' },
+		// Audit 48 DLG48-a : Timelapse (coEnum Traditional/Smooth, comme le
+		// dialogue « Réglages du plateau »).
+		{ key: 'timelapse_type', label: 'Timelapse' }
 	] as const;
 
 	function options(key: string): { value: string; label: string }[] {

@@ -468,6 +468,8 @@
 	"u_engine_failure": "engine failure",
 	"u_fill_bed_no_extra_instance_fits_on_the_plate": "Fill bed: no extra instance fits on the plate.",
 	"u_fill_bed_n_instances": "Fill bed: {n} instances.",
+	"p50_gcode_thumbnails": "G-code thumbnails",
+	"p50_gcode_thumbnails_hint": "Thumbnail sizes written into the G-code, like 96x96/PNG. Empty = defaults (48x48/PNG,300x300/PNG). Formats: PNG, JPG, QOI, BTT_TFT, COLPIC.",
 	"u_name_is_now_an_individual_object": "{name} is now an individual object.",
 	"u_individual_object_msg": "Individual object: {msg}",
 	"u_mesh_reloaded_from_disk": "Mesh reloaded from disk.",

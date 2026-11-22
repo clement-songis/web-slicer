@@ -177,6 +177,13 @@ export interface AppPreferences {
 	autoBackup: boolean;
 	/** Orca `backup_interval` (secondes, défaut 10). */
 	backupInterval: number;
+	/**
+	 * Audit 48 DLG48-b : vignettes G-code personnalisées (liste Orca
+	 * `thumbnails`, « WxH/EXT, WxH/EXT »). Vide = défauts du moteur
+	 * (48x48/PNG,300x300/PNG) — jamais écrite dans la préférence ; le réglage
+	 * machine (« Vignettes G-code ») prime sur elle.
+	 */
+	gcodeThumbnails: string;
 }
 
 export const PREFERENCES_KEY = 'web-slicer.preferences';
@@ -217,7 +224,8 @@ export const DEFAULT_PREFERENCES: AppPreferences = {
 	showAxes: true,
 	dracoBits: 0,
 	autoBackup: true,
-	backupInterval: 10
+	backupInterval: 10,
+	gcodeThumbnails: ''
 };
 
 /** DRC.hpp d'Orca : DRC_BITS_MIN 8, DRC_BITS_MAX 30, défaut 0 (sans perte). */
@@ -239,6 +247,25 @@ export function clampDracoBits(value: number): number {
 export function clampRecentCount(value: number): number {
 	if (!Number.isFinite(value)) return DEFAULT_PREFERENCES.maxRecent;
 	return Math.round(Math.min(999, Math.max(0, value)));
+}
+
+/**
+ * Audit 48 DLG48-b : défaut du registre moteur (`thumbnails`, params du moteur
+ * = définition d'Orca). Utilisé quand la préférence est vide — la valeur
+ * elle-même n'est jamais écrite dans la préférence.
+ */
+export const GCODE_THUMBNAILS_DEFAULT = '48x48/PNG,300x300/PNG';
+
+/**
+ * Audit 48 DLG48-b : normalise la liste saisie (espaces, entrées vides autour
+ * des virgules). Vide reste vide : les défauts ne sont jamais persistés.
+ */
+export function normalizeGcodeThumbnails(value: string): string {
+	return value
+		.split(',')
+		.map((part) => part.trim())
+		.filter(Boolean)
+		.join(',');
 }
 
 const ORBIT_MIN = 0.05;
@@ -356,7 +383,11 @@ export function parsePreferences(raw: string | null): AppPreferences {
 			backupInterval:
 				typeof value.backupInterval === 'number' && Number.isFinite(value.backupInterval)
 					? Math.min(3600, Math.max(1, Math.round(value.backupInterval)))
-					: d.backupInterval
+					: d.backupInterval,
+			gcodeThumbnails:
+				typeof value.gcodeThumbnails === 'string'
+					? normalizeGcodeThumbnails(value.gcodeThumbnails)
+					: d.gcodeThumbnails
 		};
 	} catch {
 		return {
