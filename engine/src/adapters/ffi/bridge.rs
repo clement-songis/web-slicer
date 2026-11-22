@@ -162,6 +162,9 @@ pub(crate) mod ffi {
         /// `ModelObject::cut_id` (CutObjectBase) en JSON
         /// `{id, check_sum, connectors_cnt}` ; vide = objet non coupé.
         cut_json: String,
+        /// `ModelObject::brim_points` à plat : `x y z head_front_radius` par
+        /// point (repère objet), rayon <= 0 = défaut du gizmo d'Orca.
+        brim_points: Vec<f32>,
     }
 
     /// Projet 3MF : scène + config embarquée (clé → valeur sérialisée Orca,
@@ -205,6 +208,28 @@ pub(crate) mod ffi {
         conflict_object2: String,
         conflict_height: f64,
         conflict_layer: i64,
+        /// Lot 47c (H2D-a, comme la GUI d'Orca) : `gcode_check_result.error_code`
+        /// limité aux bits multi-buses 0 / 1 (0 = aucun problème) ; le tranchage
+        /// réussit, l'impression / l'export sont bloqués côté serveur.
+        gcode_check_code: i32,
+        /// Texte de la notification d'erreur de la GUI (vide si aucun).
+        gcode_check_message: String,
+        /// Détail par buse (une entrée par buse et par type de dépassement).
+        gcode_check_issues: Vec<RawGcodeCheckIssue>,
+    }
+
+    /// Lot 47c : une buse dont les trajets sortent de sa zone atteignable
+    /// (`GCodeCheckResult::print_area_error_infos` / `print_height_error_infos`).
+    #[derive(Debug)]
+    struct RawGcodeCheckIssue {
+        /// 0 = zone (bit 0, MultiExtruderPrintableError), 1 = hauteur (bit 1).
+        kind: u8,
+        /// Extrudeur 1-based.
+        extruder: u32,
+        /// Nom affiché par Orca (« left nozzle », « right nozzle », « Tool 2 »).
+        nozzle: String,
+        /// Filaments 1-based placés sur cette buse et en cause.
+        filaments: Vec<u32>,
     }
 
     /// Résultat de réparation : maillage corrigé + compteurs admesh.

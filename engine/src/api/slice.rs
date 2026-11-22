@@ -212,6 +212,39 @@ pub struct SliceResult {
     /// `ConflictChecker` à la fin de `Print::process` (`Print::get_conflict_result`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub conflict: Option<GcodeConflict>,
+    /// Lot 47c (audit 45 H2D-a) : trajets hors de la zone atteignable d'une
+    /// buse (`GCodeProcessorResult::gcode_check_result`, bits 0 / 1). Comme la
+    /// GUI d'Orca : tranchage réussi et aperçu disponible, impression / export
+    /// bloqués (le CLI, lui, refuse : −102).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gcode_check: Option<GcodeCheck>,
+}
+
+/// Résultat du contrôle des trajets multi-buses (`GCodeCheckResult` d'Orca),
+/// présent seulement en cas d'erreur : notification SLICING_LIMIT_ERROR de la
+/// GUI (« Filament %s is placed in the %s, but the generated G-code path
+/// exceeds the printable range of the %s. », GLCanvas3D.cpp:10118-10185).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GcodeCheck {
+    /// `error_code` limité aux bits 0 (zone) / 1 (hauteur).
+    pub error_code: i32,
+    /// Texte de la GUI (msgid anglais, une ligne par buse).
+    pub message: String,
+    #[serde(default)]
+    pub issues: Vec<GcodeCheckIssue>,
+}
+
+/// Une buse en cause.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct GcodeCheckIssue {
+    /// `range` (bit 0) ou `height` (bit 1).
+    pub kind: String,
+    /// Extrudeur 1-based.
+    pub extruder: u32,
+    /// Nom affiché par Orca (« left nozzle », « right nozzle », « Tool 2 »).
+    pub nozzle: String,
+    /// Filaments 1-based en cause.
+    pub filaments: Vec<u32>,
 }
 
 /// Conflit de trajets G-code entre deux objets (`ConflictResult` d'Orca) :

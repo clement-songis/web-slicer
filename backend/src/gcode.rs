@@ -58,6 +58,10 @@ pub struct GcodeStats {
     /// grave « Conflicts of G-code paths… »), avec son message.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub conflict: Option<serde_json::Value>,
+    /// Lot 47c (audit 45 H2D-a) : trajets hors de la zone d'une buse — erreur
+    /// bloquante de la GUI d'Orca (impression / export refusés, aperçu gardé).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub gcode_check: Option<serde_json::Value>,
 }
 
 /// Vignette embarquée dans le G-code (PNG encodé base64).
@@ -571,6 +575,36 @@ pub fn conflict_json(conflict: &engine::api::GcodeConflict) -> serde_json::Value
     })
 }
 
+/// Forme JSON du contrôle des trajets multi-buses (`stats.gcode_check`) :
+/// `nozzle` / `filament` = première buse en cause et ses filaments (1-based),
+/// `issues` = détail par buse, `message` = texte de la GUI d'Orca.
+pub fn gcode_check_json(check: &engine::api::GcodeCheck) -> serde_json::Value {
+    let first = check.issues.first();
+    serde_json::json!({
+        "level": "error",
+        "error_code": check.error_code,
+        "nozzle": first.map(|i| i.nozzle.clone()).unwrap_or_default(),
+        "extruder": first.map(|i| i.extruder),
+        "filament": first.map(|i| i.filaments.clone()).unwrap_or_default(),
+        "message": check.message,
+        "issues": check.issues,
+    })
+}
+
+/// Constats du moteur figés dans `stats` au tranchage.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SliceFindings<'a> {
+    /// Conflit de trajets (lot 46, avertissement grave).
+    pub conflict: Option<&'a engine::api::GcodeConflict>,
+    /// Trajets hors zone d'une buse (lot 47c, erreur bloquant l'impression).
+    pub gcode_check: Option<&'a engine::api::GcodeCheck>,
+}
+
+/// `stats.gcode_check` d'un G-code enregistré (None si absent / nul).
+pub fn stored_gcode_check(stats: &serde_json::Value) -> Option<&serde_json::Value> {
+    stats.get("gcode_check").filter(|v| !v.is_null())
+}
+
 /// Matérialise le résultat d'un job : écrit le G-code via le magasin puis crée la
 /// ligne `gcodes` avec `stats`/`thumbnails` figés. Le fichier est nommé par une
 /// clé de stockage propre — `file_path` fait foi (comme pour les modèles).
@@ -581,7 +615,16 @@ pub async fn store_gcode(
     job_id: JobId,
     gcode_text: &str,
 ) -> anyhow::Result<Gcode> {
-    store_gcode_named(files, gcodes, owner, job_id, gcode_text, None, None).await
+    store_gcode_named(
+        files,
+        gcodes,
+        owner,
+        job_id,
+        gcode_text,
+        None,
+        SliceFindings::default(),
+    )
+    .await
 }
 
 /// Comme [`store_gcode`], avec le nom d'export d'Orca calculé au tranchage.
@@ -592,11 +635,12 @@ pub async fn store_gcode_named(
     job_id: JobId,
     gcode_text: &str,
     output_filename: Option<String>,
-    conflict: Option<&engine::api::GcodeConflict>,
+    findings: SliceFindings<'_>,
 ) -> anyhow::Result<Gcode> {
     let mut stats = parse_stats(gcode_text);
     stats.output_filename = output_filename;
-    stats.conflict = conflict.map(conflict_json);
+    stats.conflict = findings.conflict.map(conflict_json);
+    stats.gcode_check = findings.gcode_check.map(gcode_check_json);
     let thumbnails = extract_thumbnails(gcode_text);
 
     let storage_key = GcodeId::new();

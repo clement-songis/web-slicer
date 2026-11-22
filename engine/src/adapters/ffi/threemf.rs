@@ -107,6 +107,8 @@ pub fn read_project_3mf_import(path: &Path) -> EngineResult<serde_json::Value> {
                 "volumes": volumes,
                 // ModelObject::cut_id (cut_information.xml), null = non coupé.
                 "cut_id": serde_json::from_str::<Value>(&o.cut_json).unwrap_or(Value::Null),
+                // ModelObject::brim_points (brim_ear_points.txt) : [x, y, z, rayon], repère objet.
+                "brim_points": o.brim_points.chunks_exact(4).map(|p| p.to_vec()).collect::<Vec<_>>(),
             })
         })
         .collect();

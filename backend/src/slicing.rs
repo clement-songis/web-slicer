@@ -141,12 +141,20 @@ impl SliceRunner {
             job.id,
             &gcode_text,
             result.output_filename.clone(),
-            result.conflict.as_ref(),
+            crate::gcode::SliceFindings {
+                conflict: result.conflict.as_ref(),
+                gcode_check: result.gcode_check.as_ref(),
+            },
         )
         .await?;
         if let Some(conflict) = &result.conflict {
             // GUI d'Orca : avertissement grave non bloquant (CLI : −101).
             tracing::warn!(job = %job.id, message = %conflict.message(), "conflit de trajets G-code");
+        }
+        if let Some(check) = &result.gcode_check {
+            // Lot 47c (H2D-a) — GUI d'Orca : erreur SLICING_LIMIT_ERROR, aperçu
+            // gardé, impression / export refusés (CLI : −102).
+            tracing::warn!(job = %job.id, message = %check.message, "trajets hors de la zone d'une buse");
         }
 
         Ok((gcode.stats, gcode.id))
@@ -310,6 +318,38 @@ struct SceneObjectSpec {
     /// Groupe d'instances (`instanceGroup`, phase 44) : les objets de scène
     /// d'un même groupe sont les `ModelInstance` d'un seul `ModelObject`.
     instance_group: Option<String>,
+    /// Oreilles de bordure posées avec l'outil E (`brimEars.points`, monde).
+    brim_ears: Vec<[f64; 3]>,
+}
+
+/// Lot 47 (EARS-a) : oreilles de bordure d'un objet de scène
+/// (`brimEars.points` : `[x, y]` monde, mm, ou `[x, y, diamètre]`) ;
+/// diamètre absent = 0 → défaut du gizmo d'Orca résolu par le moteur.
+pub(crate) fn scene_brim_ears(object: &Value) -> Vec<[f64; 3]> {
+    object
+        .get("brimEars")
+        .and_then(|ears| ears.get("points"))
+        .and_then(Value::as_array)
+        .into_iter()
+        .flatten()
+        .filter_map(|point| {
+            let point = point.as_array()?;
+            let x = point.first()?.as_f64()?;
+            let y = point.get(1)?.as_f64()?;
+            let diameter = point.get(2).and_then(Value::as_f64).unwrap_or(0.0);
+            (x.is_finite() && y.is_finite()).then_some([x, y, diameter])
+        })
+        .collect()
+}
+
+/// `ModelObject::brim_points` depuis les oreilles de scène et la matrice de
+/// la (première) instance, comme le gizmo d'Orca (`BrimPoint::from_world`).
+pub(crate) fn scene_brim_points(matrix: DMat4, ears: &[[f64; 3]]) -> Vec<engine::api::BrimPoint> {
+    ears.iter()
+        .map(|&[x, y, diameter]| {
+            engine::api::BrimPoint::from_world(matrix, x, y, (diameter.max(0.0) / 2.0) as f32)
+        })
+        .collect()
 }
 
 /// Lot 44b (F-a) : clé de regroupement des objets de scène en un
@@ -395,6 +435,7 @@ pub(crate) async fn build_scene_model_indexed(
                 layer_config_ranges: Vec::new(),
                 cut_id: None,
                 instance_group: None,
+                brim_ears: Vec::new(),
             })
             .collect()
     });
@@ -483,6 +524,7 @@ pub(crate) async fn build_scene_model_indexed(
         object.layer_config_ranges = spec.layer_config_ranges;
         object.cut_id = spec.cut_id;
         object.volumes[0].mesh_stats = mesh_stats;
+        object.brim_points = scene_brim_points(spec.matrix, &spec.brim_ears);
         object.instances = vec![engine::api::ModelInstance {
             matrix: spec.matrix,
             plate_index: spec.plate_index,
@@ -812,6 +854,7 @@ fn scene_object_specs(scene: &Value, requested_plate: Option<u32>) -> Option<Vec
                     layer_config_ranges: scene_object_layer_ranges(object),
                     cut_id: crate::scene::scene_cut_id(object),
                     instance_group: scene_instance_group(object),
+                    brim_ears: scene_brim_ears(object),
                 })
             })
             .collect(),

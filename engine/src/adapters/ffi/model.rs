@@ -163,6 +163,14 @@ pub(super) fn to_object(raw: ffi::RawObject) -> ModelObject {
         layer_height_profile: raw.layer_height_profile,
         layer_config_ranges: ranges_from_json(&raw.layer_ranges_json),
         cut_id: cut_from_json(&raw.cut_json),
+        brim_points: raw
+            .brim_points
+            .chunks_exact(4)
+            .map(|p| crate::api::BrimPoint {
+                pos: [p[0], p[1], p[2]],
+                head_front_radius: p[3],
+            })
+            .collect(),
     }
 }
 
@@ -348,6 +356,11 @@ pub(super) fn to_raw_objects(model: &Model) -> Vec<ffi::RawObject> {
             layer_height_profile: o.layer_height_profile.clone(),
             layer_ranges_json: ranges_to_json(&o.layer_config_ranges),
             cut_json: cut_to_json(o.cut_id.as_ref()),
+            brim_points: o
+                .brim_points
+                .iter()
+                .flat_map(|p| [p.pos[0], p.pos[1], p.pos[2], p.head_front_radius])
+                .collect(),
         })
         .collect()
 }

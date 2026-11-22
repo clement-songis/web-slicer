@@ -36,12 +36,30 @@ pub struct FlushVolumesRequest {
     /// données et les filaments support — comme WipingDialog dans Orca.
     #[serde(default)]
     pub project_id: Option<String>,
+    /// Lot 47 (audit 45 MM-a) : avec `project_id`, renvoie la matrice que le
+    /// tranchage du projet utilise réellement (WipingDialog d'Orca : matrice
+    /// du projet) au lieu d'un calcul depuis `colours` : matrice valide du
+    /// projet / preset telle quelle, sinon celle calculée depuis les couleurs
+    /// comme `cli_update_flush_volumes` (minimum `nozzle_volume`, jeu de
+    /// données, filaments support ; une sous-matrice N×N par buse).
+    #[serde(default)]
+    pub effective: bool,
 }
 
 #[derive(Debug, Serialize)]
 pub struct FlushVolumesResponse {
     pub matrix: Vec<f64>,
     pub multiplier: f64,
+    /// Mode `effective` : `project` (matrice du projet / preset conservée)
+    /// ou `computed` (calculée depuis les couleurs comme au tranchage).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source: Option<&'static str>,
+    /// Mode `effective` : nombre de buses (`matrix` = N² × buses, une
+    /// sous-matrice par buse) et multiplicateur de chaque buse.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nozzles: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub multipliers: Option<Vec<f64>>,
 }
 
 pub async fn flush_volumes(
@@ -67,6 +85,20 @@ pub async fn flush_volumes(
     if !(multiplier.is_finite() && multiplier > 0.0) {
         return Err(invalid("multiplicateur invalide"));
     }
+    if body.effective {
+        let raw = body
+            .project_id
+            .as_deref()
+            .ok_or_else(|| invalid("project_id requis pour la matrice effective"))?;
+        let id = uuid::Uuid::parse_str(raw)
+            .map(crate::domain::ProjectId)
+            .map_err(|_| ApiError::not_found("Projet"))?;
+        let project = state.storage.projects().get(user.id, id).await?; // 404, SC-008
+        let (mut config, _) =
+            super::slice::resolve_active_config(&state, user.id, &project.active_presets).await?;
+        super::slice::apply_project_config(&mut config, &project.scene);
+        return Ok(Json(effective_flush(&mut config).await?));
+    }
     // Aucun filament : matrice 0 × 0 (réponse valide, sans worker). L'interface
     // sonde la disponibilité de la route par une liste vide à chaque session :
     // un 422 ici apparaissait comme une erreur en console (audit J2-i).
@@ -74,6 +106,9 @@ pub async fn flush_volumes(
         return Ok(Json(FlushVolumesResponse {
             matrix: Vec::new(),
             multiplier,
+            source: None,
+            nozzles: None,
+            multipliers: None,
         }));
     }
     let config = match body.project_id.as_deref() {
@@ -98,7 +133,55 @@ pub async fn flush_volumes(
         "config": config,
     }))
     .await?;
-    Ok(Json(FlushVolumesResponse { matrix, multiplier }))
+    Ok(Json(FlushVolumesResponse {
+        matrix,
+        multiplier,
+        source: None,
+        nozzles: None,
+        multipliers: None,
+    }))
+}
+
+/// Matrice de purge effective d'une config résolue (mode `effective`) :
+/// même chemin que l'export / le tranchage (`complete_flush_matrix`).
+async fn effective_flush(
+    config: &mut engine::api::DynamicPrintConfig,
+) -> ApiResult<FlushVolumesResponse> {
+    use engine::api::ConfigValue;
+    let matrix_of =
+        |config: &engine::api::DynamicPrintConfig| match config.get("flush_volumes_matrix") {
+            Some(ConfigValue::Floats(m)) => Some(m.clone()),
+            _ => None,
+        };
+    let before = matrix_of(config);
+    complete_flush_matrix(config).await?;
+    let matrix = matrix_of(config).unwrap_or_default();
+    let source = if before.as_ref() == Some(&matrix) {
+        "project"
+    } else {
+        "computed"
+    };
+    let nozzles = match config.get("nozzle_diameter") {
+        Some(ConfigValue::Floats(v)) => v.len().max(1),
+        _ => 1,
+    };
+    let mut multipliers = match config.get("flush_multiplier") {
+        Some(ConfigValue::Floats(v)) if !v.is_empty() => v.clone(),
+        _ => Vec::new(),
+    };
+    if multipliers.is_empty() {
+        complete_flush_multiplier(config, nozzles);
+        if let Some(ConfigValue::Floats(v)) = config.get("flush_multiplier") {
+            multipliers = v.clone();
+        }
+    }
+    Ok(FlushVolumesResponse {
+        matrix,
+        multiplier: multipliers.first().copied().unwrap_or(1.0),
+        source: Some(source),
+        nozzles: Some(nozzles),
+        multipliers: Some(multipliers),
+    })
 }
 
 /// `engine-worker flush-volumes` sur une requête `{ colours, is_support,

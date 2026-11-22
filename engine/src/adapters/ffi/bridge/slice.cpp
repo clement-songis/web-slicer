@@ -19,6 +19,7 @@
 #include <algorithm>
 #include <cmath>
 #include <boost/algorithm/string.hpp>
+#include <boost/format.hpp>
 #include <cstdlib>
 #include <memory>
 #include <new>
@@ -68,6 +69,7 @@ namespace webslicer {
 
 // défini dans project.cpp / model.cpp
 void raw_into_model(const rust::Vec<RawObject> &objects, Slic3r::Model &model);
+void fill_brim_ear_default_radius(Slic3r::Model &model, const Slic3r::DynamicPrintConfig &config);
 
 namespace {
 
@@ -777,6 +779,103 @@ void push_exception(rust::Vec<RawValidateIssue> &issues, const Slic3r::StringObj
 
 } // namespace
 
+// Message d'Orca pour un gcode_check_result en erreur (vide = aucune) :
+// GLCanvas3D::_set_warning_notification, cas MultiExtruderPrintableError (bit
+// 0) et MultiExtruderHeightOutside (bit 1), niveau SLICING_LIMIT_ERROR ; repli :
+// message du CLI (−102). Les bits 2 / 3 (bounding box des trajets hors du
+// plateau / trop hauts, tolérance 2 mm) ne sont PAS lus par la GUI : ses
+// avertissements ToolpathOutside / ToolHeightOutside viennent de
+// GCodeViewer::is_contained_in_bed (GLCanvas3D.cpp:10038-10045). Seul le CLI
+// les refuse (−102, y compris sur des plateaux ronds de delta que la GUI
+// tranche) ; ils ne bloquent donc pas ici.
+// Lot 47c : `issues` (facultatif) reçoit le détail par buse.
+static std::string gcode_check_message(const Slic3r::GCodeCheckResult &check, const Slic3r::DynamicPrintConfig &config,
+                                       rust::Vec<RawGcodeCheckIssue> *issues = nullptr)
+{
+    if ((check.error_code & 0b11) == 0)
+        return {};
+    const std::vector<std::string> nozzle_names = {"left nozzle", "right nozzle"};
+    const bool bbl = is_bbl_vendor_preset(config);
+    auto extruder_label = [&](int extruder_id, bool force_nozzle) {
+        if ((bbl || force_nozzle) && extruder_id >= 1 && extruder_id <= int(nozzle_names.size()))
+            return nozzle_names[size_t(extruder_id - 1)];
+        return (boost::format("Tool %d") % extruder_id).str();
+    };
+    std::vector<std::string> parts;
+    if (check.error_code & 1) {
+        std::string text;
+        for (auto it = check.print_area_error_infos.begin(); it != check.print_area_error_infos.end(); ++it) {
+            if (it != check.print_area_error_infos.begin())
+                text += "\n";
+            const int extruder_id = it->first + 1;
+            std::string filaments;
+            RawGcodeCheckIssue issue;
+            issue.kind = 0;
+            issue.extruder = static_cast<uint32_t>(extruder_id);
+            for (size_t i = 0; i < it->second.size(); ++i) {
+                if (i > 0)
+                    filaments += ", ";
+                filaments += std::to_string(it->second[i].first + 1);
+                issue.filaments.push_back(static_cast<uint32_t>(it->second[i].first + 1));
+            }
+            const std::string name = extruder_label(extruder_id, false);
+            if (issues) {
+                issue.nozzle = rust::String(name);
+                issues->push_back(std::move(issue));
+            }
+            if (it->second.size() == 1)
+                text += (boost::format("Filament %s is placed in the %s, but the generated G-code path exceeds the printable range of the %s.") %
+                         filaments % name % name).str();
+            else
+                text += (boost::format("Filaments %s are placed in the %s, but the generated G-code path exceeds the printable range of the %s.") %
+                         filaments % name % name).str();
+        }
+        if (!text.empty())
+            parts.push_back(text);
+    }
+    if (check.error_code & (1 << 1)) {
+        std::string text;
+        for (auto it = check.print_height_error_infos.begin(); it != check.print_height_error_infos.end(); ++it) {
+            if (it != check.print_height_error_infos.begin())
+                text += "\n";
+            const int extruder_id = it->first + 1;
+            std::set<int> filament_ids;
+            for (const auto &entry : it->second)
+                filament_ids.insert(entry.first + 1);
+            std::string filaments;
+            for (int id : filament_ids)
+                filaments += (filaments.empty() ? "" : ", ") + std::to_string(id);
+            // GUI : toujours extruder_name_list (left / right nozzle) ici.
+            const std::string name = extruder_label(extruder_id, true);
+            if (issues) {
+                RawGcodeCheckIssue issue;
+                issue.kind = 1;
+                issue.extruder = static_cast<uint32_t>(extruder_id);
+                issue.nozzle = rust::String(name);
+                for (int id : filament_ids)
+                    issue.filaments.push_back(static_cast<uint32_t>(id));
+                issues->push_back(std::move(issue));
+            }
+            if (it->second.size() == 1)
+                text += (boost::format("Filament %s is placed in the %s, but the generated G-code path exceeds the printable height of the %s.") %
+                         filaments % name % name).str();
+            else
+                text += (boost::format("Filaments %s are placed in the %s, but the generated G-code path exceeds the printable height of the %s.") %
+                         filaments % name % name).str();
+        }
+        if (!text.empty()) {
+            text += "\nOpen wiki for more information.";
+            parts.push_back(text);
+        }
+    }
+    if (parts.empty())
+        return "Found G-code in unprintable area of multi-extruder printers after slicing. Please make sure the 3mf file can be successfully sliced in the latest Orca Slicer.";
+    std::string message;
+    for (const std::string &part : parts)
+        message += (message.empty() ? "" : "\n") + part;
+    return message;
+}
+
 // Tranchage complet (`issues` nul) ou validation seule (`issues` non nul :
 // mêmes étapes jusqu'à `Print::validate` + contrôles de cohérence du pont,
 // refus collectés au lieu d'être levés, sans Print::process).
@@ -898,7 +997,13 @@ static RawSliceResult run_print(const rust::Vec<RawObject> &objects, rust::Str c
     // + wipe…) via DynamicPrintConfig::validate, avant Print::validate qui ne
     // les couvre pas (ex. default_junction_deviation=0.5 > max 0.3).
     {
-        const std::map<std::string, std::string> validity = config.validate(/*under_cli=*/true);
+        std::map<std::string, std::string> validity = config.validate(/*under_cli=*/true);
+        // Lot 47c : réglage de PLATEAU (model_settings.config, PartPlate) que le
+        // CLI n'applique qu'après ce contrôle (il ne valide que la config du
+        // projet) : les plages « Personnaliser » de la GUI d'Orca y écrivent
+        // [début, fin, ordre…] avec fin = MAX_LAYER_VALUE (INT_MAX − 1), hors du
+        // max 16 du registre (qui ne vaut que pour l'ordre des filaments).
+        validity.erase("other_layers_print_sequence");
         if (!validity.empty() && issues != nullptr) {
             for (const auto &[key, reason] : validity)
                 push_issue(*issues, reason, key, -1, -1, false);
@@ -967,6 +1072,7 @@ static RawSliceResult run_print(const rust::Vec<RawObject> &objects, rust::Str c
         print.set_calib_params(params);
     }
     orca_resize_flush_matrix(config, filament_count(config));
+    fill_brim_ear_default_radius(model, config);
     print.apply(model, config);
     if (!extruder_filament_info.empty())
         print.set_extruder_filament_info(extruder_filament_info);
@@ -1091,10 +1197,25 @@ static RawSliceResult run_print(const rust::Vec<RawObject> &objects, rust::Str c
     } catch (const Slic3r::SlicingError &error) {
         throw std::runtime_error("tranchage impossible : " + std::string(error.what()));
     }
+    // Lot 47 (audit 45 H2D-a) : contrôle des trajets du GCodeProcessor
+    // (GCodeProcessorResult::gcode_check_result, GCodeProcessor.cpp:1807-1930).
+    // Le CLI refuse tout error_code non nul (−102, OrcaSlicer.cpp:6218) ; la GUI
+    // affiche une erreur SLICING_LIMIT_ERROR pour les bits multi-buses 0 / 1
+    // (GLCanvas3D.cpp:10049-10051, 10118-10185) mais GARDE l'aperçu : seules
+    // l'impression et l'export sont bloqués (Plater::update_print_required,
+    // boutons Print / Export désactivés tant que l'erreur est affichée).
+    // Lot 47c : comme la GUI, le tranchage réussit ; le résultat (texte de la
+    // notification + détail par buse) est remonté au serveur, qui refuse
+    // export / envoi.
+    rust::Vec<RawGcodeCheckIssue> check_issues;
+    const std::string check_message = gcode_check_message(result.gcode_check_result, config, &check_issues);
     restore_export_metadata(exported.empty() ? out : exported, overrides, std::string(config_json));
 
     RawSliceResult raw;
     raw.gcode_path = exported.empty() ? out : exported;
+    raw.gcode_check_code = check_message.empty() ? 0 : (result.gcode_check_result.error_code & 0b11);
+    raw.gcode_check_message = rust::String(check_message);
+    raw.gcode_check_issues = std::move(check_issues);
 
     using Mode = Slic3r::PrintEstimatedStatistics::ETimeMode;
     raw.estimated_time_s =

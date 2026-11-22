@@ -74,6 +74,7 @@ fn object(volumes: Vec<ModelVolume>, instances: Vec<ModelInstance>) -> ModelObje
         layer_height_profile: Vec::new(),
         layer_config_ranges: Vec::new(),
         cut_id: None,
+        brim_points: Vec::new(),
     }
 }
 

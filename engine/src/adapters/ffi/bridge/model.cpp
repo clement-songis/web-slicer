@@ -224,6 +224,13 @@ rust::Vec<RawObject> model_to_raw(const Slic3r::Model &model)
                                                  {"check_sum", object->cut_id.check_sum()},
                                                  {"connectors_cnt", object->cut_id.connectors_cnt()}}
                                       .dump();
+        // ModelObject::brim_points (Metadata/brim_ear_points.txt).
+        for (const Slic3r::BrimPoint &point : object->brim_points) {
+            raw_object.brim_points.push_back(point.pos.x());
+            raw_object.brim_points.push_back(point.pos.y());
+            raw_object.brim_points.push_back(point.pos.z());
+            raw_object.brim_points.push_back(point.head_front_radius);
+        }
         for (const Slic3r::ModelInstance *instance : object->instances) {
             RawInstance raw_instance;
             raw_instance.matrix = to_col_major(instance->get_matrix());

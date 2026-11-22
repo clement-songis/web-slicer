@@ -219,13 +219,30 @@ pub(crate) async fn sliced_jobs(
     Ok(SlicedJobs { project, latest })
 }
 
+impl SlicedJobs {
+    /// Lot 47c (audit 45 H2D-a) : plateau(x) exporté(s) / envoyé(s) dont le
+    /// G-code sort de la zone d'une buse → 409 (GUI d'Orca : Print / Export
+    /// désactivés). `plate` = seul plateau exporté (0-based), sinon tous.
+    fn ensure_printable(&self, plate: Option<u32>) -> ApiResult<()> {
+        for (index, (_, gcode)) in &self.latest {
+            if plate.is_some_and(|p| i64::from(p) != *index) {
+                continue;
+            }
+            super::gcodes::ensure_gcode_printable(gcode)?;
+        }
+        Ok(())
+    }
+}
+
 async fn sliced_bundle(
     state: &AppState,
     user: UserId,
     project_id: ProjectId,
     job_ids: &[String],
+    plate: Option<u32>,
 ) -> ApiResult<SlicedBundle> {
     let jobs = sliced_jobs(state, user, project_id, job_ids).await?;
+    jobs.ensure_printable(plate)?;
     let newest = jobs.newest();
     let scene = newest
         .scene
@@ -321,7 +338,8 @@ pub async fn export_sliced(
     Json(body): Json<SlicedRequest>,
 ) -> ApiResult<Response> {
     let project_id = parse_project_id(&project_raw)?;
-    let bundle = sliced_bundle(&state, user.id, project_id, &body.job_ids).await?;
+    let bundle =
+        sliced_bundle(&state, user.id, project_id, &body.job_ids, body.plate_index).await?;
     let bytes = gcode_3mf_bytes(&bundle, body.plate_index).await?;
     let base = super::printers::safe_slug(&bundle.project_name);
     let filename = match body.plate_index {
@@ -359,7 +377,7 @@ pub async fn upload_sliced(
 ) -> ApiResult<Json<UploadSlicedResponse>> {
     let printer_id = super::printers::parse_printer_id(&printer_raw)?;
     let project_id = parse_project_id(&body.project_id)?;
-    let bundle = sliced_bundle(&state, user.id, project_id, &body.job_ids).await?;
+    let bundle = sliced_bundle(&state, user.id, project_id, &body.job_ids, None).await?;
     let use_3mf = printer_uses_3mf(&bundle.config);
     let file_count = if use_3mf { 1 } else { bundle.gcodes.len() };
     // Nom choisi validé avant tout travail (422 lisible).

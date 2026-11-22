@@ -207,6 +207,12 @@ void raw_into_model(const rust::Vec<RawObject> &objects, Slic3r::Model &model)
                                                        cut.value("check_sum", size_t(1)),
                                                        cut.value("connectors_cnt", size_t(0)));
         }
+        // ModelObject::brim_points (oreilles de bordure peintes, outil E) :
+        // x y z rayon par point, repère objet ; rayon <= 0 résolu par
+        // fill_brim_ear_default_radius avec la config.
+        for (size_t i = 0; i + 3 < raw_object.brim_points.size(); i += 4)
+            object->brim_points.emplace_back(raw_object.brim_points[i], raw_object.brim_points[i + 1],
+                                             raw_object.brim_points[i + 2], raw_object.brim_points[i + 3]);
         for (const RawInstance &raw_instance : raw_object.instances) {
             Slic3r::ModelInstance *instance = object->add_instance();
             instance->printable = raw_instance.printable;
@@ -460,6 +466,31 @@ void custom_gcodes_from_json(Slic3r::Model &model, const std::string &json, int 
     }
 }
 
+// Rayon des oreilles de bordure posées sans diamètre : celui que le gizmo
+// d'Orca donne à un nouveau point (GLGizmoBrimEars::get_brim_default_radius,
+// diamètre = initial_layer_line_width absolue × 16 → rayon = moitié).
+void fill_brim_ear_default_radius(Slic3r::Model &model, const Slic3r::DynamicPrintConfig &config)
+{
+    float radius = -1.f;
+    for (Slic3r::ModelObject *object : model.objects) {
+        for (Slic3r::BrimPoint &point : object->brim_points) {
+            if (point.head_front_radius > 0.f)
+                continue;
+            if (radius < 0.f) {
+                double nozzle = 0.4;
+                if (const auto *opt = config.option<Slic3r::ConfigOptionFloats>("nozzle_diameter");
+                    opt != nullptr && !opt->values.empty())
+                    nozzle = opt->get_at(0);
+                double diameter = 0.;
+                if (config.has("initial_layer_line_width"))
+                    diameter = config.get_abs_value("initial_layer_line_width", nozzle) * 16.0;
+                radius = float(diameter) / 2.f;
+            }
+            point.head_front_radius = radius;
+        }
+    }
+}
+
 // Point d'accès public à config_to_json (calib_project.cpp).
 std::string config_to_json_public(const Slic3r::DynamicPrintConfig &config)
 {
@@ -486,6 +517,7 @@ void write_project_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config
     const std::string out(out_path);
     Slic3r::StoreParams params;
     params.path = out.c_str();
+    fill_brim_ear_default_radius(model, config);
     params.model = &model;
     params.config = &config;
     params.strategy = Slic3r::SaveStrategy::Silence;
@@ -644,6 +676,7 @@ void write_project_plates_raw(const rust::Vec<RawObject> &objects, rust::Str con
     const std::string out(out_path);
     StoreParams params;
     params.path = out.c_str();
+    fill_brim_ear_default_radius(model, config);
     params.model = &model;
     params.plate_data_list = plate_data;
     params.config = &config;
@@ -755,6 +788,7 @@ void write_gcode_3mf_raw(const rust::Vec<RawObject> &objects, rust::Str config_j
     const std::string out(out_path);
     StoreParams params;
     params.path = out.c_str();
+    fill_brim_ear_default_radius(model, config);
     params.model = &model;
     params.plate_data_list = plate_data;
     params.export_plate_idx = export_plate_idx;

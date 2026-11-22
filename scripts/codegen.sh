@@ -23,5 +23,8 @@ mkdir -p "$GEN_DIR"
 # Registre params + layout UI (T040) depuis audit/parameters.json et
 # audit/ui_inventory.json — sortie déterministe, fraîcheur testée en vitest.
 python3 audit/generate_frontend_ts.py
+# Lot 47 (FIL-a) : aucune section de réglages vide ni clé de Tab.cpp absente
+# du layout généré (lignes composées Line{…}.append_option comprises).
+(cd audit && python3 check_ui_layout.py)
 
 echo "codegen OK — audit/, annexes/ et $GEN_DIR synchronisés"

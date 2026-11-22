@@ -43,6 +43,9 @@ pub struct ImportedObject {
     /// Erreurs du maillage pièce lues par libslic3r (`<mesh_stat>` + arêtes
     /// ouvertes), reportées dans le 3MF autonome du modèle.
     pub mesh_stats: Option<engine::api::MeshErrorStats>,
+    /// `ModelObject::brim_points` (`Metadata/brim_ear_points.txt`), repère
+    /// objet → `brimEars` de la scène (lot 47, EARS-a).
+    pub brim_points: Vec<engine::api::BrimPoint>,
 }
 
 /// Pièce d'un objet multi-pièces 3MF (volume `normal_part` distinct).
@@ -192,6 +195,9 @@ struct ViewObject {
     volumes: Vec<ViewVolume>,
     #[serde(default)]
     cut_id: Option<engine::api::CutObjectId>,
+    /// `[x, y, z, rayon]` par point (repère objet).
+    #[serde(default)]
+    brim_points: Vec<Vec<f32>>,
 }
 
 #[derive(serde::Deserialize)]
@@ -445,6 +451,15 @@ fn convert_view(view: ProjectView) -> ImportResult<ImportedProject> {
                 mesh_name: mesh_name.clone(),
                 cut_id: object.cut_id.filter(|cut| cut.id != 0),
                 mesh_stats: first.mesh_stats.clone(),
+                brim_points: object
+                    .brim_points
+                    .iter()
+                    .filter(|p| p.len() == 4)
+                    .map(|p| engine::api::BrimPoint {
+                        pos: [p[0], p[1], p[2]],
+                        head_front_radius: p[3],
+                    })
+                    .collect(),
             });
         }
     }

@@ -85,7 +85,7 @@ pub struct ValidationIssue {
     /// Origine : `StringExceptionType` d'Orca, contrôle de config / de
     /// cohérence, ou garde de scène du serveur.
     #[ts(
-        type = "\"general\" | \"filament_not_match_bed_type\" | \"filaments_different_temp\" | \"object_collision_in_seq_print\" | \"object_collision_in_layer_print\" | \"layer_height_exceeds_limit\" | \"config\" | \"consistency\" | \"empty_plate\" | \"object_outside_plate\" | \"gcode_conflict\""
+        type = "\"general\" | \"filament_not_match_bed_type\" | \"filaments_different_temp\" | \"object_collision_in_seq_print\" | \"object_collision_in_layer_print\" | \"layer_height_exceeds_limit\" | \"config\" | \"consistency\" | \"empty_plate\" | \"object_outside_plate\" | \"gcode_conflict\" | \"gcode_check\""
     )]
     pub kind: String,
     /// Message d'Orca (anglais, msgid à traduire côté client) ou du serveur.
@@ -341,8 +341,13 @@ async fn validate_plate(
             errors.push(issue);
         }
     }
-    if let Some(issue) = sliced_conflict(state, user, project_id, scene, &snapshot, t).await {
-        warnings.push(issue);
+    if let Some(gcode) = sliced_gcode(state, user, project_id, scene, &snapshot, t).await {
+        if let Some(issue) = sliced_conflict(&gcode, scene) {
+            warnings.push(issue);
+        }
+        if let Some(issue) = sliced_gcode_check(&gcode) {
+            errors.push(issue);
+        }
     }
     Ok(plate_result(t, errors, warnings))
 }
@@ -353,14 +358,16 @@ async fn validate_plate(
 /// CLI refuse, −101). /validate le rapporte (`kind` = `gcode_conflict`,
 /// `params` = [couche, Z, objet 1, objet 2]) tant que le dernier tranchage
 /// réussi du plateau est **à jour** (même signature que la scène validée).
-async fn sliced_conflict(
+///
+/// G-code du dernier tranchage réussi et à jour du plateau `t`.
+async fn sliced_gcode(
     state: &AppState,
     user: UserId,
     project_id: ProjectId,
     scene: &Value,
     snapshot: &Value,
     t: i64,
-) -> Option<ValidationIssue> {
+) -> Option<crate::domain::Gcode> {
     let signature = crate::slice_signature::plate_signature(snapshot, scene, t);
     let jobs = state.storage.jobs().list(user).await.ok()?;
     let last = jobs
@@ -375,12 +382,43 @@ async fn sliced_conflict(
     if crate::slice_signature::of_job_scene(last.scene.as_ref()).as_deref() != Some(&signature) {
         return None;
     }
-    let gcode = state
-        .storage
-        .gcodes()
-        .get(user, last.gcode_id?)
-        .await
-        .ok()?;
+    state.storage.gcodes().get(user, last.gcode_id?).await.ok()
+}
+
+/// Lot 47c (audit 45 H2D-a) : trajets hors de la zone atteignable d'une buse
+/// (`stats.gcode_check`) — erreur SLICING_LIMIT_ERROR de la GUI d'Orca, qui
+/// bloque impression et export (Plater::update_print_required) : erreur
+/// bloquante du plateau (`kind` = `gcode_check`, message d'Orca, `params` =
+/// [buse, filaments]).
+fn sliced_gcode_check(gcode: &crate::domain::Gcode) -> Option<ValidationIssue> {
+    let check = crate::gcode::stored_gcode_check(&gcode.stats)?;
+    let message = check
+        .get("message")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let nozzle = check
+        .get("nozzle")
+        .and_then(Value::as_str)
+        .unwrap_or_default()
+        .to_string();
+    let filaments = check
+        .get("filament")
+        .and_then(Value::as_array)
+        .map(|ids| {
+            ids.iter()
+                .map(|v| v.to_string())
+                .collect::<Vec<_>>()
+                .join(", ")
+        })
+        .unwrap_or_default();
+    Some(ValidationIssue {
+        params: vec![nozzle, filaments],
+        ..ValidationIssue::new("gcode_check", message)
+    })
+}
+
+fn sliced_conflict(gcode: &crate::domain::Gcode, scene: &Value) -> Option<ValidationIssue> {
     let conflict = gcode.stats.get("conflict")?;
     let text = |k: &str| {
         conflict.get(k).map(|v| match v {
@@ -524,6 +562,39 @@ fn scene_object_name(scene: &Value, id: &str) -> Option<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Lot 47c : `stats.gcode_check` du dernier tranchage → erreur bloquante
+    /// `gcode_check` (message d'Orca, params = [buse, filaments]).
+    #[test]
+    fn gcode_check_becomes_a_blocking_error() {
+        let check = engine::api::GcodeCheck {
+            error_code: 1,
+            message: "Filaments 1, 2 are placed in the left nozzle, but the generated G-code path exceeds the printable range of the left nozzle.".into(),
+            issues: vec![engine::api::GcodeCheckIssue {
+                kind: "range".into(),
+                extruder: 1,
+                nozzle: "left nozzle".into(),
+                filaments: vec![1, 2],
+            }],
+        };
+        let mut gcode = crate::domain::Gcode {
+            id: crate::domain::GcodeId::new(),
+            user_id: UserId(uuid::Uuid::nil()),
+            job_id: crate::domain::JobId(uuid::Uuid::nil()),
+            file_path: String::new(),
+            preview_path: String::new(),
+            stats: json!({ "gcode_check": crate::gcode::gcode_check_json(&check) }),
+            thumbnails: json!([]),
+        };
+        let issue = sliced_gcode_check(&gcode).expect("erreur gcode_check");
+        assert_eq!(issue.kind, "gcode_check");
+        assert_eq!(issue.message, check.message);
+        assert_eq!(issue.params, vec!["left nozzle".to_string(), "1, 2".into()]);
+        gcode.stats = json!({ "gcode_check": null });
+        assert!(sliced_gcode_check(&gcode).is_none());
+        gcode.stats = json!({});
+        assert!(sliced_gcode_check(&gcode).is_none());
+    }
 
     #[test]
     fn parses_worker_result_after_log_noise() {

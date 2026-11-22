@@ -11,7 +11,7 @@
   "summary": {
     "settings_pages": 21,
     "settings_sections": 100,
-    "settings_option_lines": 525,
+    "settings_option_lines": 581,
     "main_menu_items": 103,
     "context_menu_items": 70,
     "toolbar_items": 11,
@@ -149,9 +149,7 @@
             "reduce_crossing_wall",
             "max_travel_detour_distance",
             "small_area_infill_flow_compensation",
-            {
-              "dynamic": "option"
-            }
+            "small_area_infill_flow_compensation_model"
           ]
         },
         {
@@ -296,7 +294,31 @@
           "title": "Overhang speed",
           "options": [
             "enable_overhang_speed",
-            "slowdown_for_curled_perimeters"
+            "slowdown_for_curled_perimeters",
+            "overhang_1_4_speed",
+            "overhang_2_4_speed",
+            "overhang_3_4_speed",
+            "overhang_4_4_speed",
+            "bridge_speed",
+            "internal_bridge_speed"
+          ],
+          "lines": [
+            {
+              "options": [
+                "overhang_1_4_speed",
+                "overhang_2_4_speed",
+                "overhang_3_4_speed",
+                "overhang_4_4_speed"
+              ],
+              "label": "Overhang speed"
+            },
+            {
+              "options": [
+                "bridge_speed",
+                "internal_bridge_speed"
+              ],
+              "label": "Bridge"
+            }
           ]
         },
         {
@@ -587,33 +609,25 @@
             "gcode_comments",
             "gcode_label_objects",
             "exclude_object",
-            {
-              "dynamic": "option"
-            }
+            "filename_format"
           ]
         },
         {
           "title": "Change extrusion role G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "process_change_extrusion_role_gcode"
           ]
         },
         {
           "title": "Post-processing Scripts",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "post_process"
           ]
         },
         {
           "title": "Notes",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "notes"
           ]
         }
       ]
@@ -677,7 +691,18 @@
             "filament_shrinkage_compensation_z",
             "filament_cost",
             "temperature_vitrification",
-            "idle_temperature"
+            "idle_temperature",
+            "nozzle_temperature_range_low",
+            "nozzle_temperature_range_high"
+          ],
+          "lines": [
+            {
+              "options": [
+                "nozzle_temperature_range_low",
+                "nozzle_temperature_range_high"
+              ],
+              "label": "Recommended nozzle temperature"
+            }
           ]
         },
         {
@@ -690,24 +715,102 @@
             "adaptive_pressure_advance",
             "adaptive_pressure_advance_overhangs",
             "adaptive_pressure_advance_bridges",
-            {
-              "dynamic": "option"
-            }
+            "adaptive_pressure_advance_model"
           ]
         },
         {
           "title": "Print chamber temperature",
           "options": [
-            "activate_chamber_temp_control"
+            "activate_chamber_temp_control",
+            "chamber_temperature",
+            "chamber_minimal_temperature"
+          ],
+          "lines": [
+            {
+              "options": [
+                "chamber_temperature",
+                "chamber_minimal_temperature"
+              ],
+              "label": "Chamber temperature"
+            }
           ]
         },
         {
           "title": "Print temperature",
-          "options": []
+          "options": [
+            "nozzle_temperature_initial_layer",
+            "nozzle_temperature"
+          ],
+          "lines": [
+            {
+              "options": [
+                "nozzle_temperature_initial_layer",
+                "nozzle_temperature"
+              ],
+              "label": "Nozzle"
+            }
+          ]
         },
         {
           "title": "Bed temperature",
-          "options": []
+          "options": [
+            "supertack_plate_temp_initial_layer",
+            "supertack_plate_temp",
+            "cool_plate_temp_initial_layer",
+            "cool_plate_temp",
+            "textured_cool_plate_temp_initial_layer",
+            "textured_cool_plate_temp",
+            "eng_plate_temp_initial_layer",
+            "eng_plate_temp",
+            "hot_plate_temp_initial_layer",
+            "hot_plate_temp",
+            "textured_plate_temp_initial_layer",
+            "textured_plate_temp"
+          ],
+          "lines": [
+            {
+              "options": [
+                "supertack_plate_temp_initial_layer",
+                "supertack_plate_temp"
+              ],
+              "label": "Cool Plate (SuperTack)"
+            },
+            {
+              "options": [
+                "cool_plate_temp_initial_layer",
+                "cool_plate_temp"
+              ],
+              "label": "Cool Plate"
+            },
+            {
+              "options": [
+                "textured_cool_plate_temp_initial_layer",
+                "textured_cool_plate_temp"
+              ],
+              "label": "Textured Cool Plate"
+            },
+            {
+              "options": [
+                "eng_plate_temp_initial_layer",
+                "eng_plate_temp"
+              ],
+              "label": "Engineering Plate"
+            },
+            {
+              "options": [
+                "hot_plate_temp_initial_layer",
+                "hot_plate_temp"
+              ],
+              "label": "Smooth PEI Plate / High Temp Plate"
+            },
+            {
+              "options": [
+                "textured_plate_temp_initial_layer",
+                "textured_plate_temp"
+              ],
+              "label": "Textured PEI Plate"
+            }
+          ]
         },
         {
           "title": "Volumetric speed limitation",
@@ -734,6 +837,10 @@
         {
           "title": "Part cooling fan",
           "options": [
+            "fan_min_speed",
+            "fan_cooling_layer_time",
+            "fan_max_speed",
+            "slow_down_layer_time",
             "reduce_fan_stop_start_freq",
             "slow_down_for_layer_cooling",
             "dont_slow_down_outer_wall",
@@ -744,6 +851,22 @@
             "internal_bridge_fan_speed",
             "support_material_interface_fan_speed",
             "ironing_fan_speed"
+          ],
+          "lines": [
+            {
+              "options": [
+                "fan_min_speed",
+                "fan_cooling_layer_time"
+              ],
+              "label": "Min fan speed threshold"
+            },
+            {
+              "options": [
+                "fan_max_speed",
+                "slow_down_layer_time"
+              ],
+              "label": "Max fan speed threshold"
+            }
           ]
         },
         {
@@ -755,7 +878,27 @@
         {
           "title": "Exhaust fan",
           "options": [
-            "activate_air_filtration"
+            "activate_air_filtration",
+            "activate_air_filtration_during_print",
+            "during_print_exhaust_fan_speed",
+            "activate_air_filtration_on_completion",
+            "complete_print_exhaust_fan_speed"
+          ],
+          "lines": [
+            {
+              "options": [
+                "activate_air_filtration_during_print",
+                "during_print_exhaust_fan_speed"
+              ],
+              "label": "During print"
+            },
+            {
+              "options": [
+                "activate_air_filtration_on_completion",
+                "complete_print_exhaust_fan_speed"
+              ],
+              "label": "Complete print"
+            }
           ]
         }
       ]
@@ -807,25 +950,19 @@
         {
           "title": "Filament start G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "filament_start_gcode"
           ]
         },
         {
           "title": "Change extrusion role G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "filament_change_extrusion_role_gcode"
           ]
         },
         {
           "title": "Filament end G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "filament_end_gcode"
           ]
         }
       ]
@@ -888,17 +1025,13 @@
         {
           "title": "Compatible printers",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "compatible_printers_condition"
           ]
         },
         {
           "title": "Compatible process profiles",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "compatible_prints_condition"
           ]
         }
       ]
@@ -912,9 +1045,7 @@
         {
           "title": "Notes",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "filament_notes"
           ]
         }
       ]
@@ -929,9 +1060,7 @@
           "title": "Printable space",
           "options": [
             "parallel_printheads_count",
-            {
-              "dynamic": "option"
-            },
+            "bed_exclude_area",
             "printable_height",
             "support_multi_bed_types",
             "best_object_pos",
@@ -950,9 +1079,7 @@
             "scan_first_layer",
             "enable_power_loss_recovery",
             "disable_m73",
-            {
-              "dynamic": "option"
-            },
+            "thumbnails",
             "use_relative_e_distances",
             "use_firmware_retraction",
             "time_cost"
@@ -961,8 +1088,19 @@
         {
           "title": "Cooling Fan",
           "options": [
+            "fan_speedup_time",
+            "fan_speedup_overhangs",
             "fan_kickstart",
             "part_cooling_fan_min_pwm"
+          ],
+          "lines": [
+            {
+              "options": [
+                "fan_speedup_time",
+                "fan_speedup_overhangs"
+              ],
+              "label": "Fan speed-up time"
+            }
           ]
         },
         {
@@ -1003,97 +1141,73 @@
         {
           "title": "File header G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "file_start_gcode"
           ]
         },
         {
           "title": "Machine start G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "machine_start_gcode"
           ]
         },
         {
           "title": "Machine end G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "machine_end_gcode"
           ]
         },
         {
           "title": "Printing by object G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "printing_by_object_gcode"
           ]
         },
         {
           "title": "Before layer change G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "before_layer_change_gcode"
           ]
         },
         {
           "title": "Layer change G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "layer_change_gcode"
           ]
         },
         {
           "title": "Timelapse G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "time_lapse_gcode"
           ]
         },
         {
           "title": "Clumping Detection G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "wrapping_detection_gcode"
           ]
         },
         {
           "title": "Change filament G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "change_filament_gcode"
           ]
         },
         {
           "title": "Change extrusion role G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "change_extrusion_role_gcode"
           ]
         },
         {
           "title": "Pause G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "machine_pause_gcode"
           ]
         },
         {
           "title": "Template Custom G-code",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "template_custom_gcode"
           ]
         }
       ]
@@ -1107,9 +1221,7 @@
         {
           "title": "Notes",
           "options": [
-            {
-              "dynamic": "option"
-            }
+            "printer_notes"
           ]
         }
       ]
@@ -1134,21 +1246,171 @@
           "title": "Resonance Compensation",
           "options": [
             "resonance_avoidance",
+            "min_resonance_avoidance_speed",
+            "max_resonance_avoidance_speed",
             "input_shaping_emit",
-            "input_shaping_type"
+            "input_shaping_type",
+            "input_shaping_freq_x",
+            "input_shaping_freq_y",
+            "input_shaping_damp_x",
+            "input_shaping_damp_y"
+          ],
+          "lines": [
+            {
+              "options": [
+                "min_resonance_avoidance_speed",
+                "max_resonance_avoidance_speed"
+              ],
+              "label": "Resonance Avoidance Speed"
+            },
+            {
+              "options": [
+                "input_shaping_freq_x",
+                "input_shaping_freq_y"
+              ],
+              "label": "Frequency"
+            },
+            {
+              "options": [
+                "input_shaping_damp_x",
+                "input_shaping_damp_y"
+              ],
+              "label": "Damping"
+            }
           ]
         },
         {
           "title": "Speed limitation",
-          "options": []
+          "options": [
+            "machine_max_speed_x",
+            "machine_max_speed_y",
+            "machine_max_speed_z",
+            "machine_max_speed_e"
+          ],
+          "lines": [
+            {
+              "options": [
+                "machine_max_speed_x"
+              ],
+              "label_from": "full_label"
+            },
+            {
+              "options": [
+                "machine_max_speed_y"
+              ],
+              "label_from": "full_label"
+            },
+            {
+              "options": [
+                "machine_max_speed_z"
+              ],
+              "label_from": "full_label"
+            },
+            {
+              "options": [
+                "machine_max_speed_e"
+              ],
+              "label_from": "full_label"
+            }
+          ]
         },
         {
           "title": "Acceleration limitation",
-          "options": []
+          "options": [
+            "machine_max_acceleration_x",
+            "machine_max_acceleration_y",
+            "machine_max_acceleration_z",
+            "machine_max_acceleration_e",
+            "machine_max_acceleration_extruding",
+            "machine_max_acceleration_retracting",
+            "machine_max_acceleration_travel"
+          ],
+          "lines": [
+            {
+              "options": [
+                "machine_max_acceleration_x"
+              ],
+              "label_from": "full_label"
+            },
+            {
+              "options": [
+                "machine_max_acceleration_y"
+              ],
+              "label_from": "full_label"
+            },
+            {
+              "options": [
+                "machine_max_acceleration_z"
+              ],
+              "label_from": "full_label"
+            },
+            {
+              "options": [
+                "machine_max_acceleration_e"
+              ],
+              "label_from": "full_label"
+            },
+            {
+              "options": [
+                "machine_max_acceleration_extruding"
+              ],
+              "label_from": "full_label"
+            },
+            {
+              "options": [
+                "machine_max_acceleration_retracting"
+              ],
+              "label_from": "full_label"
+            },
+            {
+              "options": [
+                "machine_max_acceleration_travel"
+              ],
+              "label_from": "full_label"
+            }
+          ]
         },
         {
           "title": "Jerk limitation",
-          "options": []
+          "options": [
+            "machine_max_junction_deviation",
+            "machine_max_jerk_x",
+            "machine_max_jerk_y",
+            "machine_max_jerk_z",
+            "machine_max_jerk_e"
+          ],
+          "lines": [
+            {
+              "options": [
+                "machine_max_junction_deviation"
+              ],
+              "label_from": "full_label"
+            },
+            {
+              "options": [
+                "machine_max_jerk_x"
+              ],
+              "label_from": "full_label"
+            },
+            {
+              "options": [
+                "machine_max_jerk_y"
+              ],
+              "label_from": "full_label"
+            },
+            {
+              "options": [
+                "machine_max_jerk_z"
+              ],
+              "label_from": "full_label"
+            },
+            {
+              "options": [
+                "machine_max_jerk_e"
+              ],
+              "label_from": "full_label"
+            }
+          ]
         }
       ]
     },
@@ -1210,9 +1472,7 @@
             "nozzle_diameter",
             "nozzle_volume",
             "extruder_printable_height",
-            {
-              "dynamic": "option"
-            }
+            "extruder_printable_area"
           ]
         },
         {

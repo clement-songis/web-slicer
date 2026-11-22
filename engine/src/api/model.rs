@@ -212,6 +212,48 @@ pub struct ModelObject {
     /// Informations de coupe (`ModelObject::cut_id`), `None` = objet non coupé.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub cut_id: Option<CutObjectId>,
+    /// Oreilles de bordure peintes (`ModelObject::brim_points`, outil E d'Orca),
+    /// utilisées par `Brim.cpp` quand `brim_type = painted` et écrites dans
+    /// `Metadata/brim_ear_points.txt` du 3MF.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub brim_points: Vec<BrimPoint>,
+}
+
+/// `Slic3r::BrimPoint` : position dans le repère de l'objet (avant la
+/// transformation d'instance) et rayon de la tête. `head_front_radius <= 0`
+/// = rayon par défaut du gizmo d'Orca (`GLGizmoBrimEars::get_brim_default_radius`
+/// : largeur de ligne de la 1re couche × 16 de diamètre), résolu par le moteur
+/// avec la config du tranchage / de l'export.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct BrimPoint {
+    pub pos: [f32; 3],
+    pub head_front_radius: f32,
+}
+
+impl BrimPoint {
+    /// Point posé comme le gizmo d'Orca (`GLGizmoBrimEars::gizmo_event`,
+    /// LeftDown) : point monde ramené sous le plateau (`z = -0.0001`) puis
+    /// exprimé dans le repère de l'objet par l'inverse de la transformation
+    /// d'instance (`trsf.inverse() * world_pos`, cast en float).
+    pub fn from_world(instance: DMat4, x: f64, y: f64, head_front_radius: f32) -> Self {
+        let local = instance
+            .inverse()
+            .transform_point3(glam::DVec3::new(x, y, -0.0001));
+        BrimPoint {
+            pos: [local.x as f32, local.y as f32, local.z as f32],
+            head_front_radius,
+        }
+    }
+
+    /// Position monde (x, y) du point pour une instance (`pt.transform(trsf)`).
+    pub fn to_world(&self, instance: DMat4) -> [f64; 2] {
+        let world = instance.transform_point3(glam::DVec3::new(
+            self.pos[0] as f64,
+            self.pos[1] as f64,
+            self.pos[2] as f64,
+        ));
+        [world.x, world.y]
+    }
 }
 
 /// Plage `[min_z, max_z]` (mm, objet posé) et ses surcharges de réglages,
@@ -328,6 +370,7 @@ impl Model {
             layer_height_profile: Vec::new(),
             layer_config_ranges: Vec::new(),
             cut_id: None,
+            brim_points: Vec::new(),
         });
         self.objects.last_mut().expect("objet tout juste ajouté")
     }

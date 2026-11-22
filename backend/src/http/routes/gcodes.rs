@@ -7,7 +7,7 @@
 
 use std::path::Path as FsPath;
 
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -23,14 +23,58 @@ fn parse_gcode_id(raw: &str) -> ApiResult<GcodeId> {
         .map_err(|_| ApiError::not_found("G-code"))
 }
 
+/// Lot 47c (audit 45 H2D-a) : un G-code dont les trajets sortent de la zone
+/// atteignable d'une buse (`stats.gcode_check`) n'est ni exporté ni envoyé,
+/// comme dans la GUI d'Orca (erreur SLICING_LIMIT_ERROR : boutons Print /
+/// Export désactivés par Plater::update_print_required, aperçu conservé).
+/// 409 lisible, `details.reason = "gcode_check"`.
+pub(crate) fn ensure_gcode_printable(gcode: &crate::domain::Gcode) -> ApiResult<()> {
+    let Some(check) = crate::gcode::stored_gcode_check(&gcode.stats) else {
+        return Ok(());
+    };
+    let orca = check
+        .get("message")
+        .and_then(serde_json::Value::as_str)
+        .unwrap_or_default();
+    Err(ApiError::conflict_with(
+        format!(
+            "Export et impression impossibles : le G-code sort de la zone imprimable d'une buse. {orca}"
+        )
+        .trim()
+        .to_string(),
+        serde_json::json!({
+            "reason": "gcode_check",
+            "gcode_id": gcode.id.0.to_string(),
+            "gcode_check": check,
+        }),
+    ))
+}
+
+/// Paramètres de `GET /api/gcodes/{id}/download`.
+#[derive(Debug, Default, serde::Deserialize)]
+pub struct DownloadQuery {
+    /// Lecture pour l'aperçu de l'éditeur (visualiseur de G-code), pas un
+    /// export : autorisée même quand l'impression est bloquée (lot 47c).
+    #[serde(default)]
+    pub preview: Option<String>,
+}
+
 /// `GET /api/gcodes/{id}/download` — télécharge le fichier G-code (pièce jointe).
 pub async fn download(
     CurrentUser(user): CurrentUser,
     State(state): State<AppState>,
     Path(id): Path<String>,
+    Query(query): Query<DownloadQuery>,
 ) -> ApiResult<Response> {
     let id = parse_gcode_id(&id)?;
     let gcode = state.storage.gcodes().get(user.id, id).await?; // 404, SC-008
+    let preview = query
+        .preview
+        .as_deref()
+        .is_some_and(|v| matches!(v, "1" | "true" | ""));
+    if !preview {
+        ensure_gcode_printable(&gcode)?;
+    }
 
     let bytes = state
         .files

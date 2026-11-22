@@ -59,6 +59,7 @@ def extract_tabs() -> list[dict]:
     for m in re.finditer(r"for\s*\(\s*const\s+std::string&?\s+\w+\s*:\s*\{([^}]+)\}", code):
         for key in re.findall(r'"([^"]+)"', m.group(1)):
             events.append((m.start(), "option", {"key": key}))
+    events.extend(extract_line_events(code, spans))
     events.sort(key=lambda e: e[0])
 
     # Ordre d'exécution d'Orca : une page créée dans une fonction auxiliaire
@@ -123,8 +124,130 @@ def extract_tabs() -> list[dict]:
             if kind == "option":
                 current_group["options"].append(payload["key"])
             else:
-                current_group["options"].append({"dynamic": payload["variable"]})
+                resolved = resolve_option_var(code, spans, pos, payload["variable"])
+                current_group["options"].append(resolved or {"dynamic": payload["variable"]})
+        elif kind == "line_option":
+            # Option d'une `Line` composée (Line{label}.append_option(...)) :
+            # rendue comme une ligne d'option à part entière ; l'étiquette de la
+            # ligne Orca (« Nozzle », « Cool Plate »…) est conservée dans "lines".
+            if current_group is None:
+                continue
+            key = payload["key"]
+            current_group["options"].append(key)
+            lines = current_group.setdefault("lines", [])
+            line_id = (payload["line_var"], payload["line_pos"])
+            if lines and lines[-1].get("_id") == line_id:
+                lines[-1]["options"].append(key)
+            else:
+                entry = {"_id": line_id, "options": [key]}
+                if payload.get("label_from"):
+                    entry["label_from"] = payload["label_from"]
+                else:
+                    entry["label"] = payload.get("label") or ""
+                lines.append(entry)
+    for page in pages:
+        for section in page["sections"]:
+            for line in section.get("lines", []):
+                line.pop("_id", None)
     return pages
+
+
+# --- Lignes composées de Tab.cpp (FIL-a, lot 47) ----------------------------
+# Orca construit une partie des lignes à la main, hors append_single_option_line :
+#   Line line = { L("Nozzle"), L("…") };
+#   line.append_option(optgroup->get_option("nozzle_temperature_initial_layer", 0));
+#   Option opt = optgroup->get_option("chamber_temperature"); line.append_option(opt);
+#   append_option_line(optgroup, "machine_max_speed_x", …)   (TabPrinter, libellé = full_label)
+#   for (const std::string &axis : axes) append_option_line(optgroup, "machine_max_jerk_" + axis, …)
+# Sans elles, « Print temperature », « Bed temperature » et les limites machine
+# sortaient vides du layout.
+
+ASSIGN_GET_OPTION_RE = r'\b{var}\s*=\s*\w+(?:->|\.)get_option\(\s*"([^"]+)"'
+
+
+def _function_extent(spans: list[tuple[int, str]], pos: int, code_len: int) -> tuple[int, int]:
+    start, end = 0, code_len
+    for s, _name in spans:
+        if s > pos:
+            end = s
+            break
+        start = s
+    return start, end
+
+
+def resolve_option_var(code: str, spans: list[tuple[int, str]], pos: int, var: str) -> str | None:
+    """Clé de la dernière affectation `var = ...get_option("clé")` avant `pos`,
+    dans la même fonction ; None si cette affectation n'est pas littérale."""
+    start, _end = _function_extent(spans, pos, len(code))
+    last = None
+    for m in re.finditer(rf"\b{re.escape(var)}\s*=(?!=)", code[start:pos]):
+        last = m
+    if last is None:
+        return None
+    tail = code[start + last.start(): pos]
+    mm = re.match(ASSIGN_GET_OPTION_RE.format(var=re.escape(var)), tail)
+    return mm.group(1) if mm else None
+
+
+def extract_line_events(code: str, spans: list[tuple[int, str]]) -> list[tuple[int, str, dict]]:
+    events: list[tuple[int, str, dict]] = []
+    # Débuts de lignes : Line x = { L("…") / x = { L("…") / Line x = Line{ L("…")
+    line_starts: list[tuple[int, str, str]] = []
+    for m in re.finditer(
+        r'(?:\bLine\s+)?\b(\w+)\s*=\s*(?:Line\s*)?\{\s*(?:_?L\()?\s*"((?:[^"\\]|\\.)*)"', code
+    ):
+        line_starts.append((m.start(), m.group(1), m.group(2)))
+
+    def line_of_var(var: str, pos: int) -> tuple[int, str]:
+        start, _ = _function_extent(spans, pos, len(code))
+        best = (pos, "")
+        for p, v, label in line_starts:
+            if v == var and start <= p < pos:
+                best = (p, label)
+        return best
+
+    for m in re.finditer(r'\b(\w+)\.append_option\(\s*\w+(?:->|\.)get_option\(\s*"([^"]+)"', code):
+        lp, label = line_of_var(m.group(1), m.start())
+        events.append((m.start(), "line_option",
+                       {"key": m.group(2), "line_var": m.group(1), "line_pos": lp, "label": label}))
+    for m in re.finditer(r"\b(\w+)\.append_option\(\s*([A-Za-z_]\w*)\s*\)", code):
+        key = resolve_option_var(code, spans, m.start(), m.group(2))
+        if key is None:
+            continue
+        lp, label = line_of_var(m.group(1), m.start())
+        events.append((m.start(), "line_option",
+                       {"key": key, "line_var": m.group(1), "line_pos": lp, "label": label}))
+
+    # TabPrinter::append_option_line(optgroup, "clé", …) : une ligne par clé,
+    # libellé = full_label de l'option.
+    for m in re.finditer(r'\bappend_option_line\s*\(\s*\w+\s*,\s*"([^"]+)"\s*[,)]', code):
+        events.append((m.start(), "line_option",
+                       {"key": m.group(1), "line_var": "append_option_line", "line_pos": m.start(),
+                        "label_from": "full_label"}))
+    # … et en boucle sur un vecteur littéral :
+    # for (const std::string &v : vec) { append_option_line(optgroup, v | "prefixe" + v, …); }
+    vectors = {
+        m.group(1): re.findall(r'"([^"]+)"', m.group(2))
+        for m in re.finditer(r"std::vector<std::string>\s*(\w+)\s*\{([^}]*)\}", code)
+    }
+    for m in re.finditer(
+        r"for\s*\(\s*const\s+std::string\s*&\s*(\w+)\s*:\s*(\w+)\s*\)\s*\{([^{}]*)\}", code
+    ):
+        var, vec, body = m.group(1), m.group(2), m.group(3)
+        if vec not in vectors:
+            continue
+        call = re.search(
+            rf'append_option_line\s*\(\s*\w+\s*,\s*(?:"([^"]*)"\s*\+\s*)?{re.escape(var)}\s*[,)]', body
+        )
+        if not call:
+            continue
+        prefix = call.group(1) or ""
+        for i, item in enumerate(vectors[vec]):
+            pos = m.start() + i  # positions distinctes, ordonnées dans la boucle
+            events.append((pos, "line_option",
+                           {"key": prefix + item, "line_var": "append_option_line", "line_pos": pos,
+                            "label_from": "full_label"}))
+    return events
 
 
 # --- Menus (MainFrame.cpp, GUI_Factories.cpp) ------------------------------

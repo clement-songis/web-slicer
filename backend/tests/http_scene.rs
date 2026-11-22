@@ -987,3 +987,229 @@ async fn orient_suggests_rotation_for_stl() {
     let rotation = body["rotation"].as_array().unwrap();
     assert_eq!(rotation.len(), 3);
 }
+
+/// Lot 47 (audit 45 SEQ-a) : plateau réglé « par objet » sous un traitement
+/// « par couche ». « Tout arranger » (prepare_all) verrouille ce plateau
+/// (m_uncompatible_plates : séquence ≠ globale) ; « Arranger ce plateau »
+/// (init_arrange_params, PREPARE_STATE_MENU) prend la séquence réelle du
+/// plateau : objets hauts espacés d'au moins extruder_clearance_radius
+/// (update_selected_items_inflation, ArrangeJob.cpp:761-799).
+#[tokio::test]
+async fn plate_by_object_arrange_respects_extruder_clearance() {
+    if !worker_available() {
+        eprintln!("engine-worker absent — test d'arrangement réel ignoré");
+        return;
+    }
+    let (_d, app, _state) = app().await;
+    let user = register(&app, "seqplate@test.local").await;
+    let project = create_project(&app, &user).await;
+    let cube = std::fs::read(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../engine/tests/fixtures/cube20.stl"
+    ))
+    .unwrap();
+    let model = upload_model(&app, &project, &user, "cube.stl", &cube).await;
+    wait_for_mesh(&app, &model, &user).await;
+    // Cubes 20 × 20 × 30 (plus hauts que nozzle_height : dégagement complet ;
+    // sous extruder_clearance_height_to_rod), serrés à 30 mm d'entraxe comme
+    // dans le scénario de l'audit.
+    let object = |id: &str, x: f64, y: f64| {
+        serde_json::json!({
+            "id": id, "modelId": model,
+            "transform": { "position": [x, y, 0.0], "rotation": [0.0, 0.0, 0.0], "scale": [1.0, 1.0, 1.5] }
+        })
+    };
+    let scene = serde_json::json!({
+        "schemaVersion": 1,
+        "objects": [object("a", 175.0, 175.0), object("b", 145.0, 175.0), object("c", 175.0, 145.0)],
+        "plates": { "plates": [
+            { "id": "p0", "objectIds": ["a", "b", "c"], "settings": { "print_sequence": "by object" } }
+        ], "activeId": "p0" }
+    });
+    let resp = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .method("PUT")
+                .uri(format!("/api/projects/{project}"))
+                .header(header::CONTENT_TYPE, "application/json")
+                .header(header::COOKIE, &user)
+                .body(Body::from(
+                    serde_json::json!({
+                        "expected_version": 1, "scene": scene, "active_presets": {}
+                    })
+                    .to_string(),
+                ))
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+
+    let arrange = |scope: &str| {
+        post(
+            &format!("/api/projects/{project}/arrange"),
+            &user,
+            serde_json::json!({
+                "bed_width": 350.0, "bed_depth": 350.0, "spacing": 0.0, "items": [],
+                "bed_shape": [[0.0, 0.0], [350.0, 0.0], [350.0, 350.0], [0.0, 350.0]],
+                "extruder_clearance_radius": 65.0,
+                "options": { "spacing": 0.0 }, "scope": scope, "plate_index": 0
+            }),
+        )
+    };
+    let centres = |body: &serde_json::Value| -> Vec<(String, f64, f64)> {
+        body["placements"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|p| {
+                (
+                    p["id"].as_str().unwrap().to_string(),
+                    p["x"].as_f64().unwrap(),
+                    p["y"].as_f64().unwrap(),
+                )
+            })
+            .collect()
+    };
+
+    // « Tout arranger » : plateau incompatible verrouillé, rien ne bouge (Orca).
+    let resp = app.clone().oneshot(arrange("all")).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = json_body(resp).await;
+    for (id, x, y) in centres(&body) {
+        let expected = match id.as_str() {
+            "a" => (175.0, 175.0),
+            "b" => (145.0, 175.0),
+            _ => (175.0, 145.0),
+        };
+        assert!(
+            (x - expected.0).abs() < 1e-6 && (y - expected.1).abs() < 1e-6,
+            "plateau verrouillé déplacé : {body}"
+        );
+    }
+
+    // « Arranger ce plateau » : séquence du plateau → dégagement de 65 mm.
+    let resp = app.clone().oneshot(arrange("plate")).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = json_body(resp).await;
+    let placed = centres(&body);
+    assert_eq!(placed.len(), 3, "{body}");
+    let mut orders: Vec<u64> = body["placements"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|p| p["print_order"].as_u64().expect("print_order"))
+        .collect();
+    orders.sort_unstable();
+    assert_eq!(orders, vec![1, 2, 3], "{body}");
+    for i in 0..3 {
+        for j in i + 1..3 {
+            let dx = (placed[i].1 - placed[j].1).abs() - 20.0;
+            let dy = (placed[i].2 - placed[j].2).abs() - 20.0;
+            assert!(
+                dx.max(dy) >= 65.0 - 1e-2,
+                "objets {i}/{j} trop proches pour l'impression par objet : {body}"
+            );
+        }
+    }
+    assert!(body["placements"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|p| p["plate_index"] == 0));
+}
+
+/// Lot 47 (audit 45 MM-a) : `POST /api/flush-volumes` en mode `effective`
+/// renvoie la matrice que le projet purge réellement (WipingDialog d'Orca) :
+/// sans matrice valide, celle calculée depuis les couleurs du projet comme au
+/// tranchage / à l'export (`source = computed`) ; avec une matrice N×N du
+/// projet, celle-ci telle quelle (`source = project`).
+#[tokio::test]
+async fn effective_flush_matrix_is_the_one_used_by_the_project() {
+    if !worker_available() {
+        eprintln!("engine-worker absent — ignoré");
+        return;
+    }
+    let (_d, app, _state) = app().await;
+    let user = register(&app, "mm47@test.local").await;
+    let project = create_project(&app, &user).await;
+    let put_scene = |version: i64, project_config: serde_json::Value| {
+        Request::builder()
+            .method("PUT")
+            .uri(format!("/api/projects/{project}"))
+            .header(header::CONTENT_TYPE, "application/json")
+            .header(header::COOKIE, &user)
+            .body(Body::from(
+                serde_json::json!({
+                    "expected_version": version,
+                    "scene": { "schemaVersion": 1, "objects": [], "projectConfig": project_config },
+                    "active_presets": {}
+                })
+                .to_string(),
+            ))
+            .unwrap()
+    };
+    let effective = |cookie: &str| {
+        post(
+            "/api/flush-volumes",
+            cookie,
+            serde_json::json!({ "project_id": project, "effective": true }),
+        )
+    };
+    let colours = serde_json::json!(["#F2754E", "#00C1AE", "#F4E2C1"]);
+    let resp = app
+        .clone()
+        .oneshot(put_scene(
+            1,
+            serde_json::json!({ "filament_colour": colours }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let resp = app.clone().oneshot(effective(&user)).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = json_body(resp).await;
+    assert_eq!(body["source"], "computed", "{body}");
+    let nozzles = body["nozzles"].as_u64().unwrap() as usize;
+    let matrix: Vec<f64> = serde_json::from_value(body["matrix"].clone()).unwrap();
+    assert_eq!(matrix.len(), 9 * nozzles, "{body}");
+    for i in 0..3 {
+        for j in 0..3 {
+            let v = matrix[i * 3 + j];
+            assert!(if i == j { v == 0.0 } else { v > 0.0 }, "{body}");
+        }
+    }
+    assert!(body["multiplier"].as_f64().unwrap() > 0.0);
+
+    // Matrice du projet : conservée telle quelle.
+    let own = vec![0.0, 500.0, 280.0, 280.0, 0.0, 280.0, 120.0, 280.0, 0.0];
+    let resp = app
+        .clone()
+        .oneshot(put_scene(
+            2,
+            serde_json::json!({ "filament_colour": colours, "flush_volumes_matrix": own }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::OK);
+    let body = json_body(app.clone().oneshot(effective(&user)).await.unwrap()).await;
+    assert_eq!(body["source"], "project", "{body}");
+    let matrix: Vec<f64> = serde_json::from_value(body["matrix"].clone()).unwrap();
+    assert_eq!(&matrix[..9], own.as_slice());
+
+    // Isolation (SC-008) et projet requis.
+    let other = register(&app, "mm47-other@test.local").await;
+    let resp = app.clone().oneshot(effective(&other)).await.unwrap();
+    assert_eq!(resp.status(), StatusCode::NOT_FOUND);
+    let resp = app
+        .clone()
+        .oneshot(post(
+            "/api/flush-volumes",
+            &user,
+            serde_json::json!({ "effective": true }),
+        ))
+        .await
+        .unwrap();
+    assert_eq!(resp.status(), StatusCode::UNPROCESSABLE_ENTITY);
+}

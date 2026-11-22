@@ -20,13 +20,13 @@ pub use error::{EngineError, EngineErrorCode, EngineResult};
 pub use gcode::{GcodeLayer, GcodePreview, GcodeSegment, LineKind};
 pub use mesh::{DisplayMesh, DisplayMeshError, RepairedMeshErrors, TriangleMesh};
 pub use model::{
-    CustomGcodeItem, CustomGcodeKind, CustomGcodeMode, CutObjectId, LayerConfigRange,
+    BrimPoint, CustomGcodeItem, CustomGcodeKind, CustomGcodeMode, CutObjectId, LayerConfigRange,
     MeshErrorStats, Model, ModelFormat, ModelInstance, ModelObject, ModelVolume, PaintChannel,
     PlateCustomGcodes, VolumeCutInfo, VolumePaint, VolumeRole,
 };
 pub use presets::{ArrangeParams, GuiArrangeOutcome, GuiArrangeSettings, RawPreset};
 pub use slice::{
-    BuildVolume, CalibMode, CalibParams, CancelToken, GcodeConflict, ProgressSink, ShaperType,
-    SliceRequest, SliceResult, SliceStats, ValidateIssue, ValidateIssueKind, ValidateResult,
-    OUTPUT_FILENAME_BASE_TOKEN,
+    BuildVolume, CalibMode, CalibParams, CancelToken, GcodeCheck, GcodeCheckIssue, GcodeConflict,
+    ProgressSink, ShaperType, SliceRequest, SliceResult, SliceStats, ValidateIssue,
+    ValidateIssueKind, ValidateResult, OUTPUT_FILENAME_BASE_TOKEN,
 };

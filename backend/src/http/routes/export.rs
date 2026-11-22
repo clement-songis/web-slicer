@@ -714,6 +714,8 @@ struct SceneObjectSpec {
     object_name: Option<String>,
     /// Groupe d'instances (`instanceGroup`, lot 44b F-a).
     instance_group: Option<String>,
+    /// Oreilles de bordure (`brimEars.points`, lot 47 EARS-a).
+    brim_ears: Vec<[f64; 3]>,
 }
 
 /// Assemble le `Model` moteur depuis le document de scène et les maillages
@@ -774,6 +776,7 @@ pub(crate) async fn build_project_model_selected(
                 cut_id: None,
                 object_name: None,
                 instance_group: None,
+                brim_ears: Vec::new(),
             })
             .collect()
     });
@@ -827,6 +830,8 @@ pub(crate) async fn build_project_model_selected(
         object.layer_config_ranges = spec.layer_config_ranges;
         object.cut_id = spec.cut_id;
         object.volumes[0].mesh_stats = mesh_stats;
+        // ModelObject::brim_points → Metadata/brim_ear_points.txt (store_bbs_3mf).
+        object.brim_points = crate::slicing::scene_brim_points(spec.matrix, &spec.brim_ears);
         object.instances = vec![engine::api::ModelInstance {
             matrix: spec.matrix,
             plate_index: spec.plate_index,
@@ -1039,6 +1044,7 @@ fn scene_object_specs(scene: &Value, requested_plate: Option<u32>) -> Option<Vec
                         .filter(|name| !name.is_empty())
                         .map(str::to_string),
                     instance_group: crate::slicing::scene_instance_group(object),
+                    brim_ears: crate::slicing::scene_brim_ears(object),
                 })
             })
             .collect(),

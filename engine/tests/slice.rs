@@ -76,3 +76,52 @@ fn slices_real_project_with_progress() {
     let max = ratios.iter().cloned().fold(0.0_f32, f32::max);
     assert!(max >= 0.5, "la progression avance nettement : max={max}");
 }
+
+/// Lot 47c : plages « Personnaliser » des autres couches (réglage de plateau
+/// d'Orca, PartPlate::set_other_layers_print_sequence) : bloc [début, fin,
+/// ordre…] avec fin = MAX_LAYER_VALUE (INT_MAX − 1). Le contrôle des bornes du
+/// CLI (max 16) ne s'applique pas à ce réglage de plateau : tranchage réussi.
+#[test]
+fn custom_other_layers_sequence_until_last_layer_slices() {
+    let (model, mut config) =
+        engine::adapters::ffi::read_project_3mf(&common::fixture("orca_project.3mf"))
+            .expect("lecture du projet 3MF");
+    config
+        .set(
+            "before_layer_change_gcode",
+            ConfigValue::String("G92 E0".into()),
+        )
+        .unwrap();
+    // Insertion directe : valeurs telles que la GUI d'Orca les écrit (aucun
+    // bornage côté Rust).
+    for (key, value) in [
+        (
+            "other_layers_sequence_choice",
+            ConfigValue::String("Customize".into()),
+        ),
+        (
+            "other_layers_print_sequence",
+            ConfigValue::Ints(vec![2, 2_147_483_646, 1]),
+        ),
+        ("other_layers_print_sequence_nums", ConfigValue::Int(1)),
+    ] {
+        config.0.insert(key.to_string(), value);
+    }
+    let work = tempfile::tempdir().unwrap();
+    let req = SliceRequest {
+        allow_mixed_temperatures: false,
+        model,
+        config,
+        plate_index: 0,
+        work_dir: work.path().to_path_buf(),
+        calib: None,
+    };
+    let progress: ProgressSink = Box::new(|_, _| {});
+    let result = engine::adapters::ffi::slice(req, progress, CancelToken::new())
+        .expect("plage jusqu'à la dernière couche acceptée");
+    let gcode = std::fs::read_to_string(&result.gcode_path).unwrap();
+    assert!(
+        gcode.contains("; other_layers_print_sequence = 2,2147483646,1"),
+        "réglage écrit dans le bloc de config"
+    );
+}

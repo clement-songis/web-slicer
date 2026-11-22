@@ -37,7 +37,7 @@ export const UI_LAYOUT: UiPage[] = [
       { title: "Ironing", options: ["ironing_type","ironing_pattern","ironing_flow","ironing_spacing","ironing_inset","ironing_angle","ironing_angle_fixed"] },
       { title: "Z contouring", options: ["zaa_enabled","zaa_minimize_perimeter_height","zaa_min_z","zaa_dont_alternate_fill_direction"] },
       { title: "Wall generator", options: ["wall_generator","wall_transition_angle","wall_transition_filter_deviation","wall_transition_length","wall_distribution_count","initial_layer_min_bead_width","min_bead_width","min_feature_size","min_length_factor","wall_maximum_resolution","wall_maximum_deviation"] },
-      { title: "Walls and surfaces", options: ["wall_sequence","is_infill_first","wall_direction","print_flow_ratio","top_solid_infill_flow_ratio","bottom_solid_infill_flow_ratio","set_other_flow_ratios","first_layer_flow_ratio","outer_wall_flow_ratio","inner_wall_flow_ratio","overhang_flow_ratio","sparse_infill_flow_ratio","internal_solid_infill_flow_ratio","gap_fill_flow_ratio","support_flow_ratio","support_interface_flow_ratio","only_one_wall_first_layer","only_one_wall_top","min_width_top_surface","reduce_crossing_wall","max_travel_detour_distance","small_area_infill_flow_compensation",{"dynamic":"option"}] },
+      { title: "Walls and surfaces", options: ["wall_sequence","is_infill_first","wall_direction","print_flow_ratio","top_solid_infill_flow_ratio","bottom_solid_infill_flow_ratio","set_other_flow_ratios","first_layer_flow_ratio","outer_wall_flow_ratio","inner_wall_flow_ratio","overhang_flow_ratio","sparse_infill_flow_ratio","internal_solid_infill_flow_ratio","gap_fill_flow_ratio","support_flow_ratio","support_interface_flow_ratio","only_one_wall_first_layer","only_one_wall_top","min_width_top_surface","reduce_crossing_wall","max_travel_detour_distance","small_area_infill_flow_compensation","small_area_infill_flow_compensation_model"] },
       { title: "Bridging", options: ["bridge_flow","internal_bridge_flow","bridge_density","internal_bridge_density","thick_bridges","thick_internal_bridges","enable_extra_bridge_layer","dont_filter_internal_bridges","counterbore_hole_bridging"] },
       { title: "Overhangs", options: ["detect_overhang_wall","make_overhang_printable","make_overhang_printable_angle","make_overhang_printable_hole_size","extra_perimeters_on_overhangs","overhang_reverse","overhang_reverse_internal_only","overhang_reverse_threshold"] },
     ],
@@ -60,7 +60,7 @@ export const UI_LAYOUT: UiPage[] = [
     sections: [
       { title: "First layer speed", options: ["initial_layer_speed","initial_layer_infill_speed","initial_layer_travel_speed","slow_down_layers"] },
       { title: "Other layers speed", options: ["outer_wall_speed","inner_wall_speed","small_perimeter_speed","small_perimeter_threshold","sparse_infill_speed","internal_solid_infill_speed","top_surface_speed","gap_infill_speed","ironing_speed","support_speed","support_interface_speed"] },
-      { title: "Overhang speed", options: ["enable_overhang_speed","slowdown_for_curled_perimeters"] },
+      { title: "Overhang speed", options: ["enable_overhang_speed","slowdown_for_curled_perimeters","overhang_1_4_speed","overhang_2_4_speed","overhang_3_4_speed","overhang_4_4_speed","bridge_speed","internal_bridge_speed"] },
       { title: "Travel speed", options: ["travel_speed"] },
       { title: "Acceleration", options: ["default_acceleration","outer_wall_acceleration","inner_wall_acceleration","bridge_acceleration","sparse_infill_acceleration","internal_solid_infill_acceleration","initial_layer_acceleration","initial_layer_travel_acceleration","top_surface_acceleration","travel_acceleration","accel_to_decel_enable","accel_to_decel_factor"] },
       { title: "Junction Deviation", options: ["default_junction_deviation"] },
@@ -102,10 +102,10 @@ export const UI_LAYOUT: UiPage[] = [
       { title: "Brim", options: ["brim_type","brim_width","brim_object_gap","brim_flow_ratio","brim_use_efc_outline","combine_brims","brim_ears_max_angle","brim_ears_detection_length"] },
       { title: "Special mode", options: ["slicing_mode","print_sequence","print_order","spiral_mode","spiral_mode_smooth","spiral_mode_max_xy_smoothing","spiral_starting_flow_ratio","spiral_finishing_flow_ratio","timelapse_type","enable_wrapping_detection"] },
       { title: "Fuzzy Skin", options: ["fuzzy_skin","fuzzy_skin_mode","fuzzy_skin_noise_type","fuzzy_skin_point_distance","fuzzy_skin_thickness","fuzzy_skin_scale","fuzzy_skin_octaves","fuzzy_skin_persistence","fuzzy_skin_ripples_per_layer","fuzzy_skin_ripple_offset","fuzzy_skin_layers_between_ripple_offset","fuzzy_skin_first_layer"] },
-      { title: "G-code output", options: ["reduce_infill_retraction","gcode_add_line_number","gcode_comments","gcode_label_objects","exclude_object",{"dynamic":"option"}] },
-      { title: "Change extrusion role G-code", options: [{"dynamic":"option"}] },
-      { title: "Post-processing Scripts", options: [{"dynamic":"option"}] },
-      { title: "Notes", options: [{"dynamic":"option"}] },
+      { title: "G-code output", options: ["reduce_infill_retraction","gcode_add_line_number","gcode_comments","gcode_label_objects","exclude_object","filename_format"] },
+      { title: "Change extrusion role G-code", options: ["process_change_extrusion_role_gcode"] },
+      { title: "Post-processing Scripts", options: ["post_process"] },
+      { title: "Notes", options: ["notes"] },
     ],
   },
   {
@@ -129,11 +129,11 @@ export const UI_LAYOUT: UiPage[] = [
     icon: "custom-gcode_filament",
     kind: "filament",
     sections: [
-      { title: "Basic information", options: ["filament_type","filament_vendor","filament_soluble","filament_is_support","filament_change_length","required_nozzle_HRC","default_filament_colour","filament_diameter","filament_adhesiveness_category","filament_density","filament_shrink","filament_shrinkage_compensation_z","filament_cost","temperature_vitrification","idle_temperature"] },
-      { title: "Flow ratio and Pressure Advance", options: ["pellet_flow_coefficient","filament_flow_ratio","enable_pressure_advance","pressure_advance","adaptive_pressure_advance","adaptive_pressure_advance_overhangs","adaptive_pressure_advance_bridges",{"dynamic":"option"}] },
-      { title: "Print chamber temperature", options: ["activate_chamber_temp_control"] },
-      { title: "Print temperature", options: [] },
-      { title: "Bed temperature", options: [] },
+      { title: "Basic information", options: ["filament_type","filament_vendor","filament_soluble","filament_is_support","filament_change_length","required_nozzle_HRC","default_filament_colour","filament_diameter","filament_adhesiveness_category","filament_density","filament_shrink","filament_shrinkage_compensation_z","filament_cost","temperature_vitrification","idle_temperature","nozzle_temperature_range_low","nozzle_temperature_range_high"] },
+      { title: "Flow ratio and Pressure Advance", options: ["pellet_flow_coefficient","filament_flow_ratio","enable_pressure_advance","pressure_advance","adaptive_pressure_advance","adaptive_pressure_advance_overhangs","adaptive_pressure_advance_bridges","adaptive_pressure_advance_model"] },
+      { title: "Print chamber temperature", options: ["activate_chamber_temp_control","chamber_temperature","chamber_minimal_temperature"] },
+      { title: "Print temperature", options: ["nozzle_temperature_initial_layer","nozzle_temperature"] },
+      { title: "Bed temperature", options: ["supertack_plate_temp_initial_layer","supertack_plate_temp","cool_plate_temp_initial_layer","cool_plate_temp","textured_cool_plate_temp_initial_layer","textured_cool_plate_temp","eng_plate_temp_initial_layer","eng_plate_temp","hot_plate_temp_initial_layer","hot_plate_temp","textured_plate_temp_initial_layer","textured_plate_temp"] },
       { title: "Volumetric speed limitation", options: ["filament_adaptive_volumetric_speed","filament_max_volumetric_speed"] },
     ],
   },
@@ -143,9 +143,9 @@ export const UI_LAYOUT: UiPage[] = [
     kind: "filament",
     sections: [
       { title: "Cooling for specific layer", options: ["close_fan_the_first_x_layers","full_fan_speed_layer"] },
-      { title: "Part cooling fan", options: ["reduce_fan_stop_start_freq","slow_down_for_layer_cooling","dont_slow_down_outer_wall","slow_down_min_speed","enable_overhang_bridge_fan","overhang_fan_threshold","overhang_fan_speed","internal_bridge_fan_speed","support_material_interface_fan_speed","ironing_fan_speed"] },
+      { title: "Part cooling fan", options: ["fan_min_speed","fan_cooling_layer_time","fan_max_speed","slow_down_layer_time","reduce_fan_stop_start_freq","slow_down_for_layer_cooling","dont_slow_down_outer_wall","slow_down_min_speed","enable_overhang_bridge_fan","overhang_fan_threshold","overhang_fan_speed","internal_bridge_fan_speed","support_material_interface_fan_speed","ironing_fan_speed"] },
       { title: "Auxiliary part cooling fan", options: ["additional_cooling_fan_speed"] },
-      { title: "Exhaust fan", options: ["activate_air_filtration"] },
+      { title: "Exhaust fan", options: ["activate_air_filtration","activate_air_filtration_during_print","during_print_exhaust_fan_speed","activate_air_filtration_on_completion","complete_print_exhaust_fan_speed"] },
     ],
   },
   {
@@ -162,9 +162,9 @@ export const UI_LAYOUT: UiPage[] = [
     icon: "custom-gcode_advanced",
     kind: "filament",
     sections: [
-      { title: "Filament start G-code", options: [{"dynamic":"option"}] },
-      { title: "Change extrusion role G-code", options: [{"dynamic":"option"}] },
-      { title: "Filament end G-code", options: [{"dynamic":"option"}] },
+      { title: "Filament start G-code", options: ["filament_start_gcode"] },
+      { title: "Change extrusion role G-code", options: ["filament_change_extrusion_role_gcode"] },
+      { title: "Filament end G-code", options: ["filament_end_gcode"] },
     ],
   },
   {
@@ -183,8 +183,8 @@ export const UI_LAYOUT: UiPage[] = [
     icon: "advanced",
     kind: "filament",
     sections: [
-      { title: "Compatible printers", options: [{"dynamic":"option"}] },
-      { title: "Compatible process profiles", options: [{"dynamic":"option"}] },
+      { title: "Compatible printers", options: ["compatible_printers_condition"] },
+      { title: "Compatible process profiles", options: ["compatible_prints_condition"] },
     ],
   },
   {
@@ -192,7 +192,7 @@ export const UI_LAYOUT: UiPage[] = [
     icon: "custom-gcode_note",
     kind: "filament",
     sections: [
-      { title: "Notes", options: [{"dynamic":"option"}] },
+      { title: "Notes", options: ["filament_notes"] },
     ],
   },
   {
@@ -200,9 +200,9 @@ export const UI_LAYOUT: UiPage[] = [
     icon: "custom-gcode_object-info",
     kind: "machine",
     sections: [
-      { title: "Printable space", options: ["parallel_printheads_count",{"dynamic":"option"},"printable_height","support_multi_bed_types","best_object_pos","z_offset","preferred_orientation"] },
-      { title: "Advanced", options: ["printer_structure","gcode_flavor","pellet_modded_printer","bbl_use_printhost","use_3mf","scan_first_layer","enable_power_loss_recovery","disable_m73",{"dynamic":"option"},"use_relative_e_distances","use_firmware_retraction","time_cost"] },
-      { title: "Cooling Fan", options: ["fan_kickstart","part_cooling_fan_min_pwm"] },
+      { title: "Printable space", options: ["parallel_printheads_count","bed_exclude_area","printable_height","support_multi_bed_types","best_object_pos","z_offset","preferred_orientation"] },
+      { title: "Advanced", options: ["printer_structure","gcode_flavor","pellet_modded_printer","bbl_use_printhost","use_3mf","scan_first_layer","enable_power_loss_recovery","disable_m73","thumbnails","use_relative_e_distances","use_firmware_retraction","time_cost"] },
+      { title: "Cooling Fan", options: ["fan_speedup_time","fan_speedup_overhangs","fan_kickstart","part_cooling_fan_min_pwm"] },
       { title: "Extruder Clearance", options: ["extruder_clearance_radius","extruder_clearance_height_to_rod","extruder_clearance_height_to_lid"] },
       { title: "Adaptive bed mesh", options: ["bed_mesh_min","bed_mesh_max","bed_mesh_probe_distance","adaptive_bed_mesh_margin"] },
       { title: "Accessory", options: ["nozzle_type","nozzle_hrc","auxiliary_fan","support_chamber_temp_control","support_air_filtration"] },
@@ -213,18 +213,18 @@ export const UI_LAYOUT: UiPage[] = [
     icon: "custom-gcode_gcode",
     kind: "machine",
     sections: [
-      { title: "File header G-code", options: [{"dynamic":"option"}] },
-      { title: "Machine start G-code", options: [{"dynamic":"option"}] },
-      { title: "Machine end G-code", options: [{"dynamic":"option"}] },
-      { title: "Printing by object G-code", options: [{"dynamic":"option"}] },
-      { title: "Before layer change G-code", options: [{"dynamic":"option"}] },
-      { title: "Layer change G-code", options: [{"dynamic":"option"}] },
-      { title: "Timelapse G-code", options: [{"dynamic":"option"}] },
-      { title: "Clumping Detection G-code", options: [{"dynamic":"option"}] },
-      { title: "Change filament G-code", options: [{"dynamic":"option"}] },
-      { title: "Change extrusion role G-code", options: [{"dynamic":"option"}] },
-      { title: "Pause G-code", options: [{"dynamic":"option"}] },
-      { title: "Template Custom G-code", options: [{"dynamic":"option"}] },
+      { title: "File header G-code", options: ["file_start_gcode"] },
+      { title: "Machine start G-code", options: ["machine_start_gcode"] },
+      { title: "Machine end G-code", options: ["machine_end_gcode"] },
+      { title: "Printing by object G-code", options: ["printing_by_object_gcode"] },
+      { title: "Before layer change G-code", options: ["before_layer_change_gcode"] },
+      { title: "Layer change G-code", options: ["layer_change_gcode"] },
+      { title: "Timelapse G-code", options: ["time_lapse_gcode"] },
+      { title: "Clumping Detection G-code", options: ["wrapping_detection_gcode"] },
+      { title: "Change filament G-code", options: ["change_filament_gcode"] },
+      { title: "Change extrusion role G-code", options: ["change_extrusion_role_gcode"] },
+      { title: "Pause G-code", options: ["machine_pause_gcode"] },
+      { title: "Template Custom G-code", options: ["template_custom_gcode"] },
     ],
   },
   {
@@ -232,7 +232,7 @@ export const UI_LAYOUT: UiPage[] = [
     icon: "custom-gcode_note",
     kind: "machine",
     sections: [
-      { title: "Notes", options: [{"dynamic":"option"}] },
+      { title: "Notes", options: ["printer_notes"] },
     ],
   },
   {
@@ -242,10 +242,10 @@ export const UI_LAYOUT: UiPage[] = [
     sections: [
       { title: "", options: [] },
       { title: "Advanced", options: ["emit_machine_limits_to_gcode"] },
-      { title: "Resonance Compensation", options: ["resonance_avoidance","input_shaping_emit","input_shaping_type"] },
-      { title: "Speed limitation", options: [] },
-      { title: "Acceleration limitation", options: [] },
-      { title: "Jerk limitation", options: [] },
+      { title: "Resonance Compensation", options: ["resonance_avoidance","min_resonance_avoidance_speed","max_resonance_avoidance_speed","input_shaping_emit","input_shaping_type","input_shaping_freq_x","input_shaping_freq_y","input_shaping_damp_x","input_shaping_damp_y"] },
+      { title: "Speed limitation", options: ["machine_max_speed_x","machine_max_speed_y","machine_max_speed_z","machine_max_speed_e"] },
+      { title: "Acceleration limitation", options: ["machine_max_acceleration_x","machine_max_acceleration_y","machine_max_acceleration_z","machine_max_acceleration_e","machine_max_acceleration_extruding","machine_max_acceleration_retracting","machine_max_acceleration_travel"] },
+      { title: "Jerk limitation", options: ["machine_max_junction_deviation","machine_max_jerk_x","machine_max_jerk_y","machine_max_jerk_z","machine_max_jerk_e"] },
     ],
   },
   {
@@ -264,7 +264,7 @@ export const UI_LAYOUT: UiPage[] = [
     icon: "custom-gcode_extruder",
     kind: "machine",
     sections: [
-      { title: "Basic information", options: ["nozzle_diameter","nozzle_volume","extruder_printable_height",{"dynamic":"option"}] },
+      { title: "Basic information", options: ["nozzle_diameter","nozzle_volume","extruder_printable_height","extruder_printable_area"] },
       { title: "Layer height limits", options: ["min_layer_height","max_layer_height"] },
       { title: "Position", options: ["extruder_offset"] },
       { title: "Retraction", options: ["retraction_length","retract_restart_extra","retraction_speed","deretraction_speed","retraction_minimum_travel","retract_when_changing_layer","wipe","wipe_distance","retract_before_wipe"] },
@@ -274,9 +274,35 @@ export const UI_LAYOUT: UiPage[] = [
   },
 ];
 
+/** Ligne composée d'Orca (`Line{ L("Nozzle") }.append_option(...)`, Tab.cpp) :
+ *  libellé de la ligne et ses options, dans l'ordre. Les options figurent aussi,
+ *  à plat, dans la section de `UI_LAYOUT` ; cette table donne le libellé
+ *  commun (« Nozzle », « Cool Plate »…) sans lequel « First layer » / « Other
+ *  layers » seraient ambigus. */
+export interface UiLine {
+  label: string;
+  options: string[];
+}
+
+/** `<kind>/<page>/<section>` → lignes composées de la section. */
+export const UI_LINES: Record<string, UiLine[]> = {
+  "process/Speed/Overhang speed": [{"label":"Overhang speed","options":["overhang_1_4_speed","overhang_2_4_speed","overhang_3_4_speed","overhang_4_4_speed"]},{"label":"Bridge","options":["bridge_speed","internal_bridge_speed"]}],
+  "filament/Filament/Basic information": [{"label":"Recommended nozzle temperature","options":["nozzle_temperature_range_low","nozzle_temperature_range_high"]}],
+  "filament/Filament/Print chamber temperature": [{"label":"Chamber temperature","options":["chamber_temperature","chamber_minimal_temperature"]}],
+  "filament/Filament/Print temperature": [{"label":"Nozzle","options":["nozzle_temperature_initial_layer","nozzle_temperature"]}],
+  "filament/Filament/Bed temperature": [{"label":"Cool Plate (SuperTack)","options":["supertack_plate_temp_initial_layer","supertack_plate_temp"]},{"label":"Cool Plate","options":["cool_plate_temp_initial_layer","cool_plate_temp"]},{"label":"Textured Cool Plate","options":["textured_cool_plate_temp_initial_layer","textured_cool_plate_temp"]},{"label":"Engineering Plate","options":["eng_plate_temp_initial_layer","eng_plate_temp"]},{"label":"Smooth PEI Plate / High Temp Plate","options":["hot_plate_temp_initial_layer","hot_plate_temp"]},{"label":"Textured PEI Plate","options":["textured_plate_temp_initial_layer","textured_plate_temp"]}],
+  "filament/Cooling/Part cooling fan": [{"label":"Min fan speed threshold","options":["fan_min_speed","fan_cooling_layer_time"]},{"label":"Max fan speed threshold","options":["fan_max_speed","slow_down_layer_time"]}],
+  "filament/Cooling/Exhaust fan": [{"label":"During print","options":["activate_air_filtration_during_print","during_print_exhaust_fan_speed"]},{"label":"Complete print","options":["activate_air_filtration_on_completion","complete_print_exhaust_fan_speed"]}],
+  "machine/Basic information/Cooling Fan": [{"label":"Fan speed-up time","options":["fan_speedup_time","fan_speedup_overhangs"]}],
+  "machine/Motion ability/Resonance Compensation": [{"label":"Resonance Avoidance Speed","options":["min_resonance_avoidance_speed","max_resonance_avoidance_speed"]},{"label":"Frequency","options":["input_shaping_freq_x","input_shaping_freq_y"]},{"label":"Damping","options":["input_shaping_damp_x","input_shaping_damp_y"]}],
+  "machine/Motion ability/Speed limitation": [{"label":"Maximum speed X","options":["machine_max_speed_x"]},{"label":"Maximum speed Y","options":["machine_max_speed_y"]},{"label":"Maximum speed Z","options":["machine_max_speed_z"]},{"label":"Maximum speed E","options":["machine_max_speed_e"]}],
+  "machine/Motion ability/Acceleration limitation": [{"label":"Maximum acceleration X","options":["machine_max_acceleration_x"]},{"label":"Maximum acceleration Y","options":["machine_max_acceleration_y"]},{"label":"Maximum acceleration Z","options":["machine_max_acceleration_z"]},{"label":"Maximum acceleration E","options":["machine_max_acceleration_e"]},{"label":"Maximum acceleration for extruding","options":["machine_max_acceleration_extruding"]},{"label":"Maximum acceleration for retracting","options":["machine_max_acceleration_retracting"]},{"label":"Maximum acceleration for travel","options":["machine_max_acceleration_travel"]}],
+  "machine/Motion ability/Jerk limitation": [{"label":"Maximum Junction Deviation","options":["machine_max_junction_deviation"]},{"label":"Maximum jerk X","options":["machine_max_jerk_x"]},{"label":"Maximum jerk Y","options":["machine_max_jerk_y"]},{"label":"Maximum jerk Z","options":["machine_max_jerk_z"]},{"label":"Maximum jerk E","options":["machine_max_jerk_e"]}],
+};
+
 /** Compteurs de structure (contrôle de fraîcheur). */
 export const UI_LAYOUT_COUNTS = {
   pages: 21,
   sections: 100,
-  optionLines: 525,
+  optionLines: 581,
 };

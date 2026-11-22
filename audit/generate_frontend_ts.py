@@ -188,6 +188,7 @@ def build_layout() -> str:
         lines.append("  },")
     lines.append("];")
     body = "\n".join(lines)
+    lines_body = build_lines(tabs)
 
     header = HEADER.format(
         src="audit/ui_inventory.json",
@@ -217,6 +218,21 @@ export interface UiPage {{
 
 {body}
 
+/** Ligne composée d'Orca (`Line{{ L("Nozzle") }}.append_option(...)`, Tab.cpp) :
+ *  libellé de la ligne et ses options, dans l'ordre. Les options figurent aussi,
+ *  à plat, dans la section de `UI_LAYOUT` ; cette table donne le libellé
+ *  commun (« Nozzle », « Cool Plate »…) sans lequel « First layer » / « Other
+ *  layers » seraient ambigus. */
+export interface UiLine {{
+  label: string;
+  options: string[];
+}}
+
+/** `<kind>/<page>/<section>` → lignes composées de la section. */
+export const UI_LINES: Record<string, UiLine[]> = {{
+{lines_body}
+}};
+
 /** Compteurs de structure (contrôle de fraîcheur). */
 export const UI_LAYOUT_COUNTS = {{
   pages: {summary['settings_pages']},
@@ -224,6 +240,28 @@ export const UI_LAYOUT_COUNTS = {{
   optionLines: {summary['settings_option_lines']},
 }};
 """
+
+
+def build_lines(tabs: list[dict]) -> str:
+    """Lignes composées (FIL-a, lot 47) : libellé Orca de la `Line`, ou full_label
+    de l'option pour TabPrinter::append_option_line."""
+    params = json.load(open(AUDIT_DIR / "parameters.json", encoding="utf-8"))["parameters"]
+    out = []
+    for tab in tabs:
+        kind = page_kind(tab.get("defined_in") or "")
+        for s in tab.get("sections") or []:
+            entries = []
+            for line in s.get("lines") or []:
+                if line.get("label_from") == "full_label":
+                    p = params.get(line["options"][0], {})
+                    label = p.get("full_label") or p.get("label") or line["options"][0]
+                else:
+                    label = line.get("label") or ""
+                entries.append({"label": label, "options": list(line["options"])})
+            if entries:
+                path = f"{kind}/{page_title(tab)}/{s.get('title') or ''}"
+                out.append(f"  {ts(path)}: {ts(entries)},")
+    return "\n".join(out)
 
 
 def main() -> None:

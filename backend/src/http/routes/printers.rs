@@ -649,7 +649,9 @@ pub async fn upload(
     };
 
     let printer = state.storage.printers().get(user.id, id).await?; // 404, SC-008
-                                                                    // Lot 46 (audit 44 DEV1-a) : G-code d'une autre imprimante refusé (409).
+                                                                    // Lot 47c (H2D-a) : trajets hors zone d'une buse → envoi refusé (409).
+    super::gcodes::ensure_gcode_printable(&gcode)?;
+    // Lot 46 (audit 44 DEV1-a) : G-code d'une autre imprimante refusé (409).
     let text = String::from_utf8_lossy(&bytes);
     ensure_printer_matches_gcode(
         &state,

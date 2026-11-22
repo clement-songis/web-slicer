@@ -217,11 +217,67 @@ fn check_printer_scene(name: &str) {
     }
 }
 
+/// Lot 47 (audit 45 H2D-a) : scènes H2D que le CLI d'Orca 2.4.1 REFUSE
+/// après export (`gcode_check_result` non nul → code −102,
+/// OrcaSlicer.cpp:6218 ; vérifié sur les quatre 3MF H2D : la tour d'essuyage
+/// en X = 15 fait extruder la buse droite sous X = 25, hors de
+/// `extruder_printable_area`). Lot 47c : comme la GUI d'Orca (aperçu gardé,
+/// impression / export bloqués), le tranchage RÉUSSIT et remonte
+/// `gcode_check` (message MultiExtruderPrintableError + buse / filaments) ;
+/// le G-code reste identique à la référence (sortie du CLI avant son refus).
+fn check_refused_printer_scene(name: &str) {
+    let (model, config) =
+        engine::adapters::ffi::read_project_3mf(&fixture(&format!("{name}.3mf"))).expect("3MF");
+    let work = tempfile::tempdir().unwrap();
+    let req = SliceRequest {
+        allow_mixed_temperatures: false,
+        model,
+        config,
+        plate_index: 0,
+        work_dir: work.path().to_path_buf(),
+        calib: None,
+    };
+    let progress: ProgressSink = Box::new(|_, _| {});
+    let result = engine::adapters::ffi::slice(req, progress, CancelToken::new())
+        .unwrap_or_else(|e| panic!("{name} : tranchage réussi attendu (GUI d'Orca) : {e:?}"));
+    let check = result
+        .gcode_check
+        .as_ref()
+        .unwrap_or_else(|| panic!("{name} : gcode_check attendu (CLI −102)"));
+    assert_eq!(
+        check.error_code & 1,
+        1,
+        "{name} : bit 0 (zone de buse) : {check:?}"
+    );
+    assert!(
+        check.message.contains("is placed in the right nozzle, but the generated G-code path exceeds the printable range of the right nozzle."),
+        "{name} : message d'Orca attendu, obtenu {check:?}"
+    );
+    let right = check
+        .issues
+        .iter()
+        .find(|i| i.kind == "range" && i.extruder == 2)
+        .unwrap_or_else(|| panic!("{name} : buse droite attendue : {check:?}"));
+    assert_eq!(right.nozzle, "right nozzle");
+    assert!(
+        !right.filaments.is_empty(),
+        "{name} : filaments en cause : {check:?}"
+    );
+    let text = std::fs::read_to_string(&result.gcode_path)
+        .unwrap_or_else(|e| panic!("{name} : G-code : {e}"));
+    let ours = without_known_x1c_gaps(normalize(&text));
+    let orca = without_known_x1c_gaps(normalize(
+        &std::fs::read_to_string(fixture(&format!("{name}.orca.gcode"))).unwrap(),
+    ));
+    assert!(tool_changes(&orca) > 2, "la référence change d'outil");
+    assert_same(name, &ours, &orca);
+}
+
 /// Bambu H2D (deux buses) : un filament par buse (filament_map_mode Manual,
 /// filament_map [1, 2]), préparation de buse et purge propres au double nez.
 #[test]
 fn bambu_h2d_two_nozzles_match_orca() {
-    check_printer_scene("bambu_h2d");
+    check_refused_printer_scene("bambu_h2d");
 }
 
 /// Bambu H2D en affectation MANUELLE (filament_map_mode = Manual,
@@ -235,7 +291,7 @@ fn bambu_h2d_manual_filament_map_matches_orca() {
         orca.contains("; filament_map = 1,2"),
         "référence : affectation manuelle 1,2"
     );
-    check_printer_scene("bambu_h2d_manual");
+    check_refused_printer_scene("bambu_h2d_manual");
 }
 
 /// Débit de buse High Flow (lot 39, barre latérale d'Orca « Nozzle flow » par
@@ -253,7 +309,7 @@ fn bambu_h2d_high_flow_nozzle_matches_orca() {
             && orca.contains("; filament_max_volumetric_speed = 25,40"),
         "référence : extrudeur 1 en High Flow"
     );
-    check_printer_scene("bambu_h2d_highflow");
+    check_refused_printer_scene("bambu_h2d_highflow");
 }
 
 /// X1C en High Flow (une buse, deux variantes) : G-code identique à Orca.
@@ -280,7 +336,7 @@ fn bambu_h2d_high_flow_variant_vectors_match_orca() {
         orca.contains("; retraction_length = 0.81,0.82"),
         "référence : variantes High Flow (1) et Standard (2)"
     );
-    check_printer_scene("bambu_h2d_highflow_variants");
+    check_refused_printer_scene("bambu_h2d_highflow_variants");
 }
 
 #[test]

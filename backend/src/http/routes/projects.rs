@@ -1334,7 +1334,12 @@ fn imported_scene_object(
         "layerProfile": object.layer_profile,
         "layerRanges": object.layer_ranges,
         "painting": object.painting,
-        "brimEars": { "points": [] },
+        // Oreilles de bordure du 3MF (ModelObject::brim_points, repère objet) en
+        // coordonnées plateau de l'outil E : [x, y, diamètre de tête].
+        "brimEars": { "points": object.brim_points.iter().map(|point| {
+            let [x, y] = point.to_world(object.matrix);
+            json!([x, y, f64::from(point.head_front_radius) * 2.0])
+        }).collect::<Vec<_>>() },
         "volumes": object.volumes,
     });
     if let Some(mesh_name) = &object.mesh_name {
@@ -2681,6 +2686,7 @@ mod import_3mf_tests {
             mesh_name: None,
             cut_id: None,
             mesh_stats: None,
+            brim_points: Vec::new(),
         }
     }
 
@@ -2825,6 +2831,7 @@ mod lot44b_tests {
             mesh_name: None,
             cut_id: None,
             mesh_stats: None,
+            brim_points: Vec::new(),
         }
     }
 
