@@ -858,6 +858,12 @@ rust::Vec<double> layer_profile_raw(const rust::Vec<RawObject> &objects, rust::S
         result = Slic3r::layer_height_profile_adaptive(params, object, quality);
     } else if (op == 1) {
         std::vector<double> in(profile.begin(), profile.end());
+        // Lot 48 (audit 46 VLH-a) : comme le pinceau (et la GUI, dont
+        // LayersEditing ne lisse que m_layer_height_profile déjà validé par
+        // PrintObject::update_layer_height_profile) : un profil incomplet
+        // (sommet ≠ hauteur de l'objet) est remplacé par celui des réglages au
+        // lieu d'être lissé tronqué.
+        Slic3r::PrintObject::update_layer_height_profile(object, params, in);
         result = Slic3r::smooth_height_profile(
             in, params, Slic3r::HeightProfileSmoothingParams(radius, keep_min));
     } else {

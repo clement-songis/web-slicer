@@ -142,6 +142,16 @@ fn check() -> engine::api::GcodeCheck {
 
 /// Projet + job réussi dont le G-code porte (ou non) `gcode_check`.
 async fn sliced(h: &Harness, owner: UserId, blocked: bool) -> (String, String, Gcode) {
+    let check = check();
+    sliced_with(h, owner, blocked.then_some(&check)).await
+}
+
+/// Comme [`sliced`], avec un contrôle quelconque (lot 48 : bits plateau).
+async fn sliced_with(
+    h: &Harness,
+    owner: UserId,
+    gcode_check: Option<&engine::api::GcodeCheck>,
+) -> (String, String, Gcode) {
     let project = h
         .storage
         .projects()
@@ -169,7 +179,6 @@ async fn sliced(h: &Harness, owner: UserId, blocked: bool) -> (String, String, G
         )
         .await
         .unwrap();
-    let check = check();
     let gcode = backend::gcode::store_gcode_named(
         &h.files,
         h.storage.gcodes(),
@@ -179,7 +188,7 @@ async fn sliced(h: &Harness, owner: UserId, blocked: bool) -> (String, String, G
         None,
         backend::gcode::SliceFindings {
             conflict: None,
-            gcode_check: blocked.then_some(&check),
+            gcode_check,
         },
     )
     .await
@@ -348,6 +357,71 @@ async fn gcode_check_blocks_sliced_file_export_and_printer_upload() {
     assert_eq!(resp.status(), StatusCode::CONFLICT);
     assert_gcode_check_conflict(&json_body(resp).await);
     assert!(mock.uploads().is_empty(), "aucun envoi");
+}
+
+/// Lot 48 (audit 46 GCHK-a) : trajet hors du PLATEAU (bit 2, mono-buse : tour
+/// de purge à Y = 258,8 sur une P1S de 256 mm). Comme la GUI d'Orca
+/// (`PartPlate::is_slice_result_ready_for_print` : error_code == 0 exigé) :
+/// aperçu lisible, export / envoi refusés avec un message propre au plateau.
+#[tokio::test]
+async fn plate_boundary_check_blocks_export_with_a_plate_message() {
+    const PLATE: &str = "A G-code path goes beyond the plate boundaries.";
+    let h = harness().await;
+    let session = register(&h.app, "p1s@test.local").await;
+    let owner = user_id(&h.storage, "p1s@test.local").await;
+    let check = engine::api::GcodeCheck {
+        error_code: 0b100,
+        message: PLATE.into(),
+        issues: vec![engine::api::GcodeCheckIssue {
+            kind: "plate_area".into(),
+            extruder: 1,
+            nozzle: String::new(),
+            filaments: vec![1, 2, 3],
+        }],
+    };
+    let (project, job, gcode) = sliced_with(&h, owner, Some(&check)).await;
+
+    let resp = get(&h.app, &format!("/api/gcodes/{}/stats", gcode.id), &session).await;
+    let stats = json_body(resp).await;
+    assert_eq!(stats["gcode_check"]["error_code"], 4, "{stats}");
+    assert_eq!(stats["gcode_check"]["kind"], "plate_area", "{stats}");
+    assert_eq!(stats["gcode_check"]["message"], PLATE);
+    assert_eq!(stats["gcode_check"]["filament"], json!([1, 2, 3]));
+
+    let resp = get(
+        &h.app,
+        &format!("/api/gcodes/{}/download", gcode.id),
+        &session,
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CONFLICT);
+    let body = json_body(resp).await;
+    assert_eq!(body["details"]["reason"], "gcode_check", "{body}");
+    let message = body["message"].as_str().unwrap_or_default();
+    assert!(message.contains("sort du plateau"), "{message}");
+    assert!(message.contains(PLATE), "{message}");
+    assert!(
+        !message.contains("buse"),
+        "pas de buse en cause : {message}"
+    );
+
+    let resp = send(
+        &h.app,
+        "POST",
+        &format!("/api/projects/{project}/export/sliced"),
+        &session,
+        json!({ "job_ids": [job] }),
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::CONFLICT);
+
+    let resp = get(
+        &h.app,
+        &format!("/api/gcodes/{}/download?preview=1", gcode.id),
+        &session,
+    )
+    .await;
+    assert_eq!(resp.status(), StatusCode::OK);
 }
 
 #[tokio::test]

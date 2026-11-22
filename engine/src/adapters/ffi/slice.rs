@@ -188,7 +188,13 @@ pub fn run_in_worker(request_path: &Path) -> EngineResult<SliceResult> {
                 .gcode_check_issues
                 .into_iter()
                 .map(|issue| crate::api::GcodeCheckIssue {
-                    kind: if issue.kind == 1 { "height" } else { "range" }.to_string(),
+                    kind: match issue.kind {
+                        1 => "height",
+                        2 => "plate_area",
+                        3 => "plate_height",
+                        _ => "range",
+                    }
+                    .to_string(),
                     extruder: issue.extruder,
                     nozzle: issue.nozzle,
                     filaments: issue.filaments,

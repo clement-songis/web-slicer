@@ -177,10 +177,43 @@ impl JobRunner for SliceRunner {
                     return RunOutcome::Cancelled;
                 }
                 tracing::warn!(job = %job.id, error = %e, "tranchage échoué");
-                RunOutcome::Failed(serde_json::json!({ "message": e.to_string() }))
+                RunOutcome::Failed(slice_failure_json(&e.to_string()))
             }
         }
     }
+}
+
+/// Lot 48 (audit 46 I18N-a) : erreur d'un job de tranchage. `message` reste le
+/// texte complet (compatibilité) ; quand il contient un refus de
+/// `Print::validate` d'Orca reconnu, on ajoute de quoi le traduire comme la
+/// validation (`ValidationIssue`) : `kind` (StringExceptionType d'Orca),
+/// `msgid` (gabarit anglais d'Orca, celui des catalogues de traduction),
+/// `params` (`StringObjectException::params`) et `orca_message` (texte
+/// d'Orca sans le préfixe du moteur).
+pub(crate) fn slice_failure_json(message: &str) -> serde_json::Value {
+    let mut out = serde_json::json!({ "message": message });
+    // Print.cpp:1771 : « Plate %d: %s does not support filament %s »
+    // (STRING_EXCEPT_FILAMENT_NOT_MATCH_BED_TYPE, params = [plateau, nom de
+    // plaque (msgid, ex. « Cool Plate »), filament]).
+    static BED_TYPE: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+        regex::Regex::new(r"Plate (\d+): (.+?) does not support filament (\d+)")
+            .expect("motif valide")
+    });
+    if let Some(caps) = BED_TYPE.captures(message) {
+        out["kind"] = "filament_not_match_bed_type".into();
+        out["msgid"] = "Plate %d: %s does not support filament %s".into();
+        out["params"] = serde_json::json!([&caps[1], &caps[2], &caps[3]]);
+        out["orca_message"] = caps[0].into();
+        return out;
+    }
+    // Autres refus de configuration : texte d'Orca isolé du préfixe du pont.
+    if let Some((_, orca)) = message.split_once("configuration invalide : ") {
+        let orca = orca.trim();
+        if !orca.is_empty() {
+            out["orca_message"] = orca.into();
+        }
+    }
+    out
 }
 
 /// Restaure les types à l'aide du registre : une désérialisation directe de
@@ -1189,6 +1222,29 @@ pub fn calib_from_scene(scene: &Value) -> Option<engine::api::CalibParams> {
 
 #[cfg(test)]
 mod tests {
+    /// Lot 48 (audit 46 I18N-a) : refus « plaque / filament » d'Orca structuré
+    /// pour la traduction ; autres erreurs : message intact.
+    #[test]
+    fn slice_failure_carries_orca_msgid_and_params() {
+        let v = super::slice_failure_json(
+            "moteur : configuration invalide : Plate 1: Cool Plate does not support filament 1
+",
+        );
+        assert_eq!(v["kind"], "filament_not_match_bed_type");
+        assert_eq!(v["msgid"], "Plate %d: %s does not support filament %s");
+        assert_eq!(v["params"], serde_json::json!(["1", "Cool Plate", "1"]));
+        assert_eq!(
+            v["orca_message"],
+            "Plate 1: Cool Plate does not support filament 1"
+        );
+        assert!(v["message"].as_str().unwrap().contains("Cool Plate"));
+        let other = super::slice_failure_json("configuration invalide : Too many layers");
+        assert!(other.get("kind").is_none());
+        assert_eq!(other["orca_message"], "Too many layers");
+        let plain = super::slice_failure_json("annulé");
+        assert_eq!(plain, serde_json::json!({ "message": "annulé" }));
+    }
+
     #[test]
     fn rotated_volume_keeps_box_centered_and_carries_the_rotation_in_its_matrix() {
         let object = serde_json::json!({ "volumes": [

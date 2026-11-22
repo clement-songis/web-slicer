@@ -583,6 +583,9 @@ pub fn gcode_check_json(check: &engine::api::GcodeCheck) -> serde_json::Value {
     serde_json::json!({
         "level": "error",
         "error_code": check.error_code,
+        // Lot 48 : type du premier dépassement (`range` / `height` d'une buse,
+        // `plate_area` / `plate_height` du plateau).
+        "kind": first.map(|i| i.kind.clone()),
         "nozzle": first.map(|i| i.nozzle.clone()).unwrap_or_default(),
         "extruder": first.map(|i| i.extruder),
         "filament": first.map(|i| i.filaments.clone()).unwrap_or_default(),
@@ -598,6 +601,25 @@ pub struct SliceFindings<'a> {
     pub conflict: Option<&'a engine::api::GcodeConflict>,
     /// Trajets hors zone d'une buse (lot 47c, erreur bloquant l'impression).
     pub gcode_check: Option<&'a engine::api::GcodeCheck>,
+}
+
+/// Lot 48 : cause lisible (français) d'un `stats.gcode_check` selon ses bits
+/// (`GCodeCheckResult::error_code` d'Orca) : 0 / 1 = zone / hauteur d'une
+/// buse, 2 = hors du plateau, 3 = plus haut que la hauteur imprimable.
+pub fn gcode_check_reason(check: &serde_json::Value) -> &'static str {
+    let code = check
+        .get("error_code")
+        .and_then(serde_json::Value::as_i64)
+        .unwrap_or(1);
+    if code & 0b11 != 0 {
+        "le G-code sort de la zone imprimable d'une buse."
+    } else if code & 0b1000 != 0 {
+        "le G-code dépasse la hauteur d'impression maximale de l'imprimante."
+    } else if code & 0b100 != 0 {
+        "le G-code sort du plateau (trajet hors de la zone imprimable)."
+    } else {
+        "le G-code sort de la zone imprimable."
+    }
 }
 
 /// `stats.gcode_check` d'un G-code enregistré (None si absent / nul).

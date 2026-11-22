@@ -779,20 +779,96 @@ void push_exception(rust::Vec<RawValidateIssue> &issues, const Slic3r::StringObj
 
 } // namespace
 
+// Lot 48 (audit 46 VLH-a) : profil de hauteur de couche variable qu'Orca va
+// IGNORER au tranchage. PrintObject::update_layer_height_profile (PrintObject.cpp:
+// 3805-3834) efface sans message tout profil de longueur impaire ou dont la
+// dernière entrée n'est pas au sommet de l'objet (|z − (object_print_z_
+// uncompensated_max − object_print_z_min)| > 1e-3), puis le remplace par
+// layer_height_profile_from_ranges (couches du réglage) si sa première hauteur
+// ≠ first_object_layer_height. Le G-code reste celui d'Orca (profil ignoré) ;
+// la validation le signale (avertissement « consistency », params = [cause,
+// valeur du profil, valeur attendue]) au lieu de le taire.
+static void push_ignored_layer_profiles(rust::Vec<RawValidateIssue> &issues, const Slic3r::Print &print)
+{
+    for (const Slic3r::PrintObject *object : print.objects()) {
+        const Slic3r::ModelObject *model_object = object->model_object();
+        if (model_object == nullptr)
+            continue;
+        const std::vector<coordf_t> &profile = model_object->layer_height_profile.get();
+        if (profile.empty())
+            continue;
+        const Slic3r::SlicingParameters &params = object->slicing_parameters();
+        const double top = params.object_print_z_uncompensated_max - params.object_print_z_min;
+        std::string cause;
+        double got = 0.;
+        double expected = 0.;
+        if ((profile.size() & 1) != 0 || profile.size() < 2) {
+            cause = "malformed";
+        } else if (std::abs(profile[profile.size() - 2] - top) > 1e-3) {
+            cause = "top";
+            got = profile[profile.size() - 2];
+            expected = top;
+        } else if (profile[1] != params.first_object_layer_height) {
+            cause = "first_layer";
+            got = profile[1];
+            expected = params.first_object_layer_height;
+        } else {
+            continue;
+        }
+        const std::string name = model_object->name.empty() ? std::string("objet") : model_object->name;
+        std::string message;
+        if (cause == "top")
+            message = (boost::format("Le profil de hauteur de couche variable de « %1% » s'arrête à Z = %2$.2f mm "
+                                     "alors que l'objet mesure %3$.2f mm : Orca l'ignore et tranche avec les "
+                                     "hauteurs de couche des réglages.") %
+                       name % got % expected)
+                          .str();
+        else if (cause == "first_layer")
+            message = (boost::format("Le profil de hauteur de couche variable de « %1% » commence par une couche de "
+                                     "%2$.2f mm au lieu de la hauteur de première couche (%3$.2f mm) : Orca l'ignore "
+                                     "et tranche avec les hauteurs de couche des réglages.") %
+                       name % got % expected)
+                          .str();
+        else
+            message = (boost::format("Le profil de hauteur de couche variable de « %1% » est invalide (paires "
+                                     "<z, hauteur> attendues) : Orca l'ignore et tranche avec les hauteurs de "
+                                     "couche des réglages.") %
+                       name)
+                          .str();
+        char got_text[32];
+        char expected_text[32];
+        std::snprintf(got_text, sizeof(got_text), "%.4f", got);
+        std::snprintf(expected_text, sizeof(expected_text), "%.4f", expected);
+        push_issue(issues, message, "", object_index_of(model_object, print.model()), -2, true,
+                   {"layer_height_profile_ignored", cause, got_text, expected_text});
+    }
+}
+
 // Message d'Orca pour un gcode_check_result en erreur (vide = aucune) :
 // GLCanvas3D::_set_warning_notification, cas MultiExtruderPrintableError (bit
 // 0) et MultiExtruderHeightOutside (bit 1), niveau SLICING_LIMIT_ERROR ; repli :
-// message du CLI (−102). Les bits 2 / 3 (bounding box des trajets hors du
-// plateau / trop hauts, tolérance 2 mm) ne sont PAS lus par la GUI : ses
-// avertissements ToolpathOutside / ToolHeightOutside viennent de
-// GCodeViewer::is_contained_in_bed (GLCanvas3D.cpp:10038-10045). Seul le CLI
-// les refuse (−102, y compris sur des plateaux ronds de delta que la GUI
-// tranche) ; ils ne bloquent donc pas ici.
+// message du CLI (−102).
+// Lot 48 (audit 46 GCHK-a) : bits 2 / 3 (trajets hors du plateau — boîte
+// englobante de printable_area élargie de 2 mm — / plus hauts que
+// printable_height, GCodeProcessor.cpp:1866-1888, valables aussi en mono-buse).
+// La GUI les lit : PartPlate::is_slice_result_ready_for_print (PartPlate.hpp:
+// 459-466) exige gcode_check_result.error_code == 0 (TOUS les bits) →
+// Print / Send / Export désactivés, aperçu conservé. Son texte visible est
+// celui de GCodeViewer::is_contained_in_bed (BuildVolume::all_paths_inside,
+// tolérance ~0) : « A G-code path goes beyond the plate boundaries. »
+// (ToolpathOutside) ou, si la hauteur est aussi dépassée, « A G-code path goes
+// beyond the max print height. » (ToolHeightOutside, GLCanvas3D.cpp:10038-10045,
+// 10101-10102). Bit 2 ⇒ BuildVolume « dehors » (la boîte élargie contient
+// rectangle, cercle de delta et polygone) : même message.
+// Le lot 47 ignorait ces bits (fixtures SeeMeCNC / rampes SEMM / suite de
+// contrat refusées −102) : leur tour d'essuyage (x 15, y 220) est réellement
+// hors du plateau rond de 145 mm (Y 214–252) ; la GUI y bloque aussi
+// l'impression. Depuis le lot 47c le tranchage réussit : rien n'est cassé.
 // Lot 47c : `issues` (facultatif) reçoit le détail par buse.
 static std::string gcode_check_message(const Slic3r::GCodeCheckResult &check, const Slic3r::DynamicPrintConfig &config,
                                        rust::Vec<RawGcodeCheckIssue> *issues = nullptr)
 {
-    if ((check.error_code & 0b11) == 0)
+    if ((check.error_code & 0b1111) == 0)
         return {};
     const std::vector<std::string> nozzle_names = {"left nozzle", "right nozzle"};
     const bool bbl = is_bbl_vendor_preset(config);
@@ -868,6 +944,42 @@ static std::string gcode_check_message(const Slic3r::GCodeCheckResult &check, co
             parts.push_back(text);
         }
     }
+    // Bits 2 / 3 : plateau (toutes imprimantes). print_area_error_infos /
+    // print_height_error_infos sont partagés avec les bits 0 / 1 : le détail
+    // (buse, filaments) n'est ajouté ici que si le bit multi-buses voisin est
+    // absent, sinon il est déjà porté par l'entrée « range » / « height ».
+    auto push_plate_issue = [&](uint8_t kind, const std::map<int, std::vector<std::pair<int, int>>> &infos) {
+        if (!issues)
+            return;
+        bool any = false;
+        for (const auto &[extruder_index, entries] : infos) {
+            RawGcodeCheckIssue issue;
+            issue.kind = kind;
+            issue.extruder = static_cast<uint32_t>(extruder_index + 1);
+            std::set<int> filament_ids;
+            for (const auto &entry : entries)
+                filament_ids.insert(entry.first + 1);
+            for (int id : filament_ids)
+                issue.filaments.push_back(static_cast<uint32_t>(id));
+            issues->push_back(std::move(issue));
+            any = true;
+        }
+        if (!any) {
+            RawGcodeCheckIssue issue;
+            issue.kind = kind;
+            issue.extruder = 0;
+            issues->push_back(std::move(issue));
+        }
+    };
+    if (check.error_code & (1 << 3)) {
+        parts.push_back("A G-code path goes beyond the max print height.");
+        if (!(check.error_code & (1 << 1)))
+            push_plate_issue(3, check.print_height_error_infos);
+    } else if (check.error_code & (1 << 2)) {
+        parts.push_back("A G-code path goes beyond the plate boundaries.");
+    }
+    if ((check.error_code & (1 << 2)) && !(check.error_code & 1))
+        push_plate_issue(2, check.print_area_error_infos);
     if (parts.empty())
         return "Found G-code in unprintable area of multi-extruder printers after slicing. Please make sure the 3mf file can be successfully sliced in the latest Orca Slicer.";
     std::string message;
@@ -1112,6 +1224,7 @@ static RawSliceResult run_print(const rust::Vec<RawObject> &objects, rust::Str c
     if (issues != nullptr) {
         push_exception(*issues, err, false, print.model());
         push_exception(*issues, warning, true, print.model());
+        push_ignored_layer_profiles(*issues, print);
     } else if (!err.string.empty() && !err.is_warning)
         throw std::runtime_error("configuration invalide : " + err.string);
 
@@ -1213,7 +1326,7 @@ static RawSliceResult run_print(const rust::Vec<RawObject> &objects, rust::Str c
 
     RawSliceResult raw;
     raw.gcode_path = exported.empty() ? out : exported;
-    raw.gcode_check_code = check_message.empty() ? 0 : (result.gcode_check_result.error_code & 0b11);
+    raw.gcode_check_code = check_message.empty() ? 0 : (result.gcode_check_result.error_code & 0b1111);
     raw.gcode_check_message = rust::String(check_message);
     raw.gcode_check_issues = std::move(check_issues);
 

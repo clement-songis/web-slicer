@@ -36,12 +36,11 @@ pub(crate) fn ensure_gcode_printable(gcode: &crate::domain::Gcode) -> ApiResult<
         .get("message")
         .and_then(serde_json::Value::as_str)
         .unwrap_or_default();
+    let reason = crate::gcode::gcode_check_reason(check);
     Err(ApiError::conflict_with(
-        format!(
-            "Export et impression impossibles : le G-code sort de la zone imprimable d'une buse. {orca}"
-        )
-        .trim()
-        .to_string(),
+        format!("Export et impression impossibles : {reason} {orca}")
+            .trim()
+            .to_string(),
         serde_json::json!({
             "reason": "gcode_check",
             "gcode_id": gcode.id.0.to_string(),

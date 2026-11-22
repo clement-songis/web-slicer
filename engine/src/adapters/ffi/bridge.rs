@@ -209,8 +209,8 @@ pub(crate) mod ffi {
         conflict_height: f64,
         conflict_layer: i64,
         /// Lot 47c (H2D-a, comme la GUI d'Orca) : `gcode_check_result.error_code`
-        /// limité aux bits multi-buses 0 / 1 (0 = aucun problème) ; le tranchage
-        /// réussit, l'impression / l'export sont bloqués côté serveur.
+        /// bits 0–3 (lot 48 : + bits plateau 2 / 3 ; 0 = aucun problème) ; le
+        /// tranchage réussit, l'impression / l'export sont bloqués côté serveur.
         gcode_check_code: i32,
         /// Texte de la notification d'erreur de la GUI (vide si aucun).
         gcode_check_message: String,
@@ -222,7 +222,9 @@ pub(crate) mod ffi {
     /// (`GCodeCheckResult::print_area_error_infos` / `print_height_error_infos`).
     #[derive(Debug)]
     struct RawGcodeCheckIssue {
-        /// 0 = zone (bit 0, MultiExtruderPrintableError), 1 = hauteur (bit 1).
+        /// 0 = zone (bit 0, MultiExtruderPrintableError), 1 = hauteur (bit 1),
+        /// 2 = hors plateau (bit 2), 3 = plus haut que printable_height (bit 3).
+        /// `extruder` = 0 et `nozzle` vide si Orca n'a noté aucun détail.
         kind: u8,
         /// Extrudeur 1-based.
         extruder: u32,

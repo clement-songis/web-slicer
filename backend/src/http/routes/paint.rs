@@ -306,16 +306,7 @@ impl Ctx {
         action: LayerEditAction,
     ) -> Result<Vec<f64>, String> {
         let (name, mesh) = self.model_mesh(model_id).await?;
-        let mut mat = glam::DMat4::IDENTITY;
-        if let Some(m) = matrix {
-            if m.len() != 16 || m.iter().any(|v| !v.is_finite()) {
-                return Err("matrice d'instance invalide".into());
-            }
-            let mut cols = [0.0; 16];
-            cols.copy_from_slice(m);
-            mat = glam::DMat4::from_cols_array(&cols);
-            mat.w_axis = glam::DVec4::new(0.0, 0.0, 0.0, 1.0);
-        }
+        let mat = layer_adjust_matrix(&mesh, matrix)?;
         let mut model = engine::api::Model::default();
         model.add_object(name, mesh).instances[0].matrix = mat;
         let request = LayerProfileRequest {
@@ -477,9 +468,69 @@ async fn run(mut socket: WebSocket, state: AppState, user: UserId, project: Proj
     }
 }
 
+/// Lot 48 (audit 46 VLH-a) : matrice de l'objet pour le pinceau de hauteur de
+/// couche — objet posé comme dans Orca (min z = 0), exactement comme
+/// `POST /models/{id}/layer-profile` (lot 43, S1). La translation était
+/// annulée sans recaler Z : le maillage recentré allait de −h/2 à +h/2,
+/// `object.max_z()` valait h/2 et le pinceau rendait un profil arrêté à
+/// mi-hauteur (cylindre de 20 mm → Z = 10), qu'Orca rejette ensuite
+/// (PrintObject::update_layer_height_profile) ; il effaçait aussi un profil
+/// adaptatif complet (Z = 20 ≠ 10).
+fn layer_adjust_matrix(
+    mesh: &engine::api::TriangleMesh,
+    matrix: Option<&[f64]>,
+) -> Result<glam::DMat4, String> {
+    let mut given = None;
+    if let Some(m) = matrix {
+        if m.len() != 16 || m.iter().any(|v| !v.is_finite()) {
+            return Err("matrice d'instance invalide".into());
+        }
+        let mut cols = [0.0; 16];
+        cols.copy_from_slice(m);
+        given = Some(glam::DMat4::from_cols_array(&cols));
+    }
+    Ok(super::mesh_ops::layer_profile_matrix(mesh, given))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// VLH-a : maillage recentré (z ∈ [−10, 10]) d'un objet posé sur le
+    /// plateau → la matrice remet sa base à z = 0 (hauteur entière 20 mm).
+    #[test]
+    fn layer_brush_places_the_centered_mesh_on_the_bed() {
+        let mesh = engine::api::TriangleMesh {
+            vertices: vec![
+                [-5.0, -5.0, -10.0],
+                [5.0, -5.0, -10.0],
+                [0.0, 5.0, -10.0],
+                [0.0, 0.0, 10.0],
+            ],
+            indices: vec![[0, 2, 1], [0, 1, 3], [1, 2, 3], [2, 0, 3]],
+        };
+        // Instance posée (translation z = 10 dans la scène), échelle 1.
+        let mut cols = glam::DMat4::IDENTITY.to_cols_array();
+        cols[12] = 100.0;
+        cols[13] = 80.0;
+        cols[14] = 10.0;
+        for matrix in [None, Some(&cols[..])] {
+            let m = layer_adjust_matrix(&mesh, matrix).unwrap();
+            let zs: Vec<f64> = mesh
+                .vertices
+                .iter()
+                .map(|v| {
+                    m.transform_point3(glam::DVec3::new(v[0] as f64, v[1] as f64, v[2] as f64))
+                        .z
+                })
+                .collect();
+            let min = zs.iter().cloned().fold(f64::INFINITY, f64::min);
+            let max = zs.iter().cloned().fold(f64::NEG_INFINITY, f64::max);
+            assert!(min.abs() < 1e-9, "base sur le plateau : {zs:?}");
+            assert!((max - 20.0).abs() < 1e-9, "hauteur entière : {zs:?}");
+        }
+        assert!(layer_adjust_matrix(&mesh, Some(&[1.0; 3])).is_err());
+    }
 
     #[test]
     fn client_messages_parse() {
