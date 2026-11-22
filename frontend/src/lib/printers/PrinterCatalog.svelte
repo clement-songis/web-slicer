@@ -5,9 +5,11 @@
 	// vue, recherche, « Create » (imprimante custom) et Confirmer/Annuler. Toute la
 	// logique vit dans `catalog.ts` (règle CLAUDE.md : le .svelte ne fait que la
 	// disposition).
+	import { untrack } from 'svelte';
 	import type { PrinterCatalogModel, PrinterCatalogVendor } from '$lib/api/types';
 	import {
 		modelKey,
+		ownedSelection,
 		coverUrl,
 		filterCatalog,
 		isSelected,
@@ -46,6 +48,8 @@
 		/** Sélection courante (modèle + presets machine des buses cochées), à chaque
 		 *  changement : l'assistant en déduit les filaments proposés (phase 25). */
 		onpick?: (picked: { model: PrinterCatalogModel; ids: string[] }[]) => void;
+		/** Phase 46 (PR2-b) : presets machine déjà possédés, pré-cochés à l'ouverture. */
+		owned?: readonly string[];
 	}
 
 	let {
@@ -56,13 +60,15 @@
 		confirmLabel,
 		busy = false,
 		chooseNozzle = false,
-		onpick
+		onpick,
+		owned = []
 	}: Props = $props();
 
-	let selected = $state<Set<string>>(new Set());
+	const initial = untrack(() => ownedSelection(vendors, owned));
+	let selected = $state<Set<string>>(new Set(initial.keys));
 
 	// Buses cochées par modèle (défaut : variante par défaut du catalogue).
-	let nozzlePick = $state<Record<string, string[]>>({});
+	let nozzlePick = $state<Record<string, string[]>>(initial.nozzles);
 	const picked = $derived(
 		selectedModels(vendors, selected).map((m) => ({
 			model: m,

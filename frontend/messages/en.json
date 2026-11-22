@@ -2409,5 +2409,18 @@
 	"p44b_sliced_file": "Sliced file",
 	"p44b_sliced_offer": "“{file}” is a sliced file (.gcode.3mf): it contains the G-code of {n} plate(s) but no model to import. Open it in the G-code preview?",
 	"p44b_open_preview": "Open in G-code preview",
-	"p44b_gcode_opened_plate": "G-code “{file}” opened — plate {plate} ({n} layers)."
+	"p44b_gcode_opened_plate": "G-code “{file}” opened — plate {plate} ({n} layers).",
+	"p46_no_base_filament": "No system filament of type {type} for this printer.",
+	"p46_preset_mismatch": "The G-code was sliced for “{sliced}”; this printer uses “{target}”.",
+	"p46_session_expired": "Session expired",
+	"p46_session_expired_text": "Your session has expired. Sign in again to continue: your unsaved changes are kept and the interrupted action (saving, slicing…) is resumed.",
+	"p46_filaments_show_all_title": "Filaments checked in the setup wizard are listed; show every compatible filament.",
+	"p46_my_filaments": "My filaments",
+	"p46_all_filaments": "All filaments ({n})",
+	"p46_printer_incompatible": "The selected printer is incompatible with the chosen printer presets.",
+	"p46_import_ignored": "Ignored: {list}.",
+	"p46_presets_export_file": "Presets export: {file}.",
+	"p46_object_names": "Object: {names}",
+	"p46_select": "Select",
+	"p46_gcode_conflict": "Conflicts of G-code paths have been found at layer {layer}, Z = {z}mm. Please separate the conflicted objects farther ({a} <-> {b})."
 }

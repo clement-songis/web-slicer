@@ -22,6 +22,7 @@
 	import IconWrench from '~icons/lucide/wrench';
 	import type { Plate } from './plates.svelte';
 	import { searchObjects } from './object-search';
+	import { instanceListLayout } from './instances';
 	import { t } from '$lib/i18n';
 
 	interface Props {
@@ -558,9 +559,26 @@
 		</label>
 	{/if}
 	<ul>
-		{#each tree.roots() as node (node.id)}
-			{#if isVisible(node)}
-				{@render row(node, 0)}
+		<!-- Phase 46 (FIX1-a) : instances sous l'objet (sous-liste « Instances »
+		     d'Orca) ; en objet par objet, la liste reste l'ordre d'impression. -->
+		{#each sequential ? tree
+					.roots()
+					.map( (node) => ({ node, instances: [] }) ) : instanceListLayout(tree.roots()) as entry (entry.node.id)}
+			{#if isVisible(entry.node)}
+				{@render row(entry.node, 0)}
+			{/if}
+			{@const shownInstances = entry.instances.filter(isVisible)}
+			{#if shownInstances.length}
+				<li
+					class="flex items-center gap-1 px-1.5 pl-5 text-xs text-content-subtle"
+					data-testid="object-instances"
+					data-count={entry.instances.length + 1}
+				>
+					{$t('Instances')} ({entry.instances.length + 1})
+				</li>
+				{#each shownInstances as inst (inst.id)}
+					{@render row(inst, 1)}
+				{/each}
 			{/if}
 		{/each}
 	</ul>

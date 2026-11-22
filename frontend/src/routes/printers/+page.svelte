@@ -42,7 +42,7 @@
 	import Dialog from '$lib/ui/Dialog.svelte';
 	import PrinterHostFields from '$lib/printers/PrinterHostFields.svelte';
 	import UploadQueue from '$lib/printers/UploadQueue.svelte';
-	import { hostUrlError } from '$lib/printers/send';
+	import { defaultDeclarePreset, hostUrlError } from '$lib/printers/send';
 	import {
 		emptyHostForm,
 		hasLiveControls,
@@ -224,7 +224,12 @@
 
 	onMount(() => {
 		printers = data.printers;
-		if (machines.length > 0) machinePreset = machines[0].id;
+		// Phase 46 (audit 44 DEV1-a) : jamais le premier preset du catalogue.
+		machinePreset = defaultDeclarePreset(
+			machines,
+			new URLSearchParams(location.search).get('preset'),
+			data.printers
+		);
 		// Suivi en direct : chaque `printer.status` patche la carte d'état.
 		const sub = subscribeEvents({
 			onEvent(event) {
@@ -411,7 +416,13 @@
 						/>
 						<label class="flex flex-col gap-1 text-sm">
 							<span class="text-content-muted">{$t('Printer preset')}</span>
-							<select class="ws-field" bind:value={machinePreset} required>
+							<select
+								class="ws-field"
+								bind:value={machinePreset}
+								required
+								data-testid="printer-machine-preset"
+							>
+								{#if !machinePreset}<option value="" disabled>{$t('Choose…')}</option>{/if}
 								{#each machines as preset (preset.id)}
 									<option value={preset.id}>{preset.name}</option>
 								{/each}
@@ -421,7 +432,7 @@
 							type="submit"
 							class="ws-btn ws-btn-primary self-start"
 							data-testid="printer-save"
-							disabled={creating || machines.length === 0 || !!hostError}
+							disabled={creating || machines.length === 0 || !machinePreset || !!hostError}
 						>
 							{$t('Add printer||declare')}
 						</button>

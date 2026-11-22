@@ -53,7 +53,7 @@ test('filament personnalisé : fournisseur, type, série, hérite du filament co
 	const created = list.find((p) => p.name === 'Atelier PETG Mat')!;
 	expect(created).toBeTruthy();
 	const detail = await (await page.request.get(`/api/presets/${created.id}`)).json();
-	expect(detail.inherits).toBe('Generic PLA @System');
+	expect(detail.inherits).toMatch(/^Generic PETG/);
 	expect(detail.values.filament_type).toEqual(['PETG']);
 	await expect(page.locator('[data-testid="filament-slot"] select').first()).toHaveValue(created.id);
 	// Doublon refusé.

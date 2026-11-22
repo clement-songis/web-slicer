@@ -83,8 +83,16 @@
 	 *  de la langue (« 0,7874 » en français, comme les champs d'Orca) : champ
 	 *  texte décimal au lieu d'un champ number (point imposé par le navigateur). */
 	const localized = (field: Field) => units === 'in' && (field === 'position' || field === 'size');
+	// Phase 46 (audit 44 X-c) : rotation affichée à 2 décimales comme Orca
+	// (ObjectManipulation : double_to_string(v, 2)) — affichage seulement, la
+	// valeur exacte est gardée ; pas d'arrondi pendant la saisie du champ.
+	let editing = $state<{ key: string; typed: number | null } | null>(null);
 	function display(field: Field, i: number): string | number {
 		const v = shown(field, i);
+		if (field === 'rotation') {
+			const typed = editing?.key === `rotation-${i}` ? editing.typed : null;
+			return typed ?? (Math.round(v * 100) / 100 || 0);
+		}
 		return localized(field) ? fmtDec(v, 4, $locale) : v;
 	}
 
@@ -150,7 +158,13 @@
 						inputmode={localized(row.field) ? 'decimal' : undefined}
 						step={localized(row.field) ? undefined : row.step}
 						value={display(row.field, i)}
-						oninput={(e) => setAxis(row.field, i, e.currentTarget.value)}
+						oninput={(e) => {
+							if (row.field === 'rotation' && e.currentTarget.value.trim() !== '')
+								editing = { key: `rotation-${i}`, typed: Number(e.currentTarget.value) };
+							setAxis(row.field, i, e.currentTarget.value);
+						}}
+						onfocus={() => (editing = { key: `${row.field}-${i}`, typed: null })}
+						onblur={() => (editing = null)}
 						class="ws-field ws-field-sm w-full min-w-0 pr-1.5 pl-4 text-right"
 						aria-label={`${row.name} ${axis}`}
 						data-testid={`transform-${row.field}-${axis.toLowerCase()}`}

@@ -6,6 +6,7 @@
 	import { initTheme } from '$lib/theme';
 	import TooltipLayer from '$lib/ui/TooltipLayer.svelte';
 	import ConnectionBanner from '$lib/ui/ConnectionBanner.svelte';
+	import ReauthDialog from '$lib/ui/ReauthDialog.svelte';
 
 	let { children } = $props();
 
@@ -20,3 +21,4 @@
 {@render children()}
 <TooltipLayer />
 <ConnectionBanner />
+<ReauthDialog />

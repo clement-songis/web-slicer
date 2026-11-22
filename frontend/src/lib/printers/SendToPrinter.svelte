@@ -30,11 +30,15 @@
 		connectionHint,
 		hostUrlError,
 		isPrinterNotConnected,
+		isPrinterIncompatible,
+		presetMismatch,
 		sendChoices,
+		type MachinePresetRef,
 		sendErrorMessage,
 		sendSuccessMessage
 	} from './send';
 	import { t, tr } from '$lib/i18n';
+	import { getResolvedPreset } from '$lib/api/presets';
 
 	interface Props {
 		/** G-code tranché courant ; absent → bouton désactivé. */
@@ -53,9 +57,20 @@
 			/** Nom choisi (base commune des plateaux, lot 42 M2). */
 			filename?: string
 		) => Promise<UploadSlicedResponse>;
+		/** Phase 46 (DEV1-a) : preset machine du projet (celui du tranchage). */
+		machinePreset?: MachinePresetRef | null;
+		/** Presets machine connus (résolution de l'héritage pour la comparaison). */
+		machinePresets?: readonly MachinePresetRef[];
 	}
 
-	let { gcodeId, openRequest = 0, plateCount = 1, sendAll }: Props = $props();
+	let {
+		gcodeId,
+		openRequest = 0,
+		plateCount = 1,
+		sendAll,
+		machinePreset = null,
+		machinePresets = []
+	}: Props = $props();
 
 	const canSendAll = $derived(!!sendAll && plateCount > 1);
 	/** Portée de l'envoi : plateau tranché courant, ou tous les plateaux. */
@@ -72,6 +87,47 @@
 	let error = $state<string | null>(null);
 
 	const selected = $derived(targets.find((p) => p.id === printerId));
+	// `printer_model` résolu des presets (même règle que le 409 serveur du lot 46).
+	// Cache de requêtes, non affiché.
+	// eslint-disable-next-line svelte/prefer-svelte-reactivity
+	const modelCache = new Map<string, Promise<string>>();
+	function printerModel(id: string): Promise<string> {
+		let entry = modelCache.get(id);
+		if (!entry) {
+			entry = getResolvedPreset(id)
+				.then((r) => {
+					const v = (r.values as Record<string, unknown>).printer_model;
+					return typeof v === 'string' ? v : '';
+				})
+				.catch(() => '');
+			modelCache.set(id, entry);
+		}
+		return entry;
+	}
+	let models = $state<{ key: string; sliced: string; target: string } | null>(null);
+	$effect(() => {
+		const a = machinePreset?.id;
+		const b = selected?.machine_preset_id;
+		if (!open || !a || !b || a === b) return;
+		const key = `${a}|${b}`;
+		if (models?.key === key) return;
+		void Promise.all([printerModel(a), printerModel(b)]).then(([sliced, target]) => {
+			if (machinePreset?.id === a && selected?.machine_preset_id === b)
+				models = { key, sliced, target };
+		});
+	});
+	/** G-code tranché pour une autre imprimante que celle choisie (Orca : envoi désactivé). */
+	const mismatch = $derived.by(() => {
+		const key = `${machinePreset?.id}|${selected?.machine_preset_id}`;
+		// Modèles pas encore résolus : pas d'avertissement provisoire.
+		if (models?.key !== key) return null;
+		return presetMismatch(machinePreset, selected, machinePresets, models);
+	});
+	const declareHref = $derived(
+		machinePreset
+			? `${resolve('/printers')}?preset=${encodeURIComponent(machinePreset.id)}`
+			: resolve('/printers')
+	);
 	// Imprimante choisie sans URL Moonraker (ex. celle créée à l'inscription) :
 	// l'URL se saisit ici, sans quitter l'éditeur (Orca : bouton de connexion
 	// à côté du choix d'imprimante, Plater.cpp `m_printer_connect`).
@@ -352,7 +408,9 @@
 				askAddress(e);
 				return;
 			}
-			error = sendErrorMessage(e, selected.name);
+			error = isPrinterIncompatible(e)
+				? tr('The selected printer is incompatible with the chosen printer presets.')
+				: sendErrorMessage(e, selected.name);
 		} finally {
 			sending = false;
 			progressMessage = null;
@@ -441,8 +499,8 @@
 			{:else if targets.length === 0 && !error}
 				<p class="text-sm text-content-muted" data-testid="send-no-printer">
 					{$t('No printer declared.')}
-					<a class="text-primary underline" href={resolve('/printers')}>{$t('Declare a printer')}</a
-					>
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -- chemin résolu + requête -->
+					<a class="text-primary underline" href={declareHref}>{$t('Declare a printer')}</a>
 				</p>
 			{:else if targets.length > 0}
 				<label class="flex flex-col gap-1 text-sm">
@@ -476,6 +534,19 @@
 								urlError = null;
 							}}>{$t('Change URL')}</button
 						>
+					</p>
+				{/if}
+				{#if mismatch}
+					<p
+						class="rounded-md bg-warning-soft px-3 py-2 text-xs text-warning-content"
+						role="alert"
+						data-testid="send-preset-mismatch"
+					>
+						{$t('The selected printer is incompatible with the chosen printer presets.')}
+						{$t('The G-code was sliced for “{sliced}”; this printer uses “{target}”.', {
+							sliced: mismatch.sliced,
+							target: mismatch.target
+						})}
 					</p>
 				{/if}
 				{#if selected && !needsUrl && meta.printerSlug}
@@ -724,7 +795,7 @@
 						class="ws-btn ws-btn-lg ws-btn-secondary"
 						data-testid="send-queue"
 						title={$t('Upload then add to the printer print queue (without starting)')}
-						disabled={(scope === 'plate' && !gcodeId) || sending || loading}
+						disabled={(scope === 'plate' && !gcodeId) || sending || loading || !!mismatch}
 						onclick={() => send(true)}
 					>
 						{sending && lastQueued ? $t('Sending…') : $t('Send and queue')}
@@ -735,6 +806,7 @@
 					class="ws-btn ws-btn-lg {success ? 'ws-btn-secondary' : 'ws-btn-primary'}"
 					data-testid="send-confirm"
 					disabled={!selected ||
+						!!mismatch ||
 						(needsUrl && !urlDraft.trim()) ||
 						!!nameReason ||
 						(scope === 'plate' && !gcodeId) ||

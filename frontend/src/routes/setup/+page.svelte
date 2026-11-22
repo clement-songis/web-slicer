@@ -24,6 +24,10 @@
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
+	// Phase 46 (audit 44 PR2-b) : assistant rouvert (Aide › Assistant) —
+	// imprimantes possédées pré-cochées, jamais recréées, et « Annuler »
+	// (Orca ConfigWizard) dès qu'il en existe une.
+	const ownedIds = $derived(data.printers.map((p) => p.machine_preset_id));
 	let busy = $state(false);
 	let error = $state<string | null>(null);
 
@@ -114,6 +118,7 @@
 			for (const m of models) {
 				const ids = nozzles?.[`${m.vendor}::${m.model}`] ?? [m.default_machine_preset_id];
 				for (const id of ids) {
+					if (ownedIds.includes(id)) continue;
 					const nozzle = m.variants.find((v) => v.machine_preset_id === id)?.nozzle;
 					const name =
 						ids.length > 1 && nozzle
@@ -164,6 +169,8 @@
 						chooseNozzle
 						{onpick}
 						{busy}
+						owned={ownedIds}
+						oncancel={data.printers.length > 0 ? () => goto(resolve('/library')) : undefined}
 					/>
 				</div>
 				<!-- Étape 2 de l'assistant d'Orca : filaments des imprimantes cochées. -->

@@ -49,7 +49,7 @@
 	import { detachPreset } from '$lib/api/presets';
 	// Lot 21 : brouillon au tranchage, peinture conservée, températures, buses.
 	import { buildProjectOverrides } from '$lib/editor/slice-draft';
-	import { preferredFilaments } from '$lib/printers/wizard-filaments';
+	import { installedFilaments, preferredFilaments } from '$lib/printers/wizard-filaments';
 	import {
 		applyBatchEvent,
 		batchFinished,
@@ -454,6 +454,8 @@
 	import { CutSession } from '$lib/scene/tools/cut-session.svelte';
 	import { cutPartLabel } from '$lib/scene/tools/cut-plan';
 	import { nearestFreeCell } from '$lib/scene/arrange';
+	import { emptyFirstLayerSuspects, isEmptyFirstLayerError } from '$lib/editor/first-layer';
+	import { conflictMessage, parseConflict } from '$lib/editor/gcode-conflict';
 	import { effectiveOptions, optionsBody } from '$lib/scene/arrange-options';
 	import { placedTransform, plateMoves, unarrangedIds } from '$lib/scene/arrange-gui';
 	import ArrangeOptionsPanel from '$lib/scene/ArrangeOptionsPanel.svelte';
@@ -570,6 +572,7 @@
 	import { subscribeEvents, type EventSubscription } from '$lib/queue/events';
 	import type {
 		PreviewMeta,
+		PresetDetail,
 		PresetSummary,
 		ServerEvent,
 		PrinterResponse,
@@ -577,6 +580,11 @@
 		PrinterCatalogModel
 	} from '$lib/api/types';
 	import { ApiError } from '$lib/api/client';
+	import {
+		exportPresetBundleArchive,
+		importPresetBundleFile,
+		type BundleExportEntry
+	} from '$lib/api/preset-bundle';
 	import { fmtNum, locale, numberLocale, t, tr } from '$lib/i18n';
 	import {
 		initialWorkspace,
@@ -2009,7 +2017,7 @@
 	let projectFileInput: HTMLInputElement | null = null;
 	let zipFileInput: HTMLInputElement | null = null;
 	let configFileInput: HTMLInputElement | null = null;
-	const ACCEPT = '.stl,.obj,.mtl,.3mf,.oltp,.step,.stp,.amf,.svg,.drc';
+	const ACCEPT = '.stl,.obj,.mtl,.3mf,.oltp,.step,.stp,.amf,.svg,.drc,.zip';
 	const canSliceNow = $derived(
 		activeSceneObjects.length > 0 &&
 			activeOutside.length === 0 &&
@@ -2696,6 +2704,15 @@
 	}
 
 	// Preset actif d'un type (pour le dialogue de réglages modal, T138).
+	// Phase 46 (audit 44 PR2-a) : liste Filament = filaments cochés dans
+	// l'assistant (+ presets utilisateur et filaments du projet), comme Orca.
+	let showAllFilaments = $state(false);
+	const installedFilamentList = $derived(
+		installedFilaments(filamentPresets, $appPreferences.wizardFilaments, [
+			...activePresets.filaments
+		])
+	);
+
 	function activePresetOf(kind: 'process' | 'filament' | 'machine'): PresetSummary | undefined {
 		if (kind === 'process') return processPresets.find((p) => p.id === activePresets.process);
 		if (kind === 'filament') return filamentPresets.find((p) => p.id === filamentSel);
@@ -3459,8 +3476,28 @@
 	}
 
 	// Importe une liste de fichiers : aperçu immédiat + upload en tâche de fond.
-	async function importFiles(files: File[]) {
+	async function importFiles(input: File[]) {
 		importError = null;
+		// Phase 46 (audit 44 X-b) : un .zip donné à Importer (ou déposé) importe
+		// les modèles qu'il contient (Orca Plater::load_files → handle_zips →
+		// preview_zip_archive), comme « Importer une archive ZIP ».
+		const files: File[] = [];
+		for (const file of input) {
+			if (!/\.zip$/i.test(file.name)) {
+				files.push(file);
+				continue;
+			}
+			try {
+				const inside = await modelsFromZip(file);
+				if (inside.length === 0)
+					importError = tr('ZIP import: no compatible model in the archive.');
+				files.push(...inside);
+			} catch (e) {
+				importError = tr('ZIP import: {msg}', {
+					msg: e instanceof Error ? e.message : tr('unreadable archive')
+				});
+			}
+		}
 		let firstLoaded: string | null = null;
 		// OBJ coloré : un .mtl déposé avec l'OBJ l'accompagne (couleurs Kd).
 		const mtls = files.filter((f) => isMtl(f.name));
@@ -5558,6 +5595,43 @@
 	// Arrangement en cours : la sauvegarde l'attend (sinon, cliquée pendant que
 	// la réponse moteur est décodée, elle persistait les positions d'avant).
 	let arrangeInFlight: Promise<void> | null = null;
+	// Phase 46 (audit 44 FIX1-b) : les panneaux flottants (OUTILS, hauteur de
+	// couche variable) commencent sous la barre du plateau, même repliée sur
+	// plusieurs lignes dans une scène étroite (800 × 500) — comme la fenêtre
+	// ImGui des gizmos d'Orca, bornée par le bas de la barre d'outils.
+	let plateBarHeight = $state(0);
+	// Phase 46 (CONFL-a) : conflit remonté par le serveur (lot 46, stats.conflict).
+	const gcodeConflict = $derived(
+		parseConflict((rawStats as { conflict?: unknown } | null)?.conflict ?? null)
+	);
+	const conflictObjectId = $derived.by(() => {
+		if (!gcodeConflict) return null;
+		const names = [gcodeConflict.object2, gcodeConflict.object1];
+		for (const name of names) {
+			const hit = tree
+				.list()
+				.find((n) => n.kind === 'object' && (n.name === name || name.startsWith(n.name)));
+			if (hit) return hit.id;
+		}
+		return null;
+	});
+	// Phase 46 (audit 44 PERF-a) : objet(s) nommé(s) dans l'échec « couche
+	// initiale vide » (Orca : StringObjectException + lien vers l'objet).
+	const emptyLayerObjects = $derived.by(() => {
+		if (session.phase !== 'error' || !isEmptyFirstLayerError(session.error)) return [];
+		const named = activeSceneObjects.map((o) => ({
+			id: o.id,
+			name: tree.get(o.id)?.name ?? o.id,
+			mesh: o.mesh,
+			rotation: o.rotation,
+			scale: o.scale
+		}));
+		const nozzle = Number(String(machineValues.nozzle_diameter ?? '0.4').split(/[;,]/)[0]) || 0.4;
+		const first = Number(processValues.initial_layer_print_height) || 0.2;
+		const names = new Set(emptyFirstLayerSuspects(named, first, nozzle));
+		return named.filter((o) => names.has(o.name)).map(({ id, name }) => ({ id, name }));
+	});
+	const floatTop = $derived(plateBarHeight > 0 ? 12 + plateBarHeight + 8 : 64);
 	function arrangeActive(): Promise<void> {
 		const run = arrangeActiveNow();
 		arrangeInFlight = run;
@@ -7515,9 +7589,12 @@
 	}
 	// Route une action de raccourci vers le bon dispatcher (menu / outil / plateau).
 	// « A » dispose directement (Orca : plater->arrange()), le bouton de la barre
-	// ouvre lui le menu d'options.
-	function dispatchShortcut(action: string) {
-		if (action === 'arrange') void arrangeActive();
+	// ouvre lui le menu d'options. Phase 46 (audit 44 ARR-a) : même chemin que
+	// les boutons du menu Disposer (arrangeGui : scène enregistrée, enveloppes
+	// transformées courantes côté serveur, options mémorisées) — A = tous les
+	// plateaux (EVT_GLCANVAS_ARRANGE), Maj+A = plateau actif (…_PARTPLATE).
+	function dispatchShortcut(action: string, shift = false) {
+		if (action === 'arrange') void arrangeGui(shift ? 'plate' : 'all');
 		else if (action === 'orient') void onPlateAction(action);
 		else if (isToolAction(action)) selectTool(action as EditorTool);
 		else if (!dispatchEditorShortcut(action)) void onMenuAction(action);
@@ -7889,7 +7966,7 @@
 		);
 		if (!action) return;
 		e.preventDefault();
-		dispatchShortcut(action);
+		dispatchShortcut(action, e.shiftKey);
 	}
 
 	// — Menu contextuel objet (T112) —
@@ -8919,6 +8996,40 @@
 	}
 
 	async function importConfigFiles(files: File[]) {
+		// Phase 46 (audit 44 PR1-a/b) : import par le serveur (lot 46, format
+		// d'Orca : .orca_printer / .orca_filament / .zip / .json, clés du type
+		// seules, différences avec le parent) ; ancien chemin si route absente.
+		try {
+			const imported: PresetDetail[] = [];
+			const skipped: string[] = [];
+			const legacy: File[] = [];
+			for (const file of files) {
+				const res = await importPresetBundleFile(file);
+				if (!res) {
+					legacy.push(file);
+					continue;
+				}
+				imported.push(...res.imported);
+				skipped.push(...res.skipped.map((s) => `${s.name ?? s.file} (${s.reason})`));
+			}
+			if (legacy.length === 0) {
+				for (const kind of ['machine', 'filament', 'process'] as const) {
+					const last = imported.filter((p) => p.kind === kind).at(-1);
+					if (last) selectPreset(kind, last.id);
+				}
+				await loadPresets();
+				saveMessage =
+					tr('Configs import: {n} profile(s) imported.', { n: imported.length }) +
+					(skipped.length ? ' ' + tr('Ignored: {list}.', { list: skipped.join(' ; ') }) : '');
+				return;
+			}
+			files = legacy;
+		} catch (e) {
+			saveMessage = tr('Configs import: {msg}', {
+				msg: e instanceof Error ? e.message : tr('failed')
+			});
+			return;
+		}
 		try {
 			const documents = await presetsFromFiles(files);
 			for (const document of documents) {
@@ -8939,6 +9050,32 @@
 	// Exporte la configuration courante, y compris les modifications encore non
 	// enregistrées : un JSON Orca par imprimante/filament/process dans un ZIP.
 	async function exportPresetBundle() {
+		// Phase 46 (audit 44 PR1-a/b) : lot au format d'Orca produit par le
+		// serveur (lot 46) ; ancien ZIP client si la route est absente.
+		try {
+			const wanted: BundleExportEntry[] = [];
+			const machine = activePresetOf('machine');
+			const process = activePresetOf('process');
+			if (machine) wanted.push({ id: machine.id, values: valuesForKind('machine') });
+			for (const id of activePresets.filaments)
+				wanted.push(id === filamentSel ? { id, values: valuesForKind('filament') } : { id });
+			if (process) wanted.push({ id: process.id, values: valuesForKind('process') });
+			if (wanted.length === 0) {
+				saveMessage = tr('Presets export: no active preset.');
+				return;
+			}
+			const archive = await exportPresetBundleArchive(wanted);
+			if (archive) {
+				downloadBlob(archive.blob, archive.filename);
+				saveMessage = tr('Presets export: {file}.', { file: archive.filename });
+				return;
+			}
+		} catch (e) {
+			saveMessage = tr('Presets export: {msg}', {
+				msg: e instanceof Error ? e.message : tr('failed')
+			});
+			return;
+		}
 		try {
 			const entries: { name: string; data: Uint8Array }[] = [];
 			const active: [PresetSummary | undefined, 'machine' | 'filament' | 'process'][] = [
@@ -10183,6 +10320,8 @@
 				openRequest={printDialogRequest}
 				plateCount={plates.list().length}
 				sendAll={sendAllPlates}
+				machinePreset={activePresetOf('machine') ?? null}
+				{machinePresets}
 			/>
 			<!-- Export projet 3MF (FR-044) : ressource API backend, pas une route SvelteKit. -->
 			<!-- eslint-disable svelte/no-navigation-without-resolve -->
@@ -10908,9 +11047,27 @@
 						<section class="flex flex-col gap-2" data-testid="filament-slots">
 							<div class="flex items-center justify-between gap-2">
 								<span class="ws-section-title">{$t('Filament')}</span>
+								{#if installedFilamentList.length < filamentPresets.length || showAllFilaments}
+									<button
+										type="button"
+										class="ws-btn ws-btn-sm ws-btn-ghost ml-auto"
+										data-testid="filament-show-all"
+										aria-pressed={showAllFilaments}
+										title={$t(
+											'Filaments checked in the setup wizard are listed; show every compatible filament.'
+										)}
+										onclick={() => (showAllFilaments = !showAllFilaments)}
+										>{showAllFilaments
+											? $t('My filaments')
+											: $t('All filaments ({n})', { n: filamentPresets.length })}</button
+									>
+								{/if}
 								<button
 									type="button"
-									class="ws-btn ws-btn-sm ws-btn-ghost ml-auto"
+									class="ws-btn ws-btn-sm ws-btn-ghost {installedFilamentList.length <
+										filamentPresets.length || showAllFilaments
+										? ''
+										: 'ml-auto'}"
 									data-testid="create-filament"
 									title={$t('Create a custom filament')}
 									onclick={() => (showCreateFilament = true)}>{$t('Create…')}</button
@@ -10990,7 +11147,7 @@
 										{#key presetSelectSeq}
 											<PresetSelect
 												compact
-												presets={filamentPresets}
+												presets={showAllFilaments ? filamentPresets : installedFilamentList}
 												printer={machinePresets.find((m) => m.id === activePresets.printer) ?? null}
 												testid={slot === 0
 													? 'preset-select-filament'
@@ -11674,6 +11831,8 @@
 				     de la vue reste libre pour le clic droit sur le plateau. -->
 				<div
 					class="pointer-events-none absolute inset-x-3 top-3 z-10 flex flex-wrap items-start justify-center gap-2 *:pointer-events-auto"
+					bind:clientHeight={plateBarHeight}
+					data-testid="plate-bar-area"
 				>
 					<UndoHistory
 						entries={() => sceneHistory.entries()}
@@ -11692,7 +11851,11 @@
 
 				<!-- Éditeur de hauteur de couche variable (T106, item layersediting). -->
 				{#if showLayerHeight}
-					<div class="ws-floating absolute top-16 right-3 z-10 w-72 p-3">
+					<div
+						class="ws-floating absolute right-3 z-10 w-72 overflow-y-auto p-3"
+						style:top="{floatTop}px"
+						style:max-height="calc(100% - {floatTop + 12}px)"
+					>
 						<div class="ws-floating-header">
 							<span class="ws-section-title">{$t('Variable layer height')}</span>
 							<button
@@ -11724,9 +11887,12 @@
 				     sélection est vide) — sinon il recouvre le plateau vide et intercepte ses clics. -->
 				{#if tools.active && (activeObject || !isTransformTool(tools.active))}
 					<div
-						class="ws-floating absolute top-16 left-3 z-10 w-[19rem] p-3"
+						class="ws-floating absolute left-3 z-10 w-[19rem] overflow-y-auto p-3"
+						style:top="{floatTop}px"
+						style:max-height="calc(100% - {floatTop + 12}px)"
 						role="region"
 						aria-label={$t('Tools')}
+						data-testid="tool-panel"
 					>
 						<div class="ws-floating-header">
 							<span class="ws-section-title">{$t('Tools')}</span>
@@ -11958,6 +12124,28 @@
 							{/each}
 						</div>
 					{/if}
+					<!-- Phase 46 (audit 44 CONFL-a) : conflit de trajets (Orca
+					     SLICING_SERIOUS_WARNING « Conflicts of G-code paths… »). -->
+					{#if session.phase === 'preview' && gcodeConflict}
+						<div
+							class="flex flex-wrap items-center gap-2 border-b border-danger/40 bg-danger-soft px-4 py-2 text-sm text-danger-content"
+							role="alert"
+							data-testid="slice-conflict"
+						>
+							<span>⚠ {conflictMessage(gcodeConflict)}</span>
+							{#if conflictObjectId}
+								<button
+									type="button"
+									class="underline"
+									data-testid="slice-conflict-jump"
+									onclick={() => {
+										showTab('prepare');
+										selectObject(conflictObjectId!, false);
+									}}>{$t('Select')}</button
+								>
+							{/if}
+						</div>
+					{/if}
 					{#if session.phase === 'slicing'}
 						<div
 							class="flex flex-1 flex-col items-center justify-center gap-3 p-6 text-content-muted"
@@ -11988,6 +12176,22 @@
 												'Slicing failed. Check the printer, the filament and the process profile, then try again.'
 											)}
 								</p>
+								{#if emptyLayerObjects.length}
+									<p data-testid="slice-error-objects">
+										{$t('Object: {names}', {
+											names: emptyLayerObjects.map((o) => o.name).join(', ')
+										})}
+										<button
+											type="button"
+											class="ml-1 underline"
+											data-testid="slice-error-select"
+											onclick={() => {
+												showTab('prepare');
+												selectObject(emptyLayerObjects[0].id, false);
+											}}>{$t('Select')}</button
+										>
+									</p>
+								{/if}
 								<div class="flex flex-wrap gap-2">
 									<button
 										type="button"

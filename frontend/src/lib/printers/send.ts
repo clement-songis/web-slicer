@@ -21,6 +21,88 @@ export function sendChoices(printers: readonly PrinterResponse[]): PrinterRespon
 	return [...ready, ...printers.filter((p) => !ready.includes(p))];
 }
 
+/** Preset machine minimal (id, nom, parent) pour les contrôles ci-dessous. */
+export interface MachinePresetRef {
+	id: string;
+	name: string;
+	inherits?: string | null;
+}
+
+/**
+ * Phase 46 (audit 44 DEV1-a) — préréglage proposé par « Déclarer
+ * manuellement » : Orca PhysicalPrinterDialog prend le preset d'imprimante en
+ * cours (`printers.get_edited_preset()`), jamais le premier du catalogue.
+ * Ordre : preset du projet d'où l'on vient (`?preset=`), sinon celui de la
+ * dernière imprimante déclarée, sinon aucun (choix explicite requis).
+ */
+export function defaultDeclarePreset(
+	machines: readonly MachinePresetRef[],
+	fromProject: string | null | undefined,
+	printers: readonly Pick<PrinterResponse, 'machine_preset_id'>[]
+): string {
+	const known = (id: string | null | undefined) => !!id && machines.some((m) => m.id === id);
+	if (known(fromProject)) return fromProject!;
+	for (let i = printers.length - 1; i >= 0; i--)
+		if (known(printers[i].machine_preset_id)) return printers[i].machine_preset_id;
+	return '';
+}
+
+/** Preset système racine d'un preset (chaîne `inherits` par nom). */
+function rootPreset(
+	id: string,
+	machines: readonly MachinePresetRef[]
+): MachinePresetRef | undefined {
+	let p = machines.find((m) => m.id === id);
+	for (let guard = 0; p?.inherits && guard < 8; guard++) {
+		const parent = machines.find((m) => m.name === p!.inherits);
+		if (!parent) break;
+		p = parent;
+	}
+	return p;
+}
+
+/**
+ * Phase 46 (DEV1-a) — G-code tranché pour une autre imprimante. Même règle
+ * que le contrôle serveur du lot 46 (409 `printer_incompatible`, Orca
+ * SelectMachineDialog « The selected printer is incompatible with the chosen
+ * printer presets. ») : `printer_model` égal quand il est connu des deux
+ * côtés ; connu d'un seul côté → autorisé ; inconnu des deux → même preset ou
+ * même preset d'origine (chaîne `inherits`).
+ * Renvoie les deux noms en cas d'écart, sinon `null`.
+ */
+export function presetMismatch(
+	slicedFor: MachinePresetRef | null | undefined,
+	target: Pick<PrinterResponse, 'machine_preset_id'> | null | undefined,
+	machines: readonly MachinePresetRef[],
+	models?: { sliced?: string | null; target?: string | null } | null
+): { sliced: string; target: string } | null {
+	if (!slicedFor || !target?.machine_preset_id) return null;
+	if (slicedFor.id === target.machine_preset_id) return null;
+	const a = rootPreset(slicedFor.id, machines) ?? slicedFor;
+	const b = rootPreset(target.machine_preset_id, machines);
+	if (!b) return null; // preset inconnu (liste non chargée) : pas de faux avertissement
+	const ma = models?.sliced?.trim() ?? '';
+	const mb = models?.target?.trim() ?? '';
+	if (models && ma && mb) {
+		if (ma === mb) return null;
+	} else if (models && (ma || mb)) {
+		// Modèle connu d'un seul côté (imprimante personnalisée) : rien de fiable
+		// à comparer, envoi autorisé (même règle que le serveur).
+		return null;
+	} else if (a.id === b.id || a.name === b.name) return null;
+	const named = machines.find((m) => m.id === target.machine_preset_id);
+	return { sliced: slicedFor.name, target: named?.name ?? b.name };
+}
+
+/** 409 `printer_incompatible` du lot 46 (envoi d'un G-code d'une autre imprimante). */
+export function isPrinterIncompatible(e: unknown): boolean {
+	return (
+		e instanceof ApiError &&
+		e.status === 409 &&
+		(e.details as { reason?: string } | undefined)?.reason === 'printer_incompatible'
+	);
+}
+
 /** Libellé d'option : « nom — URL » ou « nom — non connectée ». */
 export function printerOptionLabel(p: PrinterResponse): string {
 	const url = p.moonraker_url?.trim();

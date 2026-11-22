@@ -46,8 +46,9 @@ export function objectFootprint(o: SceneObject, fallback: [number, number]): Foo
 
 /** Empreintes des objets pour le corps `ArrangeRequest.items`. */
 export function arrangeItems(objects: readonly SceneObject[]): ArrangeItem[] {
+	// Phase 46 (ARR-a) : emprise à l'échelle courante (comme objectFootprint).
 	return objects.map((o) => {
-		const { width, depth } = footprint(o.mesh);
+		const { width, depth } = objectFootprint(o, [0, 0]);
 		return { id: o.id, width, depth };
 	});
 }

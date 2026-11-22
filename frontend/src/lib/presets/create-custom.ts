@@ -98,6 +98,47 @@ export function validateFilament(f: CustomFilament, existing: readonly string[])
 	return null;
 }
 
+/**
+ * Phase 46 (audit 44 PR1-c) — filaments de départ proposés pour un type :
+ * Orca CreateFilamentPresetDialog::get_filament_preset_choices /
+ * get_filament_presets_by_machine (CreatePresetsDialog.cpp:1210-1381) ne
+ * listent que des presets **système** (sans `inherits`) dont
+ * `filament_type[0]` est le type choisi. `typeOf` : type d'un preset
+ * (gabarits de GET /presets/create-options), sinon déduit du nom.
+ */
+export function baseFilamentChoices<P extends { id: string; name: string; origin: string }>(
+	presets: readonly P[],
+	type: string,
+	typeOf: (p: P) => string | null | undefined
+): P[] {
+	return presets.filter((p) => p.origin === 'system' && (typeOf(p) ?? nameType(p.name)) === type);
+}
+
+/** Type d'un filament d'après son nom (repli sans gabarits serveur) : mot-type le plus long. */
+export function nameType(name: string): string | null {
+	const words = ` ${name.replace(/@.*$/, '').toLowerCase().split(/\s+/).join(' ')} `;
+	let best: string | null = null;
+	for (const t of FILAMENT_TYPES)
+		if (words.includes(` ${t.toLowerCase()} `) && (!best || t.length > best.length)) best = t;
+	return best;
+}
+
+/**
+ * Filament de départ par défaut : le courant s'il convient, sinon le « Generic
+ * <type> » (filament générique d'Orca), sinon le premier de la liste.
+ */
+export function defaultBaseFilament<P extends { id: string; name: string }>(
+	choices: readonly P[],
+	current: string | null,
+	type: string
+): string | null {
+	if (current && choices.some((p) => p.id === current)) return current;
+	const generic =
+		choices.find((p) => p.name.toLowerCase().startsWith(`generic ${type.toLowerCase()} `)) ??
+		choices.find((p) => p.name.toLowerCase().startsWith(`generic ${type.toLowerCase()}`));
+	return (generic ?? choices[0])?.id ?? null;
+}
+
 /** Valeurs propres du filament créé (le reste est hérité du preset de base). */
 export function filamentValues(f: CustomFilament): Record<string, unknown> {
 	return { filament_vendor: [cleanName(f.vendor)], filament_type: [f.type] };

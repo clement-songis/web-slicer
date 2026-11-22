@@ -2409,5 +2409,18 @@
 	"p44b_sliced_file": "Fichier tranché",
 	"p44b_sliced_offer": "« {file} » est un fichier tranché (.gcode.3mf) : il contient le G-code de {n} plateau(x) mais aucun modèle à importer. L'ouvrir dans l'aperçu G-code ?",
 	"p44b_open_preview": "Ouvrir dans l'aperçu G-code",
-	"p44b_gcode_opened_plate": "G-code « {file} » ouvert — plateau {plate} ({n} couches)."
+	"p44b_gcode_opened_plate": "G-code « {file} » ouvert — plateau {plate} ({n} couches).",
+	"p46_no_base_filament": "Aucun filament système de type {type} pour cette imprimante.",
+	"p46_preset_mismatch": "Le G-code a été tranché pour « {sliced} » ; cette imprimante utilise « {target} ».",
+	"p46_session_expired": "Session expirée",
+	"p46_session_expired_text": "Votre session a expiré. Reconnectez-vous pour continuer : vos modifications non enregistrées sont conservées et l'action interrompue (enregistrement, tranchage…) reprend.",
+	"p46_filaments_show_all_title": "Seuls les filaments cochés dans l'assistant de configuration sont listés ; afficher tous les filaments compatibles.",
+	"p46_my_filaments": "Mes filaments",
+	"p46_all_filaments": "Tous les filaments ({n})",
+	"p46_printer_incompatible": "L'imprimante sélectionnée est incompatible avec les préréglages d'imprimante choisis.",
+	"p46_import_ignored": "Ignorés : {list}.",
+	"p46_presets_export_file": "Export des préréglages : {file}.",
+	"p46_object_names": "Objet : {names}",
+	"p46_select": "Sélectionner",
+	"p46_gcode_conflict": "Des conflits de trajets G-code ont été détectés à la couche {layer}, Z = {z} mm. Veuillez éloigner davantage les objets en conflit ({a} <-> {b})."
 }

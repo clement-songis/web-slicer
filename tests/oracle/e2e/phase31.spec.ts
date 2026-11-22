@@ -24,16 +24,12 @@ test("trancher envoie la scène affichée sans enregistrer ; aperçu : outil, al
   await expect(page.getByTestId("import-status")).toHaveCount(0, {
     timeout: 60_000,
   });
-  // Modification non enregistrée : objet déplacé par l'arrangement.
-  // (Phase 35 : le bouton ouvre le menu d'options qui enregistre avant de
-  //  disposer ; ici il faut justement NE PAS enregistrer → touche A d'Orca,
-  //  qui dispose le plateau actif sans sauvegarde.)
+  // Modification non enregistrée : objet déplacé au clavier (la touche A
+  // passe désormais par l'arrangeur, qui enregistre avant de disposer).
+  await page.getByTestId("object-name").first().click();
   await focusEditor(page);
-  await page.keyboard.press("a");
-  await expect(page.getByTestId("editor-message")).toContainText(
-    "Arrangement",
-    { timeout: 30_000 },
-  );
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("ArrowUp");
   const saves: string[] = [];
   const bodies: Record<string, unknown>[] = [];
   page.on("request", (req) => {

@@ -250,5 +250,6 @@
 	"✔ Replaced %1%.\n": "✔ Remplacé %1%.\n",
 	"✖ Skipped %1%: failed to replace.\n": "✖ Ignoré %1% : échec du remplacement.\n",
 	"✖ Skipped %1%: file does not exist.\n": "✖ Ignoré %1% : le fichier n'existe pas.\n",
-	"✖ Skipped %1%: same file.\n": "✖ Ignoré %1% : même fichier.\n"
+	"✖ Skipped %1%: same file.\n": "✖ Ignoré %1% : même fichier.\n",
+	"Conflicts of G-code paths have been found at layer %d, Z = %.2lfmm. Please separate the conflicted objects farther (%s <-> %s).": "Des conflits de trajets G-code ont été détectés à la couche %d, Z = %.2lf mm. Veuillez éloigner davantage les objets en conflit (%s <-> %s)."
 }

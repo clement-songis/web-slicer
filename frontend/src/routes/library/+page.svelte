@@ -126,6 +126,20 @@
 		});
 	}
 
+	// Phase 46 (audit 44 JOURNEY-a) : Ctrl+N (Orca, MainFrame « New Project »)
+	// et Alt+N (repli de l'éditeur : Ctrl+N peut être réservé par le navigateur)
+	// créent un projet depuis la bibliothèque aussi. Jamais dans un champ.
+	function onLibraryKeydown(e: KeyboardEvent) {
+		const el = e.target as HTMLElement | null;
+		if (el && (/^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || el.isContentEditable)) return;
+		if (e.key.toLowerCase() !== 'n' || e.shiftKey) return;
+		const ctrl = (e.ctrlKey || e.metaKey) && !e.altKey;
+		const alt = e.altKey && !e.ctrlKey && !e.metaKey;
+		if (!ctrl && !alt) return;
+		e.preventDefault();
+		if (!busy) void createAndOpen();
+	}
+
 	// « Ouvrir un projet » (T090) : un `.3mf` projet ou un modèle 3D → nouveau
 	// projet, puis on ouvre l'éditeur dessus.
 	let importInput: HTMLInputElement | null = null;
@@ -208,6 +222,7 @@
 	}
 </script>
 
+<svelte:window onkeydown={onLibraryKeydown} />
 <svelte:head><title>{$t('Recent')} — Web-Slicer</title></svelte:head>
 
 <div class="flex h-screen bg-surface text-content">

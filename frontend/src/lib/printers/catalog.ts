@@ -87,6 +87,27 @@ export function toggleVendorAll(
 }
 
 /** Modèles sélectionnés (aplatis) — à la confirmation, chacun → une imprimante. */
+/**
+ * Phase 46 (audit 44 PR2-b) — assistant rouvert : modèles déjà possédés
+ * pré-cochés avec leurs buses (Orca ConfigWizard coche les modèles installés).
+ */
+export function ownedSelection(
+	vendors: PrinterCatalogVendor[],
+	ownedPresetIds: readonly string[]
+): { keys: string[]; nozzles: Record<string, string[]> } {
+	const owned = new Set(ownedPresetIds);
+	const keys: string[] = [];
+	const nozzles: Record<string, string[]> = {};
+	for (const v of vendors)
+		for (const m of v.models) {
+			const ids = m.variants.map((x) => x.machine_preset_id).filter((id) => owned.has(id));
+			if (ids.length === 0) continue;
+			keys.push(modelKey(m));
+			nozzles[modelKey(m)] = ids;
+		}
+	return { keys, nozzles };
+}
+
 export function selectedModels(
 	vendors: PrinterCatalogVendor[],
 	selected: ReadonlySet<string>

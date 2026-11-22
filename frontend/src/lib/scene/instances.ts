@@ -74,6 +74,36 @@ export function newInstanceGroupId(): string {
 }
 
 /** Groupes d'instances (≥ 2 membres) dans l'ordre des objets. */
+/**
+ * Phase 46 (audit 44 FIX1-a) — liste d'objets : les instances d'un objet sont
+ * regroupées sous le premier membre (Orca ObjectList : nœud objet + sous-nœud
+ * « Instances », ObjectList::increase_object_instances → add_instance), au lieu
+ * d'apparaître comme objets frères intercalés. Ordre : position du premier
+ * membre ; `instances` = les autres membres (2ᵉ, 3ᵉ…), dans l'ordre de la liste.
+ */
+export function instanceListLayout<T extends { id: string; instanceGroup?: string }>(
+	roots: readonly T[]
+): { node: T; instances: T[] }[] {
+	const groups = instanceGroups(roots);
+	const out: { node: T; instances: T[] }[] = [];
+	const byLeader = new Map<string, { node: T; instances: T[] }>();
+	for (const n of roots) {
+		const ids = n.instanceGroup ? groups.get(n.instanceGroup) : undefined;
+		if (!ids) {
+			out.push({ node: n, instances: [] });
+			continue;
+		}
+		const leader = byLeader.get(n.instanceGroup!);
+		if (leader) leader.instances.push(n);
+		else {
+			const entry = { node: n, instances: [] as T[] };
+			byLeader.set(n.instanceGroup!, entry);
+			out.push(entry);
+		}
+	}
+	return out;
+}
+
 export function instanceGroups(
 	nodes: readonly { id: string; instanceGroup?: string }[]
 ): Map<string, string[]> {

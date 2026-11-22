@@ -10,7 +10,10 @@
 	import {
 		FILAMENT_TYPES,
 		FILAMENT_VENDORS,
+		baseFilamentChoices,
+		defaultBaseFilament,
 		filamentPresetName,
+		nameType,
 		filamentValues,
 		validateFilament
 	} from './create-custom';
@@ -27,13 +30,27 @@
 	// Listes du serveur (Orca + filaments système installés), sinon locales.
 	let vendorList = $state<string[]>(FILAMENT_VENDORS);
 	let typeList = $state<string[]>([...FILAMENT_TYPES]);
+	// Type de chaque filament système (gabarits serveur, `filament_type` hérité).
+	let typeById = $state<Map<string, string>>(new Map());
 	$effect(() => {
 		if (!open) return;
 		void getCreateOptions().then((o) => {
 			if (o?.filament.vendors.length) vendorList = o.filament.vendors;
 			if (o?.filament.types.length) typeList = o.filament.types;
+			if (o?.filament.templates.length)
+				typeById = new Map(
+					o.filament.templates.flatMap((t) => (t.type ? [[t.id, t.type] as [string, string]] : []))
+				);
 		});
 	});
+	const typeOf = (p: PresetSummary): string | null => typeById.get(p.id) ?? nameType(p.name);
+	/** Type d'un filament (preset utilisateur : celui de son parent système). */
+	function filamentTypeOf(id: string | null): string | null {
+		const p = presets.find((x) => x.id === id);
+		if (!p) return null;
+		const parent = p.origin === 'user' ? presets.find((x) => x.name === p.inherits) : null;
+		return typeOf(parent ?? p);
+	}
 	let vendor = $state('');
 	let type = $state('PLA');
 	let serial = $state('');
@@ -42,9 +59,18 @@
 	let error = $state<string | null>(null);
 	// Réinitialisé à l'ouverture seulement (la liste des presets peut être
 	// rechargée pendant la saisie).
-	// Liste arrivée après l'ouverture : reprend le filament courant comme base.
+	// Phase 46 (PR1-c) : filaments de départ = presets système du type choisi
+	// (Orca CreateFilamentPresetDialog) ; au changement de type (ou à l'arrivée
+	// des listes), le courant est gardé s'il convient, sinon « Generic <type> ».
+	const choices = $derived(baseFilamentChoices(presets, type, typeOf));
 	$effect(() => {
-		if (open && presets.length && !presets.some((p) => p.id === base)) base = baseId;
+		if (!open) return;
+		if (!choices.some((p) => p.id === base))
+			base = defaultBaseFilament(
+				choices,
+				untrack(() => baseId),
+				type
+			);
 	});
 	$effect(() => {
 		if (!open) return;
@@ -53,8 +79,7 @@
 			serial = '';
 			error = null;
 			base = baseId;
-			const b = presets.find((p) => p.id === baseId);
-			type = FILAMENT_TYPES.find((t) => b?.name.includes(t)) ?? 'PLA';
+			type = filamentTypeOf(baseId) ?? 'PLA';
 		});
 	});
 	const draft = $derived({ vendor, type, serial });
@@ -65,7 +90,7 @@
 			draft,
 			presets.map((p) => p.name)
 		);
-		const parent = presets.find((p) => p.id === base);
+		const parent = choices.find((p) => p.id === base);
 		if (!error && !parent) error = tr('Choose the base filament.');
 		if (error || !parent) return;
 		busy = true;
@@ -131,11 +156,16 @@
 				class="ws-field"
 				bind:value={base}
 				data-testid="create-filament-base"
-				disabled={presets.length === 0}
+				disabled={choices.length === 0}
 			>
-				{#each presets as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
+				{#each choices as p (p.id)}<option value={p.id}>{p.name}</option>{/each}
 			</select>
 		</label>
+		{#if presets.length > 0 && choices.length === 0}
+			<p class="text-xs text-warning-text" data-testid="create-filament-no-base">
+				{$t('No system filament of type {type} for this printer.', { type })}
+			</p>
+		{/if}
 		<p class="text-xs text-content-subtle">
 			{$t('Preset name:')}
 			<strong class="text-content" data-testid="create-filament-name">{name || '—'}</strong>{$t(
@@ -150,7 +180,7 @@
 		<button
 			type="button"
 			class="ws-btn ws-btn-primary"
-			disabled={busy || presets.length === 0}
+			disabled={busy || choices.length === 0}
 			title={presets.length === 0 ? $t('Loading filaments…') : undefined}
 			data-testid="create-filament-submit"
 			onclick={submit}>{$t('Create')}</button

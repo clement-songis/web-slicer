@@ -6,6 +6,7 @@ import { reportReachable, reportUnreachable, unreachableMessage } from './connec
 import { apiErrorMessage } from './quota';
 import { readableServerMessage } from './engine-error';
 import { tr } from '$lib/i18n';
+import { canReauth, requestReauth } from './reauth';
 
 /** Préfixe des routes API (le proxy Vite renvoie vers le backend en dev). */
 export const API_BASE = '/api';
@@ -38,7 +39,12 @@ function bigIntReplacer(_key: string, value: unknown): unknown {
 	return typeof value === 'bigint' ? Number(value) : value;
 }
 
-async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
+async function request<T>(
+	method: string,
+	path: string,
+	body?: unknown,
+	replayed = false
+): Promise<T> {
 	const hasBody = body !== undefined;
 	const json = hasBody ? JSON.stringify(body, bigIntReplacer) : undefined;
 	let res: Response;
@@ -76,6 +82,10 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 			throw new ApiError(res.status, 'unavailable', unreachableMessage(res.status));
 		}
 		reportReachable();
+		// Phase 46 (SESS-a) : session expirée → reconnexion sur place, puis la
+		// même requête (même corps) est rejouée une fois ; annulée → 401.
+		if (!replayed && canReauth(path, res.status) && (await requestReauth()))
+			return request<T>(method, path, body, true);
 		throw new ApiError(
 			res.status,
 			err.code ?? 'error',

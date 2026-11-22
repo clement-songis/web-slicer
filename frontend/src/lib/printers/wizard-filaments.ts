@@ -99,6 +99,24 @@ export function orderChoices(
 	return [...choices].sort((a, b) => rank(a) - rank(b));
 }
 
+/**
+ * Phase 46 (audit 44 PR2-a) — filaments « installés » : après l'assistant,
+ * la liste Filament du projet ne montre que les filaments cochés (section
+ * `filaments` d'AppConfig, PresetComboBox ne liste que les visibles), plus les
+ * presets utilisateur et ceux déjà choisis dans le projet. Sans choix
+ * d'assistant (`installed` vide/null) : liste complète.
+ */
+export function installedFilaments<P extends { id: string; name: string; origin: string }>(
+	presets: readonly P[],
+	installed: readonly string[] | null | undefined,
+	keepIds: readonly (string | null | undefined)[] = []
+): P[] {
+	if (!installed?.length) return [...presets];
+	const names = new Set(installed);
+	const keep = new Set(keepIds.filter(Boolean));
+	return presets.filter((p) => p.origin !== 'system' || names.has(p.name) || keep.has(p.id));
+}
+
 /** Filtre de la liste (recherche, marque, type, cochés seulement). */
 export function filterChoices(
 	choices: readonly FilamentChoice[],
@@ -120,7 +138,10 @@ export function filterChoices(
  * autres filaments choisis, puis le défaut de l'imprimante (comportement
  * antérieur quand rien de compatible n'a été choisi).
  */
-export function preferredFilaments(machineDefault: unknown, chosen: readonly string[] | null): string[] {
+export function preferredFilaments(
+	machineDefault: unknown,
+	chosen: readonly string[] | null
+): string[] {
 	const defaults = presetNames(machineDefault);
 	if (!chosen?.length) return defaults;
 	const first = defaults.filter((n) => chosen.includes(n));
