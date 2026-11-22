@@ -117,6 +117,24 @@ fn spacing_is_respected_inside_the_bed_and_deterministic() {
     assert!(gap >= 15.0 - 1e-3, "écart {gap}");
 }
 
+/// Lot 50 (audit 48 ARR48-b) : l'écart réel EST l'espacement demandé
+/// (inflation distance/2 par objet, Arrange.cpp:122/151 d'Orca), pas la
+/// moitié — mesuré sur la matrice exacte de l'audit (0/6/15/30 mm).
+/// Espacement 0 = automatique : brim_width 1 mm par objet sans support
+/// (get_instance_arrange_poly, ModelArrange.cpp:166) → écart 2 mm.
+#[test]
+fn spacing_is_exact_for_the_audit48_matrix() {
+    for (spacing, expected) in [(0.0, 2.0), (6.0, 6.0), (15.0, 15.0), (30.0, 30.0)] {
+        let (mut model, bed, config) = setup(2, false);
+        engine::adapters::ffi::arrange_gui(&mut model, &bed, &config, &settings(spacing)).unwrap();
+        let gap = min_gap_same_plate(&boxes(&model), &plates(&model));
+        assert!(
+            (gap - expected).abs() < 1e-3,
+            "espacement {spacing} : écart {gap} au lieu de {expected}"
+        );
+    }
+}
+
 #[test]
 fn overflow_creates_plates_and_spacing_changes_the_layout() {
     // 350² / (20 + 60)² ≈ 19 cubes par plateau avec 60 mm d'espacement.

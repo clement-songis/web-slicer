@@ -19,6 +19,9 @@ pub const PLATE_SETTING_KEYS: &[&str] = &[
     "other_layers_sequence_choice",
     "other_layers_print_sequence_nums",
     "spiral_mode",
+    // Audit 48 DLG48-a : timelapse par plateau (dialogue « Réglages du
+    // plateau » web ; défaut = valeur du profil de traitement d'Orca).
+    "timelapse_type",
     // Affectation filament → buse (imprimantes multi-buses, H2D) : PartPlate
     // persiste filament_map_mode et filament_map (bbs_3mf.cpp:7968, attributs
     // « filament_map_mode » / « filament_maps ») ; le CLI les applique au

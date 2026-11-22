@@ -977,12 +977,16 @@ pub(crate) async fn import_3mf_contents(
     project_id: ProjectId,
     project_name: &str,
     filename: &str,
-    imported: crate::models::threemf::ImportedProject,
+    mut imported: crate::models::threemf::ImportedProject,
 ) -> ApiResult<(
     Value,
     Value,
     Vec<(crate::domain::Model, engine::api::TriangleMesh)>,
 )> {
+    // Lot 50 (audit 48 PROJ48-a) : les vecteurs par filament sont complétés à
+    // la lecture du 3MF, avant toute consommation (scène, presets, tranchage)
+    // — comme Orca à l'ouverture d'un projet.
+    complete_filament_vectors(&mut imported.config);
     let mut active_presets = json!({});
     // Réglages du projet Orca (project_settings.config) → scene.projectConfig :
     // couleurs des filaments, matrice et multiplicateur de purge. En « géométrie
@@ -1321,6 +1325,62 @@ fn full_project_config(imported: &crate::models::threemf::ImportedProject) -> Ma
         config.insert(key.clone(), value.clone());
     }
     config
+}
+
+/// Lot 50 (audit 48 PROJ48-a) : complétion des vecteurs par filament à la
+/// lecture du 3MF projet, comme Orca. La CLI dimensionne les filaments sur
+/// filament_settings_id (current_filaments_name, OrcaSlicer.cpp:1764-1768)
+/// puis répartit chaque clé par filament via ConfigOptionVector::set_at
+/// (Config.hpp:427) : un vecteur plus court répète sa dernière valeur
+/// (get_at borne à l'indice), et les vecteurs de noms sont complétés à vide
+/// (PresetBundle::load_config_file_config : resize(num_filaments,
+/// std::string()), inherits_group & al. à num_filaments + 2). Un 3MF
+/// BambuStudio 02.06.00.51 (ex. prusa_xl_5t) écrit filament_colour à 1
+/// entrée pour 2 filament_settings_id : sans complétion, un seul slot
+/// filament était créé et le tranchage refusé (« l'objet « cylinder.stl »
+/// utilise le filament 2 mais le projet n'en définit que 1 ») alors que la
+/// CLI tranche en 2 filaments.
+fn complete_filament_vectors(config: &mut Map<String, Value>) {
+    let settings = raw_items(config.get("filament_settings_id"));
+    let colours = raw_items(config.get("filament_colour"));
+    let count = settings.len().max(colours.len());
+    if count <= 1 {
+        return;
+    }
+    // Clés par filament (Preset::filament_options() d'Orca) + couleur (option
+    // projet) : la dernière valeur est répétée, jamais tronquée.
+    let mut extend_last: Vec<&str> = ORCA_FILAMENT_OPTIONS.to_vec();
+    extend_last.push("filament_colour");
+    for key in extend_last {
+        let Some(Value::Array(items)) = config.get_mut(key) else {
+            continue;
+        };
+        if items.is_empty() || items.len() >= count {
+            continue;
+        }
+        let last = items
+            .last()
+            .cloned()
+            .unwrap_or(Value::String(String::new()));
+        items.resize(count, last);
+    }
+    // Vecteurs de noms / expressions : complétés à vide (jamais tronqués).
+    for (key, size) in [
+        ("filament_settings_id", count),
+        ("filament_ids", count),
+        ("compatible_process_expression_group", count),
+        ("inherits_group", count + 2),
+        ("different_settings_to_system", count + 2),
+        ("compatible_machine_expression_group", count + 2),
+    ] {
+        let Some(Value::Array(items)) = config.get_mut(key) else {
+            continue;
+        };
+        if items.len() >= size {
+            continue;
+        }
+        items.resize(size, Value::String(String::new()));
+    }
 }
 
 /// `scene.projectConfig` depuis la config Orca d'un 3MF (chaînes ou tableaux
@@ -3111,5 +3171,84 @@ mod lot44b_tests {
         assert_eq!(scene["objects"][0]["name"], "cube20.stl");
         assert!(scene["objects"][0].get("instanceGroup").is_none());
         assert_eq!(models[0].0.filename, "arbre.3mf");
+    }
+}
+
+#[cfg(test)]
+mod lot50_tests {
+    use super::*;
+
+    fn cfg(v: serde_json::Value) -> Map<String, Value> {
+        v.as_object().expect("objet").clone()
+    }
+
+    /// PROJ48-a : prusa_xl_5t.3mf (BambuStudio 02.06.00.51) — 1 couleur,
+    /// 2 filament_settings_id : deflection Orca (dernière valeur répétée).
+    #[test]
+    fn short_filament_colour_is_completed_like_orca() {
+        let mut config = cfg(json!({
+            "filament_colour": ["#F2754E"],
+            "filament_settings_id": ["Prusa Generic PLA @XL 5T", "Prusa Generic PLA @XL 5T"],
+            "filament_diameter": ["1.75", "1.75"],
+            "nozzle_temperature": ["215"],
+            "inherits_group": ["proc", "Prusa Generic PLA @XL 5T", "Prusa Generic PLA @XL 5T", "Prusa XL 5T 0.4 nozzle"],
+            "different_settings_to_system": ["", "", "", ""],
+        }));
+        complete_filament_vectors(&mut config);
+        assert_eq!(
+            config["filament_colour"],
+            json!(["#F2754E", "#F2754E"]),
+            "la dernière couleur est répétée (set_at / get_at)"
+        );
+        assert_eq!(config["nozzle_temperature"], json!(["215", "215"]));
+        assert_eq!(config["filament_diameter"], json!(["1.75", "1.75"]));
+        // Vecteurs déjà à la bonne taille (n ou n + 2) : inchangés.
+        assert_eq!(config["filament_settings_id"].as_array().unwrap().len(), 2);
+        assert_eq!(config["inherits_group"].as_array().unwrap().len(), 4);
+        assert_eq!(
+            config["different_settings_to_system"]
+                .as_array()
+                .unwrap()
+                .len(),
+            4
+        );
+    }
+
+    /// Couleur plus longue que filament_settings_id (« sometimes is not
+    /// generated », PresetBundle.cpp:4277) : n = couleurs, noms complétés à
+    /// vide, jamais tronqués.
+    #[test]
+    fn name_vectors_are_padded_never_truncated() {
+        let mut config = cfg(json!({
+            "filament_colour": ["#F2754E", "#FF0000", "#00FF00"],
+            "filament_settings_id": ["A"],
+            "compatible_process_expression_group": [""],
+            "inherits_group": ["p", "A"],
+        }));
+        complete_filament_vectors(&mut config);
+        assert_eq!(config["filament_settings_id"], json!(["A", "", ""]));
+        assert_eq!(
+            config["compatible_process_expression_group"],
+            json!(["", "", ""])
+        );
+        assert_eq!(config["inherits_group"].as_array().unwrap().len(), 5);
+    }
+
+    /// Config cohérente ou mono-filament : rien ne change.
+    #[test]
+    fn consistent_or_single_filament_config_is_untouched() {
+        let mut config = cfg(json!({
+            "filament_colour": ["#F2754E", "#FF0000"],
+            "filament_settings_id": ["A", "B"],
+            "filament_diameter": ["1.75", "1.75"],
+        }));
+        let before = config.clone();
+        complete_filament_vectors(&mut config);
+        assert_eq!(config, before);
+
+        let mut single = cfg(json!({ "filament_colour": ["#F2754E"] }));
+        let before = single.clone();
+        complete_filament_vectors(&mut single);
+        assert_eq!(single, before);
     }
 }
