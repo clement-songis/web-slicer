@@ -326,6 +326,7 @@
 	"u_choose_a_process_profile": "Choisissez un profil de traitement",
 	"u_choose_a_filament": "Choisissez un filament",
 	"u_import_in_progress": "Import en cours…",
+	"u_loading_project_objects": "Chargement des objets du projet…",
 	"u_slicing_in_progress_resumed_after_the_page_reloa": "Tranchage en cours repris après le rechargement de la page.",
 	"u_could_not_load_models": "chargement des modèles impossible",
 	"u_only_user_presets_can_be_renamed": "seuls les presets utilisateur se renomment",

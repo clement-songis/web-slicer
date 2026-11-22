@@ -46,6 +46,7 @@
 		type UnitSource
 	} from '$lib/editor/units';
 	import { autoFlushResult, changedSlots, type FlushSnapshot } from '$lib/editor/auto-flush';
+	import { sliceBlockerReason } from '$lib/editor/slice-blocker';
 	import {
 		gcodeCheckError,
 		gcodeCheckKind,
@@ -2126,18 +2127,47 @@
 			!!activePresets.process &&
 			activePresets.filaments.length > 0
 	);
-	// Raison affichée au survol quand le tranchage est impossible.
-	const sliceBlocker = $derived(
-		activeSceneObjects.length === 0
-			? $t('Add an object to slice')
-			: activeOutside.length > 0
-				? $t('An object is outside the printable area: move it onto the plate before slicing')
-				: !activePresets.process
-					? $t('Choose a process profile')
-					: activePresets.filaments.length === 0
-						? $t('Choose a filament')
-						: $t('Import in progress…')
+	// PERF49-a (audit 49) : objets connus du projet (import prêt, modèle
+	// converti) dont le maillage n'est pas encore rendu — dérivé de l'état des
+	// imports et de la scène (événements), jamais d'un délai. À l'ouverture
+	// d'un 3MF sous charge, le bouton Trancher reste désactivé tant que les
+	// maillages arrivent, mais pour la vraie raison (« Chargement des objets
+	// du projet… »), plus « Ajoutez un objet à trancher ».
+	const meshesLoadingCount = $derived(
+		imports.filter(
+			(item) =>
+				item.modelId &&
+				item.status === 'ready' &&
+				!!tree.get(item.objectId) &&
+				!sceneObjects.some((o) => o.id === item.objectId)
+		).length
 	);
+	// Raison affichée quand le tranchage est impossible (bouton + libellé).
+	const sliceBlocker = $derived.by(() => {
+		void $locale; // textes traduits : recalcul au changement de langue
+		const reason = sliceBlockerReason({
+			objectCount: activeSceneObjects.length,
+			outsideCount: activeOutside.length,
+			importPending: imports.some((item) => isPending(item)),
+			hasProcess: !!activePresets.process,
+			filamentCount: activePresets.filaments.length,
+			meshesLoading: meshesLoadingCount
+		});
+		switch (reason) {
+			case 'loading-objects':
+				return tr('Loading project objects…');
+			case 'add-object':
+				return tr('Add an object to slice');
+			case 'outside':
+				return tr('An object is outside the printable area: move it onto the plate before slicing');
+			case 'process':
+				return tr('Choose a process profile');
+			case 'filament':
+				return tr('Choose a filament');
+			default:
+				return tr('Import in progress…');
+		}
+	});
 
 	// Profils par défaut d'un nouveau projet (comme Orca : default_print_profile /
 	// default_filament_profile du preset machine, sinon un profil standard), une
@@ -10739,6 +10769,16 @@
 							></button
 						>
 					</div>
+				{/if}
+				<!-- PERF49-a (audit 49) : raison de blocage visible (pas seulement au
+				     survol) — sous charge, l'ouverture d'un 3MF laissait le bouton
+				     muet de longues dizaines de secondes. Absent du layout une fois
+				     actif, et sans interception des clics. -->
+				{#if !canSliceNow}
+					<span
+						class="pointer-events-none absolute top-full right-0 mt-1 max-w-72 truncate text-2xs text-content-subtle"
+						data-testid="slice-blocker-reason">{sliceBlocker}</span
+					>
 				{/if}
 			</div>
 			<SaveControls {save} {unsaved} onreload={reloadAfterConflict} overwrite={overwriteSave} />

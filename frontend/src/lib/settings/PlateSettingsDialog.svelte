@@ -31,6 +31,7 @@
 		layerSet,
 		formatOrder,
 		formatOtherLayersSequence,
+		filledLayerRanges,
 		newRange,
 		normalizeOrder,
 		parseFirstLayerSequence,
@@ -218,7 +219,13 @@
 	function apply() {
 		const firstCustom = draft.first_layer_sequence_choice === 'Customize';
 		const otherCustom = draft.other_layers_sequence_choice === 'Customize';
-		if (otherCustom && !otherRanges.every(rangeValid)) {
+		// Audit 49 PLATE49-a : seules les plages remplies (début saisi) comptent —
+		// les lignes vides issues des « Ajouter » sont ignorées à l'application
+		// (elles ne vident plus les réglages du plateau). Les valeurs invalides
+		// (fin vide/inférieure au début) et l'absence totale de plage remplie
+		// gardent le message de saisie d'Orca, la saisie n'est pas perdue.
+		const filled = filledLayerRanges(otherRanges);
+		if (otherCustom && (!filled.length || !filled.every(rangeValid))) {
 			rangeError = $t('Please input layer value (>= 2).');
 			return;
 		}
@@ -246,7 +253,7 @@
 			'first_layer_print_sequence',
 			firstCustom && firstOrder.length ? formatOrder(firstOrder) : undefined
 		);
-		const other = otherCustom && otherRanges.length ? formatOtherLayersSequence(otherRanges) : null;
+		const other = otherCustom && filled.length ? formatOtherLayersSequence(filled) : null;
 		writeIfChanged('other_layers_print_sequence', other?.sequence);
 		writeIfChanged('other_layers_print_sequence_nums', other?.nums);
 		onClose();

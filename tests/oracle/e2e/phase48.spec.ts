@@ -224,10 +224,8 @@ test.describe("audit 46 (FR)", () => {
     await expect(
       dialog.getByTestId("plate-layer-range-delete"),
     ).toBeInViewport();
-    // Orca refuse l'application tant qu'une plage est vide (« Please input
-    // layer value (>= 2). ») : on remplit les plages avant d'appliquer.
-    await apply.click();
-    await expect(dialog).toContainText(/saisir|input layer/i);
+    // Orca ignore les plages jamais remplies (phase 51 : une ligne vide
+    // n'invalide plus l'application) : on remplit les plages ajoutées.
     await dialog.getByTestId("plate-layer-range").nth(1).getByTestId("plate-layer-range-begin").fill("3");
     await dialog.getByTestId("plate-layer-range").nth(1).getByTestId("plate-layer-range-begin").press("Tab");
     await dialog.getByTestId("plate-layer-range").nth(2).getByTestId("plate-layer-range-begin").fill("5");

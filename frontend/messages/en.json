@@ -326,6 +326,7 @@
 	"u_choose_a_process_profile": "Choose a process profile",
 	"u_choose_a_filament": "Choose a filament",
 	"u_import_in_progress": "Import in progress…",
+	"u_loading_project_objects": "Loading project objects…",
 	"u_slicing_in_progress_resumed_after_the_page_reloa": "Slicing in progress resumed after the page reload.",
 	"u_could_not_load_models": "could not load models",
 	"u_only_user_presets_can_be_renamed": "only user presets can be renamed",

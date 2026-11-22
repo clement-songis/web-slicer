@@ -540,15 +540,20 @@
 		{@const active = volume.id === selectedVolumeId}
 		{@const partMesh =
 			volume.shape === 'mesh' && volume.modelId ? volumeMeshes[volume.modelId] : undefined}
+		{@const volumeGeom = partMesh ? volumeGeometry(partMesh) : undefined}
 		<T.Mesh
 			position={volume.offset}
 			rotation={volumeRotation(volume)}
 			renderOrder={style.opacity < 1 ? 1 : 0}
 			userData={{ volumeId: volume.id }}
-			geometry={partMesh ? volumeGeometry(partMesh) : undefined}
+			// Audit 49 TV-a : au raccord partMesh, une image pouvait monter un
+			// Mesh sans géométrie (boundingSphere indéfini dans le frustum) ;
+			// on ne monte le volume que lorsque sa géométrie est prête.
+			geometry={volumeGeom ?? new THREE.BoxGeometry(1, 1, 1)}
+			visible={volumeGeom !== undefined || volume.shape !== 'mesh'}
 			onclick={(e: IntersectionEvent<MouseEvent>) => onvolumeclick(volume.id, e)}
 		>
-			{#if !partMesh}
+			{#if !volumeGeom}
 				<T.BoxGeometry args={volume.size} />
 			{/if}
 			<T.MeshStandardMaterial

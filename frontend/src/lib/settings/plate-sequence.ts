@@ -110,6 +110,18 @@ export function rangeValid(r: LayerSeqRange): boolean {
 }
 
 /**
+ * Plages remplies (début saisi) — audit 49 PLATE49-a. Les lignes ajoutées
+ * par « Ajouter » puis jamais remplies (début vide, fin « Fin », ordre par
+ * défaut : `newRange` d'`append_layer`) sont des lignes d'attente : elles ne
+ * sont ni validées ni sérialisées à l'application, comme les plages vides
+ * d'Orca n'invalident pas les plages saisies. Une plage à début saisi mais
+ * fin vide/inférieure reste invalide (message de saisie).
+ */
+export function filledLayerRanges<T extends LayerSeqRange>(ranges: readonly T[]): T[] {
+	return ranges.filter((r) => layerSet(r.begin));
+}
+
+/**
  * Comparaison d'Orca (LayerSeqInfo::operator<) : par début puis fin, les
  * champs vides (< MIN_LAYER_VALUE) en dernier.
  */
