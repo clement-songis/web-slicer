@@ -55,8 +55,11 @@ jobs:
             set -euo pipefail
             cargo fmt --check
             cargo clippy --workspace -- -D warnings
-            cargo test --workspace
-            cargo test -p engine --features ffi
+            # --features engine/ffi : construit aussi le binaire engine-worker
+            # (required-features = ffi) que les tests backend d'export spawnent
+            # (résolution par voisin dans target/debug). Sans lui, toute requête
+            # d'export échoue en 500 (reproduit : 8 échecs http_export).
+            cargo test --workspace --features engine/ffi
           '
       - name: Fraîcheur des bindings ts-rs (jamais édités à la main)
         run: git diff --exit-code -- frontend/src/generated/api
