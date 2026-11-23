@@ -49,6 +49,15 @@ jobs:
           submodules: recursive
       - uses: DeterminateSystems/nix-installer-action@v16
       - uses: DeterminateSystems/magic-nix-cache-action@v9
+      # build.rs d'engine (feature ffi) exige LIBSLIC3R_DIR et ORCA_SRC. Sur le
+      # runner, l'héritage via nix develop --command ne les a pas transmis au
+      # build script (run 45164342639 : « LIBSLIC3R_DIR ... NotPresent » alors
+      # que la bannière du devShell les affiche). On les exporte explicitement ;
+      # nix develop construit les chemins correspondants (inputs du devShell).
+      - name: Env moteur pour build.rs (LIBSLIC3R_DIR + ORCA_SRC)
+        run: |
+          echo "LIBSLIC3R_DIR=$(nix eval --raw .#libslic3r.outPath)" >> "$GITHUB_ENV"
+          echo "ORCA_SRC=$(nix eval --raw .#orca-src)" >> "$GITHUB_ENV"
       - name: "Gates Rust (devShell : toolchain + $LIBSLIC3R_DIR)"
         run: |
           nix develop --command bash -c '
