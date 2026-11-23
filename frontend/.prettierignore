@@ -16,3 +16,8 @@ src/lib/paraglide/
 
 # Artefacts générés par Paraglide
 project.inlang/cache
+
+# Métadonnées Paraglide / inlang générées (version CI ≠ version locale)
+project.inlang/.lix/
+project.inlang/.meta.json
+project.inlang/README.md
