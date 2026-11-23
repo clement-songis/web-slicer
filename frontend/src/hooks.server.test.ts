@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-vi.mock('$env/dynamic/private', () => ({ env: {} }));
+
 import { csrfForbidden } from './hooks.server';
 
 const req = (method: string, type: string, origin?: string) =>

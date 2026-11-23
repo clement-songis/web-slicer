@@ -39,6 +39,20 @@ tests dans le devShell — le job source `nix print-dev-env` car
 `nix develop --command` perd des variables d'env et les flags du
 wrapper clang sur les runners), **Frontend** (lint, check, tests).
 
+## Production (adapter-node)
+
+```sh
+cargo build --release -p backend                  # écoute :8080 par défaut
+cd frontend && bun install --frozen-lockfile && bun run build
+PORT=3000 HOST=0.0.0.0 ORIGIN=https://slicer.example.com \
+BACKEND_URL=http://127.0.0.1:8080 node server.js
+```
+
+- `ORIGIN` : URL publique vue par les navigateurs (contrôle CSRF SvelteKit).
+- `BACKEND_URL` : base du backend (défaut `http://127.0.0.1:8080`).
+- Utiliser `server.js` (et pas `node build`) : lui seul relaie le WebSocket
+  `/api/ws` (progression des imports/tranchages).
+
 ## Conventions du dépôt
 
 - Bindings ts-rs générés (`frontend/src/generated/api`) : jamais édités

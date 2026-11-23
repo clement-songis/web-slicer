@@ -4,7 +4,9 @@
 // L'upgrade WebSocket `/api/ws` ne passe pas par SvelteKit : il est relayé par
 // `server.js` (point d'entrée de production), ou par le reverse proxy.
 import type { Handle } from '@sveltejs/kit/hooks';
-import { env } from '$env/dynamic/private';
+// Kit 3 ne génère plus les types ambients de $env sur un checkout frais ;
+// ce hook ne tourne que sous Node (adapter-node) : process.env est équivalent.
+const env = process.env;
 
 const HOP_BY_HOP = [
 	'connection',
