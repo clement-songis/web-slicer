@@ -197,7 +197,7 @@
 
 			{#if openTitle === menu.title}
 				<div
-					class="absolute top-full left-0 z-30 mt-1 max-h-[calc(100vh-4rem)] max-w-[26rem] overflow-y-auto ws-menu {menu.entries.some(
+					class="ws-menu absolute top-full left-0 z-30 mt-1 max-h-[calc(100vh-4rem)] max-w-[26rem] overflow-y-auto {menu.entries.some(
 						(e) => e !== 'separator' && e.hint
 					)
 						? 'w-80'
@@ -234,12 +234,12 @@
 										data-sub-of={entry.label}
 										onclick={() => pick(sub.action)}
 									>
-										<span class={sub.raw ? 'truncate' : ''}
-											>{sub.raw ? sub.label : $t(sub.label)}</span
-										>
-										{#if sub.shortcut}<span class="ml-4 text-xs text-content-subtle"
-												>{sub.shortcut}</span
-											>{/if}
+										<span class={sub.raw ? 'truncate' : ''}>
+											{sub.raw ? sub.label : $t(sub.label)}
+										</span>
+										{#if sub.shortcut}<span class="ml-4 text-xs text-content-subtle">
+												{sub.shortcut}
+											</span>{/if}
 									</button>
 								{/each}
 							{/if}
@@ -252,17 +252,19 @@
 								onclick={() => pick(entry.action)}
 							>
 								<span>{$t(entry.label)}</span>
-								{#if entry.shortcut}<span class="ml-4 text-xs text-content-subtle"
-										>{entry.shortcut}</span
-									>{/if}
+								{#if entry.shortcut}<span class="ml-4 text-xs text-content-subtle">
+										{entry.shortcut}
+									</span>{/if}
 								<!-- Description (aide d'Orca) : hors du nom accessible, qui reste le
 								     libellé de parité ; lue comme description (aria-describedby). -->
 								{#if entry.hint}<span
 										id="menu-hint-{entry.action}"
 										aria-hidden="true"
 										class="block w-full text-left text-xs leading-tight text-content-subtle"
-										data-testid="menu-hint">{$t(entry.hint)}</span
-									>{/if}
+										data-testid="menu-hint"
+									>
+										{$t(entry.hint)}
+									</span>{/if}
 							</button>
 						{/if}
 					{/each}

@@ -39,15 +39,15 @@
 	</h3>
 	{#if reading.kind === 'temp_tower'}
 		<label class="flex flex-col gap-1">
-			<span class="text-xs text-content-subtle"
-				>{$t('After printing: the cleanest step (from bottom to top, 10 mm each).')}</span
-			>
+			<span class="text-xs text-content-subtle">
+				{$t('After printing: the cleanest step (from bottom to top, 10 mm each).')}
+			</span>
 			<select class="ws-field ws-field-sm" bind:value={tempDraft} data-testid="calib-result-temp">
 				<option value="">{$t('Choose…')}</option>
 				{#each reading.temperatures as temperature, i (i)}
-					<option value={String(temperature)}
-						>{$t('Step {n} — {temp} °C', { n: i + 1, temp: temperature })}</option
-					>
+					<option value={String(temperature)}>
+						{$t('Step {n} — {temp} °C', { n: i + 1, temp: temperature })}
+					</option>
 				{/each}
 			</select>
 		</label>
@@ -57,8 +57,10 @@
 				class="ws-btn ws-btn-sm ws-btn-primary"
 				disabled={temp === null}
 				data-testid="calib-result-apply"
-				onclick={() => temp !== null && onapplytemp(temp)}>{$t('Apply to filament')}</button
+				onclick={() => temp !== null && onapplytemp(temp)}
 			>
+				{$t('Apply to filament')}
+			</button>
 		</div>
 	{:else}
 		<label class="flex flex-col gap-1">
@@ -81,9 +83,9 @@
 					aria-label={reading.kind === 'pa_tower' ? $t('Measured height (mm)') : $t('Measured K')}
 					data-testid="calib-result-input"
 				/>
-				<span class="text-content-muted" data-testid="calib-result-k"
-					>{k === null ? '' : `K = ${k}`}</span
-				>
+				<span class="text-content-muted" data-testid="calib-result-k">
+					{k === null ? '' : `K = ${k}`}
+				</span>
 			</span>
 		</label>
 		<div class="mt-2 flex flex-wrap justify-end gap-2">
@@ -92,15 +94,19 @@
 				class="ws-btn ws-btn-sm ws-btn-secondary"
 				disabled={k === null}
 				data-testid="calib-result-record"
-				onclick={() => k !== null && onrecordk(k)}>{$t('Save to history…')}</button
+				onclick={() => k !== null && onrecordk(k)}
 			>
+				{$t('Save to history…')}
+			</button>
 			<button
 				type="button"
 				class="ws-btn ws-btn-sm ws-btn-primary"
 				disabled={k === null}
 				data-testid="calib-result-apply"
-				onclick={() => k !== null && onapplyk(k)}>{$t('Apply to filament')}</button
+				onclick={() => k !== null && onapplyk(k)}
 			>
+				{$t('Apply to filament')}
+			</button>
 		</div>
 	{/if}
 </section>

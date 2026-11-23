@@ -262,8 +262,9 @@
 					<span
 						class="shrink-0 text-xs text-content-muted tabular-nums"
 						data-testid={testid ? `${testid}-count` : undefined}
-						>{filtered.shown}/{filtered.total}</span
 					>
+						{filtered.shown}/{filtered.total}
+					</span>
 				{/if}
 			</div>
 		{/if}
@@ -293,8 +294,10 @@
 					fill="none"
 					stroke="currentColor"
 					stroke-width="2"
-					aria-hidden="true"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg
+					aria-hidden="true"
 				>
+					<circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" />
+				</svg>
 			</button>
 		</div>
 	{:else}

@@ -189,9 +189,13 @@
 										}
 									}}
 								/>
-								<button type="button" class="ws-btn ws-btn-sm ws-btn-primary" onclick={commitRename}
-									>{$t('Rename')}</button
+								<button
+									type="button"
+									class="ws-btn ws-btn-sm ws-btn-primary"
+									onclick={commitRename}
 								>
+									{$t('Rename')}
+								</button>
 								{#if renameError}<span class="text-danger" role="alert">{renameError}</span>{/if}
 							{:else}
 								<!-- Le nom passe avant « hérite de … » : seul ce dernier se tronque
@@ -199,18 +203,21 @@
 								<span
 									class="max-w-full shrink-0 truncate font-medium text-content"
 									data-testid="preset-name"
-									title={preset.name}>{preset.name}</span
+									title={preset.name}
 								>
-								<span class="ws-badge h-4 shrink-0 px-1.5"
-									>{preset.origin === 'user' ? $t('User') : $t('System')}</span
-								>
+									{preset.name}
+								</span>
+								<span class="ws-badge h-4 shrink-0 px-1.5">
+									{preset.origin === 'user' ? $t('User') : $t('System')}
+								</span>
 								{#if presetModified}<ModifiedBadge testid="preset-modified" />{/if}
 								{#if preset.inherits}
 									<span
 										class="min-w-0 truncate text-content-subtle"
 										title={$t('inherits from {name}', { name: preset.inherits })}
-										>{$t('inherits from {name}', { name: preset.inherits })}</span
 									>
+										{$t('inherits from {name}', { name: preset.inherits })}
+									</span>
 								{/if}
 							{/if}
 						</div>
@@ -229,18 +236,21 @@
 								}
 							)}
 							onclick={startDetach}
-							><IconUnlink class="mr-1 inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />{$t(
-								'Detach…'
-							)}</button
 						>
+							<IconUnlink class="mr-1 inline h-3.5 w-3.5 align-[-2px]" aria-hidden="true" />{$t(
+								'Detach…'
+							)}
+						</button>
 					{/if}
 					{#if preset && oncompare}
 						<button
 							type="button"
 							class="ws-btn ws-btn-sm ws-btn-ghost"
 							data-testid="preset-compare"
-							onclick={oncompare}>{$t('Compare…')}</button
+							onclick={oncompare}
 						>
+							{$t('Compare…')}
+						</button>
 					{/if}
 					{#if preset?.origin === 'user' && onrename && renaming === null}
 						<button
@@ -250,14 +260,16 @@
 							onclick={() => {
 								renaming = preset?.name ?? '';
 								renameError = null;
-							}}>{$t('Rename')}</button
+							}}
 						>
+							{$t('Rename')}
+						</button>
 					{/if}
 					{#if preset?.origin === 'user' && ondelete}
 						{#if confirmDelete}
-							<span class="text-xs text-content-muted"
-								>{$t('Delete “{name}”?', { name: preset.name })}</span
-							>
+							<span class="text-xs text-content-muted">
+								{$t('Delete “{name}”?', { name: preset.name })}
+							</span>
 							<button
 								type="button"
 								class="ws-btn ws-btn-sm ws-btn-danger"
@@ -265,20 +277,26 @@
 								onclick={() => {
 									confirmDelete = false;
 									ondelete?.();
-								}}>{$t('Delete')}</button
+								}}
 							>
+								{$t('Delete')}
+							</button>
 							<button
 								type="button"
 								class="ws-btn ws-btn-sm ws-btn-ghost"
-								onclick={() => (confirmDelete = false)}>{$t('Cancel')}</button
+								onclick={() => (confirmDelete = false)}
 							>
+								{$t('Cancel')}
+							</button>
 						{:else}
 							<button
 								type="button"
 								class="ws-btn ws-btn-sm ws-btn-ghost text-danger hover:bg-danger-soft hover:text-danger-content"
 								data-testid="preset-delete"
-								onclick={() => (confirmDelete = true)}>{$t('Delete')}</button
+								onclick={() => (confirmDelete = true)}
 							>
+								{$t('Delete')}
+							</button>
 						{/if}
 					{/if}
 					<button type="button" class="ws-btn ws-btn-secondary" onclick={onClose}>
@@ -288,7 +306,7 @@
 			</div>
 			{#if detaching !== null && preset}
 				<div
-					class="mx-4 mt-2 flex flex-col gap-2 rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-sm text-warning-text"
+					class="text-warning-text mx-4 mt-2 flex flex-col gap-2 rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-sm"
 					role="alertdialog"
 					aria-label={$t('Detach preset')}
 					data-testid="preset-detach-panel"
@@ -325,13 +343,17 @@
 							data-testid="preset-detach-confirm"
 							disabled={detachBusy}
 							aria-busy={detachBusy}
-							onclick={confirmDetach}>{$t('Detach')}</button
+							onclick={confirmDetach}
 						>
+							{$t('Detach')}
+						</button>
 						<button
 							type="button"
 							class="ws-btn ws-btn-sm ws-btn-ghost"
-							onclick={() => (detaching = null)}>{$t('Cancel')}</button
+							onclick={() => (detaching = null)}
 						>
+							{$t('Cancel')}
+						</button>
 						{#if detachError}<span class="text-danger" role="alert">{detachError}</span>{/if}
 					</div>
 				</div>
@@ -367,9 +389,9 @@
 								aria-describedby="settings-save-as-error"
 							/>
 							{#if saveAsError}
-								<span id="settings-save-as-error" class="text-danger" role="alert"
-									>{saveAsError}</span
-								>
+								<span id="settings-save-as-error" class="text-danger" role="alert">
+									{saveAsError}
+								</span>
 							{/if}
 						</label>
 					{/if}

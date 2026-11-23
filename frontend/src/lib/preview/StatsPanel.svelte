@@ -94,12 +94,12 @@
 									</span>
 								{/if}
 							</td>
-							<td class="pl-2 text-right whitespace-nowrap tabular-nums"
-								>{formatDuration(t.timeSeconds)}</td
-							>
-							<td class="pl-2 text-right whitespace-nowrap tabular-nums text-content-muted"
-								>{pct(t.timePercent)}</td
-							>
+							<td class="pl-2 text-right whitespace-nowrap tabular-nums">
+								{formatDuration(t.timeSeconds)}
+							</td>
+							<td class="pl-2 text-right whitespace-nowrap text-content-muted tabular-nums">
+								{pct(t.timePercent)}
+							</td>
 						</tr>
 					{/each}
 				</tbody>
@@ -133,12 +133,13 @@
 					{/each}
 				</tbody>
 				<tfoot>
-					<tr class="border-t border-border tabular-nums font-medium">
+					<tr class="border-t border-border font-medium tabular-nums">
 						<td class="text-left text-content-muted">Σ</td>
 						<td></td>
 						<td></td>
-						<td class="pl-2 text-right whitespace-nowrap tabular-nums">{grams(stats.totalMassG)}</td
-						>
+						<td class="pl-2 text-right whitespace-nowrap tabular-nums">
+							{grams(stats.totalMassG)}
+						</td>
 						<td class="pl-2 text-right whitespace-nowrap tabular-nums">{money(stats.totalCost)}</td>
 					</tr>
 				</tfoot>

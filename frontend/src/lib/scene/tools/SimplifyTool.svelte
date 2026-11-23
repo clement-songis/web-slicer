@@ -80,10 +80,12 @@
 			class="ws-btn ws-btn-primary"
 			disabled={busy}
 			data-testid="simplify-apply"
-			onclick={submit}>{busy ? $t('Simplifying…') : $t('Simplify')}</button
+			onclick={submit}
 		>
-		<button type="button" class="ws-btn ws-btn-secondary" onclick={() => oncancel?.()}
-			>{$t('Cancel')}</button
-		>
+			{busy ? $t('Simplifying…') : $t('Simplify')}
+		</button>
+		<button type="button" class="ws-btn ws-btn-secondary" onclick={() => oncancel?.()}>
+			{$t('Cancel')}
+		</button>
 	</div>
 </div>

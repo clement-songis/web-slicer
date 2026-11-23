@@ -66,19 +66,23 @@
 					class="text-sm text-accent underline"
 					href="https://www.orcaslicer.com/wiki/flow_ratio_calib"
 					target="_blank"
-					rel="noreferrer">{$t('Wiki Guide')}</a
+					rel="noreferrer"
 				>
+					{$t('Wiki Guide')}
+				</a>
 				{#if error}<p class="text-sm text-danger" role="alert">{error}</p>{/if}
 				<div class="flex justify-end gap-2">
-					<button type="button" class="ws-btn ws-btn-secondary" disabled={busy} onclick={onclose}
-						>{$t('Cancel')}</button
-					>
+					<button type="button" class="ws-btn ws-btn-secondary" disabled={busy} onclick={onclose}>
+						{$t('Cancel')}
+					</button>
 					<button
 						type="submit"
 						data-testid="flow-calib-confirm"
 						class="ws-btn ws-btn-primary"
-						disabled={busy}>{busy ? $t('Creating…') : $t('OK')}</button
+						disabled={busy}
 					>
+						{busy ? $t('Creating…') : $t('OK')}
+					</button>
 				</div>
 			</form>
 		</div>

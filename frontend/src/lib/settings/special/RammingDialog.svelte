@@ -134,8 +134,10 @@
 						x={PAD.l - 6}
 						y={sy(v) + 4}
 						text-anchor="end"
-						class="fill-content-subtle text-[10px]">{v}</text
+						class="fill-content-subtle text-[10px]"
 					>
+						{v}
+					</text>
 				{/each}
 				{#each xTicks as tk (tk)}
 					<line
@@ -150,22 +152,28 @@
 						x={sx(tk)}
 						y={H - PAD.b + 14}
 						text-anchor="middle"
-						class="fill-content-subtle text-[10px]">{fmt(tk, 2)}</text
+						class="fill-content-subtle text-[10px]"
 					>
+						{fmt(tk, 2)}
+					</text>
 				{/each}
 				<text
 					x={PAD.l + PW / 2}
 					y={H - 4}
 					text-anchor="middle"
-					class="fill-content-muted text-[11px]">{$t('Time (s)')}</text
+					class="fill-content-muted text-[11px]"
 				>
+					{$t('Time (s)')}
+				</text>
 				<text
 					x="10"
 					y={PAD.t + PH / 2}
 					text-anchor="middle"
 					transform="rotate(-90 10 {PAD.t + PH / 2})"
-					class="fill-content-muted text-[11px]">{$t('Flow (mm³/s)')}</text
+					class="fill-content-muted text-[11px]"
 				>
+					{$t('Flow (mm³/s)')}
+				</text>
 				<!-- Débit retenu par pas de 0,25 s (valeurs écrites dans la chaîne). -->
 				{#each speeds as v, i (i)}
 					<rect
@@ -188,8 +196,10 @@
 							x={sx(p[0])}
 							y={sy(p[1]) - 10}
 							text-anchor="middle"
-							class="pointer-events-none fill-content text-[10px] tabular-nums">{fmt(p[1])}</text
+							class="pointer-events-none fill-content text-[10px] tabular-nums"
 						>
+							{fmt(p[1])}
+						</text>
 						<circle
 							cx={sx(p[0])}
 							cy={sy(p[1])}
@@ -287,14 +297,18 @@
 			type="button"
 			class="ws-btn ws-btn-ghost mr-auto"
 			data-testid="ramming-reset"
-			onclick={() => (edit = startEdit(DEFAULT_RAMMING))}>{$t('Defaults')}</button
+			onclick={() => (edit = startEdit(DEFAULT_RAMMING))}
 		>
+			{$t('Defaults')}
+		</button>
 		<button type="button" class="ws-btn ws-btn-secondary" onclick={onclose}>{$t('Cancel')}</button>
 		<button
 			type="button"
 			class="ws-btn ws-btn-primary"
 			data-testid="ramming-apply"
-			onclick={() => onapply(result)}>{$t('Apply')}</button
+			onclick={() => onapply(result)}
 		>
+			{$t('Apply')}
+		</button>
 	{/snippet}
 </Dialog>

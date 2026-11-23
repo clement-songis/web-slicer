@@ -139,9 +139,9 @@
 				</h2>
 				{#each fields as [label, key] (key)}
 					<label class="flex items-center justify-between gap-2 text-sm">
-						<span
-							>{$t(label)}{ENGINE_CALIB_UNITS[kind] ? ` (${ENGINE_CALIB_UNITS[kind]})` : ''}</span
-						>
+						<span>
+							{$t(label)}{ENGINE_CALIB_UNITS[kind] ? ` (${ENGINE_CALIB_UNITS[kind]})` : ''}
+						</span>
 						{#if key === 'start'}
 							<input
 								class={FIELD}
@@ -226,9 +226,9 @@
 					<label class="flex items-center justify-between gap-2 text-sm">
 						<span>{$t('Shaper type')}</span>
 						<select class="{FIELD} w-36" data-testid="calib-shaper-type" bind:value={shaperType}>
-							{#each SHAPER_TYPES as s (s)}<option value={s}
-									>{s === 'Default' ? $t('Default') : s}</option
-								>{/each}
+							{#each SHAPER_TYPES as s (s)}<option value={s}>
+									{s === 'Default' ? $t('Default') : s}
+								</option>{/each}
 						</select>
 					</label>
 				{/if}
@@ -259,15 +259,17 @@
 				{#if invalid}<p class="text-sm text-danger">{invalid}</p>{/if}
 				{#if error}<p class="text-sm text-danger" data-testid="engine-calib-error">{error}</p>{/if}
 				<div class="flex justify-end gap-2">
-					<button type="button" class="ws-btn ws-btn-secondary" disabled={busy} onclick={onclose}
-						>{$t('Cancel')}</button
-					>
+					<button type="button" class="ws-btn ws-btn-secondary" disabled={busy} onclick={onclose}>
+						{$t('Cancel')}
+					</button>
 					<button
 						type="submit"
 						data-testid="engine-calib-confirm"
 						class="ws-btn ws-btn-primary"
-						disabled={!!invalid || busy}>{busy ? $t('Creating…') : $t('OK')}</button
+						disabled={!!invalid || busy}
 					>
+						{busy ? $t('Creating…') : $t('OK')}
+					</button>
 				</div>
 			</form>
 		</div>

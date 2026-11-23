@@ -41,8 +41,10 @@
 			class="ws-btn ws-btn-sm ws-btn-ghost self-end"
 			data-testid="gcode-edit"
 			{disabled}
-			onclick={() => (editing = true)}>{$t('Edit with variables…')}</button
+			onclick={() => (editing = true)}
 		>
+			{$t('Edit with variables…')}
+		</button>
 		<GcodeEditorDialog
 			open={editing}
 			gcodeKey={def.key}

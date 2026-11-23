@@ -281,9 +281,9 @@
 		<div class="mt-8 flex flex-wrap items-center gap-3">
 			<h2 class="ws-section-title">{$t('Recently opened')}</h2>
 			{#if projects.length}
-				<span class="ws-badge tabular-nums" data-testid="library-count"
-					>{query.trim() ? `${shown.length} / ${projects.length}` : projects.length}</span
-				>
+				<span class="ws-badge tabular-nums" data-testid="library-count">
+					{query.trim() ? `${shown.length} / ${projects.length}` : projects.length}
+				</span>
 				<button
 					onclick={() => (removeMode = !removeMode)}
 					class="ws-btn ws-btn-sm {removeMode ? 'ws-btn-danger' : 'ws-btn-ghost'}"
@@ -343,9 +343,13 @@
 				data-testid="library-no-match"
 			>
 				<p>{$t('No project matches “{query}”.', { query: query.trim() })}</p>
-				<button type="button" class="ws-btn ws-btn-sm ws-btn-secondary" onclick={() => (query = '')}
-					>{$t('Clear search')}</button
+				<button
+					type="button"
+					class="ws-btn ws-btn-sm ws-btn-secondary"
+					onclick={() => (query = '')}
 				>
+					{$t('Clear search')}
+				</button>
 			</div>
 		{:else}
 			<ul class="mt-4 grid grid-cols-[repeat(auto-fill,minmax(11rem,1fr))] gap-5">
@@ -370,7 +374,7 @@
 								onclick={() => remove(project.id)}
 								disabled={busy}
 								title={$t('Delete {name}', { name: project.name })}
-								class="ws-btn ws-btn-sm ws-btn-danger absolute right-2 top-2 w-7 justify-center"
+								class="ws-btn ws-btn-sm ws-btn-danger absolute top-2 right-2 w-7 justify-center"
 							>
 								<IconTrash class="h-4 w-4" />
 							</button>
@@ -399,9 +403,9 @@
 						{/if}
 						<p class="text-xs text-content-subtle">
 							{$t('Modified||project')}
-							<time datetime={project.updated_at} title={formatDate(project.updated_at)}
-								>{relativeTime(project.updated_at, now)}</time
-							>
+							<time datetime={project.updated_at} title={formatDate(project.updated_at)}>
+								{relativeTime(project.updated_at, now)}
+							</time>
 						</p>
 						<div class="flex gap-3 text-xs text-content-muted">
 							<!-- Actions toujours lisibles (contraste du texte secondaire, pas d'opacité
@@ -426,20 +430,22 @@
 			</ul>
 			{#if recent.hidden > 0}
 				<div class="mt-4 flex items-center gap-3 text-sm text-content-muted">
-					<span data-testid="library-hidden"
-						>{$t(
+					<span data-testid="library-hidden">
+						{$t(
 							recent.hidden > 1
 								? '{n} older projects hidden (“Recent projects shown” preference).'
 								: '{n} older project hidden (“Recent projects shown” preference).',
 							{ n: recent.hidden }
-						)}</span
-					>
+						)}
+					</span>
 					<button
 						type="button"
 						class="ws-btn ws-btn-sm ws-btn-secondary"
 						data-testid="library-show-all"
-						onclick={() => (showAll = true)}>{$t('Show all')}</button
+						onclick={() => (showAll = true)}
 					>
+						{$t('Show all')}
+					</button>
 				</div>
 			{/if}
 		{/if}

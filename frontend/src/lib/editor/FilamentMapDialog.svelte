@@ -85,16 +85,20 @@
 				aria-checked={kind === 'auto'}
 				data-testid="filament-map-kind-auto"
 				class="ws-seg-item flex-1 {kind === 'auto' ? 'ws-seg-on' : ''}"
-				onclick={() => (kind = 'auto')}>{$t('Automatic')}</button
+				onclick={() => (kind = 'auto')}
 			>
+				{$t('Automatic')}
+			</button>
 			<button
 				type="button"
 				role="radio"
 				aria-checked={kind === 'manual'}
 				data-testid="filament-map-kind-manual"
 				class="ws-seg-item flex-1 {kind === 'manual' ? 'ws-seg-on' : ''}"
-				onclick={() => (kind = 'manual')}>{$t('Manual||map')}</button
+				onclick={() => (kind = 'manual')}
 			>
+				{$t('Manual||map')}
+			</button>
 		</div>
 
 		{#if kind === 'auto'}
@@ -110,9 +114,9 @@
 					/>
 					<span>
 						<span class="block text-content">{$t('Less flushing')}</span>
-						<span class="block text-xs text-content-subtle"
-							>{$t('The slicer groups filaments to limit changes and waste.')}</span
-						>
+						<span class="block text-xs text-content-subtle">
+							{$t('The slicer groups filaments to limit changes and waste.')}
+						</span>
 					</span>
 				</label>
 				<label class="flex items-start gap-2 rounded border border-border p-2">
@@ -125,9 +129,9 @@
 					/>
 					<span>
 						<span class="block text-content">{$t('By loaded spools')}</span>
-						<span class="block text-xs text-content-subtle"
-							>{$t('Follows the filaments present on each printer nozzle (AMS).')}</span
-						>
+						<span class="block text-xs text-content-subtle">
+							{$t('Follows the filaments present on each printer nozzle (AMS).')}
+						</span>
 					</span>
 				</label>
 			</fieldset>
@@ -152,8 +156,10 @@
 							>
 								<span
 									class="flex h-5 w-5 shrink-0 items-center justify-center rounded text-[10px] font-semibold"
-									style={swatchStyle(colours[f - 1])}>{f}</span
+									style={swatchStyle(colours[f - 1])}
 								>
+									{f}
+								</span>
 								<span class="truncate">{types[f - 1] || $t('Filament {n}', { n: f })}</span>
 								<span class="ml-auto text-xs text-content-subtle" aria-hidden="true">⇄</span>
 							</button>
@@ -180,14 +186,18 @@
 					type="button"
 					class="ws-btn ws-btn-secondary"
 					data-testid="filament-map-cancel"
-					onclick={oncancel}>{$t('Cancel')}</button
+					onclick={oncancel}
 				>
+					{$t('Cancel')}
+				</button>
 				<button
 					type="button"
 					class="ws-btn ws-btn-primary"
 					data-testid="filament-map-confirm"
-					onclick={confirm}>{$t('Slice')}</button
+					onclick={confirm}
 				>
+					{$t('Slice')}
+				</button>
 			</div>
 		</div>
 	</div>

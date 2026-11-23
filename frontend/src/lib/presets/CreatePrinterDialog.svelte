@@ -122,57 +122,59 @@
 			</label>
 		</div>
 		<label class="flex flex-col gap-1">
-			<span class="text-content-muted"
-				>{$t('Start from the model (G-code, kinematics, limits inherited)')}</span
-			>
+			<span class="text-content-muted">
+				{$t('Start from the model (G-code, kinematics, limits inherited)')}
+			</span>
 			<select class="ws-field" bind:value={baseId} data-testid="create-printer-base">
 				{#each catalog as v (v.vendor)}
 					<optgroup label={v.vendor}>
 						{#each v.models as m (m.default_machine_preset_id)}<option
-								value={m.default_machine_preset_id}>{m.model}</option
-							>{/each}
+								value={m.default_machine_preset_id}
+							>
+								{m.model}
+							</option>{/each}
 					</optgroup>
 				{/each}
 			</select>
 		</label>
 		<fieldset class="grid grid-cols-4 items-end gap-2">
 			<legend class="mb-1 text-content-muted">{$t('Print volume (mm) and nozzle')}</legend>
-			<label class="flex flex-col gap-1 text-xs"
-				>{$t('Width X')}<input
+			<label class="flex flex-col gap-1 text-xs">
+				{$t('Width X')}<input
 					type="number"
 					min="1"
 					class="ws-field"
 					bind:value={width}
 					data-testid="create-printer-width"
-				/></label
-			>
-			<label class="flex flex-col gap-1 text-xs"
-				>{$t('Depth Y')}<input
+				/>
+			</label>
+			<label class="flex flex-col gap-1 text-xs">
+				{$t('Depth Y')}<input
 					type="number"
 					min="1"
 					class="ws-field"
 					bind:value={depth}
 					data-testid="create-printer-depth"
-				/></label
-			>
-			<label class="flex flex-col gap-1 text-xs"
-				>{$t('Height Z')}<input
+				/>
+			</label>
+			<label class="flex flex-col gap-1 text-xs">
+				{$t('Height Z')}<input
 					type="number"
 					min="1"
 					class="ws-field"
 					bind:value={height}
 					data-testid="create-printer-height"
-				/></label
-			>
-			<label class="flex flex-col gap-1 text-xs"
-				>{$t('Nozzle')}<select
+				/>
+			</label>
+			<label class="flex flex-col gap-1 text-xs">
+				{$t('Nozzle')}<select
 					class="ws-field"
 					bind:value={nozzle}
 					data-testid="create-printer-nozzle"
 				>
 					{#each NOZZLES as n (n)}<option value={n}>{n} mm</option>{/each}
-				</select></label
-			>
+				</select>
+			</label>
 		</fieldset>
 		<label class="flex items-center gap-2 text-xs text-content-muted">
 			<input type="checkbox" bind:checked={centered} />
@@ -192,7 +194,9 @@
 			class="ws-btn ws-btn-primary"
 			disabled={busy}
 			data-testid="create-printer-submit"
-			onclick={submit}>{$t('Create')}</button
+			onclick={submit}
 		>
+			{$t('Create')}
+		</button>
 	{/snippet}
 </Dialog>

@@ -103,11 +103,11 @@
 				bind:value={draft.designer}
 			/>
 			{#if meta?.display_author && meta.display_author !== meta.designer}
-				<span class="text-xs text-content-subtle"
-					>{$t('Displayed author: {author} (file Copyright)', {
+				<span class="text-xs text-content-subtle">
+					{$t('Displayed author: {author} (file Copyright)', {
 						author: meta.display_author
-					})}</span
-				>
+					})}
+				</span>
 			{/if}
 		</label>
 
@@ -186,8 +186,10 @@
 			{#if saveMsg}
 				<span
 					class="text-xs {saveMsg.ok ? 'text-success' : 'text-danger'}"
-					role={saveMsg.ok ? 'status' : 'alert'}>{saveMsg.text}</span
+					role={saveMsg.ok ? 'status' : 'alert'}
 				>
+					{saveMsg.text}
+				</span>
 			{/if}
 		</div>
 	{/if}

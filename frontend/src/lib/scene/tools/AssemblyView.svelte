@@ -114,15 +114,17 @@
 		</label>
 		{#if section > 0}
 			<div class="flex items-center justify-between gap-2">
-				<span class="text-xs text-content-subtle"
-					>{$t('Section facing the view; 0 removes it.')}</span
-				>
+				<span class="text-xs text-content-subtle">
+					{$t('Section facing the view; 0 removes it.')}
+				</span>
 				<button
 					type="button"
 					class="ws-btn ws-btn-sm"
 					data-testid="assembly-section-reset"
-					onclick={() => onresetsection?.()}>{$t('Reset direction')}</button
+					onclick={() => onresetsection?.()}
 				>
+					{$t('Reset direction')}
+				</button>
 			</div>
 		{/if}
 	</div>
@@ -137,8 +139,10 @@
 					aria-checked={selectionMode === value}
 					data-testid="assembly-select-{value}"
 					class="ws-seg-item {selectionMode === value ? 'ws-seg-on' : ''}"
-					onclick={() => (selectionMode = value)}>{$t(label)}</button
+					onclick={() => (selectionMode = value)}
 				>
+					{$t(label)}
+				</button>
 			{/each}
 		</div>
 	</div>

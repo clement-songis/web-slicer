@@ -52,8 +52,10 @@
 					data-testid="view-cube-face"
 					data-view={face.view}
 					aria-label={$t('View {face}', { face: $t(face.label) })}
-					onclick={() => onselect(face.view)}>{$t(face.label)}</button
+					onclick={() => onselect(face.view)}
 				>
+					{$t(face.label)}
+				</button>
 			{/each}
 		</div>
 	</div>
@@ -63,6 +65,8 @@
 		data-testid="view-cube-home"
 		data-tip={$t('Default view (Ctrl+0)')}
 		data-tip-side="right"
-		onclick={() => onselect('default')}>Iso</button
+		onclick={() => onselect('default')}
 	>
+		Iso
+	</button>
 </div>

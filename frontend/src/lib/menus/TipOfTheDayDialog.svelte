@@ -37,8 +37,10 @@
 				<button
 					type="button"
 					class="ws-btn ws-btn-secondary"
-					onclick={() => (index = (index + 1) % tips.length)}>{$t('Next')}</button
+					onclick={() => (index = (index + 1) % tips.length)}
 				>
+					{$t('Next')}
+				</button>
 				<button type="button" class="ws-btn ws-btn-primary" onclick={onClose}>{$t('Close')}</button>
 			</div>
 		</div>

@@ -285,8 +285,10 @@
 						data-testid={`settings-mode-${m}`}
 						aria-pressed={mode === m}
 						class="ws-seg-item flex-1 {mode === m ? 'ws-seg-on' : ''}"
-						onclick={() => (mode = m)}>{$t(MODE_LABELS[m])}</button
+						onclick={() => (mode = m)}
 					>
+						{$t(MODE_LABELS[m])}
+					</button>
 				{/each}
 			</div>
 			<!-- Audit 46 PLATE-a : corps défilant (OtherLayersSeqPanel d'Orca =
@@ -337,9 +339,9 @@
 						{/if}
 						{#if key === 'first_layer_sequence_choice' && draft[key] === 'Customize' && filamentColours.length}
 							<div class="flex flex-col gap-1 pb-2" data-testid="plate-first-layer-sequence">
-								<span class="text-xs text-content-subtle"
-									>{$t('Drag the filaments to set their print order on the first layer.')}</span
-								>
+								<span class="text-xs text-content-subtle">
+									{$t('Drag the filaments to set their print order on the first layer.')}
+								</span>
 								<FilamentOrderEditor
 									order={firstOrder}
 									colours={filamentColours}
@@ -415,15 +417,19 @@
 											(otherRanges = [
 												...otherRanges,
 												withId(newRange(otherRanges.length, filamentColours.length))
-											])}>{$t('Add')}</button
+											])}
 									>
+										{$t('Add')}
+									</button>
 									<button
 										type="button"
 										class="ws-btn ws-btn-sm ws-btn-ghost"
 										data-testid="plate-layer-range-delete"
 										disabled={otherRanges.length <= 1}
-										onclick={() => (otherRanges = otherRanges.slice(0, -1))}>{$t('Delete')}</button
+										onclick={() => (otherRanges = otherRanges.slice(0, -1))}
 									>
+										{$t('Delete')}
+									</button>
 								</div>
 								{#if rangeError}
 									<p class="text-xs text-danger" role="alert">{rangeError}</p>
@@ -480,8 +486,10 @@
 													aria-checked={nozzle === n}
 													data-testid="plate-filament-map-{i + 1}-{n}"
 													class="ws-seg-item {nozzle === n ? 'ws-seg-on' : ''}"
-													onclick={() => (map[i] = n)}>{nozzleLabel(n, extruders)}</button
+													onclick={() => (map[i] = n)}
 												>
+													{nozzleLabel(n, extruders)}
+												</button>
 											{/each}
 										</span>
 									</li>
@@ -492,15 +500,17 @@
 				{/if}
 			</div>
 			<div class="flex shrink-0 justify-end gap-2">
-				<button type="button" class="ws-btn ws-btn-secondary" onclick={onClose}
-					>{$t('Close')}</button
-				>
+				<button type="button" class="ws-btn ws-btn-secondary" onclick={onClose}>
+					{$t('Close')}
+				</button>
 				<button
 					type="button"
 					data-testid="settings-apply"
 					class="ws-btn ws-btn-primary"
-					onclick={apply}>{$t('Save')}</button
+					onclick={apply}
 				>
+					{$t('Save')}
+				</button>
 			</div>
 		</div>
 	</div>

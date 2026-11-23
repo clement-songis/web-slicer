@@ -48,8 +48,10 @@
 					class="ws-seg-item {mode === value ? 'ws-seg-on' : ''}"
 					aria-checked={mode === value}
 					data-testid={`measure-mode-${value}`}
-					onclick={() => onmode?.(value as MeasureMode)}>{label}</button
+					onclick={() => onmode?.(value as MeasureMode)}
 				>
+					{label}
+				</button>
 			{/each}
 		</div>
 	{/if}
@@ -86,7 +88,7 @@
 	{/if}
 	<p class="text-2xs text-content-subtle">{$t('Delete: restart selection')}</p>
 
-	<button type="button" class="ws-btn ws-btn-secondary self-start" onclick={() => onclear?.()}
-		>{$t('Clear')}</button
-	>
+	<button type="button" class="ws-btn ws-btn-secondary self-start" onclick={() => onclear?.()}>
+		{$t('Clear')}
+	</button>
 </div>

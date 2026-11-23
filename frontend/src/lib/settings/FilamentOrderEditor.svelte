@@ -51,8 +51,10 @@
 				class="px-0.5 text-xs text-content-subtle disabled:opacity-30"
 				aria-label={$t('Move filament {n} earlier', { n: filament })}
 				disabled={i === 0}
-				onclick={() => move(i, i - 1)}>‹</button
+				onclick={() => move(i, i - 1)}
 			>
+				‹
+			</button>
 			<span
 				class="inline-flex h-6 w-7 cursor-grab items-center justify-center rounded text-xs font-semibold"
 				style={swatchStyle(colours[filament - 1] ?? '#cccccc')}
@@ -68,15 +70,19 @@
 						e.preventDefault();
 						move(i, i + 1);
 					}
-				}}>{filament}</span
+				}}
 			>
+				{filament}
+			</span>
 			<button
 				type="button"
 				class="px-0.5 text-xs text-content-subtle disabled:opacity-30"
 				aria-label={$t('Move filament {n} later', { n: filament })}
 				disabled={i === order.length - 1}
-				onclick={() => move(i, i + 1)}>›</button
+				onclick={() => move(i, i + 1)}
 			>
+				›
+			</button>
 		</li>
 	{/each}
 </ol>

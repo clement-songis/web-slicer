@@ -121,9 +121,9 @@
 					{/each}
 				</select>
 			</label>
-			<span class="text-xs text-content-subtle"
-				>{$t('Gray values: inherited from the profile. ↺ resets the cell to the profile.')}</span
-			>
+			<span class="text-xs text-content-subtle">
+				{$t('Gray values: inherited from the profile. ↺ resets the cell to the profile.')}
+			</span>
 		</div>
 		{#if error}
 			<p class="text-xs text-danger" role="alert" data-testid="object-table-error">{error}</p>
@@ -154,16 +154,19 @@
 										class="hover:text-accent"
 										data-testid="object-table-sort"
 										onclick={() => toggleSort(column.key as SortKey)}
-										>{$t(column.label)}
-										<span aria-hidden="true"
-											>{sortKey === column.key ? (descending ? '↓' : '↑') : '↑↓'}</span
-										></button
 									>
+										{$t(column.label)}
+										<span aria-hidden="true">
+											{sortKey === column.key ? (descending ? '↓' : '↑') : '↑↓'}
+										</span>
+									</button>
 								{:else}
 									{$t(column.label)}{#if column.unit}<span
 											class="block font-normal text-content-subtle"
-											data-testid="object-table-unit">({column.unit})</span
-										>{/if}
+											data-testid="object-table-unit"
+										>
+											({column.unit})
+										</span>{/if}
 								{/if}
 							</th>
 						{/each}
@@ -222,9 +225,9 @@
 												value={row.kind === 'object' ? row.extruder || 1 : row.extruder}
 												onchange={(e) => onextruder(row, Number(e.currentTarget.value))}
 											>
-												{#if row.kind === 'volume'}<option value={0}
-														>{$t('object||extruder')}</option
-													>{/if}
+												{#if row.kind === 'volume'}<option value={0}>
+														{$t('object||extruder')}
+													</option>{/if}
 												{#each filamentColors.map((_c, i) => i + 1) as n (n)}
 													<option value={n}>{n}</option>
 												{/each}

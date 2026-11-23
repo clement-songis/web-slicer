@@ -212,9 +212,9 @@
 							<label class="mt-1.5 flex items-center gap-1.5 text-xs text-content-muted">
 								<input type="checkbox" bind:checked={onlyChosen} />
 								{$t('Checked only')}
-								<span class="ml-auto" data-testid="wizard-filament-count"
-									>{chosen.length} / {choices.length}</span
-								>
+								<span class="ml-auto" data-testid="wizard-filament-count">
+									{chosen.length} / {choices.length}
+								</span>
 							</label>
 						{/if}
 					</div>

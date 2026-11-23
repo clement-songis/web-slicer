@@ -10567,8 +10567,10 @@
 			<a
 				href={resolve('/library')}
 				class="text-sm text-primary hover:underline"
-				title={$t('Library')}>←</a
+				title={$t('Library')}
 			>
+				←
+			</a>
 			<!-- Barre de menus principale (T107–T111) : Fichier/Édition/Vue/Aide. -->
 			<MenuBar
 				menus={mainMenus}
@@ -10599,8 +10601,10 @@
 			<span
 				class="ml-2 hidden min-w-0 truncate text-sm text-content-subtle 2xl:inline"
 				data-testid="project-name"
-				title={savedName || data.project.name}>{savedName || data.project.name}</span
+				title={savedName || data.project.name}
 			>
+				{savedName || data.project.name}
+			</span>
 		</div>
 
 		<div
@@ -10648,8 +10652,10 @@
 				<!-- Libellés longs des actions dès 1920 px seulement : de 1536 à ~1800 px
 				     ils recouvraient les onglets « Appareil » et « Projet » (phase 36). -->
 				<IconPlateSettings class="h-4 w-4" aria-hidden="true" /><span
-					class="hidden min-[1920px]:inline">{$t('Plate')}</span
+					class="hidden min-[1920px]:inline"
 				>
+					{$t('Plate')}
+				</span>
 			</button>
 			<Dialog
 				open={backupOffer !== null}
@@ -10671,14 +10677,18 @@
 						type="button"
 						class="ws-btn ws-btn-secondary"
 						data-testid="backup-restore-no"
-						onclick={discardBackup}>{$t('No')}</button
+						onclick={discardBackup}
 					>
+						{$t('No')}
+					</button>
 					<button
 						type="button"
 						class="ws-btn ws-btn-primary"
 						data-testid="backup-restore-yes"
-						onclick={() => void restoreBackup()}>{$t('Yes')}</button
+						onclick={() => void restoreBackup()}
 					>
+						{$t('Yes')}
+					</button>
 				{/snippet}
 			</Dialog>
 			<PlateSettingsDialog
@@ -10739,7 +10749,7 @@
 						onclick={() => (sliceMenuOpen = false)}
 					></button>
 					<div
-						class="absolute top-full right-0 z-50 mt-1 min-w-52 ws-menu"
+						class="ws-menu absolute top-full right-0 z-50 mt-1 min-w-52"
 						role="menu"
 						data-testid="slice-menu"
 					>
@@ -10752,8 +10762,10 @@
 							onclick={() => {
 								sliceMenuOpen = false;
 								void sliceActive();
-							}}>{$t('Slice plate')}</button
+							}}
 						>
+							{$t('Slice plate')}
+						</button>
 						<button
 							type="button"
 							class="ws-menu-item"
@@ -10761,13 +10773,14 @@
 							data-testid="slice-all"
 							disabled={!canSliceAll}
 							onclick={() => void sliceAll()}
-							>{$t('Slice all')}
-							<span class="ml-auto text-xs text-content-subtle"
-								>{$t(plates.list().length > 1 ? '{n} plates' : '{n} plate', {
-									n: plates.list().length
-								})}</span
-							></button
 						>
+							{$t('Slice all')}
+							<span class="ml-auto text-xs text-content-subtle">
+								{$t(plates.list().length > 1 ? '{n} plates' : '{n} plate', {
+									n: plates.list().length
+								})}
+							</span>
+						</button>
 					</div>
 				{/if}
 				<!-- PERF49-a (audit 49) : raison de blocage visible (pas seulement au
@@ -10777,8 +10790,10 @@
 				{#if !canSliceNow}
 					<span
 						class="pointer-events-none absolute top-full right-0 mt-1 max-w-72 truncate text-2xs text-content-subtle"
-						data-testid="slice-blocker-reason">{sliceBlocker}</span
+						data-testid="slice-blocker-reason"
 					>
+						{sliceBlocker}
+					</span>
 				{/if}
 			</div>
 			<SaveControls {save} {unsaved} onreload={reloadAfterConflict} overwrite={overwriteSave} />
@@ -11180,12 +11195,12 @@
 	>
 		{#if customGcodeEdit}
 			<label class="flex flex-col gap-1 text-sm">
-				<span
-					>{$t('Enter the custom G-code to use on layer {n} ({z} mm):', {
+				<span>
+					{$t('Enter the custom G-code to use on layer {n} ({z} mm):', {
 						n: customGcodeEdit.layer + 1,
 						z: fmtNum(customGcodeEdit.z, 2, $locale)
-					})}</span
-				>
+					})}
+				</span>
 				<textarea
 					class="ws-field min-h-32 font-mono text-xs"
 					data-testid="custom-gcode-input"
@@ -11194,24 +11209,30 @@
 						e.stopPropagation();
 						if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) submitCustomGcode();
 					}}></textarea>
-				<span class="text-xs text-content-subtle"
-					>{$t(
+				<span class="text-xs text-content-subtle">
+					{$t(
 						'Inserted at the start of the layer; applied on the next slice. Ctrl+Enter to confirm.'
-					)}</span
-				>
+					)}
+				</span>
 			</label>
 		{/if}
 		{#snippet footer()}
-			<button type="button" class="ws-btn ws-btn-secondary" onclick={() => (customGcodeEdit = null)}
-				>{$t('Cancel')}</button
+			<button
+				type="button"
+				class="ws-btn ws-btn-secondary"
+				onclick={() => (customGcodeEdit = null)}
 			>
+				{$t('Cancel')}
+			</button>
 			<button
 				type="button"
 				class="ws-btn ws-btn-primary"
 				data-testid="custom-gcode-ok"
 				disabled={!customGcodeEdit?.text.trim()}
-				onclick={submitCustomGcode}>OK</button
+				onclick={submitCustomGcode}
 			>
+				OK
+			</button>
 		{/snippet}
 	</Dialog>
 
@@ -11244,15 +11265,16 @@
 					class="ws-icon-btn ws-icon-btn-xs"
 					aria-label={$t('Close')}
 					onclick={() => (presetDeleteReport = null)}
-					><IconX class="h-3.5 w-3.5" aria-hidden="true" /></button
 				>
+					<IconX class="h-3.5 w-3.5" aria-hidden="true" />
+				</button>
 			</div>
 			<ul class="flex flex-col gap-0.5">
 				{#each presetDeleteReport.projects as p (p.id)}
 					<li data-testid="preset-delete-project">
-						<a class="text-primary hover:underline" href={resolve('/projects/[id]', { id: p.id })}
-							>{p.name}</a
-						>
+						<a class="text-primary hover:underline" href={resolve('/projects/[id]', { id: p.id })}>
+							{p.name}
+						</a>
 					</li>
 				{/each}
 			</ul>
@@ -11325,9 +11347,9 @@
 			role="alert"
 		>
 			<span>{importError}</span>
-			<button onclick={() => (importError = null)} class="font-medium hover:underline"
-				>{$t('Close')}</button
-			>
+			<button onclick={() => (importError = null)} class="font-medium hover:underline">
+				{$t('Close')}
+			</button>
 		</div>
 	{/if}
 
@@ -11341,18 +11363,24 @@
 			<div class="flex border-b border-border px-1">
 				<button
 					class="ws-tab flex-1 py-2.5 text-sm {configTab === 'settings' ? 'ws-tab-on' : ''}"
-					onclick={() => (configTab = 'settings')}>{$t('Process')}</button
+					onclick={() => (configTab = 'settings')}
 				>
+					{$t('Process')}
+				</button>
 				<button
 					class="ws-tab flex-1 py-2.5 text-sm {configTab === 'objects' ? 'ws-tab-on' : ''}"
-					onclick={() => (configTab = 'objects')}>{$t('Objects')}</button
+					onclick={() => (configTab = 'objects')}
 				>
+					{$t('Objects')}
+				</button>
 				<button
 					class="ws-tab flex-1 py-2.5 text-sm {configTab === 'project' ? 'ws-tab-on' : ''}"
 					data-testid="config-tab-project"
 					aria-label={$t('Project sheet')}
-					onclick={() => (configTab = 'project')}>{$t('Project')}</button
+					onclick={() => (configTab = 'project')}
 				>
+					{$t('Project')}
+				</button>
 			</div>
 
 			<div class="min-h-0 flex-1 overflow-auto p-3">
@@ -11387,14 +11415,17 @@
 									disabled={!session.gcodeId || !!gcodeCheckBlocked}
 									onclick={() =>
 										session.gcodeId && downloadUrl(`/api/gcodes/${session.gcodeId}/download`)}
-									>{$t('Export')}</button
 								>
+									{$t('Export')}
+								</button>
 								<button
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-primary"
 									disabled={!session.gcodeId || !!gcodeCheckBlocked}
-									onclick={() => session.gcodeId && (printDialogRequest += 1)}>{$t('Send')}</button
+									onclick={() => session.gcodeId && (printDialogRequest += 1)}
 								>
+									{$t('Send')}
+								</button>
 							</div>
 						</div>
 						{#if openedGcodePlates.length > 1}
@@ -11480,8 +11511,10 @@
 								<button
 									type="button"
 									class="ws-btn ws-btn-secondary text-center"
-									onclick={() => (showCatalog = true)}>{$t('Add printer…')}</button
+									onclick={() => (showCatalog = true)}
 								>
+									{$t('Add printer…')}
+								</button>
 							{:else}
 								<OwnedPrinterPicker
 									printers={ownedPrinters}
@@ -11500,13 +11533,13 @@
 								<div class="flex flex-wrap items-center gap-2 text-sm" data-testid="nozzle-flow">
 									{#each nozzleFlows as choice (choice.index)}
 										<label class="flex items-center gap-1">
-											<span class="text-content-muted"
-												>{nozzleFlows.length > 1
+											<span class="text-content-muted">
+												{nozzleFlows.length > 1
 													? nozzleFlows.length === 2
 														? $t(choice.index === 0 ? 'Left nozzle flow' : 'Right nozzle flow')
 														: $t('Nozzle {n} flow', { n: choice.index + 1 })
-													: $t('Nozzle flow')}</span
-											>
+													: $t('Nozzle flow')}
+											</span>
 											<select
 												class="ws-field ws-field-sm"
 												data-testid="nozzle-flow-select"
@@ -11541,10 +11574,11 @@
 											'Filaments checked in the setup wizard are listed; show every compatible filament.'
 										)}
 										onclick={() => (showAllFilaments = !showAllFilaments)}
-										>{showAllFilaments
-											? $t('My filaments')
-											: $t('All filaments ({n})', { n: filamentPresets.length })}</button
 									>
+										{showAllFilaments
+											? $t('My filaments')
+											: $t('All filaments ({n})', { n: filamentPresets.length })}
+									</button>
 								{/if}
 								<button
 									type="button"
@@ -11554,8 +11588,10 @@
 										: 'ml-auto'}"
 									data-testid="create-filament"
 									title={$t('Create a custom filament')}
-									onclick={() => (showCreateFilament = true)}>{$t('Create…')}</button
+									onclick={() => (showCreateFilament = true)}
 								>
+									{$t('Create…')}
+								</button>
 								<CreateFilamentDialog
 									open={showCreateFilament}
 									presets={filamentPresets}
@@ -11685,7 +11721,7 @@
 								<p
 									class="rounded border px-2 py-1 text-xs {filamentCompatMessage.blocking
 										? 'border-danger/40 bg-danger-soft text-danger-content'
-										: 'border-warning/40 bg-warning-soft text-warning-text'}"
+										: 'text-warning-text border-warning/40 bg-warning-soft'}"
 									role="status"
 									data-testid="filament-compatibility"
 								>
@@ -11694,8 +11730,10 @@
 										<button
 											type="button"
 											class="ws-link ml-1"
-											onclick={() => (showPreferences = true)}>{$t('Preferences…')}</button
+											onclick={() => (showPreferences = true)}
 										>
+											{$t('Preferences…')}
+										</button>
 									{/if}
 								</p>
 							{/if}
@@ -11711,11 +11749,12 @@
 										class="ws-btn ws-btn-sm ws-btn-secondary"
 										data-testid="open-flush-volumes"
 										onclick={() => (flushDialogOpen = true)}
-										>{$t('Flushing volumes')}
+									>
+										{$t('Flushing volumes')}
 										{#if projectFilament.flush_volumes_matrix || projectFilament.flush_multiplier}
 											<span class="ws-badge h-4 px-1.5">{$t('project||badge')}</span>
-										{/if}</button
-									>
+										{/if}
+									</button>
 									<button
 										type="button"
 										class="ws-btn ws-btn-sm ws-btn-ghost"
@@ -11727,10 +11766,11 @@
 										<span
 											class={primeTowerOn ? 'text-success-content' : 'text-content-muted'}
 											data-testid="prime-tower-state"
-											>{primeTowerOn
-												? $t('on · {w} mm', { w: Number(processValues.prime_tower_width ?? 35) })
-												: $t('off||prime tower')}</span
 										>
+											{primeTowerOn
+												? $t('on · {w} mm', { w: Number(processValues.prime_tower_width ?? 35) })
+												: $t('off||prime tower')}
+										</span>
 									</button>
 								</div>
 								{#if sceneWipeTower}
@@ -11767,8 +11807,9 @@
 										<span
 											class="ml-auto text-content-subtle tabular-nums"
 											data-testid="wipe-tower-size"
-											>{sceneWipeTower.size[0].toFixed(0)} × {sceneWipeTower.size[1].toFixed(0)} mm</span
 										>
+											{sceneWipeTower.size[0].toFixed(0)} × {sceneWipeTower.size[1].toFixed(0)} mm
+										</span>
 									</div>
 								{/if}
 								{#if !primeTowerOn}
@@ -11865,8 +11906,10 @@
 									<span class="rounded bg-primary px-2 py-0.5 text-primary-content">Global</span>
 									<span
 										class="rounded px-2 py-0.5 text-content-subtle"
-										title={$t('Per-object settings (coming soon)')}>{$t('Objects')}</span
+										title={$t('Per-object settings (coming soon)')}
 									>
+										{$t('Objects')}
+									</span>
 								</div>
 							</div>
 							{#key presetSelectSeq}
@@ -12007,8 +12050,10 @@
 								class="ws-btn ws-btn-sm ws-btn-ghost"
 								data-testid="open-object-table"
 								data-tip={$t('View and edit the settings of all objects in a table')}
-								onclick={() => openObjectTable(selId)}>{$t('Parameter table…')}</button
+								onclick={() => openObjectTable(selId)}
 							>
+								{$t('Parameter table…')}
+							</button>
 						</div>
 					{/if}
 					<ObjectList
@@ -12063,8 +12108,9 @@
 									data-testid="object-volume-main"
 									aria-pressed={selectedVolumeId === null}
 									onclick={() => (selectedVolumeId = null)}
-									>{tree.get(selId)?.meshName ?? tree.get(selId)?.name}</button
 								>
+									{tree.get(selId)?.meshName ?? tree.get(selId)?.name}
+								</button>
 							</li>
 							{#each volumesByObject[selId] as volume (volume.id)}
 								<li
@@ -12086,8 +12132,10 @@
 										title={volumeTypeName(volume.type)}
 										data-testid="object-volume-select"
 										aria-pressed={selectedVolumeId === volume.id}
-										onclick={() => (selectedVolumeId = volume.id)}>{volume.name}</button
+										onclick={() => (selectedVolumeId = volume.id)}
 									>
+										{volume.name}
+									</button>
 									<span class="text-xs text-content-subtle">{volume.size.join('×')}</span>
 									{#if filamentSlots > 1 && (volume.type === 'part' || volume.type === 'modifier')}
 										<!-- Extrudeur propre du volume (Orca : pièces et modificateurs) ;
@@ -12122,8 +12170,9 @@
 										class="px-1 text-xs text-content-muted hover:text-content"
 										aria-label={$t('Delete {name}', { name: volume.name })}
 										onclick={() => selId && removeVolume(selId, volume.id)}
-										><IconX class="h-3.5 w-3.5" aria-hidden="true" /></button
 									>
+										<IconX class="h-3.5 w-3.5" aria-hidden="true" />
+									</button>
 								</li>
 							{/each}
 						</ul>
@@ -12236,8 +12285,10 @@
 						type="button"
 						class="ws-btn ws-btn-sm ws-btn-secondary"
 						data-testid="overlap-arrange"
-						onclick={() => void arrangeActive()}>{$t('Arrange')}</button
+						onclick={() => void arrangeActive()}
 					>
+						{$t('Arrange')}
+					</button>
 				</div>
 			{/if}
 			{#if layout.tab === 'prepare'}
@@ -12356,8 +12407,10 @@
 								type="button"
 								class="ws-icon-btn ws-icon-btn-sm"
 								onclick={() => (showLayerHeight = false)}
-								aria-label={$t('Close')}><IconX class="h-4 w-4" aria-hidden="true" /></button
+								aria-label={$t('Close')}
 							>
+								<IconX class="h-4 w-4" aria-hidden="true" />
+							</button>
 						</div>
 						{#if selId}
 							<LayerHeight
@@ -12394,8 +12447,10 @@
 								type="button"
 								class="ws-icon-btn ws-icon-btn-sm"
 								onclick={closeTool}
-								aria-label={$t('Close')}><IconX class="h-4 w-4" aria-hidden="true" /></button
+								aria-label={$t('Close')}
 							>
+								<IconX class="h-4 w-4" aria-hidden="true" />
+							</button>
 						</div>
 						<!-- Booléen sans sélection unique ; Emboss/SVG peuvent créer un objet en relief sans sélection. -->
 						{#if !activeObject && !['assembly', 'boolean', 'emboss', 'svg'].includes(tools.active)}
@@ -12573,13 +12628,17 @@
 									class="ws-btn ws-btn-sm ws-btn-secondary"
 									data-testid="paint-frame-selection"
 									data-tip={$t('Frame the view on the selected object')}
-									onclick={frameSelection}>{$t('Frame object')}</button
+									onclick={frameSelection}
 								>
+									{$t('Frame object')}
+								</button>
 								<button
 									class="ws-btn ws-btn-sm ws-btn-secondary"
 									onclick={clearActivePaint}
-									disabled={activePaintedCount === 0}>{$t('Clear')}</button
+									disabled={activePaintedCount === 0}
 								>
+									{$t('Clear')}
+								</button>
 							</div>
 						{/if}
 					</div>
@@ -12679,8 +12738,10 @@
 									onclick={() => {
 										showTab('prepare');
 										selectObject(conflictObjectId!, false);
-									}}>{$t('Select')}</button
+									}}
 								>
+									{$t('Select')}
+								</button>
 							{/if}
 						</div>
 					{/if}
@@ -12747,16 +12808,20 @@
 											onclick={() => {
 												showTab('prepare');
 												selectObject(emptyLayerObjects[0].id, false);
-											}}>{$t('Select')}</button
+											}}
 										>
+											{$t('Select')}
+										</button>
 									</p>
 								{/if}
 								<div class="flex flex-wrap gap-2">
 									<button
 										type="button"
 										class="ws-btn ws-btn-sm ws-btn-secondary"
-										onclick={() => showTab('prepare')}>{$t('Back to Prepare')}</button
+										onclick={() => showTab('prepare')}
 									>
+										{$t('Back to Prepare')}
+									</button>
 									{#if session.error?.includes('trop près des autres objets') || session.error?.includes('too close to the other objects')}
 										<button
 											type="button"
@@ -12765,8 +12830,10 @@
 											onclick={async () => {
 												showTab('prepare');
 												await arrangeForErrors();
-											}}>{$t('Arrange objects')}</button
+											}}
 										>
+											{$t('Arrange objects')}
+										</button>
 									{/if}
 								</div>
 							</div>
@@ -12855,11 +12922,13 @@
 								{#if previewToolTime}
 									<!-- Temps estimé à la position de l'outil (simulation Orca). -->
 									<span
-										class="tabular-nums text-content"
+										class="text-content tabular-nums"
 										data-testid="preview-move-time"
 										data-tip={$t('Estimated elapsed time at the tool position')}
-										data-tip-side="top">{formatDuration(previewToolTime.time)}</span
+										data-tip-side="top"
 									>
+										{formatDuration(previewToolTime.time)}
+									</span>
 								{/if}
 							</div>
 
@@ -12867,7 +12936,7 @@
 							     panneau des couches et replié sur deux lignes dans une vue étroite
 							     (débordait de ~320 px à 760 × 490 → défilement horizontal de la page). -->
 							<div
-								class="ws-floating absolute left-3 top-3 flex max-w-[calc(100%-8.5rem)] flex-wrap items-center gap-2 p-2 text-xs text-content-muted"
+								class="ws-floating absolute top-3 left-3 flex max-w-[calc(100%-8.5rem)] flex-wrap items-center gap-2 p-2 text-xs text-content-muted"
 								bind:offsetHeight={previewToolbarHeight}
 							>
 								<span>{$t('Color')}</span>
@@ -12890,8 +12959,10 @@
 										data-testid="preview-fit-objects"
 										data-tip={$t('Zoom on printed objects')}
 										data-tip-side="bottom"
-										onclick={() => setPreviewFit('objects')}>{$t('Objects')}</button
+										onclick={() => setPreviewFit('objects')}
 									>
+										{$t('Objects')}
+									</button>
 									<button
 										type="button"
 										class="ws-seg-item {previewFit === 'bed' ? 'ws-seg-on' : ''}"
@@ -12899,8 +12970,10 @@
 										data-testid="preview-fit-bed"
 										data-tip={$t('Whole plate view')}
 										data-tip-side="bottom"
-										onclick={() => setPreviewFit('bed')}>{$t('Plate')}</button
+										onclick={() => setPreviewFit('bed')}
 									>
+										{$t('Plate')}
+									</button>
 								</div>
 								<span class="ml-1">{$t('Render')}</span>
 								<div class="ws-seg" role="group" aria-label={$t('Extrusion rendering')}>
@@ -12920,8 +12993,10 @@
 													? $t('Solid lit beads (actual width × height)')
 													: $t('Thin lines (fast, large files)')}
 											data-tip-side="bottom"
-											onclick={() => (renderMode = id as RenderMode)}>{$t(label)}</button
+											onclick={() => (renderMode = id as RenderMode)}
 										>
+											{$t(label)}
+										</button>
 									{/each}
 								</div>
 							</div>
@@ -12933,22 +13008,24 @@
 									class="ws-floating absolute top-3 right-3 bottom-16 z-10 flex w-24 flex-col items-center gap-1.5 overflow-y-auto p-2 text-xs text-content-muted"
 									data-testid="preview-layer-panel"
 								>
-									<span class="tabular-nums"
-										>{layerRange.oneLayerMode
+									<span class="tabular-nums">
+										{layerRange.oneLayerMode
 											? $t('Layer {n}', { n: layerRange.high + 1 })
-											: `${layerRange.low + 1}–${layerRange.high + 1}`}/{previewMeta.layer_count}</span
-									>
+											: `${layerRange.low + 1}–${layerRange.high + 1}`}/{previewMeta.layer_count}
+									</span>
 									{#if topLayerTime !== null}
 										<!-- Temps (nominal) de la couche haute, comme l'info-bulle du curseur d'Orca. -->
 										<span
-											class="tabular-nums text-content-subtle"
+											class="text-content-subtle tabular-nums"
 											data-testid="preview-layer-time"
 											data-tip={$t('Nominal time of the top layer (without accelerations)')}
 											data-tip-side="left"
 											aria-label={$t('Nominal time of the top layer: {time}', {
 												time: formatDuration(topLayerTime)
-											})}>{formatDuration(topLayerTime)}</span
+											})}
 										>
+											{formatDuration(topLayerTime)}
+										</span>
 									{/if}
 									<!-- Poignée haute : numéro + Z. -->
 									<button
@@ -12967,9 +13044,9 @@
 										data-tip-side="left"
 									>
 										<span class="tabular-nums">▲ {layerRange.high + 1}</span>
-										<span class="text-2xs tabular-nums opacity-80"
-											>{fmtNum(previewMeta.layers[layerRange.high]?.z ?? 0, 2, $locale)} mm</span
-										>
+										<span class="text-2xs tabular-nums opacity-80">
+											{fmtNum(previewMeta.layers[layerRange.high]?.z ?? 0, 2, $locale)} mm
+										</span>
 									</button>
 									<!-- Une seule piste, deux poignées (comme Orca) : deux curseurs natifs
 									     superposés (clavier, aria et data-testid conservés), seules les
@@ -13059,9 +13136,9 @@
 											data-tip-side="left"
 										>
 											<span class="tabular-nums">▼ {layerRange.low + 1}</span>
-											<span class="text-2xs tabular-nums opacity-80"
-												>{fmtNum(previewMeta.layers[layerRange.low]?.z ?? 0, 2, $locale)} mm</span
-											>
+											<span class="text-2xs tabular-nums opacity-80">
+												{fmtNum(previewMeta.layers[layerRange.low]?.z ?? 0, 2, $locale)} mm
+											</span>
 										</button>
 									{/if}
 									<div class="flex w-full gap-1">
@@ -13071,16 +13148,20 @@
 											aria-label={$t('Move the active handle down one layer')}
 											data-tip={$t('Previous layer (↓)')}
 											data-tip-side="left"
-											onclick={() => moveLayerThumb(-1)}>−</button
+											onclick={() => moveLayerThumb(-1)}
 										>
+											−
+										</button>
 										<button
 											type="button"
 											class="ws-icon-btn ws-icon-btn-sm flex-1 border-border-strong"
 											aria-label={$t('Move the active handle up one layer')}
 											data-tip={$t('Next layer (↑)')}
 											data-tip-side="left"
-											onclick={() => moveLayerThumb(1)}>+</button
+											onclick={() => moveLayerThumb(1)}
 										>
+											+
+										</button>
 									</div>
 									{#if session.gcodeId}
 										<!-- Orca IMSlider : icône « + » de la poignée = changement de
@@ -13096,8 +13177,9 @@
 												: $t('Color change at layer {n} (+)', { n: layerRange.high + 1 })}
 											data-tip-side="left"
 											onclick={() => editColorChangeKey(codeAtHighLayer ? '-' : '+')}
-											>{codeAtHighLayer ? $t('− color') : $t('+ color')}</button
 										>
+											{codeAtHighLayer ? $t('− color') : $t('+ color')}
+										</button>
 										<!-- Phase 37 — menu d'IMSlider : pause, G-code perso, modèle,
 										     changement de filament ; modifier / supprimer le code posé. -->
 										<button
@@ -13112,8 +13194,10 @@
 											onclick={(e) => {
 												const rect = e.currentTarget.getBoundingClientRect();
 												openLayerMenu(rect.left, rect.bottom);
-											}}>{$t('Codes…')}</button
+											}}
 										>
+											{$t('Codes…')}
+										</button>
 									{/if}
 									<button
 										class="ws-chip w-full justify-center {layerRange.oneLayerMode
@@ -13125,8 +13209,10 @@
 										}}
 										data-tip={$t('Single layer mode (L)')}
 										data-tip-side="left"
-										aria-keyshortcuts="L">{$t('1 layer')}</button
+										aria-keyshortcuts="L"
 									>
+										{$t('1 layer')}
+									</button>
 									{#if goToLayerOpen}
 										<form
 											class="flex w-full flex-col gap-1"
@@ -13150,9 +13236,9 @@
 													if (e.key === 'Escape') goToLayerOpen = false;
 												}}
 											/>
-											<button type="submit" class="ws-btn ws-btn-sm ws-btn-primary w-full"
-												>{$t('Go')}</button
-											>
+											<button type="submit" class="ws-btn ws-btn-sm ws-btn-primary w-full">
+												{$t('Go')}
+											</button>
 										</form>
 									{:else}
 										<button
@@ -13162,8 +13248,10 @@
 											data-tip={$t('Jump to layer (Shift+G)')}
 											data-tip-side="left"
 											aria-keyshortcuts="Shift+G"
-											onclick={openGoToLayer}>{$t('Go to…')}</button
+											onclick={openGoToLayer}
 										>
+											{$t('Go to…')}
+										</button>
 									{/if}
 								</div>
 							{/if}
@@ -13184,9 +13272,9 @@
 									onclick={() => (legendOpen = !legendOpen)}
 								>
 									<span class="ws-section-title">{$t('Legend')}</span>
-									<span class="text-content-subtle" aria-hidden="true"
-										>{legendOpen ? '▾' : '▸'}</span
-									>
+									<span class="text-content-subtle" aria-hidden="true">
+										{legendOpen ? '▾' : '▸'}
+									</span>
 								</button>
 								<div
 									id="preview-legend-body"
@@ -13249,15 +13337,17 @@
 								<button
 									class="ws-btn ws-btn-primary"
 									disabled={projectName.trim() === '' || projectName === savedName}
-									onclick={() => renameCurrentProject()}>{$t('Rename')}</button
+									onclick={() => renameCurrentProject()}
 								>
+									{$t('Rename')}
+								</button>
 							</div>
 						</label>
 						<dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
 							<dt class="text-content-muted">{$t('Identifier')}</dt>
 							<dd class="truncate font-mono text-xs text-content">{data.project.id}</dd>
 							<dt class="text-content-muted">{$t('Version')}</dt>
-							<dd class="tabular-nums text-content">{data.project.version}</dd>
+							<dd class="text-content tabular-nums">{data.project.version}</dd>
 							<dt class="text-content-muted">{$t('Created||date')}</dt>
 							<dd class="text-content">{new Date(data.project.created_at).toLocaleString()}</dd>
 							<dt class="text-content-muted">{$t('Modified||date')}</dt>

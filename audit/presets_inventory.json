@@ -3,47 +3,46 @@
   "source": "resources/profiles",
   "summary": {
     "vendors": 65,
-    "presets_total": 11895,
+    "presets_total": 11872,
     "presets_by_type": {
-      "filament": 7012,
-      "machine": 1158,
+      "filament": 6991,
+      "machine": 1156,
       "machine_model": 384,
       "process": 3341
     },
     "instantiated_by_type": {
-      "filament": 5913,
-      "machine": 1001,
+      "filament": 5892,
+      "machine": 999,
       "process": 2881
     },
-    "orphan_files": 44,
+    "orphan_files": 46,
     "errors": 0
   },
   "structure_notes": {
     "hierarchy": "vendeur → {machine_model, machine, filament, process} ; héritage par champ « inherits », presets abstraits si instantiation=false",
     "meta_fields_by_type": {
       "filament": {
-        "type": 7012,
-        "name": 7012,
-        "instantiation": 7012,
-        "from": 6981,
-        "inherits": 6929,
-        "compatible_printers": 6020,
-        "setting_id": 5913,
-        "filament_id": 2742,
-        "compatible_printers_condition": 246,
-        "description": 196,
-        "version": 27
+        "type": 6991,
+        "name": 6991,
+        "instantiation": 6991,
+        "from": 6960,
+        "inherits": 6908,
+        "compatible_printers": 5999,
+        "setting_id": 5892,
+        "filament_id": 2721,
+        "compatible_printers_condition": 219,
+        "description": 196
       },
       "machine": {
-        "type": 1158,
-        "name": 1158,
-        "instantiation": 1158,
-        "from": 1140,
-        "nozzle_diameter": 1077,
-        "inherits": 1057,
-        "printer_model": 1009,
-        "setting_id": 1001,
-        "printer_variant": 987,
+        "type": 1156,
+        "name": 1156,
+        "instantiation": 1156,
+        "from": 1138,
+        "nozzle_diameter": 1075,
+        "inherits": 1055,
+        "printer_model": 1007,
+        "setting_id": 999,
+        "printer_variant": 985,
         "description": 28,
         "bed_texture": 19,
         "default_bed_type": 18,
@@ -76,8 +75,8 @@
         "from": 3307,
         "inherits": 3259,
         "setting_id": 2881,
-        "compatible_printers": 2413,
-        "compatible_printers_condition": 778,
+        "compatible_printers": 2414,
+        "compatible_printers_condition": 779,
         "description": 363
       }
     }
@@ -85,12 +84,12 @@
   "vendors": {
     "Afinia": {
       "display_name": "Afinia",
-      "version": "02.04.00.02",
+      "version": "02.04.00.01",
       "description": "Afinia configurations",
       "counts": {
         "machine_model": 1,
         "machine": 4,
-        "filament": 10,
+        "filament": 16,
         "process": 24
       }
     },
@@ -129,12 +128,12 @@
     },
     "BBL": {
       "display_name": "Bambulab",
-      "version": "02.01.00.19",
+      "version": "02.01.00.18",
       "description": "BBL configurations",
       "counts": {
         "machine_model": 12,
         "machine": 51,
-        "filament": 2197,
+        "filament": 2170,
         "process": 243
       }
     },
@@ -151,7 +150,7 @@
     },
     "Blocks": {
       "display_name": "Blocks",
-      "version": "02.04.00.02",
+      "version": "02.04.00.01",
       "description": "Blocks configurations",
       "counts": {
         "machine_model": 3,
@@ -173,7 +172,7 @@
     },
     "Chuanying": {
       "display_name": "Chuanying",
-      "version": "02.04.00.02",
+      "version": "02.04.00.01",
       "description": "Chuanying configurations",
       "counts": {
         "machine_model": 1,
@@ -206,22 +205,22 @@
     },
     "Comgrow": {
       "display_name": "Comgrow",
-      "version": "02.04.00.03",
+      "version": "02.04.00.02",
       "description": "Comgrow configurations",
       "counts": {
         "machine_model": 2,
         "machine": 6,
         "filament": 8,
-        "process": 18
+        "process": 19
       }
     },
     "Creality": {
       "display_name": "Creality",
-      "version": "02.03.02.75",
+      "version": "02.03.02.74",
       "description": "Creality configurations",
       "counts": {
         "machine_model": 41,
-        "machine": 102,
+        "machine": 100,
         "filament": 552,
         "process": 363
       }
@@ -426,7 +425,7 @@
     },
     "MagicMaker": {
       "display_name": "MagicMaker",
-      "version": "02.04.00.02",
+      "version": "02.04.00.01",
       "description": "MagicMaker configurations",
       "counts": {
         "machine_model": 5,
@@ -459,7 +458,7 @@
     },
     "OrcaArena": {
       "display_name": "Orca Arena Printer",
-      "version": "02.04.00.02",
+      "version": "02.04.00.01",
       "description": "Orca Arena configuration files",
       "counts": {
         "machine_model": 1,
@@ -514,7 +513,7 @@
     },
     "Prusa": {
       "display_name": "Prusa",
-      "version": "02.04.00.03",
+      "version": "02.04.00.02",
       "description": "Prusa configurations",
       "counts": {
         "machine_model": 13,
@@ -525,7 +524,7 @@
     },
     "Qidi": {
       "display_name": "Qidi",
-      "version": "02.04.00.06",
+      "version": "02.04.00.05",
       "description": "Qidi configurations",
       "counts": {
         "machine_model": 11,
@@ -696,7 +695,7 @@
         "machine_model": 8,
         "machine": 66,
         "filament": 0,
-        "process": 50
+        "process": 49
       }
     },
     "Voxelab": {
@@ -734,7 +733,7 @@
     },
     "Wanhao France": {
       "display_name": "Wanhao France",
-      "version": "02.04.00.02",
+      "version": "02.04.00.01",
       "description": "Wanhao France D12 configurations",
       "counts": {
         "machine_model": 18,
@@ -789,7 +788,7 @@
     },
     "re3D": {
       "display_name": "re3D",
-      "version": "02.04.00.03",
+      "version": "02.04.00.02",
       "description": "re3D configurations",
       "counts": {
         "machine_model": 6,
@@ -801,103 +800,103 @@
   },
   "key_usage_by_type": {
     "filament": {
-      "filament_max_volumetric_speed": 5321,
-      "filament_flow_ratio": 3932,
-      "nozzle_temperature": 3853,
-      "nozzle_temperature_initial_layer": 3558,
-      "slow_down_layer_time": 3143,
-      "fan_max_speed": 2687,
-      "pressure_advance": 2668,
-      "fan_min_speed": 2661,
-      "filament_start_gcode": 2582,
-      "hot_plate_temp": 2491,
-      "hot_plate_temp_initial_layer": 2434,
-      "eng_plate_temp": 2342,
-      "eng_plate_temp_initial_layer": 2308,
-      "slow_down_min_speed": 2208,
-      "filament_retraction_length": 2204,
-      "fan_cooling_layer_time": 2176,
-      "textured_plate_temp": 2138,
-      "textured_plate_temp_initial_layer": 2120,
-      "filament_z_hop": 2014,
-      "filament_retract_before_wipe": 2005,
-      "filament_retraction_speed": 2005,
-      "nozzle_temperature_range_high": 1987,
-      "filament_deretraction_speed": 1986,
-      "filament_wipe": 1974,
-      "filament_wipe_distance": 1963,
-      "filament_retraction_minimum_travel": 1957,
-      "filament_density": 1954,
-      "filament_z_hop_types": 1939,
-      "filament_retract_when_changing_layer": 1927,
-      "filament_retract_restart_extra": 1891,
-      "cool_plate_temp": 1860,
-      "cool_plate_temp_initial_layer": 1813,
-      "overhang_fan_speed": 1791,
-      "filament_cost": 1649,
-      "filament_type": 1596,
-      "filament_long_retractions_when_cut": 1593,
-      "filament_retraction_distances_when_cut": 1592,
-      "nozzle_temperature_range_low": 1583,
-      "temperature_vitrification": 1530,
-      "filament_vendor": 1518,
-      "additional_cooling_fan_speed": 1465,
-      "enable_pressure_advance": 1465,
-      "overhang_fan_threshold": 1458,
-      "during_print_exhaust_fan_speed": 1428,
-      "filament_end_gcode": 1286,
-      "filament_ramming_volumetric_speed": 1271,
+      "filament_max_volumetric_speed": 5299,
+      "filament_flow_ratio": 3910,
+      "nozzle_temperature": 3830,
+      "nozzle_temperature_initial_layer": 3535,
+      "slow_down_layer_time": 3119,
+      "fan_max_speed": 2663,
+      "pressure_advance": 2641,
+      "fan_min_speed": 2634,
+      "filament_start_gcode": 2555,
+      "hot_plate_temp": 2464,
+      "hot_plate_temp_initial_layer": 2407,
+      "eng_plate_temp": 2315,
+      "eng_plate_temp_initial_layer": 2281,
+      "slow_down_min_speed": 2181,
+      "filament_retraction_length": 2177,
+      "fan_cooling_layer_time": 2149,
+      "textured_plate_temp": 2111,
+      "textured_plate_temp_initial_layer": 2093,
+      "filament_z_hop": 1987,
+      "filament_retract_before_wipe": 1978,
+      "filament_retraction_speed": 1978,
+      "nozzle_temperature_range_high": 1960,
+      "filament_deretraction_speed": 1959,
+      "filament_wipe": 1947,
+      "filament_wipe_distance": 1936,
+      "filament_density": 1930,
+      "filament_retraction_minimum_travel": 1930,
+      "filament_z_hop_types": 1912,
+      "filament_retract_when_changing_layer": 1900,
+      "filament_retract_restart_extra": 1864,
+      "cool_plate_temp": 1833,
+      "cool_plate_temp_initial_layer": 1786,
+      "overhang_fan_speed": 1764,
+      "filament_cost": 1628,
+      "filament_type": 1569,
+      "filament_long_retractions_when_cut": 1568,
+      "filament_retraction_distances_when_cut": 1567,
+      "nozzle_temperature_range_low": 1556,
+      "temperature_vitrification": 1503,
+      "filament_vendor": 1497,
+      "additional_cooling_fan_speed": 1438,
+      "enable_pressure_advance": 1438,
+      "overhang_fan_threshold": 1431,
+      "during_print_exhaust_fan_speed": 1401,
+      "filament_end_gcode": 1259,
       "filament_flush_volumetric_speed": 1254,
       "filament_flush_temp": 1252,
-      "filament_extruder_variant": 1242,
-      "filament_pre_cooling_temperature": 1225,
-      "filament_ramming_travel_time": 1225,
+      "filament_ramming_volumetric_speed": 1244,
+      "filament_extruder_variant": 1215,
       "retraction_distances_when_ec": 1204,
       "filament_adaptive_volumetric_speed": 1204,
       "volumetric_speed_coefficients": 1204,
       "long_retractions_when_ec": 1202,
-      "complete_print_exhaust_fan_speed": 1189,
-      "activate_air_filtration": 1176,
-      "filament_settings_id": 1172,
-      "close_fan_the_first_x_layers": 1089,
-      "reduce_fan_stop_start_freq": 967,
-      "filament_minimal_purge_on_wipe_tower": 953,
+      "filament_pre_cooling_temperature": 1198,
+      "filament_ramming_travel_time": 1198,
+      "complete_print_exhaust_fan_speed": 1162,
+      "activate_air_filtration": 1149,
+      "filament_settings_id": 1145,
+      "close_fan_the_first_x_layers": 1062,
+      "reduce_fan_stop_start_freq": 940,
       "chamber_temperature": 936,
-      "full_fan_speed_layer": 916,
+      "filament_minimal_purge_on_wipe_tower": 926,
       "support_material_interface_fan_speed": 894,
-      "default_filament_colour": 847,
+      "full_fan_speed_layer": 889,
       "activate_chamber_temp_control": 840,
+      "default_filament_colour": 820,
       "filament_unloading_speed": 814,
-      "required_nozzle_HRC": 809,
       "filament_unloading_speed_start": 804,
-      "filament_is_support": 792,
+      "required_nozzle_HRC": 782,
+      "filament_is_support": 765,
       "filament_cooling_moves": 763,
       "filament_cooling_initial_speed": 763,
       "filament_cooling_final_speed": 763,
       "filament_loading_speed": 763,
       "filament_loading_speed_start": 763,
-      "filament_notes": 763,
-      "enable_overhang_bridge_fan": 757,
-      "filament_shrink": 739,
-      "filament_soluble": 734,
+      "filament_notes": 736,
+      "enable_overhang_bridge_fan": 730,
       "filament_multitool_ramming": 726,
       "filament_multitool_ramming_flow": 721,
       "filament_ramming_parameters": 720,
       "filament_retract_lift_below": 719,
-      "filament_diameter": 717,
       "filament_multitool_ramming_volume": 713,
-      "slow_down_for_layer_cooling": 692,
+      "filament_shrink": 712,
+      "filament_soluble": 707,
       "filament_toolchange_delay": 691,
+      "filament_diameter": 690,
       "filament_retract_lift_above": 688,
       "filament_retract_lift_enforce": 688,
+      "slow_down_for_layer_cooling": 665,
       "filament_load_time": 625,
       "filament_unload_time": 625,
       "textured_cool_plate_temp": 612,
       "textured_cool_plate_temp_initial_layer": 612,
-      "supertack_plate_temp_initial_layer": 488,
-      "supertack_plate_temp": 486,
       "epoxy_resin_plate_temp": 476,
       "epoxy_resin_plate_temp_initial_layer": 476,
+      "supertack_plate_temp_initial_layer": 461,
+      "supertack_plate_temp": 459,
       "material_flow_dependent_temperature": 443,
       "cool_cds_fan_start_at_height": 380,
       "override_process_overhang_speed": 374,
@@ -909,19 +908,19 @@
       "filament_overhang_3_4_speed": 329,
       "filament_overhang_4_4_speed": 329,
       "filament_overhang_totally_speed": 329,
-      "filament_adhesiveness_category": 321,
       "filament_ramming_volumetric_speed_nc": 320,
       "filament_pre_cooling_temperature_nc": 320,
       "filament_ramming_travel_time_nc": 320,
       "enable_special_area_additional_cooling_fan": 319,
-      "chamber_temperatures": 307,
-      "pre_start_fan_time": 300,
-      "compatible_prints": 250,
-      "compatible_prints_condition": 246,
+      "filament_adhesiveness_category": 294,
+      "chamber_temperatures": 280,
+      "pre_start_fan_time": 273,
       "first_x_layer_fan_speed": 246,
-      "impact_strength_z": 242,
       "filament_shrinkage_compensation_z": 237,
+      "compatible_prints": 223,
       "bed_type": 221,
+      "compatible_prints_condition": 219,
+      "impact_strength_z": 215,
       "customized_plate_temp": 212,
       "customized_plate_temp_initial_layer": 212,
       "dont_slow_down_outer_wall": 208,
@@ -932,49 +931,44 @@
       "filament_retract_length_nc": 180,
       "filament_stamping_distance": 179,
       "filament_stamping_loading_speed": 179,
-      "renamed_from": 168,
+      "renamed_from": 158,
       "adaptive_pressure_advance_model": 151,
       "pellet_flow_coefficient": 151,
       "adaptive_pressure_advance": 149,
       "adaptive_pressure_advance_bridges": 148,
       "adaptive_pressure_advance_overhangs": 148,
       "internal_bridge_fan_speed": 113,
-      "counter_coef_2": 109,
-      "counter_coef_3": 109,
       "box_temperature_range_high": 109,
-      "counter_limit_max": 107,
-      "filament_change_length": 101,
-      "hole_coef_3": 99,
-      "hole_coef_2": 92,
-      "filament_scarf_seam_type": 89,
       "fan_min_speed_BRASS": 83,
       "fan_min_speed_HS": 83,
       "nozzle_temperature_HS": 83,
-      "filament_prime_volume": 83,
       "fan_max_speed_BRASS": 82,
       "fan_max_speed_HS": 82,
       "nozzle_temperature_BRASS": 82,
+      "counter_coef_2": 82,
+      "counter_coef_3": 82,
       "nozzle_temperature_initial_layer_HS": 81,
       "nozzle_temperature_initial_layer_BRASS": 80,
+      "counter_limit_max": 80,
       "fan_cooling_layer_time_BRASS": 79,
       "fan_cooling_layer_time_HS": 79,
       "slow_down_layer_time_BRASS": 77,
-      "hole_limit_min": 77,
       "slow_down_layer_time_HS": 75,
-      "counter_limit_min": 75,
-      "filament_scarf_gap": 67,
-      "filament_scarf_height": 66,
-      "hole_limit_max": 66,
+      "filament_change_length": 74,
+      "hole_coef_3": 72,
+      "hole_coef_2": 65,
+      "filament_scarf_seam_type": 62,
       "filament_extruder_compatibility": 57,
-      "filament_scarf_length": 54,
+      "filament_prime_volume": 56,
       "filament_printable": 53,
+      "hole_limit_min": 50,
+      "counter_limit_min": 48,
+      "filament_scarf_gap": 40,
+      "filament_scarf_height": 39,
+      "hole_limit_max": 39,
       "box_temperature_range_low": 39,
       "box_temperature": 39,
-      "overhang_threshold_participating_cooling": 29,
-      "counter_coef_1": 28,
-      "circle_compensation_speed": 28,
-      "diameter_limit": 28,
-      "hole_coef_1": 28,
+      "filament_scarf_length": 27,
       "filament_tower_ironing_area": 23,
       "nozzle_temperature_intial_layer": 22,
       "filament_color": 18,
@@ -1011,6 +1005,7 @@
       "additional_fan_full_speed_layer": 3,
       "filament_velocity_adaptation_factor": 3,
       "enable_volume_fan": 3,
+      "overhang_threshold_participating_cooling": 2,
       "extruder_rotation_volume": 2,
       "mixing_stepper_rotation_volume": 2,
       "multi_zone_1_initial_layer": 2,
@@ -1021,6 +1016,10 @@
       "multi_zone_3_temperature": 2,
       "filament_toolchange_time": 2,
       "close_additional_fan_first_x_layers": 1,
+      "counter_coef_1": 1,
+      "circle_compensation_speed": 1,
+      "diameter_limit": 1,
+      "hole_coef_1": 1,
       "filament_flow_ratio_initial_layer": 1,
       "external_perimeter_speed": 1,
       "filament_dev_ams_drying_ams_limitations": 1,
@@ -1036,119 +1035,119 @@
       "shrink_ratio": 1
     },
     "machine": {
-      "max_layer_height": 971,
-      "min_layer_height": 948,
-      "default_print_profile": 945,
-      "printable_height": 790,
-      "retraction_length": 741,
-      "printable_area": 697,
-      "default_filament_profile": 658,
-      "machine_start_gcode": 628,
-      "retraction_minimum_travel": 564,
-      "machine_max_acceleration_x": 553,
-      "machine_max_acceleration_y": 553,
-      "deretraction_speed": 548,
-      "machine_max_acceleration_z": 546,
-      "machine_end_gcode": 539,
-      "retraction_speed": 531,
-      "machine_max_acceleration_extruding": 521,
-      "nozzle_type": 517,
-      "machine_max_speed_z": 514,
-      "machine_max_acceleration_retracting": 513,
-      "machine_max_speed_e": 510,
-      "machine_max_speed_x": 510,
-      "machine_max_speed_y": 510,
-      "machine_max_jerk_y": 505,
-      "machine_max_jerk_x": 497,
-      "machine_max_jerk_e": 495,
-      "machine_max_jerk_z": 495,
-      "change_filament_gcode": 489,
-      "retract_before_wipe": 481,
-      "retract_length_toolchange": 480,
-      "auxiliary_fan": 475,
-      "machine_max_acceleration_travel": 455,
-      "machine_pause_gcode": 453,
-      "machine_max_acceleration_e": 437,
-      "z_hop": 436,
-      "gcode_flavor": 413,
-      "extruder_clearance_height_to_rod": 412,
-      "before_layer_change_gcode": 412,
-      "extruder_clearance_height_to_lid": 405,
-      "single_extruder_multi_material": 403,
+      "max_layer_height": 969,
+      "min_layer_height": 946,
+      "default_print_profile": 943,
+      "printable_height": 788,
+      "retraction_length": 739,
+      "printable_area": 695,
+      "default_filament_profile": 656,
+      "machine_start_gcode": 626,
+      "retraction_minimum_travel": 562,
+      "machine_max_acceleration_x": 551,
+      "machine_max_acceleration_y": 551,
+      "deretraction_speed": 546,
+      "machine_max_acceleration_z": 544,
+      "machine_end_gcode": 537,
+      "retraction_speed": 529,
+      "machine_max_acceleration_extruding": 519,
+      "nozzle_type": 515,
+      "machine_max_speed_z": 512,
+      "machine_max_acceleration_retracting": 511,
+      "machine_max_speed_e": 508,
+      "machine_max_speed_x": 508,
+      "machine_max_speed_y": 508,
+      "machine_max_jerk_y": 503,
+      "machine_max_jerk_x": 495,
+      "machine_max_jerk_e": 493,
+      "machine_max_jerk_z": 493,
+      "change_filament_gcode": 487,
+      "retract_before_wipe": 479,
+      "retract_length_toolchange": 478,
+      "auxiliary_fan": 473,
+      "machine_max_acceleration_travel": 453,
+      "machine_pause_gcode": 451,
+      "machine_max_acceleration_e": 435,
+      "z_hop": 434,
+      "gcode_flavor": 411,
+      "extruder_clearance_height_to_rod": 410,
+      "before_layer_change_gcode": 410,
+      "extruder_clearance_height_to_lid": 403,
+      "single_extruder_multi_material": 401,
       "printer_settings_id": 399,
-      "extruder_clearance_radius": 388,
-      "wipe": 365,
-      "thumbnails": 360,
+      "extruder_clearance_radius": 386,
+      "wipe": 363,
+      "thumbnails": 358,
       "layer_change_gcode": 346,
-      "retract_lift_below": 328,
-      "scan_first_layer": 308,
-      "retract_when_changing_layer": 300,
-      "wipe_distance": 298,
-      "retract_restart_extra": 284,
-      "retract_restart_extra_toolchange": 273,
-      "z_hop_types": 273,
-      "extruder_offset": 270,
-      "machine_min_extruding_rate": 258,
-      "machine_min_travel_rate": 258,
-      "bed_exclude_area": 254,
-      "printer_technology": 236,
-      "silent_mode": 230,
-      "extruder_colour": 228,
-      "manual_filament_change": 209,
-      "host_type": 200,
-      "thumbnails_format": 187,
-      "machine_load_filament_time": 186,
-      "machine_unload_filament_time": 184,
-      "nozzle_volume": 182,
-      "enable_filament_ramming": 181,
+      "retract_lift_below": 326,
+      "scan_first_layer": 306,
+      "retract_when_changing_layer": 298,
+      "wipe_distance": 296,
+      "retract_restart_extra": 282,
+      "retract_restart_extra_toolchange": 271,
+      "z_hop_types": 271,
+      "extruder_offset": 268,
+      "machine_min_extruding_rate": 256,
+      "machine_min_travel_rate": 256,
+      "bed_exclude_area": 252,
+      "printer_technology": 234,
+      "silent_mode": 228,
+      "extruder_colour": 226,
+      "manual_filament_change": 207,
+      "host_type": 198,
+      "thumbnails_format": 185,
+      "machine_load_filament_time": 184,
+      "machine_unload_filament_time": 182,
+      "nozzle_volume": 180,
+      "enable_filament_ramming": 179,
       "printer_structure": 175,
       "upward_compatible_machine": 175,
-      "extra_loading_move": 175,
-      "support_air_filtration": 174,
-      "retract_lift_above": 173,
-      "support_chamber_temp_control": 166,
+      "extra_loading_move": 173,
+      "support_air_filtration": 172,
+      "retract_lift_above": 171,
       "time_lapse_gcode": 165,
-      "cooling_tube_length": 164,
+      "support_chamber_temp_control": 164,
       "printer_notes": 164,
-      "cooling_tube_retraction": 162,
-      "parking_pos_retraction": 161,
-      "purge_in_prime_tower": 155,
-      "retract_lift_enforce": 152,
-      "use_relative_e_distances": 152,
-      "fan_speedup_time": 149,
+      "cooling_tube_length": 162,
+      "cooling_tube_retraction": 160,
+      "parking_pos_retraction": 159,
+      "purge_in_prime_tower": 153,
+      "retract_lift_enforce": 150,
+      "use_relative_e_distances": 150,
+      "fan_speedup_time": 147,
       "printing_by_object_gcode": 147,
-      "use_firmware_retraction": 146,
-      "emit_machine_limits_to_gcode": 145,
-      "support_multi_bed_types": 145,
-      "nozzle_hrc": 142,
-      "fan_speedup_overhangs": 141,
-      "fan_kickstart": 140,
-      "disable_m73": 139,
-      "high_current_on_filament_swap": 139,
-      "best_object_pos": 133,
-      "printhost_authorization_type": 130,
-      "bed_mesh_max": 129,
-      "bed_mesh_min": 129,
-      "long_retractions_when_cut": 129,
-      "printhost_ssl_ignore_revoke": 129,
-      "retraction_distances_when_cut": 128,
-      "z_offset": 127,
-      "nozzle_height": 127,
-      "bed_mesh_probe_distance": 125,
-      "time_cost": 125,
-      "preferred_orientation": 124,
-      "enable_long_retraction_when_cut": 119,
+      "use_firmware_retraction": 144,
+      "emit_machine_limits_to_gcode": 143,
+      "support_multi_bed_types": 143,
+      "nozzle_hrc": 140,
+      "fan_speedup_overhangs": 139,
+      "fan_kickstart": 138,
+      "disable_m73": 137,
+      "high_current_on_filament_swap": 137,
+      "best_object_pos": 131,
+      "printhost_authorization_type": 128,
+      "bed_mesh_max": 127,
+      "bed_mesh_min": 127,
+      "long_retractions_when_cut": 127,
+      "printhost_ssl_ignore_revoke": 127,
+      "retraction_distances_when_cut": 126,
+      "z_offset": 125,
+      "nozzle_height": 125,
+      "bed_mesh_probe_distance": 123,
+      "time_cost": 123,
+      "preferred_orientation": 122,
       "machine_max_junction_deviation": 117,
-      "adaptive_bed_mesh_margin": 108,
-      "travel_slope": 106,
+      "enable_long_retraction_when_cut": 117,
+      "adaptive_bed_mesh_margin": 106,
+      "travel_slope": 104,
       "template_custom_gcode": 102,
-      "machine_tool_change_time": 98,
+      "machine_tool_change_time": 96,
       "head_wrap_detect_zone": 92,
-      "bbl_use_printhost": 90,
+      "bbl_use_printhost": 88,
       "change_extrusion_role_gcode": 88,
-      "pellet_modded_printer": 88,
       "bed_custom_texture": 87,
       "bed_custom_model": 86,
+      "pellet_modded_printer": 86,
       "extruder_type": 75,
       "print_host": 63,
       "printer_agent": 50,
@@ -1159,13 +1158,13 @@
       "max_resonance_avoidance_speed": 36,
       "min_resonance_avoidance_speed": 36,
       "resonance_avoidance": 36,
-      "creality_flush_time": 35,
-      "machine_LED_light_exist": 35,
-      "machine_platform_motion_enable": 35,
-      "prime_tower_position_type": 35,
       "bed_temperature_formula": 33,
       "support_object_skip_flush": 33,
       "extruder_printable_area": 33,
+      "creality_flush_time": 33,
+      "machine_LED_light_exist": 33,
+      "machine_platform_motion_enable": 33,
+      "prime_tower_position_type": 33,
       "wipe_tower_type": 33,
       "print_host_webui": 32,
       "grab_length": 32,
@@ -1284,107 +1283,107 @@
     },
     "process": {
       "layer_height": 2279,
-      "sparse_infill_speed": 1679,
+      "sparse_infill_speed": 1680,
       "top_shell_layers": 1671,
-      "initial_layer_speed": 1635,
+      "initial_layer_speed": 1636,
       "bottom_shell_layers": 1557,
-      "inner_wall_speed": 1545,
-      "outer_wall_speed": 1544,
-      "initial_layer_infill_speed": 1539,
-      "internal_solid_infill_speed": 1529,
-      "initial_layer_print_height": 1527,
-      "top_surface_speed": 1521,
-      "top_surface_line_width": 1484,
-      "gap_infill_speed": 1449,
-      "internal_solid_infill_line_width": 1426,
-      "support_line_width": 1416,
-      "outer_wall_line_width": 1413,
-      "line_width": 1411,
+      "inner_wall_speed": 1546,
+      "outer_wall_speed": 1545,
+      "initial_layer_infill_speed": 1540,
+      "internal_solid_infill_speed": 1530,
+      "initial_layer_print_height": 1528,
+      "top_surface_speed": 1522,
+      "top_surface_line_width": 1485,
+      "gap_infill_speed": 1450,
+      "internal_solid_infill_line_width": 1427,
+      "support_line_width": 1417,
+      "outer_wall_line_width": 1414,
+      "line_width": 1412,
       "default_acceleration": 1380,
-      "travel_speed": 1372,
-      "sparse_infill_line_width": 1361,
-      "inner_wall_line_width": 1360,
-      "initial_layer_line_width": 1358,
-      "elefant_foot_compensation": 1353,
-      "overhang_3_4_speed": 1264,
-      "bridge_speed": 1242,
+      "travel_speed": 1373,
+      "sparse_infill_line_width": 1362,
+      "inner_wall_line_width": 1361,
+      "initial_layer_line_width": 1359,
+      "elefant_foot_compensation": 1354,
+      "overhang_3_4_speed": 1265,
+      "bridge_speed": 1243,
       "inner_wall_acceleration": 1221,
-      "support_speed": 1208,
-      "bridge_flow": 1196,
+      "support_speed": 1209,
+      "bridge_flow": 1197,
       "top_surface_acceleration": 1176,
-      "support_top_z_distance": 1157,
+      "support_top_z_distance": 1158,
       "travel_acceleration": 1129,
-      "wall_loops": 1123,
-      "overhang_2_4_speed": 1122,
-      "support_interface_speed": 1120,
-      "top_shell_thickness": 1098,
+      "wall_loops": 1124,
+      "overhang_2_4_speed": 1123,
+      "support_interface_speed": 1121,
+      "top_shell_thickness": 1099,
       "outer_wall_acceleration": 1061,
-      "overhang_1_4_speed": 1057,
+      "overhang_1_4_speed": 1058,
       "initial_layer_acceleration": 1023,
-      "overhang_4_4_speed": 1017,
-      "support_threshold_angle": 954,
-      "infill_wall_overlap": 940,
-      "sparse_infill_density": 929,
-      "skirt_loops": 924,
-      "sparse_infill_pattern": 914,
-      "support_interface_top_layers": 914,
-      "print_settings_id": 903,
-      "support_object_xy_distance": 893,
-      "support_interface_spacing": 887,
-      "prime_tower_width": 884,
-      "support_base_pattern_spacing": 871,
-      "skirt_distance": 869,
+      "overhang_4_4_speed": 1018,
+      "support_threshold_angle": 955,
+      "infill_wall_overlap": 941,
+      "sparse_infill_density": 930,
+      "skirt_loops": 925,
+      "sparse_infill_pattern": 915,
+      "support_interface_top_layers": 915,
+      "print_settings_id": 904,
+      "support_object_xy_distance": 894,
+      "support_interface_spacing": 888,
+      "prime_tower_width": 885,
+      "support_base_pattern_spacing": 872,
+      "skirt_distance": 870,
       "filename_format": 859,
-      "bottom_shell_thickness": 810,
-      "enable_prime_tower": 805,
-      "spiral_mode": 781,
-      "resolution": 781,
+      "bottom_shell_thickness": 811,
+      "enable_prime_tower": 806,
+      "spiral_mode": 782,
+      "resolution": 782,
       "support_bottom_z_distance": 780,
-      "enable_arc_fitting": 754,
-      "infill_combination": 753,
-      "standby_temperature_delta": 753,
-      "top_surface_pattern": 753,
-      "brim_object_gap": 752,
-      "support_type": 747,
-      "seam_position": 744,
-      "enable_support": 735,
-      "brim_width": 734,
-      "reduce_infill_retraction": 733,
-      "detect_overhang_wall": 732,
-      "skirt_height": 732,
-      "support_on_build_plate_only": 730,
-      "support_interface_filament": 727,
-      "minimum_sparse_infill_area": 726,
-      "support_base_pattern": 724,
-      "support_interface_bottom_layers": 717,
-      "infill_direction": 708,
-      "reduce_crossing_wall": 707,
-      "bridge_no_support": 706,
-      "detect_thin_wall": 700,
-      "ironing_flow": 697,
-      "max_travel_detour_distance": 695,
-      "support_filament": 694,
-      "bottom_surface_pattern": 694,
-      "ironing_speed": 693,
-      "support_interface_loop_pattern": 691,
-      "xy_hole_compensation": 688,
-      "xy_contour_compensation": 688,
+      "enable_arc_fitting": 755,
+      "infill_combination": 754,
+      "standby_temperature_delta": 754,
+      "top_surface_pattern": 754,
+      "brim_object_gap": 753,
+      "support_type": 748,
+      "seam_position": 745,
+      "enable_support": 736,
+      "brim_width": 735,
+      "reduce_infill_retraction": 734,
+      "detect_overhang_wall": 733,
+      "skirt_height": 733,
+      "support_on_build_plate_only": 731,
+      "support_interface_filament": 728,
+      "minimum_sparse_infill_area": 727,
+      "support_base_pattern": 725,
+      "support_interface_bottom_layers": 718,
+      "infill_direction": 709,
+      "reduce_crossing_wall": 708,
+      "bridge_no_support": 707,
+      "detect_thin_wall": 701,
+      "ironing_flow": 698,
+      "max_travel_detour_distance": 696,
+      "support_filament": 695,
+      "bottom_surface_pattern": 695,
+      "ironing_speed": 694,
+      "support_interface_loop_pattern": 692,
+      "xy_hole_compensation": 689,
+      "xy_contour_compensation": 689,
       "sparse_infill_acceleration": 688,
-      "interface_shells": 684,
-      "raft_layers": 682,
-      "ironing_spacing": 681,
-      "tree_support_wall_count": 677,
-      "print_sequence": 673,
-      "ironing_type": 668,
-      "tree_support_branch_angle": 666,
-      "draft_shield": 654,
-      "wipe_tower_no_sparse_layers": 649,
-      "support_style": 646,
+      "interface_shells": 685,
+      "raft_layers": 683,
+      "ironing_spacing": 682,
+      "tree_support_wall_count": 678,
+      "print_sequence": 674,
+      "ironing_type": 669,
+      "tree_support_branch_angle": 667,
+      "draft_shield": 655,
+      "wipe_tower_no_sparse_layers": 650,
+      "support_style": 647,
       "small_perimeter_speed": 640,
       "internal_solid_infill_acceleration": 610,
       "bridge_acceleration": 529,
-      "wall_infill_order": 486,
-      "adaptive_layer_height": 476,
+      "wall_infill_order": 487,
+      "adaptive_layer_height": 477,
       "internal_bridge_speed": 470,
       "prime_tower_brim_width": 418,
       "only_one_wall_top": 413,
@@ -1395,7 +1394,7 @@
       "wall_generator": 375,
       "small_perimeter_threshold": 374,
       "enable_overhang_speed": 365,
-      "seam_gap": 359,
+      "seam_gap": 360,
       "brim_type": 353,
       "default_jerk": 352,
       "outer_wall_jerk": 352,
@@ -1537,7 +1536,7 @@
       "solid_infill_filament": 141,
       "sparse_infill_filament": 141,
       "wall_filament": 141,
-      "renamed_from": 140,
+      "renamed_from": 132,
       "print_extruder_variant": 127,
       "notes": 115,
       "acceleration_limit_mess_enable": 114,
@@ -1831,6 +1830,38 @@
     {
       "vendor": "Afinia",
       "type": "filament",
+      "name": "Afinia ABS",
+      "sub_path": "filament/Afinia ABS.json",
+      "inherits": "fdm_filament_abs",
+      "from": "system",
+      "setting_id": "LhDHvMepbh8ecfQT",
+      "filament_id": "GFB00",
+      "instantiation": true,
+      "compatible_printers": [
+        "Afinia H400 Pro 0.4 nozzle",
+        "Afinia H400 Pro 0.6 nozzle"
+      ],
+      "config_key_count": 6
+    },
+    {
+      "vendor": "Afinia",
+      "type": "filament",
+      "name": "Afinia ABS+",
+      "sub_path": "filament/Afinia ABS+.json",
+      "inherits": "fdm_filament_abs",
+      "from": "system",
+      "setting_id": "i5tf9foHnTVNmA2r",
+      "filament_id": "GFB00",
+      "instantiation": true,
+      "compatible_printers": [
+        "Afinia H400 Pro 0.4 nozzle",
+        "Afinia H400 Pro 0.6 nozzle"
+      ],
+      "config_key_count": 8
+    },
+    {
+      "vendor": "Afinia",
+      "type": "filament",
       "name": "Afinia ABS+@HS",
       "sub_path": "filament/Afinia ABS+@HS.json",
       "inherits": "fdm_filament_abs",
@@ -1863,6 +1894,22 @@
     {
       "vendor": "Afinia",
       "type": "filament",
+      "name": "Afinia Value ABS",
+      "sub_path": "filament/Afinia Value ABS.json",
+      "inherits": "fdm_filament_abs",
+      "from": "system",
+      "setting_id": "jEYVpOPBjFtQ0DXn",
+      "filament_id": "GFB00",
+      "instantiation": true,
+      "compatible_printers": [
+        "Afinia H400 Pro 0.4 nozzle",
+        "Afinia H400 Pro 0.6 nozzle"
+      ],
+      "config_key_count": 8
+    },
+    {
+      "vendor": "Afinia",
+      "type": "filament",
       "name": "Afinia Value ABS@HS",
       "sub_path": "filament/Afinia Value ABS@HS.json",
       "inherits": "fdm_filament_abs",
@@ -1875,6 +1922,22 @@
         "Afinia H+1(HS) 0.6 nozzle"
       ],
       "config_key_count": 8
+    },
+    {
+      "vendor": "Afinia",
+      "type": "filament",
+      "name": "Afinia PLA",
+      "sub_path": "filament/Afinia PLA.json",
+      "inherits": "fdm_filament_pla",
+      "from": "system",
+      "setting_id": "1qEFsay7kjYIUkpG",
+      "filament_id": "GFA00",
+      "instantiation": true,
+      "compatible_printers": [
+        "Afinia H400 Pro 0.4 nozzle",
+        "Afinia H400 Pro 0.6 nozzle"
+      ],
+      "config_key_count": 7
     },
     {
       "vendor": "Afinia",
@@ -1895,6 +1958,22 @@
     {
       "vendor": "Afinia",
       "type": "filament",
+      "name": "Afinia Value PLA",
+      "sub_path": "filament/Afinia Value PLA.json",
+      "inherits": "fdm_filament_pla",
+      "from": "system",
+      "setting_id": "oNBk0IxmW7C99WI3",
+      "filament_id": "GFA00",
+      "instantiation": true,
+      "compatible_printers": [
+        "Afinia H400 Pro 0.4 nozzle",
+        "Afinia H400 Pro 0.6 nozzle"
+      ],
+      "config_key_count": 9
+    },
+    {
+      "vendor": "Afinia",
+      "type": "filament",
       "name": "Afinia Value PLA@HS",
       "sub_path": "filament/Afinia Value PLA@HS.json",
       "inherits": "fdm_filament_pla",
@@ -1907,6 +1986,22 @@
         "Afinia H+1(HS) 0.6 nozzle"
       ],
       "config_key_count": 9
+    },
+    {
+      "vendor": "Afinia",
+      "type": "filament",
+      "name": "Afinia TPU",
+      "sub_path": "filament/Afinia TPU.json",
+      "inherits": "fdm_filament_tpu",
+      "from": "system",
+      "setting_id": "E7WBTARZ971LaDMj",
+      "filament_id": "GFU01",
+      "instantiation": true,
+      "compatible_printers": [
+        "Afinia H400 Pro 0.4 nozzle",
+        "Afinia H400 Pro 0.6 nozzle"
+      ],
+      "config_key_count": 5
     },
     {
       "vendor": "Afinia",
@@ -3419,7 +3514,7 @@
       "from": "system",
       "setting_id": "re5qmcOFJ1OJP3Ip",
       "instantiation": true,
-      "config_key_count": 5
+      "config_key_count": 4
     },
     {
       "vendor": "Anker",
@@ -14672,57 +14767,6 @@
     {
       "vendor": "BBL",
       "type": "filament",
-      "name": "addnorth ABS rABS",
-      "sub_path": "filament/addnorth/addnorth ABS rABS.json",
-      "inherits": "Generic ABS @base",
-      "from": "system",
-      "setting_id": "GF_ANRA_00",
-      "filament_id": "GF_ANRA",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
       "name": "PolyLite ABS @BBL A1",
       "sub_path": "filament/Polymaker/PolyLite ABS @BBL A1.json",
       "inherits": "PolyLite ABS @base",
@@ -18061,210 +18105,6 @@
     {
       "vendor": "BBL",
       "type": "filament",
-      "name": "addnorth PA Adura",
-      "sub_path": "filament/addnorth/addnorth PA Adura.json",
-      "inherits": "Generic PA @base",
-      "from": "system",
-      "setting_id": "GF_ANAD_00",
-      "filament_id": "GF_ANAD",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PA Adura FDA",
-      "sub_path": "filament/addnorth/addnorth PA Adura FDA.json",
-      "inherits": "Generic PA @base",
-      "from": "system",
-      "setting_id": "GF_ANAF_00",
-      "filament_id": "GF_ANAF",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PA6 Addlantis",
-      "sub_path": "filament/addnorth/addnorth PA6 Addlantis.json",
-      "inherits": "Generic PA @base",
-      "from": "system",
-      "setting_id": "GF_ANLA_00",
-      "filament_id": "GF_ANLA",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PVDF Adamant S1",
-      "sub_path": "filament/addnorth/addnorth PVDF Adamant S1.json",
-      "inherits": "Generic PA @base",
-      "from": "system",
-      "setting_id": "GF_ANPV_00",
-      "filament_id": "GF_ANPV",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
       "name": "Generic PA-CF",
       "sub_path": "filament/Generic PA-CF.json",
       "inherits": "Generic PA-CF @base",
@@ -18360,57 +18200,6 @@
         "Bambu Lab X2D 0.4 nozzle"
       ],
       "config_key_count": 44
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PA-CF Adura X",
-      "sub_path": "filament/addnorth/addnorth PA-CF Adura X.json",
-      "inherits": "Generic PA-CF @base",
-      "from": "system",
-      "setting_id": "GF_ANAX_00",
-      "filament_id": "GF_ANAX",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
     },
     {
       "vendor": "BBL",
@@ -19494,57 +19283,6 @@
         "Bambu Lab X2D 0.4 nozzle"
       ],
       "config_key_count": 44
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PC BLend HT LCF",
-      "sub_path": "filament/addnorth/addnorth PC BLend HT LCF.json",
-      "inherits": "Generic PC @base",
-      "from": "system",
-      "setting_id": "GF_ANPBX_00",
-      "filament_id": "GF_ANPBX",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
     },
     {
       "vendor": "BBL",
@@ -22847,312 +22585,6 @@
     {
       "vendor": "BBL",
       "type": "filament",
-      "name": "addnorth PETG Base",
-      "sub_path": "filament/addnorth/addnorth PETG Base.json",
-      "inherits": "Generic PETG @base",
-      "from": "system",
-      "setting_id": "GF_ANPE_00",
-      "filament_id": "GF_ANPE",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PETG ESD",
-      "sub_path": "filament/addnorth/addnorth PETG ESD.json",
-      "inherits": "Generic PETG @base",
-      "from": "system",
-      "setting_id": "GF_ANEG_00",
-      "filament_id": "GF_ANEG",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PETG Economy",
-      "sub_path": "filament/addnorth/addnorth PETG Economy.json",
-      "inherits": "Generic PETG @base",
-      "from": "system",
-      "setting_id": "GF_ANGE_00",
-      "filament_id": "GF_ANGE",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PETG Flame v0",
-      "sub_path": "filament/addnorth/addnorth PETG Flame v0.json",
-      "inherits": "Generic PETG @base",
-      "from": "system",
-      "setting_id": "GF_ANPF_00",
-      "filament_id": "GF_ANPF",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PETG PRO Matte",
-      "sub_path": "filament/addnorth/addnorth PETG PRO Matte.json",
-      "inherits": "Generic PETG @base",
-      "from": "system",
-      "setting_id": "GF_ANPM_00",
-      "filament_id": "GF_ANPM",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PETG rPETG Matte",
-      "sub_path": "filament/addnorth/addnorth PETG rPETG Matte.json",
-      "inherits": "Generic PETG @base",
-      "from": "system",
-      "setting_id": "GF_ANRM_00",
-      "filament_id": "GF_ANRM",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
       "name": "Generic PETG HF @BBL A1",
       "sub_path": "filament/Generic PETG HF @BBL A1.json",
       "inherits": "Generic PETG HF @base",
@@ -23623,57 +23055,6 @@
         "Bambu Lab X2D 0.4 nozzle"
       ],
       "config_key_count": 48
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PETG-CF Rigid X",
-      "sub_path": "filament/addnorth/addnorth PETG-CF Rigid X.json",
-      "inherits": "Generic PETG-CF @base",
-      "from": "system",
-      "setting_id": "GF_ANRX_00",
-      "filament_id": "GF_ANRX",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
     },
     {
       "vendor": "BBL",
@@ -29932,7 +29313,7 @@
         "Bambu Lab X1E 0.6 nozzle",
         "Bambu Lab X1E 0.8 nozzle"
       ],
-      "config_key_count": 29
+      "config_key_count": 28
     },
     {
       "vendor": "BBL",
@@ -32528,363 +31909,6 @@
     {
       "vendor": "BBL",
       "type": "filament",
-      "name": "addnorth PLA E-PLA",
-      "sub_path": "filament/addnorth/addnorth PLA E-PLA.json",
-      "inherits": "Generic PLA @base",
-      "from": "system",
-      "setting_id": "GF_ANEP_00",
-      "filament_id": "GF_ANEP",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PLA Economy",
-      "sub_path": "filament/addnorth/addnorth PLA Economy.json",
-      "inherits": "Generic PLA @base",
-      "from": "system",
-      "setting_id": "GF_ANPL_00",
-      "filament_id": "GF_ANPL",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PLA HT-PLA PRO Matte",
-      "sub_path": "filament/addnorth/addnorth PLA HT-PLA PRO Matte.json",
-      "inherits": "Generic PLA @base",
-      "from": "system",
-      "setting_id": "GF_ANHTP_00",
-      "filament_id": "GF_ANHTP",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PLA Textura",
-      "sub_path": "filament/addnorth/addnorth PLA Textura.json",
-      "inherits": "Generic PLA @base",
-      "from": "system",
-      "setting_id": "GF_ANTE_00",
-      "filament_id": "GF_ANTE",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PLA Wood",
-      "sub_path": "filament/addnorth/addnorth PLA Wood.json",
-      "inherits": "Generic PLA @base",
-      "from": "system",
-      "setting_id": "GF_ANPLW_00",
-      "filament_id": "GF_ANPLW",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PLA X-PLA",
-      "sub_path": "filament/addnorth/addnorth PLA X-PLA.json",
-      "inherits": "Generic PLA @base",
-      "from": "system",
-      "setting_id": "GF_ANXP_00",
-      "filament_id": "GF_ANXP",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PLA rPLA RE-ADD",
-      "sub_path": "filament/addnorth/addnorth PLA rPLA RE-ADD.json",
-      "inherits": "Generic PLA @base",
-      "from": "system",
-      "setting_id": "GF_ANRPL_00",
-      "filament_id": "GF_ANRPL",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
       "name": "Generic PLA High Speed @BBL A1",
       "sub_path": "filament/Generic PLA High Speed @BBL A1.json",
       "inherits": "Generic PLA High Speed @base",
@@ -33121,57 +32145,6 @@
     {
       "vendor": "BBL",
       "type": "filament",
-      "name": "addnorth PLA X-PLA High Speed",
-      "sub_path": "filament/addnorth/addnorth PLA X-PLA High Speed.json",
-      "inherits": "Generic PLA High Speed @base",
-      "from": "system",
-      "setting_id": "GF_ANXPH_00",
-      "filament_id": "GF_ANXPH",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
       "name": "Generic PLA Silk",
       "sub_path": "filament/Generic PLA Silk.json",
       "inherits": "Generic PLA Silk @base",
@@ -33338,57 +32311,6 @@
     {
       "vendor": "BBL",
       "type": "filament",
-      "name": "addnorth PLA Premium Silk",
-      "sub_path": "filament/addnorth/addnorth PLA Premium Silk.json",
-      "inherits": "Generic PLA Silk @base",
-      "from": "system",
-      "setting_id": "GF_ANPS_00",
-      "filament_id": "GF_ANPS",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
       "name": "Generic PLA-CF",
       "sub_path": "filament/Generic PLA-CF.json",
       "inherits": "Generic PLA-CF @base",
@@ -33551,57 +32473,6 @@
         "Bambu Lab X2D 0.4 nozzle"
       ],
       "config_key_count": 46
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth PLA-CF Carbon Fiber",
-      "sub_path": "filament/addnorth/addnorth PLA-CF Carbon Fiber.json",
-      "inherits": "Generic PLA-CF @base",
-      "from": "system",
-      "setting_id": "GF_ANPCF_00",
-      "filament_id": "GF_ANPCF",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
     },
     {
       "vendor": "BBL",
@@ -34601,6 +33472,22 @@
         "Bambu Lab X1E 0.2 nozzle"
       ],
       "config_key_count": 4
+    },
+    {
+      "vendor": "BBL",
+      "type": "filament",
+      "name": "Panchroma PLA Silk @BBL X1C 0.2 nozzle",
+      "sub_path": "filament/Polymaker/Panchroma PLA Silk @BBL X1C 0.2 nozzle.json",
+      "inherits": "Panchroma PLA Silk @base",
+      "from": "system",
+      "setting_id": "GFSPM004_09",
+      "instantiation": true,
+      "compatible_printers": [
+        "Bambu Lab X1 Carbon 0.2 nozzle",
+        "Bambu Lab P1S 0.2 nozzle",
+        "Bambu Lab X1E 0.2 nozzle"
+      ],
+      "config_key_count": 6
     },
     {
       "vendor": "BBL",
@@ -35880,7 +34767,7 @@
         "Bambu Lab A1 0.6 nozzle",
         "Bambu Lab A1 0.8 nozzle"
       ],
-      "config_key_count": 13
+      "config_key_count": 12
     },
     {
       "vendor": "BBL",
@@ -35910,7 +34797,7 @@
         "Bambu Lab A1 mini 0.6 nozzle",
         "Bambu Lab A1 mini 0.8 nozzle"
       ],
-      "config_key_count": 13
+      "config_key_count": 12
     },
     {
       "vendor": "BBL",
@@ -35940,7 +34827,7 @@
         "Bambu Lab P1P 0.6 nozzle",
         "Bambu Lab P1P 0.8 nozzle"
       ],
-      "config_key_count": 14
+      "config_key_count": 13
     },
     {
       "vendor": "BBL",
@@ -35970,7 +34857,7 @@
         "Bambu Lab X1 0.6 nozzle",
         "Bambu Lab X1 0.8 nozzle"
       ],
-      "config_key_count": 14
+      "config_key_count": 13
     },
     {
       "vendor": "BBL",
@@ -36163,22 +35050,6 @@
         "Bambu Lab X1E 0.4 nozzle",
         "Bambu Lab X1E 0.6 nozzle",
         "Bambu Lab X1E 0.8 nozzle"
-      ],
-      "config_key_count": 6
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "Panchroma PLA Silk @BBL X1C 0.2 nozzle",
-      "sub_path": "filament/Polymaker/Panchroma PLA Silk @BBL X1C 0.2 nozzle.json",
-      "inherits": "Panchroma PLA Silk @base",
-      "from": "system",
-      "setting_id": "GFSPM004_09",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab X1 Carbon 0.2 nozzle",
-        "Bambu Lab P1S 0.2 nozzle",
-        "Bambu Lab X1E 0.2 nozzle"
       ],
       "config_key_count": 6
     },
@@ -42286,159 +41157,6 @@
     {
       "vendor": "BBL",
       "type": "filament",
-      "name": "addnorth TPU EasyFlex",
-      "sub_path": "filament/addnorth/addnorth TPU EasyFlex.json",
-      "inherits": "Generic TPU @base",
-      "from": "system",
-      "setting_id": "GF_ANEF_00",
-      "filament_id": "GF_ANEF",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth TPU Pro Matte 85A",
-      "sub_path": "filament/addnorth/addnorth TPU Pro Matte 85A.json",
-      "inherits": "Generic TPU @base",
-      "from": "system",
-      "setting_id": "GF_ANTA_00",
-      "filament_id": "GF_ANTA",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
-      "name": "addnorth TPU Pro Matte 95A",
-      "sub_path": "filament/addnorth/addnorth TPU Pro Matte 95A.json",
-      "inherits": "Generic TPU @base",
-      "from": "system",
-      "setting_id": "GF_ANTM_00",
-      "filament_id": "GF_ANTM",
-      "instantiation": true,
-      "compatible_printers": [
-        "Bambu Lab A1 mini 0.4 nozzle",
-        "Bambu Lab A1 mini 0.6 nozzle",
-        "Bambu Lab A1 mini 0.8 nozzle",
-        "Bambu Lab A1 0.4 nozzle",
-        "Bambu Lab A1 0.6 nozzle",
-        "Bambu Lab A1 0.8 nozzle",
-        "Bambu Lab P1P 0.4 nozzle",
-        "Bambu Lab P1P 0.6 nozzle",
-        "Bambu Lab P1P 0.8 nozzle",
-        "Bambu Lab P1S 0.4 nozzle",
-        "Bambu Lab P1S 0.6 nozzle",
-        "Bambu Lab P1S 0.8 nozzle",
-        "Bambu Lab X1 0.4 nozzle",
-        "Bambu Lab X1 0.6 nozzle",
-        "Bambu Lab X1 0.8 nozzle",
-        "Bambu Lab X1 Carbon 0.4 nozzle",
-        "Bambu Lab X1 Carbon 0.6 nozzle",
-        "Bambu Lab X1 Carbon 0.8 nozzle",
-        "Bambu Lab X1E 0.4 nozzle",
-        "Bambu Lab X1E 0.6 nozzle",
-        "Bambu Lab X1E 0.8 nozzle",
-        "Bambu Lab H2D 0.4 nozzle",
-        "Bambu Lab H2D 0.6 nozzle",
-        "Bambu Lab H2D 0.8 nozzle",
-        "Bambu Lab H2D Pro 0.4 nozzle",
-        "Bambu Lab H2D Pro 0.6 nozzle",
-        "Bambu Lab H2D Pro 0.8 nozzle",
-        "Bambu Lab H2S 0.4 nozzle",
-        "Bambu Lab H2S 0.6 nozzle",
-        "Bambu Lab H2S 0.8 nozzle",
-        "Bambu Lab P2S 0.4 nozzle",
-        "Bambu Lab P2S 0.6 nozzle",
-        "Bambu Lab P2S 0.8 nozzle",
-        "Bambu Lab X2D 0.2 nozzle",
-        "Bambu Lab X2D 0.4 nozzle",
-        "Bambu Lab X2D 0.6 nozzle",
-        "Bambu Lab X2D 0.8 nozzle"
-      ],
-      "config_key_count": 92
-    },
-    {
-      "vendor": "BBL",
-      "type": "filament",
       "name": "Generic TPU for AMS @BBL A1",
       "sub_path": "filament/Generic TPU for AMS @BBL A1.json",
       "inherits": "Generic TPU for AMS @base",
@@ -48019,7 +46737,7 @@
         "Bambu Lab P1S 0.4 nozzle",
         "Bambu Lab X1E 0.4 nozzle"
       ],
-      "config_key_count": 41
+      "config_key_count": 40
     },
     {
       "vendor": "BBL",
@@ -49647,9 +48365,11 @@
         "BLOCKS RD50 V2 0.4 nozzle",
         "BLOCKS RD50 V2 0.6 nozzle",
         "BLOCKS RD50 V2 0.8 nozzle",
+        "BLOCKS RD50 V2",
         "BLOCKS RF50 0.4 nozzle",
         "BLOCKS RF50 0.6 nozzle",
-        "BLOCKS RF50 0.8 nozzle"
+        "BLOCKS RF50 0.8 nozzle",
+        "BLOCKS RF50"
       ],
       "config_key_count": 25
     },
@@ -49667,9 +48387,11 @@
         "BLOCKS RD50 V2 0.4 nozzle",
         "BLOCKS RD50 V2 0.6 nozzle",
         "BLOCKS RD50 V2 0.8 nozzle",
+        "BLOCKS RD50 V2",
         "BLOCKS RF50 0.4 nozzle",
         "BLOCKS RF50 0.6 nozzle",
-        "BLOCKS RF50 0.8 nozzle"
+        "BLOCKS RF50 0.8 nozzle",
+        "BLOCKS RF50"
       ],
       "config_key_count": 25
     },
@@ -49687,9 +48409,11 @@
         "BLOCKS RD50 V2 0.4 nozzle",
         "BLOCKS RD50 V2 0.6 nozzle",
         "BLOCKS RD50 V2 0.8 nozzle",
+        "BLOCKS RD50 V2",
         "BLOCKS RF50 0.4 nozzle",
         "BLOCKS RF50 0.6 nozzle",
-        "BLOCKS RF50 0.8 nozzle"
+        "BLOCKS RF50 0.8 nozzle",
+        "BLOCKS RF50"
       ],
       "config_key_count": 25
     },
@@ -49707,9 +48431,11 @@
         "BLOCKS RD50 V2 0.4 nozzle",
         "BLOCKS RD50 V2 0.6 nozzle",
         "BLOCKS RD50 V2 0.8 nozzle",
+        "BLOCKS RD50 V2",
         "BLOCKS RF50 0.4 nozzle",
         "BLOCKS RF50 0.6 nozzle",
-        "BLOCKS RF50 0.8 nozzle"
+        "BLOCKS RF50 0.8 nozzle",
+        "BLOCKS RF50"
       ],
       "config_key_count": 2
     },
@@ -49727,9 +48453,11 @@
         "BLOCKS RD50 V2 0.4 nozzle",
         "BLOCKS RD50 V2 0.6 nozzle",
         "BLOCKS RD50 V2 0.8 nozzle",
+        "BLOCKS RD50 V2",
         "BLOCKS RF50 0.4 nozzle",
         "BLOCKS RF50 0.6 nozzle",
-        "BLOCKS RF50 0.8 nozzle"
+        "BLOCKS RF50 0.8 nozzle",
+        "BLOCKS RF50"
       ],
       "config_key_count": 27
     },
@@ -49747,9 +48475,11 @@
         "BLOCKS RD50 V2 0.4 nozzle",
         "BLOCKS RD50 V2 0.6 nozzle",
         "BLOCKS RD50 V2 0.8 nozzle",
+        "BLOCKS RD50 V2",
         "BLOCKS RF50 0.4 nozzle",
         "BLOCKS RF50 0.6 nozzle",
-        "BLOCKS RF50 0.8 nozzle"
+        "BLOCKS RF50 0.8 nozzle",
+        "BLOCKS RF50"
       ],
       "config_key_count": 2
     },
@@ -49769,12 +48499,15 @@
         "BLOCKS Pro S100 0.8 nozzle",
         "BLOCKS Pro S100 1.0 nozzle",
         "BLOCKS Pro S100 1.2 nozzle",
+        "BLOCKS Pro S100",
         "BLOCKS RD50 V2 0.4 nozzle",
         "BLOCKS RD50 V2 0.6 nozzle",
         "BLOCKS RD50 V2 0.8 nozzle",
+        "BLOCKS RD50 V2",
         "BLOCKS RF50 0.4 nozzle",
         "BLOCKS RF50 0.6 nozzle",
-        "BLOCKS RF50 0.8 nozzle"
+        "BLOCKS RF50 0.8 nozzle",
+        "BLOCKS RF50"
       ],
       "config_key_count": 25
     },
@@ -49794,12 +48527,15 @@
         "BLOCKS Pro S100 0.8 nozzle",
         "BLOCKS Pro S100 1.0 nozzle",
         "BLOCKS Pro S100 1.2 nozzle",
+        "BLOCKS Pro S100",
         "BLOCKS RD50 V2 0.4 nozzle",
         "BLOCKS RD50 V2 0.6 nozzle",
         "BLOCKS RD50 V2 0.8 nozzle",
+        "BLOCKS RD50 V2",
         "BLOCKS RF50 0.4 nozzle",
         "BLOCKS RF50 0.6 nozzle",
-        "BLOCKS RF50 0.8 nozzle"
+        "BLOCKS RF50 0.8 nozzle",
+        "BLOCKS RF50"
       ],
       "config_key_count": 11
     },
@@ -49817,9 +48553,11 @@
         "BLOCKS RD50 V2 0.4 nozzle",
         "BLOCKS RD50 V2 0.6 nozzle",
         "BLOCKS RD50 V2 0.8 nozzle",
+        "BLOCKS RD50 V2",
         "BLOCKS RF50 0.4 nozzle",
         "BLOCKS RF50 0.6 nozzle",
-        "BLOCKS RF50 0.8 nozzle"
+        "BLOCKS RF50 0.8 nozzle",
+        "BLOCKS RF50"
       ],
       "config_key_count": 4
     },
@@ -49837,9 +48575,11 @@
         "BLOCKS RD50 V2 0.4 nozzle",
         "BLOCKS RD50 V2 0.6 nozzle",
         "BLOCKS RD50 V2 0.8 nozzle",
+        "BLOCKS RD50 V2",
         "BLOCKS RF50 0.4 nozzle",
         "BLOCKS RF50 0.6 nozzle",
-        "BLOCKS RF50 0.8 nozzle"
+        "BLOCKS RF50 0.8 nozzle",
+        "BLOCKS RF50"
       ],
       "config_key_count": 2
     },
@@ -49859,12 +48599,15 @@
         "BLOCKS Pro S100 0.8 nozzle",
         "BLOCKS Pro S100 1.0 nozzle",
         "BLOCKS Pro S100 1.2 nozzle",
+        "BLOCKS Pro S100",
         "BLOCKS RD50 V2 0.4 nozzle",
         "BLOCKS RD50 V2 0.6 nozzle",
         "BLOCKS RD50 V2 0.8 nozzle",
+        "BLOCKS RD50 V2",
         "BLOCKS RF50 0.4 nozzle",
         "BLOCKS RF50 0.6 nozzle",
-        "BLOCKS RF50 0.8 nozzle"
+        "BLOCKS RF50 0.8 nozzle",
+        "BLOCKS RF50"
       ],
       "config_key_count": 16
     },
@@ -49911,6 +48654,7 @@
       "setting_id": "8g0CmJDZhpbtbSLL",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RD50 V2",
         "BLOCKS RD50 V2 0.4 nozzle"
       ],
       "config_key_count": 4
@@ -49925,6 +48669,7 @@
       "setting_id": "qM5TCMjtTCThNyIS",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RF50",
         "BLOCKS RF50 0.4 nozzle"
       ],
       "config_key_count": 51
@@ -49939,6 +48684,7 @@
       "setting_id": "qYqbjNz16oTBOijO",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RD50 V2",
         "BLOCKS RD50 V2 0.4 nozzle"
       ],
       "config_key_count": 4
@@ -49953,6 +48699,7 @@
       "setting_id": "7vr8tF75IxNYOfy9",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RF50",
         "BLOCKS RF50 0.4 nozzle"
       ],
       "config_key_count": 51
@@ -49967,6 +48714,7 @@
       "setting_id": "47aDtVL6E5DVr7Mt",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 0.4 nozzle"
       ],
       "config_key_count": 3
@@ -49981,6 +48729,7 @@
       "setting_id": "k6jOPNbpunHqwbVl",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RD50 V2",
         "BLOCKS RD50 V2 0.4 nozzle"
       ],
       "config_key_count": 4
@@ -49995,6 +48744,7 @@
       "setting_id": "gwPin2OF8praSH3q",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RF50",
         "BLOCKS RF50 0.4 nozzle"
       ],
       "config_key_count": 55
@@ -50009,6 +48759,7 @@
       "setting_id": "ETADjxV6ViJQdnHA",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 0.4 nozzle"
       ],
       "config_key_count": 3
@@ -50023,6 +48774,7 @@
       "setting_id": "vLfwlqx8ZvCfUjMB",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RD50 V2",
         "BLOCKS RD50 V2 0.4 nozzle"
       ],
       "config_key_count": 4
@@ -50037,6 +48789,7 @@
       "setting_id": "HRSFefUk1ng3BuZN",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RF50",
         "BLOCKS RF50 0.4 nozzle"
       ],
       "config_key_count": 51
@@ -50051,6 +48804,7 @@
       "setting_id": "hzvbUnJIZb7TnPMu",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RD50 V2",
         "BLOCKS RD50 V2 0.4 nozzle"
       ],
       "config_key_count": 4
@@ -50065,6 +48819,7 @@
       "setting_id": "L7k7a4piZopE2QcB",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RF50",
         "BLOCKS RF50 0.4 nozzle"
       ],
       "config_key_count": 51
@@ -50079,6 +48834,7 @@
       "setting_id": "UbuICsmppKDsaaZ4",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 0.4 nozzle"
       ],
       "config_key_count": 3
@@ -50092,8 +48848,11 @@
       "from": "system",
       "instantiation": false,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 0.6 nozzle",
+        "BLOCKS RD50 V2",
         "BLOCKS RD50 V2 0.6 nozzle",
+        "BLOCKS RF50",
         "BLOCKS RF50 0.6 nozzle"
       ],
       "config_key_count": 56
@@ -50107,8 +48866,11 @@
       "from": "system",
       "instantiation": false,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 0.8 nozzle",
+        "BLOCKS RD50 V2",
         "BLOCKS RD50 V2 0.8 nozzle",
+        "BLOCKS RF50",
         "BLOCKS RF50 0.8 nozzle"
       ],
       "config_key_count": 66
@@ -50145,6 +48907,7 @@
       "setting_id": "IiIASiATlPKWXVqG",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RD50 V2",
         "BLOCKS RD50 V2 0.6 nozzle"
       ],
       "config_key_count": 4
@@ -50159,6 +48922,7 @@
       "setting_id": "PTRq9vSbhBdwNQo2",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RF50",
         "BLOCKS RF50 0.6 nozzle"
       ],
       "config_key_count": 51
@@ -50173,6 +48937,7 @@
       "setting_id": "Hlo2kNKKaU73D6lM",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RD50 V2",
         "BLOCKS RD50 V2 0.6 nozzle"
       ],
       "config_key_count": 4
@@ -50187,6 +48952,7 @@
       "setting_id": "QIOKDVdV2vAioPdS",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RF50",
         "BLOCKS RF50 0.6 nozzle"
       ],
       "config_key_count": 51
@@ -50201,6 +48967,7 @@
       "setting_id": "EPI3PAVK9LpJOZWO",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 0.6 nozzle"
       ],
       "config_key_count": 3
@@ -50215,6 +48982,7 @@
       "setting_id": "AvDKLcC3gvKsIwRk",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RD50 V2",
         "BLOCKS RD50 V2 0.6 nozzle"
       ],
       "config_key_count": 4
@@ -50229,6 +48997,7 @@
       "setting_id": "a9pWDZyKiqBAeQIN",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RF50",
         "BLOCKS RF50 0.6 nozzle"
       ],
       "config_key_count": 51
@@ -50243,6 +49012,7 @@
       "setting_id": "VDezd0KdeD8tk1Sx",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RD50 V2",
         "BLOCKS RD50 V2 0.6 nozzle"
       ],
       "config_key_count": 4
@@ -50257,6 +49027,7 @@
       "setting_id": "uIIZR5hRxqqfHms1",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RF50",
         "BLOCKS RF50 0.6 nozzle"
       ],
       "config_key_count": 51
@@ -50271,6 +49042,7 @@
       "setting_id": "CShVKoGspbMJNPw8",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 0.6 nozzle"
       ],
       "config_key_count": 3
@@ -50285,6 +49057,7 @@
       "setting_id": "YqkYzp5zdH4R5upm",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 0.8 nozzle"
       ],
       "config_key_count": 3
@@ -50299,6 +49072,7 @@
       "setting_id": "mxKcwnZ66FyXlLjV",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RD50 V2",
         "BLOCKS RD50 V2 0.8 nozzle"
       ],
       "config_key_count": 4
@@ -50313,6 +49087,7 @@
       "setting_id": "1w3zzORSbCmdLll4",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RF50",
         "BLOCKS RF50 0.8 nozzle"
       ],
       "config_key_count": 51
@@ -50327,6 +49102,7 @@
       "setting_id": "7zxjBEdM3uwaxnq9",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RD50 V2",
         "BLOCKS RD50 V2 0.8 nozzle"
       ],
       "config_key_count": 4
@@ -50341,6 +49117,7 @@
       "setting_id": "BCOEQmZHcO1zgeS9",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RF50",
         "BLOCKS RF50 0.8 nozzle"
       ],
       "config_key_count": 51
@@ -50355,6 +49132,7 @@
       "setting_id": "TSRjmfWaatY7oLJB",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 0.8 nozzle"
       ],
       "config_key_count": 3
@@ -50369,6 +49147,7 @@
       "setting_id": "BmJAogItwZ4epXFK",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RD50 V2",
         "BLOCKS RD50 V2 0.8 nozzle"
       ],
       "config_key_count": 4
@@ -50383,6 +49162,7 @@
       "setting_id": "3Ff2hKKOMu8RbExs",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RF50",
         "BLOCKS RF50 0.8 nozzle"
       ],
       "config_key_count": 51
@@ -50397,6 +49177,7 @@
       "setting_id": "vOtZHrDS88Shmf2m",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 0.8 nozzle"
       ],
       "config_key_count": 3
@@ -50411,6 +49192,7 @@
       "setting_id": "zEU21m57lJslrtWm",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RD50 V2",
         "BLOCKS RD50 V2 0.8 nozzle"
       ],
       "config_key_count": 4
@@ -50425,6 +49207,7 @@
       "setting_id": "8uJVEmWMNB1BzrhR",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS RF50",
         "BLOCKS RF50 0.8 nozzle"
       ],
       "config_key_count": 51
@@ -50439,6 +49222,7 @@
       "setting_id": "8pBawPScHkyQu0SW",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 1.0 nozzle"
       ],
       "config_key_count": 3
@@ -50453,6 +49237,7 @@
       "setting_id": "D40iksDm7mFjhSKn",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 1.0 nozzle"
       ],
       "config_key_count": 3
@@ -50467,6 +49252,7 @@
       "setting_id": "UJUe8XCBzZf8NyCL",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 1.0 nozzle"
       ],
       "config_key_count": 3
@@ -50481,6 +49267,7 @@
       "setting_id": "69PFmjOVFBOIp3Qg",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 1.0 nozzle"
       ],
       "config_key_count": 3
@@ -50495,6 +49282,7 @@
       "setting_id": "BKrEAKqDYzdH43wc",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 1.2 nozzle"
       ],
       "config_key_count": 3
@@ -50509,6 +49297,7 @@
       "setting_id": "PSBFrTykpkytPI2Q",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 1.2 nozzle"
       ],
       "config_key_count": 3
@@ -50523,6 +49312,7 @@
       "setting_id": "0ZQ0USGX9SwAKr29",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 1.2 nozzle"
       ],
       "config_key_count": 3
@@ -50537,6 +49327,7 @@
       "setting_id": "iBwRI5JJewW5HJSv",
       "instantiation": true,
       "compatible_printers": [
+        "BLOCKS Pro S100",
         "BLOCKS Pro S100 1.2 nozzle"
       ],
       "config_key_count": 3
@@ -51205,7 +49996,13 @@
       "compatible_printers": [
         "Chuanying X1 0.4 Nozzle",
         "Chuanying X1 0.6 Nozzle",
-        "Chuanying X1 0.8 Nozzle"
+        "Chuanying X1 0.8 Nozzle",
+        "Chuanying Adventurer 5M 0.4 Nozzle",
+        "Chuanying Adventurer 5M 0.6 Nozzle",
+        "Chuanying Adventurer 5M 0.8 Nozzle",
+        "Chuanying Adventurer 5M Pro 0.4 Nozzle",
+        "Chuanying Adventurer 5M Pro 0.6 Nozzle",
+        "Chuanying Adventurer 5M Pro 0.8 Nozzle"
       ],
       "config_key_count": 60
     },
@@ -52697,6 +51494,20 @@
     {
       "vendor": "Comgrow",
       "type": "process",
+      "name": "0.20mm Standard @Comgrow T500 1.0",
+      "sub_path": "process/0.20mm Standard @Comgrow T500 1.0.json",
+      "inherits": "fdm_process_comgrow_common",
+      "from": "system",
+      "setting_id": "2lOjEPJ5JELGadG3",
+      "instantiation": true,
+      "compatible_printers": [
+        "Comgrow T500 1.0 nozzle"
+      ],
+      "config_key_count": 91
+    },
+    {
+      "vendor": "Comgrow",
+      "type": "process",
       "name": "0.24mm Draft @Comgrow T500 0.4",
       "sub_path": "process/0.24mm Draft @Comgrow T500 0.4.json",
       "inherits": "fdm_process_comgrow_common",
@@ -54174,38 +52985,6 @@
         "0.4"
       ],
       "config_key_count": 97
-    },
-    {
-      "vendor": "Creality",
-      "type": "machine",
-      "name": "Creality Ender-5 Max 0.6 nozzle",
-      "sub_path": "machine/Creality Ender-5 Max 0.6 nozzle.json",
-      "inherits": "fdm_creality_common",
-      "from": "system",
-      "setting_id": "1idSrUiK9hZwCJNy",
-      "instantiation": true,
-      "printer_model": "Creality Ender-5 Max",
-      "printer_variant": "0.6",
-      "nozzle_diameter": [
-        "0.6"
-      ],
-      "config_key_count": 104
-    },
-    {
-      "vendor": "Creality",
-      "type": "machine",
-      "name": "Creality Ender-5 Max 0.8 nozzle",
-      "sub_path": "machine/Creality Ender-5 Max 0.8 nozzle.json",
-      "inherits": "fdm_creality_common",
-      "from": "system",
-      "setting_id": "mPvxCeNkSTMYta2L",
-      "instantiation": true,
-      "printer_model": "Creality Ender-5 Max",
-      "printer_variant": "0.8",
-      "nozzle_diameter": [
-        "0.8"
-      ],
-      "config_key_count": 104
     },
     {
       "vendor": "Creality",
@@ -64132,7 +62911,7 @@
       "compatible_printers": [
         "Creality Ender-3 V3 SE 0.4 nozzle"
       ],
-      "config_key_count": 100
+      "config_key_count": 99
     },
     {
       "vendor": "Creality",
@@ -64527,7 +63306,7 @@
       "compatible_printers": [
         "Creality Ender-3 V3 SE 0.4 nozzle"
       ],
-      "config_key_count": 100
+      "config_key_count": 99
     },
     {
       "vendor": "Creality",
@@ -65005,7 +63784,7 @@
       "compatible_printers": [
         "Creality Ender-3 V3 SE 0.4 nozzle"
       ],
-      "config_key_count": 100
+      "config_key_count": 99
     },
     {
       "vendor": "Creality",
@@ -65413,7 +64192,7 @@
       "compatible_printers": [
         "Creality Ender-3 V3 SE 0.4 nozzle"
       ],
-      "config_key_count": 100
+      "config_key_count": 99
     },
     {
       "vendor": "Creality",
@@ -66125,7 +64904,7 @@
       "setting_id": "wrSsDTXZmqGP7jI6",
       "instantiation": true,
       "compatible_printers": [
-        "Creality CR-10 SE 0.2 nozzle"
+        "Creality CR-10SE 0.2 nozzle"
       ],
       "config_key_count": 106
     },
@@ -66737,7 +65516,7 @@
       "compatible_printers": [
         "Creality K1 SE 0.4 nozzle"
       ],
-      "config_key_count": 257
+      "config_key_count": 256
     },
     {
       "vendor": "Creality",
@@ -67692,7 +66471,7 @@
       "compatible_printers": [
         "Creality K1C 0.8 nozzle"
       ],
-      "config_key_count": 106
+      "config_key_count": 105
     },
     {
       "vendor": "Creality",
@@ -77745,7 +76524,7 @@
         "Elegoo Neptune 4 Max 0.8 nozzle",
         "Elegoo Neptune 4 Max 1.0 nozzle"
       ],
-      "config_key_count": 47
+      "config_key_count": 46
     },
     {
       "vendor": "Elegoo",
@@ -99089,7 +97868,7 @@
         "Ginger G1 5.0 nozzle",
         "Ginger G1 8.0 nozzle"
       ],
-      "config_key_count": 47
+      "config_key_count": 46
     },
     {
       "vendor": "Ginger Additive",
@@ -99106,7 +97885,7 @@
         "Ginger G1 5.0 nozzle",
         "Ginger G1 8.0 nozzle"
       ],
-      "config_key_count": 47
+      "config_key_count": 46
     },
     {
       "vendor": "Ginger Additive",
@@ -103290,7 +102069,7 @@
       "setting_id": "TkBYOyBebm3pMHrl",
       "instantiation": true,
       "compatible_printers": [
-        "MM hqs SF 0.4 nozzle"
+        "MM hqs sf 0.4 nozzle"
       ],
       "config_key_count": 103
     },
@@ -105851,7 +104630,8 @@
       "setting_id": "8hA0aiO1Qtv9IfeR",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.2 nozzle"
+        "Orca Arena X1 Carbon 0.2 nozzle",
+        "Orca Arena X1 0.2 nozzle"
       ],
       "config_key_count": 0
     },
@@ -105865,7 +104645,8 @@
       "setting_id": "t6ZUh6RIxH5i7Ju0",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.4 nozzle"
+        "Orca Arena X1 Carbon 0.4 nozzle",
+        "Orca Arena X1 0.4 nozzle"
       ],
       "config_key_count": 0
     },
@@ -105879,7 +104660,8 @@
       "setting_id": "AnDHc3M6fQLAl6VE",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.2 nozzle"
+        "Orca Arena X1 Carbon 0.2 nozzle",
+        "Orca Arena X1 0.2 nozzle"
       ],
       "config_key_count": 0
     },
@@ -105893,7 +104675,8 @@
       "setting_id": "Z4u3mxJ72aSZDIxB",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.2 nozzle"
+        "Orca Arena X1 Carbon 0.2 nozzle",
+        "Orca Arena X1 0.2 nozzle"
       ],
       "config_key_count": 0
     },
@@ -105907,7 +104690,8 @@
       "setting_id": "orfsZJWNnKXKdxaZ",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.4 nozzle"
+        "Orca Arena X1 Carbon 0.4 nozzle",
+        "Orca Arena X1 0.4 nozzle"
       ],
       "config_key_count": 0
     },
@@ -105921,7 +104705,8 @@
       "setting_id": "GO4dmyDkhygncuJZ",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.2 nozzle"
+        "Orca Arena X1 Carbon 0.2 nozzle",
+        "Orca Arena X1 0.2 nozzle"
       ],
       "config_key_count": 0
     },
@@ -105935,7 +104720,8 @@
       "setting_id": "MVY5JxFxbdSUWTOW",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.2 nozzle"
+        "Orca Arena X1 Carbon 0.2 nozzle",
+        "Orca Arena X1 0.2 nozzle"
       ],
       "config_key_count": 0
     },
@@ -105949,7 +104735,8 @@
       "setting_id": "KGSeKT36RuDzR3E6",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.4 nozzle"
+        "Orca Arena X1 Carbon 0.4 nozzle",
+        "Orca Arena X1 0.4 nozzle"
       ],
       "config_key_count": 0
     },
@@ -105963,7 +104750,8 @@
       "setting_id": "IbPMWoSXjuZxo5po",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.6 nozzle"
+        "Orca Arena X1 Carbon 0.6 nozzle",
+        "Orca Arena X1 0.6 nozzle"
       ],
       "config_key_count": 0
     },
@@ -105977,7 +104765,8 @@
       "setting_id": "GbnCSaKZmIxFJiQU",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.4 nozzle"
+        "Orca Arena X1 Carbon 0.4 nozzle",
+        "Orca Arena X1 0.4 nozzle"
       ],
       "config_key_count": 9
     },
@@ -105991,7 +104780,8 @@
       "setting_id": "vKHHMGciyRPz96ys",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.4 nozzle"
+        "Orca Arena X1 Carbon 0.4 nozzle",
+        "Orca Arena X1 0.4 nozzle"
       ],
       "config_key_count": 0
     },
@@ -106005,7 +104795,8 @@
       "setting_id": "FjVoPLBVhhfkZcti",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.4 nozzle"
+        "Orca Arena X1 Carbon 0.4 nozzle",
+        "Orca Arena X1 0.4 nozzle"
       ],
       "config_key_count": 3
     },
@@ -106019,7 +104810,8 @@
       "setting_id": "A3tBfYESL5BUa6az",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.4 nozzle"
+        "Orca Arena X1 Carbon 0.4 nozzle",
+        "Orca Arena X1 0.4 nozzle"
       ],
       "config_key_count": 0
     },
@@ -106033,7 +104825,8 @@
       "setting_id": "EHZbaCSjWI2NuLBb",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.6 nozzle"
+        "Orca Arena X1 Carbon 0.6 nozzle",
+        "Orca Arena X1 0.6 nozzle"
       ],
       "config_key_count": 0
     },
@@ -106047,7 +104840,8 @@
       "setting_id": "YUmFXao5txOnlhO6",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.8 nozzle"
+        "Orca Arena X1 Carbon 0.8 nozzle",
+        "Orca Arena X1 0.8 nozzle"
       ],
       "config_key_count": 0
     },
@@ -106061,7 +104855,8 @@
       "setting_id": "Q03WAuYXUC4h4Vyk",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.4 nozzle"
+        "Orca Arena X1 Carbon 0.4 nozzle",
+        "Orca Arena X1 0.4 nozzle"
       ],
       "config_key_count": 0
     },
@@ -106089,7 +104884,8 @@
       "setting_id": "Fta7TXvjXtW72vf2",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.6 nozzle"
+        "Orca Arena X1 Carbon 0.6 nozzle",
+        "Orca Arena X1 0.6 nozzle"
       ],
       "config_key_count": 2
     },
@@ -106103,7 +104899,8 @@
       "setting_id": "B1M42JYHlcp5aUoq",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.8 nozzle"
+        "Orca Arena X1 Carbon 0.8 nozzle",
+        "Orca Arena X1 0.8 nozzle"
       ],
       "config_key_count": 0
     },
@@ -106117,7 +104914,8 @@
       "setting_id": "N5ONn0pY2DO8xlFq",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.6 nozzle"
+        "Orca Arena X1 Carbon 0.6 nozzle",
+        "Orca Arena X1 0.6 nozzle"
       ],
       "config_key_count": 0
     },
@@ -106145,7 +104943,8 @@
       "setting_id": "aKOq8cZ3LHNl61tR",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.6 nozzle"
+        "Orca Arena X1 Carbon 0.6 nozzle",
+        "Orca Arena X1 0.6 nozzle"
       ],
       "config_key_count": 0
     },
@@ -106159,7 +104958,8 @@
       "setting_id": "ZcviTCabCemJLEEa",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.8 nozzle"
+        "Orca Arena X1 Carbon 0.8 nozzle",
+        "Orca Arena X1 0.8 nozzle"
       ],
       "config_key_count": 0
     },
@@ -106173,7 +104973,8 @@
       "setting_id": "tqiu1hNVhXEsBBig",
       "instantiation": true,
       "compatible_printers": [
-        "Orca Arena X1 Carbon 0.8 nozzle"
+        "Orca Arena X1 Carbon 0.8 nozzle",
+        "Orca Arena X1 0.8 nozzle"
       ],
       "config_key_count": 0
     },
@@ -111986,7 +110787,7 @@
         "Peopoly Magneto X 0.6 nozzle",
         "Peopoly Magneto X 0.8 nozzle"
       ],
-      "config_key_count": 12
+      "config_key_count": 11
     },
     {
       "vendor": "Peopoly",
@@ -117731,6 +116532,8 @@
         "Prusa MK4S 0.3 nozzle",
         "Prusa MK4S 0.4 nozzle",
         "Prusa MK4S 0.5 nozzle",
+        "Prusa MK4S HF0.25 nozzle",
+        "Prusa MK4S HF0.3 nozzle",
         "Prusa MK4S HF0.4 nozzle",
         "Prusa MK4S HF0.5 nozzle"
       ],
@@ -125491,9 +124294,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -125517,9 +124325,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -125543,9 +124356,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -125563,15 +124381,24 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Plus 0.4 nozzle",
         "Qidi X-Max 0.4 nozzle",
         "Qidi X-CF Pro 0.4 nozzle",
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -125595,9 +124422,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -125615,15 +124447,24 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Plus 0.4 nozzle",
         "Qidi X-Max 0.4 nozzle",
         "Qidi X-CF Pro 0.4 nozzle",
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -125661,15 +124502,24 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Plus 0.4 nozzle",
         "Qidi X-Max 0.4 nozzle",
         "Qidi X-CF Pro 0.4 nozzle",
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -125693,9 +124543,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -125719,9 +124574,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -125745,9 +124605,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -125791,9 +124656,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -125910,9 +124780,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -125936,9 +124811,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle",
@@ -125971,9 +124851,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle",
@@ -126006,6 +124891,8 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -126149,9 +125036,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -126175,9 +125067,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -126195,15 +125092,24 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Plus 0.4 nozzle",
         "Qidi X-Max 0.4 nozzle",
         "Qidi X-CF Pro 0.4 nozzle",
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -126221,6 +125127,9 @@
       "filament_id": "GFG98",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle",
@@ -126230,9 +125139,15 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle",
@@ -126518,12 +125433,21 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Plus 0.4 nozzle",
         "Qidi X-Max 0.4 nozzle",
         "Qidi X-CF Pro 0.4 nozzle",
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
-        "Qidi X-Max 3 0.4 nozzle"
+        "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle"
       ],
       "config_key_count": 7
     },
@@ -126544,9 +125468,15 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle",
@@ -126568,12 +125498,21 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Plus 0.4 nozzle",
         "Qidi X-Max 0.4 nozzle",
         "Qidi X-CF Pro 0.4 nozzle",
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
-        "Qidi X-Max 3 0.4 nozzle"
+        "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle"
       ],
       "config_key_count": 9
     },
@@ -126588,6 +125527,9 @@
       "filament_id": "GFL98",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle",
@@ -126597,9 +125539,15 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle",
@@ -126645,6 +125593,9 @@
       "filament_id": "GFS99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle",
@@ -126654,9 +125605,15 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle",
@@ -126712,6 +125669,8 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -126758,9 +125717,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle",
@@ -126788,9 +125752,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle",
@@ -126818,9 +125787,14 @@
         "Qidi X-Smart 3 0.4 nozzle",
         "Qidi X-Plus 3 0.4 nozzle",
         "Qidi X-Max 3 0.4 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle",
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle",
@@ -134568,6 +133542,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -134585,6 +133562,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -134602,6 +133582,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -134739,6 +133722,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -134756,6 +133742,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -134773,6 +133762,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -134910,6 +133902,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -134927,6 +133922,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -134944,6 +133942,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -135081,6 +134082,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -135098,6 +134102,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -135115,6 +134122,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -135252,6 +134262,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -135269,6 +134282,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -135286,6 +134302,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -135423,6 +134442,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -135440,6 +134462,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -135457,6 +134482,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -135594,6 +134622,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -135611,6 +134642,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -135628,6 +134662,9 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -136920,6 +135957,9 @@
       "filament_id": "GFL98",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -136937,6 +135977,9 @@
       "filament_id": "GFL98",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -137134,6 +136177,8 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -137151,6 +136196,8 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -137258,6 +136305,8 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -137275,6 +136324,8 @@
       "filament_id": "GFB99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -137646,6 +136697,9 @@
       "filament_id": "GFC99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -137663,6 +136717,9 @@
       "filament_id": "GFC99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -137800,6 +136857,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle",
@@ -137818,6 +136878,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -137835,6 +136898,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -137972,6 +137038,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle",
@@ -137990,6 +137059,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -138007,6 +137079,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -138144,6 +137219,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle",
@@ -138162,6 +137240,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -138179,6 +137260,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -138316,6 +137400,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle",
@@ -138334,6 +137421,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -138351,6 +137441,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -138488,6 +137581,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle",
@@ -138506,6 +137602,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -138523,6 +137622,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -138660,6 +137762,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle",
@@ -138678,6 +137783,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -138695,6 +137803,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -139177,6 +138288,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -139194,6 +138308,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -139211,6 +138328,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -139348,6 +138468,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -139365,6 +138488,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -139382,6 +138508,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -139519,6 +138648,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -139536,6 +138668,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -139553,6 +138688,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -139690,6 +138828,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -139707,6 +138848,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -139724,6 +138868,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -139861,6 +139008,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -139878,6 +139028,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -139895,6 +139048,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -140032,6 +139188,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -140049,6 +139208,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -140066,6 +139228,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -140203,6 +139368,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -140220,6 +139388,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -140237,6 +139408,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -140374,6 +139548,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -140391,6 +139568,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -140408,6 +139588,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -140545,6 +139728,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.2 nozzle",
+        "Qidi X-Max 0.2 nozzle",
+        "Qidi X-CF Pro 0.2 nozzle",
         "Qidi X-Smart 3 0.2 nozzle",
         "Qidi X-Plus 3 0.2 nozzle",
         "Qidi X-Max 3 0.2 nozzle"
@@ -140562,6 +139748,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -140579,6 +139768,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -140716,6 +139908,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -140793,6 +139988,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -140810,6 +140008,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -141457,6 +140658,9 @@
       "filament_id": "GFL98",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.6 nozzle",
+        "Qidi X-Max 0.6 nozzle",
+        "Qidi X-CF Pro 0.6 nozzle",
         "Qidi X-Smart 3 0.6 nozzle",
         "Qidi X-Plus 3 0.6 nozzle",
         "Qidi X-Max 3 0.6 nozzle"
@@ -141474,6 +140678,9 @@
       "filament_id": "GFL98",
       "instantiation": true,
       "compatible_printers": [
+        "Qidi X-Plus 0.8 nozzle",
+        "Qidi X-Max 0.8 nozzle",
+        "Qidi X-CF Pro 0.8 nozzle",
         "Qidi X-Smart 3 0.8 nozzle",
         "Qidi X-Plus 3 0.8 nozzle",
         "Qidi X-Max 3 0.8 nozzle"
@@ -157452,7 +156659,7 @@
         "Snapmaker A350 QSKit (0.6 nozzle)",
         "Snapmaker A350 QSKit (0.8 nozzle)"
       ],
-      "config_key_count": 1
+      "config_key_count": 0
     },
     {
       "vendor": "Snapmaker",
@@ -170038,17 +169245,6 @@
     {
       "vendor": "Voron",
       "type": "process",
-      "name": "0.32mm Optimal 0.8 nozzle @Voron",
-      "sub_path": "process/0.32mm Optimal 0.8 nozzle @Voron.json",
-      "inherits": "fdm_process_voron_common_0_8",
-      "from": "system",
-      "setting_id": "ivS6U4AuIoj1cJhZ",
-      "instantiation": true,
-      "config_key_count": 3
-    },
-    {
-      "vendor": "Voron",
-      "type": "process",
       "name": "0.40mm Standard 0.8 nozzle @Voron",
       "sub_path": "process/0.40mm Standard 0.8 nozzle @Voron.json",
       "inherits": "fdm_process_voron_common_0_8",
@@ -172331,11 +171527,11 @@
         "D12 500 PRO M2 DIRECT 0.4 nozzle",
         "D12 500 PRO SMARTPAD DIRECT 0.4 nozzle",
         "D12 230 PRO M2 MONO DUAL 0.4 nozzle",
-        "D12 230 PRO M2 MONO DUAL 0.4 nozzle PoopTool",
+        "D12 230 PRO M2 MONO DUAL PoopTool 0.4 nozzle",
         "D12 300 PRO M2 MONO DUAL PoopTool 0.4 nozzle",
         "D12 500 PRO M2 MONO DUAL PoopTool 0.4 nozzle",
         "D12 230 PRO SMARTPAD MONO DUAL 0.4 nozzle",
-        "D12 230 PRO SMARTPAD MONO DUAL 0.4 nozzle PoopTool",
+        "D12 230 PRO SMARTPAD MONO DUAL PoopTool 0.4 nozzle",
         "D12 300 PRO SMARTPAD MONO DUAL PoopTool 0.4 nozzle",
         "D12 500 PRO SMARTPAD MONO DUAL PoopTool 0.4 nozzle",
         "D12 300 PRO M2 MONO DUAL 0.4 nozzle",
@@ -177493,12 +176689,9 @@
       "filament_id": "GFG99",
       "instantiation": true,
       "compatible_printers": [
-        "re3D Gigabot 4 0.4 nozzle",
-        "re3D Gigabot 4 XLT 0.4 nozzle",
-        "re3D Terabot 4 0.4 nozzle",
-        "re3D Gigabot 4 0.8 nozzle",
-        "re3D Gigabot 4 XLT 0.8 nozzle",
-        "re3D Terabot 4 0.8 nozzle"
+        "re3D Gigabot 4",
+        "re3D Gigabot 4 XLT",
+        "re3D Terabot 4"
       ],
       "config_key_count": 2
     },
@@ -177547,12 +176740,9 @@
       "filament_id": "GFG01",
       "instantiation": true,
       "compatible_printers": [
-        "re3D GigabotX 2 0.8 nozzle",
-        "re3D GigabotX 2 XLT 0.8 nozzle",
-        "re3D TerabotX 2 0.8 nozzle",
-        "re3D GigabotX 2 1.75 nozzle",
-        "re3D GigabotX 2 XLT 1.75 nozzle",
-        "re3D TerabotX 2 1.75 nozzle"
+        "re3D GigabotX 2",
+        "re3D GigabotX 2 XLT",
+        "re3D TerabotX 2"
       ],
       "config_key_count": 2
     },
@@ -177601,12 +176791,9 @@
       "filament_id": "GFG03",
       "instantiation": true,
       "compatible_printers": [
-        "re3D Gigabot 4 0.4 nozzle",
-        "re3D Gigabot 4 XLT 0.4 nozzle",
-        "re3D Terabot 4 0.4 nozzle",
-        "re3D Gigabot 4 0.8 nozzle",
-        "re3D Gigabot 4 XLT 0.8 nozzle",
-        "re3D Terabot 4 0.8 nozzle"
+        "re3D Gigabot 4",
+        "re3D Gigabot 4 XLT",
+        "re3D Terabot 4"
       ],
       "config_key_count": 2
     },
@@ -177655,12 +176842,9 @@
       "filament_id": "GFG02",
       "instantiation": true,
       "compatible_printers": [
-        "re3D GigabotX 2 0.8 nozzle",
-        "re3D GigabotX 2 XLT 0.8 nozzle",
-        "re3D TerabotX 2 0.8 nozzle",
-        "re3D GigabotX 2 1.75 nozzle",
-        "re3D GigabotX 2 XLT 1.75 nozzle",
-        "re3D TerabotX 2 1.75 nozzle"
+        "re3D GigabotX 2",
+        "re3D GigabotX 2 XLT",
+        "re3D TerabotX 2"
       ],
       "config_key_count": 3
     },
@@ -177709,12 +176893,9 @@
       "filament_id": "GFL99",
       "instantiation": true,
       "compatible_printers": [
-        "re3D Gigabot 4 0.4 nozzle",
-        "re3D Gigabot 4 XLT 0.4 nozzle",
-        "re3D Terabot 4 0.4 nozzle",
-        "re3D Gigabot 4 0.8 nozzle",
-        "re3D Gigabot 4 XLT 0.8 nozzle",
-        "re3D Terabot 4 0.8 nozzle"
+        "re3D Gigabot 4",
+        "re3D Gigabot 4 XLT",
+        "re3D Terabot 4"
       ],
       "config_key_count": 2
     },
@@ -177931,6 +177112,8 @@
     "Creality/filament/Hyper PETG @Ender-5 Max-all.json",
     "Creality/filament/Hyper PLA @Ender-5 Max-all.json",
     "Creality/filament/Hyper PLA-CF @Ender-5 Max-all.json",
+    "Creality/machine/Creality Ender-5 Max 0.6 nozzle.json",
+    "Creality/machine/Creality Ender-5 Max 0.8 nozzle.json",
     "Elegoo/filament/fdm_filament_paht.json",
     "InfiMech/machine/fdm_klipper_common.json",
     "InfiMech/machine/fdm_machine_common.json",

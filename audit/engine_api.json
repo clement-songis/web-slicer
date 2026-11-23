@@ -4,7 +4,7 @@
   "summary": {
     "headers": 14,
     "classes": 163,
-    "public_methods": 1369
+    "public_methods": 1366
   },
   "headers": [
     {
@@ -85,7 +85,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 797
+              "gui_call_sites": 801
             },
             {
               "name": "empty",
@@ -94,19 +94,19 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 2789
+              "gui_call_sites": 2779
             },
             {
               "name": "set",
               "params": "const std::vector<coordf_t> &data",
               "returns": "void",
-              "gui_call_sites": 199
+              "gui_call_sites": 206
             },
             {
               "name": "set",
               "params": "std::vector<coordf_t> &&data",
               "returns": "void",
-              "gui_call_sites": 199
+              "gui_call_sites": 206
             },
             {
               "name": "clear",
@@ -848,7 +848,7 @@
               "name": "set",
               "params": "const TriangleSelector& selector",
               "returns": "bool",
-              "gui_call_sites": 199
+              "gui_call_sites": 206
             },
             {
               "name": "get_facets",
@@ -899,7 +899,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 2789
+              "gui_call_sites": 2779
             },
             {
               "name": "reset",
@@ -2110,7 +2110,7 @@
               "name": "load",
               "params": "ModelInfo &info",
               "returns": "void",
-              "gui_call_sites": 37
+              "gui_call_sites": 36
             }
           ],
           "gui_references": 3,
@@ -2802,7 +2802,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 1426
+              "gui_call_sites": 1428
             },
             {
               "name": "end",
@@ -2811,7 +2811,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 2003
+              "gui_call_sites": 2005
             },
             {
               "name": "front",
@@ -2838,7 +2838,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 3615
+              "gui_call_sites": 3613
             },
             {
               "name": "empty",
@@ -2847,7 +2847,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 2789
+              "gui_call_sites": 2779
             },
             {
               "name": "operator[]",
@@ -3047,7 +3047,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 3615
+              "gui_call_sites": 3613
             },
             {
               "name": "config",
@@ -3843,7 +3843,7 @@
                 "const",
                 "override"
               ],
-              "gui_call_sites": 2789
+              "gui_call_sites": 2779
             },
             {
               "name": "print_object_ids",
@@ -5028,7 +5028,7 @@
                 "const",
                 "pure"
               ],
-              "gui_call_sites": 2789
+              "gui_call_sites": 2779
             },
             {
               "name": "print_object_ids",
@@ -5914,7 +5914,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 3615
+              "gui_call_sites": 3613
             },
             {
               "name": "center",
@@ -5959,7 +5959,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 2789
+              "gui_call_sites": 2779
             },
             {
               "name": "repaired",
@@ -6065,7 +6065,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 1426
+              "gui_call_sites": 1428
             },
             {
               "name": "end",
@@ -6074,7 +6074,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 2003
+              "gui_call_sites": 2005
             },
             {
               "name": "count",
@@ -6083,7 +6083,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 106
+              "gui_call_sites": 104
             },
             {
               "name": "operator[]",
@@ -6910,7 +6910,7 @@
               "name": "set",
               "params": "const std::string &opt_key, T value",
               "returns": "void",
-              "gui_call_sites": 199
+              "gui_call_sites": 206
             },
             {
               "name": "set_deserialize",
@@ -6931,7 +6931,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 797
+              "gui_call_sites": 801
             },
             {
               "name": "empty",
@@ -6940,7 +6940,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 2789
+              "gui_call_sites": 2779
             },
             {
               "name": "size",
@@ -6949,7 +6949,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 3615
+              "gui_call_sites": 3613
             },
             {
               "name": "cbegin",
@@ -7311,7 +7311,7 @@
               "name": "save",
               "params": "DynamicPrintConfig* parent_config",
               "returns": "void",
-              "gui_call_sites": 60
+              "gui_call_sites": 61
             },
             {
               "name": "reload",
@@ -7745,7 +7745,7 @@
               "name": "begin",
               "params": "",
               "returns": "Iterator",
-              "gui_call_sites": 1426
+              "gui_call_sites": 1428
             },
             {
               "name": "begin",
@@ -7754,7 +7754,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 1426
+              "gui_call_sites": 1428
             },
             {
               "name": "cbegin",
@@ -7769,7 +7769,7 @@
               "name": "end",
               "params": "",
               "returns": "Iterator",
-              "gui_call_sites": 2003
+              "gui_call_sites": 2005
             },
             {
               "name": "end",
@@ -7778,7 +7778,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 2003
+              "gui_call_sites": 2005
             },
             {
               "name": "cend",
@@ -7805,7 +7805,7 @@
               "name": "lock",
               "params": "",
               "returns": "void",
-              "gui_call_sites": 188
+              "gui_call_sites": 187
             },
             {
               "name": "unlock",
@@ -8352,7 +8352,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 3615
+              "gui_call_sites": 3613
             },
             {
               "name": "has_defaults_only",
@@ -8652,13 +8652,13 @@
               "name": "save",
               "params": "DynamicPrintConfig* parent_config",
               "returns": "void",
-              "gui_call_sites": 60
+              "gui_call_sites": 61
             },
             {
               "name": "save",
               "params": "const std::string& file_name_from, const std::string& file_name_to",
               "returns": "void",
-              "gui_call_sites": 60
+              "gui_call_sites": 61
             },
             {
               "name": "update_from_preset",
@@ -8764,7 +8764,7 @@
               "name": "begin",
               "params": "",
               "returns": "Iterator",
-              "gui_call_sites": 1426
+              "gui_call_sites": 1428
             },
             {
               "name": "begin",
@@ -8773,7 +8773,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 1426
+              "gui_call_sites": 1428
             },
             {
               "name": "cbegin",
@@ -8788,7 +8788,7 @@
               "name": "end",
               "params": "",
               "returns": "Iterator",
-              "gui_call_sites": 2003
+              "gui_call_sites": 2005
             },
             {
               "name": "end",
@@ -8797,7 +8797,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 2003
+              "gui_call_sites": 2005
             },
             {
               "name": "cend",
@@ -8815,7 +8815,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 2789
+              "gui_call_sites": 2779
             },
             {
               "name": "reset",
@@ -9070,7 +9070,7 @@
               "name": "empty",
               "params": "",
               "returns": "bool",
-              "gui_call_sites": 2789
+              "gui_call_sites": 2779
             }
           ],
           "gui_references": 1,
@@ -9653,12 +9653,6 @@
               "gui_call_sites": 19
             },
             {
-              "name": "normalize_compatible_presets",
-              "params": "",
-              "returns": "void",
-              "gui_call_sites": 0
-            },
-            {
               "name": "load_installed_printers",
               "params": "const AppConfig &config",
               "returns": "void",
@@ -9721,15 +9715,6 @@
             {
               "name": "has_errors",
               "params": "bool check_duplicate_filament_subtypes = false",
-              "returns": "bool",
-              "qualifiers": [
-                "const"
-              ],
-              "gui_call_sites": 0
-            },
-            {
-              "name": "check_preset_references",
-              "params": "",
               "returns": "bool",
               "qualifiers": [
                 "const"
@@ -9953,7 +9938,7 @@
               "qualifiers": [
                 "static"
               ],
-              "gui_call_sites": 797
+              "gui_call_sites": 801
             }
           ],
           "gui_references": 1,
@@ -10338,7 +10323,7 @@
               "name": "close",
               "params": "",
               "returns": "void",
-              "gui_call_sites": 91
+              "gui_call_sites": 90
             },
             {
               "name": "write",
@@ -10603,7 +10588,7 @@
               "qualifiers": [
                 "const"
               ],
-              "gui_call_sites": 188
+              "gui_call_sites": 187
             },
             {
               "name": "unlock",
@@ -11123,17 +11108,8 @@
               "gui_call_sites": 409
             },
             {
-              "name": "merge_adjacent_additional_time_blocks",
-              "params": "const AdditionalBuffer& buffer",
-              "returns": "AdditionalBuffer",
-              "qualifiers": [
-                "static"
-              ],
-              "gui_call_sites": 0
-            },
-            {
               "name": "calculate_time",
-              "params": "GCodeProcessorResult& result, PrintEstimatedStatistics::ETimeMode mode, size_t keep_last_n_blocks = 0, float additional_time = 0.0f, EMoveType target_move_type = EMoveType::Noop, bool is_final = false",
+              "params": "GCodeProcessorResult& result, PrintEstimatedStatistics::ETimeMode mode, size_t keep_last_n_blocks = 0, float additional_time = 0.0f",
               "returns": "void",
               "gui_call_sites": 0
             }
@@ -11204,7 +11180,7 @@
           "name": "UsedFilaments",
           "kind": "struct",
           "bases": null,
-          "line": 583,
+          "line": 568,
           "public_methods": [
             {
               "name": "reset",
@@ -11286,7 +11262,7 @@
           "name": "TimeProcessor",
           "kind": "struct",
           "bases": null,
-          "line": 625,
+          "line": 610,
           "public_methods": [
             {
               "name": "reset",
@@ -11302,7 +11278,7 @@
           "name": "Planner",
           "kind": "struct",
           "bases": null,
-          "line": 627,
+          "line": 612,
           "public_methods": [],
           "gui_references": 0,
           "used_by_gui": false
@@ -11311,7 +11287,7 @@
           "name": "SeamsDetector",
           "kind": "class",
           "bases": null,
-          "line": 655,
+          "line": 640,
           "public_methods": [
             {
               "name": "activate",
@@ -11360,7 +11336,7 @@
           "name": "OptionsZCorrector",
           "kind": "class",
           "bases": null,
-          "line": 678,
+          "line": 663,
           "public_methods": [
             {
               "name": "OptionsZCorrector",
@@ -11372,7 +11348,7 @@
               "name": "set",
               "params": "",
               "returns": "void",
-              "gui_call_sites": 199
+              "gui_call_sites": 206
             },
             {
               "name": "update",
@@ -11394,7 +11370,7 @@
           "name": "DataChecker",
           "kind": "struct",
           "bases": null,
-          "line": 714,
+          "line": 699,
           "public_methods": [
             {
               "name": "DataChecker",
@@ -11449,7 +11425,7 @@
           "name": "Error",
           "kind": "struct",
           "bases": null,
-          "line": 716,
+          "line": 701,
           "public_methods": [],
           "gui_references": 177,
           "used_by_gui": true
@@ -11475,7 +11451,7 @@
               "name": "set",
               "params": "unsigned int w, unsigned int h",
               "returns": "void",
-              "gui_call_sites": 199
+              "gui_call_sites": 206
             },
             {
               "name": "reset",

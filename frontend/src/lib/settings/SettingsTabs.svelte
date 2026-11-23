@@ -329,8 +329,10 @@
 							class="ws-seg-item flex-1 {activeVariant === i ? 'ws-seg-on' : ''}"
 							aria-pressed={activeVariant === i}
 							data-testid={`filament-variant-${i}`}
-							onclick={() => (variantIndex = i)}>{label}</button
+							onclick={() => (variantIndex = i)}
 						>
+							{label}
+						</button>
 					{/each}
 				</div>
 			</div>
@@ -446,11 +448,12 @@
 							activeSlug = pageSlug(hiddenPages[0].title);
 							mode = revealMode;
 						}}
-						>{$t(hiddenPages.length > 1 ? '+{n} tabs in {mode} mode' : '+{n} tab in {mode} mode', {
+					>
+						{$t(hiddenPages.length > 1 ? '+{n} tabs in {mode} mode' : '+{n} tab in {mode} mode', {
 							n: hiddenPages.length,
 							mode: $t(MODE_LABELS[revealMode])
-						})}</button
-					>
+						})}
+					</button>
 				{/if}
 			</div>
 			{#each linkedGroups as group (group.kind)}
@@ -498,8 +501,10 @@
 									data-testid="settings-page-reveal"
 									onclick={() => {
 										if (emptyPageMode) mode = emptyPageMode;
-									}}>{$t('Show in {mode} mode', { mode: $t(MODE_LABELS[emptyPageMode]) })}</button
+									}}
 								>
+									{$t('Show in {mode} mode', { mode: $t(MODE_LABELS[emptyPageMode]) })}
+								</button>
 							{/if}
 						</p>
 					{/if}

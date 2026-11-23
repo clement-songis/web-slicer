@@ -44,7 +44,11 @@ describe('extrusions en volumes', () => {
 		// Rendu logiciel (phase 25) : auto → lignes ; un choix explicite est respecté.
 		expect(effectiveRenderMode('auto', 1000, true)).toBe('lines');
 		expect(effectiveRenderMode('volumes', 1000, true)).toBe('volumes');
-		expect(isSoftwareRenderer('ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero)), SwiftShader driver)')).toBe(true);
+		expect(
+			isSoftwareRenderer(
+				'ANGLE (Google, Vulkan 1.3.0 (SwiftShader Device (Subzero)), SwiftShader driver)'
+			)
+		).toBe(true);
 		expect(isSoftwareRenderer('llvmpipe (LLVM 17.0.6, 256 bits)')).toBe(true);
 		expect(isSoftwareRenderer('ANGLE (NVIDIA, NVIDIA GeForce RTX 3060 Direct3D11)')).toBe(false);
 		expect(isSoftwareRenderer(null)).toBe(false);

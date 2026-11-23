@@ -142,8 +142,10 @@
 								aria-pressed={paMethod === m}
 								data-testid={`calib-pa-method-${m}`}
 								disabled={busy}
-								onclick={() => (paMethod = m)}>{$t(label)}</button
+								onclick={() => (paMethod = m)}
 							>
+								{$t(label)}
+							</button>
 						{/each}
 					</div>
 					<div class="grid grid-cols-3 gap-3">
@@ -204,8 +206,10 @@
 						type="button"
 						class="ws-btn ws-btn-lg ws-btn-secondary"
 						disabled={busy}
-						onclick={onclose}>{$t('Cancel')}</button
+						onclick={onclose}
 					>
+						{$t('Cancel')}
+					</button>
 					<button
 						type="submit"
 						data-testid="calib-confirm"

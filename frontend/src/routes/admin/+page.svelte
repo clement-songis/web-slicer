@@ -332,13 +332,17 @@
 						class="ws-btn ws-btn-primary"
 						disabled={!instanceDirty || savingInstance}
 						onclick={saveInstance}
-						data-testid="admin-save-instance">{$t('Save')}</button
+						data-testid="admin-save-instance"
 					>
+						{$t('Save')}
+					</button>
 					{#if instanceMsg}
 						<span
 							class="text-sm {instanceMsg.ok ? 'text-success' : 'text-danger'}"
-							role={instanceMsg.ok ? 'status' : 'alert'}>{instanceMsg.text}</span
+							role={instanceMsg.ok ? 'status' : 'alert'}
 						>
+							{instanceMsg.text}
+						</span>
 					{/if}
 				</div>
 				{#if !quotasSupported}
@@ -368,8 +372,10 @@
 						type="button"
 						class="ws-btn ws-btn-secondary"
 						onclick={newInvitation}
-						data-testid="admin-invite">{$t('Create an invitation link')}</button
+						data-testid="admin-invite"
 					>
+						{$t('Create an invitation link')}
+					</button>
 				</div>
 				{#if invite}
 					<div class="flex flex-col gap-1 rounded border border-border p-3 text-sm">
@@ -385,11 +391,11 @@
 								{copied ? $t('Copied') : $t('Copy')}
 							</button>
 						</div>
-						<span class="text-xs text-content-muted"
-							>{$t('Single use, expires on {date}. Works whatever the registration policy.', {
+						<span class="text-xs text-content-muted">
+							{$t('Single use, expires on {date}. Works whatever the registration policy.', {
 								date: invite.expires
-							})}</span
-						>
+							})}
+						</span>
 					</div>
 				{/if}
 				{#if inviteMsg}<p class="text-sm text-danger" role="alert">{inviteMsg}</p>{/if}
@@ -421,8 +427,10 @@
 							<button
 								type="button"
 								class="ws-btn ws-btn-sm ws-btn-secondary"
-								onclick={() => (newPassword = generatePassword())}>{$t('Generate')}</button
+								onclick={() => (newPassword = generatePassword())}
 							>
+								{$t('Generate')}
+							</button>
 						</span>
 					</label>
 					<label class="flex flex-col gap-1">
@@ -436,8 +444,10 @@
 						type="submit"
 						class="ws-btn ws-btn-sm ws-btn-primary"
 						disabled={creating}
-						data-testid="admin-user-create">{$t('Create account||admin')}</button
+						data-testid="admin-user-create"
 					>
+						{$t('Create account||admin')}
+					</button>
 				</form>
 				{#if createMsg}
 					<p
@@ -460,23 +470,27 @@
 							oninput={onSearch}
 							data-testid="admin-user-search"
 						/>
-						<span class="text-xs text-content-muted tabular-nums" data-testid="admin-user-count"
-							>{pageLabel(serverList.page, serverList.per_page, serverList.total)}</span
-						>
+						<span class="text-xs text-content-muted tabular-nums" data-testid="admin-user-count">
+							{pageLabel(serverList.page, serverList.per_page, serverList.total)}
+						</span>
 						{#if lastPage > 1}
 							<span class="ml-auto flex gap-1">
 								<button
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-secondary"
 									disabled={page <= 1}
-									onclick={() => goPage(-1)}>{$t('Previous||accounts')}</button
+									onclick={() => goPage(-1)}
 								>
+									{$t('Previous||accounts')}
+								</button>
 								<button
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-secondary"
 									disabled={page >= lastPage}
-									onclick={() => goPage(1)}>{$t('Next||accounts')}</button
+									onclick={() => goPage(1)}
 								>
+									{$t('Next||accounts')}
+								</button>
 							</span>
 						{/if}
 					</div>
@@ -502,31 +516,34 @@
 								<!-- L'e-mail garde au moins 14rem ; les boutons passent à la ligne
 								     plutôt que de réduire l'adresse à « a36mw… ». -->
 								<div class="flex flex-wrap items-center gap-x-2 gap-y-1">
-									<span class="min-w-[14rem] flex-1 truncate" title={user.email}
-										>{user.email}{#if user.id === data.user.id}
-											<span class="text-xs text-content-subtle">{$t('(you)')}</span>{/if}</span
-									>
+									<span class="min-w-[14rem] flex-1 truncate" title={user.email}>
+										{user.email}{#if user.id === data.user.id}
+											<span class="text-xs text-content-subtle">{$t('(you)')}</span>{/if}
+									</span>
 									<span
 										class="text-xs text-content-muted tabular-nums"
 										title={$t('Created on {date}', {
 											date: new Date(user.created_at).toLocaleDateString()
 										})}
-										>{$t(user.project_count === 1 ? '{n} project' : '{n} projects', {
+									>
+										{$t(user.project_count === 1 ? '{n} project' : '{n} projects', {
 											n: user.project_count
-										})} · {formatBytes(user.storage_bytes)}</span
-									>
-									<span class="text-xs text-content-muted"
-										>{user.role === 'admin' ? $t('Administrator') : $t('User')}</span
-									>
+										})} · {formatBytes(user.storage_bytes)}
+									</span>
+									<span class="text-xs text-content-muted">
+										{user.role === 'admin' ? $t('Administrator') : $t('User')}
+									</span>
 									{#if user.status === 'disabled'}
 										<span
-											class="rounded bg-danger-bg px-1.5 py-0.5 text-xs text-danger-text"
-											data-testid="admin-user-status">{$t('Disabled||account')}</span
+											class="bg-danger-bg text-danger-text rounded px-1.5 py-0.5 text-xs"
+											data-testid="admin-user-status"
 										>
+											{$t('Disabled||account')}
+										</span>
 									{:else}
-										<span class="text-xs text-success-text" data-testid="admin-user-status"
-											>{$t('Active||account')}</span
-										>
+										<span class="text-success-text text-xs" data-testid="admin-user-status">
+											{$t('Active||account')}
+										</span>
 									{/if}
 									<button
 										type="button"
@@ -534,16 +551,20 @@
 										onclick={() => {
 											resetFor = resetFor === user.id ? null : user.id;
 											resetValue = generatePassword();
-										}}>{$t('Reset password')}</button
+										}}
 									>
+										{$t('Reset password')}
+									</button>
 									{#if user.status === 'disabled'}
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-primary"
 											data-testid="admin-user-enable"
 											title={$t('Allows the account to sign in again')}
-											onclick={() => doToggleStatus(user)}>{$t('Re-enable')}</button
+											onclick={() => doToggleStatus(user)}
 										>
+											{$t('Re-enable')}
+										</button>
 									{:else}
 										<button
 											type="button"
@@ -551,26 +572,34 @@
 											data-testid="admin-user-disable"
 											title={$t('Closes its sessions and refuses its sign-ins (reversible)')}
 											disabled={user.id === data.user.id}
-											onclick={() => doToggleStatus(user)}>{$t('Disable')}</button
+											onclick={() => doToggleStatus(user)}
 										>
+											{$t('Disable')}
+										</button>
 									{/if}
 									{#if confirmDelete === user.id}
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-danger"
-											onclick={() => doDelete(user)}>{$t('Confirm deletion')}</button
+											onclick={() => doDelete(user)}
 										>
+											{$t('Confirm deletion')}
+										</button>
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-secondary"
-											onclick={() => (confirmDelete = null)}>{$t('Cancel')}</button
+											onclick={() => (confirmDelete = null)}
 										>
+											{$t('Cancel')}
+										</button>
 									{:else}
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-secondary"
-											onclick={() => (confirmDelete = user.id)}>{$t('Delete…')}</button
+											onclick={() => (confirmDelete = user.id)}
 										>
+											{$t('Delete…')}
+										</button>
 									{/if}
 								</div>
 								{#if confirmDelete === user.id}
@@ -589,15 +618,19 @@
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-primary"
-											onclick={() => doReset(user)}>{$t('Apply')}</button
+											onclick={() => doReset(user)}
 										>
+											{$t('Apply')}
+										</button>
 									</div>
 								{/if}
 								{#if rowMsg[user.id]}
 									<span
 										class="text-xs {rowMsg[user.id].ok ? 'text-success' : 'text-danger'}"
-										role={rowMsg[user.id].ok ? 'status' : 'alert'}>{rowMsg[user.id].text}</span
+										role={rowMsg[user.id].ok ? 'status' : 'alert'}
 									>
+										{rowMsg[user.id].text}
+									</span>
 								{/if}
 							</li>
 						{/each}

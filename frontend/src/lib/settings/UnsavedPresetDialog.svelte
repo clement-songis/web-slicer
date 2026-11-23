@@ -37,17 +37,20 @@
 >
 	<div class="flex flex-col gap-3 text-sm">
 		<p>
-			{#each parts as part, i (i)}{#if part === '{from}'}<strong>{fromName}</strong
-					>{:else if part === '{to}'}<strong>{toName}</strong>{:else}{part}{/if}{/each}
+			{#each parts as part, i (i)}{#if part === '{from}'}<strong>
+						{fromName}
+					</strong>{:else if part === '{to}'}<strong>{toName}</strong>{:else}{part}{/if}{/each}
 		</p>
 		<div class="max-h-64 overflow-y-auto rounded border border-border">
 			<table class="w-full text-xs">
 				<thead class="sticky top-0 bg-surface-raised text-left text-content-muted">
-					<tr
-						><th class="px-3 py-1">{$t('Option')}</th><th class="px-3 py-1">{$t('Saved')}</th><th
-							class="px-3 py-1">{$t('Modified')}</th
-						></tr
-					>
+					<tr>
+						<th class="px-3 py-1">{$t('Option')}</th><th class="px-3 py-1">{$t('Saved')}</th><th
+							class="px-3 py-1"
+						>
+							{$t('Modified')}
+						</th>
+					</tr>
 				</thead>
 				<tbody>
 					{#each changes as c (c.key)}
@@ -66,19 +69,25 @@
 			type="button"
 			class="ws-btn ws-btn-ghost"
 			data-testid="unsaved-cancel"
-			onclick={oncancel}>{$t('Keep “{name}”', { name: fromName })}</button
+			onclick={oncancel}
 		>
+			{$t('Keep “{name}”', { name: fromName })}
+		</button>
 		<button
 			type="button"
 			class="ws-btn ws-btn-secondary"
 			data-testid="unsaved-discard"
-			onclick={ondiscard}>{$t('Discard changes')}</button
+			onclick={ondiscard}
 		>
+			{$t('Discard changes')}
+		</button>
 		<button
 			type="button"
 			class="ws-btn ws-btn-primary"
 			data-testid="unsaved-transfer"
-			onclick={ontransfer}>{$t('Transfer to “{name}”', { name: toName })}</button
+			onclick={ontransfer}
 		>
+			{$t('Transfer to “{name}”', { name: toName })}
+		</button>
 	{/snippet}
 </Dialog>

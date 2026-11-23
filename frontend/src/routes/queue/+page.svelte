@@ -183,27 +183,28 @@
 										href={resolve('/projects/[id]', { id: job.project_id })}
 										data-testid="queue-job-project"
 										title={projectName(job.project_id)}
-										>{projectName(job.project_id)}
-										<span class="text-content-muted"
-											>· {$t('Plate {n}', { n: Number(job.plate_index) + 1 })}</span
-										></a
 									>
-									<span class="tabular-nums text-content-muted">{progressPercent(job)}%</span>
+										{projectName(job.project_id)}
+										<span class="text-content-muted">
+											· {$t('Plate {n}', { n: Number(job.plate_index) + 1 })}
+										</span>
+									</a>
+									<span class="text-content-muted tabular-nums">{progressPercent(job)}%</span>
 								</div>
 								<div class="h-1.5 overflow-hidden rounded bg-overlay">
 									<div class="h-full bg-primary" style:width="{progressPercent(job)}%"></div>
 								</div>
 								{#if job.status === 'queued'}
-									<span class="text-xs text-content-subtle"
-										>{positions[job.id] === 1
+									<span class="text-xs text-content-subtle">
+										{positions[job.id] === 1
 											? $t('Waiting: starts as soon as a slice finishes')
 											: $t('Waiting: {n} slice(s) ahead of this one', {
 													n: (positions[job.id] ?? 1) - 1
-												})}</span
-									>
-								{:else if job.phase}<span class="text-xs text-content-subtle"
-										>{phaseLabel(job.phase)}</span
-									>{/if}
+												})}
+									</span>
+								{:else if job.phase}<span class="text-xs text-content-subtle">
+										{phaseLabel(job.phase)}
+									</span>{/if}
 							</div>
 							<button
 								type="button"
@@ -250,8 +251,10 @@
 										<a
 											class="hover:underline"
 											href={resolve('/projects/[id]', { id: job.project_id })}
-											data-testid="queue-history-project">{projectName(job.project_id)}</a
+											data-testid="queue-history-project"
 										>
+											{projectName(job.project_id)}
+										</a>
 									</td>
 									<td class="tabular-nums">{Number(job.plate_index) + 1}</td>
 									<td class="text-content-muted">{formatDate(job.updated_at)}</td>
@@ -299,11 +302,11 @@
 												{/if}
 											</div>
 										{:else if job.status === 'failed'}
-											<span class="text-danger" data-testid="queue-job-error"
-												>{jobErrorText(job.error)
+											<span class="text-danger" data-testid="queue-job-error">
+												{jobErrorText(job.error)
 													? $t('Failed: {error}', { error: jobErrorText(job.error) })
-													: $t('Failed||job')}</span
-											>
+													: $t('Failed||job')}
+											</span>
 										{:else}
 											<span class="text-content-subtle">—</span>
 										{/if}

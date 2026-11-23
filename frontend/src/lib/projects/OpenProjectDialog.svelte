@@ -58,9 +58,9 @@
 			/>
 			<span>
 				<span class="block text-sm font-medium">{$t('Open as project')}</span>
-				<span class="block text-xs text-content-subtle"
-					>{$t('Objects, plates, settings and presets, attached files and 3MF metadata.')}</span
-				>
+				<span class="block text-xs text-content-subtle">
+					{$t('Objects, plates, settings and presets, attached files and 3MF metadata.')}
+				</span>
 			</span>
 		</label>
 		<label
@@ -79,9 +79,9 @@
 			/>
 			<span>
 				<span class="block text-sm font-medium">{$t('Import geometry only')}</span>
-				<span class="block text-xs text-content-subtle"
-					>{$t('Objects and their transformations, without settings, presets or metadata.')}</span
-				>
+				<span class="block text-xs text-content-subtle">
+					{$t('Objects and their transformations, without settings, presets or metadata.')}
+				</span>
 			</span>
 		</label>
 	</fieldset>

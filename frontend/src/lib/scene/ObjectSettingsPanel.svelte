@@ -128,19 +128,23 @@
 
 <section class="flex flex-col gap-2 rounded border border-border p-2" data-testid={testid}>
 	<div class="flex items-center justify-between gap-2">
-		<span class="min-w-0 truncate text-sm font-medium text-content" {title}
-			>{title}{#if keys.length}<span
+		<span class="min-w-0 truncate text-sm font-medium text-content" {title}>
+			{title}{#if keys.length}<span
 					class="ws-badge ml-1.5 align-middle"
 					data-testid="object-settings-count"
-					data-tip={$t('{n} overridden setting(s)', { n: keys.length })}>{keys.length}</span
-				>{/if}</span
-		>
+					data-tip={$t('{n} overridden setting(s)', { n: keys.length })}
+				>
+					{keys.length}
+				</span>{/if}
+		</span>
 		<button
 			type="button"
 			class="ws-btn ws-btn-sm ws-btn-secondary shrink-0"
 			data-testid="object-settings-add"
-			onclick={() => (adding = !adding)}>{adding ? $t('Close') : $t('+ Setting')}</button
+			onclick={() => (adding = !adding)}
 		>
+			{adding ? $t('Close') : $t('+ Setting')}
+		</button>
 	</div>
 	<!-- Copier / coller / tout réinitialiser (Orca : menu de l'élément Réglages). -->
 	<div class="flex flex-wrap items-center gap-1" role="group" aria-label={$t('Setting actions')}>
@@ -150,8 +154,10 @@
 			data-testid="object-settings-copy"
 			disabled={keys.length === 0}
 			data-tip={$t('Copy these settings to paste them onto another object')}
-			onclick={copy}>{$t('Copy')}</button
+			onclick={copy}
 		>
+			{$t('Copy')}
+		</button>
 		<button
 			type="button"
 			class="ws-btn ws-btn-sm ws-btn-ghost"
@@ -163,8 +169,10 @@
 						source: clip.source
 					})
 				: $t('Nothing to paste')}
-			onclick={paste}>{$t('Paste')}</button
+			onclick={paste}
 		>
+			{$t('Paste')}
+		</button>
 		{#if confirmReset}
 			<span class="flex items-center gap-1 text-xs text-content" role="alert">
 				{$t('Remove the {n} overrides?', { n: keys.length })}
@@ -172,13 +180,17 @@
 					type="button"
 					class="ws-btn ws-btn-sm ws-btn-danger"
 					data-testid="object-settings-reset-confirm"
-					onclick={resetAll}>{$t('Yes')}</button
+					onclick={resetAll}
 				>
+					{$t('Yes')}
+				</button>
 				<button
 					type="button"
 					class="ws-btn ws-btn-sm ws-btn-ghost"
-					onclick={() => (confirmReset = false)}>{$t('No')}</button
+					onclick={() => (confirmReset = false)}
 				>
+					{$t('No')}
+				</button>
 			</span>
 		{:else}
 			<button
@@ -187,8 +199,10 @@
 				data-testid="object-settings-reset"
 				disabled={keys.length === 0}
 				data-tip={$t('Remove all overrides from this item')}
-				onclick={() => (confirmReset = true)}>{$t('Reset all')}</button
+				onclick={() => (confirmReset = true)}
 			>
+				{$t('Reset all')}
+			</button>
 		{/if}
 	</div>
 	{#if feedback}

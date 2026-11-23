@@ -70,8 +70,9 @@
 				data-testid={`history-${which}`}
 				disabled={!items.length}
 				onclick={() => (which === 'undo' ? onundo(1) : onredo(1))}
-				><Icon class="h-4 w-4" aria-hidden="true" /></button
 			>
+				<Icon class="h-4 w-4" aria-hidden="true" />
+			</button>
 			<button
 				type="button"
 				class="ws-icon-btn ws-icon-btn-xs"
@@ -82,8 +83,10 @@
 				aria-haspopup="menu"
 				data-testid={`history-${which}-list`}
 				disabled={!items.length}
-				onclick={() => toggle(which)}><IconChevron class="h-3 w-3" aria-hidden="true" /></button
+				onclick={() => toggle(which)}
 			>
+				<IconChevron class="h-3 w-3" aria-hidden="true" />
+			</button>
 		</div>
 	{/each}
 	{#if open}
@@ -105,10 +108,11 @@
 					onpointerenter={() => (hover = i)}
 					onfocus={() => (hover = i)}
 					onclick={() => pick(i + 1)}
-					><span class="w-5 shrink-0 text-right text-xs text-content-subtle tabular-nums"
-						>{i + 1}</span
-					><span class="truncate">{label}</span></button
 				>
+					<span class="w-5 shrink-0 text-right text-xs text-content-subtle tabular-nums">
+						{i + 1}
+					</span><span class="truncate">{label}</span>
+				</button>
 			{/each}
 			<p class="px-2 pt-1 text-xs text-content-subtle" aria-live="polite">
 				{hover >= 0

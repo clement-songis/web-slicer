@@ -437,7 +437,7 @@
 							{$t('Add printer||declare')}
 						</button>
 						{#if hostError && hostForm.url.trim()}
-							<p class="text-xs text-danger-text" role="alert">{hostError}</p>
+							<p class="text-danger-text text-xs" role="alert">{hostError}</p>
 						{/if}
 						{#if machines.length === 0}
 							<p class="text-xs text-warning">{$t('No printer preset available.')}</p>
@@ -489,8 +489,10 @@
 						<button
 							type="button"
 							class="ws-btn ws-btn-sm ws-btn-primary"
-							onclick={() => (showCatalog = true)}>{$t('Open catalog')}</button
+							onclick={() => (showCatalog = true)}
 						>
+							{$t('Open catalog')}
+						</button>
 					</div>
 				{:else}
 					{#each printers as printer (printer.id)}
@@ -508,22 +510,24 @@
 									</span>
 									<span class="flex min-w-0 items-center gap-1.5 text-xs text-content-subtle">
 										{#if printer.moonraker_url}
-											<span class="ws-badge shrink-0" data-testid="printer-host-type"
-												>{hostMeta(printer.host_type).label}</span
-											>
+											<span class="ws-badge shrink-0" data-testid="printer-host-type">
+												{hostMeta(printer.host_type).label}
+											</span>
 										{/if}
-										<span class="truncate"
-											>{printer.moonraker_url ?? $t('Not connected||printer')}</span
-										>
+										<span class="truncate">
+											{printer.moonraker_url ?? $t('Not connected||printer')}
+										</span>
 									</span>
 									{#if credentialSummary(printer).length}
 										<span class="mt-1 flex flex-wrap gap-1.5" data-testid="printer-credentials">
 											{#each credentialSummary(printer) as c (c.text)}
 												<span
 													class="rounded px-1.5 py-0.5 text-2xs {c.missing
-														? 'bg-warning-soft text-warning-text'
-														: 'bg-surface-sunken text-content-muted'}">{c.text}</span
+														? 'text-warning-text bg-warning-soft'
+														: 'bg-surface-sunken text-content-muted'}"
 												>
+													{c.text}
+												</span>
 											{/each}
 										</span>
 									{/if}
@@ -550,11 +554,11 @@
 										></div>
 									</div>
 									<div class="mt-1 flex gap-4 text-xs text-content-muted">
-										<span
-											>{$t('Nozzle {temp}', {
+										<span>
+											{$t('Nozzle {temp}', {
 												temp: formatTemp(st.extruderTemp, st.extruderTarget)
-											})}</span
-										>
+											})}
+										</span>
 										<span>{$t('Bed {temp}', { temp: formatTemp(st.bedTemp, st.bedTarget) })}</span>
 									</div>
 								</div>
@@ -618,9 +622,9 @@
 										</button>
 									{/if}
 								{:else}
-									<span class="self-center text-xs text-content-subtle"
-										>{$t('No Moonraker URL or other host: settings and slicing only.')}</span
-									>
+									<span class="self-center text-xs text-content-subtle">
+										{$t('No Moonraker URL or other host: settings and slicing only.')}
+									</span>
 								{/if}
 								<button
 									type="button"
@@ -723,10 +727,10 @@
 				beforeListPrinters={saveConnection}
 			/>
 			{#if connectFormError && connectForm.url.trim()}
-				<p class="text-xs text-danger-text" role="alert">{connectFormError}</p>
+				<p class="text-danger-text text-xs" role="alert">{connectFormError}</p>
 			{/if}
 			{#if connectError}
-				<p class="text-xs text-danger-text" role="alert" data-testid="connection-error">
+				<p class="text-danger-text text-xs" role="alert" data-testid="connection-error">
 					{connectError}
 				</p>
 			{:else if connectMessage}
@@ -753,18 +757,22 @@
 			class="ws-btn ws-btn-secondary mr-auto"
 			data-testid="connection-test"
 			disabled={connectBusy || !!connectFormError || !connectForm.url.trim()}
-			onclick={saveAndTest}>{$t('Test connection')}</button
+			onclick={saveAndTest}
 		>
-		<button type="button" class="ws-btn ws-btn-ghost" onclick={() => (connecting = null)}
-			>{$t('Cancel')}</button
-		>
+			{$t('Test connection')}
+		</button>
+		<button type="button" class="ws-btn ws-btn-ghost" onclick={() => (connecting = null)}>
+			{$t('Cancel')}
+		</button>
 		<button
 			type="button"
 			class="ws-btn ws-btn-primary"
 			data-testid="connection-save"
 			disabled={connectBusy || !!connectFormError}
-			onclick={saveAndClose}>{$t('Save')}</button
+			onclick={saveAndClose}
 		>
+			{$t('Save')}
+		</button>
 	{/snippet}
 </Dialog>
 

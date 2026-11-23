@@ -186,8 +186,10 @@
 					aria-checked={tool === tl}
 					title={$t(PAINT_TOOL_HINTS[tl])}
 					data-testid={`paint-tool-${tl}`}
-					onclick={() => (tool = tl)}>{$t(PAINT_TOOL_LABELS[tl])}</button
+					onclick={() => (tool = tl)}
 				>
+					{$t(PAINT_TOOL_LABELS[tl])}
+				</button>
 			{/each}
 		</div>
 	</div>
@@ -213,17 +215,21 @@
 			<button
 				type="button"
 				class="ws-chip {painted === ENFORCER
-					? 'bg-success text-primary-content border-transparent'
+					? 'border-transparent bg-success text-primary-content'
 					: ''}"
-				onclick={() => (painted = ENFORCER)}>{$t('Enforce')}</button
+				onclick={() => (painted = ENFORCER)}
 			>
+				{$t('Enforce')}
+			</button>
 			<button
 				type="button"
 				class="ws-chip {painted === BLOCKER
-					? 'bg-danger text-primary-content border-transparent'
+					? 'border-transparent bg-danger text-primary-content'
 					: ''}"
-				onclick={() => (painted = BLOCKER)}>{$t('Block')}</button
+				onclick={() => (painted = BLOCKER)}
 			>
+				{$t('Block')}
+			</button>
 		</div>
 	{:else if filamentColours.length > 0}
 		<div class="flex items-center gap-2">
@@ -243,8 +249,10 @@
 						style:background-color={colour || undefined}
 						style:color={contrastText(colour)}
 						data-testid={`paint-filament-${i + 1}`}
-						onclick={() => (painted = i + 1)}>{i + 1}</button
+						onclick={() => (painted = i + 1)}
 					>
+						{i + 1}
+					</button>
 				{/each}
 			</div>
 		</div>
@@ -274,9 +282,9 @@
 				class="flex-1"
 				data-testid="paint-radius"
 			/>
-			<span class="w-16 text-right whitespace-nowrap text-content-muted tabular-nums"
-				>{fmtNum(radius, 1, $locale)} mm</span
-			>
+			<span class="w-16 text-right whitespace-nowrap text-content-muted tabular-nums">
+				{fmtNum(radius, 1, $locale)} mm
+			</span>
 		</label>
 	{:else if tool === 'height'}
 		<label class="flex items-center gap-2">
@@ -290,9 +298,9 @@
 				class="flex-1"
 				data-testid="paint-height"
 			/>
-			<span class="w-16 text-right whitespace-nowrap text-content-muted tabular-nums"
-				>{fmtNum(height, 1, $locale)} mm</span
-			>
+			<span class="w-16 text-right whitespace-nowrap text-content-muted tabular-nums">
+				{fmtNum(height, 1, $locale)} mm
+			</span>
 		</label>
 	{:else if tool === 'fill'}
 		{#if channel === 'mmu'}
@@ -313,9 +321,9 @@
 					class="flex-1"
 					data-testid="paint-fill-angle"
 				/>
-				<span class="w-16 text-right whitespace-nowrap text-content-muted tabular-nums"
-					>{fillAngle}°</span
-				>
+				<span class="w-16 text-right whitespace-nowrap text-content-muted tabular-nums">
+					{fillAngle}°
+				</span>
 			</label>
 		{:else}
 			<p class="pl-18 text-xs text-content-subtle">
@@ -334,9 +342,9 @@
 				class="flex-1"
 				data-testid="paint-gap-area"
 			/>
-			<span class="w-16 text-right whitespace-nowrap text-content-muted tabular-nums"
-				>{fmtNum(gapArea, 1, $locale)} mm²</span
-			>
+			<span class="w-16 text-right whitespace-nowrap text-content-muted tabular-nums">
+				{fmtNum(gapArea, 1, $locale)} mm²
+			</span>
 		</label>
 		<div class="flex items-center justify-between gap-2 pl-18">
 			<span class="text-xs text-content-subtle">
@@ -347,8 +355,10 @@
 				class="ws-btn ws-btn-sm ws-btn-primary"
 				disabled={busy || gapArea <= 0}
 				data-testid="paint-gap-apply"
-				onclick={() => ongapfill?.()}>{$t('Fill gaps')}</button
+				onclick={() => ongapfill?.()}
 			>
+				{$t('Fill gaps')}
+			</button>
 		</div>
 	{/if}
 
@@ -446,8 +456,10 @@
 				type="button"
 				class="self-start font-semibold text-primary underline"
 				data-testid="paint-fuzzy-enable"
-				onclick={() => onenablefuzzy?.()}>{$t('Enable painted fuzzy skin for this object')}</button
+				onclick={() => onenablefuzzy?.()}
 			>
+				{$t('Enable painted fuzzy skin for this object')}
+			</button>
 		</div>
 	{/if}
 
@@ -471,14 +483,18 @@
 							<span
 								class="flex size-6 items-center justify-center rounded border border-border-strong font-semibold"
 								style:background-color={colour || undefined}
-								style:color={contrastText(colour)}>{src + 1}</span
+								style:color={contrastText(colour)}
 							>
+								{src + 1}
+							</span>
 							<span aria-hidden="true" class="text-content-subtle">→</span>
 							<span
 								class="flex size-6 items-center justify-center rounded border border-border-strong font-semibold"
 								style:background-color={filamentColours[dst] || undefined}
-								style:color={contrastText(filamentColours[dst])}>{dst + 1}</span
+								style:color={contrastText(filamentColours[dst])}
 							>
+								{dst + 1}
+							</span>
 							<select
 								class="ws-field ws-field-sm flex-1"
 								aria-label={$t('Filament {n} becomes', { n: src + 1 })}
@@ -497,16 +513,18 @@
 						</div>
 					{/each}
 					<div class="mt-1 flex items-center justify-between gap-2">
-						<span class="text-xs text-content-subtle"
-							>{$t('Painting and base filament of the object')}</span
-						>
+						<span class="text-xs text-content-subtle">
+							{$t('Painting and base filament of the object')}
+						</span>
 						<button
 							type="button"
 							class="ws-btn ws-btn-sm ws-btn-primary"
 							disabled={busy || !remapChanged}
 							data-testid="paint-remap-apply"
-							onclick={applyRemap}>{$t('Apply')}</button
+							onclick={applyRemap}
 						>
+							{$t('Apply')}
+						</button>
 					</div>
 				</div>
 			{/if}

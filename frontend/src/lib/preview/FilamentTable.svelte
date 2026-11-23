@@ -68,9 +68,9 @@
 				{#each columns as c (c)}
 					<td class="pl-2 text-right whitespace-nowrap">{@render cell(table.total[c])}</td>
 				{/each}
-				<td class="pl-2 text-right whitespace-nowrap" data-testid="{testid}-total"
-					>{@render cell(table.total.total)}</td
-				>
+				<td class="pl-2 text-right whitespace-nowrap" data-testid="{testid}-total">
+					{@render cell(table.total.total)}
+				</td>
 			</tr>
 		</tfoot>
 	{/if}

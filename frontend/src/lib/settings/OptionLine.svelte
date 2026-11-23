@@ -146,8 +146,9 @@
 				class="underline-offset-2 hover:text-primary hover:underline focus-visible:text-primary focus-visible:underline"
 				data-testid="option-wiki-link"
 				aria-label={$t('{label} — OrcaSlicer wiki help (new tab)', { label: $t(shownLabel) })}
-				>{$t(shownLabel)}</a
 			>
+				{$t(shownLabel)}
+			</a>
 			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 		{:else}
 			{$t(shownLabel)}
@@ -161,8 +162,10 @@
 				data-testid="option-variant-badge"
 				title={$t(
 					'Value specific to each nozzle variant: choose the variant at the top of the Filament tab.'
-				)}>{$t('per nozzle')}</span
+				)}
 			>
+				{$t('per nozzle')}
+			</span>
 		{/if}
 	</span>
 	{#if def.nullable}
@@ -188,8 +191,9 @@
 					data-testid="option-reset-system"
 					{disabled}
 					onclick={() => system && resetTo(system)}
-					><IconLockOpen class="h-3.5 w-3.5" aria-hidden="true" /></button
 				>
+					<IconLockOpen class="h-3.5 w-3.5" aria-hidden="true" />
+				</button>
 			{/if}
 			{#if modified && saved}
 				<button
@@ -200,8 +204,9 @@
 					data-testid="option-reset-saved"
 					{disabled}
 					onclick={() => saved && resetTo(saved)}
-					><IconUndo class="h-3.5 w-3.5" aria-hidden="true" /></button
 				>
+					<IconUndo class="h-3.5 w-3.5" aria-hidden="true" />
+				</button>
 			{/if}
 		</div>
 	{/if}

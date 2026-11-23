@@ -119,8 +119,10 @@
 						{#if sliced.includes(plate.id)}<span
 								class="text-success-text"
 								aria-hidden="true"
-								title={$t('Plate sliced: its preview is kept')}>✓</span
-							>{/if}
+								title={$t('Plate sliced: its preview is kept')}
+							>
+								✓
+							</span>{/if}
 					</button>
 				{/if}
 				{#if onlock}
@@ -149,8 +151,9 @@
 						aria-label={$t('Move {name} first', { name: plate.name })}
 						title={$t('Move the plate to the front (first plate)')}
 						onclick={() => onfront(plate.id)}
-						><IconFront class="h-3.5 w-3.5" aria-hidden="true" /></button
 					>
+						<IconFront class="h-3.5 w-3.5" aria-hidden="true" />
+					</button>
 				{/if}
 				{#if plates.length > 1}
 					<button
@@ -158,8 +161,9 @@
 						class="ws-icon-btn ws-icon-btn-xs hover:text-danger"
 						aria-label={$t('Delete {name}', { name: plate.name })}
 						onclick={() => onremove(plate.id)}
-						><IconX class="h-3.5 w-3.5" aria-hidden="true" /></button
 					>
+						<IconX class="h-3.5 w-3.5" aria-hidden="true" />
+					</button>
 				{/if}
 			</div>
 		{/each}
@@ -167,8 +171,10 @@
 			type="button"
 			class="ws-btn ws-btn-sm ws-btn-secondary"
 			aria-label={$t('Add a plate')}
-			onclick={() => onadd()}>+</button
+			onclick={() => onadd()}
 		>
+			+
+		</button>
 	</div>
 
 	{#if active}

@@ -95,14 +95,18 @@
 			class="ws-btn ws-btn-secondary"
 			disabled={busy}
 			data-testid="reauth-cancel"
-			onclick={() => finishReauth(false)}>{$t('Cancel')}</button
+			onclick={() => finishReauth(false)}
 		>
+			{$t('Cancel')}
+		</button>
 		<button
 			type="submit"
 			form="reauth-form"
 			class="ws-btn ws-btn-primary"
 			disabled={busy || !password}
-			data-testid="reauth-submit">{busy ? $t('Signing in…') : $t('Sign in')}</button
+			data-testid="reauth-submit"
 		>
+			{busy ? $t('Signing in…') : $t('Sign in')}
+		</button>
 	{/snippet}
 </Dialog>

@@ -76,7 +76,7 @@
 	></button>
 	<div
 		bind:this={menuElement}
-		class="fixed z-50 max-h-[calc(100vh-1rem)] min-w-48 max-w-[calc(100vw-1rem)] overflow-y-auto overscroll-contain ws-menu {sectioned
+		class="ws-menu fixed z-50 max-h-[calc(100vh-1rem)] max-w-[calc(100vw-1rem)] min-w-48 overflow-y-auto overscroll-contain {sectioned
 			? 'w-[min(46rem,calc(100vw-1rem))] columns-[13.5rem] gap-1'
 			: ''}"
 		style="left: {left}px; top: {top}px"
@@ -169,9 +169,9 @@
 								onclick={() => pick(sub.action)}
 							>
 								<span>{$t(sub.label)}</span>
-								{#if sub.hint && sub.hint !== item.label}<span class="text-xs text-content-subtle"
-										>{$t(sub.hint)}</span
-									>{/if}
+								{#if sub.hint && sub.hint !== item.label}<span class="text-xs text-content-subtle">
+										{$t(sub.hint)}
+									</span>{/if}
 							</button>
 						{/if}
 					{/each}
@@ -187,9 +187,9 @@
 					onclick={() => toggle(item.action)}
 				>
 					<span>{$t(item.label)}</span>
-					<span aria-hidden="true" class="text-content-subtle"
-						>{expanded === item.action ? '▾' : '▸'}</span
-					>
+					<span aria-hidden="true" class="text-content-subtle">
+						{expanded === item.action ? '▾' : '▸'}
+					</span>
 				</button>
 				{#if expanded === item.action}
 					<div role="group" aria-label={$t(item.label)} class="ml-2 border-l border-border pl-1">

@@ -150,19 +150,20 @@
 						disabled={busy}
 						data-testid={'step-preset-' + p.id}
 						onclick={() => choosePreset(p.id)}
-						><span>{$t(p.label)}</span><span class="text-2xs opacity-75">{$t(p.hint)}</span></button
 					>
+						<span>{$t(p.label)}</span><span class="text-2xs opacity-75">{$t(p.hint)}</span>
+					</button>
 				{/each}
 			</div>
 			{#if preset === null}
-				<span class="text-2xs text-content-subtle" data-testid="step-preset-custom"
-					>{$t('Custom settings')}</span
-				>
+				<span class="text-2xs text-content-subtle" data-testid="step-preset-custom">
+					{$t('Custom settings')}
+				</span>
 			{/if}
 			{#if remembered && !result}
-				<span class="text-2xs text-content-subtle" data-testid="step-remembered"
-					>{$t('Settings from your last STEP import — applied with “Apply and close”.')}</span
-				>
+				<span class="text-2xs text-content-subtle" data-testid="step-remembered">
+					{$t('Settings from your last STEP import — applied with “Apply and close”.')}
+				</span>
 			{/if}
 		</div>
 
@@ -196,13 +197,13 @@
 				/>
 				<span class="w-7 text-xs text-content-subtle">mm</span>
 			</span>
-			<span class="flex justify-between text-2xs text-content-subtle"
-				><span>{$t('Finer · more triangles')}</span><span>{$t('Coarser')}</span></span
-			>
+			<span class="flex justify-between text-2xs text-content-subtle">
+				<span>{$t('Finer · more triangles')}</span><span>{$t('Coarser')}</span>
+			</span>
 			<span></span>
-			{#if linearError}<span class="col-span-2 text-xs text-danger-text" role="alert"
-					>{linearError}</span
-				>{/if}
+			{#if linearError}<span class="text-danger-text col-span-2 text-xs" role="alert">
+					{linearError}
+				</span>{/if}
 
 			<label for="step-angle" class="col-span-2 mt-2 flex justify-between text-content-muted">
 				<span>{$t('Angle deflection')}</span>
@@ -233,9 +234,9 @@
 				/>
 				<span class="w-7 text-xs text-content-subtle">rad</span>
 			</span>
-			{#if angleError}<span class="col-span-2 text-xs text-danger-text" role="alert"
-					>{angleError}</span
-				>{/if}
+			{#if angleError}<span class="text-danger-text col-span-2 text-xs" role="alert">
+					{angleError}
+				</span>{/if}
 		</div>
 
 		<label class="flex items-start gap-2">
@@ -246,12 +247,12 @@
 				disabled={busy}
 				data-testid="step-split"
 			/>
-			<span
-				>{$t('Split compounds into several parts')}
-				<span class="block text-2xs text-content-subtle"
-					>{$t('one part per solid (“name-SOLID-n”)')}</span
-				></span
-			>
+			<span>
+				{$t('Split compounds into several parts')}
+				<span class="block text-2xs text-content-subtle">
+					{$t('one part per solid (“name-SOLID-n”)')}
+				</span>
+			</span>
 		</label>
 
 		<div class="flex flex-col gap-2 rounded-md bg-surface-sunken px-3 py-2.5" aria-live="polite">
@@ -259,13 +260,13 @@
 				<span class="text-content-muted">{$t('Triangles')}</span>
 				<span class="flex items-baseline gap-2">
 					{#if delta}
-						<span class="text-xs text-content-subtle" data-testid="step-delta"
-							>{$t('{delta} vs import', { delta })}</span
-						>
+						<span class="text-xs text-content-subtle" data-testid="step-delta">
+							{$t('{delta} vs import', { delta })}
+						</span>
 					{/if}
-					<output class="text-base font-medium tabular-nums" data-testid="step-triangles"
-						>{triangles != null ? formatTriangles(triangles) : '—'}</output
-					>
+					<output class="text-base font-medium tabular-nums" data-testid="step-triangles">
+						{triangles != null ? formatTriangles(triangles) : '—'}
+					</output>
 				</span>
 			</div>
 			<span
@@ -286,9 +287,9 @@
 						{#each result.objects as o, i (i)}
 							<li class="flex justify-between gap-2">
 								<span class="truncate">{o.name}</span>
-								<span class="shrink-0 tabular-nums text-content-subtle"
-									>{formatTriangles(o.triangles)}</span
-								>
+								<span class="shrink-0 text-content-subtle tabular-nums">
+									{formatTriangles(o.triangles)}
+								</span>
 							</li>
 						{/each}
 					</ul>
@@ -301,10 +302,12 @@
 				class="text-primary-text underline"
 				href="https://www.orcaslicer.com/wiki/import_export#step"
 				target="_blank"
-				rel="noopener noreferrer">{$t('Guide (Orca wiki)')}</a
+				rel="noopener noreferrer"
 			>
+				{$t('Guide (Orca wiki)')}
+			</a>
 		</p>
-		{#if error}<p class="text-xs text-danger-text" role="alert">{error}</p>{/if}
+		{#if error}<p class="text-danger-text text-xs" role="alert">{error}</p>{/if}
 	</div>
 	{#snippet footer()}
 		<label class="mr-auto flex items-center gap-2 text-xs text-content-muted">
@@ -319,21 +322,27 @@
 			onclick={() => {
 				options = { ...STEP_DEFAULTS };
 				syncTexts();
-			}}>{$t('Defaults||step')}</button
+			}}
 		>
+			{$t('Defaults||step')}
+		</button>
 		<button
 			type="button"
 			class="ws-btn ws-btn-secondary"
 			data-testid="step-apply"
 			disabled={busy || !dirty || !!linearError || !!angleError}
-			onclick={apply}>{busy ? $t('Remeshing…||button') : $t('Remesh')}</button
+			onclick={apply}
 		>
+			{busy ? $t('Remeshing…||button') : $t('Remesh')}
+		</button>
 		<button
 			type="button"
 			class="ws-btn ws-btn-primary"
 			data-testid="step-done"
 			disabled={busy || !!linearError || !!angleError}
-			onclick={finish}>{dirty ? $t('Apply and close') : $t('Done')}</button
+			onclick={finish}
 		>
+			{dirty ? $t('Apply and close') : $t('Done')}
+		</button>
 	{/snippet}
 </Dialog>

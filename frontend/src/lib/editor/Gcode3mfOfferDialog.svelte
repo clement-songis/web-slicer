@@ -33,11 +33,11 @@
 		)}
 	</p>
 	{#snippet footer()}
-		<Button variant="ghost" onclick={onclose} data-testid="gcode3mf-offer-cancel"
-			>{$t('Cancel')}</Button
-		>
-		<Button onclick={onopen} data-testid="gcode3mf-offer-open"
-			>{$t('Open in G-code preview')}</Button
-		>
+		<Button variant="ghost" onclick={onclose} data-testid="gcode3mf-offer-cancel">
+			{$t('Cancel')}
+		</Button>
+		<Button onclick={onopen} data-testid="gcode3mf-offer-open">
+			{$t('Open in G-code preview')}
+		</Button>
 	{/snippet}
 </Dialog>

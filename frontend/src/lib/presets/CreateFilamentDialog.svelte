@@ -162,7 +162,7 @@
 			</select>
 		</label>
 		{#if presets.length > 0 && choices.length === 0}
-			<p class="text-xs text-warning-text" data-testid="create-filament-no-base">
+			<p class="text-warning-text text-xs" data-testid="create-filament-no-base">
 				{$t('No system filament of type {type} for this printer.', { type })}
 			</p>
 		{/if}
@@ -183,7 +183,9 @@
 			disabled={busy || choices.length === 0}
 			title={presets.length === 0 ? $t('Loading filaments…') : undefined}
 			data-testid="create-filament-submit"
-			onclick={submit}>{$t('Create')}</button
+			onclick={submit}
 		>
+			{$t('Create')}
+		</button>
 	{/snippet}
 </Dialog>

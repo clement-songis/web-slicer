@@ -164,15 +164,47 @@ describe('menu objet : rôle des entrées aplaties', () => {
 describe('menu objet : sous-menus ouverts (phase 25)', () => {
 	// Les 43 actions du menu à plat de la phase 24, dans l'ordre de l'époque.
 	const PHASE24 = [
-		'HideShow', 'Rename', 'Edit', 'Add settings', 'Clone', 'Add instance', 'Remove instance',
-		'Set number of instances…', 'Set as an individual object', 'Fill bed with copies',
-		'Fill bed with instances…', 'Auto orientation', 'Center', 'Drop', 'Scale to build volume',
-		'Along X axis', 'Along Y axis', 'Along Z axis', 'Add part', 'Add negative volume',
-		'Add modifier', 'Height range Modifier', 'Add support blocker', 'Add support enforcer',
-		'Fix model', 'Reload from disk', 'Replace 3D file…', 'Replace all with 3D files…',
-		'Simplify Model', 'Subdivision mesh(Lost color)', 'Mesh boolean', 'Assemble',
-		'Assemble (single part)', 'To objects', 'To parts', 'Split', 'Export as one STL…',
-		'Export as STLs…', 'Export as one DRC…', 'Export as DRCs…', 'Delete'
+		'HideShow',
+		'Rename',
+		'Edit',
+		'Add settings',
+		'Clone',
+		'Add instance',
+		'Remove instance',
+		'Set number of instances…',
+		'Set as an individual object',
+		'Fill bed with copies',
+		'Fill bed with instances…',
+		'Auto orientation',
+		'Center',
+		'Drop',
+		'Scale to build volume',
+		'Along X axis',
+		'Along Y axis',
+		'Along Z axis',
+		'Add part',
+		'Add negative volume',
+		'Add modifier',
+		'Height range Modifier',
+		'Add support blocker',
+		'Add support enforcer',
+		'Fix model',
+		'Reload from disk',
+		'Replace 3D file…',
+		'Replace all with 3D files…',
+		'Simplify Model',
+		'Subdivision mesh(Lost color)',
+		'Mesh boolean',
+		'Assemble',
+		'Assemble (single part)',
+		'To objects',
+		'To parts',
+		'Split',
+		'Export as one STL…',
+		'Export as STLs…',
+		'Export as one DRC…',
+		'Export as DRCs…',
+		'Delete'
 	];
 	test('aucune action perdue : mêmes libellés et actions, rangés en sections', () => {
 		const leaves = menuLeaves(OBJECT_CONTEXT_ITEMS);
@@ -211,4 +243,3 @@ describe('menu objet : sous-menus ouverts (phase 25)', () => {
 		}
 	});
 });
-

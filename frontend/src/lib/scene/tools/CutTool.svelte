@@ -125,8 +125,10 @@
 			aria-checked={s.mode === 'planar'}
 			data-testid="cut-mode-planar"
 			class="ws-chip {s.mode === 'planar' ? 'ws-chip-on' : ''}"
-			onclick={() => s.setMode('planar')}>{$t('Planar||cut')}</button
+			onclick={() => s.setMode('planar')}
 		>
+			{$t('Planar||cut')}
+		</button>
 		<button
 			type="button"
 			role="radio"
@@ -137,8 +139,10 @@
 			title={s.connectors.length > 0
 				? $t('Remove the connectors to switch to dovetail (Orca)')
 				: $t('Dovetail: the two halves interlock')}
-			onclick={() => s.setMode('groove')}>{$t('Dovetail')}</button
+			onclick={() => s.setMode('groove')}
 		>
+			{$t('Dovetail')}
+		</button>
 	</div>
 
 	<div class="flex items-center gap-2" role="radiogroup" aria-label={$t('Cut axis')}>
@@ -150,32 +154,39 @@
 				aria-checked={s.axis === a}
 				data-testid={'cut-axis-' + a}
 				class="ws-chip {s.axis === a ? 'ws-chip-on' : ''}"
-				onclick={() => s.setAxis(a)}>{a.toUpperCase()}</button
+				onclick={() => s.setAxis(a)}
 			>
+				{a.toUpperCase()}
+			</button>
 		{/each}
-		{#if !s.axis}<span class="text-xs text-primary" data-testid="cut-tilted">{$t('tilted')}</span
-			>{/if}
+		{#if !s.axis}<span class="text-xs text-primary" data-testid="cut-tilted">
+				{$t('tilted')}
+			</span>{/if}
 		<span class="flex-1"></span>
 		<button
 			type="button"
 			class="ws-btn ws-btn-sm ws-btn-ghost"
 			data-testid="cut-flip-plane"
 			title={$t('Flip cut plane (swap top and bottom)')}
-			onclick={() => s.flipPlane()}>⇅</button
+			onclick={() => s.flipPlane()}
 		>
+			⇅
+		</button>
 		<button
 			type="button"
 			class="ws-btn ws-btn-sm ws-btn-ghost"
 			data-testid="cut-reset"
 			title={$t('Reset the cut plane and remove the connectors')}
-			onclick={() => s.reset()}>↺</button
+			onclick={() => s.reset()}
 		>
+			↺
+		</button>
 	</div>
 
 	<label class="flex items-center gap-2">
-		<span class="w-20 text-content-muted"
-			>{s.displayAxis === 2 ? $t('Height') : $t('Position||cut')}</span
-		>
+		<span class="w-20 text-content-muted">
+			{s.displayAxis === 2 ? $t('Height') : $t('Position||cut')}
+		</span>
 		<input
 			type="range"
 			data-testid="cut-offset"
@@ -241,9 +252,9 @@
 		<section class="flex flex-col gap-1 border-t border-border pt-2" aria-label={$t('Connectors')}>
 			<div class="flex items-center gap-2">
 				<span class="font-medium">{$t('Connectors')}</span>
-				<span class="text-xs text-content-subtle" data-testid="cut-connector-count"
-					>{s.connectors.length}</span
-				>
+				<span class="text-xs text-content-subtle" data-testid="cut-connector-count">
+					{s.connectors.length}
+				</span>
 				<span class="flex-1"></span>
 				<button
 					type="button"
@@ -255,12 +266,13 @@
 						? $t('Then click the cut face to place a connector')
 						: $t('Unavailable with “Cut to parts” (Orca)')}
 					onclick={() => (s.editingConnectors = !s.editingConnectors)}
-					>{s.editingConnectors
+				>
+					{s.editingConnectors
 						? $t('Finish')
 						: s.connectors.length
 							? $t('Edit connectors')
-							: $t('Add connectors')}</button
-				>
+							: $t('Add connectors')}
+				</button>
 			</div>
 			<p class="text-xs text-content-subtle" data-testid="cut-connectors-note">
 				{s.editingConnectors
@@ -320,8 +332,10 @@
 							title={$t(ty.tip)}
 							data-testid={'cut-type-' + ty.id}
 							class="ws-chip {s.params.type === ty.id ? 'ws-chip-on' : ''}"
-							onclick={() => s.setParams({ type: ty.id })}>{$t(ty.label)}</button
+							onclick={() => s.setParams({ type: ty.id })}
 						>
+							{$t(ty.label)}
+						</button>
 					{/each}
 				</div>
 				<div class="flex items-center gap-1" role="radiogroup" aria-label={$t('Connector shape')}>
@@ -334,8 +348,10 @@
 							disabled={s.params.type === 'snap'}
 							data-testid={'cut-shape-' + sh.id}
 							class="ws-chip ws-chip-sm {s.params.shape === sh.id ? 'ws-chip-on' : ''}"
-							onclick={() => s.setParams({ shape: sh.id })}>{$t(sh.label)}</button
+							onclick={() => s.setParams({ shape: sh.id })}
 						>
+							{$t(sh.label)}
+						</button>
 					{/each}
 				</div>
 				<label class="flex items-center gap-1 text-xs">
@@ -397,15 +413,19 @@
 						class="ws-btn ws-btn-sm ws-btn-secondary"
 						data-testid="cut-connector-remove"
 						disabled={!s.selectedId}
-						onclick={() => s.removeConnector()}>{$t('Remove')}</button
+						onclick={() => s.removeConnector()}
 					>
+						{$t('Remove')}
+					</button>
 					<button
 						type="button"
 						class="ws-btn ws-btn-sm ws-btn-secondary"
 						data-testid="cut-connectors-clear"
 						disabled={!s.connectors.length}
-						onclick={() => s.clearConnectors()}>{$t('Remove connectors')}</button
+						onclick={() => s.clearConnectors()}
 					>
+						{$t('Remove connectors')}
+					</button>
 				</div>
 				<p class="text-xs text-content-subtle">
 					{s.selectedId
@@ -447,9 +467,9 @@
 			{@const part = s[k]}
 			{@const locked = s.connectors.length > 0 || s.asParts}
 			<div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-				<span class="flex w-28 items-center gap-1"
-					><span class="h-2 w-2 rounded-full {dot}" aria-hidden="true"></span>{$t(label)}</span
-				>
+				<span class="flex w-28 items-center gap-1">
+					<span class="h-2 w-2 rounded-full {dot}" aria-hidden="true"></span>{$t(label)}
+				</span>
 				<label
 					class="flex items-center gap-1"
 					title={locked ? $t('Always kept with connectors or as parts') : ''}
@@ -506,10 +526,12 @@
 			data-testid="cut-apply"
 			class="ws-btn ws-btn-primary"
 			disabled={busy || !!s.blocker}
-			onclick={() => oncut()}>{busy ? $t('Cutting…') : $t('Cut')}</button
+			onclick={() => oncut()}
 		>
-		<button type="button" class="ws-btn ws-btn-secondary" onclick={() => oncancel?.()}
-			>{$t('Cancel')}</button
-		>
+			{busy ? $t('Cutting…') : $t('Cut')}
+		</button>
+		<button type="button" class="ws-btn ws-btn-secondary" onclick={() => oncancel?.()}>
+			{$t('Cancel')}
+		</button>
 	</div>
 </div>

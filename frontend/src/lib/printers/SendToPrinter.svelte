@@ -478,16 +478,20 @@
 						data-testid="send-scope-plate"
 						disabled={sending || !gcodeId}
 						title={gcodeId ? undefined : $t('Slice the active plate first')}
-						onclick={() => (scope = 'plate')}>{$t('Sliced plate')}</button
+						onclick={() => (scope = 'plate')}
 					>
+						{$t('Sliced plate')}
+					</button>
 					<button
 						type="button"
 						class="ws-seg-item flex-1 {scope === 'all' ? 'ws-seg-on' : ''}"
 						aria-pressed={scope === 'all'}
 						data-testid="send-scope-all"
 						disabled={sending}
-						onclick={() => (scope = 'all')}>{$t('All plates ({n})', { n: plateCount })}</button
+						onclick={() => (scope = 'all')}
 					>
+						{$t('All plates ({n})', { n: plateCount })}
+					</button>
 				</div>
 				{#if scope === 'all'}
 					<p class="text-xs text-content-subtle">
@@ -536,8 +540,10 @@
 								editingUrl = selected?.id ?? null;
 								urlDraft = selected?.moonraker_url ?? '';
 								urlError = null;
-							}}>{$t('Change URL')}</button
+							}}
 						>
+							{$t('Change URL')}
+						</button>
 					</p>
 				{/if}
 				{#if mismatch}
@@ -555,9 +561,9 @@
 				{/if}
 				{#if selected && !needsUrl && meta.printerSlug}
 					<label class="flex flex-col gap-1 text-sm">
-						<span class="text-content-muted"
-							>{meta.id === 'obico' ? $t('Obico printer') : $t('Repetier server printer')}</span
-						>
+						<span class="text-content-muted">
+							{meta.id === 'obico' ? $t('Obico printer') : $t('Repetier server printer')}
+						</span>
 						{#if hostPrinters?.length}
 							<select
 								class="ws-field"
@@ -571,17 +577,19 @@
 									<option value={hostPrinterValue(meta.id, slug)}>{slug}</option>
 								{/each}
 								{#if selected.host_port && !hostPrinters.some((s) => hostPrinterValue(meta.id, s) === selected.host_port)}
-									<option value={selected.host_port}
-										>{$t('{name} (not found)', { name: selected.host_port })}</option
-									>
+									<option value={selected.host_port}>
+										{$t('{name} (not found)', { name: selected.host_port })}
+									</option>
 								{/if}
 							</select>
 						{:else if hostPrintersError}
 							<span
-								class="text-xs text-danger-text"
+								class="text-danger-text text-xs"
 								role="alert"
-								data-testid="send-host-printer-error">{hostPrintersError}</span
+								data-testid="send-host-printer-error"
 							>
+								{hostPrintersError}
+							</span>
 						{:else}
 							<span class="text-xs text-content-subtle">{$t('Searching for printers…')}</span>
 						{/if}
@@ -605,7 +613,7 @@
 								class="flex flex-col gap-2 rounded border border-warning/40 bg-warning-soft px-3 py-2"
 								data-testid="send-connection-help"
 							>
-								<p class="text-xs text-warning-text" data-testid="send-connection-hint">
+								<p class="text-warning-text text-xs" data-testid="send-connection-hint">
 									{hintFor(selected)}
 								</p>
 								{#if onexportsliced}
@@ -617,21 +625,23 @@
 										onclick={() => {
 											open = false;
 											onexportsliced?.();
-										}}>{$t('Export plate sliced file (.gcode.3mf) for a microSD card')}</button
+										}}
 									>
+										{$t('Export plate sliced file (.gcode.3mf) for a microSD card')}
+									</button>
 								{/if}
 							</div>
 						{/if}
 						<label class="flex flex-col gap-1">
-							<span class="text-content-muted"
-								>{$t('{field} of {name}', {
+							<span class="text-content-muted">
+								{$t('{field} of {name}', {
 									field:
 										meta.id === 'moonraker'
 											? $t('Moonraker URL')
 											: $t('{host} address', { host: meta.label }),
 									name: selected?.name ?? ''
-								})}</span
-							>
+								})}
+							</span>
 							<input
 								type="url"
 								inputmode="url"
@@ -645,14 +655,14 @@
 							/>
 						</label>
 						<div class="flex flex-col items-end gap-1">
-							<span class="w-full text-xs text-content-subtle"
-								>{$t(
+							<span class="w-full text-xs text-content-subtle">
+								{$t(
 									'Saved in the printer when sending, reused afterwards. Other connection type (OctoPrint, PrusaLink…):'
 								)}
-								<a class="underline" href={resolve('/printers')} data-testid="send-host-settings"
-									>{$t('Printers page')}</a
-								>.</span
-							>
+								<a class="underline" href={resolve('/printers')} data-testid="send-host-settings">
+									{$t('Printers page')}
+								</a>.
+							</span>
 							<div class="flex gap-2">
 								{#if editingUrl && editingUrl === selected?.id}
 									<button
@@ -663,8 +673,10 @@
 											editingUrl = null;
 											urlDraft = '';
 											urlError = null;
-										}}>{$t('Cancel')}</button
+										}}
 									>
+										{$t('Cancel')}
+									</button>
 								{/if}
 								<button
 									type="submit"
@@ -690,11 +702,9 @@
 				{/if}
 				{#if storages && storages.items.length > 0}
 					<label class="flex flex-col gap-1 text-sm">
-						<span class="text-content-muted"
-							>{storages.kind === 'group'
-								? $t('Group (Repetier)')
-								: $t('Destination storage')}</span
-						>
+						<span class="text-content-muted">
+							{storages.kind === 'group' ? $t('Group (Repetier)') : $t('Destination storage')}
+						</span>
 						<select
 							class="ws-field"
 							bind:value={storage}
@@ -710,9 +720,9 @@
 				{#if selected && !needsUrl}
 					<!-- Lot 42 M2 : nom du fichier envoyé (Orca PrintHostSendDialog). -->
 					<div class="flex flex-col gap-1 text-sm">
-						<label class="text-content-muted" for="send-filename-input"
-							>{$t('Upload to Printer Host with the following filename:')}</label
-						>
+						<label class="text-content-muted" for="send-filename-input">
+							{$t('Upload to Printer Host with the following filename:')}
+						</label>
 						<div class="flex items-stretch">
 							<input
 								id="send-filename-input"
@@ -730,13 +740,15 @@
 							<span
 								class="flex items-center rounded-r-md border border-l-0 border-border bg-surface-sunken px-2 text-xs text-content-muted"
 								title={$t('Extension required by the printer host')}
-								data-testid="send-filename-ext">{nameExt}</span
+								data-testid="send-filename-ext"
 							>
+								{nameExt}
+							</span>
 						</div>
 						{#if nameReason}
 							<p
 								id="send-filename-error"
-								class="text-xs text-danger-text"
+								class="text-danger-text text-xs"
 								role="alert"
 								data-testid="send-filename-error"
 								data-reason={nameReason}
@@ -779,8 +791,10 @@
 						type="button"
 						class="ml-1 underline"
 						data-testid="send-show-queue"
-						onclick={showQueue}>{$t('Print host upload queue')}</button
+						onclick={showQueue}
 					>
+						{$t('Print host upload queue')}
+					</button>
 				</p>
 			{/if}
 			{#if error}
@@ -795,8 +809,10 @@
 							type="button"
 							class="ml-1 underline"
 							data-testid="send-error-queue"
-							onclick={showQueue}>{$t('Print host upload queue')}</button
+							onclick={showQueue}
 						>
+							{$t('Print host upload queue')}
+						</button>
 					{/if}
 				</p>
 			{/if}

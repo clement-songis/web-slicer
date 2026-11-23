@@ -225,15 +225,19 @@
 			<button
 				type="button"
 				class="ws-btn ws-btn-primary"
-				onclick={() => onchange(setBand(profile, z0, z1, bandHeight))}>{$t('Apply band')}</button
+				onclick={() => onchange(setBand(profile, z0, z1, bandHeight))}
 			>
+				{$t('Apply band')}
+			</button>
 			{#if onadaptive}
 				<button
 					type="button"
 					disabled={busy}
 					class="ws-btn ws-btn-secondary"
-					onclick={() => run(() => onadaptive(quality))}>{$t('Adaptive')}</button
+					onclick={() => run(() => onadaptive(quality))}
 				>
+					{$t('Adaptive')}
+				</button>
 			{/if}
 			<button
 				type="button"
@@ -241,13 +245,16 @@
 				class="ws-btn ws-btn-secondary"
 				onclick={() =>
 					onsmooth ? run(() => onsmooth(radius, keepMin)) : onchange(smooth(profile, 0.5))}
-				>{$t('Smooth||verb')}</button
 			>
+				{$t('Smooth||verb')}
+			</button>
 			<button
 				type="button"
 				class="ws-btn ws-btn-secondary"
-				onclick={() => onchange(uniformProfile(zMax, baseHeight))}>{$t('Reset')}</button
+				onclick={() => onchange(uniformProfile(zMax, baseHeight))}
 			>
+				{$t('Reset')}
+			</button>
 		</div>
 	</div>
 </div>

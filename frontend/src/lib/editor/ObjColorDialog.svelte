@@ -108,8 +108,10 @@
 					onclick={() => {
 						mode = 'append';
 						targets = defaultTargets(groups, slotColours, 'append');
-					}}>{$t('To new filaments')}</button
+					}}
 				>
+					{$t('To new filaments')}
+				</button>
 				<button
 					type="button"
 					class="ws-btn ws-btn-sm {mode === 'match' ? 'ws-btn-primary' : 'ws-btn-secondary'}"
@@ -118,8 +120,10 @@
 					onclick={() => {
 						mode = 'match';
 						targets = defaultTargets(groups, slotColours, 'match');
-					}}>{$t('To the closest filaments')}</button
+					}}
 				>
+					{$t('To the closest filaments')}
+				</button>
 			</div>
 		</div>
 
@@ -144,13 +148,13 @@
 						value={targetValue(targets[i])}
 						onchange={(e) => setTarget(i, e.currentTarget.value)}
 					>
-						<option value="new" disabled={roomLeft <= 0}
-							>{$t('New filament ({hex})', { hex: g.hex })}</option
-						>
+						<option value="new" disabled={roomLeft <= 0}>
+							{$t('New filament ({hex})', { hex: g.hex })}
+						</option>
 						{#each slotColours as c, s (s)}
-							<option value={String(s)}
-								>{$t('Filament {n} ({color})', { n: s + 1, color: c })}</option
-							>
+							<option value={String(s)}>
+								{$t('Filament {n} ({color})', { n: s + 1, color: c })}
+							</option>
 						{/each}
 					</select>
 					<span
@@ -177,13 +181,17 @@
 			type="button"
 			class="ws-btn ws-btn-ghost mr-auto"
 			data-testid="obj-color-skip"
-			onclick={onskip}>{$t('Import without colors')}</button
+			onclick={onskip}
 		>
+			{$t('Import without colors')}
+		</button>
 		<button
 			type="button"
 			class="ws-btn ws-btn-primary"
 			data-testid="obj-color-apply"
-			onclick={() => onapply(plan)}>{$t('Apply colors')}</button
+			onclick={() => onapply(plan)}
 		>
+			{$t('Apply colors')}
+		</button>
 	{/snippet}
 </Dialog>

@@ -7,12 +7,16 @@ Tous les scripts sont ré-exécutables : ils lisent vendor/OrcaSlicer et
 from __future__ import annotations
 
 import json
+import os
 import re
 from pathlib import Path
 
 AUDIT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = AUDIT_DIR.parent
-ORCA_ROOT = REPO_ROOT / "vendor" / "OrcaSlicer"
+# La référence est la même release Orca que le moteur et l'oracle CLI. Le
+# submodule vendor/ n'est qu'un repli : son pointeur peut suivre main sans
+# changer la cible de parité du projet.
+ORCA_ROOT = Path(os.environ.get("ORCA_SRC", REPO_ROOT / "vendor" / "OrcaSlicer"))
 
 _STRING_RE = re.compile(r'"((?:[^"\\]|\\.)*)"')
 

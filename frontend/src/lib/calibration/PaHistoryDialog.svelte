@@ -169,33 +169,33 @@
 			)}
 		</p>
 		<form class="flex flex-wrap items-end gap-2" onsubmit={(e) => (e.preventDefault(), add())}>
-			<label class="flex flex-col gap-1 text-xs text-content-muted"
-				>{$t('K for “{filament}”', { filament })}<input
+			<label class="flex flex-col gap-1 text-xs text-content-muted">
+				{$t('K for “{filament}”', { filament })}<input
 					class="ws-field ws-field-sm w-24 tabular-nums"
 					inputmode="decimal"
 					bind:value={kDraft}
 					data-testid="pa-k"
-				/></label
-			>
-			<label class="flex flex-col gap-1 text-xs text-content-muted"
-				>{$t('Method')}<select
+				/>
+			</label>
+			<label class="flex flex-col gap-1 text-xs text-content-muted">
+				{$t('Method')}<select
 					class="ws-field ws-field-sm"
 					bind:value={method}
 					data-testid="pa-method"
 				>
 					{#each PA_METHODS as m (m.id)}<option value={m.id}>{$t(m.label)}</option>{/each}
-				</select></label
-			>
-			<label class="flex min-w-40 flex-1 flex-col gap-1 text-xs text-content-muted"
-				>{$t('Note (optional)')}<input
+				</select>
+			</label>
+			<label class="flex min-w-40 flex-1 flex-col gap-1 text-xs text-content-muted">
+				{$t('Note (optional)')}<input
 					class="ws-field ws-field-sm"
 					bind:value={note}
 					placeholder={$t('e.g. 0.002 per line')}
-				/></label
-			>
-			<button type="submit" class="ws-btn ws-btn-sm ws-btn-primary" data-testid="pa-add"
-				>{$t('Save the measurement')}</button
-			>
+				/>
+			</label>
+			<button type="submit" class="ws-btn ws-btn-sm ws-btn-primary" data-testid="pa-add">
+				{$t('Save the measurement')}
+			</button>
 		</form>
 		<fieldset class="flex flex-wrap items-center gap-4 text-xs text-content-muted">
 			<legend class="sr-only">{$t('Filters')}</legend>
@@ -222,11 +222,13 @@
 		{:else}
 			<table class="w-full text-sm" aria-busy={loading}>
 				<thead class="text-left text-xs text-content-muted">
-					<tr
-						><th class="py-1">{$t('Filament')}</th><th class="py-1">{$t('Printer · nozzle')}</th><th
-							class="py-1">K</th
-						><th class="py-1">{$t('Method')}</th><th class="py-1">{$t('Date')}</th><th></th></tr
-					>
+					<tr>
+						<th class="py-1">{$t('Filament')}</th><th class="py-1">{$t('Printer · nozzle')}</th><th
+							class="py-1"
+						>
+							K
+						</th><th class="py-1">{$t('Method')}</th><th class="py-1">{$t('Date')}</th><th></th>
+					</tr>
 				</thead>
 				<tbody>
 					{#each rows as row (row.id)}
@@ -239,13 +241,14 @@
 								class="py-1 {row.filament_preset === filament
 									? 'font-medium text-content'
 									: 'text-content-muted'}"
-								>{row.filament_preset}{#if row.note}<span class="block text-xs text-content-subtle"
-										>{row.note}</span
-									>{/if}</td
 							>
-							<td class="py-1 text-xs text-content-muted" data-testid="pa-row-printer"
-								>{row.machine_preset} · {row.nozzle_diameter} mm</td
-							>
+								{row.filament_preset}{#if row.note}<span class="block text-xs text-content-subtle">
+										{row.note}
+									</span>{/if}
+							</td>
+							<td class="py-1 text-xs text-content-muted" data-testid="pa-row-printer">
+								{row.machine_preset} · {row.nozzle_diameter} mm
+							</td>
 							<td class="py-1 tabular-nums">
 								{#if editing === row.id}
 									<input
@@ -264,27 +267,33 @@
 								{:else}{row.k_value}{/if}
 							</td>
 							<td class="py-1 text-xs text-content-muted">{methodLabel(row.method)}</td>
-							<td class="py-1 text-xs text-content-subtle"
-								>{new Date(row.updated_at).toLocaleDateString()}</td
-							>
+							<td class="py-1 text-xs text-content-subtle">
+								{new Date(row.updated_at).toLocaleDateString()}
+							</td>
 							<td class="py-1 text-right whitespace-nowrap">
 								<button
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-primary"
 									data-testid="pa-apply"
-									onclick={() => onapply(row.k_value)}>{$t('Apply to filament')}</button
+									onclick={() => onapply(row.k_value)}
 								>
+									{$t('Apply to filament')}
+								</button>
 								<button
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-ghost"
-									onclick={() => (editing = row.id)}>{$t('Edit||verb')}</button
+									onclick={() => (editing = row.id)}
 								>
+									{$t('Edit||verb')}
+								</button>
 								<button
 									type="button"
 									class="ws-btn ws-btn-sm ws-btn-ghost text-danger"
 									data-testid="pa-delete"
-									onclick={() => void remove(row)}>{$t('Delete')}</button
+									onclick={() => void remove(row)}
 								>
+									{$t('Delete')}
+								</button>
 							</td>
 						</tr>
 					{/each}

@@ -78,8 +78,10 @@
 				class="ws-icon-btn"
 				aria-label={$t('Swap')}
 				data-tip={$t('Swap')}
-				onclick={() => ([left, right] = [right, left])}>⇄</button
+				onclick={() => ([left, right] = [right, left])}
 			>
+				⇄
+			</button>
 			<select
 				class="ws-field"
 				bind:value={right}
@@ -118,11 +120,11 @@
 					</thead>
 					<tbody>
 						{#each pages as group (group.page)}
-							<tr
-								><th colspan="3" class="bg-overlay px-3 py-1 text-left text-xs font-semibold"
-									>{$t(group.page)}</th
-								></tr
-							>
+							<tr>
+								<th colspan="3" class="bg-overlay px-3 py-1 text-left text-xs font-semibold">
+									{$t(group.page)}
+								</th>
+							</tr>
 							{#each group.rows as row (row.key)}
 								<tr class="border-t border-border" data-testid="compare-row" data-key={row.key}>
 									<td class="px-3 py-1 text-content-muted" title={row.key}>{$t(row.label)}</td>

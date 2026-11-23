@@ -140,8 +140,10 @@
 			class="ws-btn ws-btn-sm ws-btn-secondary justify-self-start"
 			data-testid="brim-ears-auto"
 			title={$t('Generate brim ears using Max angle and Detection radius')}
-			onclick={() => onautogenerate?.()}>{$t('Auto-generate')}</button
+			onclick={() => onautogenerate?.()}
 		>
+			{$t('Auto-generate')}
+		</button>
 		<span class="text-content-muted">{$t('Remove')}</span>
 		<span class="flex gap-2">
 			<button
@@ -149,15 +151,19 @@
 				class="ws-btn ws-btn-sm ws-btn-secondary"
 				data-testid="brim-ears-remove-selected"
 				disabled={selected.size === 0}
-				onclick={() => onremoveselected?.()}>{$t('Selected')}</button
+				onclick={() => onremoveselected?.()}
 			>
+				{$t('Selected')}
+			</button>
 			<button
 				type="button"
 				class="ws-btn ws-btn-sm ws-btn-secondary"
 				data-testid="brim-ears-remove-all"
 				disabled={points.length === 0}
-				onclick={() => onclear?.()}>{$t('All')}</button
+				onclick={() => onclear?.()}
 			>
+				{$t('All')}
+			</button>
 		</span>
 	</div>
 	<hr class="border-border" />
@@ -180,18 +186,21 @@
 						class="flex-1 text-left {invalidSet.has(i) ? 'text-danger' : ''}"
 						aria-pressed={selected.has(i)}
 						onclick={(e) => onselect?.(i, e.shiftKey || e.ctrlKey || e.metaKey)}
-						>X {fmtNum(p.wx, 1, $locale)} · Y {fmtNum(p.wy, 1, $locale)} · Ø {fmtNum(
+					>
+						X {fmtNum(p.wx, 1, $locale)} · Y {fmtNum(p.wy, 1, $locale)} · Ø {fmtNum(
 							p.r * 2,
 							1,
 							$locale
-						)}</button
-					>
+						)}
+					</button>
 					<button
 						type="button"
 						class="ws-icon-btn ws-icon-btn-xs"
 						aria-label={$t('Remove ear {n}', { n: i + 1 })}
-						onclick={() => onremove(i)}><IconX class="h-3.5 w-3.5" aria-hidden="true" /></button
+						onclick={() => onremove(i)}
 					>
+						<IconX class="h-3.5 w-3.5" aria-hidden="true" />
+					</button>
 				</li>
 			{/each}
 		</ul>
@@ -213,8 +222,9 @@
 					class="self-start font-semibold text-primary underline"
 					data-testid="brim-ears-set-painted"
 					onclick={() => onsetpainted?.()}
-					>{$t('Set the brim type of this object to "painted"')}</button
 				>
+					{$t('Set the brim type of this object to "painted"')}
+				</button>
 			{/if}
 			{#if invalid.length}
 				<p data-testid="brim-ears-invalid">
@@ -224,7 +234,7 @@
 			{/if}
 		</div>
 	{/if}
-	<button type="button" class="ws-btn ws-btn-sm ws-btn-primary self-end" onclick={() => ondone?.()}
-		>{$t('Done')}</button
-	>
+	<button type="button" class="ws-btn ws-btn-sm ws-btn-primary self-end" onclick={() => ondone?.()}>
+		{$t('Done')}
+	</button>
 </div>

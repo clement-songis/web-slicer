@@ -35,8 +35,10 @@
 		type="button"
 		class="ws-btn ws-btn-primary self-start"
 		disabled={loading}
-		onclick={analyze}>{loading ? $t('Analyzing…') : $t('Analyze mesh')}</button
+		onclick={analyze}
 	>
+		{loading ? $t('Analyzing…') : $t('Analyze mesh')}
+	</button>
 
 	{#if error}
 		<p class="text-danger" role="alert">{error}</p>

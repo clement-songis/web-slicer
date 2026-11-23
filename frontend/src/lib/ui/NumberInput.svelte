@@ -24,7 +24,9 @@
 	{#if unit}
 		<span
 			class="pointer-events-none absolute right-2 text-xs text-content-subtle"
-			aria-hidden="true">{unit}</span
+			aria-hidden="true"
 		>
+			{unit}
+		</span>
 	{/if}
 </span>

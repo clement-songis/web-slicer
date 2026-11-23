@@ -130,8 +130,8 @@
 		<!-- Libellé + 3 champs ; l'axe est un préfixe dans le champ, la valeur
 		     dispose de toute la largeur (« -123.45 » sans troncature). -->
 		<div class="grid grid-cols-[4rem_repeat(3,minmax(0,1fr))] items-center gap-1.5">
-			<span class="flex items-center gap-0.5 text-xs leading-tight text-content-muted"
-				>{row.label}{#if row.field === 'scale'}<button
+			<span class="flex items-center gap-0.5 text-xs leading-tight text-content-muted">
+				{row.label}{#if row.field === 'scale'}<button
 						type="button"
 						class="ws-btn ws-btn-ghost -my-1 h-5 w-5 shrink-0 p-0 {uniform ? 'text-primary' : ''}"
 						aria-pressed={uniform}
@@ -141,18 +141,21 @@
 							: $t('Uniform scale: off (click to lock the proportions)')}
 						data-testid="transform-uniform-scale"
 						onclick={() => (uniform = !uniform)}
-						>{#if uniform}<IconLock class="size-3" aria-hidden="true" />{:else}<IconUnlock
+					>
+						{#if uniform}<IconLock class="size-3" aria-hidden="true" />{:else}<IconUnlock
 								class="size-3"
 								aria-hidden="true"
-							/>{/if}</button
-					>{/if}</span
-			>
+							/>{/if}
+					</button>{/if}
+			</span>
 			{#each axes as axis, i (axis)}
 				<label class="relative flex min-w-0 items-center">
 					<span
 						class="pointer-events-none absolute left-1.5 text-2xs font-semibold text-content-subtle"
-						aria-hidden="true">{axis}</span
+						aria-hidden="true"
 					>
+						{axis}
+					</span>
 					<input
 						type={localized(row.field) ? 'text' : 'number'}
 						inputmode={localized(row.field) ? 'decimal' : undefined}

@@ -128,14 +128,14 @@
 	<div class="flex items-center gap-2 border-b border-border px-3 py-2">
 		<div class="relative flex-1">
 			<Search
-				class="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-content-subtle"
+				class="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 text-content-subtle"
 			/>
 			<input
 				bind:value={query}
 				type="search"
 				placeholder={$t('Search for a printer…')}
 				aria-label={$t('Search for a printer')}
-				class="ws-field w-full pl-8 pr-2"
+				class="ws-field w-full pr-2 pl-8"
 			/>
 		</div>
 		<div class="flex items-center gap-1" role="group" aria-label={$t('Display density')}>
@@ -168,10 +168,10 @@
 				<header
 					class="mb-2 flex items-center gap-2 border-b border-accent/40 pb-1 text-sm font-medium text-accent"
 				>
-					<span class="flex-1"
-						>{vendor.vendor === 'Custom' ? $t('Custom||vendor') : vendor.vendor}</span
-					>
-					<span class="text-xs tabular-nums text-content-subtle">{sel} / {n}</span>
+					<span class="flex-1">
+						{vendor.vendor === 'Custom' ? $t('Custom||vendor') : vendor.vendor}
+					</span>
+					<span class="text-xs text-content-subtle tabular-nums">{sel} / {n}</span>
 					<input
 						type="checkbox"
 						checked={vendorAllSelected(selected, vendor)}
@@ -198,7 +198,7 @@
 							<!-- Coche de sélection -->
 							{#if on}
 								<span
-									class="absolute right-1 top-1 z-10 rounded-full bg-accent p-0.5 text-primary-content"
+									class="absolute top-1 right-1 z-10 rounded-full bg-accent p-0.5 text-primary-content"
 								>
 									<Check class="text-xs" />
 								</span>
@@ -220,13 +220,15 @@
 								class="truncate text-xs text-content {view === 'list'
 									? 'flex-1'
 									: 'w-full text-center'}"
-								title={model.model}>{model.model}</span
+								title={model.model}
 							>
+								{model.model}
+							</span>
 							{#if model.variants.length > 1}
 								<!-- Variantes = diamètres de buse proposés (et non nombre de buses physiques). -->
-								<span class="text-2xs text-content-subtle" data-testid="catalog-nozzle-count"
-									>{$t('{n} nozzle diameters', { n: model.variants.length })}</span
-								>
+								<span class="text-2xs text-content-subtle" data-testid="catalog-nozzle-count">
+									{$t('{n} nozzle diameters', { n: model.variants.length })}
+								</span>
 							{/if}
 						</button>
 					{/each}
@@ -254,8 +256,9 @@
 								aria-pressed={on}
 								data-testid="nozzle-option"
 								onclick={() => toggleNozzle(p.key, p.ids, v.machine_preset_id)}
-								>{v.nozzle ? `${v.nozzle} mm` : $t('standard||nozzle')}</button
 							>
+								{v.nozzle ? `${v.nozzle} mm` : $t('standard||nozzle')}
+							</button>
 						{/each}
 					</div>
 					{#if p.ids.length === 0}

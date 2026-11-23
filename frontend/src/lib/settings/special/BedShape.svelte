@@ -52,9 +52,9 @@
 	</div>
 
 	<label class="text-sm">
-		<span class="mb-1 block text-content-muted"
-			>{$t('Excluded area (“XxY” points, separated by ;)')}</span
-		>
+		<span class="mb-1 block text-content-muted">
+			{$t('Excluded area (“XxY” points, separated by ;)')}
+		</span>
 		<input
 			type="text"
 			value={(

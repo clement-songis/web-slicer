@@ -44,7 +44,7 @@
 	data-testid="instance-count-dialog"
 >
 	<form id="instance-count-form" class="flex flex-col gap-2" onsubmit={submit}>
-		{#if name}<p class="text-sm text-muted" data-testid="instance-count-object">{name}</p>{/if}
+		{#if name}<p class="text-muted text-sm" data-testid="instance-count-object">{name}</p>{/if}
 		<label class="flex items-center gap-2 text-sm">
 			<span>{$t('Number of copies:')}</span>
 			<Input
@@ -54,7 +54,7 @@
 				aria-invalid={value === null}
 				data-testid="instance-count-input"
 			/>
-			<span class="text-xs text-muted">0–{MAX_INSTANCES}</span>
+			<span class="text-muted text-xs">0–{MAX_INSTANCES}</span>
 		</label>
 		{#if value === null}
 			<p class="text-xs text-danger" role="alert" data-testid="instance-count-error">
@@ -63,14 +63,16 @@
 		{/if}
 	</form>
 	{#snippet footer()}
-		<Button variant="ghost" onclick={onclose} data-testid="instance-count-cancel"
-			>{$t('Cancel')}</Button
-		>
+		<Button variant="ghost" onclick={onclose} data-testid="instance-count-cancel">
+			{$t('Cancel')}
+		</Button>
 		<Button
 			type="submit"
 			form="instance-count-form"
 			disabled={value === null}
-			data-testid="instance-count-ok">{$t('OK')}</Button
+			data-testid="instance-count-ok"
 		>
+			{$t('OK')}
+		</Button>
 	{/snippet}
 </Dialog>

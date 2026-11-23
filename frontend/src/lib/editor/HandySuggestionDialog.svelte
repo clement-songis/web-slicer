@@ -39,9 +39,9 @@
 			{#each Object.entries(suggestion.apply) as [key, value] (key)}
 				<li class="flex items-center justify-between gap-3 rounded border border-border px-2 py-1">
 					<span>{LABELS[key] ? $t(LABELS[key]) : key}</span>
-					<span class="tabular-nums text-content-muted"
-						>{show(values[key])} → <strong class="text-content">{show(value)}</strong></span
-					>
+					<span class="text-content-muted tabular-nums">
+						{show(values[key])} → <strong class="text-content">{show(value)}</strong>
+					</span>
 				</li>
 			{/each}
 		</ul>
@@ -50,14 +50,18 @@
 				type="button"
 				class="ws-btn ws-btn-secondary"
 				data-testid="handy-suggestion-ignore"
-				onclick={onignore}>{$t('Ignore')}</button
+				onclick={onignore}
 			>
+				{$t('Ignore')}
+			</button>
 			<button
 				type="button"
 				class="ws-btn ws-btn-primary"
 				data-testid="handy-suggestion-apply"
-				onclick={onapply}>{$t('Apply')}</button
+				onclick={onapply}
 			>
+				{$t('Apply')}
+			</button>
 		</div>
 	</div>
 </div>

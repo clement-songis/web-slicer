@@ -73,8 +73,10 @@
 				class="ws-icon-btn ws-icon-btn-xs"
 				data-testid="arrange-options-close"
 				onclick={onclose}
-				aria-label={$t('Close')}>✕</button
+				aria-label={$t('Close')}
 			>
+				✕
+			</button>
 		</div>
 
 		<label class="flex items-center gap-2">
@@ -126,9 +128,9 @@
 				disabled={options.enableRotation}
 				onchange={(e) => onchange({ ...options, alignToYAxis: e.currentTarget.checked })}
 			/>
-			<span class={options.enableRotation ? 'text-content-subtle' : ''}
-				>{$t('Align to Y axis')}</span
-			>
+			<span class={options.enableRotation ? 'text-content-subtle' : ''}>
+				{$t('Align to Y axis')}
+			</span>
 		</label>
 
 		<label class="flex items-center gap-2">

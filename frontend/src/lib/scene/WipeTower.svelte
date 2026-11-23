@@ -130,8 +130,9 @@
 				data-grab={grabPoint}
 				data-dragging={drag ? 'true' : undefined}
 				data-hover={hover ? 'true' : undefined}
-				>{$t('Prime tower')}{drag ? ` · X ${px.toFixed(0)} Y ${py.toFixed(0)}` : ''}</span
 			>
+				{$t('Prime tower')}{drag ? ` · X ${px.toFixed(0)} Y ${py.toFixed(0)}` : ''}
+			</span>
 		</HTML>
 		<T.MeshStandardMaterial
 			color={color ?? $sceneColors.volumeModifier}

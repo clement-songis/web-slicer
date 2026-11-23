@@ -11,7 +11,12 @@ const updated = (id: string, progress: number): ServerEvent => ({
 	progress,
 	phase: 'slice'
 });
-const finished = (id: string): ServerEvent => ({ event: 'job.finished', id, gcode_id: 'g-' + id, stats: null });
+const finished = (id: string): ServerEvent => ({
+	event: 'job.finished',
+	id,
+	gcode_id: 'g-' + id,
+	stats: null
+});
 const none = () => false;
 
 describe('EarlyJobEvents', () => {

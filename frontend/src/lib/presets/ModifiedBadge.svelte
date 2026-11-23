@@ -18,17 +18,15 @@
 		{title}
 		data-testid={testid}
 		{onclick}
-		><span class="size-1.5 rounded-full bg-warning" aria-hidden="true"></span>{$t(
-			'(modified)'
-		)}</button
 	>
+		<span class="size-1.5 rounded-full bg-warning" aria-hidden="true"></span>{$t('(modified)')}
+	</button>
 {:else}
 	<span
 		class="ws-modified-badge inline-flex shrink-0 items-center gap-1 rounded-full bg-warning-soft px-1.5 py-0.5 text-[11px] leading-none font-medium text-warning-content"
 		{title}
 		data-testid={testid}
-		><span class="size-1.5 rounded-full bg-warning" aria-hidden="true"></span>{$t(
-			'(modified)'
-		)}</span
 	>
+		<span class="size-1.5 rounded-full bg-warning" aria-hidden="true"></span>{$t('(modified)')}
+	</span>
 {/if}

@@ -153,15 +153,15 @@
 			<IconChevronDown class="h-4 w-4 shrink-0 text-content-muted" aria-hidden="true" />
 		</summary>
 		<div
-			class="absolute left-3 right-3 top-full z-20 rounded border border-border bg-surface-raised p-2 shadow-lg"
+			class="absolute top-full right-3 left-3 z-20 rounded border border-border bg-surface-raised p-2 shadow-lg"
 		>
 			{#if usage && lines && storageGauge}
 				<div class="flex flex-col gap-1 px-3 py-2 text-xs" data-testid="account-usage">
 					<div class="flex justify-between gap-2">
 						<span class="text-content-muted">{$t('Storage')}</span>
-						<span class="tabular-nums text-content" data-testid="account-usage-storage"
-							>{lines.storage}</span
-						>
+						<span class="text-content tabular-nums" data-testid="account-usage-storage">
+							{lines.storage}
+						</span>
 					</div>
 					{#if storageGauge.percent !== null}
 						<div
@@ -184,9 +184,9 @@
 					{/if}
 					<div class="flex justify-between gap-2">
 						<span class="text-content-muted">{$t('Slices')}</span>
-						<span class="text-right tabular-nums text-content" data-testid="account-usage-slices"
-							>{lines.slices}</span
-						>
+						<span class="text-right text-content tabular-nums" data-testid="account-usage-slices">
+							{lines.slices}
+						</span>
 					</div>
 				</div>
 			{/if}
@@ -198,8 +198,10 @@
 						changing = true;
 						passwordMsg = null;
 					}}
-					data-testid="account-password-open">{$t('Change my password…')}</button
+					data-testid="account-password-open"
 				>
+					{$t('Change my password…')}
+				</button>
 			{:else}
 				<form
 					class="flex flex-col gap-2 px-2 py-2 text-xs"
@@ -220,10 +222,10 @@
 						/>
 					</label>
 					<label class="flex flex-col gap-0.5 text-content-muted">
-						<span
-							>{$t('New password')}
-							<span class="text-content-subtle">{$t('(8 characters min.)')}</span></span
-						>
+						<span>
+							{$t('New password')}
+							<span class="text-content-subtle">{$t('(8 characters min.)')}</span>
+						</span>
 						<input
 							type="password"
 							class="ws-field ws-field-sm w-full"
@@ -243,12 +245,16 @@
 						/>
 					</label>
 					<div class="flex gap-1">
-						<button type="submit" class="ws-btn ws-btn-sm ws-btn-primary flex-1" disabled={busy}
-							>{$t('Change')}</button
+						<button type="submit" class="ws-btn ws-btn-sm ws-btn-primary flex-1" disabled={busy}>
+							{$t('Change')}
+						</button>
+						<button
+							type="button"
+							class="ws-btn ws-btn-sm ws-btn-secondary"
+							onclick={cancelPassword}
 						>
-						<button type="button" class="ws-btn ws-btn-sm ws-btn-secondary" onclick={cancelPassword}
-							>{$t('Cancel')}</button
-						>
+							{$t('Cancel')}
+						</button>
 					</div>
 				</form>
 			{/if}
@@ -295,8 +301,10 @@
 						<button
 							type="submit"
 							class="ws-btn ws-btn-sm ws-btn-danger flex-1"
-							disabled={busy || !deletePassword}>{$t('Delete')}</button
+							disabled={busy || !deletePassword}
 						>
+							{$t('Delete')}
+						</button>
 						<button
 							type="button"
 							class="ws-btn ws-btn-sm ws-btn-secondary"
@@ -304,8 +312,10 @@
 								deleting = false;
 								deletePassword = '';
 								deleteError = null;
-							}}>{$t('Cancel')}</button
+							}}
 						>
+							{$t('Cancel')}
+						</button>
 					</div>
 				</form>
 			{/if}

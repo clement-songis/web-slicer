@@ -45,12 +45,13 @@ export function detectSoftwareRenderer(): boolean {
 	softwareGl = false;
 	try {
 		const canvas = document.createElement('canvas');
-		const gl = (canvas.getContext('webgl2') ?? canvas.getContext('webgl')) as
-			| WebGLRenderingContext
-			| null;
+		const gl = (canvas.getContext('webgl2') ??
+			canvas.getContext('webgl')) as WebGLRenderingContext | null;
 		if (gl) {
 			const info = gl.getExtension('WEBGL_debug_renderer_info');
-			const name = info ? gl.getParameter(info.UNMASKED_RENDERER_WEBGL) : gl.getParameter(gl.RENDERER);
+			const name = info
+				? gl.getParameter(info.UNMASKED_RENDERER_WEBGL)
+				: gl.getParameter(gl.RENDERER);
 			softwareGl = isSoftwareRenderer(String(name ?? ''));
 			gl.getExtension('WEBGL_lose_context')?.loseContext();
 		}

@@ -265,12 +265,12 @@
 {#snippet temp(heater: Heater, label: string, current: number, target: number)}
 	<div class="flex items-center gap-2" data-testid="device-temp-{heater}">
 		<span class="w-14 text-sm text-content">{label}</span>
-		<span class="w-20 text-right text-lg font-medium whitespace-nowrap tabular-nums text-content"
-			>{Math.round(current)} °C</span
-		>
-		<span class="w-16 text-xs whitespace-nowrap tabular-nums text-content-subtle"
-			>{target > 0 ? `→ ${Math.round(target)} °C` : $t('off||heater')}</span
-		>
+		<span class="w-20 text-right text-lg font-medium whitespace-nowrap text-content tabular-nums">
+			{Math.round(current)} °C
+		</span>
+		<span class="w-16 text-xs whitespace-nowrap text-content-subtle tabular-nums">
+			{target > 0 ? `→ ${Math.round(target)} °C` : $t('off||heater')}
+		</span>
 		<input
 			type="number"
 			min="0"
@@ -298,8 +298,10 @@
 				gcode(
 					tr('{heater} target sent', { heater: label.toLowerCase() }),
 					temperatureGcode(heater, Number(targets[heater]) || 0)
-				)}>{$t('Set||temperature')}</button
+				)}
 		>
+			{$t('Set||temperature')}
+		</button>
 	</div>
 {/snippet}
 
@@ -309,8 +311,10 @@
 		class="ws-icon-btn border-border-strong {cls}"
 		aria-label="{axis}{sign > 0 ? '+' : '−'}{step} mm"
 		disabled={capGcode !== 'yes' || busy || active}
-		onclick={() => requestJog(axis, sign * step)}>{label}</button
+		onclick={() => requestJog(axis, sign * step)}
 	>
+		{label}
+	</button>
 {/snippet}
 
 <div class="mx-auto flex w-full max-w-6xl flex-col gap-4 p-6" data-testid="device-panel">
@@ -322,12 +326,14 @@
 					type="button"
 					class="ws-btn ws-btn-sm ws-btn-secondary"
 					data-testid="device-upload-queue"
-					onclick={() => (queueOpen = true)}>{$t('Print host upload queue')}</button
+					onclick={() => (queueOpen = true)}
 				>
+					{$t('Print host upload queue')}
+				</button>
 			{/if}
-			<a href={resolve('/printers')} class="ws-btn ws-btn-sm ws-btn-secondary"
-				>{$t('Manage printers')}</a
-			>
+			<a href={resolve('/printers')} class="ws-btn ws-btn-sm ws-btn-secondary">
+				{$t('Manage printers')}
+			</a>
 		</div>
 	</div>
 
@@ -338,9 +344,9 @@
 			class="rounded-lg border border-border bg-surface-raised p-8 text-center text-content-muted"
 		>
 			<p>{$t('No printer declared.')}</p>
-			<a href={resolve('/printers')} class="text-primary hover:underline"
-				>{$t('Declare a printer')}</a
-			>
+			<a href={resolve('/printers')} class="text-primary hover:underline">
+				{$t('Declare a printer')}
+			</a>
 		</div>
 	{:else}
 		<!-- Sélecteur d'imprimante (liste d'Orca), pastille de connexion. -->
@@ -411,14 +417,16 @@
 								}
 							)}{:else}{$t('Connecting…')}{/if}
 					</span>
-					<span class="rounded px-2 py-0.5 text-xs {meta.badge}" data-testid="device-state"
-						>{st ? meta.label : '—'}</span
-					>
+					<span class="rounded px-2 py-0.5 text-xs {meta.badge}" data-testid="device-state">
+						{st ? meta.label : '—'}
+					</span>
 					<button
 						type="button"
 						class="ws-btn ws-btn-sm ws-btn-secondary"
-						onclick={() => refresh(printer.id)}>{$t('Refresh')}</button
+						onclick={() => refresh(printer.id)}
 					>
+						{$t('Refresh')}
+					</button>
 					<!-- Phase 39 : interface web de l'hôte (Mainsail / Fluidd), comme Orca. -->
 					<!-- eslint-disable svelte/no-navigation-without-resolve -->
 					<a
@@ -426,8 +434,10 @@
 						target="_blank"
 						rel="noopener noreferrer"
 						class="ws-btn ws-btn-sm ws-btn-ghost"
-						data-testid="device-webui-link">{$t('Web interface')}</a
+						data-testid="device-webui-link"
 					>
+						{$t('Web interface')}
+					</a>
 					<!-- eslint-enable svelte/no-navigation-without-resolve -->
 				{/if}
 			</section>
@@ -494,8 +504,9 @@
 									aria-label={$t('Webcam URL')}
 									bind:value={webcamDraft}
 								/>
-								<button type="submit" class="ws-btn ws-btn-sm ws-btn-secondary">{$t('Save')}</button
-								>
+								<button type="submit" class="ws-btn ws-btn-sm ws-btn-secondary">
+									{$t('Save')}
+								</button>
 								{#if webcamUrl}
 									<button
 										type="button"
@@ -505,8 +516,10 @@
 											saveWebcamUrl(printer.id, '');
 											webcamUrl = '';
 											webcamDraft = '';
-										}}>{printerWebcam ? $t('Printer URL') : $t('Clear')}</button
+										}}
 									>
+										{printerWebcam ? $t('Printer URL') : $t('Clear')}
+									</button>
 								{/if}
 							</form>
 						</section>
@@ -518,9 +531,9 @@
 						>
 							<div class="flex items-center justify-between gap-2">
 								<h3 class="ws-section-title">{$t('Print job')}</h3>
-								<span class="text-2xl font-semibold tabular-nums text-content"
-									>{st ? progressPercent(st.progress) : 0} %</span
-								>
+								<span class="text-2xl font-semibold text-content tabular-nums">
+									{st ? progressPercent(st.progress) : 0} %
+								</span>
 							</div>
 							<p class="truncate text-sm text-content">
 								{st?.filename || $t('No file in progress')}
@@ -541,7 +554,7 @@
 							<dl class="grid grid-cols-3 gap-3 text-sm">
 								<div>
 									<dt class="text-xs text-content-subtle">{$t('Elapsed')}</dt>
-									<dd class="tabular-nums text-content">{active ? formatClock(elapsed) : '—'}</dd>
+									<dd class="text-content tabular-nums">{active ? formatClock(elapsed) : '—'}</dd>
 								</div>
 								<div>
 									<dt
@@ -550,14 +563,14 @@
 									>
 										{$t('Remaining (estimated)')}
 									</dt>
-									<dd class="tabular-nums text-content" data-testid="device-remaining">
+									<dd class="text-content tabular-nums" data-testid="device-remaining">
 										{active ? formatClock(remaining) : '—'}
 									</dd>
 								</div>
 								<div>
 									<dt class="text-xs text-content-subtle">{$t('Layer')}</dt>
 									<dd
-										class="tabular-nums text-content"
+										class="text-content tabular-nums"
 										data-testid="device-layer"
 										data-tip={cur?.ext.current_layer == null
 											? $t('Layer not provided by the backend (print_stats.info)')
@@ -575,15 +588,17 @@
 									class="ws-btn ws-btn-secondary"
 									disabled={!st || !canPause(st.state) || busy}
 									onclick={() => run(tr('Print paused'), () => pausePrinter(printer.id))}
-									>Pause</button
 								>
+									Pause
+								</button>
 								<button
 									type="button"
 									class="ws-btn ws-btn-primary"
 									disabled={!st || !canResume(st.state) || busy}
 									onclick={() => run(tr('Print resumed'), () => resumePrinter(printer.id))}
-									>{$t('Resume')}</button
 								>
+									{$t('Resume')}
+								</button>
 								{#if confirmCancel}
 									<span class="flex items-center gap-2 text-sm text-content" role="alert">
 										{$t('Cancel the print?')}
@@ -593,21 +608,27 @@
 											onclick={() => {
 												confirmCancel = false;
 												void run(tr('Print cancelled'), () => cancelPrinter(printer.id));
-											}}>{$t('Yes, cancel')}</button
+											}}
 										>
+											{$t('Yes, cancel')}
+										</button>
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-secondary"
-											onclick={() => (confirmCancel = false)}>{$t('No')}</button
+											onclick={() => (confirmCancel = false)}
 										>
+											{$t('No')}
+										</button>
 									</span>
 								{:else}
 									<button
 										type="button"
 										class="ws-btn ws-btn-secondary"
 										disabled={!st || !canCancel(st.state) || busy}
-										onclick={() => (confirmCancel = true)}>{$t('Cancel')}</button
+										onclick={() => (confirmCancel = true)}
 									>
+										{$t('Cancel')}
+									</button>
 								{/if}
 							</div>
 						</section>
@@ -626,8 +647,10 @@
 									<button
 										type="button"
 										class="ws-btn ws-btn-sm ws-btn-secondary"
-										onclick={() => loadFiles(printer.id)}>{$t('Refresh||files')}</button
+										onclick={() => loadFiles(printer.id)}
 									>
+										{$t('Refresh||files')}
+									</button>
 								{/if}
 							</div>
 							{#if capFiles === 'no'}
@@ -647,18 +670,18 @@
 								<ul class="divide-y divide-border">
 									{#each files as f (f.path)}
 										<li class="flex items-center gap-3 py-1.5 text-sm">
-											<span class="min-w-0 flex-1 truncate text-content" title={f.path}
-												>{f.path}</span
-											>
-											<span class="text-xs tabular-nums text-content-subtle"
-												>{formatSize(f.size)}</span
-											>
-											<span class="hidden text-xs tabular-nums text-content-subtle sm:inline"
-												>{new Date(f.modified * 1000).toLocaleString(numberLocale($locale), {
+											<span class="min-w-0 flex-1 truncate text-content" title={f.path}>
+												{f.path}
+											</span>
+											<span class="text-xs text-content-subtle tabular-nums">
+												{formatSize(f.size)}
+											</span>
+											<span class="hidden text-xs text-content-subtle tabular-nums sm:inline">
+												{new Date(f.modified * 1000).toLocaleString(numberLocale($locale), {
 													dateStyle: 'short',
 													timeStyle: 'short'
-												})}</span
-											>
+												})}
+											</span>
 											<button
 												type="button"
 												class="ws-btn ws-btn-sm ws-btn-secondary"
@@ -667,8 +690,10 @@
 												onclick={() =>
 													run(tr('Print of “{file}” started', { file: f.path }), () =>
 														startPrinterFile(printer.id, f.path)
-													)}>{$t('Print')}</button
+													)}
 											>
+												{$t('Print')}
+											</button>
 										</li>
 									{/each}
 								</ul>
@@ -702,8 +727,10 @@
 											gcode(
 												tr('Preheat {name}', { name: tr(p.label) }),
 												`${temperatureGcode('extruder', p.extruder)}\n${temperatureGcode('bed', p.bed)}`
-											)}>{$t(p.label)}</button
+											)}
 									>
+										{$t(p.label)}
+									</button>
 								{/each}
 							</div>
 						</section>
@@ -720,8 +747,10 @@
 											type="button"
 											class="ws-seg-item {step === s ? 'ws-seg-on' : ''}"
 											aria-pressed={step === s}
-											onclick={() => (step = s)}>{s}</button
+											onclick={() => (step = s)}
 										>
+											{s}
+										</button>
 									{/each}
 								</div>
 							</div>
@@ -735,8 +764,10 @@
 										aria-label={$t('Home X Y')}
 										data-tip={$t('Home XY (G28 X Y)')}
 										disabled={capGcode !== 'yes' || busy || active}
-										onclick={() => gcode(tr('Home XY'), 'G28 X Y')}>⌂</button
+										onclick={() => gcode(tr('Home XY'), 'G28 X Y')}
 									>
+										⌂
+									</button>
 									{@render jog('X', 1, 'X+', '')}
 									<span></span>{@render jog('Y', -1, 'Y−', '')}<span></span>
 								</div>
@@ -747,14 +778,16 @@
 										class="ws-icon-btn border-border-strong"
 										aria-label={$t('Home Z')}
 										disabled={capGcode !== 'yes' || busy || active}
-										onclick={() => gcode(tr('Home Z'), homeGcode('Z'))}>⌂Z</button
+										onclick={() => gcode(tr('Home Z'), homeGcode('Z'))}
 									>
+										⌂Z
+									</button>
 									{@render jog('Z', -1, 'Z−', '')}
 								</div>
 							</div>
 							{#if recenter}
 								<div
-									class="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-sm text-warning-text"
+									class="text-warning-text flex flex-col gap-2 rounded-md border border-warning/40 bg-warning-soft px-3 py-2 text-sm"
 									role="alertdialog"
 									aria-label={$t('Home before moving')}
 									data-testid="device-recenter"
@@ -770,27 +803,33 @@
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-primary"
 											data-testid="device-recenter-home"
-											onclick={() => resolveRecenter('home')}>{$t('Home then move')}</button
+											onclick={() => resolveRecenter('home')}
 										>
+											{$t('Home then move')}
+										</button>
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-secondary"
 											data-testid="device-recenter-move"
-											onclick={() => resolveRecenter('move')}>{$t('Move anyway')}</button
+											onclick={() => resolveRecenter('move')}
 										>
+											{$t('Move anyway')}
+										</button>
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-ghost"
-											onclick={() => resolveRecenter('cancel')}>{$t('Cancel')}</button
+											onclick={() => resolveRecenter('cancel')}
 										>
-										<label class="ml-auto flex items-center gap-1 text-xs"
-											><input
+											{$t('Cancel')}
+										</button>
+										<label class="ml-auto flex items-center gap-1 text-xs">
+											<input
 												type="checkbox"
 												bind:checked={recenterMute}
 												data-testid="device-recenter-mute"
 											/>
-											{$t("Don't warn again")}</label
-										>
+											{$t("Don't warn again")}
+										</label>
 									</div>
 								</div>
 							{/if}
@@ -799,13 +838,15 @@
 								class="ws-btn ws-btn-secondary"
 								disabled={capGcode !== 'yes' || busy || active}
 								onclick={() => gcode(tr('Homing'), homeGcode())}
-								>{$t('Home all axes')}{#if unhomed.length}<span
+							>
+								{$t('Home all axes')}{#if unhomed.length}<span
 										class="ws-badge ml-2 h-4 px-1.5"
 										data-testid="device-unhomed"
 										title={$t('Unhomed axes')}
-										>{$t('to do: {axes}', { axes: unhomed.join(' ') })}</span
-									>{/if}</button
-							>
+									>
+										{$t('to do: {axes}', { axes: unhomed.join(' ') })}
+									</span>{/if}
+							</button>
 						</section>
 
 						<section
@@ -824,7 +865,7 @@
 									disabled={capGcode !== 'yes'}
 									onchange={() => gcode(tr('Fan at {n} %', { n: fan }), fanGcode(fan))}
 								/>
-								<span class="w-12 text-right text-sm tabular-nums text-content">{fan} %</span>
+								<span class="w-12 text-right text-sm text-content tabular-nums">{fan} %</span>
 							</div>
 						</section>
 

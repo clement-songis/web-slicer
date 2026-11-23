@@ -77,8 +77,9 @@
 			></span>
 			<span class="min-w-0 flex-1 truncate" role="status" aria-live="polite">
 				{blocked && !shown.length ? $t('Check suspended') : $locale && noticeSummary(shown)}
-				{#if errors}<span class="font-normal text-content-muted">{$t(' — slicing impossible')}</span
-					>{/if}
+				{#if errors}<span class="font-normal text-content-muted">
+						{$t(' — slicing impossible')}
+					</span>{/if}
 			</span>
 			{#if busy}
 				<span
@@ -121,8 +122,9 @@
 						{/if}
 						<div class="flex min-w-0 flex-1 flex-col gap-1">
 							<p class="leading-snug break-words whitespace-pre-line">
-								<span class="sr-only">{n.level === 'error' ? $t('Error: ') : $t('Warning: ')}</span
-								>{n.text}
+								<span class="sr-only">
+									{n.level === 'error' ? $t('Error: ') : $t('Warning: ')}
+								</span>{n.text}
 							</p>
 							{#if (n.objectId && ongotoobject) || (n.optKey && ongotooption) || (n.action && onarrange) || (n.plateIndex !== null && n.plateIndex !== activePlate && ongotoplate)}
 								<div class="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -132,10 +134,11 @@
 											class="ws-link inline-flex items-center gap-1 font-medium"
 											data-testid="validation-goto-plate"
 											onclick={() => ongotoplate(n.plateIndex!)}
-											><IconGrid class="h-3 w-3" aria-hidden="true" />{$t('View plate {n}', {
-												n: n.plateIndex! + 1
-											})}</button
 										>
+											<IconGrid class="h-3 w-3" aria-hidden="true" />{$t('View plate {n}', {
+												n: n.plateIndex! + 1
+											})}
+										</button>
 									{/if}
 									{#if n.objectId && ongotoobject}
 										<button
@@ -143,13 +146,14 @@
 											class="ws-link inline-flex max-w-full items-center gap-1 truncate font-medium"
 											data-testid="validation-goto-object"
 											onclick={() => ongotoobject(n.objectId!)}
-											><IconCrosshair class="h-3 w-3 shrink-0" aria-hidden="true" />{$t(
+										>
+											<IconCrosshair class="h-3 w-3 shrink-0" aria-hidden="true" />{$t(
 												'Select “{name}”',
 												{
 													name: n.objectName ?? $t('object')
 												}
-											)}</button
-										>
+											)}
+										</button>
 									{/if}
 									{#if n.optKey && ongotooption}
 										<button
@@ -158,21 +162,24 @@
 											data-testid="validation-goto-option"
 											title={n.optKey}
 											onclick={() => ongotooption(n)}
-											><IconSliders class="h-3 w-3 shrink-0" aria-hidden="true" />{$t(
+										>
+											<IconSliders class="h-3 w-3 shrink-0" aria-hidden="true" />{$t(
 												'Adjust “{name}”',
 												{
 													name: n.optLabel ? $t(n.optLabel) : (n.optKey ?? '')
 												}
-											)}</button
-										>
+											)}
+										</button>
 									{/if}
 									{#if n.action === 'arrange' && onarrange}
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-secondary"
 											data-testid="validation-arrange"
-											onclick={() => onarrange()}>{$t('Arrange')}</button
+											onclick={() => onarrange()}
 										>
+											{$t('Arrange')}
+										</button>
 									{/if}
 								</div>
 							{/if}

@@ -152,7 +152,7 @@
 					type="button"
 					class="flex items-center justify-between rounded-md px-3 py-2 text-left text-sm {folder ===
 					f.id
-						? 'bg-primary/10 font-medium text-primary-text'
+						? 'text-primary-text bg-primary/10 font-medium'
 						: 'text-content-muted hover:bg-overlay'}"
 					aria-current={folder === f.id ? 'true' : undefined}
 					data-testid="aux-folder"
@@ -163,9 +163,9 @@
 					}}
 				>
 					<span>{$t(f.label)}</span>
-					<span class="ws-badge tabular-nums" data-testid="aux-folder-count"
-						>{files[f.id].length}</span
-					>
+					<span class="ws-badge tabular-nums" data-testid="aux-folder-count">
+						{files[f.id].length}
+					</span>
 				</button>
 			{/each}
 			<p class="mt-auto px-3 text-xs text-content-subtle" data-testid="aux-total">
@@ -197,8 +197,9 @@
 					data-testid="aux-add"
 					disabled={busy > 0}
 					onclick={() => input?.click()}
-					><IconPlus class="h-3.5 w-3.5" aria-hidden="true" />{$t('Add files…')}</button
 				>
+					<IconPlus class="h-3.5 w-3.5" aria-hidden="true" />{$t('Add files…')}
+				</button>
 				<input
 					bind:this={input}
 					type="file"
@@ -213,9 +214,9 @@
 				/>
 			</div>
 			{#if error}
-				<p class="text-xs text-danger-text" role="alert" data-testid="aux-error">{error}</p>
+				<p class="text-danger-text text-xs" role="alert" data-testid="aux-error">{error}</p>
 			{:else if notice}
-				<p class="text-xs text-success-text" role="status" data-testid="aux-notice">{notice}</p>
+				<p class="text-success-text text-xs" role="status" data-testid="aux-notice">{notice}</p>
 			{/if}
 			{#if busy > 0}
 				<p class="text-xs text-content-subtle" role="status">{$t('Uploading…')}</p>
@@ -256,7 +257,7 @@
 									/>
 								{:else}
 									<span
-										class="flex h-full items-center justify-center font-mono text-xs uppercase text-content-subtle"
+										class="flex h-full items-center justify-center font-mono text-xs text-content-subtle uppercase"
 									>
 										{file.name.includes('.') ? file.name.split('.').pop() : $t('file')}
 									</span>
@@ -265,9 +266,9 @@
 							<div class="flex items-center gap-1 px-2 py-1.5">
 								<span class="min-w-0 flex-1">
 									<span class="block truncate text-xs" title={file.name}>{file.name}</span>
-									<span class="block text-2xs text-content-subtle tabular-nums"
-										>{formatSize(file.size)}</span
-									>
+									<span class="block text-2xs text-content-subtle tabular-nums">
+										{formatSize(file.size)}
+									</span>
 								</span>
 								<a
 									href={url}
@@ -275,8 +276,9 @@
 									rel="noopener"
 									class="ws-icon-btn ws-icon-btn-xs"
 									aria-label={$t('Open {name}', { name: file.name })}
-									><IconExternal class="h-3.5 w-3.5" aria-hidden="true" /></a
 								>
+									<IconExternal class="h-3.5 w-3.5" aria-hidden="true" />
+								</a>
 								<button
 									type="button"
 									class="ws-icon-btn ws-icon-btn-xs text-danger-text"
@@ -284,8 +286,9 @@
 									data-testid="aux-delete"
 									disabled={busy > 0}
 									onclick={() => (confirmDelete = file.name)}
-									><IconX class="h-3.5 w-3.5" aria-hidden="true" /></button
 								>
+									<IconX class="h-3.5 w-3.5" aria-hidden="true" />
+								</button>
 							</div>
 							{#if confirmDelete === file.name}
 								<div
@@ -299,13 +302,17 @@
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-danger"
 											data-testid="aux-delete-confirm"
-											onclick={() => remove(file)}>{$t('Delete')}</button
+											onclick={() => remove(file)}
 										>
+											{$t('Delete')}
+										</button>
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-secondary"
-											onclick={() => (confirmDelete = null)}>{$t('Cancel')}</button
+											onclick={() => (confirmDelete = null)}
 										>
+											{$t('Cancel')}
+										</button>
 									</span>
 								</div>
 							{/if}

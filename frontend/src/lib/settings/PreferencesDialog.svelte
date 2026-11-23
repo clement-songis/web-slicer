@@ -177,8 +177,10 @@
 							aria-selected={tab === tb.id}
 							data-testid="pref-tab-{tb.id}"
 							class="ws-tab text-sm {tab === tb.id ? 'ws-tab-on' : ''}"
-							onclick={() => (tab = tb.id)}>{$t(tb.label)}</button
+							onclick={() => (tab = tb.id)}
 						>
+							{$t(tb.label)}
+						</button>
 					{/each}
 				</div>
 			</div>
@@ -366,8 +368,9 @@
 									data-testid="pref-camera-style-{value}"
 									class="ws-seg-item {cam.style === value ? 'ws-seg-on' : ''}"
 									onclick={() => updateCamera({ style: value as CameraPreferences['style'] })}
-									>{$t(label)}</button
 								>
+									{$t(label)}
+								</button>
 							{/each}
 						</div>
 					{/snippet}
@@ -398,7 +401,7 @@
 						{/each}
 						{#if noRotate}
 							<p
-								class="rounded border border-warning/40 bg-warning-soft px-2 py-1 text-xs text-warning-text"
+								class="text-warning-text rounded border border-warning/40 bg-warning-soft px-2 py-1 text-xs"
 								data-testid="pref-no-rotate"
 								role="status"
 							>
@@ -484,8 +487,10 @@
 							class="ws-btn ws-btn-sm ws-btn-ghost"
 							data-testid="pref-camera-reset"
 							disabled={cameraIsDefault}
-							onclick={() => update({ camera: { ...CAMERA_DEFAULTS } })}>{$t('Defaults')}</button
+							onclick={() => update({ camera: { ...CAMERA_DEFAULTS } })}
 						>
+							{$t('Defaults')}
+						</button>
 					</div>
 				{:else if tab === 'behaviour'}
 					{#snippet gcodeWarnCtl()}
@@ -643,8 +648,10 @@
 							type="button"
 							class="ws-btn ws-btn-sm ws-btn-secondary"
 							data-testid="pref-clear-choices"
-							onclick={clearChoices}>{$t('Clear')}</button
+							onclick={clearChoices}
 						>
+							{$t('Clear')}
+						</button>
 					{/snippet}
 					{@render row(
 						'“Don’t ask again” choices',
@@ -700,9 +707,9 @@
 								updateGraphics({ fpsCap: clampFpsCap(Number(e.currentTarget.value)) })}
 						>
 							{#each FPS_CAPS as cap (cap)}
-								<option value={cap}
-									>{cap === 0 ? $t('Unlimited (display)') : $t('{cap} FPS', { cap })}</option
-								>
+								<option value={cap}>
+									{cap === 0 ? $t('Unlimited (display)') : $t('{cap} FPS', { cap })}
+								</option>
 							{/each}
 						</select>
 					{/snippet}
@@ -883,8 +890,10 @@
 					type="button"
 					class="ws-btn ws-btn-primary"
 					data-testid="preferences-close"
-					onclick={onclose}>{$t('Close')}</button
+					onclick={onclose}
 				>
+					{$t('Close')}
+				</button>
 			</div>
 		</div>
 	</div>

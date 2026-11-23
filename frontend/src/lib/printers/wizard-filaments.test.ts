@@ -29,7 +29,11 @@ describe('assistant : page Filaments (phase 25)', () => {
 	});
 	test('union des filaments compatibles, système instanciables, triés', () => {
 		const choices = filamentChoices([
-			[p('Generic PLA @System'), p('Bambu PLA Basic @BBL X1C'), p('fdm_filament_pla', 'system', false)],
+			[
+				p('Generic PLA @System'),
+				p('Bambu PLA Basic @BBL X1C'),
+				p('fdm_filament_pla', 'system', false)
+			],
 			[p('Bambu PLA Basic @BBL X1C'), p('Mon PLA', 'user')]
 		]);
 		expect(choices.map((c) => c.name)).toEqual(['Bambu PLA Basic @BBL X1C', 'Generic PLA @System']);
@@ -39,12 +43,21 @@ describe('assistant : page Filaments (phase 25)', () => {
 		const choices = filamentChoices([[p('Bambu PLA Basic @BBL X1C'), p('Generic PLA @System')]]);
 		expect(presetNames('"a";b')).toEqual(['a', 'b']);
 		expect(
-			defaultSelection(choices, [['Bambu PLA Basic @BBL X1C'], 'Inconnu', 'Bambu PLA Basic @BBL X1C'])
+			defaultSelection(choices, [
+				['Bambu PLA Basic @BBL X1C'],
+				'Inconnu',
+				'Bambu PLA Basic @BBL X1C'
+			])
 		).toEqual(['Bambu PLA Basic @BBL X1C']);
 	});
 	test('ordre : cochés, puis leur marque et Generic, puis le reste', () => {
 		const choices = filamentChoices([
-			[p('addnorth PLA'), p('Bambu PETG HF @BBL X1C'), p('Bambu PLA Basic @BBL X1C'), p('Generic PLA')]
+			[
+				p('addnorth PLA'),
+				p('Bambu PETG HF @BBL X1C'),
+				p('Bambu PLA Basic @BBL X1C'),
+				p('Generic PLA')
+			]
 		]);
 		expect(orderChoices(choices, ['Bambu PLA Basic @BBL X1C']).map((c) => c.name)).toEqual([
 			'Bambu PLA Basic @BBL X1C',

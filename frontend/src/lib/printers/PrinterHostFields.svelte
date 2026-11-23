@@ -173,7 +173,7 @@
 				data-ok={c.ok}
 			>
 				{#if c.ok}<IconCheck
-						class="h-3.5 w-3.5 text-success-text"
+						class="text-success-text h-3.5 w-3.5"
 						aria-hidden="true"
 					/>{:else}<IconMinus class="h-3.5 w-3.5" aria-hidden="true" />{/if}
 				<span><span class="sr-only">{c.ok ? $t('Yes: ') : $t('No: ')}</span>{c.label}</span>
@@ -181,9 +181,9 @@
 		{/each}
 	</ul>
 	<label class="flex flex-col gap-1 text-sm">
-		<span class="text-content-muted"
-			>{form.type === 'moonraker' ? $t('Address (optional)') : $t('Address')}</span
-		>
+		<span class="text-content-muted">
+			{form.type === 'moonraker' ? $t('Address (optional)') : $t('Address')}
+		</span>
 		<div class="flex gap-2">
 			<input
 				class="ws-field min-w-0 flex-1"
@@ -199,8 +199,10 @@
 					data-testid="host-browse"
 					disabled={browsing}
 					aria-busy={browsing}
-					onclick={browse}>{browsing ? $t('Searching…') : $t('Browse network')}</button
+					onclick={browse}
 				>
+					{browsing ? $t('Searching…') : $t('Browse network')}
+				</button>
 			{/if}
 		</div>
 	</label>
@@ -221,11 +223,12 @@
 					{#each found as host (host.full_address + host.service_name)}
 						<li class="flex items-center justify-between gap-3 py-1.5">
 							<span class="min-w-0">
-								<span class="block truncate text-content">{host.service_name || host.hostname}</span
-								>
-								<span class="block truncate text-xs text-content-subtle"
-									>{host.full_address}{host.hostname ? ` · ${host.hostname}` : ''}</span
-								>
+								<span class="block truncate text-content">
+									{host.service_name || host.hostname}
+								</span>
+								<span class="block truncate text-xs text-content-subtle">
+									{host.full_address}{host.hostname ? ` · ${host.hostname}` : ''}
+								</span>
 							</span>
 							<button
 								type="button"
@@ -235,8 +238,9 @@
 								data-testid="host-browse-use"
 								disabled={form.url === host.full_address}
 								onclick={() => useHost(host)}
-								>{form.url === host.full_address ? $t('Chosen') : $t('Use')}</button
 							>
+								{form.url === host.full_address ? $t('Chosen') : $t('Use')}
+							</button>
 						</li>
 					{/each}
 				</ul>
@@ -254,8 +258,10 @@
 						aria-checked={form.auth === id}
 						class="ws-seg-item {form.auth === id ? 'ws-seg-on' : ''}"
 						data-testid={`host-auth-${id}`}
-						onclick={() => (form.auth = id as 'key' | 'user')}>{$t(label)}</button
+						onclick={() => (form.auth = id as 'key' | 'user')}
 					>
+						{$t(label)}
+					</button>
 				{/each}
 			</div>
 		</div>
@@ -357,10 +363,12 @@
 					class="ws-btn ws-btn-secondary"
 					disabled={loadingSlugs || !form.url.trim()}
 					data-testid="host-slug-list"
-					onclick={listSlugs}>{loadingSlugs ? $t('Searching…') : $t('List')}</button
+					onclick={listSlugs}
 				>
+					{loadingSlugs ? $t('Searching…') : $t('List')}
+				</button>
 			</div>
-			{#if slugError}<span class="text-xs text-danger-text" role="alert">{slugError}</span>{/if}
+			{#if slugError}<span class="text-danger-text text-xs" role="alert">{slugError}</span>{/if}
 		</div>
 	{/if}
 	<p class="text-xs text-content-subtle" data-testid="host-help">{$t(meta.help)}</p>

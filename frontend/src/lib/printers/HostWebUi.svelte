@@ -123,15 +123,19 @@
 				target="_blank"
 				rel="noopener noreferrer"
 				class="ws-btn ws-btn-sm ws-btn-secondary"
-				data-testid="device-webui-open">{$t('Open in a new tab')}</a
+				data-testid="device-webui-open"
 			>
+				{$t('Open in a new tab')}
+			</a>
 			<!-- eslint-enable svelte/no-navigation-without-resolve -->
 			{#if !reason}
 				<button
 					type="button"
 					class="ws-btn ws-btn-sm ws-btn-secondary"
-					onclick={() => (reloadKey += 1)}>{$t('Reload')}</button
+					onclick={() => (reloadKey += 1)}
 				>
+					{$t('Reload')}
+				</button>
 			{/if}
 			{#if known === null}
 				<button
@@ -139,8 +143,9 @@
 					class="ws-btn ws-btn-sm ws-btn-ghost"
 					data-testid="device-webui-embed-toggle"
 					onclick={() => update({ ...prefs, noEmbed: !prefs.noEmbed || undefined })}
-					>{prefs.noEmbed ? $t('Embed here') : $t('Link only')}</button
 				>
+					{prefs.noEmbed ? $t('Embed here') : $t('Link only')}
+				</button>
 			{/if}
 		{/if}
 		<button
@@ -151,8 +156,10 @@
 			onclick={() => {
 				draft = prefs.url ?? '';
 				editing = !editing;
-			}}>{$t('Address…')}</button
+			}}
 		>
+			{$t('Address…')}
+		</button>
 	</div>
 
 	{#if editing}
@@ -173,11 +180,11 @@
 					: printer.moonraker_url || 'http://imprimante.local'}
 			/>
 			<button type="submit" class="ws-btn ws-btn-sm ws-btn-primary">{$t('Save')}</button>
-			<span class="w-full text-xs text-content-subtle"
-				>{$t(
+			<span class="w-full text-xs text-content-subtle">
+				{$t(
 					'Empty: machine profile address (“Device user interface”), otherwise the connection address. Remembered in this browser.'
-				)}</span
-			>
+				)}
+			</span>
 		</form>
 	{/if}
 
@@ -194,13 +201,17 @@
 		>
 			<p class="text-sm text-content-muted">{$t(blockedMessage(reason))}</p>
 			<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-			<a href={url} target="_blank" rel="noopener noreferrer" class="ws-btn ws-btn-primary"
-				>{$t('Open the {host} interface', { host: label })}</a
-			>
+			<a href={url} target="_blank" rel="noopener noreferrer" class="ws-btn ws-btn-primary">
+				{$t('Open the {host} interface', { host: label })}
+			</a>
 			{#if reason === 'refused' || reason === 'unreachable'}
-				<button type="button" class="ws-btn ws-btn-sm ws-btn-ghost" onclick={() => (reloadKey += 1)}
-					>{$t('Retry embedding')}</button
+				<button
+					type="button"
+					class="ws-btn ws-btn-sm ws-btn-ghost"
+					onclick={() => (reloadKey += 1)}
 				>
+					{$t('Retry embedding')}
+				</button>
 			{/if}
 		</div>
 	{:else}

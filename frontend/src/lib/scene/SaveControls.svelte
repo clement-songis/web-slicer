@@ -107,14 +107,18 @@
 						type="button"
 						class="ws-btn ws-btn-secondary ws-btn-sm"
 						data-testid="save-conflict-reload"
-						onclick={() => onreload?.()}>{$t('Reload')}</button
-					>{/if}
+						onclick={() => onreload?.()}
+					>
+						{$t('Reload')}
+					</button>{/if}
 				{#if overwrite}<button
 						type="button"
 						class="ws-btn ws-btn-danger ws-btn-sm"
 						data-testid="save-conflict-overwrite"
-						onclick={runOverwrite}>{$t('Overwrite||conflict')}</button
-					>{/if}
+						onclick={runOverwrite}
+					>
+						{$t('Overwrite||conflict')}
+					</button>{/if}
 			</div>
 		</div>
 	{:else if saveState === 'error'}

@@ -81,13 +81,14 @@
 							type="button"
 							class="flex w-full items-center justify-between bg-overlay px-2 py-1 text-left text-xs font-semibold"
 							onclick={() => (openGroups = { ...openGroups, [group.title]: !expanded })}
-							><span
-								>{$t(
+						>
+							<span>
+								{$t(
 									group.title,
 									group.titleParams ? { label: $t(group.titleParams.label) } : undefined
-								)}</span
-							><span class="text-content-subtle tabular-nums">{group.items.length}</span></button
-						>
+								)}
+							</span><span class="text-content-subtle tabular-nums">{group.items.length}</span>
+						</button>
 						{#if expanded}
 							<ul role="group">
 								{#each group.items as item (group.title + item.key)}
@@ -102,8 +103,10 @@
 											data-testid="gcode-placeholder"
 											data-key={item.key}
 											onclick={() => (selected = item)}
-											ondblclick={() => insert(item)}>{item.insert}</button
+											ondblclick={() => insert(item)}
 										>
+											{item.insert}
+										</button>
 									</li>
 								{/each}
 							</ul>
@@ -128,8 +131,9 @@
 						class="ws-btn ws-btn-sm ws-btn-secondary mt-2"
 						data-testid="gcode-insert"
 						onclick={() => selected && insert(selected)}
-						>{$t('Insert {name}', { name: selected.insert })}</button
 					>
+						{$t('Insert {name}', { name: selected.insert })}
+					</button>
 				{:else}
 					<p class="text-content-subtle">
 						{$t('Choose a variable (double-click to insert it at the cursor).')}
@@ -154,7 +158,9 @@
 			onclick={() => {
 				onapply(text);
 				onclose();
-			}}>{$t('Apply')}</button
+			}}
 		>
+			{$t('Apply')}
+		</button>
 	{/snippet}
 </Dialog>

@@ -119,8 +119,9 @@
 					{/if}
 				{/each}
 			</div>
-			{#if legend.log}<span class="text-2xs text-content-subtle">{$t('Logarithmic scale')}</span
-				>{/if}
+			{#if legend.log}<span class="text-2xs text-content-subtle">
+					{$t('Logarithmic scale')}
+				</span>{/if}
 		</div>
 	{/if}
 
@@ -143,9 +144,9 @@
 						aria-hidden="true"
 					></span>
 					{$t(OPTION_LABELS[opt.id])}
-					<span class="tabular-nums {enabled.has(opt.id) ? '' : 'text-content-muted'}"
-						>{opt.count}</span
-					>
+					<span class="tabular-nums {enabled.has(opt.id) ? '' : 'text-content-muted'}">
+						{opt.count}
+					</span>
 				</button>
 			{/each}
 		{/if}

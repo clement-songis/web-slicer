@@ -51,8 +51,10 @@
 		data-testid="ramming-open"
 		aria-label={$t('{label}: customize', { label: $t(def.label) })}
 		{disabled}
-		onclick={() => (open = true)}>{$t('Customize…')}</button
+		onclick={() => (open = true)}
 	>
+		{$t('Customize…')}
+	</button>
 </div>
 {#if open}
 	<RammingDialog open value={raw} onclose={() => (open = false)} onapply={apply} />

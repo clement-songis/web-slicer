@@ -261,8 +261,9 @@
 								{ n: printRank[node.id] }
 							)}
 							aria-label={$t('Print order: {n}', { n: printRank[node.id] })}
-							>{printRank[node.id]}</span
 						>
+							{printRank[node.id]}
+						</span>
 					{/if}
 					<button
 						type="button"
@@ -301,9 +302,9 @@
 					>
 						<!-- Puce décorative : hérite de la couleur de la ligne (lisible aussi sur la
 							     ligne sélectionnée, fond primaire) au lieu d'un gris fixe à 2:1. -->
-						{#if !(sequential && printRank[node.id])}<span class="opacity-60" aria-hidden="true"
-								>{node.kind === 'group' ? '▾' : '•'}</span
-							>{/if}
+						{#if !(sequential && printRank[node.id])}<span class="opacity-60" aria-hidden="true">
+								{node.kind === 'group' ? '▾' : '•'}
+							</span>{/if}
 						{node.name}
 					</button>
 					{#if issues[node.id]}
@@ -383,15 +384,15 @@
 								(ov?.parts ? ' · ' + $t('{n} part(s)/modifier(s)', { n: ov.parts }) : '')}
 							onclick={() => onselect(node.id, false)}
 						>
-							{#if nSettings}<span class="flex items-center gap-0.5"
-									><IconSettings class="h-3 w-3" aria-hidden="true" />{nSettings}</span
-								>{/if}
-							{#if ov?.ranges}<span class="flex items-center gap-0.5"
-									><IconLayers class="h-3 w-3" aria-hidden="true" />{ov.ranges}</span
-								>{/if}
-							{#if ov?.parts}<span class="flex items-center gap-0.5"
-									><IconBox class="h-3 w-3" aria-hidden="true" />{ov.parts}</span
-								>{/if}
+							{#if nSettings}<span class="flex items-center gap-0.5">
+									<IconSettings class="h-3 w-3" aria-hidden="true" />{nSettings}
+								</span>{/if}
+							{#if ov?.ranges}<span class="flex items-center gap-0.5">
+									<IconLayers class="h-3 w-3" aria-hidden="true" />{ov.ranges}
+								</span>{/if}
+							{#if ov?.parts}<span class="flex items-center gap-0.5">
+									<IconBox class="h-3 w-3" aria-hidden="true" />{ov.parts}
+								</span>{/if}
 						</button>
 					{/if}
 
@@ -435,7 +436,7 @@
 
 					<button
 						type="button"
-						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset"
 						aria-pressed={node.locked}
 						aria-label={$t('Lock {name}', { name: node.name })}
 						title={node.locked ? $t('Unlock') : $t('Lock')}
@@ -448,7 +449,7 @@
 					</button>
 					<button
 						type="button"
-						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset"
 						aria-pressed={node.hidden}
 						aria-label={$t('Hide {name}', { name: node.name })}
 						title={node.hidden ? $t('Show') : $t('Hide')}
@@ -461,7 +462,7 @@
 					</button>
 					<button
 						type="button"
-						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset"
 						aria-label={$t('Duplicate {name}', { name: node.name })}
 						title={$t('Duplicate')}
 						onclick={() => onduplicate(node.id)}
@@ -470,7 +471,7 @@
 					</button>
 					<button
 						type="button"
-						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-accent"
+						class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-current opacity-80 transition-colors hover:bg-overlay hover:opacity-100 focus-visible:ring-2 focus-visible:ring-accent focus-visible:outline-none focus-visible:ring-inset"
 						aria-label={$t('Delete {name}', { name: node.name })}
 						title={$t('Delete')}
 						onclick={() => ondelete(node.id)}
@@ -513,8 +514,10 @@
 				data-testid="object-list-sequential"
 				data-tip={$t(
 					'Print by object: the list order is the print order. Drag an object onto another (or Alt+↑/↓) to change it.'
-				)}>{$t('By object||list')}</span
+				)}
 			>
+				{$t('By object||list')}
+			</span>
 			<button
 				type="button"
 				class="ws-icon-btn ws-icon-btn-xs mr-1 {showOrderOnScene ? 'text-primary' : ''}"
@@ -525,15 +528,18 @@
 					: $t('Show the order numbers on the scene')}
 				data-testid="object-list-order-toggle"
 				onclick={() => (showOrderOnScene = !showOrderOnScene)}
-				><IconHash class="h-3.5 w-3.5" aria-hidden="true" /></button
 			>
+				<IconHash class="h-3.5 w-3.5" aria-hidden="true" />
+			</button>
 		{/if}
 		<button
 			type="button"
 			class="ws-btn ws-btn-sm ws-btn-secondary"
 			disabled={selection.size < 2}
-			onclick={() => ongroup()}>{$t('Group')}</button
+			onclick={() => ongroup()}
 		>
+			{$t('Group')}
+		</button>
 	</div>
 	{#if tree.roots().length > 0}
 		<!-- Orca « Search plate, object and part. » (Plater m_search_bar). -->
@@ -600,8 +606,9 @@
 						onclick={() => hit.plateId && onlocate?.(hit.plateId, hit.id)}
 					>
 						<span class="truncate">{hit.name}</span>
-						{#if hit.part}<span class="truncate text-xs text-content-subtle">› {hit.part}</span
-							>{/if}
+						{#if hit.part}<span class="truncate text-xs text-content-subtle">
+								› {hit.part}
+							</span>{/if}
 						<span class="ws-badge ml-auto shrink-0 normal-case">{hit.plateName}</span>
 					</button>
 				{/each}

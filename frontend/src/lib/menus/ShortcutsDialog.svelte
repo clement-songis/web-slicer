@@ -57,7 +57,7 @@
 									<dt class="text-content-muted">{shortcutText(shortcut.action, $locale)}</dt>
 									<dd>
 										<kbd
-											class="whitespace-nowrap rounded border border-border-strong bg-surface-sunken px-1.5 py-0.5 font-mono text-content"
+											class="rounded border border-border-strong bg-surface-sunken px-1.5 py-0.5 font-mono whitespace-nowrap text-content"
 										>
 											{shortcutKeysText(shortcut.keys, $locale)}
 										</kbd>

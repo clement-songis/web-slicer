@@ -191,8 +191,10 @@
 							class="ws-seg-item {mode === i ? 'ws-seg-on' : ''}"
 							aria-pressed={mode === i}
 							data-testid={`engine-mode-${i}`}
-							onclick={() => onmode?.(i)}>{$translate(label)}</button
+							onclick={() => onmode?.(i)}
 						>
+							{$translate(label)}
+						</button>
 					{/each}
 				</div>
 			{/if}
@@ -316,10 +318,10 @@
 									</span>
 								{/if}
 							</td>
-							<td class="pl-2 text-right whitespace-nowrap tabular-nums"
-								>{formatDuration(row.time)}</td
-							>
-							<td class="pl-2 text-right whitespace-nowrap tabular-nums text-content-muted">
+							<td class="pl-2 text-right whitespace-nowrap tabular-nums">
+								{formatDuration(row.time)}
+							</td>
+							<td class="pl-2 text-right whitespace-nowrap text-content-muted tabular-nums">
 								{fmtNum(row.percent, 1, $locale)} %
 							</td>
 						</tr>
@@ -352,9 +354,9 @@
 							<td class="pl-2 text-right whitespace-nowrap">{fmtNum(f.cm3, 2, $locale)} cm³</td>
 							<td class="pl-2 text-right whitespace-nowrap">{fmtNum(f.grams, 2, $locale)} g</td>
 							<td class="pl-2 text-right whitespace-nowrap">{money(f.cost)}</td>
-							{#if multi && meta}<td class="pl-2 text-right whitespace-nowrap"
-									>{formatDuration(f.time ?? 0)}</td
-								>{/if}
+							{#if multi && meta}<td class="pl-2 text-right whitespace-nowrap">
+									{formatDuration(f.time ?? 0)}
+								</td>{/if}
 						</tr>
 					{/each}
 				</tbody>
@@ -391,10 +393,10 @@
 				<ul class="flex flex-col gap-0.5" data-testid="engine-custom-gcodes">
 					{#each view.customGcodes as g, i (i)}
 						<li class="flex justify-between gap-2">
-							<span
-								>{$translate(CUSTOM_LABELS[g.type] ?? g.type)}{g.extra ? ' — ' + g.extra : ''}</span
-							>
-							<span class="tabular-nums text-content-muted">Z {fmtNum(g.print_z, 2, $locale)}</span>
+							<span>
+								{$translate(CUSTOM_LABELS[g.type] ?? g.type)}{g.extra ? ' — ' + g.extra : ''}
+							</span>
+							<span class="text-content-muted tabular-nums">Z {fmtNum(g.print_z, 2, $locale)}</span>
 						</li>
 					{/each}
 				</ul>

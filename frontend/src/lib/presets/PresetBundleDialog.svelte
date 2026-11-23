@@ -70,25 +70,29 @@
 			</div>
 			{#if error}<p class="mt-3 text-sm text-danger" role="alert">{error}</p>{/if}
 			<div class="mt-5 flex justify-end gap-2">
-				<button type="button" class="ws-btn ws-btn-secondary" disabled={busy} onclick={onclose}
-					>{$t('Close')}</button
-				>
+				<button type="button" class="ws-btn ws-btn-secondary" disabled={busy} onclick={onclose}>
+					{$t('Close')}
+				</button>
 				{#if onimport}
 					<button
 						type="button"
 						data-testid="import-preset-bundle"
 						class="ws-btn ws-btn-secondary"
 						disabled={busy}
-						onclick={onimport}>{$t('Import…')}</button
+						onclick={onimport}
 					>
+						{$t('Import…')}
+					</button>
 				{/if}
 				<button
 					type="button"
 					data-testid="export-preset-bundle"
 					class="ws-btn ws-btn-primary"
 					disabled={busy || presets.length === 0}
-					onclick={onexport}>{busy ? $t('Exporting…') : $t('Export presets')}</button
+					onclick={onexport}
 				>
+					{busy ? $t('Exporting…') : $t('Export presets')}
+				</button>
 			</div>
 		</div>
 	</div>

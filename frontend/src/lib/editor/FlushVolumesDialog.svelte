@@ -201,15 +201,17 @@
 			>
 				<thead>
 					<tr>
-						<th scope="col" class="text-left font-normal text-content-subtle"
-							>{$t('From ↓ / To →')}</th
-						>
+						<th scope="col" class="text-left font-normal text-content-subtle">
+							{$t('From ↓ / To →')}
+						</th>
 						{#each colours as colour, c (c)}
 							<th scope="col">
 								<span
 									class="inline-flex h-6 w-14 items-center justify-center rounded font-semibold ring-1 ring-border-strong"
-									style={swatchStyle(colour)}>{c + 1}</span
+									style={swatchStyle(colour)}
 								>
+									{c + 1}
+								</span>
 							</th>
 						{/each}
 					</tr>
@@ -220,15 +222,17 @@
 							<th scope="row">
 								<span
 									class="inline-flex h-6 w-10 items-center justify-center rounded font-semibold ring-1 ring-border-strong"
-									style={swatchStyle(colour)}>{r + 1}</span
+									style={swatchStyle(colour)}
 								>
+									{r + 1}
+								</span>
 							</th>
 							{#each colours.keys() as c (c)}
 								<td>
 									{#if r === c}
-										<span class="block w-14 text-center text-content-subtle" aria-hidden="true"
-											>—</span
-										>
+										<span class="block w-14 text-center text-content-subtle" aria-hidden="true">
+											—
+										</span>
 									{:else}
 										<input
 											type="number"
@@ -264,9 +268,9 @@
 					bind:value={factor}
 				/>
 			</label>
-			<span class="text-xs text-content-subtle" data-testid="flush-max"
-				>{$t('Maximum flushing: {v} mm³', { v: Math.round(maxVolume) })}</span
-			>
+			<span class="text-xs text-content-subtle" data-testid="flush-max">
+				{$t('Maximum flushing: {v} mm³', { v: Math.round(maxVolume) })}
+			</span>
 			<button
 				type="button"
 				class="ws-btn ws-btn-sm ws-btn-secondary ml-auto"
@@ -276,8 +280,10 @@
 				title={canCompute === false || !compute
 					? $t('Automatic calculation unavailable: the engine does not expose it yet.')
 					: $t('Volumes calculated by the engine from the colors (like Orca)')}
-				onclick={runCompute}>{computing ? $t('Calculating…') : $t('Re-calculate')}</button
+				onclick={runCompute}
 			>
+				{computing ? $t('Calculating…') : $t('Re-calculate')}
+			</button>
 			<button
 				type="button"
 				class="ws-btn ws-btn-sm ws-btn-ghost"
@@ -285,8 +291,9 @@
 					draft = resizeFlushMatrix(undefined, n);
 					factor = defaultMultiplier;
 				}}
-				>{$t('Default values ({v} mm³ × {m})', { v: DEFAULT_FLUSH, m: defaultMultiplier })}</button
 			>
+				{$t('Default values ({v} mm³ × {m})', { v: DEFAULT_FLUSH, m: defaultMultiplier })}
+			</button>
 		</div>
 		<!-- Orca auto_calculate_flush : même préférence que Préférences › Comportement. -->
 		<label class="flex items-center justify-between gap-2 text-xs text-content-muted">
@@ -344,7 +351,9 @@
 				// seulement s'il a changé.
 				onapply(next, next || f !== multiplier ? f : undefined);
 				onclose();
-			}}>{$t('Apply')}</button
+			}}
 		>
+			{$t('Apply')}
+		</button>
 	{/snippet}
 </Dialog>

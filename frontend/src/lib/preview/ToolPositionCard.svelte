@@ -133,8 +133,10 @@
 			data-tip={open ? $t('Hide properties') : $t('Properties of the current point')}
 			data-tip-side="top"
 			data-testid="preview-tool-toggle"
-			onclick={() => (open = !open)}>{open ? '▾' : '▴'}</button
+			onclick={() => (open = !open)}
 		>
+			{open ? '▾' : '▴'}
+		</button>
 		{#if tool.kind !== null}
 			<span
 				class="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
@@ -144,20 +146,22 @@
 		{/if}
 		<!-- Insécables : coordonnées, vitesse et temps ne se coupent jamais en
 		     deux lignes (seul le type de ligne, en dernier, s'abrège). -->
-		<span class="whitespace-nowrap tabular-nums text-content"
-			>X {num(tool.position[0], 3)}&nbsp;&nbsp;Y {num(tool.position[1], 3)}&nbsp;&nbsp;Z {num(
+		<span class="whitespace-nowrap text-content tabular-nums">
+			X {num(tool.position[0], 3)}&nbsp;&nbsp;Y {num(tool.position[1], 3)}&nbsp;&nbsp;Z {num(
 				tool.position[2],
 				3
-			)}</span
-		>
-		<span class="whitespace-nowrap tabular-nums"
-			>{$t('Speed: {value}', { value: num(tool.speed, 0, 'mm/s') })}</span
-		>
+			)}
+		</span>
+		<span class="whitespace-nowrap tabular-nums">
+			{$t('Speed: {value}', { value: num(tool.speed, 0, 'mm/s') })}
+		</span>
 		{#if time}<span
 				class="whitespace-nowrap tabular-nums"
 				data-testid="preview-tool-time"
-				data-time={time.time.toFixed(3)}>{$t('Time: {value}', { value: timeText })}</span
-			>{/if}
+				data-time={time.time.toFixed(3)}
+			>
+				{$t('Time: {value}', { value: timeText })}
+			</span>{/if}
 		{#if detail && coloration !== 'speed'}<span class="min-w-0 truncate">{detail}</span>{/if}
 	</div>
 </div>

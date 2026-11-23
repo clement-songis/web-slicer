@@ -74,15 +74,17 @@
 					title={$t('Add a range after')}
 					aria-label={$t('Add a range after range {n}', { n: i + 1 })}
 					onclick={() => onchange(addRangeAfter(ranges, i, layerHeight))}
-					><IconPlus class="h-3.5 w-3.5" aria-hidden="true" /></button
 				>
+					<IconPlus class="h-3.5 w-3.5" aria-hidden="true" />
+				</button>
 				<button
 					type="button"
 					class="ws-icon-btn ws-icon-btn-xs"
 					aria-label={$t('Delete range {n}', { n: i + 1 })}
 					onclick={() => onchange(removeRange(ranges, i))}
-					><IconX class="h-3.5 w-3.5" aria-hidden="true" /></button
 				>
+					<IconX class="h-3.5 w-3.5" aria-hidden="true" />
+				</button>
 			</div>
 			<ObjectSettingsPanel
 				title={$t('Settings {min}–{max} mm', { min: range.min, max: range.max })}

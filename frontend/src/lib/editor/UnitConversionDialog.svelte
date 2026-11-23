@@ -82,8 +82,10 @@
 				type="button"
 				class="ws-btn ws-btn-secondary"
 				data-testid="unit-keep"
-				onclick={() => onkeep(dontAsk)}>{$t('Keep in millimeters')}</button
+				onclick={() => onkeep(dontAsk)}
 			>
+				{$t('Keep in millimeters')}
+			</button>
 		</div>
 	</div>
 </div>

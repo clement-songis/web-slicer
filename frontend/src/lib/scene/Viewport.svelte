@@ -682,8 +682,10 @@
 				class="inline-flex -translate-x-1/2 -translate-y-1/2 items-center gap-1 rounded-md bg-primary px-2 py-0.5 text-xs font-medium whitespace-nowrap text-primary-content shadow-sm"
 				data-testid="scene-plate-label"
 				data-plate-index={activePlate.index + 1}
-				data-active="true">{activePlate.name}</span
+				data-active="true"
 			>
+				{activePlate.name}
+			</span>
 		</HTML>
 	{/if}
 {/if}
@@ -719,8 +721,9 @@
 				title="Activer {plate.name}"
 				{@attach keepPointer}
 				onclick={() => onactivateplate?.(plate.id, null)}
-				>{plate.name}{plate.objects.length ? ` · ${plate.objects.length}` : ''}</button
 			>
+				{plate.name}{plate.objects.length ? ` · ${plate.objects.length}` : ''}
+			</button>
 		</HTML>
 	{/each}
 </T.Group>
@@ -762,8 +765,10 @@
 		<HTML position={obj.position ?? [0, 0, 0]} center pointerEvents="none">
 			<span
 				class="rounded bg-inverse/90 px-1.5 py-0.5 text-xs whitespace-nowrap text-on-inverse"
-				data-testid="object-label">{labels[obj.id]}</span
+				data-testid="object-label"
 			>
+				{labels[obj.id]}
+			</span>
 		</HTML>
 	{:else if printOrder?.[obj.id]}
 		<!-- Objet par objet : étiquette posée au-dessus de l'objet, rang
@@ -788,8 +793,9 @@
 					<span class="px-2 pt-0.5" data-testid="object-label">{labels[obj.id]}</span>
 					<span
 						class="w-full border-t border-current/20 px-2 pb-0.5 text-center tabular-nums opacity-90"
-						>Séquence n° {printOrder[obj.id]}</span
 					>
+						Séquence n° {printOrder[obj.id]}
+					</span>
 				{:else}
 					<span class="px-1.5 py-0.5 font-semibold tabular-nums">#{printOrder[obj.id]}</span>
 				{/if}

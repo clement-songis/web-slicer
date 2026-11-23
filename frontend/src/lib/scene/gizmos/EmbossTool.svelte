@@ -71,13 +71,17 @@
 		<button
 			type="button"
 			class="ws-chip {params.source === 'text' ? 'ws-chip-on' : ''}"
-			onclick={() => (params.source = 'text')}>{$t('Text')}</button
+			onclick={() => (params.source = 'text')}
 		>
+			{$t('Text')}
+		</button>
 		<button
 			type="button"
 			class="ws-chip {params.source === 'svg' ? 'ws-chip-on' : ''}"
-			onclick={() => (params.source = 'svg')}>SVG</button
+			onclick={() => (params.source = 'svg')}
 		>
+			SVG
+		</button>
 	</div>
 
 	{#if params.source === 'text'}
@@ -140,11 +144,13 @@
 					type="button"
 					class="ws-btn ws-btn-secondary"
 					data-testid="emboss-svg-pick"
-					onclick={() => svgInput?.click()}>{$t('Choose an SVG file…')}</button
+					onclick={() => svgInput?.click()}
 				>
-				<span class="min-w-0 truncate text-xs text-content-subtle" data-testid="emboss-svg-name"
-					>{svgFileName ?? (params.svg.trim() ? $t('Pasted SVG') : $t('No file'))}</span
-				>
+					{$t('Choose an SVG file…')}
+				</button>
+				<span class="min-w-0 truncate text-xs text-content-subtle" data-testid="emboss-svg-name">
+					{svgFileName ?? (params.svg.trim() ? $t('Pasted SVG') : $t('No file'))}
+				</span>
 			</div>
 			{#if svgPreview}
 				<img
@@ -204,9 +210,9 @@
 				disabled={!canEngrave}
 				data-testid="emboss-raised"
 			/>
-			<span class="text-content-muted"
-				>{$t('Embossed (unchecked: engraved into the selected object)')}</span
-			>
+			<span class="text-content-muted">
+				{$t('Embossed (unchecked: engraved into the selected object)')}
+			</span>
 		</label>
 
 		{#if canEngrave && params.embossed}
@@ -227,21 +233,24 @@
 		data-testid="emboss-submit"
 		disabled={!available || busy || error !== null}
 		onclick={() => onsubmit($state.snapshot(params))}
-		>{busy
+	>
+		{busy
 			? editing
 				? $t('Updating…')
 				: $t('Creating…')
 			: editing
 				? $t('Apply')
-				: $t('Create object')}</button
-	>
+				: $t('Create object')}
+	</button>
 	{#if editing}
 		<button
 			type="button"
 			class="ws-btn ws-btn-secondary self-start"
 			data-testid="emboss-cancel"
-			onclick={() => oncancel?.()}>{$t('Cancel')}</button
+			onclick={() => oncancel?.()}
 		>
+			{$t('Cancel')}
+		</button>
 	{/if}
 	{#if !available}
 		<p class="text-content-subtle">

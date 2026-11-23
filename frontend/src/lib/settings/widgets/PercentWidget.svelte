@@ -33,7 +33,7 @@
 		aria-label={$t(def.label)}
 		class={FIELD_CLASS}
 	/>
-	<span class="text-xs whitespace-nowrap text-content-subtle"
-		>{$unitLabel(def.sidetext) || '%'}</span
-	>
+	<span class="text-xs whitespace-nowrap text-content-subtle">
+		{$unitLabel(def.sidetext) || '%'}
+	</span>
 </span>

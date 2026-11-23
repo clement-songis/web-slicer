@@ -82,8 +82,9 @@
 				aria-expanded={detail}
 				data-testid="preview-plates-detail"
 				onclick={() => (detail = !detail)}
-				>{detail ? $t('Hide the per-filament detail') : $t('Per-filament detail')}</button
 			>
+				{detail ? $t('Hide the per-filament detail') : $t('Per-filament detail')}
+			</button>
 			{#if detail}
 				<FilamentTable table={all} testid="preview-plates-filaments" />
 			{/if}
@@ -102,9 +103,10 @@
 			class="ws-link self-start text-xs"
 			data-testid="preview-plates-slice-all"
 			onclick={onsliceall}
-			>{$t(pending > 1 ? 'Slice all ({n} plates left)' : 'Slice all ({n} plate left)', {
-				n: pending
-			})}</button
 		>
+			{$t(pending > 1 ? 'Slice all ({n} plates left)' : 'Slice all ({n} plate left)', {
+				n: pending
+			})}
+		</button>
 	{/if}
 </section>

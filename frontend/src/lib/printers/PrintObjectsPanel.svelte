@@ -90,15 +90,15 @@
 		<div class="flex items-center justify-between gap-2">
 			<h3 class="ws-section-title">{$t('Print objects')}</h3>
 			{#if objects.length}
-				<span class="text-xs text-content-subtle"
-					>{objects.length > 1
+				<span class="text-xs text-content-subtle">
+					{objects.length > 1
 						? $t('{n} objects', { n: objects.length })
 						: $t('{n} object', { n: objects.length })}{excludedCount
 						? excludedCount > 1
 							? $t(' · {n} excluded||many', { n: excludedCount })
 							: $t(' · {n} excluded||one', { n: excludedCount })
-						: ''}</span
-				>
+						: ''}
+				</span>
 			{/if}
 		</div>
 		{#if !objects.length}
@@ -151,15 +151,19 @@
 									class="block truncate {s === 'excluded'
 										? 'text-content-subtle line-through'
 										: 'text-content'}"
-									title={o.name}>{labelOf(o.name)}</span
+									title={o.name}
 								>
+									{labelOf(o.name)}
+								</span>
 								<span
 									class="text-xs {s === 'current'
 										? 'text-primary'
 										: s === 'excluded'
 											? 'text-danger-text'
-											: 'text-content-subtle'}">{$t(LABELS[s])}</span
+											: 'text-content-subtle'}"
 								>
+									{$t(LABELS[s])}
+								</span>
 							</span>
 							{#if s !== 'excluded'}
 								{#if confirm === o.name}
@@ -170,13 +174,17 @@
 											data-testid="device-object-exclude-confirm"
 											disabled={busy !== null}
 											aria-busy={busy === o.name}
-											onclick={() => exclude(o.name)}>{$t('Exclude permanently')}</button
+											onclick={() => exclude(o.name)}
 										>
+											{$t('Exclude permanently')}
+										</button>
 										<button
 											type="button"
 											class="ws-btn ws-btn-sm ws-btn-ghost"
-											onclick={() => (confirm = null)}>{$t('Cancel')}</button
+											onclick={() => (confirm = null)}
 										>
+											{$t('Cancel')}
+										</button>
 									</span>
 								{:else}
 									<button
@@ -187,8 +195,10 @@
 										title={active
 											? $t('Stop printing this object (the others continue)')
 											: $t('Only possible during a print')}
-										onclick={() => (confirm = o.name)}>{$t('Exclude')}</button
+										onclick={() => (confirm = o.name)}
 									>
+										{$t('Exclude')}
+									</button>
 								{/if}
 							{/if}
 						</li>
@@ -196,7 +206,7 @@
 				</ul>
 			</div>
 			{#if confirm}
-				<p class="text-xs text-warning-text" role="status">
+				<p class="text-warning-text text-xs" role="status">
 					{$t(
 						'The printer will stop printing “{name}” from the current layer. Irreversible action for this print.',
 						{ name: printObjectLabel(confirm) }

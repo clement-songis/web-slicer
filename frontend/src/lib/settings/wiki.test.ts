@@ -22,8 +22,7 @@ describe('lien d’aide wiki par option (Orca OptionsGroup::get_url)', () => {
 		// le submodule vendor/ n'est qu'un repli quand ORCA_SRC est absent.
 		const orcaTab = process.env.ORCA_SRC
 			? `${process.env.ORCA_SRC}/src/slic3r/GUI/Tab.cpp`
-			: new URL('../../../../vendor/OrcaSlicer/src/slic3r/GUI/Tab.cpp', import.meta.url)
-				.pathname;
+			: new URL('../../../../vendor/OrcaSlicer/src/slic3r/GUI/Tab.cpp', import.meta.url).pathname;
 		const tab = readFileSync(orcaTab, 'utf8');
 		expect(Object.keys(WIKI_PATHS).length).toBeGreaterThan(400);
 		for (const [key, path] of Object.entries(WIKI_PATHS).slice(0, 50)) {

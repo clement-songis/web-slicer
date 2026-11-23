@@ -45,8 +45,10 @@
 		class="ws-btn ws-btn-primary self-start"
 		data-testid="boolean-apply"
 		disabled={!available || busy}
-		onclick={() => onapply(op)}>{$t('Apply')}</button
+		onclick={() => onapply(op)}
 	>
+		{$t('Apply')}
+	</button>
 
 	{#if !available}
 		<p class="text-content-subtle">{hint ?? $t('Select two objects (A then B).')}</p>

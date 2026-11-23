@@ -150,32 +150,34 @@
 								data-status={entry.status}
 								data-highlight={highlight.includes(entry.id)}
 							>
-								<td class="px-2 py-1.5 tabular-nums text-content-subtle">{entries.length - i}</td>
-								<td class="px-2 py-1.5 {statusClass(entry.status)}" data-testid="upload-status"
-									>{label(() =>
+								<td class="px-2 py-1.5 text-content-subtle tabular-nums">{entries.length - i}</td>
+								<td class="px-2 py-1.5 {statusClass(entry.status)}" data-testid="upload-status">
+									{label(() =>
 										uploadStatusLabel(entry.status)
 									)}{#if entry.status === 'completed' && entry.action !== 'upload'}<span
 											class="text-content-subtle"
 										>
-											· {label(() => uploadActionLabel(entry.action))}</span
-										>{/if}</td
-								>
+											· {label(() => uploadActionLabel(entry.action))}
+										</span>{/if}
+								</td>
 								{#if allPrinters}<td class="px-2 py-1.5">{entry.printer_name ?? '—'}</td>{/if}
-								<td class="max-w-[12rem] truncate px-2 py-1.5" title={entry.host}
-									>{hostMeta(entry.host_type).label} · {entry.host}</td
-								>
-								<td class="px-2 py-1.5 text-right tabular-nums"
-									>{label(() => formatUploadSize(entry.size_bytes))}</td
-								>
+								<td class="max-w-[12rem] truncate px-2 py-1.5" title={entry.host}>
+									{hostMeta(entry.host_type).label} · {entry.host}
+								</td>
+								<td class="px-2 py-1.5 text-right tabular-nums">
+									{label(() => formatUploadSize(entry.size_bytes))}
+								</td>
 								<td
 									class="max-w-[16rem] truncate px-2 py-1.5 font-medium"
 									title={entry.path ?? entry.filename}
-									data-testid="upload-filename">{entry.filename}</td
+									data-testid="upload-filename"
 								>
-								<td class="px-2 py-1.5 whitespace-nowrap tabular-nums"
-									>{label(() => formatUploadDate(entry.created_at))}</td
-								>
-								<td class="max-w-[14rem] px-2 py-1.5 text-danger-text" data-testid="upload-message">
+									{entry.filename}
+								</td>
+								<td class="px-2 py-1.5 whitespace-nowrap tabular-nums">
+									{label(() => formatUploadDate(entry.created_at))}
+								</td>
+								<td class="text-danger-text max-w-[14rem] px-2 py-1.5" data-testid="upload-message">
 									{#if entry.error}
 										<button
 											type="button"
@@ -183,8 +185,9 @@
 											title={entry.error}
 											aria-expanded={selected === entry.id}
 											onclick={() => (selected = selected === entry.id ? null : entry.id)}
-											>{entry.error}</button
 										>
+											{entry.error}
+										</button>
 									{/if}
 								</td>
 							</tr>
@@ -210,19 +213,22 @@
 			data-testid="upload-queue-clear"
 			disabled={clearing || entries.length === 0}
 			onclick={clear}
-			>{confirmClear
+		>
+			{confirmClear
 				? allPrinters
 					? $t('Clear the history of all printers?')
 					: $t('Clear the history?')
-				: $t('Clear history')}</button
-		>
+				: $t('Clear history')}
+		</button>
 		<button
 			type="button"
 			class="ws-btn ws-btn-secondary"
 			data-testid="upload-queue-refresh"
 			disabled={loading}
-			onclick={load}>{$t('Refresh')}</button
+			onclick={load}
 		>
+			{$t('Refresh')}
+		</button>
 		<button type="button" class="ws-btn ws-btn-primary" onclick={onclose}>{$t('Close')}</button>
 	{/snippet}
 </Dialog>
