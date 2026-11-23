@@ -1321,6 +1321,14 @@ pub(crate) async fn import_3mf_contents(
 /// libslic3r) — la config du 3MF fait foi pour toutes les clés.
 fn full_project_config(imported: &crate::models::threemf::ImportedProject) -> Map<String, Value> {
     let mut config = imported.config_defaults.clone();
+    // FullPrintConfig énumère les six variantes de buse possibles par défaut.
+    // Elles ne décrivent pas les variantes du filament du projet : ne pas les
+    // injecter quand le 3MF n'en déclare aucune, sinon un mono-filament
+    // générique serait réexporté avec six valeurs par option de variante
+    // (filament_flow_ratio, rétraction…), contrairement à l'export Orca.
+    if !imported.config.contains_key("filament_extruder_variant") {
+        config.remove("filament_extruder_variant");
+    }
     for (key, value) in &imported.config {
         config.insert(key.clone(), value.clone());
     }
@@ -1751,7 +1759,15 @@ async fn import_project_presets(
     let colours = raw_items(config.get("filament_colour"));
     let machine_conditions = raw_items(config.get("compatible_machine_expression_group"));
     let process_conditions = raw_items(config.get("compatible_process_expression_group"));
-    let count = colours.len();
+    // Le nombre de filaments vient de filament_settings_id (CLI
+    // current_filaments_name) : les couleurs par défaut de FullPrintConfig
+    // peuvent être plus nombreuses sans représenter un filament du projet.
+    let names = raw_items(config.get("filament_settings_id"));
+    let count = if names.is_empty() {
+        colours.len()
+    } else {
+        names.len()
+    };
 
     // Imprimante.
     let machines = state
@@ -1795,7 +1811,6 @@ async fn import_project_presets(
         .presets()
         .list_by_kind(PresetKind::Filament, user_id)
         .await?;
-    let names = raw_items(config.get("filament_settings_id"));
     let ids = raw_items(config.get("filament_ids"));
     let self_index: Vec<usize> = raw_items(config.get("filament_self_index"))
         .iter()

@@ -296,7 +296,16 @@ fn read_json(path: &Path) -> Result<Value, String> {
 mod tests {
     use super::*;
 
+    /// Source des profils : la même release Orca que l'oracle CLI (`ORCA_SRC`),
+    /// comme `default_profiles_dir` côté backend ; le submodule vendor/ n'est
+    /// qu'un repli (sa version dérive dès que son pointeur bouge).
     fn profiles_dir() -> PathBuf {
+        if let Ok(src) = std::env::var("ORCA_SRC") {
+            let dir = PathBuf::from(src).join("resources/profiles");
+            if dir.is_dir() {
+                return dir;
+            }
+        }
         PathBuf::from(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/../vendor/OrcaSlicer/resources/profiles"
@@ -317,10 +326,10 @@ mod tests {
             out.warnings
         );
         assert_eq!(out.count(PresetKind::MachineModel), 384, "machine_model");
-        assert_eq!(out.count(PresetKind::Machine), 1158, "machine");
-        assert_eq!(out.count(PresetKind::Filament), 7012, "filament");
+        assert_eq!(out.count(PresetKind::Machine), 1156, "machine");
+        assert_eq!(out.count(PresetKind::Filament), 6991, "filament");
         assert_eq!(out.count(PresetKind::Process), 3341, "process");
-        assert_eq!(out.presets.len(), 11_895, "total");
+        assert_eq!(out.presets.len(), 11_872, "total");
         assert_eq!(out.vendor_count(), 65, "65 vendeurs (blacklist exclu)");
     }
 
@@ -376,8 +385,8 @@ mod tests {
                 .filter(|p| p.kind == k && p.instantiation)
                 .count()
         };
-        assert_eq!(inst(PresetKind::Filament), 5913);
-        assert_eq!(inst(PresetKind::Machine), 1001);
+        assert_eq!(inst(PresetKind::Filament), 5892);
+        assert_eq!(inst(PresetKind::Machine), 999);
         assert_eq!(inst(PresetKind::Process), 2881);
         // les modèles d'imprimante ne sont jamais instanciables
         assert_eq!(inst(PresetKind::MachineModel), 0);

@@ -84,6 +84,17 @@ pub fn default_profiles_dir() -> PathBuf {
     if let Ok(dir) = std::env::var("PROFILES_DIR") {
         return PathBuf::from(dir);
     }
+    // Source unique de vérité : la même release Orca que l'oracle CLI
+    // (`ORCA_SRC`, posée par le devShell nix). Le submodule vendor/ n'est
+    // qu'une référence de lecture : le laisser piloter le seed fait dériver
+    // les profils système dès que son pointeur bouge (ex. main : 14735
+    // profils au lieu de 11872, nouveaux vendeurs).
+    if let Ok(src) = std::env::var("ORCA_SRC") {
+        let dir = PathBuf::from(src).join("resources/profiles");
+        if dir.is_dir() {
+            return dir;
+        }
+    }
     PathBuf::from(concat!(
         env!("CARGO_MANIFEST_DIR"),
         "/../vendor/OrcaSlicer/resources/profiles"

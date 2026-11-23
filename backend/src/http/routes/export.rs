@@ -73,6 +73,7 @@ pub async fn export_3mf(
     // `material_*`…), que les défauts du registre ajoutaient (la CLI les
     // recopiait ensuite dans l'en-tête du G-code).
     strip_sla_options(&mut config);
+    compact_export_variants(&state, user.id, &project.active_presets, &mut config).await;
 
     let mut plates = scene_project_plates(&project.scene);
     attach_plate_thumbnails(&state, user.id, project_id, &model, &config, &mut plates).await;
@@ -109,6 +110,39 @@ pub async fn export_3mf(
         bytes,
     )
         .into_response())
+}
+
+/// Le preset mono-filament actif ne déclare-t-il aucune variante de buse ?
+/// Dans ce cas, les six variantes par défaut de FullPrintConfig ne doivent pas
+/// être exportées : on garde seulement la première, comme l'export Orca.
+async fn compact_export_variants(
+    state: &AppState,
+    user: crate::domain::UserId,
+    active: &Value,
+    config: &mut engine::api::DynamicPrintConfig,
+) {
+    let Some(ids) = active.get("filaments").and_then(Value::as_array) else {
+        return;
+    };
+    if ids.len() != 1 {
+        return;
+    }
+    let Some(raw) = ids[0].as_str() else { return };
+    let Ok(id) = uuid::Uuid::parse_str(raw).map(crate::domain::PresetId) else {
+        return;
+    };
+    let Ok(leaf) = super::presets::load_visible(state, user, id).await else {
+        return;
+    };
+    let default_six = leaf
+        .values
+        .get("filament_extruder_variant")
+        .and_then(Value::as_array)
+        .is_some_and(|variants| variants.len() == 6);
+    if leaf.values.get("filament_extruder_variant").is_some() && !default_six {
+        return;
+    }
+    super::slice::collapse_unconfigured_single_filament_variants(config);
 }
 
 /// Valeurs propres à chaque preset actif qu'Orca regroupe en vecteurs dans

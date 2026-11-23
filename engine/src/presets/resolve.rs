@@ -354,10 +354,16 @@ mod tests {
     /// Chaîne réelle BBL : fdm_process_common → 0.20 Standard @BBL A1.
     #[test]
     fn real_bbl_chain() {
-        let profiles = PathBuf::from(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../vendor/OrcaSlicer/resources/profiles/BBL/process"
-        ));
+        let profiles = std::env::var("ORCA_SRC")
+            .map(|src| PathBuf::from(src).join("resources/profiles/BBL/process"))
+            .ok()
+            .filter(|dir| dir.is_dir())
+            .unwrap_or_else(|| {
+                PathBuf::from(concat!(
+                    env!("CARGO_MANIFEST_DIR"),
+                    "/../vendor/OrcaSlicer/resources/profiles/BBL/process"
+                ))
+            });
         let load = |name: &str| -> RawPreset {
             let raw: serde_json::Map<String, serde_json::Value> =
                 serde_json::from_str(&std::fs::read_to_string(profiles.join(name)).expect(name))

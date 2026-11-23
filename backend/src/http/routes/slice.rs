@@ -972,6 +972,48 @@ fn merge_filament_configs(merged: &mut DynamicPrintConfig, filaments: Vec<Dynami
     set_filament_self_index(merged, &variant_counts);
 }
 
+/// À l'export, un preset mono-filament qui ne déclare pas de variante de buse
+/// ne doit pas exposer les six variantes par défaut de FullPrintConfig. Les
+/// options par variante sont réduites à leur première valeur (la variante
+/// réellement utilisée), comme dans le `project_settings.config` d'Orca.
+/// Appelé seulement quand le preset actif ne contient pas explicitement
+/// `filament_extruder_variant` ; les variantes déclarées sont conservées.
+pub(crate) fn collapse_unconfigured_single_filament_variants(config: &mut DynamicPrintConfig) {
+    if !matches!(config.0.get("filament_settings_id"), Some(ConfigValue::Strings(v)) if v.len() == 1)
+    {
+        return;
+    }
+    let Some(ConfigValue::Strings(variants)) = config.0.get("filament_extruder_variant") else {
+        return;
+    };
+    if variants.len() <= 1 {
+        return;
+    }
+    let first = variants[0].clone();
+    config.0.insert(
+        "filament_extruder_variant".into(),
+        ConfigValue::Strings(vec![first]),
+    );
+    for key in FILAMENT_OPTIONS_WITH_VARIANT {
+        match config.0.get_mut(key) {
+            Some(ConfigValue::Bools(v)) if v.len() > 1 => v.truncate(1),
+            Some(ConfigValue::BoolsNullable(v)) if v.len() > 1 => v.truncate(1),
+            Some(ConfigValue::Ints(v)) if v.len() > 1 => v.truncate(1),
+            Some(ConfigValue::Floats(v)) if v.len() > 1 => v.truncate(1),
+            Some(ConfigValue::FloatsNullable(v)) if v.len() > 1 => v.truncate(1),
+            Some(ConfigValue::Strings(v)) if v.len() > 1 => v.truncate(1),
+            Some(ConfigValue::Points(v)) if v.len() > 1 => v.truncate(1),
+            _ => {}
+        }
+    }
+    if matches!(config.0.get("filament_self_index"), Some(ConfigValue::Ints(v)) if v.iter().all(|x| *x == 1))
+    {
+        config
+            .0
+            .insert("filament_self_index".into(), ConfigValue::Ints(vec![1]));
+    }
+}
+
 /// Options filament « par variante de buse » d'Orca 2.4.1
 /// (`filament_options_with_variant`, PrintConfig.cpp:8375) : une valeur par
 /// élément de `filament_extruder_variant`.

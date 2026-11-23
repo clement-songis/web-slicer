@@ -146,7 +146,7 @@ async fn reseed_restores_numeric_default_bed_type() {
         )
         .await;
         assert_eq!(status, StatusCode::OK, "re-seed {round} : {body}");
-        assert_eq!(body["reseeded"], 11_895);
+        assert_eq!(body["reseeded"], 11_872);
         for (name, id) in TEXTURED_PEI_PRINTERS.iter().zip(&ids) {
             assert_eq!(
                 &machine_id(&app, &cookie, name).await,
