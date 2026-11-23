@@ -109,5 +109,5 @@
 
 <p class="mt-4 text-center text-sm text-content-muted">
 	{$t('Already registered?')}
-	<a href={resolve('/login')} class="text-primary hover:underline">{$t('Sign in')}</a>
+	<a href={resolve('/(auth)/login')} class="text-primary hover:underline">{$t('Sign in')}</a>
 </p>

@@ -111,5 +111,7 @@
 
 <p class="mt-4 text-center text-sm text-content-muted">
 	{$t('No account?')}
-	<a href={resolve('/register')} class="text-primary hover:underline">{$t('Create an account')}</a>
+	<a href={resolve('/(auth)/register')} class="text-primary hover:underline">
+		{$t('Create an account')}
+	</a>
 </p>

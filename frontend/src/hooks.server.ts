@@ -3,7 +3,7 @@
 // BACKEND_URL désigne le backend (défaut http://127.0.0.1:8080, comme en dev).
 // L'upgrade WebSocket `/api/ws` ne passe pas par SvelteKit : il est relayé par
 // `server.js` (point d'entrée de production), ou par le reverse proxy.
-import type { Handle } from '@sveltejs/kit';
+import type { Handle } from '@sveltejs/kit/hooks';
 import { env } from '$env/dynamic/private';
 
 const HOP_BY_HOP = [

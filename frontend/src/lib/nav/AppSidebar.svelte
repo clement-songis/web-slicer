@@ -43,7 +43,7 @@
 		error = null;
 		try {
 			await logout();
-			await goto(resolve('/login'));
+			await goto(resolve('/(auth)/login'));
 		} catch (err) {
 			error = err instanceof Error ? err.message : tr('Unexpected error');
 		} finally {
@@ -64,7 +64,7 @@
 		try {
 			await deleteAccount(deletePassword);
 			currentUser.set(null);
-			await goto(resolve('/register'));
+			await goto(resolve('/(auth)/register'));
 		} catch (err) {
 			deleteError =
 				err instanceof ApiError && err.status === 401

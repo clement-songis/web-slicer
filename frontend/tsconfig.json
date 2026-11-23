@@ -1,7 +1,16 @@
 {
 	"extends": "./.svelte-kit/tsconfig.json",
+	// Le build adaptateur-node, les scripts de génération et le kit généré
+	// ne sont pas type-checkés (chaîne d'imports de vite.config.ts).
+	"include": [
+		"src/**/*",
+		".svelte-kit/ambient.d.ts",
+		".svelte-kit/non-ambient.d.ts",
+		".svelte-kit/env.d.ts"
+	],
+	"exclude": ["src/service-worker", "build", "scripts", "server.js"],
 	"compilerOptions": {
-		"types": ["bun", "unplugin-icons/types/svelte"],
+		"types": ["bun", "unplugin-icons/types/svelte", "$app/types"],
 		"rewriteRelativeImportExtensions": true,
 		"allowJs": true,
 		"checkJs": true,
