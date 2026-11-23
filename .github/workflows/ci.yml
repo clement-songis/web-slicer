@@ -60,16 +60,20 @@ jobs:
           echo "ORCA_SRC=$(nix eval --raw .#orca-src)" >> "$GITHUB_ENV"
       - name: "Gates Rust (devShell : toolchain + $LIBSLIC3R_DIR)"
         run: |
-          nix develop --command bash -c '
-            set -euo pipefail
-            cargo fmt --check
-            cargo clippy --workspace -- -D warnings
-            # --features engine/ffi : construit aussi le binaire engine-worker
-            # (required-features = ffi) que les tests backend d'export spawnent
-            # (résolution par voisin dans target/debug). Sans lui, toute requête
-            # d'export échoue en 500 (reproduit : 8 échecs http_export).
-            cargo test --workspace --features engine/ffi
-          '
+          # nix develop --command perd des variables sur le runner (LIBSLIC3R_DIR,
+          # NIX_CFLAGS_COMPILE du wrapper clang : boost introuvable — run 45176076419).
+          # On source l'environnement exact du devShell, comme .work/devenv.sh en local.
+          nix print-dev-env > "$RUNNER_TEMP/devenv.sh"
+          # shellcheck disable=SC1091
+          source "$RUNNER_TEMP/devenv.sh"
+          set -euo pipefail
+          cargo fmt --check
+          cargo clippy --workspace -- -D warnings
+          # --features engine/ffi : construit aussi le binaire engine-worker
+          # (required-features = ffi) que les tests backend d'export spawnent
+          # (résolution par voisin dans target/debug). Sans lui, toute requête
+          # d'export échoue en 500 (reproduit : 8 échecs http_export).
+          cargo test --workspace --features engine/ffi
       - name: Fraîcheur des bindings ts-rs (jamais édités à la main)
         run: git diff --exit-code -- frontend/src/generated/api
 
