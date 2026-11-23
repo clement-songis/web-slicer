@@ -1,0 +1,118 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>web-slicer — architecture</title>
+<style>
+  :root { color-scheme: light dark; --bg:#f8fafc; --fg:#172033; --muted:#5b6475; --line:#64748b;
+    --neutral:#e2e8f0; --input:#bfdbfe; --process:#c7d2fe; --storage:#99f6e4; --external:#fde68a; --risk:#fecaca; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0f172a; --fg:#e5e7eb; --muted:#a3adbd; --line:#94a3b8;
+    --neutral:#334155; --input:#1d4ed8; --process:#4338ca; --storage:#0f766e; --external:#92400e; --risk:#991b1b; } }
+  body { margin:0; background:var(--bg); color:var(--fg); font:14px/1.4 ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:980px; margin:32px auto; padding:0 20px; }
+  svg { width:100%; height:auto; display:block; }
+  .title { font-size:20px; font-weight:650; fill:var(--fg); }
+  .label { font-size:14px; font-weight:600; fill:var(--fg); }
+  .small { font-size:12px; fill:var(--muted); }
+  .node { stroke:var(--line); stroke-width:1; }
+</style>
+<main>
+<svg viewBox="0 0 960 1120" role="img" aria-label="Architecture web-slicer">
+  <text x="24" y="34" class="title">web-slicer — architecture des modules</text>
+  <text x="24" y="54" class="small">Flux principal : import → scène → tranchage → G-code · isolation du moteur C++ dans un sous-processus</text>
+
+  <!-- connecteurs (dessinés avant les nœuds) -->
+  <g stroke="var(--line)" fill="none" marker-end="url(#arr)">
+    <path d="M480 120 L480 158" />
+    <path d="M480 240 L480 278" />
+    <path d="M480 360 L480 398" />
+    <path d="M760 340 L786 340" />
+    <path d="M140 330 L70 330 L70 650 L226 650" />
+    <path d="M330 468 L330 530 L400 530 L400 596" stroke-dasharray="5 4" />
+    <path d="M120 820 L120 940 L480 940" stroke-dasharray="5 4" />
+    <path d="M810 180 L810 420 L672 420" stroke-dasharray="5 4" />
+  </g>
+  <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="var(--line)" /></marker></defs>
+
+  <!-- 1. Navigateur -->
+  <g>
+    <rect x="230" y="70" width="500" height="50" rx="8" class="node input" />
+    <text x="480" y="92" text-anchor="middle" class="label">Navigateur — SvelteKit 3</text>
+    <text x="480" y="110" text-anchor="middle" class="small">scène 3D Threlte/three · éditeur de réglages · i18n Paraglide · routes projets/file/imprimantes</text>
+  </g>
+
+  <!-- 2. Serveur front -->
+  <g>
+    <rect x="230" y="160" width="500" height="78" rx="8" class="node process" />
+    <text x="480" y="184" text-anchor="middle" class="label">Serveur frontal — adapter-node (server.js + hooks)</text>
+    <text x="480" y="202" text-anchor="middle" class="small">proxy /api → backend · contrôle CSRF · relay WebSocket /api/ws</text>
+    <text x="480" y="220" text-anchor="middle" class="small">build SvelteKit (vite dev proxy en développement)</text>
+  </g>
+
+  <!-- 3. Backend -->
+  <g>
+    <rect x="140" y="280" width="620" height="80" rx="8" class="node process" />
+    <text x="480" y="304" text-anchor="middle" class="label">Backend axum (Rust)</text>
+    <text x="480" y="322" text-anchor="middle" class="small">routes API : projets · tranchage · export 3MF/G-code · presets · aperçu · calibration · imprimantes</text>
+    <rect x="160" y="332" width="200" height="20" rx="4" class="node storage" />
+    <text x="260" y="346" text-anchor="middle" class="small">AnyStorage — SQLite / Postgres</text>
+    <rect x="350" y="332" width="150" height="20" rx="4" class="node storage" />
+    <text x="425" y="346" text-anchor="middle" class="small">FileStore — modèles</text>
+    <rect x="520" y="332" width="220" height="20" rx="4" class="node neutral" />
+    <text x="630" y="346" text-anchor="middle" class="small">sessions + isolation par compte (SC-008)</text>
+  </g>
+
+  <!-- 4. engine crate -->
+  <g>
+    <rect x="140" y="400" width="380" height="68" rx="8" class="node process" />
+    <text x="330" y="424" text-anchor="middle" class="label">Crate engine (Rust pur)</text>
+    <text x="330" y="442" text-anchor="middle" class="small">registre de paramètres (défauts Orca) · résolution presets</text>
+    <text x="330" y="458" text-anchor="middle" class="small">writer 3MF · modèle de scène partagé export/tranchage</text>
+  </g>
+  <!-- 4b. harness oracle -->
+  <g>
+    <rect x="540" y="400" width="200" height="68" rx="8" class="node external" />
+    <text x="640" y="424" text-anchor="middle" class="label">Harness · oracle parité</text>
+    <text x="640" y="442" text-anchor="middle" class="small">corpus 634 cas · refs golden/param</text>
+    <text x="640" y="458" text-anchor="middle" class="small">stack.sh · verify.py (API /api/_harness)</text>
+  </g>
+
+  <!-- 5. engine-worker -->
+  <g>
+    <rect x="230" y="600" width="500" height="100" rx="8" class="node risk" />
+    <text x="480" y="624" text-anchor="middle" class="label">Sous-processus engine-worker (crate engine, feature ffi)</text>
+    <text x="480" y="642" text-anchor="middle" class="small">bridge CXX → libslic3r (statiques) : découpe · arrangement · réparation · split · peinture</text>
+    <text x="480" y="660" text-anchor="middle" class="small">résolu par voisin de l'exécutable (ENGINE_WORKER_BIN) · timeout + kill · crash C++ contenu</text>
+    <text x="480" y="678" text-anchor="middle" class="small">stdout = résultat borné (16 Mo), gros artefacts par fichiers</text>
+  </g>
+
+  <!-- 6. Toolchain nix -->
+  <g>
+    <rect x="140" y="740" width="680" height="92" rx="8" class="node neutral" />
+    <text x="480" y="764" text-anchor="middle" class="label">Toolchain Nix (flake)</text>
+    <text x="480" y="782" text-anchor="middle" class="small">devShell : LIBSLIC3R_DIR (libslic3r-headless) + ORCA_SRC (pin nixpkgs Orca 2.4.1 + patches déterminisme)</text>
+    <text x="480" y="800" text-anchor="middle" class="small">submodule vendor/OrcaSlicer → branche main : référence de code (lecture)</text>
+    <text x="480" y="818" text-anchor="middle" class="small">CI GitHub Actions : audit parité · backend fmt/clippy/tests --features engine/ffi · frontend lint/check/test</text>
+  </g>
+
+  <!-- imprimante -->
+  <g>
+    <rect x="790" y="300" width="160" height="80" rx="8" class="node external" />
+    <text x="870" y="326" text-anchor="middle" class="label">Imprimante</text>
+    <text x="870" y="344" text-anchor="middle" class="small">Moonraker : upload</text>
+    <text x="870" y="360" text-anchor="middle" class="small">G-code (print=true) ·</text>
+    <text x="870" y="376" text-anchor="middle" class="small">statut · contrôles · 502</text>
+  </g>
+
+  <!-- CI -->
+  <g>
+    <rect x="700" y="100" width="220" height="60" rx="8" class="node external" />
+    <text x="810" y="124" text-anchor="middle" class="label">GitHub Actions (CI)</text>
+    <text x="810" y="142" text-anchor="middle" class="small">3 jobs : parité · Rust (devShell via print-dev-env) · front</text>
+  </g>
+
+  <!-- légende -->
+  <g>
+    <text x="24" y="1080" class="small">Légende — bleu : entrée · violet : processus applicatif · teal : stockage · jaune : externe · rouge : moteur C++ isolé · gris : toolchain/validation</text>
+  </g>
+</svg>
+</main>

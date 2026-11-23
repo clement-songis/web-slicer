@@ -9,6 +9,8 @@ Klipper (Moonraker) printers — in the browser, with isolated accounts.
 > The slicing engine wraps OrcaSlicer's **libslic3r** (`vendor/OrcaSlicer`,
 > read-only): same algorithms, same G-code.
 
+> **Architecture détaillée avec schéma** : [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) + [docs/architecture.html](docs/architecture.html).
+
 ## Architecture (3-layer monorepo)
 
 | Layer | Directory | Stack | Role |
