@@ -69,6 +69,13 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@v16
+      - uses: DeterminateSystems/magic-nix-cache-action@v9
+      - name: Source Orca de référence (release 2.4.1)
+        run: |
+          ORCA_SRC="$(nix eval --raw .#orca-src)"
+          nix build .#orca-src
+          echo "ORCA_SRC=$ORCA_SRC" >> "$GITHUB_ENV"
       - uses: oven-sh/setup-bun@v2
       - run: bun install --frozen-lockfile
       - run: bun run lint
