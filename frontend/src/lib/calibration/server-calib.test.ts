@@ -5,7 +5,7 @@ import {
 	pressureAdvanceRequest,
 	SERVER_CALIB_KINDS,
 	temperatureRequest
-} from './server';
+} from './server-calib';
 
 describe('calibrations côté serveur : requêtes', () => {
 	it('14 calibrations portées', () => expect(SERVER_CALIB_KINDS).toHaveLength(14));

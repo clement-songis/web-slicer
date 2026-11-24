@@ -20,7 +20,7 @@ vi.mock('$lib/api/client', () => ({
 	api: { post: (...args: unknown[]) => post(...args) }
 }));
 
-import { createServerCalibration, pressureAdvanceRequest } from './server';
+import { createServerCalibration, pressureAdvanceRequest } from './server-calib';
 
 describe('createServerCalibration (lot 42 K1)', () => {
 	beforeEach(() => {
