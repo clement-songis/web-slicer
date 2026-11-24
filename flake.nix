@@ -49,6 +49,16 @@
         # que les refs golden sont figées et capturent déjà la branche déterministe.
         orca = pkgs.orca-slicer;
 
+        # Source Orca main (submodule vendor/OrcaSlicer) pour le portage
+        # libslic3r-main. Les correctifs de déterminisme 2.4.1 ne s'appliquent
+        # pas encore : premier objectif = compiler, portage ensuite.
+        orcaMainSrc = pkgs.fetchFromGitHub {
+          owner = "SoftFever";
+          repo = "OrcaSlicer";
+          rev = "aefb6b3d66d0766dab630af721513967e3fafa3f";
+          hash = "sha256-n8oRdioTP7VvRqGT9oGUkA73UaCRH4rBDJJEN/bBVdU=";
+        };
+
         selfPkgs = self.packages.${pkgs.system};
 
         # Basé sur pkgs.orca-slicer (non patché) : les correctifs de
@@ -138,12 +148,30 @@
             "draco"
           ]
         ) (libslic3r.buildInputs or [ ]);
+
+        # Portage libslic3r depuis Orca main : même chaîne headless que
+        # libslic3r, mais source = main et sans les patches 2.4.1 (à reporter
+        # une fois la compilation validée).
+        libslic3r-main = pkgs.orca-slicer.overrideAttrs (old: {
+          pname = "libslic3r-headless-main";
+          src = orcaMainSrc;
+          patches = [ ];
+          cmakeFlags = old.cmakeFlags ++ [
+            (lib.cmakeBool "SLIC3R_GUI" false)
+            (lib.cmakeBool "SLIC3R_BUILD_TESTS" false)
+          ];
+          doCheck = false;
+          dontWrapGApps = true;
+          postBuild = "";
+        });
       in
       {
+
         packages = {
           inherit orca libslic3r dump-config;
           orca-slicer = orca;
           orca-src = orca.src;
+          inherit orcaMainSrc libslic3r-main;
           default = dump-config;
         };
 
