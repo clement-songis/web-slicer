@@ -183,7 +183,127 @@ mod tests {
                 )
             })
             .count();
-        // parité exacte avec le runtime C++ (vérifiée par dump-config --keys)
-        assert_eq!(fff_common_sla, 751);
+        // 751 (Orca v2.4.2) + 202 clés main aefb6b3d (137 fff + 6 common)
+        // − silent_mode retirée = 893. Parité runtime C++ à re-vérifier par le
+        // test ffi `registre_runtime_aligne_avec_le_registre_genere` une fois
+        // le portage libslic3r-main (aefb6b3d) achevé.
+        assert_eq!(fff_common_sla, 893);
+    }
+
+    /// Lot 2026-11-24 : clés d'OrcaSlicer main aefb6b3d fusionnées dans l'audit
+    /// (rapport .work/staging/params-extract.md). Représentants par mécanisme
+    /// d'ajout : bloc add() littéral, lambda belt remap, boucle plugin
+    /// overrides, macro new_def (placeholders d'état).
+    #[test]
+    fn spot_check_orca_main_enum_et_floats_or_percents() {
+        // coEnum : défaut résolu vers la valeur persistée "linear".
+        let p = get("adaptive_infill_gradient").unwrap();
+        assert_eq!(p.kind, ParamKind::Enum);
+        assert_eq!(p.mode, Mode::Advanced);
+        assert_eq!(p.category, Some("Strength"));
+        assert_eq!(p.enum_values, &["linear", "quadratic", "exponential"]);
+        assert_eq!(p.enum_labels.len(), p.enum_values.len());
+        assert_eq!(p.default_json, Some("\"linear\""));
+    }
+
+    #[test]
+    fn spot_check_orca_main_nullable_vectoriels() {
+        // coFloatsOrPercents nullable : défaut 25 % + borne basse.
+        let p = get("bridge_volumetric_flow").unwrap();
+        assert_eq!(p.kind, ParamKind::FloatsOrPercents);
+        assert!(p.nullable);
+        assert_eq!(p.min, Some(0.1));
+        assert_eq!(p.default_json, Some("[{\"value\": 25, \"percent\": true}]"));
+        // coIntsNullable : 0 = auto (borne haute dynamique → pas de max statique).
+        let p = get("filament_flush_temp_fast").unwrap();
+        assert_eq!(p.kind, ParamKind::Ints);
+        assert!(p.nullable);
+        assert_eq!(p.min, Some(0.0));
+        assert_eq!(p.max, None);
+        assert_eq!(p.default_json, Some("[0]"));
+    }
+
+    #[test]
+    fn spot_check_orca_main_enums_vectoriel() {
+        // coEnums : défaut vecteur ["Standard"] (ConfigOptionEnumsGeneric).
+        let p = get("extruder_nozzle_volume_type").unwrap();
+        assert_eq!(p.kind, ParamKind::Enums);
+        assert_eq!(p.enum_values.len(), 5);
+        assert!(p.enum_values.contains(&"Standard"));
+        assert!(p.enum_values.contains(&"Extra High Flow"));
+        assert_eq!(p.default_json, Some("[\"Standard\"]"));
+    }
+
+    #[test]
+    fn spot_check_orca_main_belt_et_plugin() {
+        // Lambda add_belt_remap : enum machine à 9 axes, mode develop.
+        let p = get("gcode_remap_x").unwrap();
+        assert_eq!(p.kind, ParamKind::Enum);
+        assert_eq!(p.mode, Mode::Develop);
+        assert_eq!(p.category, Some("Printable space"));
+        assert_eq!(p.enum_values.len(), 9);
+        assert_eq!(p.default_json, Some("\"pos_x\""));
+        for axis in ["gcode_remap_y", "gcode_remap_z"] {
+            assert!(get(axis).is_some(), "{axis} absente");
+        }
+        // Boucle for sur les clés : overrides de capacités plugins (common).
+        let p = get("print_plugin_config_overrides").unwrap();
+        assert_eq!(p.kind, ParamKind::String);
+        assert_eq!(p.group, ParamGroup::Common);
+        assert_eq!(p.mode, Mode::Advanced);
+        for k in [
+            "printer_plugin_config_overrides",
+            "filament_plugin_config_overrides",
+        ] {
+            assert!(get(k).is_some(), "{k} absente");
+        }
+    }
+
+    #[test]
+    fn spot_check_orca_main_collision_new_def() {
+        // filament_retract_length_nc existe DEUX fois dans main (PrintConfig.cpp
+        // :9166 coFloats preset, :13960 new_def placeholder) : la définition
+        // PrintConfigDef (persistée, par filament) fait foi.
+        let p = get("filament_retract_length_nc").unwrap();
+        assert_eq!(p.kind, ParamKind::Floats);
+        assert!(p.nullable);
+        assert_eq!(p.mode, Mode::Develop);
+        assert_eq!(p.min, Some(0.0));
+        assert_eq!(p.max, Some(18.0));
+        assert_eq!(p.default_json, Some("[10.0]"));
+    }
+
+    #[test]
+    fn spot_check_orca_main_placeholders_etat() {
+        // Macro new_def : placeholders connus, non persistés, sans défaut.
+        let p = get("imex_mode").unwrap();
+        assert_eq!(p.kind, ParamKind::String);
+        assert_eq!(p.group, ParamGroup::Other);
+        assert_eq!(p.default_json, None);
+        for k in [
+            "imex_mode_gcode",
+            "imex_mode_index",
+            "curr_physical_extruder_id",
+            "extrusion_role",
+            "print_time_total_sec",
+            "temperature",
+        ] {
+            assert!(get(k).is_some(), "{k} absente");
+        }
+        // Clés CLI main : actions/transformations serveur.
+        for k in ["inspect_mesh", "ground_largest_face", "align_to_y_axis"] {
+            assert!(get(k).is_some(), "{k} absente");
+            assert_eq!(get(k).unwrap().group, ParamGroup::Cli);
+        }
+    }
+
+    #[test]
+    fn silent_mode_retiree_mais_importable() {
+        // Dépréciation Orca main aefb6b3d : plus de définition, et la clé reste
+        // dans l'ensemble ignoré de handle_legacy (import preset/3MF : valeur
+        // abandonnée silencieusement, comme le chargement desktop Orca).
+        assert!(get("silent_mode").is_none());
+        assert_eq!(handle_legacy("silent_mode", "1"), None);
+        assert_eq!(handle_legacy("silent_mode", "true"), None);
     }
 }

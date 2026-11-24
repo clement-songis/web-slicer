@@ -1,6 +1,6 @@
 # Annexe A — Registre exhaustif des paramètres (normatif)
 
-Source : `audit/parameters.json` (858 paramètres, généré depuis
+Source : `audit/parameters.json` (1058 paramètres, généré depuis
 `vendor/OrcaSlicer/src/libslic3r/PrintConfig.cpp`). Chaque ligne est une
 exigence : le paramètre DOIT être exposé par l'application (stockage,
 API, UI selon son groupe) ou inscrit au registre d'exclusions avec
@@ -11,7 +11,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 `cli:*` → équivalents des actions serveur (tranchage, transformations) ;
 `other:*` → placeholders G-code et états de slicing (moteur de templates).
 
-## Groupe `common` (31 paramètres)
+## Groupe `common` (37 paramètres)
 
 | Clé | Type | Catégorie | Mode | Défaut | Libellé |
 |---|---|---|---|---|---|
@@ -19,11 +19,15 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `bed_custom_model` | coString |  | advanced |  | Bed custom model |
 | `bed_custom_texture` | coString |  | advanced |  | Bed custom texture |
 | `bed_exclude_area` | coPoints |  | advanced | ["0x0"] | Bed exclude area |
+| `bed_exclude_volume_mode` | coEnum |  | advanced | shared | Collision volume behavior |
+| `bed_exclude_volumes` | coString |  | advanced |  | Toolhead collision volumes |
 | `elefant_foot_compensation` | coFloat | Quality | advanced | 0.0 | Elephant foot compensation |
 | `elefant_foot_compensation_layers` | coInt | Quality | advanced | 1 | Elephant foot compensation layers |
 | `elefant_foot_layers_density` | coPercent | Quality | expert | 100 | Elephant foot layers density |
+| `extruder_bed_exclude_volumes` | coStrings |  | advanced | [""] | Extruder collision volumes |
 | `extruder_printable_area` | coPointsGroups |  | advanced | [] | Extruder printable area |
 | `extruder_printable_height` | coFloats |  | advanced | [0] | Extruder printable height |
+| `filament_plugin_config_overrides` | coString |  | advanced |  | Capabilities |
 | `flashforge_serial_number` | coString |  | advanced |  | Serial Number |
 | `layer_height` | coFloat | Quality | simple | 0.2 | Layer height |
 | `parallel_printheads_bed_exclude_areas` | coStrings |  | advanced |  | Parallel printheads bed exclude areas |
@@ -33,9 +37,11 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `preset_names` | coStrings |  | advanced |  | Printer preset names |
 | `print_host` | coString |  | advanced |  | Hostname, IP or URL |
 | `print_host_webui` | coString |  | advanced |  | Device UI |
+| `print_plugin_config_overrides` | coString |  | advanced |  | Capabilities |
 | `printable_area` | coPoints |  | advanced | ["0x0", "200x0", "200x200", "0x200"] | Printable area |
 | `printable_height` | coFloat |  | simple | 100.0 | Printable height |
 | `printer_agent` | coString |  | advanced |  | Printer Agent |
+| `printer_plugin_config_overrides` | coString |  | advanced |  | Capabilities |
 | `printer_technology` | coEnum |  | simple | FFF | Printer technology |
 | `printhost_apikey` | coString |  | advanced |  | API Key / Password |
 | `printhost_authorization_type` | coEnum |  | advanced | key | Authorization Type |
@@ -47,7 +53,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `support_parallel_printheads` | coBool |  | advanced | False | Support parallel printheads |
 | `use_3mf` | coBool |  | advanced | False | Use 3MF instead of G-code |
 
-## Groupe `fff` (644 paramètres)
+## Groupe `fff` (780 paramètres)
 
 | Clé | Type | Catégorie | Mode | Défaut | Libellé |
 |---|---|---|---|---|---|
@@ -58,6 +64,9 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `activate_air_filtration_on_completion` | coBools |  | simple | [true] |  |
 | `activate_chamber_temp_control` | coBools |  | simple | [false] | Activate temperature control |
 | `adaptive_bed_mesh_margin` | coFloat |  | advanced | 0 | Mesh margin |
+| `adaptive_infill_gradient` | coEnum | Strength | advanced | linear | Adaptive gradient |
+| `adaptive_infill_interior_density` | coPercent | Strength | advanced | 5 | Interior density |
+| `adaptive_infill_mode` | coEnum | Strength | advanced | disabled | Adaptive density (experimental) |
 | `adaptive_pressure_advance` | coBools |  | advanced | [false] | Enable adaptive pressure advance (beta) |
 | `adaptive_pressure_advance_bridges` | coFloats |  | advanced | [0.0] | Pressure advance for bridges |
 | `adaptive_pressure_advance_model` | coStrings |  | advanced | ["0,0,0\\n0,0,0"] | Adaptive pressure advance measurements (beta) |
@@ -73,12 +82,24 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `bed_mesh_probe_distance` | coPoint |  | advanced | [50, 50] | Probe point distance |
 | `bed_temperature_formula` | coEnum |  | advanced | by_highest_temp | Bed temperature type |
 | `before_layer_change_gcode` | coString |  | advanced |  | Before layer change G-code |
+| `belt_frame_tilt_angle` | coFloat | Printable space | expert | 45.0 | Machine-frame tilt angle |
+| `belt_frame_tilt_decouple` | coBool | Printable space | expert | False | Decouple machine-frame tilt |
+| `belt_printer` | coBool | Printable space | advanced | False | Enable belt printing |
+| `belt_printer_infinite_y` | coBool | Printable space | advanced | True | Infinite Y axis |
+| `belt_purge_tower_object` | coBool | Flush options | develop | False | Belt purge tower object |
+| `belt_purge_tower_width` | coFloat | Printable space | advanced | 35.0 | Belt purge tower width |
+| `belt_slice_rotation` | coEnum | Printable space | develop | x | Belt tilt axis |
+| `belt_slice_rotation_angle` | coFloat | Printable space | advanced | 45.0 | Belt tilt angle |
+| `belt_support_floor_offset` | coFloat | Printable space | advanced | 0 | Support Floor Z offset |
 | `best_object_pos` | coPoint |  | advanced | [0.5, 0.5] | Best object position |
+| `bottom_color_penetration_layers` | coInt | Strength | advanced | 0 | Bottom paint penetration layers |
+| `bottom_layer_direction` | coFloat | Strength | simple | -1 | Bottom layer direction |
 | `bottom_shell_layers` | coInt | Strength | simple | 3 | Bottom shell layers |
 | `bottom_shell_thickness` | coFloat | Strength | simple | 0.0 | Bottom shell thickness |
 | `bottom_solid_infill_flow_ratio` | coFloat | Advanced | advanced | 1 | Bottom surface flow ratio |
 | `bottom_surface_density` | coPercent | Strength | simple | 100 | Bottom surface density |
 | `bottom_surface_filament_id` | coInt | Extruders | advanced | 0 | Bottom surface |
+| `bottom_surface_fill_order` | coEnum | Strength | advanced | default | Bottom surface fill order |
 | `bottom_surface_pattern` | coEnum | Strength | simple | monotonic | Bottom surface pattern |
 | `bridge_acceleration` | coFloatOrPercent | Speed | advanced | {"value": 50.0, "percent": true} | Bridge |
 | `bridge_angle` | coFloat | Strength | advanced | 0.0 | External bridge infill direction |
@@ -87,15 +108,21 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `bridge_line_width` | coFloatOrPercent | Quality | advanced | {"value": 100.0, "percent": true} | Bridge |
 | `bridge_no_support` | coBool | Support | advanced | False | Don't support bridges |
 | `bridge_speed` | coFloat | Speed | advanced | 25 | External |
+| `bridge_volumetric_flow` | coFloatsOrPercents | Speed | advanced | [{"value": 25, "percent": true}] | External |
 | `brim_ears` | coBool | Support | advanced | False | Brim ears |
 | `brim_ears_detection_length` | coFloat | Support | advanced | 1 | Brim ear detection radius |
 | `brim_ears_max_angle` | coFloat | Support | advanced | 125 | Brim ear max angle |
+| `brim_ears_outer_only` | coBool | Support | advanced | False | Brim ears outer only |
+| `brim_filament_id` | coInt | Extruders | advanced | 0 | Brim |
 | `brim_flow_ratio` | coFloat | Support | advanced | 1 | Brim flow ratio |
 | `brim_object_gap` | coFloat | Support | advanced | 0.0 | Brim-object gap |
 | `brim_type` | coEnum | Support | simple | auto_brim | Brim type |
 | `brim_use_efc_outline` | coBool | Support | advanced | False | Brim follows compensated outline |
 | `brim_width` | coFloat | Support | simple | 0.0 | Brim width |
+| `build_plate_tilt_x` | coFloat | Support | expert | 0.0 | Build plate tilt X |
+| `build_plate_tilt_y` | coFloat | Support | expert | 0.0 | Build plate tilt Y |
 | `calib_flowrate_topinfill_special_order` | coBool |  | develop | False |  |
+| `center_of_surface_pattern` | coEnum | Strength | expert | each_surface | Center surface pattern on |
 | `chamber_minimal_temperature` | coInts |  | simple | [0] | Minimal |
 | `chamber_temperature` | coInts |  | simple | [0] | Chamber temperature |
 | `change_extrusion_role_gcode` | coString |  | advanced |  | Change extrusion role G-code |
@@ -112,6 +139,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `complete_print_exhaust_fan_speed` | coInts |  | simple | [80] | Fan speed |
 | `cool_plate_temp` | coInts |  | simple | [35] | Other layers |
 | `cool_plate_temp_initial_layer` | coInts |  | simple | [35] | First layer |
+| `cooling_filter_enabled` | coBool |  | advanced | False | Use cooling filter |
 | `cooling_tube_length` | coFloat |  | advanced | 5.0 | Cooling tube length |
 | `cooling_tube_retraction` | coFloat |  | advanced | 91.5 | Cooling tube position |
 | `counterbore_hole_bridging` | coEnum | Quality | advanced | none | Bridge counterbore holes |
@@ -124,6 +152,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `default_junction_deviation` | coFloat | Speed | advanced | 0.f | Junction Deviation |
 | `default_nozzle_volume_type` | coEnums |  | develop | ["Standard"] | Default Nozzle Volume Type. |
 | `default_print_profile` | coString |  | simple |  | Default process profile |
+| `deretract_speed_extruder_change` | coFloats |  | develop | [0.0] | Deretraction speed (extruder change) |
 | `deretraction_speed` | coFloats |  | advanced | [0.0] | De-retraction Speed |
 | `detect_narrow_internal_solid_infill` | coBool | Strength | advanced | True | Detect narrow internal solid infills |
 | `detect_overhang_wall` | coBool | Quality | advanced | True | Detect overhang walls |
@@ -136,47 +165,61 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `during_print_exhaust_fan_speed` | coInts |  | simple | [60] | Fan speed |
 | `emit_machine_limits_to_gcode` | coBool | Machine limits | advanced | True | Emit limits to G-code |
 | `enable_arc_fitting` | coBool |  | advanced | 0 | Arc fitting |
+| `enable_belt_purge_tower` | coBool | Multimaterial | advanced | False | Enable belt purge tower |
 | `enable_extra_bridge_layer` | coEnum | Quality | advanced | disabled | Extra bridge layers (beta) |
 | `enable_filament_dynamic_map` | coBool |  | develop | False | Enable filament dynamic map |
 | `enable_filament_ramming` | coBool |  | advanced | True | Enable filament ramming |
 | `enable_long_retraction_when_cut` | coInt |  | develop | 0 |  |
+| `enable_mixed_color_sublayer` | coBool | Quality | simple | False | Mixed color sublayer |
 | `enable_overhang_bridge_fan` | coBools |  | simple | [true] | Force cooling for overhangs and bridges |
 | `enable_overhang_speed` | coBool | Speed | advanced | True | Slow down for overhang |
 | `enable_power_loss_recovery` | coEnum |  | advanced | printer_configuration | Power Loss Recovery |
+| `enable_pre_heating` | coBool |  | simple | False |  |
 | `enable_pressure_advance` | coBools |  | simple | [false] | Enable pressure advance |
 | `enable_prime_tower` | coBool |  | simple | False | Enable |
 | `enable_support` | coBool | Support | simple | False | Enable support |
 | `enable_tower_interface_cooldown_during_tower` | coBool |  | advanced | False | Cool down from interface boost during prime tower |
 | `enable_tower_interface_features` | coBool |  | advanced | False | Enable tower interface features |
+| `enable_volumetric_speeds` | coBool | Speed | advanced | False | Volumetric speeds |
 | `enable_wrapping_detection` | coBool |  | advanced | False | Enable clumping detection |
 | `enforce_support_layers` | coInt | Support | develop | 0 |  |
 | `eng_plate_temp` | coInts |  | simple | [45] | Other layers |
 | `eng_plate_temp_initial_layer` | coInts |  | simple | [45] | First layer |
 | `ensure_vertical_shell_thickness` | coEnum | Strength | advanced | ensure_all | Ensure vertical shell thickness |
 | `exclude_object` | coBool |  | advanced | False | Exclude objects |
+| `exclude_object_tolerance` | coFloat |  | expert | 0.1 | Outline tolerance |
+| `extra_brim_width` | coFloat | Support | advanced | 0.0 | Extra brim width |
 | `extra_loading_move` | coFloat |  | advanced | -2.0 | Extra loading distance |
 | `extra_perimeters_on_overhangs` | coBool | Quality | advanced | False | Extra perimeters on overhangs |
 | `extra_solid_infills` | coString | Strength | advanced |  | Insert solid layers |
 | `extruder` | coInt | Extruders | advanced |  | Extruder |
 | `extruder_ams_count` | coStrings |  | simple | [] | Extruder AMS count |
+| `extruder_clearance_dist_to_rod` | coFloat |  | advanced | 40 | Distance to rod |
 | `extruder_clearance_height_to_lid` | coFloat |  | advanced | 120 | Height to lid |
 | `extruder_clearance_height_to_rod` | coFloat |  | advanced | 40 | Height to rod |
 | `extruder_clearance_radius` | coFloat |  | advanced | 40 | Radius |
 | `extruder_colour` | coStrings |  | advanced | [""] | Extruder Color |
+| `extruder_max_nozzle_count` | coInts |  | develop | [1] |  |
+| `extruder_nozzle_count` | coInts |  | develop | [1] | extruder nozzle count |
+| `extruder_nozzle_stats` | coStrings |  | simple | [] | Extruder nozzle stats |
+| `extruder_nozzle_volume_type` | coEnums |  | develop | ["Standard"] | Extruder nozzle volume type |
 | `extruder_offset` | coPoints |  | advanced | ["0x0"] | Extruder offset |
 | `extruder_type` | coEnums |  | advanced | ["Direct Drive"] | Type |
 | `extruder_variant_list` | coStrings |  | simple | ["Direct Drive Standard"] | Extruder variant list |
 | `extrusion_rate_smoothing_external_perimeter_only` | coBool |  | advanced | False | Apply only on external features |
 | `fan_cooling_layer_time` | coFloats |  | simple | [60.0] | Layer time |
+| `fan_direction` | coEnum |  | develop | undefine | Fan direction |
 | `fan_kickstart` | coFloat |  | advanced | 0 | Fan kick-start time |
 | `fan_max_speed` | coFloats |  | simple | [100] | Fan speed |
 | `fan_min_speed` | coFloats |  | simple | [20] | Fan speed |
 | `fan_speedup_overhangs` | coBool |  | advanced | True | Only overhangs |
 | `fan_speedup_time` | coFloat |  | advanced | 0 |  |
+| `farthest_point_timelapse` | coBool |  | simple | False | Farthest point timelapse |
 | `filament_adaptive_volumetric_speed` | coBools |  | develop | [false] | Adaptive volumetric speed |
 | `filament_adhesiveness_category` | coInts |  | develop | [0] | Adhesiveness Category |
 | `filament_change_extrusion_role_gcode` | coStrings |  | advanced | [""] | Change extrusion role G-code (filament) |
 | `filament_change_length` | coFloats |  | advanced | [10] | Filament ramming length |
+| `filament_change_length_nc` | coFloats |  | advanced | [10] | Hotend change |
 | `filament_colour` | coStrings |  | advanced | ["#F2754E"] | Color |
 | `filament_colour_type` | coStrings |  | simple | ["1"] |  |
 | `filament_cooling_before_tower` | coFloats |  | develop | [10.0] | Wipe tower cooling |
@@ -186,33 +229,64 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `filament_cost` | coFloats |  | advanced | [0.0] | Price |
 | `filament_density` | coFloats |  | advanced | [0.0] | Density |
 | `filament_deretraction_speed` | coFloatsNullable |  | advanced |  | De-retraction Speed |
+| `filament_dev_ams_drying_ams_limitations` | coStrings |  | simple | [""] |  |
+| `filament_dev_ams_drying_heat_distortion_temperature` | coFloats |  | simple | [0] |  |
+| `filament_dev_ams_drying_temperature` | coFloats |  | simple | [0] |  |
+| `filament_dev_ams_drying_time` | coFloats |  | simple | [0] |  |
+| `filament_dev_chamber_drying_bed_temperature` | coFloats |  | simple | [0] |  |
+| `filament_dev_chamber_drying_time` | coFloats |  | simple | [0] |  |
+| `filament_dev_drying_cooling_temperature` | coFloats |  | advanced | [0] | it_opt->second.label |
+| `filament_dev_drying_softening_temperature` | coFloats |  | simple | [0] |  |
 | `filament_diameter` | coFloats |  | simple | [1.75] | Diameter |
 | `filament_end_gcode` | coStrings |  | advanced | [" "] | End G-code |
+| `filament_extruder_compatibility` | coInts |  | develop | [0] | Filament-extruder compatibility |
 | `filament_extruder_variant` | coStrings |  | simple | ["Direct Drive Standard"] | Filament's extruder variant |
 | `filament_flow_ratio` | coFloats |  | advanced | [1.0] | Flow ratio |
 | `filament_flush_temp` | coInts |  | advanced | [0] | Flush temperature |
+| `filament_flush_temp_fast` | coInts |  | advanced | [0] | Flush temperature |
 | `filament_flush_volumetric_speed` | coFloats |  | advanced | [0] | Flush volumetric speed |
 | `filament_ids` | coStrings |  | simple |  |  |
 | `filament_ironing_flow` | coPercents | Quality | advanced |  | Ironing flow |
 | `filament_ironing_inset` | coFloats | Quality | advanced |  | Ironing inset |
 | `filament_ironing_spacing` | coFloats | Quality | advanced |  | Ironing line spacing |
 | `filament_ironing_speed` | coFloats | Speed | advanced |  | Ironing speed |
+| `filament_is_mixed` | coBools |  | develop | [false] | Is mixed filament |
 | `filament_is_support` | coBools |  | advanced | [false] | Support material |
 | `filament_loading_speed` | coFloats |  | advanced | [28.0] | Loading speed |
 | `filament_loading_speed_start` | coFloats |  | advanced | [3.0] | Loading speed at the start |
 | `filament_long_retractions_when_cut` | coBoolsNullable |  | develop |  | Long retraction when cut (beta) |
 | `filament_map` | coInts |  | develop | [1] | Filament map to extruder |
+| `filament_map_2` | coInts |  | develop | [1] | Filament map plus for multi nozzle |
 | `filament_map_mode` | coEnum |  | advanced | Auto For Flush | filament mapping mode |
+| `filament_max_external_volumetric_speed` | coFloats |  | advanced | [0.0] | Max external volumetric speed |
+| `filament_max_temperature_drop_when_ec` | coFloats |  | develop | [0] |  |
 | `filament_max_volumetric_speed` | coFloats |  | advanced | [2.0] | Max volumetric speed |
 | `filament_minimal_purge_on_wipe_tower` | coFloats |  | advanced | [15.0] | Minimal purge on wipe tower |
+| `filament_mixed_components` | coStrings |  | develop | [""] | Mixed filament components |
+| `filament_mixed_gradient` | coBools |  | develop | [false] | Mixed filament gradient |
+| `filament_mixed_gradient_curve` | coStrings |  | develop | [""] | Mixed filament gradient curve |
+| `filament_mixed_gradient_per_part` | coBools |  | develop | [false] | Mixed filament per-part gradient |
+| `filament_mixed_gradient_range` | coStrings |  | develop | [""] | Mixed filament gradient range |
+| `filament_mixed_sublayer_ratios` | coStrings |  | develop | [""] | Mixed filament sublayer ratios |
 | `filament_multi_colour` | coStrings |  | simple | [""] |  |
 | `filament_multitool_ramming` | coBools |  | advanced | [false] | Enable ramming for multi-tool setups |
 | `filament_multitool_ramming_flow` | coFloats |  | advanced | [10.0] | Multi-tool ramming flow |
 | `filament_multitool_ramming_volume` | coFloats |  | advanced | [10.0] | Multi-tool ramming volume |
 | `filament_notes` | coStrings |  | advanced | [""] | Filament notes |
+| `filament_nozzle_map` | coInts |  | develop | [1] |  |
+| `filament_pre_cooling_temperature` | coInts |  | advanced | [0] | Extruder change |
+| `filament_pre_cooling_temperature_nc` | coInts |  | advanced | [0] | Hotend change |
+| `filament_preheat_temperature_delta` | coFloats |  | develop | [0] | Preheat temperature delta |
+| `filament_prime_volume` | coFloats |  | simple | [45.0] | Filament change |
+| `filament_prime_volume_nc` | coFloats |  | simple | [60.0] | Hotend change |
 | `filament_printable` | coInts |  | develop | [3] | Filament printable |
 | `filament_ramming_parameters` | coStrings |  | advanced | ["120 100 6.6 6.8 7.2 7.6 7.9 8.2 8.7 9.4 9.9 10.0\| 0.05 6.6 0.45 6.8 0.95 7.8 1.45 8.3 1.95 9.7 2.45 10 2.95 7.6 3.45 7.6 3.95 7.6 4.45 7.6 4.95 7.6"] | Ramming parameters |
+| `filament_ramming_travel_time` | coFloats |  | advanced | [0] | Extruder change |
+| `filament_ramming_travel_time_nc` | coFloats |  | advanced | [0] | Hotend change |
+| `filament_ramming_volumetric_speed` | coFloats |  | advanced | [-1] | Extruder change |
+| `filament_ramming_volumetric_speed_nc` | coFloats |  | advanced | [-1] | Hotend change |
 | `filament_retract_before_wipe` | coPercentsNullable |  | advanced |  | Retract amount before wipe |
+| `filament_retract_length_nc` | coFloats |  | develop | [10.0] | length when change hotend |
 | `filament_retract_lift_above` | coFloatsNullable |  | advanced |  | Only lift Z above |
 | `filament_retract_lift_below` | coFloatsNullable |  | advanced |  | Only lift Z below |
 | `filament_retract_lift_enforce` | coEnumsNullable |  | advanced |  | On surfaces |
@@ -240,6 +314,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `filament_unloading_speed` | coFloats |  | advanced | [90.0] | Unloading speed |
 | `filament_unloading_speed_start` | coFloats |  | advanced | [100.0] | Unloading speed at the start |
 | `filament_vendor` | coStrings |  | advanced | ["(Undefined)"] | Vendor |
+| `filament_volume_map` | coInts |  | develop | ["(int)(NozzleVolumeType::nvtStandard)"] |  |
 | `filament_wipe` | coBoolsNullable |  | advanced |  | Wipe while retracting |
 | `filament_wipe_distance` | coFloatsNullable |  | advanced |  | Wipe Distance |
 | `filament_z_hop` | coFloatsNullable |  | simple |  | Z-hop height |
@@ -256,6 +331,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `flush_into_objects` | coBool | Flush options | simple | False | Flush into this object |
 | `flush_into_support` | coBool | Flush options | simple | True | Flush into objects' support |
 | `flush_multiplier` | coFloats |  | simple | [0.3] | Flush multiplier |
+| `flush_multiplier_fast` | coFloats |  | simple | [1.2] | Flush multiplier (Fast mode) |
 | `flush_volumes_matrix` | coFloats |  | simple | [0.0, 280.0, 280.0, 280.0, 280.0, 0.0, 280.0, 280.0, 280.0, 280.0, 0.0, 280.0, 280.0, 280.0, 280.0, 0.0] | Purging volumes |
 | `flush_volumes_vector` | coFloats |  | simple | [140.0, 140.0, 140.0, 140.0, 140.0, 140.0, 140.0, 140.0] | Purging volumes - load/unload volumes |
 | `full_fan_speed_layer` | coInts |  | advanced | [0] | Full fan speed at layer |
@@ -274,28 +350,53 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `gap_fill_flow_ratio` | coFloat | Advanced | advanced | 1 | Gap fill flow ratio |
 | `gap_fill_target` | coEnum | Strength | advanced | nowhere | Apply gap fill |
 | `gap_infill_speed` | coFloat | Speed | advanced | 30 | Gap infill |
+| `gap_infill_volumetric_flow` | coFloatsOrPercents | Speed | advanced | [{"value": 50, "percent": true}] | Gap infill |
 | `gcode_add_line_number` | coBool |  | develop | 0 | Add line number |
 | `gcode_comments` | coBool |  | advanced | 0 | Verbose G-code |
 | `gcode_flavor` | coEnum |  | advanced | marlin | G-code flavor |
 | `gcode_label_objects` | coBool |  | advanced | 1 | Label objects |
+| `gcode_remap_x` | coEnum | Printable space | develop | pos_x | G-code remap X |
+| `gcode_remap_y` | coEnum | Printable space | develop | pos_y | G-code remap Y |
+| `gcode_remap_z` | coEnum | Printable space | develop | pos_z | G-code remap Z |
+| `gcode_skip_config_block` | coBool |  | advanced | False | Skip G-code config block |
 | `grab_length` | coFloats |  | develop | [0] | Grab length |
+| `group_algo_with_time` | coBool |  | develop | False |  |
 | `gyroid_optimized` | coBool | Strength | simple | False | Z-buckling bias optimization (experimental) |
+| `handle_hotend_as_extruder` | coBool |  | develop | False |  |
 | `has_filament_switcher` | coBool |  | develop | False | Has filament switcher |
 | `has_scarf_joint_seam` | coBool | Machine limits | advanced | False |  |
 | `head_wrap_detect_zone` | coPoints |  | develop | [] | Head wrap detect zone |
 | `high_current_on_filament_swap` | coBool |  | advanced | 0 | High extruder current on filament swap |
+| `high_precision_gcode` | coBool |  | expert | False | High precision G-code (experimental) |
 | `hole_to_polyhole` | coBool | Quality | advanced | False | Convert holes to polyholes |
+| `hole_to_polyhole_max_edges` | coInt | Quality | expert | 50 | Maximum Polyhole edge count |
 | `hole_to_polyhole_threshold` | coFloatOrPercent | Quality | advanced | {"value": 0.01, "percent": false} | Polyhole detection margin |
 | `hole_to_polyhole_twisted` | coBool | Quality | advanced | True | Polyhole twist |
 | `host_type` | coEnum |  | advanced | octoprint | Host Type |
 | `hot_plate_temp` | coInts |  | simple | [45] | Other layers |
 | `hot_plate_temp_initial_layer` | coInts |  | simple | [45] | First layer |
+| `hotend_cooling_rate` | coFloats |  | simple | [2] |  |
+| `hotend_heating_rate` | coFloats |  | simple | [2] |  |
 | `idle_temperature` | coInts |  | simple | [0] | Idle temperature |
+| `imex_carriage_margin` | coFloat |  | advanced | 0.0 | Safety Margin |
+| `imex_firmware_managed_zones` | coBool |  | advanced | False | Firmware-managed zones |
+| `imex_gantry_count` | coInt |  | advanced | 1 | Gantry Count |
+| `imex_head_filament_map` | coString |  | develop |  | IDEX/IQEX head filament map |
+| `imex_mode_active_tools` | coStrings |  | advanced | [] | IDEX/IQEX Mode Active Tools |
+| `imex_mode_gcodes` | coStrings |  | advanced | [] | IDEX/IQEX Mode G-codes |
+| `imex_mode_names` | coStrings |  | advanced | [] | IDEX/IQEX Mode Names |
+| `imex_nozzle_clearance_x` | coFloat |  | advanced | 30.0 | Nozzle Clearance X |
+| `imex_nozzle_clearance_y` | coFloat |  | advanced | 30.0 | Nozzle Clearance Y |
+| `imex_parallel_mode` | coString |  | advanced | primary | IDEX/IQEX Print Mode |
+| `imex_tool_layout` | coEnum |  | advanced | front-left | Tool 0 Position |
+| `imex_tools_per_gantry` | coInt |  | advanced | 2 | Tools per Gantry |
+| `imex_viz_theme` | coEnum |  | advanced | standard | Visualization Theme |
 | `independent_support_layer_height` | coBool | Support | advanced | True | Independent support layer height |
 | `infill_anchor` | coFloatOrPercent | Strength | advanced | {"value": 400.0, "percent": true} | Sparse infill anchor length |
 | `infill_anchor_max` | coFloatOrPercent | Strength | advanced | {"value": 20.0, "percent": false} | Maximum length of the infill anchor |
 | `infill_combination` | coBool | Strength | advanced | False | Infill combination |
 | `infill_combination_max_layer_height` | coFloatOrPercent | Strength | advanced | {"value": 100.0, "percent": true} | Infill combination - Max layer height |
+| `infill_complete_top` | coBool | Strength | advanced | False | Fill pattern tops |
 | `infill_direction` | coFloat | Strength | advanced | 45 | Sparse infill direction |
 | `infill_jerk` | coFloat | Speed | advanced | 9 | Infill |
 | `infill_lock_depth` | coFloat | Strength | advanced | 1.0 | Infill lock depth |
@@ -305,7 +406,9 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `inherits` | coString |  | simple |  | Inherits profile |
 | `inherits_group` | coStrings |  | simple |  |  |
 | `initial_layer_acceleration` | coFloat | Speed | advanced | 300 | First layer |
+| `initial_layer_fan_speed` | coInts |  | advanced | [-1] | First layer fan speed |
 | `initial_layer_infill_speed` | coFloat |  | advanced | 60.0 | First layer infill |
+| `initial_layer_infill_volumetric_flow` | coFloatsOrPercents | Speed | advanced | [{"value": 50, "percent": true}] | First layer infill |
 | `initial_layer_jerk` | coFloat | Speed | advanced | 9 | First layer |
 | `initial_layer_line_width` | coFloatOrPercent | Quality | advanced | {"value": 0.0, "percent": false} | First layer |
 | `initial_layer_min_bead_width` | coPercent | Quality | advanced | 85 | First layer minimum wall width |
@@ -314,12 +417,14 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `initial_layer_travel_acceleration` | coFloatOrPercent |  | advanced | {"value": 100.0, "percent": true} | First layer travel |
 | `initial_layer_travel_jerk` | coFloatOrPercent |  | advanced | {"value": 100.0, "percent": true} | First layer travel |
 | `initial_layer_travel_speed` | coFloatOrPercent | Speed | advanced | {"value": 100.0, "percent": true} | First layer travel speed |
+| `initial_layer_volumetric_flow` | coFloatsOrPercents | Speed | advanced | [{"value": 25, "percent": true}] | First layer |
 | `inner_wall_acceleration` | coFloat | Speed | advanced | 10000 | Inner wall |
 | `inner_wall_filament_id` | coInt | Extruders | advanced | 0 | Inner walls |
 | `inner_wall_flow_ratio` | coFloat | Advanced | advanced | 1 | Inner wall flow ratio |
 | `inner_wall_jerk` | coFloat | Speed | advanced | 9 | Inner wall |
 | `inner_wall_line_width` | coFloatOrPercent | Quality | advanced | {"value": 0.0, "percent": false} | Inner wall |
 | `inner_wall_speed` | coFloat | Speed | advanced | 60 | Inner wall |
+| `inner_wall_volumetric_flow` | coFloatsOrPercents | Speed | advanced | [{"value": 100, "percent": true}] | Inner wall |
 | `input_shaping_damp_x` | coFloat |  | expert | 0.1 | X |
 | `input_shaping_damp_y` | coFloat |  | expert | 0.1 | Y |
 | `input_shaping_emit` | coBool |  | expert | False | Emit input shaping |
@@ -338,12 +443,14 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `internal_bridge_fan_speed` | coInts |  | advanced | [-1] | Internal bridges fan speed |
 | `internal_bridge_flow` | coFloat | Quality | advanced | 1 | Internal bridge flow ratio |
 | `internal_bridge_speed` | coFloatOrPercent | Speed | advanced | {"value": 150.0, "percent": true} | Internal |
+| `internal_bridge_volumetric_flow` | coFloatsOrPercents | Speed | advanced | [{"value": 40, "percent": true}] | Internal |
 | `internal_solid_filament_id` | coInt | Extruders | advanced | 0 | Internal solid infill |
 | `internal_solid_infill_acceleration` | coFloatOrPercent | Speed | advanced | {"value": 100.0, "percent": true} | Internal solid infill |
 | `internal_solid_infill_flow_ratio` | coFloat | Advanced | advanced | 1 | Internal solid infill flow ratio |
 | `internal_solid_infill_line_width` | coFloatOrPercent | Quality | advanced | {"value": 0.0, "percent": false} | Internal solid infill |
 | `internal_solid_infill_pattern` | coEnum | Strength | simple | monotonic | Internal solid infill pattern |
 | `internal_solid_infill_speed` | coFloat | Speed | advanced | 100 | Internal solid infill |
+| `internal_solid_infill_volumetric_flow` | coFloatsOrPercents | Speed | advanced | [{"value": 100, "percent": true}] | Internal solid infill |
 | `ironing_angle` | coFloat | Quality | advanced | 0 | Ironing angle offset |
 | `ironing_angle_fixed` | coBool | Quality | advanced | False | Fixed ironing angle |
 | `ironing_expansion` | coFloat | Quality | expert | 0 | Ironing expansion |
@@ -354,10 +461,12 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `ironing_spacing` | coFloat | Quality | advanced | 0.1 | Ironing line spacing |
 | `ironing_speed` | coFloat | Quality | advanced | 20 | Ironing speed |
 | `ironing_type` | coEnum | Quality | advanced | no ironing | Ironing Type |
+| `is_imex` | coBool |  | advanced | False | IDEX/IQEX Printer |
 | `is_infill_first` | coBool | Quality | advanced | False | Print infill first |
 | `lateral_lattice_angle_1` | coFloat | Strength | advanced | -45 | Lateral lattice angle 1 |
 | `lateral_lattice_angle_2` | coFloat | Strength | advanced | 45 | Lateral lattice angle 2 |
 | `layer_change_gcode` | coString |  | advanced |  | Layer change G-code |
+| `leading_brim_length` | coFloat | Support | advanced | 0.0 | Leading brim length |
 | `lightning_overhang_angle` | coFloat | Strength | expert | 45 | Lightning overhang angle |
 | `lightning_prune_angle` | coFloat | Strength | expert | 45 | Prune angle |
 | `lightning_straightening_angle` | coFloat | Strength | expert | 45 | Straightening angle |
@@ -365,6 +474,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `long_retractions_when_cut` | coBools |  | develop | [false] | Long retraction when cut (beta) |
 | `long_retractions_when_ec` | coBools |  | advanced | [false] | Long retraction when extruder change |
 | `machine_end_gcode` | coString |  | advanced | M104 S0 ; turn off temperature G28 X0  ; home X axis M84     ; disable motors  | End G-code |
+| `machine_hotend_change_time` | coFloat |  | advanced | 0.0 | Hotend change time |
 | `machine_load_filament_time` | coFloat |  | advanced | 0.0 | Filament load time |
 | `machine_max_acceleration_e` | coFloats | Machine limits | simple | [5000, 5000] |  |
 | `machine_max_acceleration_extruding` | coFloats | Machine limits | simple | [1500.0, 1250.0] |  |
@@ -378,6 +488,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `machine_max_jerk_y` | coFloats | Machine limits | simple | [10, 10] |  |
 | `machine_max_jerk_z` | coFloats | Machine limits | simple | [0.2, 0.4] |  |
 | `machine_max_junction_deviation` | coFloats | Machine limits | advanced | [0.01] |  |
+| `machine_max_printed_mass` | coFloat | Machine limits | develop | 0 |  |
 | `machine_max_speed_e` | coFloats | Machine limits | simple | [120, 120] |  |
 | `machine_max_speed_x` | coFloats | Machine limits | simple | [500, 200] |  |
 | `machine_max_speed_y` | coFloats | Machine limits | simple | [500, 200] |  |
@@ -385,6 +496,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `machine_min_extruding_rate` | coFloats | Machine limits | develop | [0.0, 0.0] |  |
 | `machine_min_travel_rate` | coFloats | Machine limits | develop | [0.0, 0.0] |  |
 | `machine_pause_gcode` | coString |  | advanced |  | Pause G-code |
+| `machine_prepare_compensation_time` | coFloat |  | develop | 260 |  |
 | `machine_start_gcode` | coString |  | advanced | G28 ; home all axes G1 Z5 F5000 ; lift nozzle  | Start G-code |
 | `machine_tool_change_time` | coFloat |  | advanced | 0.0 | Tool change time |
 | `machine_unload_filament_time` | coFloat |  | advanced | 0.0 | Filament unload time |
@@ -433,6 +545,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `outer_wall_jerk` | coFloat | Speed | advanced | 9 | Outer wall |
 | `outer_wall_line_width` | coFloatOrPercent | Quality | advanced | {"value": 0.0, "percent": false} | Outer wall |
 | `outer_wall_speed` | coFloat | Speed | advanced | 60 | Outer wall |
+| `outer_wall_volumetric_flow` | coFloatsOrPercents | Speed | advanced | [{"value": 50, "percent": true}] | Outer wall |
 | `overhang_1_4_speed` | coFloatOrPercent | Speed | advanced | {"value": 0.0, "percent": false} | 10% |
 | `overhang_2_4_speed` | coFloatOrPercent | Speed | advanced | {"value": 0.0, "percent": false} | 25% |
 | `overhang_3_4_speed` | coFloatOrPercent | Speed | advanced | {"value": 0.0, "percent": false} | 50% |
@@ -448,6 +561,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `pellet_flow_coefficient` | coFloats |  | simple | [0.4157] | Pellet flow coefficient |
 | `pellet_modded_printer` | coBool |  | simple | False | Pellet Modded Printer |
 | `physical_extruder_map` | coInts |  | develop | [0] | Map the logical extruder to physical extruder |
+| `plugins` | coStrings |  | develop | [] | Plugins Used |
 | `post_process` | coStrings |  | advanced |  | Post-processing Scripts |
 | `precise_outer_wall` | coBool | Quality | simple | True | Precise wall |
 | `precise_z_height` | coBool | Quality | advanced | 0 | Precise Z height |
@@ -461,6 +575,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `prime_tower_skip_points` | coBool |  | advanced | True | Skip points |
 | `prime_tower_width` | coFloat |  | simple | 60.0 | Width |
 | `prime_volume` | coFloat |  | simple | 45.0 | Prime volume |
+| `prime_volume_mode` | coEnum |  | develop | Default | Prime volume mode |
 | `print_compatible_printers` | coStrings |  | simple |  |  |
 | `print_extruder_id` | coInts |  | simple | [1] | Print extruder id |
 | `print_extruder_variant` | coStrings |  | simple | ["Direct Drive Standard"] | Print's extruder variant |
@@ -490,6 +605,8 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `required_nozzle_HRC` | coInts |  | develop | [0] | Required nozzle HRC |
 | `resolution` | coFloat |  | advanced | 0.01 | Resolution |
 | `resonance_avoidance` | coBool |  | advanced | False | Resonance avoidance |
+| `retract_after_outer_wall` | coBool | Quality | develop | True | Retract after outer wall |
+| `retract_after_wipe` | coPercents |  | expert | [0] | Retract amount after wipe |
 | `retract_before_wipe` | coPercents |  | advanced | [100] | Retract amount before wipe |
 | `retract_length_toolchange` | coFloats |  | advanced | [10.0] | Length |
 | `retract_lift_above` | coFloats |  | advanced | [0.0] | Only lift Z above |
@@ -518,8 +635,8 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `seam_slope_start_height` | coFloatOrPercent | Quality | advanced | {"value": 0.0, "percent": false} | Scarf start height |
 | `seam_slope_steps` | coInt | Quality | advanced | 10 | Scarf steps |
 | `seam_slope_type` | coEnum | Quality | advanced | none | Scarf joint seam (beta) |
+| `separated_infills` | coBool | Strength | expert | False | Separated infills |
 | `set_other_flow_ratios` | coBool | Advanced | advanced | False | Set other flow ratios |
-| `silent_mode` | coBool |  | develop | False | Supports silent mode |
 | `single_extruder_multi_material` | coBool |  | advanced | True | Single Extruder Multi Material |
 | `single_extruder_multi_material_priming` | coBool |  | advanced | False | Prime all printing extruders |
 | `single_loop_draft_shield` | coBool |  | advanced | False | Single loop after first layer |
@@ -536,6 +653,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `skirt_type` | coEnum |  | advanced | combined | Skirt type |
 | `slice_closing_radius` | coFloat | Quality | advanced | 0.049 | Slice gap closing radius |
 | `slicing_mode` | coEnum | Other | advanced | regular | Slicing Mode |
+| `slicing_pipeline_plugin` | coStrings |  | advanced | [] | Slicing Pipeline Plugin |
 | `slow_down_for_layer_cooling` | coBools |  | simple | [true] | Slow printing down for better layer cooling |
 | `slow_down_layer_time` | coFloats |  | simple | [5.0] | Layer time |
 | `slow_down_layers` | coInt | Speed | advanced | 0 | Number of slow layers |
@@ -545,6 +663,8 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `small_area_infill_flow_compensation_model` | coStrings |  | advanced | ["0,0", "\\n0.2,0.4444", "\\n0.4,0.6145", "\\n0.6,0.7059", "\\n0.8,0.7619", "\\n1.5,0.8571", "\\n2,0.8889", "\\n3,0.9231", "\\n5,0.9520", "\\n10,1"] | Flow Compensation Model |
 | `small_perimeter_speed` | coFloatOrPercent | Speed | advanced | {"value": 50.0, "percent": true} | Small perimeters |
 | `small_perimeter_threshold` | coFloat | Speed | advanced | 0 | Small perimeters threshold |
+| `small_support_perimeter_speed` | coFloatsOrPercents | Speed | advanced | [{"value": 50, "percent": true}] | Small support perimeters |
+| `small_support_perimeter_threshold` | coFloats | Speed | advanced | [0] | Small support perimeters threshold |
 | `solid_infill_direction` | coFloat | Strength | advanced | 45 | Solid infill direction |
 | `solid_infill_rotate_template` | coString | Strength | advanced |  | Solid infill rotation template |
 | `sparse_infill_acceleration` | coFloatOrPercent | Speed | advanced | {"value": 100.0, "percent": true} | Sparse infill |
@@ -554,7 +674,10 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `sparse_infill_line_width` | coFloatOrPercent | Quality | advanced | {"value": 0.0, "percent": false} | Sparse infill |
 | `sparse_infill_pattern` | coEnum | Strength | simple | crosshatch | Sparse infill pattern |
 | `sparse_infill_rotate_template` | coString | Strength | advanced |  | Sparse infill rotation template |
+| `sparse_infill_smooth_factor` | coPercent | Strength | advanced | 0 | Sparse infill smooth factor |
 | `sparse_infill_speed` | coFloat | Speed | advanced | 100 | Sparse infill |
+| `sparse_infill_strategy` | coEnum | Strength | expert | default | Sparse infill strategy |
+| `sparse_infill_volumetric_flow` | coFloatsOrPercents | Speed | advanced | [{"value": 100, "percent": true}] | Sparse infill |
 | `spiral_finishing_flow_ratio` | coFloat |  | advanced | 0 | Spiral finishing flow ratio |
 | `spiral_mode` | coBool |  | simple | False | Spiral vase |
 | `spiral_mode_max_xy_smoothing` | coFloatOrPercent |  | advanced | {"value": 200.0, "percent": true} | Max XY Smoothing |
@@ -572,8 +695,10 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `support_bottom_interface_spacing` | coFloat | Support | advanced | 0.5 | Bottom interface spacing |
 | `support_bottom_z_distance` | coFloat | Support | advanced | 0.2 | Bottom Z distance |
 | `support_chamber_temp_control` | coBool |  | advanced | True | Support control chamber temperature |
+| `support_cooling_filter` | coBool |  | advanced | False |  |
 | `support_critical_regions_only` | coBool | Support | advanced | False | Support critical regions only |
 | `support_expansion` | coFloat | Support | advanced | 0 | Normal Support expansion |
+| `support_fast_purge_mode` | coBool |  | develop | False | Support fast purge mode |
 | `support_filament` | coInt | Support | simple | 0 | Support/raft base |
 | `support_flow_ratio` | coFloat | Advanced | advanced | 1 | Support flow ratio |
 | `support_interface_bottom_layers` | coInt | Support | advanced | 0 | Bottom interface layers |
@@ -585,6 +710,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `support_interface_spacing` | coFloat | Support | advanced | 0.5 | Top interface spacing |
 | `support_interface_speed` | coFloat | Speed | advanced | 80 | Support interface |
 | `support_interface_top_layers` | coInt | Support | advanced | 3 | Top interface layers |
+| `support_interface_volumetric_flow` | coFloatsOrPercents | Speed | advanced | [{"value": 50, "percent": true}] | Support interface |
 | `support_ironing` | coBool | Support | advanced | False | Ironing Support Interface |
 | `support_ironing_flow` | coPercent | Support | advanced | 10 | Support Ironing flow |
 | `support_ironing_pattern` | coEnum | Support | advanced | rectilinear | Support Ironing Pattern |
@@ -603,6 +729,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `support_threshold_overlap` | coFloatOrPercent | Support | simple | {"value": 50.0, "percent": true} | Threshold overlap |
 | `support_top_z_distance` | coFloat | Support | advanced | 0.2 | Top Z distance |
 | `support_type` | coEnum | Support | simple | normal(auto) | Type |
+| `support_volumetric_flow` | coFloatsOrPercents | Speed | advanced | [{"value": 100, "percent": true}] | Support |
 | `symmetric_infill_y_axis` | coBool | Strength | advanced | False | Symmetric infill Y axis |
 | `temperature_vitrification` | coInts |  | simple | [100] | Softening temperature |
 | `template_custom_gcode` | coString |  | advanced |  | Custom G-code |
@@ -618,17 +745,27 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `time_lapse_gcode` | coString |  | advanced |  | Timelapse G-code |
 | `timelapse_type` | coEnum |  | simple | 0 | Timelapse |
 | `tool_change_on_wipe_tower` | coBool |  | advanced | False | Tool change on wipe tower |
+| `toolchange_cyclic_first_layer` | coBool | Advanced | expert | False | Apply cyclic order to first layer |
+| `toolchange_cyclic_order` | coString | Advanced | expert |  | Cyclic order |
+| `toolchange_ordering` | coEnum | Advanced | advanced | default | Toolchange ordering |
 | `top_bottom_infill_wall_overlap` | coPercent | Strength | advanced | 25 | Top/Bottom solid infill/wall overlap |
+| `top_color_penetration_layers` | coInt | Strength | advanced | 0 | Top paint penetration layers |
+| `top_layer_direction` | coFloat | Strength | simple | -1 | Top layer direction |
 | `top_shell_layers` | coInt | Strength | simple | 4 | Top shell layers |
 | `top_shell_thickness` | coFloat | Strength | simple | 0.6 | Top shell thickness |
 | `top_solid_infill_flow_ratio` | coFloat | Advanced | advanced | 1 | Top surface flow ratio |
 | `top_surface_acceleration` | coFloat | Speed | advanced | 500 | Top surface |
 | `top_surface_density` | coPercent | Strength | simple | 100 | Top surface density |
+| `top_surface_expansion` | coFloat | Strength | advanced | 0 | Top surface expansion |
+| `top_surface_expansion_direction` | coEnum | Strength | advanced | inward_and_outward | Top expansion direction |
+| `top_surface_expansion_margin` | coFloat | Strength | advanced | 0 | Top expansion wall margin |
 | `top_surface_filament_id` | coInt | Extruders | advanced | 0 | Top surface |
+| `top_surface_fill_order` | coEnum | Strength | advanced | default | Top surface fill order |
 | `top_surface_jerk` | coFloat | Speed | advanced | 9 | Top surface |
 | `top_surface_line_width` | coFloatOrPercent | Quality | advanced | {"value": 0.0, "percent": false} | Top surface |
 | `top_surface_pattern` | coEnum | Strength | simple | monotonicline | Top surface pattern |
 | `top_surface_speed` | coFloat | Speed | advanced | 100 | Top surface |
+| `top_surface_volumetric_flow` | coFloatsOrPercents | Speed | advanced | [{"value": 50, "percent": true}] | Top surface |
 | `travel_acceleration` | coFloat | Speed | advanced | 10000 | Travel |
 | `travel_jerk` | coFloat | Speed | advanced | 12 | Travel |
 | `travel_slope` | coFloats |  | advanced | [3] | Traveling angle |
@@ -648,10 +785,12 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `tree_support_top_rate` | coPercent | Support | advanced | 30 | Branch Density |
 | `tree_support_wall_count` | coInt | Support | advanced | 0 | Support wall loops |
 | `tree_support_with_infill` | coBool | Support | advanced | False | Tree support with infill |
+| `unsupported_wall_last` | coBool | Quality | advanced | False | Print unsupported walls last |
 | `upward_compatible_machine` | coStrings |  | advanced |  | upward compatible machine |
 | `use_firmware_retraction` | coBool |  | advanced | False | Use firmware retraction |
 | `use_relative_e_distances` | coBool |  | advanced | True | Use relative E distances |
 | `volumetric_speed_coefficients` | coStrings |  | simple | [""] | Max volumetric speed multinomial coefficients |
+| `wait_for_temp_on_wipe_tower` | coBool |  | advanced | False | Wait for temperature on wipe tower |
 | `wall_direction` | coEnum | Quality | advanced | ccw | Wall loop direction |
 | `wall_distribution_count` | coInt | Quality | advanced | 1 | Wall distribution count |
 | `wall_generator` | coEnum | Quality | advanced | arachne | Wall generator |
@@ -665,6 +804,8 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `wipe` | coBools |  | advanced | [false] | Wipe while retracting |
 | `wipe_before_external_loop` | coBool | Quality | advanced | False | Wipe before external loop |
 | `wipe_distance` | coFloats |  | advanced | [1.0] | Wipe Distance |
+| `wipe_inward` | coBool | Quality | expert | False | Wipe inward |
+| `wipe_inward_distance` | coFloatOrPercent | Quality | expert | {"value": 50, "percent": true} | Wipe inward distance |
 | `wipe_on_loops` | coBool | Quality | advanced | False | Wipe on loops |
 | `wipe_speed` | coFloatOrPercent | Speed | advanced | {"value": 80.0, "percent": true} | Wipe speed |
 | `wipe_tower_bridging` | coFloat |  | advanced | 10.0 | Maximal bridging distance |
@@ -678,6 +819,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `wipe_tower_no_sparse_layers` | coBool |  | advanced | False | No sparse layers (beta) |
 | `wipe_tower_rib_width` | coFloat |  | advanced | 8 | Rib width |
 | `wipe_tower_rotation_angle` | coFloat |  | advanced | 0.0 | Wipe tower rotation angle |
+| `wipe_tower_sparse_layers_combination` | coBool |  | advanced | False | Combine sparse layers |
 | `wipe_tower_type` | coEnum |  | advanced | type2 | Wipe tower type |
 | `wipe_tower_wall_type` | coEnum |  | advanced | rib | Wall type |
 | `wipe_tower_x` | coFloats |  | develop | [15.0] |  |
@@ -777,7 +919,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `support_small_pillar_diameter_percent` | coPercent |  | advanced | 50 |  |
 | `supports_enable` | coBool |  | simple | True |  |
 
-## Groupe `cli:CLIActions` (17 paramètres)
+## Groupe `cli:CLIActions` (20 paramètres)
 
 | Clé | Type | Catégorie | Mode | Défaut | Libellé |
 |---|---|---|---|---|---|
@@ -788,6 +930,8 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `export_stls` | coString |  | simple | stl_path | Export multiple STLs |
 | `help` | coBool |  | simple | False | Help |
 | `info` | coBool |  | simple | False | Output Model Info |
+| `inspect_mesh` | coBool |  | simple | False | Inspect mesh (JSON to stdout) |
+| `inspect_paint` | coBool |  | simple | False | Inspect paint (JSON to stdout) |
 | `load_defaultfila` | coBool |  | simple | False | Load default filaments |
 | `load_slicedata` | coStrings |  | simple | cached_data | Load slicing data |
 | `min_save` | coBool |  | simple | False | Minimum save |
@@ -797,12 +941,14 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `normative_check` | coBool |  | simple | True | Normative check |
 | `pipe` | coString |  | simple |  | Send progress to pipe |
 | `slice` | coInt |  | simple | 0 | Slice |
+| `strict` | coBool |  | simple | False | Strict mode |
 | `uptodate` | coBool |  | simple | False | UpToDate |
 
-## Groupe `cli:CLIMisc` (26 paramètres)
+## Groupe `cli:CLIMisc` (28 paramètres)
 
 | Clé | Type | Catégorie | Mode | Défaut | Libellé |
 |---|---|---|---|---|---|
+| `align_to_y_axis` | coBool |  | simple | False | Align to Y axis when arranging |
 | `allow_mix_temp` | coBool |  | simple | False | Allow filaments with high/low temperature to be printed together |
 | `allow_multicolor_oneplate` | coBool |  | simple | True | Allow multiple colors on one plate |
 | `allow_newer_file` | coBool |  | simple | False | Allow 3MF with newer version to be sliced |
@@ -814,6 +960,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `downward_check` | coBool |  | simple | False | Downward machines check |
 | `downward_settings` | coStrings |  | simple |  | Downward machines settings |
 | `enable_timelapse` | coBool |  | simple | False | Enable timelapse for print |
+| `export_statistics` | coBool |  | simple | False | Export statistics |
 | `load_assemble_list` | coString |  | simple |  | Load assemble list |
 | `load_custom_gcodes` | coString |  | simple |  | Load custom G-code |
 | `load_filament_ids` | coInts |  | simple |  | Load filament IDs |
@@ -830,7 +977,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `uptodate_filaments` | coStrings |  | simple |  | Load uptodate filament settings when using uptodate |
 | `uptodate_settings` | coStrings |  | simple |  | Load uptodate process/machine settings when using uptodate |
 
-## Groupe `cli:CLITransform` (9 paramètres)
+## Groupe `cli:CLITransform` (12 paramètres)
 
 | Clé | Type | Catégorie | Mode | Défaut | Libellé |
 |---|---|---|---|---|---|
@@ -838,20 +985,66 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `assemble` | coBool |  | simple | False | Assemble |
 | `convert_unit` | coBool |  | simple | False | Convert Unit |
 | `ensure_on_bed` | coBool |  | simple | False | Ensure on bed |
+| `ground_face_normal` | coString |  | simple |  | Ground face by normal |
+| `ground_face_point` | coString |  | simple |  | Ground face at point |
+| `ground_largest_face` | coBool |  | simple | False | Ground largest face |
 | `orient` | coInt |  | simple | 0 | Orient Options |
 | `repetitions` | coInt |  | simple | 1 | Repetition count |
 | `rotate` | coFloat |  | simple | 0 | Rotate |
 | `rotate_x` | coFloat |  | simple | 0 | Rotate around X |
 | `rotate_y` | coFloat |  | simple | 0 | Rotate around Y |
 
-## Groupe `other:CustomGcodeSpecific` (4 paramètres)
+## Groupe `other:CustomGcodeSpecific` (47 paramètres)
 
 | Clé | Type | Catégorie | Mode | Défaut | Libellé |
 |---|---|---|---|---|---|
+| `clear_to_x0` | coBool |  | simple |  | Clear path to X0 |
+| `curr_accumulated_mass` | coFloat |  | simple |  | Current accumulated mass |
+| `curr_layer_mass` | coFloat |  | simple |  | Previous layer mass |
+| `curr_physical_extruder_id` | coInt |  | simple |  | Current physical extruder ID |
+| `curr_y_acceleration_limit` | coFloat |  | simple |  | Current Y acceleration limit |
+| `current_extruder_id` | coInt |  | simple |  | Current extruder ID |
+| `current_filament_id` | coInt |  | simple |  | Current filament ID |
+| `current_hotend` | coInt |  | simple |  | Current hotend |
+| `current_nozzle_id` | coInt |  | simple |  | Current nozzle ID |
+| `extrusion_role` | coString |  | simple |  | Extrusion role |
+| `farthest_point_timelapse_enabled` | coBool |  | simple |  | Farthest-point timelapse enabled |
 | `filament_extruder_id` | coInt |  | simple |  | Filament extruder ID |
+| `flush_length` | coFloat |  | simple |  | Flush length |
+| `flush_temperatures` | coInts |  | simple |  | Flush temperatures |
+| `flush_volumetric_speeds` | coFloats |  | simple |  | Flush volumetric speeds |
+| `has_timelapse_safe_pos` | coBool |  | simple |  | Has timelapse safe position |
+| `is_prime_tower_interface` | coBool |  | simple |  | Prime tower interface |
+| `last_extrusion_role` | coString |  | simple |  | Last extrusion role |
 | `layer_num` | coInt |  | simple |  | Layer number |
 | `layer_z` | coFloat |  | simple |  | Layer Z |
+| `long_retraction_when_cut` | coBool |  | simple |  | Long retraction when cut |
 | `max_layer_z` | coFloat |  | simple |  | Maximal layer Z |
+| `most_used_physical_extruder_id` | coInt |  | simple |  | Most-used physical extruder ID |
+| `new_extruder_retracted_length` | coFloat |  | simple |  | New extruder retracted length |
+| `new_extruder_variant` | coString |  | simple |  | New extruder variant |
+| `next_filament_id` | coInt |  | simple |  | Next filament ID |
+| `next_hotend` | coInt |  | simple |  | Next hotend |
+| `next_nozzle_id` | coInt |  | simple |  | Next nozzle ID |
+| `nozzle_diameter_at_nozzle_id` | coFloats |  | simple |  | Nozzle diameters |
+| `nozzle_volume_types` | coStrings |  | simple |  | Nozzle volume types |
+| `old_extruder_variant` | coString |  | simple |  | Old extruder variant |
+| `outer_wall_volumetric_speed` | coFloat |  | simple |  | Outer wall volumetric speed |
+| `previous_layer_mass` | coFloat |  | simple |  | Previous layer mass |
+| `retraction_distance_when_cut` | coFloat |  | simple |  | Retraction distance when cut |
+| `temperature` | coInts |  | simple |  | Temperature |
+| `timelapse_inline_photo` | coBool |  | simple |  | Timelapse inline photo |
+| `timelapse_pos_x` | coInt |  | simple |  | Timelapse position X |
+| `timelapse_pos_y` | coInt |  | simple |  | Timelapse position Y |
+| `toolchange_z` | coFloat |  | simple |  | Toolchange Z |
+| `wipe_avoid_perimeter` | coBool |  | simple |  | Avoid wipe perimeter |
+| `wipe_avoid_pos_x` | coFloat |  | simple |  | Wipe tower avoidance X |
+| `wipe_tower_center_pos_valid` | coBool |  | simple |  | Wipe tower wait position valid |
+| `wipe_tower_center_pos_x` | coFloat |  | simple |  | Wipe tower wait position X |
+| `wipe_tower_center_pos_y` | coFloat |  | simple |  | Wipe tower wait position Y |
+| `wipe_tower_wait_pos_valid` | coBool |  | simple |  | Wipe tower wait position valid |
+| `wipe_tower_wait_pos_x` | coFloat |  | simple |  | Wipe tower wait position X |
+| `wipe_tower_wait_pos_y` | coFloat |  | simple |  | Wipe tower wait position Y |
 
 ## Groupe `other:Dimensions` (7 paramètres)
 
@@ -883,7 +1076,7 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `print_preset` | coString |  | simple |  | Print preset name |
 | `printer_preset` | coString |  | simple |  | Printer preset name |
 
-## Groupe `other:OtherSlicingStates` (8 paramètres)
+## Groupe `other:OtherSlicingStates` (11 paramètres)
 
 | Clé | Type | Catégorie | Mode | Défaut | Libellé |
 |---|---|---|---|---|---|
@@ -891,12 +1084,15 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `current_object_idx` | coInt |  | simple |  | Current object index |
 | `has_single_extruder_multi_material_priming` | coBool |  | simple |  | Has single extruder MM priming |
 | `has_wipe_tower` | coBool |  | simple |  | Has wipe tower |
+| `imex_mode` | coString |  | simple |  | IDEX/IQEX active mode |
+| `imex_mode_gcode` | coString |  | simple |  | IDEX/IQEX active mode G-code |
+| `imex_mode_index` | coInt |  | simple |  | IDEX/IQEX active mode index |
 | `initial_extruder` | coInt |  | simple |  | Initial extruder |
 | `initial_tool` | coInt |  | simple |  | Initial tool |
 | `is_extruder_used` | coBools |  | simple |  | Is extruder used? |
 | `num_extruders` | coInt |  | simple |  | Number of extruders |
 
-## Groupe `other:PrintStatistics` (16 paramètres)
+## Groupe `other:PrintStatistics` (20 paramètres)
 
 | Clé | Type | Catégorie | Mode | Défaut | Libellé |
 |---|---|---|---|---|---|
@@ -906,7 +1102,11 @@ Portée par groupe : `fff`/`common` → exposés dans l'UI de réglages ;
 | `extruded_weight_total` | coFloat |  | simple |  | Total weight |
 | `normal_print_time` | coString |  | simple |  | Print time (normal mode) |
 | `print_time` | coString |  | simple |  | Print time (normal mode) |
+| `print_time_day` | coString |  | simple |  | Print time (days component) |
+| `print_time_hour` | coString |  | simple |  | Print time (hours component) |
+| `print_time_minute` | coString |  | simple |  | Print time (minutes component) |
 | `print_time_sec` | coString |  | simple |  | Print time (seconds) |
+| `print_time_total_sec` | coString |  | simple |  | Print time (total seconds) |
 | `silent_print_time` | coString |  | simple |  | Print time (silent mode) |
 | `total_cost` | coFloat |  | simple |  | Total cost |
 | `total_layer_count` | coInt |  | simple |  | Total layer count |

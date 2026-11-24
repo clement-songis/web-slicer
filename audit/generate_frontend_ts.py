@@ -4,7 +4,7 @@
 Deux fichiers committés (diffs de parité revus en PR), régénérés par
 `scripts/codegen.sh` :
 
-  * frontend/src/generated/params.ts    ← audit/parameters.json (858 params)
+  * frontend/src/generated/params.ts    ← audit/parameters.json (nombre dynamique)
   * frontend/src/generated/ui-layout.ts ← audit/ui_inventory.json
                                            (21 pages / 100 sections / 525 lignes)
 
@@ -91,7 +91,7 @@ def build_params() -> str:
     types_union = " | ".join(ts(t) for t in PARAM_TYPES)
     modes_union = " | ".join(ts(m) for m in MODES)
     header = HEADER.format(
-        src="audit/parameters.json (858 paramètres)",
+        src=f"audit/parameters.json ({len(params)} paramètres)",
         test="frontend/src/lib/settings/params.test.ts",
     )
     return f"""{header}

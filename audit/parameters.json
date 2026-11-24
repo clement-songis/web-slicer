@@ -1,13 +1,13 @@
 {
   "source": "src/libslic3r/PrintConfig.cpp",
   "generated_by": "audit/extract_parameters.py",
-  "note": "mode_is_default=true : aucun def->mode explicite, comSimple s'applique (défaut de Config.hpp)",
-  "count": 858,
+  "note": "mode_is_default=true : aucun def->mode explicite, comSimple s'applique (defaut de Config.hpp). 2026-11-24 : +202 cles d'OrcaSlicer main aefb6b3d fusionnees depuis .work/staging/orca-main-params*.json (rapport params-extract.md) ; silent_mode retiree (deprecation main, ignoree a l'import via legacy IGNORED).",
+  "count": 1058,
   "mode_counts": {
-    "advanced": 516,
-    "develop": 33,
-    "expert": 18,
-    "simple": 291
+    "advanced": 593,
+    "develop": 65,
+    "expert": 33,
+    "simple": 367
   },
   "parameters": {
     "absolute_correction": {
@@ -8867,17 +8867,6 @@
       "default_raw": "false",
       "default": false
     },
-    "silent_mode": {
-      "type": "coBool",
-      "group": "fff",
-      "line": 4440,
-      "label": "Supports silent mode",
-      "tooltip": "Whether the machine supports silent mode in which machine use lower acceleration to print.",
-      "mode": "develop",
-      "default_type": "Bool",
-      "default_raw": "false",
-      "default": false
-    },
     "silent_print_time": {
       "type": "coString",
       "group": "other:PrintStatistics",
@@ -12001,6 +11990,2736 @@
       "line": 11095,
       "label": "Current Z-hop",
       "tooltip": "Contains Z-hop present at the beginning of the custom G-code block.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "adaptive_infill_gradient": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 3999,
+      "label": "Adaptive gradient",
+      "category": "Strength",
+      "tooltip": "How the density changes from the surface to the center of the object.\nLinear: the density changes at a constant rate.\nQuadratic: the density stays close to the sparse infill density near the surface and changes faster towards the center.\nExponential: the density changes quickly just below the surface and levels off towards the center.",
+      "mode": "advanced",
+      "enum_values": [
+        "linear",
+        "quadratic",
+        "exponential"
+      ],
+      "enum_labels": [
+        "Linear",
+        "Quadratic",
+        "Exponential"
+      ],
+      "default_type": "Enum<AdaptiveInfillGradient>",
+      "default_raw": "AdaptiveInfillGradient::Linear",
+      "default": "linear"
+    },
+    "adaptive_infill_interior_density": {
+      "type": "coPercent",
+      "group": "fff",
+      "line": 3989,
+      "label": "Interior density",
+      "category": "Strength",
+      "tooltip": "Density of the adaptive infill at the center of the object.",
+      "sidetext": "%",
+      "min": 1,
+      "max": 100,
+      "mode": "advanced",
+      "default_type": "Percent",
+      "default_raw": "5",
+      "default": 5
+    },
+    "adaptive_infill_mode": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 3951,
+      "label": "Adaptive density (experimental)",
+      "category": "Strength",
+      "tooltip": "Grades the Gyroid and TPMS infill inside the object: its cells grow from the surface of the object towards its center. The sparse infill density is used at the surface and the interior density at the center.\nDistance warp, Smooth blend and Stepped shells follow the distance to the nearest surface, including the top and bottom, with the interior density at the point farthest from it:\n - Distance warp: one continuous pattern, stretched and sheared where the distance changes across directions, as in plates and long parts.\n - Smooth blend: the patterns of neighbouring densities blended into each other, with small loops where they meet.\n - Stepped shells: shells of the regular pattern at densities about 1.5 times apart, their lines joined along the shell boundaries.\n - Lobes: follows the 3D shape of the object, including its top and bottom. Every lobe, a part joined to the rest by a narrower neck, is graded towards its own center.\n - Normal Z, Y or X: follows the sections of the object normal to that axis, so the density does not change along it.",
+      "mode": "advanced",
+      "enum_values": [
+        "disabled",
+        "distance_warp",
+        "smooth_blend",
+        "stepped_shells",
+        "lobes",
+        "normal_z",
+        "normal_y",
+        "normal_x"
+      ],
+      "enum_labels": [
+        "Disabled",
+        "Distance warp",
+        "Smooth blend",
+        "Stepped shells",
+        "Lobes",
+        "Normal Z",
+        "Normal Y",
+        "Normal X"
+      ],
+      "default_type": "Enum<AdaptiveInfillMode>",
+      "default_raw": "AdaptiveInfillMode::Disabled",
+      "default": "disabled"
+    },
+    "align_to_y_axis": {
+      "type": "coBool",
+      "group": "cli:CLIMisc",
+      "line": 13457,
+      "label": "Align to Y axis when arranging",
+      "tooltip": "If enabled, Arrange will turn each object so its long side runs along the Y axis before placing it. When not given, it is on for i3 printers and off for the others, as in the GUI.",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false,
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "bed_exclude_volume_mode": {
+      "type": "coEnum",
+      "group": "common",
+      "line": 1094,
+      "label": "Collision volume behavior",
+      "tooltip": "Choose whether all nozzles use the same collision volumes, derive toolhead-relative volumes from each nozzle's XY offset, or configure independent volumes for every extruder. In individual mode, select each extruder on the Extruder page to configure its volumes.",
+      "mode": "advanced",
+      "enum_values": [
+        "shared",
+        "toolhead_offset",
+        "per_extruder"
+      ],
+      "enum_labels": [
+        "Shared by all nozzles",
+        "Toolhead-relative (nozzle offsets)",
+        "Individual per extruder"
+      ],
+      "default_type": "Enum<BedExcludeVolumeMode>",
+      "default_raw": "BedExcludeVolumeMode::Shared",
+      "default": "shared"
+    },
+    "bed_exclude_volumes": {
+      "type": "coString",
+      "group": "common",
+      "line": 1084,
+      "label": "Toolhead collision volumes",
+      "tooltip": "Collision volumes used for model and generated-material exclusion, G-code checking, and travel avoidance. Use \"XxY, XxY, ...\" for a full-height polygon or \"ZMIN..ZMAX;XxY, XxY, ...\" for a Z-limited volume. Separate multiple volumes with \"|\". These volumes are additional to the excluded bed area. Automatic arrangement conservatively uses the bounding box of a non-convex volume.",
+      "mode": "advanced",
+      "gui_type": "one_string",
+      "default_type": "String",
+      "default_raw": "",
+      "default": ""
+    },
+    "belt_frame_tilt_angle": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 7994,
+      "label": "Machine-frame tilt angle",
+      "category": "Printable space",
+      "tooltip": "Tilt angle (degrees) used to derive the machine-frame shear (cot) and scale (1/|sin|) applied to G-code. Only used when 'Decouple machine-frame tilt' is enabled; otherwise the belt tilt angle is used.",
+      "sidetext": "°",
+      "min": -89.9,
+      "max": 89.9,
+      "mode": "expert",
+      "default_type": "Float",
+      "default_raw": "45.",
+      "default": 45.0
+    },
+    "belt_frame_tilt_decouple": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 7983,
+      "label": "Decouple machine-frame tilt",
+      "category": "Printable space",
+      "tooltip": "Expert override: set the machine-frame (G-code shear/scale) tilt angle independently of the pre-slice rotation angle. When disabled, the machine-frame transform is derived from the belt tilt angle, so a single angle drives both stages. Enable only to compensate for a machine whose physical gantry tilt differs from the slicing rotation.",
+      "mode": "expert",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "belt_printer": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 7935,
+      "label": "Enable belt printing",
+      "category": "Printable space",
+      "tooltip": "Enable belt printer mode. Belt printers use a conveyor belt as the build surface, tilted at an angle (typically 45 degrees). The slicer will rotate the slicing plane and transform G-code coordinates for the tilted build surface.",
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "belt_printer_infinite_y": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 7944,
+      "label": "Infinite Y axis",
+      "category": "Printable space",
+      "tooltip": "Enable infinite Y axis for belt printers. When enabled, the Y axis build volume limit is effectively removed, allowing objects of any length to be printed along the belt direction.",
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "true",
+      "default": true
+    },
+    "belt_purge_tower_object": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 8737,
+      "label": "Belt purge tower object",
+      "category": "Flush options",
+      "tooltip": "Marks the auto-generated belt purge prism. Managed automatically; do not set manually.",
+      "mode": "develop",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "belt_purge_tower_width": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 8056,
+      "label": "Belt purge tower width",
+      "category": "Printable space",
+      "tooltip": "Width (machine X, across the belt) of the purge prism that is automatically generated on belt printers when the belt purge tower is enabled and multiple filaments are used. Filament-change purging is routed into this prism's extrusions instead of a classic wipe tower. Its height is computed automatically from the worst-case purge volume per layer: a wider prism results in a shorter one.",
+      "sidetext": "mm",
+      "min": 1.0,
+      "mode": "advanced",
+      "default_type": "Float",
+      "default_raw": "35.",
+      "default": 35.0
+    },
+    "belt_slice_rotation": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 7956,
+      "label": "Belt tilt axis",
+      "category": "Printable space",
+      "tooltip": "Axis the mesh is rotated about before slicing. This is the belt printer's tilt: an isometric (no distortion) rotation that also drives bed rendering and support gravity tilt, and that the G-code back-transform inverts before the machine-frame shear/scale and remap. X is the typical gantry tilt (belt travels along Y).",
+      "mode": "develop",
+      "enum_values": [
+        "none",
+        "x",
+        "y",
+        "z"
+      ],
+      "enum_labels": [
+        "None",
+        "X",
+        "Y",
+        "Z"
+      ],
+      "default_type": "Enum<BeltRotationAxis>",
+      "default_raw": "BeltRotationAxis::X",
+      "default": "x"
+    },
+    "belt_slice_rotation_angle": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 7970,
+      "label": "Belt tilt angle",
+      "category": "Printable space",
+      "tooltip": "Tilt angle of the belt surface, in degrees. Most belt printers use 45°. Positive values rotate counter-clockwise looking down the positive tilt axis; the magnitude is also the physical belt tilt used for bed rendering and support gravity.",
+      "sidetext": "°",
+      "min": -180.0,
+      "max": 180.0,
+      "mode": "advanced",
+      "default_type": "Float",
+      "default_raw": "45.",
+      "default": 45.0
+    },
+    "belt_support_floor_offset": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 8035,
+      "label": "Support Floor Z offset",
+      "category": "Printable space",
+      "tooltip": "Shifts the computed belt floor up or down (mm). Negative values lower the floor, allowing more supports to survive. Use this to diagnose belt floor formula issues.",
+      "sidetext": "mm",
+      "min": -500,
+      "max": 500,
+      "mode": "advanced",
+      "default_type": "Float",
+      "default_raw": "0",
+      "default": 0
+    },
+    "bottom_color_penetration_layers": {
+      "type": "coInt",
+      "group": "fff",
+      "line": 1566,
+      "label": "Bottom paint penetration layers",
+      "category": "Strength",
+      "tooltip": "The number of layers, including the bottom surface layer, that take the color painted on a bottom surface. Set to 0 to use the bottom shell layers. A value larger than the bottom shell also colors the sparse infill above the painted area.",
+      "sidetext": "layers",
+      "min": 0,
+      "mode": "advanced",
+      "default_type": "Int",
+      "default_raw": "0",
+      "default": 0
+    },
+    "bottom_layer_direction": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 3885,
+      "label": "Bottom layer direction",
+      "category": "Strength",
+      "tooltip": "Fixed angle for the bottom solid infill lines.\nSet to -1 to follow the default solid infill direction.",
+      "sidetext": "°",
+      "min": -1,
+      "max": 360,
+      "mode": "simple",
+      "default_type": "Float",
+      "default_raw": "-1",
+      "default": -1
+    },
+    "bottom_surface_fill_order": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 2697,
+      "label": "Bottom surface fill order",
+      "category": "Strength",
+      "tooltip": "Direction in which bottom surfaces are filled when using a center-based pattern (Concentric, Spiral Inset, Archimedean Chords, Octagram Spiral).\nInward starts each surface with the wider outer curves, which improves first layer adhesion on build plates where the tight curves at the center may not stick. Outward starts at the center, pushing any excess material towards the edge.\nDefault uses shortest-path ordering, which may run in either direction.",
+      "mode": "advanced",
+      "enum_values": [
+        "default",
+        "outward",
+        "inward"
+      ],
+      "enum_labels": [
+        "Default",
+        "Outward",
+        "Inward"
+      ],
+      "default_type": "Enum<SurfaceFillOrder>",
+      "default_raw": "SurfaceFillOrder::Default",
+      "default": "default"
+    },
+    "bridge_volumetric_flow": {
+      "type": "coFloatsOrPercents",
+      "group": "fff",
+      "line": 2927,
+      "nullable": true,
+      "label": "External",
+      "full_label": "External bridge volumetric speed",
+      "category": "Speed",
+      "tooltip": "Volumetric flow of this feature when volumetric speeds are enabled. If expressed as a percentage, it is calculated on the filament's \"Max volumetric speed\".\n\nThe resulting speed is limited by the filament's \"Max volumetric speed\" and \"Max external volumetric speed\".",
+      "sidetext": "mm³/s or %",
+      "min": 0.1,
+      "mode": "advanced",
+      "default_type": "FloatsOrPercentsNullable",
+      "default_raw": "{FloatOrPercent(25, true)}",
+      "default": [
+        {
+          "value": 25,
+          "percent": true
+        }
+      ]
+    },
+    "brim_ears_outer_only": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 2237,
+      "label": "Brim ears outer only",
+      "category": "Support",
+      "tooltip": "Generate mouse ears only on the outer contour of the model, excluding holes and enclosed sections.",
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "brim_filament_id": {
+      "type": "coInt",
+      "group": "fff",
+      "line": 2197,
+      "label": "Brim",
+      "category": "Extruders",
+      "tooltip": "Filament to print the brim.\n\"Default\" prints it with the first filament that prints the object on the first layer.",
+      "min": 0,
+      "mode": "advanced",
+      "gui_type": "i_enum_open",
+      "default_type": "Int",
+      "default_raw": "0",
+      "default": 0
+    },
+    "build_plate_tilt_x": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 7910,
+      "label": "Build plate tilt X",
+      "category": "Support",
+      "tooltip": "Tilt angle of the build plate along the X axis. A positive value tilts the plate so the +X side is higher, shifting gravity toward -X and increasing overhangs on the +X side. A negative value tilts the -X side higher. Set to 0 for no X-axis tilt. In belt printer mode, this is automatically synced to the belt angle.",
+      "sidetext": "°",
+      "min": -89,
+      "max": 89,
+      "mode": "expert",
+      "default_type": "Float",
+      "default_raw": "0.",
+      "default": 0.0
+    },
+    "build_plate_tilt_y": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 7923,
+      "label": "Build plate tilt Y",
+      "category": "Support",
+      "tooltip": "Tilt angle of the build plate along the Y axis. A positive value tilts the plate so the +Y side is higher, shifting gravity toward -Y and increasing overhangs on the +Y side. A negative value tilts the -Y side higher. Set to 0 for no Y-axis tilt.",
+      "sidetext": "°",
+      "min": -89,
+      "max": 89,
+      "mode": "expert",
+      "default_type": "Float",
+      "default_raw": "0.",
+      "default": 0.0
+    },
+    "center_of_surface_pattern": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 8426,
+      "label": "Center surface pattern on",
+      "category": "Strength",
+      "tooltip": "Chooses where the centering point of centered top/bottom surface patterns (Archimedean Chords, Octagram Spiral) is placed.\n - Each Surface: centers the pattern on every individual surface region, so each island is symmetric on its own.\n - Each Model: centers the pattern on each connected body. Parts that touch or overlap share one center; parts detached from the rest each get their own.\n - Each Assembly: uses a single shared center for the whole object or assembly.",
+      "mode": "expert",
+      "enum_values": [
+        "each_surface",
+        "each_model",
+        "each_assembly"
+      ],
+      "enum_labels": [
+        "Each Surface",
+        "Each Model",
+        "Each Assembly"
+      ],
+      "default_type": "Enum<CenterOfSurfacePattern>",
+      "default_raw": "CenterOfSurfacePattern::Each_Surface",
+      "default": "each_surface"
+    },
+    "cooling_filter_enabled": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 4856,
+      "label": "Use cooling filter",
+      "tooltip": "Enable this if the printer supports a cooling filter",
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "deretract_speed_extruder_change": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 6707,
+      "nullable": true,
+      "label": "Deretraction speed (extruder change)",
+      "tooltip": "Speed for reloading filament into the nozzle when switching extruder.",
+      "sidetext": "mm/s",
+      "mode": "develop",
+      "default_type": "FloatsNullable",
+      "default_raw": "{0.}",
+      "default": [
+        0.0
+      ]
+    },
+    "enable_belt_purge_tower": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 8045,
+      "label": "Enable belt purge tower",
+      "category": "Multimaterial",
+      "tooltip": "Belt-printer replacement for the wipe/prime tower. When enabled on a belt printer, a purge prism is automatically generated next to the printed parts and filament-change purging is routed into it (the classic wipe tower cannot be used on belt printers because its G-code bypasses the belt transform). Only available on belt printers.",
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "enable_mixed_color_sublayer": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 8482,
+      "label": "Mixed color sublayer",
+      "category": "Quality",
+      "tooltip": "Enable mixed color sublayer splitting. When enabled, layers containing mixed color filaments will be split into sub-layers to achieve color mixing effects.",
+      "mode": "simple",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "enable_pre_heating": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 9075,
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false,
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "enable_volumetric_speeds": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 2787,
+      "label": "Volumetric speeds",
+      "category": "Speed",
+      "tooltip": "Set the speed of each feature as a volumetric flow (mm³/s) instead of a linear speed (mm/s). Each line is then printed at its feature's flow divided by the line's cross section, so lines of different width or height extrude the same flow. A volumetric speed expressed as a percentage is calculated on the filament's \"Max volumetric speed\", which still limits every speed, as \"Max external volumetric speed\" does for the visible features.\n\nSmall perimeter, overhang, ironing and travel speeds keep their own settings, applied over the resulting speeds. Calibration prints ignore this option.",
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "exclude_object_tolerance": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 4931,
+      "label": "Outline tolerance",
+      "tooltip": "Maximum deviation of the object outline written to EXCLUDE_OBJECT_DEFINE from the original outline. Larger values give fewer points, which helps firmware that stalls while parsing G-code with many objects. 0 keeps every point.",
+      "sidetext": "mm",
+      "min": 0,
+      "max": 5,
+      "mode": "expert",
+      "default_type": "Float",
+      "default_raw": "0.1",
+      "default": 0.1
+    },
+    "export_statistics": {
+      "type": "coBool",
+      "group": "cli:CLIMisc",
+      "line": 13403,
+      "label": "Export statistics",
+      "tooltip": "Write the statistics of each sliced plate as JSON, as plate_N.statistics.json next to its G-code in the output directory and inside the 3MF of --export-3mf: print time, filament and feature totals, and the same per layer and per object.",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false,
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "extra_brim_width": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 2120,
+      "label": "Extra brim width",
+      "category": "Support",
+      "tooltip": "Belt printers only. Widens the brim SIDEWAYS, across the belt, without extending it further ahead of or behind the object. Use it when a part needs more grip along its length than Brim width alone gives.\n\nMeasured on the belt surface, and added on top of Brim width: the brim reaches Brim-object gap + Brim width + Extra brim width to either side of the object. To extend the brim ahead of the object instead, use Leading brim length.\n\nSet to 0 to disable.",
+      "sidetext": "mm",
+      "min": 0,
+      "max": 100,
+      "mode": "advanced",
+      "default_type": "Float",
+      "default_raw": "0.",
+      "default": 0.0
+    },
+    "extruder_bed_exclude_volumes": {
+      "type": "coStrings",
+      "group": "common",
+      "line": 1104,
+      "label": "Extruder collision volumes",
+      "tooltip": "Collision volumes used only by this extruder in individual mode. Use the same polygon and optional Z-range format as the shared collision volumes. Leave empty for no collision volumes on this extruder. Automatic arrangement conservatively uses the bounding box of a non-convex volume.",
+      "mode": "advanced",
+      "gui_type": "one_string",
+      "default_type": "Strings",
+      "default_raw": "{\"\"}",
+      "default": [
+        ""
+      ]
+    },
+    "extruder_clearance_dist_to_rod": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 3008,
+      "label": "Distance to rod",
+      "tooltip": "Horizontal distance of the nozzle tip to the rod's farther edge. Used for collision avoidance in by-object printing.",
+      "sidetext": "mm",
+      "min": 0,
+      "mode": "advanced",
+      "default_type": "Float",
+      "default_raw": "40",
+      "default": 40
+    },
+    "extruder_max_nozzle_count": {
+      "type": "coInts",
+      "group": "fff",
+      "line": 9177,
+      "nullable": true,
+      "mode": "develop",
+      "default_type": "IntsNullable",
+      "default_raw": "{1}",
+      "default": [
+        1
+      ]
+    },
+    "extruder_nozzle_count": {
+      "type": "coInts",
+      "group": "fff",
+      "line": 6576,
+      "label": "extruder nozzle count",
+      "tooltip": "extruder nozzle count",
+      "mode": "develop",
+      "default_type": "Ints",
+      "default_raw": "{1}",
+      "default": [
+        1
+      ]
+    },
+    "extruder_nozzle_stats": {
+      "type": "coStrings",
+      "group": "fff",
+      "line": 6565,
+      "label": "Extruder nozzle stats",
+      "tooltip": "Physical nozzle counts per extruder, keyed by nozzle volume type.",
+      "default_type": "Strings",
+      "default_raw": "{}",
+      "default": [],
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "extruder_nozzle_volume_type": {
+      "type": "coEnums",
+      "group": "fff",
+      "line": 6587,
+      "label": "Extruder nozzle volume type",
+      "tooltip": "Nozzle volume type per physical nozzle of an extruder.",
+      "mode": "develop",
+      "enum_values": [
+        "Standard",
+        "High Flow",
+        "TPU High Flow",
+        "E3D High Flow",
+        "Extra High Flow"
+      ],
+      "enum_labels": [
+        "Standard",
+        "High Flow",
+        "TPU High Flow",
+        "E3D High Flow",
+        "Extra High Flow"
+      ],
+      "default_type": "EnumsGeneric",
+      "default_raw": "NozzleVolumeType::nvtStandard",
+      "default": [
+        "Standard"
+      ]
+    },
+    "extrusion_role": {
+      "type": "coString",
+      "group": "other:CustomGcodeSpecific",
+      "line": 14012,
+      "label": "Extrusion role",
+      "tooltip": "The new extrusion role/type that is going to be used\nPossible values:\n[\"Perimeter\", \"ExternalPerimeter\", \"OverhangPerimeter\", \"InternalInfill\", \"SolidInfill\", \"TopSolidInfill\", \"BottomSurface\", \"BridgeInfill\", \"GapFill\", \"Ironing\", \"Skirt\", \"Brim\", \"SupportMaterial\", \"SupportMaterialInterface\", \"SupportTransition\", \"WipeTower\", \"Mixed\"]",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "fan_direction": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 4761,
+      "label": "Fan direction",
+      "tooltip": "Cooling fan direction of the printer",
+      "mode": "develop",
+      "enum_values": [
+        "undefine",
+        "left",
+        "right",
+        "both"
+      ],
+      "enum_labels": [
+        "Undefined",
+        "Left",
+        "Right",
+        "Both"
+      ],
+      "default_type": "Enum<FanDirection>",
+      "default_raw": "fdUndefine",
+      "default": "undefine"
+    },
+    "farthest_point_timelapse": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 7180,
+      "label": "Farthest point timelapse",
+      "tooltip": "When enabled, the timelapse snapshot is taken at the farthest point from camera instead of traveling to the wipe tower or excess chute. Only effective in traditional timelapse mode on non-I3 printers.",
+      "mode": "simple",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "filament_change_length_nc": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9099,
+      "label": "Hotend change",
+      "tooltip": "When changing the hotend, it is recommended to extrude a certain length of filament from the original nozzle. This helps minimize nozzle oozing.",
+      "sidetext": "mm",
+      "min": 0,
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{10}",
+      "default": [
+        10
+      ]
+    },
+    "filament_dev_ams_drying_ams_limitations": {
+      "type": "coStrings",
+      "group": "fff",
+      "line": 8993,
+      "default_type": "Strings",
+      "default_raw": "{\"\"}",
+      "default": [
+        ""
+      ],
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "filament_dev_ams_drying_heat_distortion_temperature": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9002,
+      "default_type": "Floats",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ],
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "filament_dev_ams_drying_temperature": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 8996,
+      "default_type": "Floats",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ],
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "filament_dev_ams_drying_time": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 8999,
+      "default_type": "Floats",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ],
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "filament_dev_chamber_drying_bed_temperature": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9005,
+      "default_type": "Floats",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ],
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "filament_dev_chamber_drying_time": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9008,
+      "default_type": "Floats",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ],
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "filament_dev_drying_cooling_temperature": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9014,
+      "label": "it_opt->second.label",
+      "full_label": "it_opt->second.full_label",
+      "tooltip": "it_opt->second.tooltip",
+      "sidetext": "it_opt->second.sidetext",
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
+    },
+    "filament_dev_drying_softening_temperature": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9011,
+      "default_type": "Floats",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ],
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "filament_extruder_compatibility": {
+      "type": "coInts",
+      "group": "fff",
+      "line": 3815,
+      "label": "Filament-extruder compatibility",
+      "tooltip": "A single 32-bit int encoding the compatibility level of a filament across all extruders (up to 10). Every 3 bits represent one extruder (bits [3*i, 3*i+2] for extruder i). 0: printable, 1: error, 2: critical warning, 3: warning, 4-7: reserved.",
+      "mode": "develop",
+      "default_type": "Ints",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
+    },
+    "filament_flush_temp_fast": {
+      "type": "coInts",
+      "group": "fff",
+      "line": 3361,
+      "nullable": true,
+      "label": "Flush temperature",
+      "tooltip": "Flush temperature used in fast purge mode.",
+      "sidetext": "℃",
+      "min": 0,
+      "mode": "advanced",
+      "default_type": "IntsNullable",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
+    },
+    "filament_is_mixed": {
+      "type": "coBools",
+      "group": "fff",
+      "line": 3749,
+      "label": "Is mixed filament",
+      "tooltip": "Whether this filament slot is a mixed filament composed of multiple physical filaments",
+      "mode": "develop",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ]
+    },
+    "filament_map_2": {
+      "type": "coInts",
+      "group": "fff",
+      "line": 3299,
+      "label": "Filament map plus for multi nozzle",
+      "tooltip": "Filament map to the index identified by extruder and nozzle_volume_type",
+      "mode": "develop",
+      "default_type": "Ints",
+      "default_raw": "{1}",
+      "default": [
+        1
+      ]
+    },
+    "filament_max_external_volumetric_speed": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 3389,
+      "label": "Max external volumetric speed",
+      "tooltip": "Lower volumetric speed limit for the visible external features: outer walls, external bridges and overhang walls, and top surfaces that are not ironed. It applies on top of the max volumetric speed. 0 means no extra limit.\n\nSet it to the highest flow at which this material still prints glossy, to keep the surface finish while the rest of the print runs at the max volumetric speed.",
+      "sidetext": "mm³/s",
+      "min": 0,
+      "mode": "advanced",
+      "default_type": "Floats",
+      "default_raw": "{0.}",
+      "default": [
+        0.0
+      ]
+    },
+    "filament_max_temperature_drop_when_ec": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9087,
+      "mode": "develop",
+      "default_type": "Floats",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
+    },
+    "filament_mixed_components": {
+      "type": "coStrings",
+      "group": "fff",
+      "line": 3755,
+      "label": "Mixed filament components",
+      "tooltip": "Comma-separated 1-based indices of component filaments, e.g. \"1,3\"",
+      "mode": "develop",
+      "default_type": "Strings",
+      "default_raw": "{\"\"}",
+      "default": [
+        ""
+      ]
+    },
+    "filament_mixed_gradient": {
+      "type": "coBools",
+      "group": "fff",
+      "line": 3767,
+      "label": "Mixed filament gradient",
+      "tooltip": "Enable Z-direction gradient mode for mixed filament sub-layers. When enabled, the sub-layer ratios vary linearly across layers.",
+      "mode": "develop",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ]
+    },
+    "filament_mixed_gradient_curve": {
+      "type": "coStrings",
+      "group": "fff",
+      "line": 3781,
+      "label": "Mixed filament gradient curve",
+      "tooltip": "Optional Photoshop-style custom curve mapping Z progress to the first component ratio. Encoded as pipe-separated control points, either \"x,y\" (legacy) or \"x,y,m_in,m_out\" when a tangent override is needed (empty token or \"nan\" means use PCHIP default). x in [0,1]; y is clamped to the configured ratio range, e.g. \"0,0.15|0.5,0.50|1,0.85\". When empty, the linear gradient_range is used instead.",
+      "mode": "develop",
+      "default_type": "Strings",
+      "default_raw": "{\"\"}",
+      "default": [
+        ""
+      ]
+    },
+    "filament_mixed_gradient_per_part": {
+      "type": "coBools",
+      "group": "fff",
+      "line": 3793,
+      "label": "Mixed filament per-part gradient",
+      "tooltip": "When gradient mode is enabled, apply the gradient to each part of an assembly independently rather than treating the whole assembly as one Z range.",
+      "mode": "develop",
+      "default_type": "Bools",
+      "default_raw": "{false}",
+      "default": [
+        false
+      ]
+    },
+    "filament_mixed_gradient_range": {
+      "type": "coStrings",
+      "group": "fff",
+      "line": 3774,
+      "label": "Mixed filament gradient range",
+      "tooltip": "Start and end ratios for the first component in gradient mode. Comma-separated pair, e.g. \"0.10,0.90\" means 10% to 90%.",
+      "mode": "develop",
+      "default_type": "Strings",
+      "default_raw": "{\"\"}",
+      "default": [
+        ""
+      ]
+    },
+    "filament_mixed_sublayer_ratios": {
+      "type": "coStrings",
+      "group": "fff",
+      "line": 3761,
+      "label": "Mixed filament sublayer ratios",
+      "tooltip": "Comma-separated ratio values summing to 1.0, e.g. \"0.7,0.3\"",
+      "mode": "develop",
+      "default_type": "Strings",
+      "default_raw": "{\"\"}",
+      "default": [
+        ""
+      ]
+    },
+    "filament_nozzle_map": {
+      "type": "coInts",
+      "group": "fff",
+      "line": 3344,
+      "mode": "develop",
+      "default_type": "Ints",
+      "default_raw": "{1}",
+      "default": [
+        1
+      ]
+    },
+    "filament_pre_cooling_temperature": {
+      "type": "coInts",
+      "group": "fff",
+      "line": 9117,
+      "nullable": true,
+      "label": "Extruder change",
+      "tooltip": "To prevent oozing, the nozzle temperature will be cooled during ramming. Therefore, the ramming time must be greater than the cooldown time. 0 means disabled.",
+      "sidetext": "℃",
+      "min": 0,
+      "mode": "advanced",
+      "default_type": "IntsNullable",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
+    },
+    "filament_pre_cooling_temperature_nc": {
+      "type": "coInts",
+      "group": "fff",
+      "line": 9146,
+      "nullable": true,
+      "label": "Hotend change",
+      "tooltip": "To prevent oozing, the nozzle temperature will be cooled during ramming. 0 means disabled.\n\nNote: only a cooldown command and fan activation are triggered, reaching the target temperature is not guaranteed.",
+      "sidetext": "℃",
+      "min": 0,
+      "mode": "advanced",
+      "default_type": "IntsNullable",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
+    },
+    "filament_preheat_temperature_delta": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9209,
+      "nullable": true,
+      "label": "Preheat temperature delta",
+      "tooltip": "Temperature delta applied during pre-heating before tool change.",
+      "sidetext": "℃",
+      "mode": "develop",
+      "default_type": "FloatsNullable",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
+    },
+    "filament_prime_volume": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9193,
+      "label": "Filament change",
+      "tooltip": "The volume of material required to prime the extruder on the tower, excluding a hotend change.",
+      "sidetext": "mm³",
+      "min": 1.0,
+      "mode": "simple",
+      "default_type": "Floats",
+      "default_raw": "{45.}",
+      "default": [
+        45.0
+      ]
+    },
+    "filament_prime_volume_nc": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9201,
+      "label": "Hotend change",
+      "tooltip": "The volume of material required to prime the extruder for a hotend change on the tower.",
+      "sidetext": "mm³",
+      "min": 1.0,
+      "mode": "simple",
+      "default_type": "Floats",
+      "default_raw": "{60.}",
+      "default": [
+        60.0
+      ]
+    },
+    "filament_ramming_travel_time": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9107,
+      "nullable": true,
+      "label": "Extruder change",
+      "tooltip": "To prevent oozing, the nozzle will perform a reverse travel movement for a certain period after the ramming is complete. The setting define the travel time.",
+      "sidetext": "s",
+      "min": 0,
+      "mode": "advanced",
+      "default_type": "FloatsNullable",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
+    },
+    "filament_ramming_travel_time_nc": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9136,
+      "nullable": true,
+      "label": "Hotend change",
+      "tooltip": "To prevent oozing, the nozzle will perform a reverse travel movement for a certain period after the ramming is complete. The setting define the travel time.",
+      "sidetext": "s",
+      "min": 0,
+      "mode": "advanced",
+      "default_type": "FloatsNullable",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
+    },
+    "filament_ramming_volumetric_speed": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9126,
+      "nullable": true,
+      "label": "Extruder change",
+      "tooltip": "The maximum volumetric speed for ramming before extruder change, where -1 means using the maximum volumetric speed.",
+      "sidetext": "mm³/s",
+      "min": -1,
+      "max": 200,
+      "mode": "advanced",
+      "default_type": "FloatsNullable",
+      "default_raw": "{-1}",
+      "default": [
+        -1
+      ]
+    },
+    "filament_ramming_volumetric_speed_nc": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9156,
+      "nullable": true,
+      "label": "Hotend change",
+      "tooltip": "The maximum volumetric speed for ramming before a hotend change, where -1 means using the maximum volumetric speed.",
+      "sidetext": "mm³/s",
+      "min": -1,
+      "max": 200,
+      "mode": "advanced",
+      "default_type": "FloatsNullable",
+      "default_raw": "{-1}",
+      "default": [
+        -1
+      ]
+    },
+    "filament_retract_length_nc": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9166,
+      "nullable": true,
+      "label": "length when change hotend",
+      "tooltip": "When this retraction value is modified, it will be used as the amount of filament retracted inside the hotend before changing hotends.",
+      "sidetext": "mm",
+      "min": 0,
+      "max": 18,
+      "mode": "develop",
+      "default_type": "FloatsNullable",
+      "default_raw": "{10.}",
+      "default": [
+        10.0
+      ]
+    },
+    "filament_volume_map": {
+      "type": "coInts",
+      "group": "fff",
+      "line": 3311,
+      "mode": "develop",
+      "default_type": "Ints",
+      "default_raw": "{(int)(NozzleVolumeType::nvtStandard)}",
+      "default": [
+        "(int)(NozzleVolumeType::nvtStandard)"
+      ]
+    },
+    "flush_multiplier_fast": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 8531,
+      "label": "Flush multiplier (Fast mode)",
+      "tooltip": "The flush multiplier used in fast purge mode.",
+      "default_type": "Floats",
+      "default_raw": "{1.2}",
+      "default": [
+        1.2
+      ],
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "gap_infill_volumetric_flow": {
+      "type": "coFloatsOrPercents",
+      "group": "fff",
+      "line": 2894,
+      "nullable": true,
+      "label": "Gap infill",
+      "full_label": "Gap infill volumetric speed",
+      "category": "Speed",
+      "tooltip": "Volumetric flow of this feature when volumetric speeds are enabled. If expressed as a percentage, it is calculated on the filament's \"Max volumetric speed\".\n\nThe resulting speed is limited by the filament's \"Max volumetric speed\".",
+      "sidetext": "mm³/s or %",
+      "min": 0.1,
+      "mode": "advanced",
+      "default_type": "FloatsOrPercentsNullable",
+      "default_raw": "{FloatOrPercent(50, true)}",
+      "default": [
+        {
+          "value": 50,
+          "percent": true
+        }
+      ]
+    },
+    "gcode_skip_config_block": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 4896,
+      "label": "Skip G-code config block",
+      "tooltip": "Do not write the CONFIG_BLOCK (slicer configuration key/value pairs) into the G-code file. This can help with printers whose firmware crashes when parsing these comment lines (e.g. Anycubic go-klipper).\n\nNote: the G-code file will no longer contain slicer settings, so importing it back into OrcaSlicer will not restore the configuration.",
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "ground_face_normal": {
+      "type": "coString",
+      "group": "cli:CLITransform",
+      "line": 13262,
+      "label": "Ground face by normal",
+      "tooltip": "Lay each object on the convex hull face whose outward normal is closest to the direction NX,NY,NZ and drop it onto the bed. The direction is in object coordinates, which include the rotations given before this option and match the plate axes unless the input file rotates the object. For example, 1,0,0 stands the object on its +X side. --orient 1 runs after all transforms and replaces the orientation.",
+      "default_type": "String",
+      "default_raw": "\"\"",
+      "default": "",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "ground_face_point": {
+      "type": "coString",
+      "group": "cli:CLITransform",
+      "line": 13271,
+      "label": "Ground face at point",
+      "tooltip": "Lay each object on the convex hull face that contains the point X,Y,Z and drop it onto the bed. The point is in object coordinates, which include the rotations given before this option; --inspect-mesh reports face centers in them. Objects without such a face are left as they are, and the run fails if no object has one. --orient 1 runs after all transforms and replaces the orientation.",
+      "default_type": "String",
+      "default_raw": "\"\"",
+      "default": "",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "ground_largest_face": {
+      "type": "coBool",
+      "group": "cli:CLITransform",
+      "line": 13254,
+      "label": "Ground largest face",
+      "tooltip": "Lay each object on the largest face of its convex hull and drop it onto the bed. Of equally large faces, the one already facing down is kept. Objects without a face large enough to rest on are left as they are. Transforms run in command-line order, so rotations given before this option are respected. --orient 1 runs after all transforms and replaces the orientation.",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false,
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "group_algo_with_time": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 9067,
+      "mode": "develop",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "handle_hotend_as_extruder": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 9080,
+      "mode": "develop",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "high_precision_gcode": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 4950,
+      "label": "High precision G-code (experimental)",
+      "tooltip": "Write X, Y, Z, I and J with 4 decimal places instead of 3, and E with 6 instead of 5, to reduce rounding errors in the G-code. With relative E distances, the rounding error of each move is also carried over to the next one. Supports are removed after printing, so they keep the standard precision. This may help stabilize extrusion with small nozzles (e.g. 0.2 mm) and thin layers (e.g. 0.08 mm or less), where each move extrudes so little material that rounding errors matter most. The effect depends strongly on how well the rest of the settings are tuned and may be hard to notice unless the print profile is well calibrated.\n\nThe G-code file becomes about 10 percent larger, which may slow down printers that parse G-code slowly.",
+      "mode": "expert",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "hole_to_polyhole_max_edges": {
+      "type": "coInt",
+      "group": "fff",
+      "line": 8824,
+      "label": "Maximum Polyhole edge count",
+      "category": "Quality",
+      "tooltip": "Maximum number of polyhole edges\nThis setting limits the amount of edges a polyhole can have",
+      "min": 3,
+      "mode": "expert",
+      "default_type": "Int",
+      "default_raw": "50",
+      "default": 50
+    },
+    "hotend_cooling_rate": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9091,
+      "nullable": true,
+      "default_type": "FloatsNullable",
+      "default_raw": "{2}",
+      "default": [
+        2
+      ],
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "hotend_heating_rate": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 9095,
+      "nullable": true,
+      "default_type": "FloatsNullable",
+      "default_raw": "{2}",
+      "default": [
+        2
+      ],
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "imex_carriage_margin": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 7334,
+      "label": "Safety Margin",
+      "tooltip": "Non-blocking advisory clearance strip (mm) drawn inside the primary zone at each carriage boundary. Parts placed within this strip will still slice; it is a visual reminder to leave extra clearance near the zone edge.",
+      "sidetext": "mm",
+      "min": 0,
+      "max": 200,
+      "mode": "advanced",
+      "default_type": "Float",
+      "default_raw": "0.0",
+      "default": 0.0
+    },
+    "imex_firmware_managed_zones": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 7272,
+      "label": "Firmware-managed zones",
+      "tooltip": "When enabled, the slicer emits G-code with the primary zone's contents centered on bed origin (0,0). The printer firmware is responsible for placing copies/mirrors at each physical zone position. Enable only on printers whose firmware applies its own zone offsets in copy/mirror mode (e.g. RepRapFirmware IDEX duplication mode). Has no effect in Primary mode.",
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "imex_gantry_count": {
+      "type": "coInt",
+      "group": "fff",
+      "line": 7283,
+      "label": "Gantry Count",
+      "tooltip": "Number of independent Y-axis gantries. 1 for IDEX/single-rail IQEX. 2 for dual-gantry systems (divides bed into rows).",
+      "min": 1,
+      "max": 2,
+      "mode": "advanced",
+      "default_type": "Int",
+      "default_raw": "1",
+      "default": 1
+    },
+    "imex_head_filament_map": {
+      "type": "coString",
+      "group": "fff",
+      "line": 7364,
+      "label": "IDEX/IQEX head filament map",
+      "tooltip": "Per-plate override mapping physical heads to filament slots (1-based). Empty means each head uses the first filament that the printer's physical extruder map routes to it.",
+      "mode": "develop",
+      "default_type": "String",
+      "default_raw": "\"\"",
+      "default": ""
+    },
+    "imex_mode_active_tools": {
+      "type": "coStrings",
+      "group": "fff",
+      "line": 7378,
+      "label": "IDEX/IQEX Mode Active Tools",
+      "tooltip": "Tool role assignments for each mode. Format: \"idx:P,idx:C,idx:M\" where P=Primary, C=Copy, M=Mirror (e.g. \"0:P,1:C,2:M,3:M\"). Managed by the IDEX/IQEX Modes editor in the Printer preset.",
+      "mode": "advanced",
+      "default_type": "Strings",
+      "default_raw": "{}",
+      "default": []
+    },
+    "imex_mode_gcodes": {
+      "type": "coStrings",
+      "group": "fff",
+      "line": 7384,
+      "label": "IDEX/IQEX Mode G-codes",
+      "tooltip": "G-code or macro call to inject at print start for each mode.",
+      "mode": "advanced",
+      "default_type": "Strings",
+      "default_raw": "{}",
+      "default": []
+    },
+    "imex_mode_names": {
+      "type": "coStrings",
+      "group": "fff",
+      "line": 7372,
+      "label": "IDEX/IQEX Mode Names",
+      "tooltip": "Display names for each user-defined IDEX/IQEX parallel print mode.",
+      "mode": "advanced",
+      "default_type": "Strings",
+      "default_raw": "{}",
+      "default": []
+    },
+    "imex_nozzle_clearance_x": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 7318,
+      "label": "Nozzle Clearance X",
+      "tooltip": "Distance (mm) from the nozzle to the collision-side carriage edge in X. Used to calculate the width of the collision exclusion strip at each X boundary.",
+      "sidetext": "mm",
+      "min": 0,
+      "mode": "advanced",
+      "default_type": "Float",
+      "default_raw": "30.0",
+      "default": 30.0
+    },
+    "imex_nozzle_clearance_y": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 7326,
+      "label": "Nozzle Clearance Y",
+      "tooltip": "Distance (mm) from the nozzle to the collision-side carriage edge in Y. Used to calculate the width of the collision exclusion strip at each Y boundary.",
+      "sidetext": "mm",
+      "min": 0,
+      "mode": "advanced",
+      "default_type": "Float",
+      "default_raw": "30.0",
+      "default": 30.0
+    },
+    "imex_parallel_mode": {
+      "type": "coString",
+      "group": "fff",
+      "line": 7358,
+      "label": "IDEX/IQEX Print Mode",
+      "tooltip": "Name of the active IDEX/IQEX parallel print mode, or \"primary\" for single-carriage printing. Requires IDEX/IQEX Printer enabled in the Printer preset (Printer → Multimaterial → IDEX/IQEX Configuration).",
+      "mode": "advanced",
+      "default_type": "String",
+      "default_raw": "\"primary\"",
+      "default": "primary"
+    },
+    "imex_tool_layout": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 7299,
+      "label": "Tool 0 Position",
+      "tooltip": "Physical position on the bed where tool T0 (index 0) is located. Determines how tool indices map to bed zones. For single-gantry setups (IDEX) only left/right matters; for dual-gantry setups (IQEX) all four corners are selectable (front = lower Y / near the operator, rear = higher Y / back of machine).",
+      "mode": "advanced",
+      "enum_values": [
+        "front-left",
+        "front-right",
+        "rear-left",
+        "rear-right"
+      ],
+      "enum_labels": [
+        "Front-left",
+        "Front-right",
+        "Rear-left",
+        "Rear-right"
+      ],
+      "default_type": "Enum<ImexToolLayout>",
+      "default_raw": "ImexToolLayout::FrontLeft",
+      "default": "front-left"
+    },
+    "imex_tools_per_gantry": {
+      "type": "coInt",
+      "group": "fff",
+      "line": 7291,
+      "label": "Tools per Gantry",
+      "tooltip": "Number of independent toolheads per gantry along X. 2 for IDEX-style.",
+      "min": 1,
+      "max": 4,
+      "mode": "advanced",
+      "default_type": "Int",
+      "default_raw": "2",
+      "default": 2
+    },
+    "imex_viz_theme": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 7343,
+      "label": "Visualization Theme",
+      "tooltip": "Color theme for IDEX/IQEX bed zone visualization. Choose a colorblind-friendly theme if needed.",
+      "mode": "advanced",
+      "enum_values": [
+        "standard",
+        "deuteranopia",
+        "tritanopia",
+        "high_contrast"
+      ],
+      "enum_labels": [
+        "Standard",
+        "Deuteranopia / Protanopia (red-green)",
+        "Tritanopia (blue-yellow)",
+        "High Contrast"
+      ],
+      "default_type": "Enum<ImexVizTheme>",
+      "default_raw": "ImexVizTheme::Standard",
+      "default": "standard"
+    },
+    "infill_complete_top": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 5081,
+      "label": "Fill pattern tops",
+      "category": "Strength",
+      "tooltip": "Choose this option if you want to completely fill in the tops of the infill pattern",
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "initial_layer_fan_speed": {
+      "type": "coInts",
+      "group": "fff",
+      "line": 4362,
+      "label": "First layer fan speed",
+      "tooltip": "Sets an exact fan speed for the first layer, overriding all other cooling settings. Useful for protecting 3D-printed toolhead parts (e.g. Voron-style ABS/ASA ducts) from a hot bed. A small amount of airflow cools the ducts down, without using full cooling that may in certain conditions hurt first-layer adhesion.\nFrom the second layer onwards, normal cooling resumes.\nIf \"Full fan speed at layer\" is also set, the fan ramps smoothly from this value on the first layer up to your target by the chosen layer.\nOnly available when \"No cooling for the first\" is 0.\nSet to -1 to disable it.",
+      "sidetext": "%",
+      "min": -1,
+      "max": 100,
+      "mode": "advanced",
+      "default_type": "Ints",
+      "default_raw": "{-1}",
+      "default": [
+        -1
+      ]
+    },
+    "initial_layer_infill_volumetric_flow": {
+      "type": "coFloatsOrPercents",
+      "group": "fff",
+      "line": 2828,
+      "nullable": true,
+      "label": "First layer infill",
+      "full_label": "First layer infill volumetric speed",
+      "category": "Speed",
+      "tooltip": "Volumetric flow of this feature when volumetric speeds are enabled. If expressed as a percentage, it is calculated on the filament's \"Max volumetric speed\".\n\nThe resulting speed is limited by the filament's \"Max volumetric speed\".",
+      "sidetext": "mm³/s or %",
+      "min": 0.1,
+      "mode": "advanced",
+      "default_type": "FloatsOrPercentsNullable",
+      "default_raw": "{FloatOrPercent(50, true)}",
+      "default": [
+        {
+          "value": 50,
+          "percent": true
+        }
+      ]
+    },
+    "initial_layer_volumetric_flow": {
+      "type": "coFloatsOrPercents",
+      "group": "fff",
+      "line": 2817,
+      "nullable": true,
+      "label": "First layer",
+      "full_label": "First layer volumetric speed",
+      "category": "Speed",
+      "tooltip": "Volumetric flow of this feature when volumetric speeds are enabled. If expressed as a percentage, it is calculated on the filament's \"Max volumetric speed\".\n\nThe resulting speed is limited by the filament's \"Max volumetric speed\" and, on outer walls, \"Max external volumetric speed\".",
+      "sidetext": "mm³/s or %",
+      "min": 0.1,
+      "mode": "advanced",
+      "default_type": "FloatsOrPercentsNullable",
+      "default_raw": "{FloatOrPercent(25, true)}",
+      "default": [
+        {
+          "value": 25,
+          "percent": true
+        }
+      ]
+    },
+    "inner_wall_volumetric_flow": {
+      "type": "coFloatsOrPercents",
+      "group": "fff",
+      "line": 2850,
+      "nullable": true,
+      "label": "Inner wall",
+      "full_label": "Inner wall volumetric speed",
+      "category": "Speed",
+      "tooltip": "Volumetric flow of this feature when volumetric speeds are enabled. If expressed as a percentage, it is calculated on the filament's \"Max volumetric speed\".\n\nThe resulting speed is limited by the filament's \"Max volumetric speed\".",
+      "sidetext": "mm³/s or %",
+      "min": 0.1,
+      "mode": "advanced",
+      "default_type": "FloatsOrPercentsNullable",
+      "default_raw": "{FloatOrPercent(100, true)}",
+      "default": [
+        {
+          "value": 100,
+          "percent": true
+        }
+      ]
+    },
+    "inspect_mesh": {
+      "type": "coBool",
+      "group": "cli:CLIActions",
+      "line": 13112,
+      "label": "Inspect mesh (JSON to stdout)",
+      "tooltip": "Print a JSON summary of each loaded object to stdout, then exit: its bounding boxes and the convex hull faces it can be laid on, with their normals, areas and centers. These are the faces the --ground-* options choose from. Machine-readable alternative to --info.",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false,
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "inspect_paint": {
+      "type": "coBool",
+      "group": "cli:CLIActions",
+      "line": 13123,
+      "label": "Inspect paint (JSON to stdout)",
+      "tooltip": "Print a structured JSON summary of every painted layer (supports, seam, MMU color, fuzzy-skin) already stored on the loaded model — per-state facet count, surface area, and mesh-local bounding box — then exit. Machine-readable alternative to opening the paint gizmos in the GUI.",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false,
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "internal_bridge_volumetric_flow": {
+      "type": "coFloatsOrPercents",
+      "group": "fff",
+      "line": 2938,
+      "nullable": true,
+      "label": "Internal",
+      "full_label": "Internal bridge volumetric speed",
+      "category": "Speed",
+      "tooltip": "Volumetric flow of this feature when volumetric speeds are enabled. If expressed as a percentage, it is calculated on the filament's \"Max volumetric speed\".\n\nThe resulting speed is limited by the filament's \"Max volumetric speed\".",
+      "sidetext": "mm³/s or %",
+      "min": 0.1,
+      "mode": "advanced",
+      "default_type": "FloatsOrPercentsNullable",
+      "default_raw": "{FloatOrPercent(40, true)}",
+      "default": [
+        {
+          "value": 40,
+          "percent": true
+        }
+      ]
+    },
+    "internal_solid_infill_volumetric_flow": {
+      "type": "coFloatsOrPercents",
+      "group": "fff",
+      "line": 2872,
+      "nullable": true,
+      "label": "Internal solid infill",
+      "full_label": "Internal solid infill volumetric speed",
+      "category": "Speed",
+      "tooltip": "Volumetric flow of this feature when volumetric speeds are enabled. If expressed as a percentage, it is calculated on the filament's \"Max volumetric speed\".\n\nThe resulting speed is limited by the filament's \"Max volumetric speed\".",
+      "sidetext": "mm³/s or %",
+      "min": 0.1,
+      "mode": "advanced",
+      "default_type": "FloatsOrPercentsNullable",
+      "default_raw": "{FloatOrPercent(100, true)}",
+      "default": [
+        {
+          "value": 100,
+          "percent": true
+        }
+      ]
+    },
+    "is_imex": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 7262,
+      "label": "IDEX/IQEX Printer",
+      "tooltip": "Enable parallel printing for printers with multiple independent carriages (IDEX, IQEX, and similar).",
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "last_extrusion_role": {
+      "type": "coString",
+      "group": "other:CustomGcodeSpecific",
+      "line": 14019,
+      "label": "Last extrusion role",
+      "tooltip": "The previously used extrusion role/type\nPossible values:\n[\"Perimeter\", \"ExternalPerimeter\", \"OverhangPerimeter\", \"InternalInfill\", \"SolidInfill\", \"TopSolidInfill\", \"BottomSurface\", \"BridgeInfill\", \"GapFill\", \"Ironing\", \"Skirt\", \"Brim\", \"SupportMaterial\", \"SupportMaterialInterface\", \"SupportTransition\", \"WipeTower\", \"Mixed\"]",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "leading_brim_length": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 2098,
+      "label": "Leading brim length",
+      "category": "Support",
+      "tooltip": "Belt printers only. Extends the brim AHEAD of the object along the belt, on every downhill-facing edge of its contact area - both the object's first contact with the belt and any island that lands later. This apron is laid onto the belt before the object reaches it, so the leading edge has something already stuck down to hold on to.\n\nMeasured on the belt surface, and added on top of Brim width: the brim reaches Brim-object gap + Leading brim length + Brim width ahead of the object. Set Brim-object gap to 0, or the apron will not touch the object it is meant to anchor.\n\nOn a tilted belt each layer lays one strip of the brim, so the thickness of the resulting brim sheet is set by flow rather than by layer height. Use Brim flow ratio to tune it.\n\nSet to 0 to disable.",
+      "sidetext": "mm",
+      "min": 0,
+      "max": 100,
+      "mode": "advanced",
+      "default_type": "Float",
+      "default_raw": "0.",
+      "default": 0.0
+    },
+    "machine_hotend_change_time": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 9054,
+      "label": "Hotend change time",
+      "tooltip": "Time to change hotend.",
+      "sidetext": "s",
+      "min": 0,
+      "mode": "advanced",
+      "default_type": "Float",
+      "default_raw": "0.0",
+      "default": 0.0
+    },
+    "machine_max_printed_mass": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 5721,
+      "full_label": "The allowed max printed mass",
+      "category": "Machine limits",
+      "tooltip": "The allowed max printed mass on a plate",
+      "sidetext": "g",
+      "min": 0,
+      "mode": "develop",
+      "default_type": "Float",
+      "default_raw": "0",
+      "default": 0
+    },
+    "machine_prepare_compensation_time": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 9071,
+      "mode": "develop",
+      "default_type": "Float",
+      "default_raw": "260",
+      "default": 260
+    },
+    "outer_wall_volumetric_flow": {
+      "type": "coFloatsOrPercents",
+      "group": "fff",
+      "line": 2839,
+      "nullable": true,
+      "label": "Outer wall",
+      "full_label": "Outer wall volumetric speed",
+      "category": "Speed",
+      "tooltip": "Volumetric flow of this feature when volumetric speeds are enabled. If expressed as a percentage, it is calculated on the filament's \"Max volumetric speed\".\n\nThe resulting speed is limited by the filament's \"Max volumetric speed\" and \"Max external volumetric speed\".",
+      "sidetext": "mm³/s or %",
+      "min": 0.1,
+      "mode": "advanced",
+      "default_type": "FloatsOrPercentsNullable",
+      "default_raw": "{FloatOrPercent(50, true)}",
+      "default": [
+        {
+          "value": 50,
+          "percent": true
+        }
+      ]
+    },
+    "plugins": {
+      "type": "coStrings",
+      "group": "fff",
+      "line": 6231,
+      "label": "Plugins Used",
+      "tooltip": "Plugin capabilities referenced by this preset, stored as name;uuid;capability.",
+      "mode": "develop",
+      "default_type": "Strings",
+      "default_raw": "{}",
+      "default": []
+    },
+    "prime_volume_mode": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 8548,
+      "label": "Prime volume mode",
+      "tooltip": "Selects how the wipe-tower prime and flush volumes are computed on multi-extruder printers.",
+      "mode": "develop",
+      "enum_values": [
+        "Default",
+        "Saving",
+        "Fast"
+      ],
+      "enum_labels": [
+        "Default",
+        "Saving",
+        "Fast"
+      ],
+      "default_type": "Enum<PrimeVolumeMode>",
+      "default_raw": "pvmDefault",
+      "default": "Default"
+    },
+    "print_time_day": {
+      "type": "coString",
+      "group": "other:PrintStatistics",
+      "line": 13683,
+      "label": "Print time (days component)",
+      "tooltip": "Estimated print time day component (normal mode). Replaced with actual value during post-processing.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "print_time_hour": {
+      "type": "coString",
+      "group": "other:PrintStatistics",
+      "line": 13687,
+      "label": "Print time (hours component)",
+      "tooltip": "Estimated print time hour component (normal mode). Replaced with actual value during post-processing.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "print_time_minute": {
+      "type": "coString",
+      "group": "other:PrintStatistics",
+      "line": 13691,
+      "label": "Print time (minutes component)",
+      "tooltip": "Estimated print time minute component (normal mode). Replaced with actual value during post-processing.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "print_time_total_sec": {
+      "type": "coString",
+      "group": "other:PrintStatistics",
+      "line": 13679,
+      "label": "Print time (total seconds)",
+      "tooltip": "Total estimated print time in seconds. Replaced with actual value during post-processing.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "retract_after_outer_wall": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 6937,
+      "label": "Retract after outer wall",
+      "category": "Quality",
+      "tooltip": "Always retract when the nozzle leaves an outer wall, even if the travel is shorter than the travel distance threshold.\n\nWithout a retraction, a very short travel, for example to gap infill inside a thin wall, can drag the end of the outer wall inward and leave a visible dent at the seam.",
+      "mode": "develop",
+      "default_type": "Bool",
+      "default_raw": "true",
+      "default": true
+    },
+    "retract_after_wipe": {
+      "type": "coPercents",
+      "group": "fff",
+      "line": 6350,
+      "label": "Retract amount after wipe",
+      "tooltip": "This is the length of fast retraction after wipe, relative to retraction length.\nThe value will be clamped by 100% minus the retract amount before the wipe value.",
+      "sidetext": "%",
+      "mode": "expert",
+      "default_type": "Percents",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
+    },
+    "separated_infills": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 8414,
+      "label": "Separated infills",
+      "category": "Strength",
+      "tooltip": "Centers the internal infill of each part on itself, as if it were sliced on its own, instead of on the whole assembly. Parts that touch or overlap are treated as one body and share a center; separate parts (or distinct 3D objects) each get their own.\nUseful when an assembly groups several objects that should each keep a consistent, self-centered infill.\nAdaptive Cubic and Support Cubic always center each part on itself, and Lightning infill is generated for the whole object and is unaffected.",
+      "mode": "expert",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "slicing_pipeline_plugin": {
+      "type": "coStrings",
+      "group": "fff",
+      "line": 6237,
+      "label": "Slicing Pipeline Plugin",
+      "tooltip": "Python plugins invoked at each slicing pipeline step to read and modify intermediate slicing data, including a final G-code post-processing step. Research/experimental.",
+      "mode": "advanced",
+      "gui_type": "plugin_picker",
+      "default_type": "Strings",
+      "default_raw": "{}",
+      "default": []
+    },
+    "small_support_perimeter_speed": {
+      "type": "coFloatsOrPercents",
+      "group": "fff",
+      "line": 2766,
+      "label": "Small support perimeters",
+      "category": "Speed",
+      "tooltip": "Same as \"Small perimeters\", but for supports. This separate setting will affect the speed of support for areas <= `small_support_perimeter_threshold`. If expressed as a percentage (for example: 80%), it will be calculated on the support or support interface speed setting above.\n\nThe resulting speed is limited by the filament's \"Max volumetric speed\".",
+      "sidetext": "mm/s or %",
+      "min": 1,
+      "mode": "advanced",
+      "ratio_over": "support_speed",
+      "default_type": "FloatsOrPercentsNullable",
+      "default_raw": "{FloatOrPercent(50, true)}",
+      "default": [
+        {
+          "value": 50,
+          "percent": true
+        }
+      ]
+    },
+    "small_support_perimeter_threshold": {
+      "type": "coFloats",
+      "group": "fff",
+      "line": 2778,
+      "label": "Small support perimeters threshold",
+      "category": "Speed",
+      "tooltip": "This sets the threshold for small support perimeter length. The default threshold is 0mm.",
+      "sidetext": "mm",
+      "min": 0,
+      "mode": "advanced",
+      "default_type": "FloatsNullable",
+      "default_raw": "{0}",
+      "default": [
+        0
+      ]
+    },
+    "sparse_infill_smooth_factor": {
+      "type": "coPercent",
+      "group": "fff",
+      "line": 4091,
+      "label": "Sparse infill smooth factor",
+      "category": "Strength",
+      "tooltip": "Controls how strongly sparse infill corners are rounded. 0% keeps the original sharp path, while 100% produces the largest possible curves between adjacent infill lines.",
+      "sidetext": "%",
+      "min": 0,
+      "max": 100,
+      "mode": "advanced",
+      "default_type": "Percent",
+      "default_raw": "0",
+      "default": 0
+    },
+    "sparse_infill_strategy": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 3931,
+      "label": "Sparse infill strategy",
+      "category": "Strength",
+      "tooltip": "How the lines of the Grid, Triangles, Tri-hexagon, Cubic, Quarter Cubic, Adaptive Cubic and Support Cubic patterns meet.\n - Default: crossing with a single line, non-crossing with multiline infill.\n - Crossing: the lines run straight across each other. With multiline infill, the lines of two walls overlap where they cross.\n - Non-crossing: the lines turn back where they meet instead of crossing, so the walls touch without overlapping.",
+      "mode": "expert",
+      "enum_values": [
+        "default",
+        "crossing",
+        "non_crossing"
+      ],
+      "enum_labels": [
+        "Default",
+        "Crossing",
+        "Non-crossing"
+      ],
+      "default_type": "Enum<InfillStrategy>",
+      "default_raw": "InfillStrategy::Default",
+      "default": "default"
+    },
+    "sparse_infill_volumetric_flow": {
+      "type": "coFloatsOrPercents",
+      "group": "fff",
+      "line": 2861,
+      "nullable": true,
+      "label": "Sparse infill",
+      "full_label": "Sparse infill volumetric speed",
+      "category": "Speed",
+      "tooltip": "Volumetric flow of this feature when volumetric speeds are enabled. If expressed as a percentage, it is calculated on the filament's \"Max volumetric speed\".\n\nThe resulting speed is limited by the filament's \"Max volumetric speed\".",
+      "sidetext": "mm³/s or %",
+      "min": 0.1,
+      "mode": "advanced",
+      "default_type": "FloatsOrPercentsNullable",
+      "default_raw": "{FloatOrPercent(100, true)}",
+      "default": [
+        {
+          "value": 100,
+          "percent": true
+        }
+      ]
+    },
+    "strict": {
+      "type": "coBool",
+      "group": "cli:CLIActions",
+      "line": 13081,
+      "label": "Strict mode",
+      "tooltip": "Exit non-zero when slicing raises a non-critical warning that is otherwise only logged, such as a model that needs support while support is disabled. Use this in CI or scripted pipelines that should never ship a subtly broken slice. Each such warning is also listed with a stable class in the `warnings` array of result.json, which is written on Linux only. Cannot be combined with --no-check, which skips the support check.",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false,
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "support_cooling_filter": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 4852,
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "support_fast_purge_mode": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 9185,
+      "label": "Support fast purge mode",
+      "tooltip": "Whether this printer supports fast purge mode with optimized temperature and multiplier.",
+      "mode": "develop",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "support_interface_volumetric_flow": {
+      "type": "coFloatsOrPercents",
+      "group": "fff",
+      "line": 2916,
+      "nullable": true,
+      "label": "Support interface",
+      "full_label": "Support interface volumetric speed",
+      "category": "Speed",
+      "tooltip": "Volumetric flow of this feature when volumetric speeds are enabled. If expressed as a percentage, it is calculated on the filament's \"Max volumetric speed\".\n\nThe resulting speed is limited by the filament's \"Max volumetric speed\".",
+      "sidetext": "mm³/s or %",
+      "min": 0.1,
+      "mode": "advanced",
+      "default_type": "FloatsOrPercentsNullable",
+      "default_raw": "{FloatOrPercent(50, true)}",
+      "default": [
+        {
+          "value": 50,
+          "percent": true
+        }
+      ]
+    },
+    "support_volumetric_flow": {
+      "type": "coFloatsOrPercents",
+      "group": "fff",
+      "line": 2905,
+      "nullable": true,
+      "label": "Support",
+      "full_label": "Support volumetric speed",
+      "category": "Speed",
+      "tooltip": "Volumetric flow of this feature when volumetric speeds are enabled. If expressed as a percentage, it is calculated on the filament's \"Max volumetric speed\".\n\nThe resulting speed is limited by the filament's \"Max volumetric speed\".",
+      "sidetext": "mm³/s or %",
+      "min": 0.1,
+      "mode": "advanced",
+      "default_type": "FloatsOrPercentsNullable",
+      "default_raw": "{FloatOrPercent(100, true)}",
+      "default": [
+        {
+          "value": 100,
+          "percent": true
+        }
+      ]
+    },
+    "toolchange_cyclic_first_layer": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 7500,
+      "label": "Apply cyclic order to first layer",
+      "category": "Advanced",
+      "tooltip": "Applies the cyclic toolchange order to the first layer as well.\nBy default this is disabled, because the first layer is instead ordered for the best bed adhesion: filaments that print small, fragile first-layer features are printed last, so the following tool changes and travel moves are less likely to knock those weakly anchored parts loose. This first-layer order also honors a custom first layer filament sequence when one is set. The cyclic order's benefit (extra tool changes give each layer more time to cool) does not apply to the first layer, which is printed slowly and hot for adhesion.\nEnable this only if you need the exact same tool sequence on every layer, including the first, at the cost of that adhesion optimization.",
+      "mode": "expert",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "toolchange_cyclic_order": {
+      "type": "coString",
+      "group": "fff",
+      "line": 7489,
+      "label": "Cyclic order",
+      "category": "Advanced",
+      "tooltip": "Custom filament sequence used by the cyclic toolchange ordering, as filament numbers separated by commas (e.g. \"3,2,1,4\").\nEach layer prints its filaments following this sequence; filaments not listed are printed last, in ascending order.\nLeave empty to cycle through the filaments in ascending order.",
+      "mode": "expert",
+      "default_type": "String",
+      "default_raw": "\"\"",
+      "default": ""
+    },
+    "toolchange_ordering": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 7473,
+      "label": "Toolchange ordering",
+      "category": "Advanced",
+      "tooltip": "Determines the order of tool changes on each layer.\n- Default: Starts with the last used extruder to minimize tool changes.\n- Cyclic: Uses a fixed tool sequence each layer. This sacrifices speed for better surface quality, as the extra toolchanges allow layers more time to cool.",
+      "mode": "advanced",
+      "enum_values": [
+        "default",
+        "cyclic"
+      ],
+      "enum_labels": [
+        "Default",
+        "Cyclic"
+      ],
+      "default_type": "Enum<ToolChangeOrderingType>",
+      "default_raw": "ToolChangeOrderingType::Default",
+      "default": "default"
+    },
+    "top_color_penetration_layers": {
+      "type": "coInt",
+      "group": "fff",
+      "line": 8403,
+      "label": "Top paint penetration layers",
+      "category": "Strength",
+      "tooltip": "The number of layers, including the top surface layer, that take the color painted on a top surface. Set to 0 to use the top shell layers. A value larger than the top shell also colors the sparse infill below the painted area.",
+      "sidetext": "layers",
+      "min": 0,
+      "mode": "advanced",
+      "default_type": "Int",
+      "default_raw": "0",
+      "default": 0
+    },
+    "top_layer_direction": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 3875,
+      "label": "Top layer direction",
+      "category": "Strength",
+      "tooltip": "Fixed angle for the top solid infill and ironing lines.\nSet to -1 to follow the default solid infill direction.",
+      "sidetext": "°",
+      "min": -1,
+      "max": 360,
+      "mode": "simple",
+      "default_type": "Float",
+      "default_raw": "-1",
+      "default": -1
+    },
+    "top_surface_expansion": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 2617,
+      "label": "Top surface expansion",
+      "category": "Strength",
+      "tooltip": "Expands the top surfaces by this distance to connect distinct top surfaces and fill gaps.\nUseful for cases where the top surface is interrupted by a raised feature, such as text on a plane. Expanding it removes the holes beneath these features and creates a continuous path with a better finish for printing on top. The expansion is applied to the original top surface, before any other processing such as bridging or overhang detection.",
+      "sidetext": "mm",
+      "min": 0,
+      "mode": "advanced",
+      "default_type": "Float",
+      "default_raw": "0",
+      "default": 0
+    },
+    "top_surface_expansion_direction": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 2641,
+      "label": "Top expansion direction",
+      "category": "Strength",
+      "tooltip": "Direction in which the top surface expansion grows.\n - Inward grows into the holes and gaps left by features rising from the middle of a top surface.\n - Outward grows the outer edge of the surface, connecting surfaces separated by features that can divide a surface, such as a lattice pattern.\n - Inward and Outward does both.",
+      "mode": "advanced",
+      "enum_values": [
+        "inward_and_outward",
+        "inward",
+        "outward"
+      ],
+      "enum_labels": [
+        "Inward and Outward",
+        "Inward",
+        "Outward"
+      ],
+      "default_type": "Enum<TopSurfaceExpansionDirection>",
+      "default_raw": "TopSurfaceExpansionDirection::InwardAndOutward",
+      "default": "inward_and_outward"
+    },
+    "top_surface_expansion_margin": {
+      "type": "coFloat",
+      "group": "fff",
+      "line": 2629,
+      "label": "Top expansion wall margin",
+      "category": "Strength",
+      "tooltip": "Using “Top surface expansion” may cause a surface that did not previously touch the model's outer walls to now do so.\nThis can cause contraction marks (such as the hull line) on the outer walls.\nBy adding a small margin, this contraction will not occur directly on the walls, thereby preventing a visible mark.",
+      "sidetext": "mm",
+      "min": 0,
+      "max": 10,
+      "mode": "advanced",
+      "default_type": "Float",
+      "default_raw": "0",
+      "default": 0
+    },
+    "top_surface_fill_order": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 2678,
+      "label": "Top surface fill order",
+      "category": "Strength",
+      "tooltip": "Direction in which top surfaces are filled when using a center-based pattern (Concentric, Spiral Inset, Archimedean Chords, Octagram Spiral).\nOutward starts at the center of the surface, so any excess material is pushed towards the edge where it is least visible. Inward starts at the edge and ends with the tight curves at the center.\nDefault uses shortest-path ordering, which may run in either direction.",
+      "mode": "advanced",
+      "enum_values": [
+        "default",
+        "outward",
+        "inward"
+      ],
+      "enum_labels": [
+        "Default",
+        "Outward",
+        "Inward"
+      ],
+      "default_type": "Enum<SurfaceFillOrder>",
+      "default_raw": "SurfaceFillOrder::Default",
+      "default": "default"
+    },
+    "top_surface_volumetric_flow": {
+      "type": "coFloatsOrPercents",
+      "group": "fff",
+      "line": 2883,
+      "nullable": true,
+      "label": "Top surface",
+      "full_label": "Top surface volumetric speed",
+      "category": "Speed",
+      "tooltip": "Volumetric flow of this feature when volumetric speeds are enabled. If expressed as a percentage, it is calculated on the filament's \"Max volumetric speed\".\n\nThe resulting speed is limited by the filament's \"Max volumetric speed\" and, unless the surface is ironed, \"Max external volumetric speed\".",
+      "sidetext": "mm³/s or %",
+      "min": 0.1,
+      "mode": "advanced",
+      "default_type": "FloatsOrPercentsNullable",
+      "default_raw": "{FloatOrPercent(50, true)}",
+      "default": [
+        {
+          "value": 50,
+          "percent": true
+        }
+      ]
+    },
+    "unsupported_wall_last": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 6141,
+      "label": "Print unsupported walls last",
+      "category": "Quality",
+      "tooltip": "Wall loops that lie entirely in mid air are printed once something can hold them:\nthey are extruded after the other walls of their island, innermost first, whatever the wall order is.\nA loop that only the bridges of this layer can anchor waits until those bridges are printed, while a loop running alongside a supported wall keeps its place before the infill, which needs it as an anchor.",
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "wait_for_temp_on_wipe_tower": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 7431,
+      "label": "Wait for temperature on wipe tower",
+      "tooltip": "Pick up the new tool without waiting for it to reach printing temperature, travel to the wipe tower, and wait for the temperature there, right before purging. Ooze from the heat-up lands on the tower instead of the model, and the travel overlaps with the heating.\n\nOnly relevant for multi-extruder (multi-toolhead) printers using a Type 2 wipe tower. The firmware or tool change macro must not wait for the temperature itself. When disabled, the temperature wait is issued right after the tool change command.",
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "wipe_inward": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 6894,
+      "label": "Wipe inward",
+      "category": "Quality",
+      "tooltip": "Applies only to external walls, including hole boundaries. Moves the hot nozzle toward the inner walls during wiping to reduce reheating of freshly printed plastic and seam marks.\n\nEspecially useful at layer heights below 0.1 mm, where wipe marks are more visible.\n\nUses the regular wipe where the outer wall has no adjacent inner wall, such as in single-wall areas, or if no supported inward path can be found, for example at tight corners or seam gaps.",
+      "mode": "expert",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "wipe_inward_distance": {
+      "type": "coFloatOrPercent",
+      "group": "fff",
+      "line": 6905,
+      "label": "Wipe inward distance",
+      "category": "Quality",
+      "tooltip": "The distance the wipe path is shifted away from the external perimeter, specified in millimeters or as a percentage of the actual outer-wall extrusion width.\n\nFor example, 50% shifts the path by half of the outer-wall width. The effective offset is limited by both the actual outer-wall width and the available spacing to the adjacent wall, so values above 100% or an equivalent absolute distance have no additional effect. Set to 0 to disable the offset.\n\nWith Outer/Inner or Inner/Outer/Inner wall order, the offset is limited to 50% of the actual outer-wall width because the adjacent inner wall is printed after the outer wall. This also applies to equivalent distances specified in millimeters.",
+      "sidetext": "mm or %",
+      "min": 0,
+      "max": 100,
+      "max_literal": 2,
+      "mode": "expert",
+      "ratio_over": "outer_wall_line_width",
+      "default_type": "FloatOrPercent",
+      "default_raw": "50, true",
+      "default": {
+        "value": 50,
+        "percent": true
+      }
+    },
+    "wipe_tower_sparse_layers_combination": {
+      "type": "coBool",
+      "group": "fff",
+      "line": 7453,
+      "label": "Combine sparse layers",
+      "tooltip": "If enabled, consecutive layers on which the prime tower has no filament change are printed as a single thicker tower layer instead of one thin layer each, the same way infill combination merges sparse infill. The merged layer is printed at the top of the run, at the height of everything it covers.\n\nOnly whole layers are merged, and never past the maximum layer height of the nozzle printing the tower (three quarters of the nozzle diameter when that is left at 0). Two or more layers therefore have to fit under that limit before anything changes at all: at a 0.2 mm layer height under a 0.3 mm maximum nothing is merged, while at 0.1 mm three layers become one.\n\nUnlike \"No sparse layers\" the tower keeps following the model, so the toolhead never has to reach down to it. Has no effect with \"No sparse layers\", smooth timelapse or clumping detection, which need a tower on every layer.",
+      "mode": "advanced",
+      "default_type": "Bool",
+      "default_raw": "false",
+      "default": false
+    },
+    "clear_to_x0": {
+      "type": "coBool",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13945,
+      "label": "Clear path to X0",
+      "tooltip": "Whether the nozzle can move to X0 at the current height without hitting another printed object.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "curr_accumulated_mass": {
+      "type": "coFloat",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13934,
+      "label": "Current accumulated mass",
+      "tooltip": "Accumulated printed mass at the current layer.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "curr_layer_mass": {
+      "type": "coFloat",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13936,
+      "label": "Previous layer mass",
+      "tooltip": "Same as previous_layer_mass. Bambu Studio uses this name.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "curr_physical_extruder_id": {
+      "type": "coInt",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13939,
+      "label": "Current physical extruder ID",
+      "tooltip": "Index of the physical extruder active for the current layer. The index is zero-based (first extruder has index 0).",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "curr_y_acceleration_limit": {
+      "type": "coFloat",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13933,
+      "label": "Current Y acceleration limit",
+      "tooltip": "Current Y-axis acceleration limit after the bed-mass adjustment.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "current_extruder_id": {
+      "type": "coInt",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13922,
+      "label": "Current extruder ID",
+      "tooltip": "Index of the currently active physical extruder. The index is zero-based (first extruder has index 0).",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "current_filament_id": {
+      "type": "coInt",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13921,
+      "label": "Current filament ID",
+      "tooltip": "Index of the currently active filament. The index is zero-based (first filament has index 0).",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "current_hotend": {
+      "type": "coInt",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13950,
+      "label": "Current hotend",
+      "tooltip": "Hotend of the outgoing filament, given as its zero-based extruder index. On Bambu printers it is -1, or the nozzle ID when a filament moves between nozzles across layers.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "current_nozzle_id": {
+      "type": "coInt",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13923,
+      "label": "Current nozzle ID",
+      "tooltip": "Index of the currently active nozzle. The index is zero-based (first nozzle has index 0).",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "farthest_point_timelapse_enabled": {
+      "type": "coBool",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13944,
+      "label": "Farthest-point timelapse enabled",
+      "tooltip": "Whether farthest-point timelapse positioning is active.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "filament_plugin_config_overrides": {
+      "type": "coString",
+      "group": "common",
+      "line": 1325,
+      "label": "Capabilities",
+      "tooltip": "Configuration for the plugin capabilities this preset uses, overriding the global Capabilities configuration. Stored as a raw JSON array and edited through the dialog behind the button, never typed in directly.",
+      "mode": "advanced",
+      "gui_type": "plugin_config",
+      "cli": "nocli",
+      "default_type": "String",
+      "default_raw": "\"\"",
+      "default": ""
+    },
+    "flush_length": {
+      "type": "coFloat",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13990,
+      "label": "Flush length",
+      "tooltip": "Total flush length.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "flush_temperatures": {
+      "type": "coInts",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13992,
+      "label": "Flush temperatures",
+      "tooltip": "Flush temperatures for each filament.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "flush_volumetric_speeds": {
+      "type": "coFloats",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13991,
+      "label": "Flush volumetric speeds",
+      "tooltip": "Flush volumetric speeds for each filament.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "gcode_remap_x": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 8020,
+      "label": "G-code remap X",
+      "category": "Printable space",
+      "tooltip": "Which slicing axis maps to machine X in G-code output. Applied AFTER slicing, during G-code generation.",
+      "mode": "develop",
+      "enum_values": [
+        "pos_x",
+        "pos_y",
+        "pos_z",
+        "neg_x",
+        "neg_y",
+        "neg_z",
+        "rev_x",
+        "rev_y",
+        "rev_z"
+      ],
+      "enum_labels": [
+        "+X",
+        "+Y",
+        "+Z",
+        "-X",
+        "-Y",
+        "-Z",
+        "Rev X",
+        "Rev Y",
+        "Rev Z"
+      ],
+      "default_type": "Enum<RemapAxis>",
+      "default_raw": "RemapAxis::PosX",
+      "default": "pos_x"
+    },
+    "gcode_remap_y": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 8023,
+      "label": "G-code remap Y",
+      "category": "Printable space",
+      "tooltip": "Which slicing axis maps to machine Y in G-code output. Applied AFTER slicing, during G-code generation.",
+      "mode": "develop",
+      "enum_values": [
+        "pos_x",
+        "pos_y",
+        "pos_z",
+        "neg_x",
+        "neg_y",
+        "neg_z",
+        "rev_x",
+        "rev_y",
+        "rev_z"
+      ],
+      "enum_labels": [
+        "+X",
+        "+Y",
+        "+Z",
+        "-X",
+        "-Y",
+        "-Z",
+        "Rev X",
+        "Rev Y",
+        "Rev Z"
+      ],
+      "default_type": "Enum<RemapAxis>",
+      "default_raw": "RemapAxis::PosY",
+      "default": "pos_y"
+    },
+    "gcode_remap_z": {
+      "type": "coEnum",
+      "group": "fff",
+      "line": 8026,
+      "label": "G-code remap Z",
+      "category": "Printable space",
+      "tooltip": "Which slicing axis maps to machine Z in G-code output. Applied AFTER slicing, during G-code generation.",
+      "mode": "develop",
+      "enum_values": [
+        "pos_x",
+        "pos_y",
+        "pos_z",
+        "neg_x",
+        "neg_y",
+        "neg_z",
+        "rev_x",
+        "rev_y",
+        "rev_z"
+      ],
+      "enum_labels": [
+        "+X",
+        "+Y",
+        "+Z",
+        "-X",
+        "-Y",
+        "-Z",
+        "Rev X",
+        "Rev Y",
+        "Rev Z"
+      ],
+      "default_type": "Enum<RemapAxis>",
+      "default_raw": "RemapAxis::PosZ",
+      "default": "pos_z"
+    },
+    "has_timelapse_safe_pos": {
+      "type": "coBool",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13942,
+      "label": "Has timelapse safe position",
+      "tooltip": "Whether a safe timelapse position was found.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "imex_mode": {
+      "type": "coString",
+      "group": "other:OtherSlicingStates",
+      "line": 13606,
+      "label": "IDEX/IQEX active mode",
+      "tooltip": "Name of the active IDEX/IQEX parallel print mode for this plate (e.g. 'primary', 'mirror', 'copy'). Empty string if IDEX/IQEX is not enabled.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "imex_mode_gcode": {
+      "type": "coString",
+      "group": "other:OtherSlicingStates",
+      "line": 13608,
+      "label": "IDEX/IQEX active mode G-code",
+      "tooltip": "The raw mode G-code template for the active IDEX/IQEX parallel print mode, after placeholder evaluation. Globals defined here flow into machine_start_gcode.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "imex_mode_index": {
+      "type": "coInt",
+      "group": "other:OtherSlicingStates",
+      "line": 13607,
+      "label": "IDEX/IQEX active mode index",
+      "tooltip": "Zero-based index of the active IDEX/IQEX parallel print mode within imex_mode_names.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "is_prime_tower_interface": {
+      "type": "coBool",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13996,
+      "label": "Prime tower interface",
+      "tooltip": "Whether the current purge is for the prime tower interface layer (where different materials meet).",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "long_retraction_when_cut": {
+      "type": "coBool",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13929,
+      "label": "Long retraction when cut",
+      "tooltip": "Whether long retraction is used when cutting filament.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "most_used_physical_extruder_id": {
+      "type": "coInt",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13932,
+      "label": "Most-used physical extruder ID",
+      "tooltip": "Index of the physical extruder used most often on the current layer. The index is zero-based (first extruder has index 0).",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "new_extruder_retracted_length": {
+      "type": "coFloat",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13961,
+      "label": "New extruder retracted length",
+      "tooltip": "Retraction length still applied to the incoming extruder from when it was parked.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "new_extruder_variant": {
+      "type": "coString",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13957,
+      "label": "New extruder variant",
+      "tooltip": "Extruder type and nozzle volume type of the incoming extruder, such as \"Direct Drive High Flow\".",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "next_filament_id": {
+      "type": "coInt",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13953,
+      "label": "Next filament ID",
+      "tooltip": "Index of the incoming filament. The index is zero-based (first filament has index 0).",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "next_hotend": {
+      "type": "coInt",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13951,
+      "label": "Next hotend",
+      "tooltip": "Hotend of the incoming filament, given as its zero-based extruder index. On Bambu printers it is -1, or the nozzle ID when a filament moves between nozzles across layers.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "next_nozzle_id": {
+      "type": "coInt",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13952,
+      "label": "Next nozzle ID",
+      "tooltip": "Index of the nozzle associated with the incoming filament. The index is zero-based (first nozzle has index 0).",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "nozzle_diameter_at_nozzle_id": {
+      "type": "coFloats",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13924,
+      "label": "Nozzle diameters",
+      "tooltip": "Nozzle diameters indexed by nozzle ID.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "nozzle_volume_types": {
+      "type": "coStrings",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13925,
+      "label": "Nozzle volume types",
+      "tooltip": "Nozzle volume types indexed by nozzle ID, such as \"Standard\" or \"High Flow\".",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "old_extruder_variant": {
+      "type": "coString",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13954,
+      "label": "Old extruder variant",
+      "tooltip": "Extruder type and nozzle volume type of the outgoing extruder, such as \"Direct Drive High Flow\".",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "outer_wall_volumetric_speed": {
+      "type": "coFloat",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13962,
+      "label": "Outer wall volumetric speed",
+      "tooltip": "Volumetric speed used for the outer wall.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "previous_layer_mass": {
+      "type": "coFloat",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13935,
+      "label": "Previous layer mass",
+      "tooltip": "Printed mass of the previous layer.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "print_plugin_config_overrides": {
+      "type": "coString",
+      "group": "common",
+      "line": 1325,
+      "label": "Capabilities",
+      "tooltip": "Configuration for the plugin capabilities this preset uses, overriding the global Capabilities configuration. Stored as a raw JSON array and edited through the dialog behind the button, never typed in directly.",
+      "mode": "advanced",
+      "gui_type": "plugin_config",
+      "cli": "nocli",
+      "default_type": "String",
+      "default_raw": "\"\"",
+      "default": ""
+    },
+    "printer_plugin_config_overrides": {
+      "type": "coString",
+      "group": "common",
+      "line": 1325,
+      "label": "Capabilities",
+      "tooltip": "Configuration for the plugin capabilities this preset uses, overriding the global Capabilities configuration. Stored as a raw JSON array and edited through the dialog behind the button, never typed in directly.",
+      "mode": "advanced",
+      "gui_type": "plugin_config",
+      "cli": "nocli",
+      "default_type": "String",
+      "default_raw": "\"\"",
+      "default": ""
+    },
+    "retraction_distance_when_cut": {
+      "type": "coFloat",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13928,
+      "label": "Retraction distance when cut",
+      "tooltip": "Retraction distance used when cutting filament.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "temperature": {
+      "type": "coInts",
+      "group": "other:CustomGcodeSpecific",
+      "line": 14005,
+      "label": "Temperature",
+      "tooltip": "Nozzle temperatures indexed by filament.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "timelapse_inline_photo": {
+      "type": "coBool",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13943,
+      "label": "Timelapse inline photo",
+      "tooltip": "Whether the photo is taken where the nozzle already is, without moving to a safe timelapse position first.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "timelapse_pos_x": {
+      "type": "coInt",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13940,
+      "label": "Timelapse position X",
+      "tooltip": "Selected X position for timelapse capture.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "timelapse_pos_y": {
+      "type": "coInt",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13941,
+      "label": "Timelapse position Y",
+      "tooltip": "Selected Y position for timelapse capture.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "toolchange_z": {
+      "type": "coFloat",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13965,
+      "label": "Toolchange Z",
+      "tooltip": "The Z position during the toolchange.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "wipe_avoid_perimeter": {
+      "type": "coBool",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13994,
+      "label": "Avoid wipe perimeter",
+      "tooltip": "Whether travel should avoid the wipe perimeter.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "wipe_avoid_pos_x": {
+      "type": "coFloat",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13995,
+      "label": "Wipe tower avoidance X",
+      "tooltip": "X position just beside the wipe tower that the nozzle moves to so it stays clear of the tower.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "wipe_tower_center_pos_valid": {
+      "type": "coBool",
+      "group": "other:CustomGcodeSpecific",
+      "line": 14004,
+      "label": "Wipe tower wait position valid",
+      "tooltip": "Same as wipe_tower_wait_pos_valid. Bambu Studio uses this name.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "wipe_tower_center_pos_x": {
+      "type": "coFloat",
+      "group": "other:CustomGcodeSpecific",
+      "line": 14002,
+      "label": "Wipe tower wait position X",
+      "tooltip": "Same as wipe_tower_wait_pos_x. Bambu Studio uses this name.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "wipe_tower_center_pos_y": {
+      "type": "coFloat",
+      "group": "other:CustomGcodeSpecific",
+      "line": 14003,
+      "label": "Wipe tower wait position Y",
+      "tooltip": "Same as wipe_tower_wait_pos_y. Bambu Studio uses this name.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "wipe_tower_wait_pos_valid": {
+      "type": "coBool",
+      "group": "other:CustomGcodeSpecific",
+      "line": 14001,
+      "label": "Wipe tower wait position valid",
+      "tooltip": "Whether the wait position is set, which is the case when the print has a wipe tower.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "wipe_tower_wait_pos_x": {
+      "type": "coFloat",
+      "group": "other:CustomGcodeSpecific",
+      "line": 13999,
+      "label": "Wipe tower wait position X",
+      "tooltip": "X coordinate of the nozzle's wipe-tower wait position, 2 mm outside the tower edge.",
+      "mode": "simple",
+      "mode_is_default": true
+    },
+    "wipe_tower_wait_pos_y": {
+      "type": "coFloat",
+      "group": "other:CustomGcodeSpecific",
+      "line": 14000,
+      "label": "Wipe tower wait position Y",
+      "tooltip": "Y coordinate of the nozzle's wipe-tower wait position.",
       "mode": "simple",
       "mode_is_default": true
     }
