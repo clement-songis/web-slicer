@@ -1,8 +1,8 @@
 // Logique pure de l'onglet Appareil (parité Device d'Orca pour Klipper /
 // Moonraker) : temps restant estimé, scripts G-code des contrôles manuels,
 // URL de webcam mémorisée, détection des routes backend absentes.
-import { ApiError } from '$lib/api/client';
-import { fmtDec, tr } from '$lib/i18n';
+import { ApiError } from '#lib/api/client';
+import { fmtDec, tr } from '#lib/i18n';
 
 /** Champs d'état facultatifs qu'un backend enrichi peut renvoyer
  *  (`print_stats.info`, `fan`, `toolhead` de Moonraker). */

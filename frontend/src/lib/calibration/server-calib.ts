@@ -3,9 +3,9 @@
 // Comme Orca (le projet de calibration remplace le plateau courant sans
 // toucher au projet d'origine), un NOUVEAU projet est créé avec les presets
 // actifs, puis la calibration y est construite par le serveur.
-import { api } from '$lib/api/client';
-import { createProject, deleteProject } from '$lib/api/projects';
-import { tr } from '$lib/i18n';
+import { api } from '#lib/api/client';
+import { createProject, deleteProject } from '#lib/api/projects';
+import { tr } from '#lib/i18n';
 import type { EngineCalibKind, RangeParams } from './engine-calib';
 import type { FlowPattern } from './flowrate';
 

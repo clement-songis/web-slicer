@@ -6,7 +6,7 @@
 // (composantes 0–1) indexé par extrudeur, prêt pour `GeometryOptions` /
 // `buildLegend` (`filamentColors`).
 
-import { getResolvedPreset } from '$lib/api/presets';
+import { getResolvedPreset } from '#lib/api/presets';
 import { DEFAULT_FILAMENT_COLORS, type Rgb } from './colorations';
 
 /** Clés lues dans les valeurs résolues, par ordre de priorité. */

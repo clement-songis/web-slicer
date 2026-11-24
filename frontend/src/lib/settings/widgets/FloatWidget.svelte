@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 	import { unitLabel } from './unit-label';
 	// Flottant (coFloat*) avec unité affichée (sidetext) et bornes du registre.
 	import { FIELD_CLASS, unitText, type WidgetProps } from './types';

@@ -1,8 +1,8 @@
 // Garde de session + chargement de la file (T071). Rendu client uniquement
 // (session par cookie navigateur, WebSocket temps réel au montage).
-import { listJobs } from '$lib/api/jobs';
-import { listProjects } from '$lib/api/projects';
-import { requireOnboardedUser } from '$lib/guards';
+import { listJobs } from '#lib/api/jobs';
+import { listProjects } from '#lib/api/projects';
+import { requireOnboardedUser } from '#lib/guards';
 import type { PageLoad } from './$types';
 
 export const ssr = false;

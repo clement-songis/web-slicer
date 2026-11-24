@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import './layout.css';
-	import favicon from '$lib/assets/favicon.svg';
-	import { initLocale } from '$lib/i18n';
-	import { initTheme } from '$lib/theme';
-	import TooltipLayer from '$lib/ui/TooltipLayer.svelte';
-	import ConnectionBanner from '$lib/ui/ConnectionBanner.svelte';
-	import ReauthDialog from '$lib/ui/ReauthDialog.svelte';
+	import favicon from '#lib/assets/favicon.svg';
+	import { initLocale } from '#lib/i18n';
+	import { initTheme } from '#lib/theme';
+	import TooltipLayer from '#lib/ui/TooltipLayer.svelte';
+	import ConnectionBanner from '#lib/ui/ConnectionBanner.svelte';
+	import ReauthDialog from '#lib/ui/ReauthDialog.svelte';
 
 	let { children } = $props();
 

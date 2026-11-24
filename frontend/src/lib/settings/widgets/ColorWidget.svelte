@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 	// Sélecteur de couleur (gui_type « color »), valeur hexadécimale « #RRGGBB ».
 	import { FIELD_CLASS, type WidgetProps } from './types';
 

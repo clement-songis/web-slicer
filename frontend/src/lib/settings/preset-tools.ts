@@ -8,7 +8,7 @@ import {
 	GCODE_SPECIFIC_PLACEHOLDERS
 } from '../../generated/gcode-placeholders';
 import { settingChanged, type PresetValues } from './editing';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 /** Page / section d'Orca où vit une clé (pour regrouper un diff). */
 const LOCATION = new Map<string, { page: string; section: string; kind: PresetKind }>();

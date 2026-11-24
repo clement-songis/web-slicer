@@ -7,7 +7,7 @@
 // lot (un job par plateau) en état de session + table plateau → résultat ; la page
 // `projects/[id]` applique le résultat (chargement de l'aperçu, onglet actif).
 import type { ServerEvent } from '../api/types';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 import { friendlySliceError, type SliceSession } from './session';
 
 /** Résultat mémorisé d'un plateau tranché. */

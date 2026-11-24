@@ -1,7 +1,7 @@
 // Tests de l'orchestrateur d'import (T089) : classification des formats et
 // cycle de vie d'un import (upload → conversion moteur → prêt / échec).
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { setLocale } from '$lib/i18n';
+import { setLocale } from '#lib/i18n';
 import {
 	findByModel,
 	importExt,

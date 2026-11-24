@@ -3,7 +3,7 @@
 // msgstr d'OrcaSlicer_fr.po:10922 (« Cool Plate/Plaque PLA »).
 // FUZZ-a : textes de l'avertissement de GLGizmoFuzzySkin.cpp:337/343.
 import { afterAll, describe, expect, test } from 'vitest';
-import { setLocale, translate } from '$lib/i18n';
+import { setLocale, translate } from '#lib/i18n';
 import { translateOrcaMessage } from './validation';
 import catalog from './validation-messages.fr.json';
 

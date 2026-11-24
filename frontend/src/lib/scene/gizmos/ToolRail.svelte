@@ -4,8 +4,8 @@
 	// l'outil actif ; les panneaux/comportements sont câblés par T103 (transform),
 	// T104 (outils maillage) et T105 (peinture). Présentational : l'état vit dans
 	// `lib/editor/tools.ts`.
-	import { TOOL_ORDER, shortcutKeyFor, withShortcut, type EditorTool } from '$lib/editor';
-	import { t } from '$lib/i18n';
+	import { TOOL_ORDER, shortcutKeyFor, withShortcut, type EditorTool } from '#lib/editor';
+	import { t } from '#lib/i18n';
 	import IconMove from '~icons/lucide/move';
 	import IconRotate from '~icons/lucide/rotate-3d';
 	import IconScale from '~icons/lucide/scaling';

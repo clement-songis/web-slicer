@@ -3,9 +3,9 @@
 	// FilamentMapDialog / try_pop_up_before_slice, imprimantes à deux buses).
 	// Plus direct qu'Orca : deux colonnes Gauche / Droite, un clic sur une
 	// pastille la fait passer de l'autre côté (au lieu du glisser-déposer).
-	import { dialogFocus } from '$lib/ui/dialog-focus';
-	import { swatchStyle } from '$lib/ui/color';
-	import { t } from '$lib/i18n';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
+	import { swatchStyle } from '#lib/ui/color';
+	import { t } from '#lib/i18n';
 	import { nextNozzle, nozzleLabel, type FilamentMapMode } from './filament-map';
 
 	interface Props {

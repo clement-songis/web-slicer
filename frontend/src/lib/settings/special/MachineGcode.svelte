@@ -4,7 +4,7 @@
 	// résolu par type (tous ces champs → MultilineWidget).
 	import { PARAMS } from '../../../generated/params';
 	import { widgetFor } from '../widgets';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 	import { MACHINE_GCODE } from './groups';
 
 	interface Props {

@@ -4,8 +4,8 @@
 	// (souris, clavier), durée par pas de 0,25 s, largeur / espacement des
 	// lignes. Débits échantillonnés et chaîne écrits comme Orca (ramming.ts) ;
 	// sans changement de courbe, la chaîne d'origine est rendue telle quelle.
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import { locale, numberLocale, t } from '$lib/i18n';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import { locale, numberLocale, t } from '#lib/i18n';
 	import {
 		DEFAULT_RAMMING,
 		RAMMING_MAX_SPEED,

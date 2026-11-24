@@ -4,7 +4,7 @@
 // qu'au sélecteur de filament (type et fabricant sont des clés filament).
 // Pur → testable ; le chargement des valeurs passe par un `fetcher` injecté.
 
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 export type UserGrouping = 'all' | 'none' | 'type' | 'vendor';
 

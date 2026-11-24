@@ -3,8 +3,8 @@
 // le worker ne renvoie que le texte. On retrouve ici, côté client, les objets
 // du plateau dont la section à mi-hauteur de la première couche est plus
 // étroite qu'une ligne d'extrusion (pointe, arête posée sur le plateau).
-import { rotateVectorByEulerDeg } from '$lib/scene/transform';
-import type { SceneMesh } from '$lib/scene/mesh';
+import { rotateVectorByEulerDeg } from '#lib/scene/transform';
+import type { SceneMesh } from '#lib/scene/mesh';
 
 type Vec3 = [number, number, number];
 

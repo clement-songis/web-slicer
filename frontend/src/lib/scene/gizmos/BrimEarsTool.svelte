@@ -7,7 +7,7 @@
 	// pose les points par clic sur le modèle et calcule la 1ʳᵉ couche.
 	import type { BrimEarPoint } from './brim-ears';
 	import { HEAD_DIAMETER_MAX, HEAD_DIAMETER_MIN } from './brim-ears';
-	import { fmtNum, locale, t } from '$lib/i18n';
+	import { fmtNum, locale, t } from '#lib/i18n';
 	import IconX from '~icons/lucide/x';
 
 	interface Props {

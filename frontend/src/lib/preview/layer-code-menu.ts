@@ -12,7 +12,7 @@ import {
 	type CustomGcodeType,
 	type PlateCustomGcode
 } from './color-changes';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 /** Entrée du menu (libellés = traductions françaises d'Orca). */
 export interface LayerCodeMenuItem {

@@ -4,7 +4,7 @@
 // vue suit la préférence de l'utilisateur (store `resolvedTheme`). Teintes
 // alignées sur Orca (pièce grise, sélection ambre, volumes typés).
 import { derived } from 'svelte/store';
-import { resolvedTheme, type ResolvedTheme } from '$lib/theme/theme';
+import { resolvedTheme, type ResolvedTheme } from '#lib/theme/theme';
 
 export interface ScenePalette {
 	bed: string;

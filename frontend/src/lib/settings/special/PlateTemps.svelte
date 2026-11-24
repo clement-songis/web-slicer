@@ -2,7 +2,7 @@
 	// Dialog « températures par type de plaque » (T045) : table plaque × (temp
 	// normale, temp 1re couche). Chaque cellule est un coInts à une entrée.
 	import { parseNumbers, PLATE_TYPES, serializeNumbers } from './dialogs';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		/** Valeurs par clé (liable). */

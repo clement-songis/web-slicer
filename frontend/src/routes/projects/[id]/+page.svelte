@@ -3,16 +3,19 @@
 	// Perf : la scène 3D (three/threlte) et la vue d'aperçu sont chargées à la
 	// demande, hors du chunk initial de la page (≈1 Mo). La scène démarre son
 	// téléchargement dès l'évaluation de la page ; l'aperçu, à l'ouverture.
-	const sceneModule = import('$lib/scene/Scene.svelte');
-	let previewModule: Promise<typeof import('$lib/preview/PreviewScene.svelte')> | null = null;
-	const loadPreviewScene = () => (previewModule ??= import('$lib/preview/PreviewScene.svelte'));
+	const sceneModule = import('#lib/scene/Scene.svelte');
+
+	let previewModule: Promise<typeof import('#lib/preview/PreviewScene.svelte')> | null = null;
+
+	const loadPreviewScene = () => (previewModule ??= import('#lib/preview/PreviewScene.svelte'));
+
 	import { SvelteMap, SvelteSet } from 'svelte/reactivity';
 	import { resolve } from '$app/paths';
 	import { goto } from '$app/navigation';
-	import MenuBar from '$lib/menus/MenuBar.svelte';
-	import ShortcutsDialog from '$lib/menus/ShortcutsDialog.svelte';
-	import TipOfTheDayDialog from '$lib/menus/TipOfTheDayDialog.svelte';
-	import PreferencesDialog from '$lib/settings/PreferencesDialog.svelte';
+	import MenuBar from '#lib/menus/MenuBar.svelte';
+	import ShortcutsDialog from '#lib/menus/ShortcutsDialog.svelte';
+	import TipOfTheDayDialog from '#lib/menus/TipOfTheDayDialog.svelte';
+	import PreferencesDialog from '#lib/settings/PreferencesDialog.svelte';
 	import {
 		DEFAULT_PREFERENCES,
 		appPreferences,
@@ -21,11 +24,11 @@
 		savePreferences,
 		type AppPreferences,
 		type ArrangePreferences
-	} from '$lib/settings/preferences';
+	} from '#lib/settings/preferences';
 	// Phase 22 (audit Orca §10) : modèles pratiques, unités, À propos, purge auto.
-	import AboutDialog from '$lib/menus/AboutDialog.svelte';
-	import UnitConversionDialog from '$lib/editor/UnitConversionDialog.svelte';
-	import HandySuggestionDialog from '$lib/editor/HandySuggestionDialog.svelte';
+	import AboutDialog from '#lib/menus/AboutDialog.svelte';
+	import UnitConversionDialog from '#lib/editor/UnitConversionDialog.svelte';
+	import HandySuggestionDialog from '#lib/editor/HandySuggestionDialog.svelte';
 	import {
 		addHandyModel,
 		handyKeyOf,
@@ -35,7 +38,7 @@
 		type HandyModelAdded,
 		type HandyModelInfo,
 		type HandyModelSuggestion
-	} from '$lib/editor/handy-models';
+	} from '#lib/editor/handy-models';
 	import {
 		convertScale,
 		detectUnits,
@@ -44,18 +47,18 @@
 		unitActionOf,
 		withUnitItems,
 		type UnitSource
-	} from '$lib/editor/units';
-	import { autoFlushResult, changedSlots, type FlushSnapshot } from '$lib/editor/auto-flush';
-	import { sliceBlockerReason } from '$lib/editor/slice-blocker';
+	} from '#lib/editor/units';
+	import { autoFlushResult, changedSlots, type FlushSnapshot } from '#lib/editor/auto-flush';
+	import { sliceBlockerReason } from '#lib/editor/slice-blocker';
 	import {
 		gcodeCheckError,
 		gcodeCheckKind,
 		isNozzleRangeError
-	} from '$lib/editor/nozzle-range-error';
-	import { detachPreset } from '$lib/api/presets';
+	} from '#lib/editor/nozzle-range-error';
+	import { detachPreset } from '#lib/api/presets';
 	// Lot 21 : brouillon au tranchage, peinture conservée, températures, buses.
-	import { buildProjectOverrides } from '$lib/editor/slice-draft';
-	import { installedFilaments, preferredFilaments } from '$lib/printers/wizard-filaments';
+	import { buildProjectOverrides } from '#lib/editor/slice-draft';
+	import { installedFilaments, preferredFilaments } from '#lib/printers/wizard-filaments';
 	import {
 		applyBatchEvent,
 		batchFinished,
@@ -67,9 +70,9 @@
 		staleResults,
 		type PlateResults,
 		type SliceBatch
-	} from '$lib/editor/plate-results';
-	import { checkFilamentCompatibility, compatibilityText } from '$lib/editor/filament-compat';
-	import { paintedChannels, remapPaint } from '$lib/editor/keep-paint';
+	} from '#lib/editor/plate-results';
+	import { checkFilamentCompatibility, compatibilityText } from '#lib/editor/filament-compat';
+	import { paintedChannels, remapPaint } from '#lib/editor/keep-paint';
 	import {
 		effectiveMapMode,
 		extruderCount,
@@ -79,30 +82,30 @@
 		readFilamentMap,
 		shouldPromptFilamentMap,
 		type FilamentMapMode
-	} from '$lib/editor/filament-map';
-	import FilamentMapDialog from '$lib/editor/FilamentMapDialog.svelte';
-	import { buildZip } from '$lib/export/zip';
-	import { modelsFromZip, presetsFromFiles } from '$lib/editor/menu-files';
-	import { pointerFocusesView, tabTogglesView, VIEW_ZONE_SELECTOR } from '$lib/editor/tab-focus';
-	import { isDefaultProjectName, projectNameFromFile } from '$lib/editor/project-name';
-	import GcodeWindow from '$lib/preview/GcodeWindow.svelte';
-	import { nextNotice, type Notice } from '$lib/editor/notice';
-	import ToolPositionCard from '$lib/preview/ToolPositionCard.svelte';
-	import PreviewPlates from '$lib/preview/PreviewPlates.svelte';
-	import { toolPositionAt, type ToolPosition } from '$lib/preview/tool-position';
-	import { parseGcodeFooterStats } from '$lib/preview/footer-stats';
-	import { platesTotals } from '$lib/preview/plates-summary';
-	import { jumpToLayer } from '$lib/preview/sliders';
-	import { toolpathsToObj } from '$lib/preview/toolpaths-obj';
-	import { supportNormalZ } from '$lib/scene/overhang';
+	} from '#lib/editor/filament-map';
+	import FilamentMapDialog from '#lib/editor/FilamentMapDialog.svelte';
+	import { buildZip } from '#lib/export/zip';
+	import { modelsFromZip, presetsFromFiles } from '#lib/editor/menu-files';
+	import { pointerFocusesView, tabTogglesView, VIEW_ZONE_SELECTOR } from '#lib/editor/tab-focus';
+	import { isDefaultProjectName, projectNameFromFile } from '#lib/editor/project-name';
+	import GcodeWindow from '#lib/preview/GcodeWindow.svelte';
+	import { nextNotice, type Notice } from '#lib/editor/notice';
+	import ToolPositionCard from '#lib/preview/ToolPositionCard.svelte';
+	import PreviewPlates from '#lib/preview/PreviewPlates.svelte';
+	import { toolPositionAt, type ToolPosition } from '#lib/preview/tool-position';
+	import { parseGcodeFooterStats } from '#lib/preview/footer-stats';
+	import { platesTotals } from '#lib/preview/plates-summary';
+	import { jumpToLayer } from '#lib/preview/sliders';
+	import { toolpathsToObj } from '#lib/preview/toolpaths-obj';
+	import { supportNormalZ } from '#lib/scene/overhang';
 	import {
 		isByObject,
 		mergeInRank,
 		orderFromPlacements,
 		permuteInSlots,
 		sequentialArrangeFields
-	} from '$lib/scene/print-order';
-	import ValidationPanel from '$lib/editor/ValidationPanel.svelte';
+	} from '#lib/scene/print-order';
+	import ValidationPanel from '#lib/editor/ValidationPanel.svelte';
 	import {
 		buildNotices,
 		conversionCause,
@@ -115,34 +118,34 @@
 		type OrcaCatalog,
 		type ValidateResponse,
 		type ValidationNotice
-	} from '$lib/editor/validation';
-	import { safeFileName } from '$lib/export/stl';
-	import { getJob, listJobs } from '$lib/api/jobs';
-	import { EarlyJobEvents } from '$lib/editor/early-job-events';
-	import { jobAsEvent, planResume, resumedProgress } from '$lib/editor/resume-job';
+	} from '#lib/editor/validation';
+	import { safeFileName } from '#lib/export/stl';
+	import { getJob, listJobs } from '#lib/api/jobs';
+	import { EarlyJobEvents } from '#lib/editor/early-job-events';
+	import { jobAsEvent, planResume, resumedProgress } from '#lib/editor/resume-job';
 	import {
 		localSignatureVerdict,
 		rememberSliceSignature,
 		serverJobFreshness,
 		serverSliceFreshness,
 		shouldRestore
-	} from '$lib/editor/slice-signature-store';
-	import { connection, reportUnreachable } from '$lib/api/connectivity';
-	import { clearWaiting, isConnectionError, markWaiting } from '$lib/editor/imports';
-	import type { JobResponse, SliceRequest } from '$lib/api/types';
-	import type { Projection } from '$lib/scene/camera';
-	import { cameraSpaceNudge, clampZoom } from '$lib/scene/camera';
-	import { RightClickGuard } from '$lib/scene/right-click';
+	} from '#lib/editor/slice-signature-store';
+	import { connection, reportUnreachable } from '#lib/api/connectivity';
+	import { clearWaiting, isConnectionError, markWaiting } from '#lib/editor/imports';
+	import type { JobResponse, SliceRequest } from '#lib/api/types';
+	import type { Projection } from '#lib/scene/camera';
+	import { cameraSpaceNudge, clampZoom } from '#lib/scene/camera';
+	import { RightClickGuard } from '#lib/scene/right-click';
 	// Phase 34 : Page préc./suiv. (rotation ±45°), « + »/« − » (instances, ou
 	// changement de couleur en Aperçu).
-	import { rotationFromAction } from '$lib/editor/shortcuts';
-	import { rotateSelectionZ } from '$lib/scene/rotate-selection';
+	import { rotationFromAction } from '#lib/editor/shortcuts';
+	import { rotateSelectionZ } from '#lib/scene/rotate-selection';
 	import {
 		codeIndexAtZ,
 		editColorChangeAt,
 		pendingTicks,
 		withAuthoredTypes
-	} from '$lib/preview/color-changes';
+	} from '#lib/preview/color-changes';
 	// Phase 37 : menu du curseur de couches (IMSlider), tableau des paramètres,
 	// fusion de filaments, navigateur 3D, débit de buse, coupe, erreurs de maillage.
 	import {
@@ -151,36 +154,36 @@
 		layerCodeMenu,
 		remapCodesAfterFilamentRemoval,
 		type LayerCodeMenuItem
-	} from '$lib/preview/layer-code-menu';
-	import ObjectTable from '$lib/scene/ObjectTable.svelte';
-	import type { TableObjectSource, TableRow } from '$lib/scene/object-table';
-	import { maxLayerHeight } from '$lib/scene/object-table';
-	import ViewCube from '$lib/scene/ViewCube.svelte';
+	} from '#lib/preview/layer-code-menu';
+	import ObjectTable from '#lib/scene/ObjectTable.svelte';
+	import type { TableObjectSource, TableRow } from '#lib/scene/object-table';
+	import { maxLayerHeight } from '#lib/scene/object-table';
+	import ViewCube from '#lib/scene/ViewCube.svelte';
 	import {
 		cutLinkedIds,
 		invalidatedIds,
 		parseCutId,
 		syncAfterCut,
 		uniformCutScale
-	} from '$lib/scene/cut-info';
-	import { groupCutScale, uniformFactor } from '$lib/scene/cut-group-scale';
+	} from '#lib/scene/cut-info';
+	import { groupCutScale, uniformFactor } from '#lib/scene/cut-group-scale';
 	import {
 		meshErrorsKey,
 		meshErrorsRequest,
 		meshWarnings as toMeshWarnings,
 		type MeshWarning
-	} from '$lib/scene/mesh-errors';
-	import { invalidateCut, sceneMeshErrors } from '$lib/api/scene';
+	} from '#lib/scene/mesh-errors';
+	import { invalidateCut, sceneMeshErrors } from '#lib/api/scene';
 	import {
 		NOZZLE_FLOW_LABELS,
 		nozzleFlowChoices,
 		setNozzleFlow,
 		type NozzleFlow
-	} from '$lib/settings/nozzle-flow';
-	import DevicePanel from '$lib/printers/DevicePanel.svelte';
-	import { MAIN_MENUS, RECENT_ACTION, recentFirst, withRecentProjects } from '$lib/menus/menus';
-	import { sortByUpdated } from '$lib/library/library';
-	import { draftStore, type DraftRecord } from '$lib/stores/draft';
+	} from '#lib/settings/nozzle-flow';
+	import DevicePanel from '#lib/printers/DevicePanel.svelte';
+	import { MAIN_MENUS, RECENT_ACTION, recentFirst, withRecentProjects } from '#lib/menus/menus';
+	import { sortByUpdated } from '#lib/library/library';
+	import { draftStore, type DraftRecord } from '#lib/stores/draft';
 	import {
 		ObjectList,
 		PlateBar,
@@ -248,21 +251,21 @@
 		type Transform,
 		type NamedView,
 		boundsOf
-	} from '$lib/scene';
+	} from '#lib/scene';
 	import {
 		dropPlateIndex,
 		plateOffsets,
 		showDropHint,
 		type Footprint,
 		type PlateView
-	} from '$lib/scene/plate-layout';
-	import { planSceneRestore } from '$lib/scene/document';
-	import { DEFAULT_PLATE_TYPE } from '$lib/scene/plates.svelte';
-	import { PLATE_TYPES } from '$lib/settings/special/dialogs';
-	import { plateTypeToBedType, printerDefaultPlateType } from '$lib/scene/bed-type';
-	import { gcode3mfRefusal, gcodeFilePlates, gcodeFileText } from '$lib/editor/gcode-3mf';
-	import Gcode3mfOfferDialog from '$lib/editor/Gcode3mfOfferDialog.svelte';
-	import { parseVolumeShapeAction, type VolumeShape } from '$lib/scene/menus';
+	} from '#lib/scene/plate-layout';
+	import { planSceneRestore } from '#lib/scene/document';
+	import { DEFAULT_PLATE_TYPE } from '#lib/scene/plates.svelte';
+	import { PLATE_TYPES } from '#lib/settings/special/dialogs';
+	import { plateTypeToBedType, printerDefaultPlateType } from '#lib/scene/bed-type';
+	import { gcode3mfRefusal, gcodeFilePlates, gcodeFileText } from '#lib/editor/gcode-3mf';
+	import Gcode3mfOfferDialog from '#lib/editor/Gcode3mfOfferDialog.svelte';
+	import { parseVolumeShapeAction, type VolumeShape } from '#lib/scene/menus';
 	import {
 		VOLUME_ACTIONS,
 		defaultVolume,
@@ -277,21 +280,21 @@
 		partTypeChoices,
 		type SceneVolume,
 		type VolumeType
-	} from '$lib/scene/volumes';
-	import ObjectSettingsPanel from '$lib/scene/ObjectSettingsPanel.svelte';
-	import LayerRangesPanel from '$lib/scene/LayerRangesPanel.svelte';
-	import { addRootRange, type LayerRange as HeightRange } from '$lib/scene/layer-ranges';
+	} from '#lib/scene/volumes';
+	import ObjectSettingsPanel from '#lib/scene/ObjectSettingsPanel.svelte';
+	import LayerRangesPanel from '#lib/scene/LayerRangesPanel.svelte';
+	import { addRootRange, type LayerRange as HeightRange } from '#lib/scene/layer-ranges';
 	import {
 		alignFaces,
 		alignPoints,
 		worldFaceCenter,
 		worldTriangleNormal
-	} from '$lib/scene/tools/assembly-align';
-	import { restingZ } from '$lib/scene/mesh';
-	import { autoDrop } from '$lib/scene/auto-drop';
-	import { svgVolumeName, textVolumeName } from '$lib/scene/gizmos/emboss-names';
-	import { fitScaleFactor, mirrorScale, scaleBy, worldSize } from '$lib/scene/transform-ops';
-	import { sectionNormal, sectionPlane, stepSectionRatio } from '$lib/scene/screen-select';
+	} from '#lib/scene/tools/assembly-align';
+	import { restingZ } from '#lib/scene/mesh';
+	import { autoDrop } from '#lib/scene/auto-drop';
+	import { svgVolumeName, textVolumeName } from '#lib/scene/gizmos/emboss-names';
+	import { fitScaleFactor, mirrorScale, scaleBy, worldSize } from '#lib/scene/transform-ops';
+	import { sectionNormal, sectionPlane, stepSectionRatio } from '#lib/scene/screen-select';
 	import {
 		assemblyInfo,
 		assemblySectionPlane,
@@ -299,17 +302,17 @@
 		objectsBox,
 		unionBox,
 		volumeWorldBox
-	} from '$lib/scene/assembly-info';
-	import type { PaintDocument } from '$lib/scene/gizmos/painting/painting';
-	import type { BrimEarsDocument } from '$lib/scene/gizmos/brim-ears';
+	} from '#lib/scene/assembly-info';
+	import type { PaintDocument } from '#lib/scene/gizmos/painting/painting';
+	import type { BrimEarsDocument } from '#lib/scene/gizmos/brim-ears';
 	import {
 		clearBackup,
 		readBackup,
 		shouldOfferRestore,
 		writeBackup,
 		type ProjectBackup
-	} from '$lib/scene/auto-backup';
-	import type { SceneDocument as BackupSceneDocument } from '$lib/scene/document';
+	} from '#lib/scene/auto-backup';
+	import type { SceneDocument as BackupSceneDocument } from '#lib/scene/document';
 	import {
 		DEFAULT_DETECTION_RADIUS,
 		DEFAULT_MAX_ANGLE,
@@ -320,41 +323,41 @@
 		firstLayerContours,
 		invalidEars,
 		worldToEar
-	} from '$lib/scene/gizmos/brim-ears';
-	import { PresetSettingsDialog } from '$lib/settings';
-	import PlateSettingsDialog from '$lib/settings/PlateSettingsDialog.svelte';
+	} from '#lib/scene/gizmos/brim-ears';
+	import { PresetSettingsDialog } from '#lib/settings';
+	import PlateSettingsDialog from '#lib/settings/PlateSettingsDialog.svelte';
 	import {
 		changedPresetValues,
 		clonePresetValues,
 		hasPresetChanges,
 		presetValuesForSave,
 		withOrcaDefaults
-	} from '$lib/settings/editing';
-	import { swatchStyle } from '$lib/ui';
-	import SendToPrinter from '$lib/printers/SendToPrinter.svelte';
-	import { SceneHistory, takeSnapshot, type SceneSnapshot } from '$lib/scene/scene-history';
-	import type { SceneNode } from '$lib/scene/objects.svelte';
-	import CalibrationDialog from '$lib/calibration/CalibrationDialog.svelte';
+	} from '#lib/settings/editing';
+	import { swatchStyle } from '#lib/ui';
+	import SendToPrinter from '#lib/printers/SendToPrinter.svelte';
+	import { SceneHistory, takeSnapshot, type SceneSnapshot } from '#lib/scene/scene-history';
+	import type { SceneNode } from '#lib/scene/objects.svelte';
+	import CalibrationDialog from '#lib/calibration/CalibrationDialog.svelte';
 	import {
 		embossEditLabel,
 		embossPartOffset,
 		paramsFromEmboss,
 		type EmbossParams
-	} from '$lib/scene/gizmos/emboss';
-	import EngineCalibrationDialog from '$lib/calibration/EngineCalibrationDialog.svelte';
-	import FlowRateDialog from '$lib/calibration/FlowRateDialog.svelte';
-	import PresetBundleDialog, { type BundlePresetRef } from '$lib/presets/PresetBundleDialog.svelte';
-	import type { FlowPattern } from '$lib/calibration/flowrate';
-	import { type EngineCalibKind, type RangeParams } from '$lib/calibration/engine-calib';
+	} from '#lib/scene/gizmos/emboss';
+	import EngineCalibrationDialog from '#lib/calibration/EngineCalibrationDialog.svelte';
+	import FlowRateDialog from '#lib/calibration/FlowRateDialog.svelte';
+	import PresetBundleDialog, { type BundlePresetRef } from '#lib/presets/PresetBundleDialog.svelte';
+	import type { FlowPattern } from '#lib/calibration/flowrate';
+	import { type EngineCalibKind, type RangeParams } from '#lib/calibration/engine-calib';
 	import {
 		type CalibrationKind,
 		type PressureAdvanceParams,
 		type TemperatureParams
-	} from '$lib/calibration/calibration';
-	import { createLatestLoader } from '$lib/settings/latest-load';
-	import { PresetSelect } from '$lib/presets';
-	import OwnedPrinterPicker from '$lib/printers/OwnedPrinterPicker.svelte';
-	import PrinterCatalog from '$lib/printers/PrinterCatalog.svelte';
+	} from '#lib/calibration/calibration';
+	import { createLatestLoader } from '#lib/settings/latest-load';
+	import { PresetSelect } from '#lib/presets';
+	import OwnedPrinterPicker from '#lib/printers/OwnedPrinterPicker.svelte';
+	import PrinterCatalog from '#lib/printers/PrinterCatalog.svelte';
 	import {
 		LazyPreviewLoader,
 		buildPreviewStats,
@@ -377,16 +380,16 @@
 		type Coloration,
 		type Rgb,
 		type GcodeStats
-	} from '$lib/preview';
-	import type { PreviewGeometry } from '$lib/preview/geometry';
+	} from '#lib/preview';
+	import type { PreviewGeometry } from '#lib/preview/geometry';
 	import {
 		buildLegend,
 		buildOverlay,
 		computeFlowRange,
 		PREVIEW_OPTIONS,
 		type PreviewOption
-	} from '$lib/preview/geometry';
-	import { parsePreviewTrack, trackMatches, type PreviewTrack } from '$lib/preview/track';
+	} from '#lib/preview/geometry';
+	import { parsePreviewTrack, trackMatches, type PreviewTrack } from '#lib/preview/track';
 	import {
 		applyEngine,
 		engineLayersFor,
@@ -394,7 +397,7 @@
 		withEngine,
 		type EngineMeta,
 		type EngineMoves
-	} from '$lib/preview/engine-track';
+	} from '#lib/preview/engine-track';
 	import {
 		estimatedTimeAtTool,
 		layerEndTime,
@@ -405,16 +408,16 @@
 		type EngineSeam,
 		type EstimatedTime,
 		type PlatesStatsResponse
-	} from '$lib/preview/engine-data';
-	import EngineSummary from '$lib/preview/EngineSummary.svelte';
-	import { formatDuration } from '$lib/preview/stats';
+	} from '#lib/preview/engine-data';
+	import EngineSummary from '#lib/preview/EngineSummary.svelte';
+	import { formatDuration } from '#lib/preview/stats';
 	import {
 		effectiveRenderMode,
 		detectSoftwareRenderer,
 		VOLUME_SEGMENT_LIMIT,
 		type RenderMode
-	} from '$lib/preview/extrusions';
-	import PreviewLegend from '$lib/preview/PreviewLegend.svelte';
+	} from '#lib/preview/extrusions';
+	import PreviewLegend from '#lib/preview/PreviewLegend.svelte';
 	import {
 		sliceProject,
 		listProjectModels,
@@ -424,13 +427,13 @@
 		importProject,
 		listProjects,
 		getProject
-	} from '$lib/api/projects';
+	} from '#lib/api/projects';
 	import {
 		isNameConflict,
 		nameSuggestion,
 		nameTakenMessage,
 		uniqueProjectName
-	} from '$lib/library/names';
+	} from '#lib/library/names';
 	import {
 		arrangeScene,
 		getArrangeOptions,
@@ -447,10 +450,10 @@
 		layerProfileModel,
 		listEmbossFonts,
 		type MeshOpResponse
-	} from '$lib/api/scene';
-	import { meshOpErrorMessage, placeSourcePart, worldMatrix } from '$lib/scene/tools/mesh-ops';
-	import { EnginePaintClient, paintWsUrl } from '$lib/scene/gizmos/painting/engine-paint';
-	import { BLOCKER, ENFORCER, remapChannelStates } from '$lib/scene/gizmos/painting/facets';
+	} from '#lib/api/scene';
+	import { meshOpErrorMessage, placeSourcePart, worldMatrix } from '#lib/scene/tools/mesh-ops';
+	import { EnginePaintClient, paintWsUrl } from '#lib/scene/gizmos/painting/engine-paint';
+	import { BLOCKER, ENFORCER, remapChannelStates } from '#lib/scene/gizmos/painting/facets';
 	import {
 		PAINT_PARAM_DEFAULTS,
 		coerceTool,
@@ -466,47 +469,47 @@
 		type PaintTool,
 		type PointerConstraint,
 		type StrokeToolFields
-	} from '$lib/scene/gizmos/painting/paint-tools';
-	import { effectiveRealistic } from '$lib/scene/realistic';
-	import { overlappingCount } from '$lib/scene/footprint-overlap';
+	} from '#lib/scene/gizmos/painting/paint-tools';
+	import { effectiveRealistic } from '#lib/scene/realistic';
+	import { overlappingCount } from '#lib/scene/footprint-overlap';
 	import {
 		PAINT_BLOCKER_COLOUR,
 		PAINT_ENFORCER_COLOUR,
 		paintOverlayGeometry,
 		type PaintOverlay
-	} from '$lib/scene/gizmos/painting/paint-overlay';
-	import { StrokeRecorder } from '$lib/scene/gizmos/painting/stroke';
-	import { mouseStrokeState } from '$lib/scene/gizmos/painting/mouse-state';
-	import { outsideStates } from '$lib/scene/print-volume';
-	import { importedPlates } from '$lib/scene/import-plates';
-	import { outsideNotices } from '$lib/editor/outside-notices';
-	import { CutSession } from '$lib/scene/tools/cut-session.svelte';
-	import { cutPartLabel } from '$lib/scene/tools/cut-plan';
-	import { arrangeAllScopes, nearestFreeCell } from '$lib/scene/arrange';
-	import { emptyFirstLayerSuspects, isEmptyFirstLayerError } from '$lib/editor/first-layer';
-	import { conflictMessage, parseConflict } from '$lib/editor/gcode-conflict';
-	import { effectiveOptions, optionsBody } from '$lib/scene/arrange-options';
-	import { placedTransform, plateMoves, unarrangedIds } from '$lib/scene/arrange-gui';
-	import ArrangeOptionsPanel from '$lib/scene/ArrangeOptionsPanel.svelte';
-	import ProjectMetadataPanel from '$lib/scene/ProjectMetadataPanel.svelte';
-	import OpenProjectDialog from '$lib/projects/OpenProjectDialog.svelte';
-	import ImportReportDialog from '$lib/projects/ImportReportDialog.svelte';
+	} from '#lib/scene/gizmos/painting/paint-overlay';
+	import { StrokeRecorder } from '#lib/scene/gizmos/painting/stroke';
+	import { mouseStrokeState } from '#lib/scene/gizmos/painting/mouse-state';
+	import { outsideStates } from '#lib/scene/print-volume';
+	import { importedPlates } from '#lib/scene/import-plates';
+	import { outsideNotices } from '#lib/editor/outside-notices';
+	import { CutSession } from '#lib/scene/tools/cut-session.svelte';
+	import { cutPartLabel } from '#lib/scene/tools/cut-plan';
+	import { arrangeAllScopes, nearestFreeCell } from '#lib/scene/arrange';
+	import { emptyFirstLayerSuspects, isEmptyFirstLayerError } from '#lib/editor/first-layer';
+	import { conflictMessage, parseConflict } from '#lib/editor/gcode-conflict';
+	import { effectiveOptions, optionsBody } from '#lib/scene/arrange-options';
+	import { placedTransform, plateMoves, unarrangedIds } from '#lib/scene/arrange-gui';
+	import ArrangeOptionsPanel from '#lib/scene/ArrangeOptionsPanel.svelte';
+	import ProjectMetadataPanel from '#lib/scene/ProjectMetadataPanel.svelte';
+	import OpenProjectDialog from '#lib/projects/OpenProjectDialog.svelte';
+	import ImportReportDialog from '#lib/projects/ImportReportDialog.svelte';
 	import {
 		behaviourFromChoice,
 		decideLoadMode,
 		isProjectArchive,
 		stashImportReport,
 		takeImportReport
-	} from '$lib/projects/open-3mf';
+	} from '#lib/projects/open-3mf';
 	import type {
 		ArrangeOptionsInfo,
 		ArrangeResponse,
 		ImportLoadMode,
 		ImportReport
-	} from '$lib/api/types';
-	import { measureGuides } from '$lib/scene/guides';
-	import { capturePlatePng, putPlateThumbnail } from '$lib/scene/plate-thumbnail';
-	import type { BooleanOp } from '$lib/scene/tools/BooleanTool.svelte';
+	} from '#lib/api/types';
+	import { measureGuides } from '#lib/scene/guides';
+	import { capturePlatePng, putPlateThumbnail } from '#lib/scene/plate-thumbnail';
+	import type { BooleanOp } from '#lib/scene/tools/BooleanTool.svelte';
 	import {
 		instancesOfModel,
 		repairSummary,
@@ -514,8 +517,8 @@
 		replaceMesh,
 		simplifyRequest,
 		simplifySummary
-	} from '$lib/scene/repair';
-	import type { SimplifyToolParam } from '$lib/scene/tools/SimplifyTool.svelte';
+	} from '#lib/scene/repair';
+	import type { SimplifyToolParam } from '#lib/scene/tools/SimplifyTool.svelte';
 	import {
 		fetchPreviewLayers,
 		getPreviewMeta,
@@ -526,7 +529,7 @@
 		localGcodeLayers,
 		localGcodeMeta,
 		type EngineSource
-	} from '$lib/api/preview';
+	} from '#lib/api/preview';
 	import {
 		listPresets,
 		cachedPresetList,
@@ -537,43 +540,43 @@
 		importPreset,
 		deletePreset,
 		blockingProjects
-	} from '$lib/api/presets';
-	import { listPrinters, getPrinterCatalog, createPrinter, uploadSliced } from '$lib/api/printers';
-	import { friendlySliceError } from '$lib/editor/session';
-	import ComparePresetsDialog from '$lib/settings/ComparePresetsDialog.svelte';
-	import UndoHistory from '$lib/scene/UndoHistory.svelte';
-	import CreateFilamentDialog from '$lib/presets/CreateFilamentDialog.svelte';
-	import PaHistoryDialog from '$lib/calibration/PaHistoryDialog.svelte';
-	import CalibrationResultCard from '$lib/calibration/CalibrationResultCard.svelte';
-	import { calibrationReading, type CalibrationReading } from '$lib/calibration/calibration-result';
-	import type { PaMethod } from '$lib/calibration/pa-history';
+	} from '#lib/api/presets';
+	import { listPrinters, getPrinterCatalog, createPrinter, uploadSliced } from '#lib/api/printers';
+	import { friendlySliceError } from '#lib/editor/session';
+	import ComparePresetsDialog from '#lib/settings/ComparePresetsDialog.svelte';
+	import UndoHistory from '#lib/scene/UndoHistory.svelte';
+	import CreateFilamentDialog from '#lib/presets/CreateFilamentDialog.svelte';
+	import PaHistoryDialog from '#lib/calibration/PaHistoryDialog.svelte';
+	import CalibrationResultCard from '#lib/calibration/CalibrationResultCard.svelte';
+	import { calibrationReading, type CalibrationReading } from '#lib/calibration/calibration-result';
+	import type { PaMethod } from '#lib/calibration/pa-history';
 	import {
 		createServerCalibration,
 		engineRequest,
 		flowRequest,
 		pressureAdvanceRequest,
 		temperatureRequest
-	} from '$lib/calibration/server-calib';
-	import UnsavedPresetDialog from '$lib/settings/UnsavedPresetDialog.svelte';
-	import { diffPresets, transferChanges, type SettingDiff } from '$lib/settings/preset-tools';
+	} from '#lib/calibration/server-calib';
+	import UnsavedPresetDialog from '#lib/settings/UnsavedPresetDialog.svelte';
+	import { diffPresets, transferChanges, type SettingDiff } from '#lib/settings/preset-tools';
 	import {
 		clampTowerPosition,
 		effectiveBrim,
 		estimateWipeTowerSize,
 		showWipeTower
-	} from '$lib/scene/wipe-tower';
-	import FlushVolumesDialog from '$lib/editor/FlushVolumesDialog.svelte';
-	import ObjColorDialog from '$lib/editor/ObjColorDialog.svelte';
-	import StepMeshDialog from '$lib/editor/StepMeshDialog.svelte';
+	} from '#lib/scene/wipe-tower';
+	import FlushVolumesDialog from '#lib/editor/FlushVolumesDialog.svelte';
+	import ObjColorDialog from '#lib/editor/ObjColorDialog.svelte';
+	import StepMeshDialog from '#lib/editor/StepMeshDialog.svelte';
 	import {
 		isStep,
 		loadStepPrefs,
 		remeshStep,
 		sameStepOptions,
 		STEP_DEFAULTS
-	} from '$lib/editor/step-mesh';
-	import AuxiliariesPanel from '$lib/editor/AuxiliariesPanel.svelte';
-	import { objColors } from '$lib/api/auxiliaries';
+	} from '#lib/editor/step-mesh';
+	import AuxiliariesPanel from '#lib/editor/AuxiliariesPanel.svelte';
+	import { objColors } from '#lib/api/auxiliaries';
 	import {
 		isMtl,
 		mapExtruder,
@@ -581,12 +584,12 @@
 		remapMmu,
 		type ObjColorPlan,
 		type ObjColorsResponse
-	} from '$lib/editor/obj-colors';
+	} from '#lib/editor/obj-colors';
 	import {
 		computeFlushVolumes,
 		effectiveFlushVolumes,
 		flushVolumesAvailable
-	} from '$lib/api/flush';
+	} from '#lib/api/flush';
 	import {
 		afterSlotAdded,
 		nextFilamentColour,
@@ -600,9 +603,9 @@
 		towerPosition,
 		DEFAULT_FLUSH_MULTIPLIER,
 		type ProjectFilamentConfig
-	} from '$lib/editor/multi-filament';
-	import { dialogFocus } from '$lib/ui/dialog-focus';
-	import { subscribeEvents, type EventSubscription } from '$lib/queue/events';
+	} from '#lib/editor/multi-filament';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
+	import { subscribeEvents, type EventSubscription } from '#lib/queue/events';
 	import type {
 		PreviewMeta,
 		PresetDetail,
@@ -611,14 +614,14 @@
 		PrinterResponse,
 		PrinterCatalogVendor,
 		PrinterCatalogModel
-	} from '$lib/api/types';
-	import { ApiError } from '$lib/api/client';
+	} from '#lib/api/types';
+	import { ApiError } from '#lib/api/client';
 	import {
 		exportPresetBundleArchive,
 		importPresetBundleFile,
 		type BundleExportEntry
-	} from '$lib/api/preset-bundle';
-	import { fmtNum, locale, numberLocale, t, tr } from '$lib/i18n';
+	} from '#lib/api/preset-bundle';
+	import { fmtNum, locale, numberLocale, t, tr } from '#lib/i18n';
 	import {
 		initialWorkspace,
 		pick,
@@ -658,8 +661,8 @@
 		setFilament,
 		type EditorTab,
 		type ImportItem
-	} from '$lib/editor';
-	import type { DisplayMode } from '$lib/settings/filter';
+	} from '#lib/editor';
+	import type { DisplayMode } from '#lib/settings/filter';
 	import {
 		applyOverrides,
 		pendingAfterSlotRemoval,
@@ -667,7 +670,7 @@
 		withPendingFilament,
 		withoutPending,
 		type ActivePresets
-	} from '$lib/editor/presets';
+	} from '#lib/editor/presets';
 	import {
 		addFilamentSlot,
 		importedFilamentSlots,
@@ -682,9 +685,9 @@
 		slotAfterRemoval,
 		SUPPORT_FILAMENT_KEYS,
 		supportFilamentAfterRemoval
-	} from '$lib/editor/presets';
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import InstanceCountDialog from '$lib/scene/InstanceCountDialog.svelte';
+	} from '#lib/editor/presets';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import InstanceCountDialog from '#lib/scene/InstanceCountDialog.svelte';
 	import {
 		instanceCountPlan,
 		instanceGroups,
@@ -694,8 +697,8 @@
 		planInstanceSync,
 		planMemberSync,
 		rememberMembers
-	} from '$lib/scene/instances';
-	import { uniqueCopyName } from '$lib/editor/presets';
+	} from '#lib/scene/instances';
+	import { uniqueCopyName } from '#lib/editor/presets';
 	import type { PageData } from './$types';
 	import IconPencil from '~icons/lucide/pencil';
 	import IconPlus from '~icons/lucide/plus';
@@ -2181,6 +2184,7 @@
 			.flatMap((v) => (typeof v === 'string' ? v.split(';') : []))
 			.map((v) => v.trim().replace(/^"|"$/g, ''))
 			.filter(Boolean);
+
 		for (const name of names) {
 			const hit = list.find((p) => p.name === name);
 			if (hit) return hit.id;
@@ -3464,7 +3468,9 @@
 		// plateau contenait déjà des objets (préférence « Arranger automatiquement »).
 		const arrange =
 			res.handy_model.arrange_after_import || (currentPreferences().autoArrange && before > 0);
+
 		if (arrange && (await importsReady(ids, generation))) await arrangeActive();
+
 		const suggestion = res.handy_model.suggestion;
 		if (suggestion && suggestionApplies(suggestion, processValues)) handySuggestion = suggestion;
 	}
@@ -4059,10 +4065,15 @@
 	function sliceSignature(): string {
 		const scene = buildSceneForSave() as unknown as Record<string, unknown>;
 		const saved = scene.plates;
+
 		const stable =
 			saved && typeof saved === 'object' && !Array.isArray(saved)
-				? { ...scene, plates: { ...(saved as Record<string, unknown>), activeId: null } }
+				? {
+						...scene,
+						plates: { ...(saved as Record<string, unknown>), activeId: null }
+					}
 				: scene;
+
 		return (
 			JSON.stringify(stable) +
 			JSON.stringify(serializeActivePresets(activePresets)) +
@@ -4293,6 +4304,7 @@
 			openEmbossEdit(selId)
 		)
 			return;
+
 		tools = setTool(tools, tool);
 		if (tools.active === 'measure') clearMeasure();
 		// Peinture : un objet de 20 mm sur un plateau de 350 mm est minuscule ;
@@ -4415,7 +4427,9 @@
 
 	// Contexte des panneaux d'outils (T104) : objet unique sélectionné + dérivés.
 	const selId = $derived(ws.selection.size === 1 ? [...ws.selection][0] : null);
+
 	const activeObject = $derived(selId ? (sceneObjects.find((o) => o.id === selId) ?? null) : null);
+
 	// Audit 45 EARS-b — état dérivé du gizmo Oreilles (objet sélectionné).
 	const earHeadDiameter = $derived(
 		earHeadDiameterSet ??
@@ -4867,6 +4881,7 @@
 	async function createEmboss(params: EmbossParams) {
 		const target =
 			!params.embossed && selId ? (sceneObjects.find((o) => o.id === selId) ?? null) : null;
+
 		const targetModel = target ? objectModelId(target.id) : null;
 		if (!params.embossed && (!target || !targetModel)) {
 			saveMessage = tr('Engraving: select an object.');
@@ -5176,6 +5191,7 @@
 			const channel: PaintChannel | null =
 				paintChannel && o.id === selId ? paintChannel : filamentSlots > 1 && doc.mmu ? 'mmu' : null;
 			if (!channel || !doc[channel]) continue;
+
 			const overlay = paintOverlayGeometry(o.mesh, doc[channel], (s) =>
 				channel === 'mmu'
 					? (filamentSlotColors[s - 1] ?? null)
@@ -5277,6 +5293,7 @@
 			// Base : état d'avant le trait, ou résultat moteur du trait précédent
 			// (file séquentielle par objet/canal).
 			let facets = previous ? (paintings[id]?.serialize()[channel] ?? before) : before;
+
 			for (const batch of batches) {
 				facets = await enginePaintClient().stroke(id, modelId, channel, facets, {
 					...common,
@@ -5549,9 +5566,11 @@
 		const before = paintingFor(id).serialize()[channel] ?? {};
 		const previous = paintQueues.get(key);
 		paintBusy = true;
+
 		const tail = (previous ?? Promise.resolve())
 			.then(async () => {
 				const base = previous ? (paintings[id]?.serialize()[channel] ?? before) : before;
+
 				const after = await op(modelId, base);
 				paintings[id]?.replaceChannel(channel, after);
 				paintings = { ...paintings };
@@ -5657,7 +5676,9 @@
 				: state === BLOCKER
 					? PAINT_BLOCKER_COLOUR
 					: PAINT_ENFORCER_COLOUR;
+
 		const m = /^#?([0-9a-f]{6})$/i.exec(base);
+
 		if (!m) return base;
 		const n = parseInt(m[1], 16);
 		const mix = (v: number) => Math.round(v + (255 - v) * 0.55);
@@ -5729,6 +5750,7 @@
 			...(tools.active === 'assembly' ? ['assembly_view'] : [])
 		])
 	);
+
 	// Hauteur (mm) de l'objet sélectionné une fois transformé et posé, pour
 	// l'éditeur de hauteur de couche (m_object_max_z d'Orca) : le profil doit
 	// finir au sommet de l'objet, sinon le tranchage l'ignore (audit 46 VLH-a).
@@ -5741,6 +5763,7 @@
 			? (layerProfiles[selId] ?? uniformProfile(activeZMax, 0.2))
 			: uniformProfile(activeZMax, 0.2)
 	);
+
 	// Persiste le profil de couche édité pour l'objet sélectionné.
 	function setLayerProfile(profile: LayerBand[]) {
 		if (!selId) return;
@@ -6325,6 +6348,7 @@
 				min[a] = Math.min(min[a], p[i + a]);
 				max[a] = Math.max(max[a], p[i + a]);
 			}
+
 		const extent = [0, 1, 2].map((a) => (Number.isFinite(min[a]) ? max[a] - min[a] : 10)) as [
 			number,
 			number,
@@ -6424,7 +6448,12 @@
 			),
 			settings: {}
 		};
-		volumesByObject = { ...volumesByObject, [id]: [...(volumesByObject[id] ?? []), volume] };
+
+		volumesByObject = {
+			...volumesByObject,
+			[id]: [...(volumesByObject[id] ?? []), volume]
+		};
+
 		ws = setSelection(ws, new Set([id]));
 		selectedVolumeId = volume.id;
 		configTab = 'objects';
@@ -6767,6 +6796,7 @@
 	// catalogue d'Orca, comme la notice de validation.
 	$effect(() => {
 		if (session.phase !== 'error' || $locale !== 'fr' || orcaCatalog) return;
+
 		void loadOrcaCatalog()
 			.then((c) => (orcaCatalog = c))
 			.catch(() => {});
@@ -6823,7 +6853,12 @@
 			}
 			const res = await validateProject(data.project.id, {
 				...sliceRequestWithDraft('all', 0),
-				...(inline ? { scene: buildSceneForSave(), active_presets: activePresetsBody() } : {})
+				...(inline
+					? {
+							scene: buildSceneForSave(),
+							active_presets: activePresetsBody()
+						}
+					: {})
 			});
 			if (seq !== validationSeq) return;
 			validation = res;
@@ -7182,6 +7217,7 @@
 		const loaded = await Promise.all(
 			res.parts.map(async (part) => ({ part, ...(await loadCenteredMesh(part.model.id)) }))
 		);
+
 		if (generation !== sceneGeneration) return [];
 		const added: SceneObject[] = [];
 		const newIds: string[] = [];
@@ -7298,6 +7334,7 @@
 			const loaded = await Promise.all(
 				res.parts.map(async (part) => ({ part, ...(await loadCenteredMesh(part.model.id)) }))
 			);
+
 			if (generation !== sceneGeneration || loaded.length === 0) return null;
 			if (loaded.length < 2) {
 				// Orca `ObjectList::split` : « The target object contains only one part
@@ -7416,6 +7453,7 @@
 			const loaded = await Promise.all(
 				res.parts.map(async (part) => ({ part, ...(await loadCenteredMesh(part.model.id)) }))
 			);
+
 			if (generation !== sceneGeneration || !tree.get(id)) return [];
 			if (loaded.length < 2) {
 				saveMessage = tr('Split to parts: “{name}” contains only one part and can not be split.', {
@@ -7659,6 +7697,7 @@
 					)
 				}))
 			);
+
 			if (generation !== sceneGeneration) return;
 			const baked = !!body.instance_matrix;
 			const others = objectsOnPlate(sceneObjects, plates.get(plateId ?? '') ?? activePlate)
@@ -7874,6 +7913,7 @@
 				? [...tree.list().map((n) => n.id), ...sceneObjects.map((o) => o.id)]
 				: [...(activePlate?.objectIds ?? []), ...activeSceneObjects.map((o) => o.id)]
 		);
+
 		for (const id of ids) removeObject(id);
 		ws = setSelection(ws, new Set());
 	}
@@ -8553,6 +8593,7 @@
 		if (action.startsWith('volume.type:')) {
 			if (selectedVolumeId)
 				setVolumeType(id, selectedVolumeId, action.slice('volume.type:'.length) as VolumeType);
+
 			return;
 		}
 		if (action === 'object.parameterTable') {
@@ -8792,9 +8833,11 @@
 				saveMessage = tr('Export {label}: {msg}', { label, msg: err.message ?? res.statusText });
 				return;
 			}
+
 			const name =
 				/filename="([^"]+)"/.exec(res.headers.get('content-disposition') ?? '')?.[1] ??
 				safeFileName(projectName || data.project.name, split ? 'zip' : format);
+
 			downloadBlob(await res.blob(), name);
 			saveMessage = tr(
 				split
@@ -8843,9 +8886,11 @@
 				const err = (await resp.json().catch(() => ({}))) as { message?: string };
 				throw new ApiError(resp.status, 'error', err.message ?? resp.statusText);
 			}
+
 			const name =
 				/filename="([^"]+)"/.exec(resp.headers.get('content-disposition') ?? '')?.[1] ??
 				`${safeFileName(projectName || data.project.name, 'gcode')}.3mf`;
+
 			downloadBlob(await resp.blob(), name);
 		} catch (e) {
 			saveMessage = tr('{label}: {msg}', {
@@ -8980,6 +9025,7 @@
 				label,
 				(m) => (saveMessage = m)
 			);
+
 			if (succeeded.length === 0) {
 				saveMessage = firstError
 					? tr('{label}: no plate could be sliced — {error}', { label, error: firstError })
@@ -8996,9 +9042,11 @@
 				const err = (await resp.json().catch(() => ({}))) as { message?: string };
 				throw new ApiError(resp.status, 'error', err.message ?? resp.statusText);
 			}
+
 			const name =
 				/filename="([^"]+)"/.exec(resp.headers.get('content-disposition') ?? '')?.[1] ??
 				`${safeFileName(projectName || data.project.name, 'gcode')}.3mf`;
+
 			downloadBlob(await resp.blob(), name);
 			const nPlates = (n: number) => tr(n > 1 ? '{n} plates' : '{n} plate', { n });
 			saveMessage =
@@ -9164,6 +9212,7 @@
 	// Menu Vue › Show Labels / Show Overhang (scène de préparation).
 	let showLabels = $state(false);
 	let showOverhang = $state(false);
+
 	const overhangNormalZ = $derived(
 		paintChannel === 'supports'
 			? paintHighlightAngle > 0
@@ -9758,7 +9807,7 @@
 				showShortcuts = true;
 				break;
 			case 'help.setupWizard':
-				await goto(resolve('/setup'));
+				await goto(resolve('setup'));
 				break;
 			case 'help.tipOfTheDay':
 				showTipOfTheDay = true;
@@ -10119,6 +10168,7 @@
 				(acc, [lo, hi]) => (hi > 0 ? [Math.min(acc[0], lo), Math.max(acc[1], hi)] : acc),
 				[Infinity, 0]
 			);
+
 		if (!Number.isFinite(previewFlowRange[0])) previewFlowRange = [0, 0];
 		previewGeometry = buildWindowGeometry(windowSegments, {
 			coloration,
@@ -10306,12 +10356,14 @@
 						(savedDocumentByObject[o.id]
 							? deserializeObject(savedDocumentByObject[o.id]).brimEars
 							: new BrimEars()),
+
 					volumes: $state.snapshot(
 						volumesByObject[o.id] ??
 							(savedDocumentByObject[o.id]
 								? (deserializeObject(savedDocumentByObject[o.id]).volumes ?? [])
 								: [])
 					) as SceneVolume[],
+
 					layerRanges: $state.snapshot(
 						layerRangesByObject[o.id] ??
 							(savedDocumentByObject[o.id]
@@ -10382,12 +10434,14 @@
 		sceneObjects.length > 0 ||
 			((data.project.scene as { objects?: unknown[] } | null)?.objects?.length ?? 0) > 0
 	);
+
 	const unsaved = $derived(
 		savedSignature !== null &&
 			hasContent &&
 			((currentSignature !== null && currentSignature !== savedSignature) ||
 				imports.some((item) => isPending(item)))
 	);
+
 	/** Calcul synchrone (alerte de sortie) : ne dépend pas du différé. */
 	function unsavedNow(): boolean {
 		if (savedSignature === null) return sceneObjects.length > 0;
@@ -10565,7 +10619,7 @@
 		     vers le bas ; overflow-hidden les rendait invisibles. -->
 		<div class="flex min-w-0 flex-1 items-center gap-2 overflow-x-clip max-2xl:min-w-fit 2xl:gap-4">
 			<a
-				href={resolve('/library')}
+				href={resolve('library')}
 				class="text-sm text-primary hover:underline"
 				title={$t('Library')}
 			>
@@ -10740,6 +10794,7 @@
 				>
 					<span aria-hidden="true">▾</span>
 				</button>
+
 				{#if sliceMenuOpen}
 					<button
 						type="button"
@@ -10796,7 +10851,9 @@
 					</span>
 				{/if}
 			</div>
+
 			<SaveControls {save} {unsaved} onreload={reloadAfterConflict} overwrite={overwriteSave} />
+
 			<button
 				type="button"
 				class="ws-btn ws-btn-secondary"
@@ -10840,9 +10897,13 @@
 	</header>
 
 	<!-- Dialogue des raccourcis clavier (menu Aide, T111). -->
+
 	<ShortcutsDialog open={showShortcuts} onClose={() => (showShortcuts = false)} />
+
 	<TipOfTheDayDialog open={showTipOfTheDay} onClose={() => (showTipOfTheDay = false)} />
+
 	<AboutDialog open={showAbout} onclose={() => (showAbout = false)} />
+
 	{#if unitPending}
 		<UnitConversionDialog
 			filename={unitPending.filename}
@@ -11137,6 +11198,7 @@
 				: FILAMENT_CONTEXT_ITEMS.filter(
 						(item) => item === 'separator' || item.action !== 'filament.delete'
 					)),
+
 			...(projectFilament.filament_colour?.[filamentMenu.slot]
 				? [{ label: 'Preset color', action: 'filament.resetColour' }]
 				: []),
@@ -11159,6 +11221,7 @@
 		]}
 		onaction={(action) => {
 			filamentSlot = filamentMenu.slot;
+
 			if (action.startsWith('filament.merge:'))
 				mergeFilament(filamentMenu.slot, Number(action.slice('filament.merge:'.length)));
 			else if (action === 'filament.edit') openSettingsDialog('filament');
@@ -11224,6 +11287,7 @@
 			>
 				{$t('Cancel')}
 			</button>
+
 			<button
 				type="button"
 				class="ws-btn ws-btn-primary"
@@ -11347,6 +11411,7 @@
 			role="alert"
 		>
 			<span>{importError}</span>
+
 			<button onclick={() => (importError = null)} class="font-medium hover:underline">
 				{$t('Close')}
 			</button>
@@ -11367,12 +11432,14 @@
 				>
 					{$t('Process')}
 				</button>
+
 				<button
 					class="ws-tab flex-1 py-2.5 text-sm {configTab === 'objects' ? 'ws-tab-on' : ''}"
 					onclick={() => (configTab = 'objects')}
 				>
 					{$t('Objects')}
 				</button>
+
 				<button
 					class="ws-tab flex-1 py-2.5 text-sm {configTab === 'project' ? 'ws-tab-on' : ''}"
 					data-testid="config-tab-project"
@@ -11592,6 +11659,7 @@
 								>
 									{$t('Create…')}
 								</button>
+
 								<CreateFilamentDialog
 									open={showCreateFilament}
 									presets={filamentPresets}
@@ -11881,9 +11949,10 @@
 							compute={async (colours, multiplier) =>
 								(await computeFlushVolumes(colours, multiplier, data.project.id)).matrix}
 							computeAvailable={flushVolumesAvailable}
-							effective={async () =>
+							effective={async (
 								// Phase 47b : matrice du tranchage du projet enregistré ; projet
 								// modifié non enregistré (couleurs, presets…) → calcul local.
+							) =>
 								savedSignature === null || saveSignature() !== savedSignature
 									? null
 									: await effectiveFlushVolumes(data.project.id)}
@@ -11902,8 +11971,10 @@
 						<section class="flex flex-col gap-2">
 							<div class="flex items-center justify-between gap-2">
 								<span class="ws-section-title">{$t('Process')}</span>
+
 								<div class="flex gap-0.5 rounded border border-border-strong p-0.5 text-xs">
 									<span class="rounded bg-primary px-2 py-0.5 text-primary-content">Global</span>
+
 									<span
 										class="rounded px-2 py-0.5 text-content-subtle"
 										title={$t('Per-object settings (coming soon)')}
@@ -12136,6 +12207,7 @@
 									>
 										{volume.name}
 									</button>
+
 									<span class="text-xs text-content-subtle">{volume.size.join('×')}</span>
 									{#if filamentSlots > 1 && (volume.type === 'part' || volume.type === 'modifier')}
 										<!-- Extrudeur propre du volume (Orca : pièces et modificateurs) ;

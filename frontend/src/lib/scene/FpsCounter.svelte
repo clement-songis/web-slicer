@@ -1,6 +1,6 @@
 <script lang="ts">
 	// Compteur d'images/s (Orca Preferences › « Show FPS ») en coin de vue 3D.
-	import { appPreferences } from '$lib/settings/preferences';
+	import { appPreferences } from '#lib/settings/preferences';
 	import type { FrameMeter } from './render-settings';
 
 	let { meter }: { meter: FrameMeter } = $props();

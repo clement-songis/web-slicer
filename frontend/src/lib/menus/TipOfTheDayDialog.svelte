@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { dialogFocus } from '$lib/ui/dialog-focus';
-	import { t } from '$lib/i18n';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
+	import { t } from '#lib/i18n';
 	// Conseil du jour d'Orca (Help › Show Tip of the Day), adapté à un dialogue
 	// web autonome. Le bouton Suivant change réellement le conseil affiché.
 	let { open = false, onClose }: { open?: boolean; onClose: () => void } = $props();

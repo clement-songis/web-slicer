@@ -5,8 +5,8 @@
 	// comptes : GET /admin/users (lot 32, recherche + pages), seule source (la
 	// liste locale « comptes créés depuis ce navigateur » de la phase 32 est retirée).
 	import { onMount } from 'svelte';
-	import { t, tr } from '$lib/i18n';
-	import { ApiError } from '$lib/api/client';
+	import { t, tr } from '#lib/i18n';
+	import { ApiError } from '#lib/api/client';
 	import {
 		createInvitation,
 		createUser,
@@ -15,10 +15,10 @@
 		patchInstance,
 		resetPassword,
 		setUserStatus
-	} from '$lib/api/admin';
-	import { formatBytes } from '$lib/api/quota';
-	import type { AdminUserListResponse, AdminUserResponse } from '$lib/api/types';
-	import AppSidebar from '$lib/nav/AppSidebar.svelte';
+	} from '#lib/api/admin';
+	import { formatBytes } from '#lib/api/quota';
+	import type { AdminUserListResponse, AdminUserResponse } from '#lib/api/types';
+	import AppSidebar from '#lib/nav/AppSidebar.svelte';
 	import {
 		POLICIES,
 		bytesToMb,
@@ -29,7 +29,7 @@
 		parseSliceLimit,
 		quotaMbToBytes,
 		type RegistrationPolicy
-	} from '$lib/admin/admin';
+	} from '#lib/admin/admin';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { JobResponse } from '$lib/api/types';
+import type { JobResponse } from '#lib/api/types';
 import { jobAsEvent, planResume, resumedProgress } from './resume-job';
 
 const job = (

@@ -6,26 +6,26 @@
 	// orchestre transport (API projets) + disposition.
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { t, tr } from '$lib/i18n';
+	import { t, tr } from '#lib/i18n';
 	import { resolve } from '$app/paths';
-	import { ApiError } from '$lib/api/client';
+	import { ApiError } from '#lib/api/client';
 	import {
 		createProject,
 		deleteProject,
 		duplicateProject,
 		renameProject,
 		importProject
-	} from '$lib/api/projects';
-	import { isAccepted } from '$lib/editor';
-	import { appPreferences, currentPreferences, savePreferences } from '$lib/settings/preferences';
-	import OpenProjectDialog from '$lib/projects/OpenProjectDialog.svelte';
+	} from '#lib/api/projects';
+	import { isAccepted } from '#lib/editor';
+	import { appPreferences, currentPreferences, savePreferences } from '#lib/settings/preferences';
+	import OpenProjectDialog from '#lib/projects/OpenProjectDialog.svelte';
 	import {
 		behaviourFromChoice,
 		decideLoadMode,
 		isProjectArchive,
 		stashImportReport
-	} from '$lib/projects/open-3mf';
-	import AppSidebar from '$lib/nav/AppSidebar.svelte';
+	} from '#lib/projects/open-3mf';
+	import AppSidebar from '#lib/nav/AppSidebar.svelte';
 	import {
 		sortByUpdated,
 		formatDate,
@@ -35,14 +35,14 @@
 		relativeTime,
 		sortProjects,
 		type ProjectSort
-	} from '$lib/library/library';
+	} from '#lib/library/library';
 	import {
 		isNameConflict,
 		nameSuggestion,
 		nameTakenMessage,
 		uniqueProjectName
-	} from '$lib/library/names';
-	import type { ProjectResponse } from '$lib/api/types';
+	} from '#lib/library/names';
+	import type { ProjectResponse } from '#lib/api/types';
 	import type { PageData } from './$types';
 	import IconNew from '~icons/lucide/file-plus';
 	import IconOpen from '~icons/lucide/download';

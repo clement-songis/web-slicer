@@ -4,8 +4,8 @@
 	// PrintHost::get_print_host_webui : print_host_webui, sinon print_host). Le
 	// navigateur peut refuser l'intégration (en-têtes de l'hôte, contenu mixte) :
 	// lien externe toujours visible, et repli automatique sur ce lien.
-	import { getResolvedPreset } from '$lib/api/presets';
-	import type { PrinterResponse } from '$lib/api/types';
+	import { getResolvedPreset } from '#lib/api/presets';
+	import type { PrinterResponse } from '#lib/api/types';
 	import { hostMeta } from './hosts';
 	import {
 		EMBED_TIMEOUT_MS,
@@ -18,7 +18,7 @@
 		webuiUrl,
 		type WebuiPrefs
 	} from './webui';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		printer: PrinterResponse;

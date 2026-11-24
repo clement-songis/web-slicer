@@ -5,7 +5,7 @@
 // (`plates[i].customGcodes`, lus par le serveur : slicing.rs
 // scene_custom_gcodes) et s'appliquent au prochain tranchage. Pur.
 
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 export type CustomGcodeType =
 	'color_change' | 'pause_print' | 'custom' | 'template' | 'tool_change';

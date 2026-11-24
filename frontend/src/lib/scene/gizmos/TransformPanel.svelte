@@ -5,7 +5,7 @@
 	// Audit 40 B3 : échelle en % (Orca « Scale ratios », 100 %) et ligne Taille
 	// en mm, verrou d'échelle uniforme fermé par défaut (Orca m_uniform_scale).
 	import { normalizeAngle, type Transform } from '../transform';
-	import { fmtDec, locale, t } from '$lib/i18n';
+	import { fmtDec, locale, t } from '#lib/i18n';
 	import IconLock from '~icons/lucide/lock';
 	import IconUnlock from '~icons/lucide/lock-open';
 	import {

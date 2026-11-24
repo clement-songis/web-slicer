@@ -1,7 +1,7 @@
 // Logique des sélecteurs de presets (T046) : arbre imprimante, filtre de
 // compatibilité, badge d'héritage.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { setLocale } from '$lib/i18n';
+import { setLocale } from '#lib/i18n';
 
 import type { PresetSummary } from '../api/types';
 import {

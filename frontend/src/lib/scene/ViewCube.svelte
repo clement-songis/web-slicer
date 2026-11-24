@@ -3,7 +3,7 @@
 	// cube orienté comme la caméra ; un clic sur une face choisit la vue
 	// correspondante, le bouton central revient à la vue par défaut (Ctrl+0).
 	import type { NamedView } from './camera';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 	import { CUBE_FACES, cubeTransform, faceTransform, facingFace } from './view-cube';
 
 	interface Props {

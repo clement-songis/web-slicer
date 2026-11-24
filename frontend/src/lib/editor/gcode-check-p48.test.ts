@@ -1,7 +1,7 @@
 // Audit 46 GCHK-a : trajet hors du plateau (bit 2) / trop haut (bit 3) —
 // même bandeau que H2D, texte d'Orca (GLCanvas3D.cpp:10101-10102).
 import { describe, expect, test } from 'vitest';
-import { setLocale } from '$lib/i18n';
+import { setLocale } from '#lib/i18n';
 import { gcodeCheckError, gcodeCheckKind } from './nozzle-range-error';
 import { translateOrcaMessage } from './validation';
 import catalog from './validation-messages.fr.json';

@@ -3,8 +3,8 @@
 // le nommage automatique d'après un fichier déjà utilisé, échouaient avec
 // l'erreur SQL brute. Orca n'a pas de bibliothèque à noms uniques ; comme un
 // gestionnaire de fichiers, on suffixe « (2) », « (3) »…
-import { ApiError } from '$lib/api/client';
-import { tr } from '$lib/i18n';
+import { ApiError } from '#lib/api/client';
+import { tr } from '#lib/i18n';
 
 /** Nom libre dérivé de `base` : `base`, puis `base (2)`, `base (3)`… La
  *  comparaison est exacte (la contrainte SQLite est sensible à la casse). */

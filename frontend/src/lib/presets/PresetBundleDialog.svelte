@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { dialogFocus } from '$lib/ui/dialog-focus';
-	import { t } from '$lib/i18n';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
+	import { t } from '#lib/i18n';
 	// Adaptation web de PresetBundleDialog : le lot actif du projet et ses
 	// profils, exportables dans une archive de JSON Orca.
 	export interface BundlePresetRef {

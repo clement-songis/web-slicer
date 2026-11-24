@@ -3,7 +3,7 @@
 // tant que le serveur est injoignable, une sonde légère (/api/health) vérifie
 // son retour. Le bandeau global (ConnectionBanner) et l'éditeur s'y abonnent.
 import { writable, get } from 'svelte/store';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 export interface ConnectionState {
 	/** `false` dès qu'une requête n'a pas pu joindre le serveur. */

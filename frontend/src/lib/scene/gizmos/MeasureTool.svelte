@@ -5,7 +5,7 @@
 	// Audit 41 T2 : mode « Face » (Orca GLGizmoMeasure : plans → distance entre
 	// faces parallèles, sinon angle) en plus du point à point ; Suppr recommence.
 	import type { FeatureMeasurement, PointMeasurement } from './measure';
-	import { fmtNum, locale, t } from '$lib/i18n';
+	import { fmtNum, locale, t } from '#lib/i18n';
 
 	export type MeasureMode = 'point' | 'face';
 

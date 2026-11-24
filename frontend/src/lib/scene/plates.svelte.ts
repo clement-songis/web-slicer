@@ -6,7 +6,7 @@
 // se re-rende à chaque mutation. Runes → testé sous vitest, pas sous bun.
 // Persisté dans le document scène.
 import { PLATE_TYPES } from '../settings/special/dialogs';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 import type { PlateCustomGcode } from '../preview/color-changes';
 
 /** Type de plaque par défaut (première entrée de la table des températures). */

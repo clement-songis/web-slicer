@@ -4,8 +4,8 @@
 	// (/api/calibrations/pa) ; ajouter, modifier, supprimer, appliquer au
 	// filament actif.
 	import { untrack } from 'svelte';
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import { ApiError } from '$lib/api/client';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import { ApiError } from '#lib/api/client';
 	import {
 		createPa,
 		deletePa,
@@ -19,7 +19,7 @@
 		type PaMethod,
 		type PaRecord
 	} from './pa-history';
-	import { fmtDec, locale, t, tr } from '$lib/i18n';
+	import { fmtDec, locale, t, tr } from '#lib/i18n';
 
 	interface Props {
 		open: boolean;

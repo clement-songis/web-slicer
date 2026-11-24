@@ -5,7 +5,7 @@
 // config machine ; le moteur choisit alors la variante des réglages filament
 // (filament_extruder_variant) de chaque extrudeur. Pur.
 
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 export type NozzleFlow = 'Standard' | 'High Flow';
 

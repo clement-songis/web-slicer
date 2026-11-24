@@ -5,9 +5,9 @@
 	// triangles obtenu, l'écart avec l'import et les pièces sont affichés. Plus
 	// direct qu'Orca : préréglages de qualité, réglages mémorisés pour le prochain
 	// import (app_config d'Orca), « Ne plus afficher ».
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import { ApiError } from '$lib/api/client';
-	import { numberLocale, t, tr } from '$lib/i18n';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import { ApiError } from '#lib/api/client';
+	import { numberLocale, t, tr } from '#lib/i18n';
 	import {
 		ANGLE_RANGE,
 		LINEAR_RANGE,

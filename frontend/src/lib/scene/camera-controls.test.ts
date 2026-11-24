@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { MOUSE } from 'three';
-import { CAMERA_DEFAULTS } from '$lib/settings/preferences';
+import { CAMERA_DEFAULTS } from '#lib/settings/preferences';
 import { mouseAction, orbitConfig, touchpadGesture, trackballConfig } from './camera-controls';
 
 describe('contrôles caméra (Orca « Camera »)', () => {

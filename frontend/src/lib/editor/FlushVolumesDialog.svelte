@@ -6,13 +6,13 @@
 	// que le tranchage utilisera (calculée depuis les couleurs, comme Orca
 	// WipingDialog) et « Appliquer » ne réécrit que les cellules modifiées.
 	import { untrack } from 'svelte';
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import { swatchStyle } from '$lib/ui/color';
-	import { t, tr } from '$lib/i18n';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import { swatchStyle } from '#lib/ui/color';
+	import { t, tr } from '#lib/i18n';
 	import { DEFAULT_FLUSH, resizeFlushMatrix } from './multi-filament';
 	import { effectiveFlushView, flushApplyMatrix, usableFlushMatrix } from './auto-flush';
-	import type { EffectiveFlushResponse } from '$lib/api/flush';
-	import { appPreferences, savePreferences, type AutoFlush } from '$lib/settings/preferences';
+	import type { EffectiveFlushResponse } from '#lib/api/flush';
+	import { appPreferences, savePreferences, type AutoFlush } from '#lib/settings/preferences';
 
 	interface Props {
 		open: boolean;

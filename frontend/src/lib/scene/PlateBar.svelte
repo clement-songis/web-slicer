@@ -4,8 +4,8 @@
 	// Présentationnel — les mutations passent par des callbacks (le parent
 	// applique sur le PlateSet et persiste dans le document scène).
 	import { PLATE_TYPES } from '../settings/special/dialogs';
-	import { locale, t } from '$lib/i18n';
-	import { loadSettingsTranslations } from '$lib/settings/i18n';
+	import { locale, t } from '#lib/i18n';
+	import { loadSettingsTranslations } from '#lib/settings/i18n';
 	import type { Plate } from './plates.svelte';
 	import PlateSettings from './PlateSettings.svelte';
 	import IconX from '~icons/lucide/x';

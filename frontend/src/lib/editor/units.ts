@@ -3,10 +3,10 @@
 // « Convert from inches/meters » / « Restore to inches/meters » du menu objet
 // (GUI_Factories.cpp:1225). Côté web, la conversion est un facteur d'échelle
 // uniforme (×25,4 ou ×1000) : visible et réversible dans le panneau d'échelle.
-import type { SceneMesh } from '$lib/scene/mesh';
-import type { ObjectMenuEntry, ObjectMenuItem } from '$lib/scene/menus';
+import type { SceneMesh } from '#lib/scene/mesh';
+import type { ObjectMenuEntry, ObjectMenuItem } from '#lib/scene/menus';
 import { get } from 'svelte/store';
-import { locale, registerTranslations } from '$lib/i18n';
+import { locale, registerTranslations } from '#lib/i18n';
 
 export type UnitSource = 'inch' | 'meter';
 

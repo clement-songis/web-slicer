@@ -2,8 +2,8 @@
 	// Champs de connexion d'une imprimante (Orca : PhysicalPrinterDialog) : type
 	// d'hôte, adresse, clé API ou utilisateur / mot de passe, imprimante du
 	// serveur Repetier. Seuls les champs utiles au type choisi sont affichés.
-	import { discoverPrinters, getHostPrinters } from '$lib/api/printers';
-	import type { BonjourReply } from '$lib/api/types';
+	import { discoverPrinters, getHostPrinters } from '#lib/api/printers';
+	import type { BonjourReply } from '#lib/api/types';
 	import {
 		ELEGOO_PROTOCOL_LABELS,
 		discoveryHints,
@@ -15,10 +15,10 @@
 		profilePlaceholder,
 		type ProfileHost
 	} from './hosts';
-	import { getResolvedPreset } from '$lib/api/presets';
-	import { ApiError } from '$lib/api/client';
+	import { getResolvedPreset } from '#lib/api/presets';
+	import { ApiError } from '#lib/api/client';
 	import { HOST_GROUPS, hostCapabilities, hostMeta, type HostForm } from './hosts';
-	import { t, tr } from '$lib/i18n';
+	import { t, tr } from '#lib/i18n';
 	import IconCheck from '~icons/lucide/check';
 	import IconMinus from '~icons/lucide/minus';
 

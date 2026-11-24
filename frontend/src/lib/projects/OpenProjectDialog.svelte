@@ -5,9 +5,9 @@
 	// défaut : géométrie, comme Orca), OK / Annuler. Plus intuitif qu'Orca : la
 	// case « Se souvenir de mon choix » (masquée chez Orca) reste offerte et
 	// chaque option explique ce qu'elle charge.
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import { t } from '$lib/i18n';
-	import type { ImportLoadMode } from '$lib/api/types';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import { t } from '#lib/i18n';
+	import type { ImportLoadMode } from '#lib/api/types';
 
 	interface Props {
 		open: boolean;

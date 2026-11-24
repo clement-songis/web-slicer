@@ -1,10 +1,10 @@
 <script lang="ts">
 	// Comparaison de deux presets du même type (Orca DiffPresetDialog) : seules
 	// les options différentes, regroupées par onglet, valeurs résolues.
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import { t, tr } from '$lib/i18n';
-	import { getResolvedPreset } from '$lib/api/presets';
-	import type { PresetSummary } from '$lib/api/types';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import { t, tr } from '#lib/i18n';
+	import { getResolvedPreset } from '#lib/api/presets';
+	import type { PresetSummary } from '#lib/api/types';
 	import type { PresetKind } from '../../generated/ui-layout';
 	import { diffPresets, formatSetting, type SettingDiff } from './preset-tools';
 

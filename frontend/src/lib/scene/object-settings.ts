@@ -5,8 +5,8 @@
 // Orca 2.4.1). Fonctions pures → testables sans Svelte.
 
 import { PARAMS, type ParamDef } from '../../generated/params';
-import { orcaDefault } from '$lib/settings/editing';
-import { optionVisible, queryRank, type DisplayMode } from '$lib/settings/filter';
+import { orcaDefault } from '#lib/settings/editing';
+import { optionVisible, queryRank, type DisplayMode } from '#lib/settings/filter';
 
 /** Clés de PrintRegionConfig (réglables par objet et par volume). */
 export const REGION_KEYS: readonly string[] = [

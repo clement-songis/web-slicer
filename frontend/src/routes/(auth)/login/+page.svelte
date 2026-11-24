@@ -1,11 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 	import { resolve } from '$app/paths';
-	import { loginErrorMessage } from '$lib/api/account';
-	import { login } from '$lib/api/session';
-	import { safeNext } from '$lib/api/return-to';
+	import { loginErrorMessage } from '#lib/api/account';
+	import { login } from '#lib/api/session';
+	import { safeNext } from '#lib/api/return-to';
 
 	let email = $state('');
 	let password = $state('');

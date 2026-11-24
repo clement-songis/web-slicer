@@ -8,7 +8,7 @@
 	// calcul est fait par mcut (`MeshBoolean::mcut::make_boolean`) dans le worker
 	// moteur via `POST /api/projects/{id}/boolean` ; le composant choisit
 	// l'opération et l'émet.
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		onapply: (op: BooleanOp) => void;

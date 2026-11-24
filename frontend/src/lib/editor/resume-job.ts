@@ -2,7 +2,7 @@
 // page pendant un tranchage, le job continue côté serveur mais l'éditeur
 // l'ignorait (seul le dernier résultat réussi était restauré) — ni progression,
 // ni aperçu à la fin. Pur : choisit quoi reprendre dans l'historique du compte.
-import type { JobResponse, ServerEvent } from '$lib/api/types';
+import type { JobResponse, ServerEvent } from '#lib/api/types';
 
 export type ResumePlan =
 	{ kind: 'slicing'; jobs: JobResponse[] } | { kind: 'result'; job: JobResponse } | null;

@@ -3,9 +3,9 @@
 	// fichier tranché .gcode.3mf (lot 44 : 422 `details.kind = "gcode_3mf"`) :
 	// proposer de l'ouvrir dans l'aperçu G-code, comme Orca qui rouvre un
 	// .gcode.3mf en aperçu (`Plater::is_gcode_3mf`).
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import Button from '$lib/ui/Button.svelte';
-	import { t } from '$lib/i18n';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import Button from '#lib/ui/Button.svelte';
+	import { t } from '#lib/i18n';
 
 	type Props = {
 		open: boolean;

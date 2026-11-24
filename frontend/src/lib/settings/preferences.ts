@@ -5,14 +5,14 @@
 // lecture au changement de session, écriture différée) ; localStorage sert de
 // cache (clé suffixée par l'id du compte + copie sous la clé historique). Si
 // le serveur n'a encore rien ({}), les préférences locales y sont migrées une
-// fois. Le thème et la langue délèguent à leurs modules (`$lib/theme`, `$lib/i18n`).
+// fois. Le thème et la langue délèguent à leurs modules (`#lib/theme`, `#lib/i18n`).
 //
 // Les réglages lus hors de la page (scène 3D, aperçu, sélecteurs de presets)
 // passent par le store `appPreferences`.
 
 import { get, writable } from 'svelte/store';
-import { numberLocale } from '$lib/i18n';
-import type { UserGrouping } from '$lib/presets/user-grouping';
+import { numberLocale } from '#lib/i18n';
+import type { UserGrouping } from '#lib/presets/user-grouping';
 
 export type Units = 'mm' | 'in';
 /** Orca `camera_navigation_style` : 0 = Default, 1 = Touchpad. */

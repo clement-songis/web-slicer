@@ -2,8 +2,8 @@
 	// Changement de preset avec des modifications non enregistrées (Orca
 	// UnsavedChangesDialog) : transférer au nouveau preset, abandonner, ou
 	// rester sur le preset actuel. Liste des options modifiées.
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import { t } from '$lib/i18n';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import { t } from '#lib/i18n';
 	import { formatSetting, type SettingDiff } from './preset-tools';
 
 	interface Props {

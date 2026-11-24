@@ -4,7 +4,7 @@ import {
 	rotateVectorByEulerDeg,
 	type Transform
 } from './transform';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 // Volumes ajoutés à un objet (Orca : Add part / negative volume / modifier /
 // support blocker / support enforcer). Primitive pavé, exprimée dans le repère
 // du maillage recentré de l'objet (même repère que le backend, cf.

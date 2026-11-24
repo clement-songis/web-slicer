@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, describe, expect, test } from 'vitest';
-import { setLocale } from '$lib/i18n';
+import { setLocale } from '#lib/i18n';
 import {
 	colorChangeColor,
 	editColorChangeAt,

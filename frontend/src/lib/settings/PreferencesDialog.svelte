@@ -2,8 +2,8 @@
 	// Dialogue « Preferences » (Orca PreferencesDialog.cpp), regroupé en quatre
 	// onglets : Général, Caméra et souris, Comportement, Presets. Chaque réglage
 	// s'applique immédiatement et est mémorisé pour l'utilisateur connecté.
-	import { THEME_PREFS, themePref, setTheme, type ThemePref } from '$lib/theme';
-	import { LOCALES, fmtNum, languageName, locale, setLocale, t, type Locale } from '$lib/i18n';
+	import { THEME_PREFS, themePref, setTheme, type ThemePref } from '#lib/theme';
+	import { LOCALES, fmtNum, languageName, locale, setLocale, t, type Locale } from '#lib/i18n';
 	import {
 		CAMERA_DEFAULTS,
 		REMEMBERED_CHOICES,
@@ -24,9 +24,9 @@
 		type ProjectLoadBehaviour,
 		type Units
 	} from './preferences';
-	import { USER_GROUPINGS, type UserGrouping } from '$lib/presets/user-grouping';
-	import { loadStepPrefs, saveStepPrefs } from '$lib/editor/step-mesh';
-	import { dialogFocus } from '$lib/ui/dialog-focus';
+	import { USER_GROUPINGS, type UserGrouping } from '#lib/presets/user-grouping';
+	import { loadStepPrefs, saveStepPrefs } from '#lib/editor/step-mesh';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
 
 	interface Props {
 		open: boolean;

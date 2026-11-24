@@ -2,10 +2,10 @@
 // catalogue servi par le backend (`GET /api/handy-models`), ajout au projet
 // (`POST /api/projects/{id}/handy-models/{key}`), libellés traduits et
 // suggestion de réglage (« String Hell »).
-import { api } from '$lib/api/client';
-import type { HandyModelAdded, HandyModelInfo, HandyModelSuggestion } from '$lib/api/types';
-import type { ObjectMenuEntry, ObjectMenuItem } from '$lib/scene/menus';
-import { registerTranslations, tr } from '$lib/i18n';
+import { api } from '#lib/api/client';
+import type { HandyModelAdded, HandyModelInfo, HandyModelSuggestion } from '#lib/api/types';
+import type { ObjectMenuEntry, ObjectMenuItem } from '#lib/scene/menus';
+import { registerTranslations, tr } from '#lib/i18n';
 
 export type { HandyModelAdded, HandyModelInfo, HandyModelSuggestion };
 

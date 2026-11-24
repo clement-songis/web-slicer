@@ -5,7 +5,7 @@
 // simulation ; le client relit ici le même G-code pour la fenêtre G-code et
 // les statistiques de repli, et la liste des plateaux tranchés.
 import { unzipSync } from 'fflate';
-import type { ApiError } from '$lib/api/client';
+import type { ApiError } from '#lib/api/client';
 
 /** En-tête local d'une archive ZIP (`PK\\x03\\x04`). */
 export function isZipBytes(bytes: Uint8Array): boolean {

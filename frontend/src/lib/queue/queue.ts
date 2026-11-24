@@ -3,8 +3,8 @@
 // métadonnées d'affichage par état. Aucun accès réseau ni DOM : `+page.svelte`
 // s'y branche.
 
-import type { JobResponse, ServerEvent } from '$lib/api/types';
-import { tr } from '$lib/i18n';
+import type { JobResponse, ServerEvent } from '#lib/api/types';
+import { tr } from '#lib/i18n';
 
 /** États d'un job (miroir du backend `JobStatus`). */
 export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed' | 'cancelled';

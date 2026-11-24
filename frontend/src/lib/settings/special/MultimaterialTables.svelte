@@ -3,7 +3,7 @@
 	// changement d'outil, rendues en lignes d'option groupées.
 	import { PARAMS } from '../../../generated/params';
 	import OptionLine from '../OptionLine.svelte';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 	import { FILAMENT_MULTIMATERIAL } from './groups';
 
 	interface Props {

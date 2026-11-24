@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { setLocale } from '$lib/i18n';
+import { setLocale } from '#lib/i18n';
 import { buildSliceDraft } from './slice-draft';
 import {
 	extruderCount,
@@ -10,7 +10,7 @@ import {
 } from './filament-map';
 import { paintedChannels } from './keep-paint';
 import { compatibilityText } from './filament-compat';
-import { DEFAULT_PREFERENCES, parsePreferences } from '$lib/settings/preferences';
+import { DEFAULT_PREFERENCES, parsePreferences } from '#lib/settings/preferences';
 
 // Messages attendus en français (langue des tests).
 beforeAll(() => setLocale('fr'));

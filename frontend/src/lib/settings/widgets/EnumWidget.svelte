@@ -2,7 +2,7 @@
 	// Sélecteur d'enum (coEnum* et enums ouverts). Les étiquettes lisibles
 	// (`enumLabels`) doublent les valeurs config (`enumValues`) quand présentes.
 	import { FIELD_CLASS, type WidgetProps } from './types';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	import { isOpenEnum } from './types';
 

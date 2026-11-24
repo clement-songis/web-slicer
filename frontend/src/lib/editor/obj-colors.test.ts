@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { decodeFacet, encodeFacet } from '$lib/scene/gizmos/painting/facets';
+import { decodeFacet, encodeFacet } from '#lib/scene/gizmos/painting/facets';
 import {
 	MAX_FILAMENTS,
 	colorDistance,

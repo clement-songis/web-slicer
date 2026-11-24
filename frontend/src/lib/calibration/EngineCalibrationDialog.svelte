@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { dialogFocus } from '$lib/ui/dialog-focus';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
 	// Dialogue des calibrations « mode moteur » (Retraction_Test_Dlg,
 	// VFA_Test_Dlg, MaxVolumetricSpeed_Test_Dlg, PA_Calibration_Dlg (motif),
 	// Input_Shaping_Freq/Damp_Test_Dlg, Cornering_Test_Dlg d'Orca) : début, fin,
@@ -19,7 +19,7 @@
 		type EngineCalibKind,
 		type RangeParams
 	} from './engine-calib';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		open: boolean;

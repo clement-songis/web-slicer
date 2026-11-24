@@ -1,7 +1,7 @@
 // Logique pure de la page Administration (phase 32) : politique d'inscription,
 // limite d'upload et quotas en Mo, lien d'invitation, mot de passe généré,
 // pagination de la liste des comptes (GET /admin/users, lot 32).
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 export type RegistrationPolicy = 'open' | 'invite' | 'closed';
 

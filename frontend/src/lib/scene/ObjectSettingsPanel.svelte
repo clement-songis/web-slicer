@@ -4,10 +4,10 @@
 	// clés autorisées (SettingsFactory::get_options), suppression. Purement
 	// présentationnel : `onchange` reçoit le nouvel objet de surcharges.
 	import { PARAMS } from '../../generated/params';
-	import OptionLine from '$lib/settings/OptionLine.svelte';
-	import type { DisplayMode } from '$lib/settings/filter';
-	import { locale, t, tr } from '$lib/i18n';
-	import { loadSettingsTranslations } from '$lib/settings/i18n';
+	import OptionLine from '#lib/settings/OptionLine.svelte';
+	import type { DisplayMode } from '#lib/settings/filter';
+	import { locale, t, tr } from '#lib/i18n';
+	import { loadSettingsTranslations } from '#lib/settings/i18n';
 	import IconX from '~icons/lucide/x';
 	import { settingsClipboard, pasteSettings } from './settings-clipboard.svelte';
 	import {

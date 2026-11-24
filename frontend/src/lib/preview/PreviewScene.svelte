@@ -4,18 +4,18 @@
 	// `Scene.svelte` de préparation, réutilisé par le workspace éditeur.
 	import { Canvas, T } from '@threlte/core';
 	import { untrack } from 'svelte';
-	import CameraControls from '$lib/scene/CameraControls.svelte';
-	import Bed from '$lib/scene/Bed.svelte';
-	import { frameBed, frameBox, type BedShape } from '$lib/scene';
-	import { viewPose, viewUp, type NamedView } from '$lib/scene/camera';
-	import CameraDirection from '$lib/scene/CameraDirection.svelte';
+	import CameraControls from '#lib/scene/CameraControls.svelte';
+	import Bed from '#lib/scene/Bed.svelte';
+	import { frameBed, frameBox, type BedShape } from '#lib/scene';
+	import { viewPose, viewUp, type NamedView } from '#lib/scene/camera';
+	import CameraDirection from '#lib/scene/CameraDirection.svelte';
 	import PreviewLines from './PreviewLines.svelte';
 	import PreviewPoints from './PreviewPoints.svelte';
 	import PreviewExtrusions from './PreviewExtrusions.svelte';
 	import PreviewWarmup from './PreviewWarmup.svelte';
-	import FpsCounter from '$lib/scene/FpsCounter.svelte';
-	import { FrameMeter, rendererFactory } from '$lib/scene/render-settings';
-	import { appPreferences } from '$lib/settings/preferences';
+	import FpsCounter from '#lib/scene/FpsCounter.svelte';
+	import { FrameMeter, rendererFactory } from '#lib/scene/render-settings';
+	import { appPreferences } from '#lib/settings/preferences';
 	import type { PreviewGeometry, PreviewOverlay } from './geometry';
 
 	interface Props {

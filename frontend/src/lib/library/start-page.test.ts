@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import type { ProjectResponse } from '$lib/api/types';
+import type { ProjectResponse } from '#lib/api/types';
 import { limitRecent, startPath } from './library';
-import { clampRecentCount, parsePreferences } from '$lib/settings/preferences';
+import { clampRecentCount, parsePreferences } from '#lib/settings/preferences';
 
 const p = (id: string, updated_at: string) => ({ id, updated_at }) as unknown as ProjectResponse;
 

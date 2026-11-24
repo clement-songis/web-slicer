@@ -10,7 +10,7 @@
 	// niveau de détail. Présentationnel : la page valide (`simplifyRequest`),
 	// appelle l'API et recharge le maillage de toutes les instances.
 	import { SIMPLIFY_DETAIL_LEVELS } from '../repair';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		onsimplify: (param: SimplifyToolParam) => void;

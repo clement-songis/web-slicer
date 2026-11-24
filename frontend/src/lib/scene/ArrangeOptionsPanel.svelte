@@ -6,10 +6,10 @@
 	// calibration (selon GET …/arrange/options), Réinitialiser. Plus intuitif
 	// qu'Orca : les deux portées « Tout arranger » / « Ce plateau » sont visibles,
 	// et le plateau verrouillé désactive « Ce plateau » au lieu d'un refus serveur.
-	import type { ArrangeOptionsInfo } from '$lib/api/types';
+	import type { ArrangeOptionsInfo } from '#lib/api/types';
 	import type { SavedArrangeOptions } from './arrange-options';
 	import { clampSpacing, resetOptions, spacingFloor } from './arrange-options';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		open: boolean;

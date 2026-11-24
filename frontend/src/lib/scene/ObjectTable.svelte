@@ -5,8 +5,8 @@
 	// cellule se modifie sur place (Entrée / sortie du champ), la remise au
 	// profil est sur la cellule, les valeurs héritées sont en gris.
 	// Présentationnel : les mutations passent par des callbacks.
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import { fmtDec, t, tr } from '$lib/i18n';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import { fmtDec, t, tr } from '#lib/i18n';
 	import IconReset from '~icons/lucide/rotate-ccw';
 	import {
 		TABLE_CATEGORIES,

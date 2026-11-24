@@ -52,5 +52,9 @@
 		"@threlte/extras": "^9.23.1",
 		"fflate": "^0.8.3",
 		"three": "^0.187.0"
+	},
+	"imports": {
+		"#lib": "./src/lib/index.js",
+		"#lib/*": "./src/lib/*"
 	}
 }

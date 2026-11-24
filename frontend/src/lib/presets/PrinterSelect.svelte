@@ -3,7 +3,7 @@
 	// vignette de couverture (placeholder si absente).
 	import type { PresetSummary } from '../api/types';
 	import { groupPrinters } from './catalog';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		/** Presets machine à proposer. */

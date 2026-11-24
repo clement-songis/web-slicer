@@ -7,7 +7,7 @@
 	// - options d'affichage (EOptionType) : déplacements, essuyages,
 	//   rétractions, réamorçages, coutures, changements d'outil / de couleur,
 	//   pauses, avec leur couleur Orca et leur nombre dans les couches visibles.
-	import { locale, numberLocale, t } from '$lib/i18n';
+	import { locale, numberLocale, t } from '#lib/i18n';
 	import { OPTION_COLORS, SEGMENT_ROLE_COLORS, type Legend, type Rgb } from './colorations';
 	import type { PreviewOption } from './geometry';
 

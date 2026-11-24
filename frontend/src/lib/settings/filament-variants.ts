@@ -5,7 +5,7 @@
 // "Direct Drive High Flow"]) pour les options de `filament_options_with_variant`
 // (PrintConfig.cpp) ; le sélecteur choisit l'index édité. Pur.
 
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 /** Orca PrintConfig.cpp `filament_options_with_variant` (2.4.1). */
 export const FILAMENT_VARIANT_OPTIONS: ReadonlySet<string> = new Set([

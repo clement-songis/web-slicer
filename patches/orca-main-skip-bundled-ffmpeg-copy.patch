@@ -1,0 +1,18 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1191,6 +1191,14 @@ function(orcaslicer_copy_sos target config postfix output_sos)
+         set(_out_dir "${CMAKE_CURRENT_BINARY_DIR}")
+     endif ()
+ 
++    # Distribution builds (e.g. nix): there is no bundled ffmpeg under
++    # CMAKE_PREFIX_PATH, libraries come from the store with their own
++    # sonames. Skip the bundle staging instead of failing at configure time.
++    if (NOT EXISTS "${CMAKE_PREFIX_PATH}/lib/libavformat.so")
++        set(${output_sos} "" PARENT_SCOPE)
++        return()
++    endif ()
++
+     file(COPY ${CMAKE_PREFIX_PATH}/lib/libavformat.so
+             ${CMAKE_PREFIX_PATH}/lib/libavformat.so.61
+             ${CMAKE_PREFIX_PATH}/lib/libavformat.so.61.1.100

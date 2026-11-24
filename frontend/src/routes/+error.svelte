@@ -4,8 +4,8 @@
 	// bibliothèque — jamais le « 500 Internal Error » nu de SvelteKit.
 	import { page } from '$app/state';
 	import { resolve } from '$app/paths';
-	import { probeNow } from '$lib/api/connectivity';
-	import { t } from '$lib/i18n';
+	import { probeNow } from '#lib/api/connectivity';
+	import { t } from '#lib/i18n';
 
 	const code = $derived(page.error?.code ?? '');
 	const offline = $derived(code === 'network' || code === 'unavailable');
@@ -62,7 +62,8 @@
 			>
 				{retrying ? $t('Retrying…') : $t('Retry')}
 			</button>
-			<a href={resolve('/library')} class="ws-btn ws-btn-secondary">{$t('Library')}</a>
+
+			<a href={resolve('library')} class="ws-btn ws-btn-secondary">{$t('Library')}</a>
 		</div>
 	</div>
 </main>

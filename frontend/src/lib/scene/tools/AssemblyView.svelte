@@ -7,7 +7,7 @@
 	// (GLCanvas3D::_render_assemble_control / _render_assemble_info) : « Vue en
 	// coupe » (0–1, « Réinitialiser la direction »), « Mode de sélection »
 	// Objet / Pièce et « Informations sur l'assemblage » (Volume, Taille).
-	import { fmtNum, locale, t } from '$lib/i18n';
+	import { fmtNum, locale, t } from '#lib/i18n';
 
 	interface Props {
 		exploded?: boolean;

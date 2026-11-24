@@ -4,8 +4,8 @@
 import { describe, expect, test } from 'vitest';
 import { get } from 'svelte/store';
 import { isTranslatable, locale, setLocale, t, translate, tr } from './index';
-import { allMenuLabels, MAIN_MENUS } from '$lib/menus/menus';
-import { SHORTCUT_GROUPS } from '$lib/menus/shortcuts';
+import { allMenuLabels, MAIN_MENUS } from '#lib/menus/menus';
+import { SHORTCUT_GROUPS } from '#lib/menus/shortcuts';
 
 describe('translate', () => {
 	test('English is the identity: the key is the parity label', () => {

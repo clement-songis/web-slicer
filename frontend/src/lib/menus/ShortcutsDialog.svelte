@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { dialogFocus } from '$lib/ui/dialog-focus';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
 	// Dialogue d'aide des raccourcis clavier (T079, Annexe B §B.6). Modal listant
 	// les 92 raccourcis groupés, ouvert par « ? » ou le menu Aide. Présentational
 	// seulement : les données viennent de `shortcuts.ts`.
-	import { locale, t } from '$lib/i18n';
+	import { locale, t } from '#lib/i18n';
 	import { EXTRA_SHORTCUT_GROUP, SHORTCUT_GROUPS, totalShortcuts } from './shortcuts';
 	// Liste d'Orca puis les raccourcis câblés hors de sa liste (phase 34).
 	const GROUPS = [...SHORTCUT_GROUPS, EXTRA_SHORTCUT_GROUP];

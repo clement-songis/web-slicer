@@ -3,12 +3,12 @@
 	// fournisseur / modèle, buse, volume d'impression, à partir d'un modèle
 	// existant du catalogue (G-code, cinématique… hérités).
 	import { untrack } from 'svelte';
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import { t, tr } from '$lib/i18n';
-	import { ApiError } from '$lib/api/client';
-	import { createPreset, getCreateOptions, getPreset, type CreateOptions } from '$lib/api/presets';
-	import { createPrinter } from '$lib/api/printers';
-	import type { PrinterCatalogVendor, PrinterResponse } from '$lib/api/types';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import { t, tr } from '#lib/i18n';
+	import { ApiError } from '#lib/api/client';
+	import { createPreset, getCreateOptions, getPreset, type CreateOptions } from '#lib/api/presets';
+	import { createPrinter } from '#lib/api/printers';
+	import type { PrinterCatalogVendor, PrinterResponse } from '#lib/api/types';
 	import { printerPresetName, printerValues, validatePrinter } from './create-custom';
 
 	interface Props {

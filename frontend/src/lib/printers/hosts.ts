@@ -1,8 +1,8 @@
 // Hôtes d'impression (Orca : PhysicalPrinterDialog, host_type) : types pris en
 // charge par le serveur (lot 17), champs utiles à chacun, corps de requête.
 // Pur → testable.
-import type { PrinterResponse, SavePrinterRequest } from '$lib/api/types';
-import { tr } from '$lib/i18n';
+import type { PrinterResponse, SavePrinterRequest } from '#lib/api/types';
+import { tr } from '#lib/i18n';
 
 export type HostType =
 	| 'moonraker'

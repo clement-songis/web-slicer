@@ -2,7 +2,7 @@
 // CaliHistoryDialog), stocké côté serveur : /api/calibrations/pa (lot 14),
 // filtres imprimante / filament / buse. L'ancien stockage navigateur
 // (phase 19, avant la route) est migré une fois vers le serveur.
-import { api } from '$lib/api/client';
+import { api } from '#lib/api/client';
 
 export type PaMethod = 'pa_line' | 'pa_pattern' | 'pa_tower' | 'manual';
 // Libellés = clés anglaises, traduites au rendu.

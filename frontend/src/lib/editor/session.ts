@@ -4,7 +4,7 @@
 // qu'appliquer ces transitions et rendre l'état. Les erreurs sont **figées** :
 // une fois en `error`, les événements suivants ne l'écrasent pas.
 import type { ServerEvent, SliceWarning } from '../api/types';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 import { nozzleRangeError } from './nozzle-range-error';
 
 /** Phase du cycle de tranchage. */

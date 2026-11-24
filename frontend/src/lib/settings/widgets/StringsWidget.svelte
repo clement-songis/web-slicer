@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 	// Liste de chaînes (coStrings non G-code) : une entrée par ligne.
 	import { FIELD_CLASS, type WidgetProps } from './types';
 

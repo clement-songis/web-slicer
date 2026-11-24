@@ -3,7 +3,7 @@
 // interface française. Chaînes reprises telles quelles des msgstr
 // d'OrcaSlicer_fr.po (OrcaSlicer 2.4.1, KBShortcutsDialog) — générées par
 // .work/staging/design-system/phase26/gen-shortcuts-fr.mjs. Repli sur l'anglais.
-import type { Locale } from '$lib/i18n';
+import type { Locale } from '#lib/i18n';
 
 export const SHORTCUTS_FR: Record<string, string> = {
 	// Entrée multi-ligne du .po (msgid sur trois lignes).

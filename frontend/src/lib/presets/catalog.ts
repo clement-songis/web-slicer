@@ -3,7 +3,7 @@
 // Sans dépendance Svelte → testable isolément.
 
 import type { PresetSummary } from '../api/types';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 /** Une buse disponible pour un modèle d'imprimante (preset machine). */
 export interface NozzleOption {

@@ -8,7 +8,7 @@
 	import * as THREE from 'three';
 	import { sceneColors } from './scene-colors';
 	import { clampTowerPosition } from './wipe-tower';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		/** Coin min (repère plateau, mm). */

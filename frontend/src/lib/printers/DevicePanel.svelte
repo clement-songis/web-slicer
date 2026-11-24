@@ -10,7 +10,7 @@
 	// `printers.ts`.
 	import { onMount } from 'svelte';
 	import { resolve } from '$app/paths';
-	import { ApiError } from '$lib/api/client';
+	import { ApiError } from '#lib/api/client';
 	import {
 		listPrinters,
 		getPrinterStatus,
@@ -21,7 +21,7 @@
 		startPrinterFile,
 		sendPrinterGcode,
 		type PrinterFile
-	} from '$lib/api/printers';
+	} from '#lib/api/printers';
 	import {
 		fromStatusResponse,
 		stateMeta,
@@ -49,12 +49,12 @@
 		type ExtendedStatus,
 		type Heater
 	} from './device';
-	import type { PrinterResponse } from '$lib/api/types';
+	import type { PrinterResponse } from '#lib/api/types';
 	import PrintObjectsPanel from './PrintObjectsPanel.svelte';
 	import HostWebUi from './HostWebUi.svelte';
 	import UploadQueue from './UploadQueue.svelte';
 	import { webuiUrl } from './webui';
-	import { locale, numberLocale, t, tr } from '$lib/i18n';
+	import { locale, numberLocale, t, tr } from '#lib/i18n';
 
 	type Cap = 'unknown' | 'yes' | 'no';
 	// Lot 42 M3 : file d'envoi de l'imprimante affichée (Orca « Print host upload queue »).
@@ -331,7 +331,8 @@
 					{$t('Print host upload queue')}
 				</button>
 			{/if}
-			<a href={resolve('/printers')} class="ws-btn ws-btn-sm ws-btn-secondary">
+
+			<a href={resolve('printers')} class="ws-btn ws-btn-sm ws-btn-secondary">
 				{$t('Manage printers')}
 			</a>
 		</div>
@@ -344,7 +345,8 @@
 			class="rounded-lg border border-border bg-surface-raised p-8 text-center text-content-muted"
 		>
 			<p>{$t('No printer declared.')}</p>
-			<a href={resolve('/printers')} class="text-primary hover:underline">
+
+			<a href={resolve('printers')} class="text-primary hover:underline">
 				{$t('Declare a printer')}
 			</a>
 		</div>
@@ -634,6 +636,7 @@
 						</section>
 
 						<!-- Objets de l'impression : exclusion en cours d'impression (PartSkipDialog). -->
+
 						<PrintObjectsPanel printerId={printer.id} {active} tick={cur?.at ?? 0} />
 
 						<!-- Fichiers de l'imprimante -->
@@ -673,15 +676,18 @@
 											<span class="min-w-0 flex-1 truncate text-content" title={f.path}>
 												{f.path}
 											</span>
+
 											<span class="text-xs text-content-subtle tabular-nums">
 												{formatSize(f.size)}
 											</span>
+
 											<span class="hidden text-xs text-content-subtle tabular-nums sm:inline">
 												{new Date(f.modified * 1000).toLocaleString(numberLocale($locale), {
 													dateStyle: 'short',
 													timeStyle: 'short'
 												})}
 											</span>
+
 											<button
 												type="button"
 												class="ws-btn ws-btn-sm ws-btn-secondary"

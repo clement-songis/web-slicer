@@ -2,8 +2,8 @@
 	// Ordre des filaments glissable (Orca DragCanvas, PlateSettingsDialog) :
 	// pastilles numérotées aux couleurs des filaments, réordonnées au glisser-
 	// déposer ou au clavier (← / →, boutons). Présentationnel.
-	import { swatchStyle } from '$lib/ui/color';
-	import { t } from '$lib/i18n';
+	import { swatchStyle } from '#lib/ui/color';
+	import { t } from '#lib/i18n';
 	import { moveItem } from './plate-sequence';
 
 	interface Props {

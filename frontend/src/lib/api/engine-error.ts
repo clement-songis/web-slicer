@@ -5,7 +5,7 @@
 // (« 3MF projet illisible ») et on remplace le détail technique par une cause
 // compréhensible. Les messages sans trace de worker sont rendus tels quels.
 
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 /** Causes connues (code du worker / texte d'Orca) → explication (clé i18n
  *  anglaise, traduite à l'affichage). */

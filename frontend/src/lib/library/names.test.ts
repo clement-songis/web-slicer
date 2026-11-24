@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { setLocale } from '$lib/i18n';
-import { ApiError } from '$lib/api/client';
+import { setLocale } from '#lib/i18n';
+import { ApiError } from '#lib/api/client';
 import { isNameConflict, nameSuggestion, nameTakenMessage, uniqueProjectName } from './names';
 
 beforeAll(() => setLocale('fr'));

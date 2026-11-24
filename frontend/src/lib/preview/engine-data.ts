@@ -9,7 +9,7 @@
 // libvgcode) peuvent différer d'une unité de celles de `/preview/meta` (WSPv)
 // sur un G-code à pause → rapprochement par `first_line` (jamais par index).
 import type { Rgb } from './colorations';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 import type { EngineCustomGcode, EngineMeta, EngineMoves } from './engine-track';
 import { COL, MOVE_BYTES, MOVE_FLOATS, MOVE_INTS, MOVE_TYPE } from './engine-track';
 import { parseOrcaColor } from './filament-colors';

@@ -1,6 +1,6 @@
 // Compte connecté (lot 32) : changement de mot de passe et usage / quotas.
 import { api, ApiError } from './client';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 import type { ChangePasswordRequest, UsageResponse } from './types';
 
 export const changePassword = (body: ChangePasswordRequest) => api.put<void>('/me/password', body);

@@ -4,7 +4,7 @@
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { PARAMS } from '../../generated/params';
 import { UI_LAYOUT } from '../../generated/ui-layout';
-import { isTranslatable, setLocale, translate } from '$lib/i18n';
+import { isTranslatable, setLocale, translate } from '#lib/i18n';
 import { filterLayout, matchesQuery } from './filter';
 import { loadSettingsTranslations } from './i18n';
 

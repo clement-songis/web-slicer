@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { t, tr } from '$lib/i18n';
+	import { t, tr } from '#lib/i18n';
 	import { resolve } from '$app/paths';
-	import { ApiError } from '$lib/api/client';
-	import { register } from '$lib/api/session';
+	import { ApiError } from '#lib/api/client';
+	import { register } from '#lib/api/session';
 
 	let email = $state('');
 	let password = $state('');
@@ -39,7 +39,7 @@
 		try {
 			await register(email, password, inviteToken.trim() || undefined);
 			// Première connexion → wizard de sélection d'imprimante (Phase 14).
-			await goto(resolve('/setup'));
+			await goto(resolve('setup'));
 		} catch (err) {
 			error = err instanceof ApiError ? err.message : tr('Unexpected error');
 		} finally {

@@ -13,7 +13,7 @@
 	import IconCrosshair from '~icons/lucide/crosshair';
 	import IconSliders from '~icons/lucide/sliders-horizontal';
 	import IconGrid from '~icons/lucide/layout-grid';
-	import { locale, t } from '$lib/i18n';
+	import { locale, t } from '#lib/i18n';
 	import { noticeSummary, type ValidationNotice } from './validation';
 
 	interface Props {

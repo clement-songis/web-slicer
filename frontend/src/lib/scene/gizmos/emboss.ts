@@ -3,7 +3,7 @@
 // SVG → contours → extrusion) est une opération moteur (libslic3r/FFI, phase
 // P5) ; ici on modélise et on valide les paramètres, purs et testables.
 
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 /** Source d'un volume en relief. */
 export type EmbossSource = 'text' | 'svg';

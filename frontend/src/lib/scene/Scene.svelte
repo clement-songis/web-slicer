@@ -13,7 +13,7 @@
 	import Viewport from './Viewport.svelte';
 	import FpsCounter from './FpsCounter.svelte';
 	import { FrameMeter, rendererFactory } from './render-settings';
-	import { appPreferences } from '$lib/settings/preferences';
+	import { appPreferences } from '#lib/settings/preferences';
 	import type { PaintOverlay } from './gizmos/painting/paint-overlay';
 	import type { HoverPreview, PaintAssist } from './gizmos/painting/paint-tools';
 	import type { RealisticOptions } from './realistic';

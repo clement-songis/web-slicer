@@ -1,8 +1,8 @@
 // Compatibilité haute / basse température (Orca Print::check_multi_filaments_compatibility,
 // préférence « Remove mixed temperature restriction ») : contrôle à la volée (lot 21).
-import { api } from '$lib/api/client';
-import { tr } from '$lib/i18n';
-import type { FilamentCompatibilityRequest, FilamentCompatibilityResponse } from '$lib/api/types';
+import { api } from '#lib/api/client';
+import { tr } from '#lib/i18n';
+import type { FilamentCompatibilityRequest, FilamentCompatibilityResponse } from '#lib/api/types';
 
 export const checkFilamentCompatibility = (projectId: string, body: FilamentCompatibilityRequest) =>
 	api.post<FilamentCompatibilityResponse>(`/projects/${projectId}/filament-compatibility`, body);

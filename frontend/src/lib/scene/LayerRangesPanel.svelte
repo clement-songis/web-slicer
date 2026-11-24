@@ -3,11 +3,11 @@
 	// [min, max] éditables, ajout après une plage (« + »), suppression, et
 	// réglages propres de chaque plage (`layer_config_ranges`).
 	import ObjectSettingsPanel from './ObjectSettingsPanel.svelte';
-	import type { DisplayMode } from '$lib/settings/filter';
+	import type { DisplayMode } from '#lib/settings/filter';
 	import { addRangeAfter, removeRange, setRangeBounds, type LayerRange } from './layer-ranges';
 	import IconX from '~icons/lucide/x';
 	import IconPlus from '~icons/lucide/plus';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		ranges: LayerRange[];

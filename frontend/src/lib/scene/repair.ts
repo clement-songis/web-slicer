@@ -10,7 +10,7 @@
 import type { ImportItem } from '../editor/imports';
 import type { RepairResponse } from '../api/types';
 import type { SimplifyRequest, SimplifyResponse } from '../api/scene';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 /** Cible d'une réparation : modèle serveur, ou raison du refus. */
 export type RepairTarget = { ok: true; modelId: string } | { ok: false; reason: string };

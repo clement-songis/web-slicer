@@ -5,8 +5,8 @@
 	// automatiquement et confirme brièvement le rétablissement. Orca est une
 	// application locale : équivalent web de ses notifications de connexion.
 	import { onMount } from 'svelte';
-	import { t } from '$lib/i18n';
-	import { connection, probeNow, watchBrowserConnectivity } from '$lib/api/connectivity';
+	import { t } from '#lib/i18n';
+	import { connection, probeNow, watchBrowserConnectivity } from '#lib/api/connectivity';
 
 	let restoredVisible = $state(false);
 	let checking = $state(false);

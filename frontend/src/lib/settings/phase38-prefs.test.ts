@@ -1,9 +1,9 @@
 import { describe, expect, test } from 'vitest';
 import { DEFAULT_PREFERENCES, parsePreferences } from './preferences';
 import { displayUnit } from './widgets/types';
-import { languageName } from '$lib/i18n';
-import { effectiveRealistic } from '$lib/scene/realistic';
-import { supportFilamentAfterRemoval } from '$lib/editor/presets';
+import { languageName } from '#lib/i18n';
+import { effectiveRealistic } from '#lib/scene/realistic';
+import { supportFilamentAfterRemoval } from '#lib/editor/presets';
 
 describe('phase 38 — préférences, unités, langue', () => {
 	test('vue réaliste : défauts d’Orca (mode off, Phong on, ombres et lissage off)', () => {

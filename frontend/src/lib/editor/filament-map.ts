@@ -2,7 +2,7 @@
 // plusieurs buses comme la H2D) : `filament_map_mode` et `filament_map`
 // (1-based, une buse par filament) portés par le plateau (lot 21).
 
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 export type FilamentMapMode = 'Auto For Flush' | 'Auto For Match' | 'Manual' | 'Default';
 

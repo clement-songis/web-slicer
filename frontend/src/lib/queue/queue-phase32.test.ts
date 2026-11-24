@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
-import { setLocale } from '$lib/i18n';
-import type { JobResponse } from '$lib/api/types';
+import { setLocale } from '#lib/i18n';
+import type { JobResponse } from '#lib/api/types';
 import { subscribeEvents } from './events';
 import { jobErrorText, phaseLabel, queuePositions, unknownJobId, upsertJob } from './queue';
 

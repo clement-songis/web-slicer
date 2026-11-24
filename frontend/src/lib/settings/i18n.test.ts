@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { translate } from '$lib/i18n';
+import { translate } from '#lib/i18n';
 import { loadSettingsTranslations } from './i18n';
 
 describe('traductions paresseuses des réglages', () => {

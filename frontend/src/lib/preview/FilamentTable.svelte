@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { locale, numberLocale, t } from '$lib/i18n';
+	import { locale, numberLocale, t } from '#lib/i18n';
 	// Tableau « Filament » d'Orca (GCodeViewer::render_legend / render_all_plates_stats,
 	// lot 31) : une ligne par filament utilisé, colonnes Modèle / Support / Purge /
 	// Tour affichées seulement si un filament en consomme, puis Total ; chaque

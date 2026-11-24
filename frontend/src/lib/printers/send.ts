@@ -1,9 +1,9 @@
 // Envoi d'un G-code vers une imprimante Moonraker (FR-061/FR-062) : logique
 // pure du dialogue « Envoyer à l'imprimante » (sélection des cibles, messages
 // d'erreur lisibles). Le transport vit dans `lib/api/printers`.
-import { ApiError } from '$lib/api/client';
-import type { PrinterResponse, PrinterUploadResponse } from '$lib/api/types';
-import { tr } from '$lib/i18n';
+import { ApiError } from '#lib/api/client';
+import type { PrinterResponse, PrinterUploadResponse } from '#lib/api/types';
+import { tr } from '#lib/i18n';
 import { uploadNameErrorReason, uploadNameReasonMessage } from './uploads';
 
 /** Imprimantes pouvant recevoir un fichier : URL Moonraker renseignée. */

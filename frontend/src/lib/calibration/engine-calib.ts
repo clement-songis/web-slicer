@@ -3,7 +3,7 @@
 // Input_Shaping_Freq/Damp_Test_Dlg, Cornering_Test_Dlg d'OrcaSlicer 2.4.1) :
 // paramètres des dialogues et validation. Le projet est construit par le
 // serveur (POST /api/projects/{id}/calibration, cf. server.ts).
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 export type EngineCalibKind =
 	| 'retraction'

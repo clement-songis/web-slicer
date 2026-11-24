@@ -8,7 +8,7 @@ import {
 	shouldOfferRestore,
 	writeBackup
 } from './auto-backup';
-import { DEFAULT_PREFERENCES, parsePreferences } from '$lib/settings/preferences';
+import { DEFAULT_PREFERENCES, parsePreferences } from '#lib/settings/preferences';
 
 const store = new Map<string, string>();
 beforeEach(() => {

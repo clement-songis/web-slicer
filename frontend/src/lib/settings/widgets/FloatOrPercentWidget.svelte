@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 	import { unitLabel } from './unit-label';
 	// FloatOrPercent (coFloatOrPercent*) : valeur absolue ou relative, éditée en
 	// texte (« 0.4 » ou « 40% ») — le suffixe « % » bascule l'interprétation,

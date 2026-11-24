@@ -5,7 +5,7 @@
 // separate the conflicted objects farther (%s <-> %s). »
 // Le serveur (lot 46) remonte le résultat ; formes acceptées : objet
 // { layer, z|height, object1|obj1, object2|obj2 } (noms ou ids).
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 export interface GcodeConflict {
 	layer: number;

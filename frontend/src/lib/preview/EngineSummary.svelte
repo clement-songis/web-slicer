@@ -8,8 +8,8 @@
 	//   n'est pas disponible, signalé « estimation approchée ».
 	// Les données viennent de `engine-track.ts` (summaryView) et de `stats.ts` ;
 	// ce composant ne fait que la présentation.
-	import { fmtNum, locale, t as translate } from '$lib/i18n';
-	import { formatMoney } from '$lib/settings/preferences';
+	import { fmtNum, locale, t as translate } from '#lib/i18n';
+	import { formatMoney } from '#lib/settings/preferences';
 	import { formatDuration, type PreviewStats } from './stats';
 	import { summaryView, type EngineMeta } from './engine-track';
 	import { OPTION_COLORS, SEGMENT_ROLE_COLORS, type Rgb } from './colorations';

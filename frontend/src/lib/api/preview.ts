@@ -1,9 +1,9 @@
 // Appels de prévisualisation (T067/T084) : méta JSON + buffers binaires de
 // couches (`WSPv`). Le chargement paresseux par fenêtre vit dans
 // `lib/preview/loader.ts` ; ici, seul le transport.
-import { decodePreview, type PreviewSegments } from '$lib/preview/decode';
-import { decodeEngineMoves, type EngineMeta, type EngineMoves } from '$lib/preview/engine-track';
-import type { EngineSeam, PlatesStatsResponse, ProcessedGcode } from '$lib/preview/engine-data';
+import { decodePreview, type PreviewSegments } from '#lib/preview/decode';
+import { decodeEngineMoves, type EngineMeta, type EngineMoves } from '#lib/preview/engine-track';
+import type { EngineSeam, PlatesStatsResponse, ProcessedGcode } from '#lib/preview/engine-data';
 import { api, API_BASE, ApiError } from './client';
 import { apiErrorMessage } from './quota';
 import type { PreviewMeta } from './types';

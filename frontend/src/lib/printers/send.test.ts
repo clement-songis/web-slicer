@@ -1,11 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { setLocale } from '$lib/i18n';
+import { setLocale } from '#lib/i18n';
 
 // Messages attendus en français (interface traduite).
 beforeAll(() => setLocale('fr'));
 afterAll(() => setLocale('en'));
-import { ApiError } from '$lib/api/client';
-import type { PrinterResponse } from '$lib/api/types';
+import { ApiError } from '#lib/api/client';
+import type { PrinterResponse } from '#lib/api/types';
 import {
 	normalizeMoonrakerUrl,
 	printerOptionLabel,

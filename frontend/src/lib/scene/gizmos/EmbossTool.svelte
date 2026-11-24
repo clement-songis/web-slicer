@@ -4,7 +4,7 @@
 	// (profils extrudés par libslic3r, Format/svg.cpp).
 	import { untrack } from 'svelte';
 	import { defaultEmbossParams, validateEmboss, type EmbossParams } from './emboss';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		onsubmit: (params: EmbossParams) => void;

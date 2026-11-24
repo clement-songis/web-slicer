@@ -2,9 +2,9 @@
 // Simplifier, Réparer — ModelVolume::save/restore_painting, lot 21 :
 // `POST /api/models/{id}/remap-paint`). Sans la préférence, Orca efface la
 // peinture (clear_before_change_mesh).
-import { api } from '$lib/api/client';
-import type { RemapPaintHttpResponse } from '$lib/api/types';
-import type { PaintDocument } from '$lib/scene/gizmos/painting/painting';
+import { api } from '#lib/api/client';
+import type { RemapPaintHttpResponse } from '#lib/api/types';
+import type { PaintDocument } from '#lib/scene/gizmos/painting/painting';
 
 export const remapPaint = (modelId: string, channels: PaintDocument) =>
 	api.post<RemapPaintHttpResponse>(`/models/${modelId}/remap-paint`, { channels });

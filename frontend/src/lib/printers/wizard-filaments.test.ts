@@ -8,7 +8,7 @@ import {
 	preferredFilaments,
 	presetNames
 } from './wizard-filaments';
-import type { PresetSummary } from '$lib/api/types';
+import type { PresetSummary } from '#lib/api/types';
 
 const p = (name: string, origin = 'system', instantiation = true): PresetSummary => ({
 	id: name,

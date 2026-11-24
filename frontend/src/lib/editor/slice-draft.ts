@@ -1,8 +1,8 @@
 // Brouillon envoyé au tranchage (lot 21, `SliceDraft`) : Orca tranche avec
 // le preset **édité**, pas la version enregistrée. Seules les valeurs qui
 // diffèrent du preset résolu sont envoyées (mêmes règles que « modifié »).
-import { changedPresetValues } from '$lib/settings/editing';
-import type { SliceDraft } from '$lib/api/types';
+import { changedPresetValues } from '#lib/settings/editing';
+import type { SliceDraft } from '#lib/api/types';
 import { compactOverrides, overridesOf, type ActivePresets } from './presets';
 
 type Values = Record<string, unknown>;

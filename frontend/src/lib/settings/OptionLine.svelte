@@ -4,7 +4,7 @@
 	// vecteurs via data-index=0.
 	import type { ParamDef } from '../../generated/params';
 	import { widgetFor } from './widgets';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 	import { clonePresetValues, settingChanged } from './editing';
 	import { untrack } from 'svelte';
 	import IconUndo from '~icons/lucide/undo-2';

@@ -2,8 +2,8 @@
 	// Objet minuscule à l'import (Orca : « Object too small », Plater.cpp:6693) :
 	// propose pouces → mm ou mètres → mm, avec la taille résultante de chaque
 	// choix, l'unité détectée mise en avant, et « Ne plus proposer ».
-	import { dialogFocus } from '$lib/ui/dialog-focus';
-	import { locale, t } from '$lib/i18n';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
+	import { locale, t } from '#lib/i18n';
 	import { UNIT_FACTORS, formatSize, type UnitSource } from './units';
 
 	interface Props {

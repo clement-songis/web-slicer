@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, it, expect } from 'vitest';
-import { setLocale } from '$lib/i18n';
+import { setLocale } from '#lib/i18n';
 import {
 	sortByUpdated,
 	formatDate,
@@ -8,7 +8,7 @@ import {
 	relativeTime,
 	sortProjects
 } from './library';
-import type { ProjectResponse } from '$lib/api/types';
+import type { ProjectResponse } from '#lib/api/types';
 
 function project(over: Partial<ProjectResponse>): ProjectResponse {
 	return {

@@ -1,7 +1,7 @@
 // Réglages caméra/souris d'Orca (Preferences.cpp « Camera », GLCanvas3D.cpp)
 // traduits en paramètres des contrôles three.js. Fonctions pures, testées.
 import { MOUSE } from 'three';
-import type { CameraPreferences, DragAction } from '$lib/settings/preferences';
+import type { CameraPreferences, DragAction } from '#lib/settings/preferences';
 
 /** Valeur three.js d'un bouton : rotation, panoramique, ou rien (null). */
 export function mouseAction(action: DragAction): MOUSE | null {

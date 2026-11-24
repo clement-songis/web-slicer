@@ -7,7 +7,7 @@ import {
 	withHandyMenu,
 	type HandyModelInfo
 } from './handy-models';
-import { SCENE_ADD_ITEMS } from '$lib/scene/menus';
+import { SCENE_ADD_ITEMS } from '#lib/scene/menus';
 
 const MODELS: HandyModelInfo[] = [
 	{ key: 'orca-cube', label: 'Orca Cube', files: ['a.drc', 'b.drc'], arrange_after_import: true },

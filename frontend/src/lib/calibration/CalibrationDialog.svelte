@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { dialogFocus } from '$lib/ui/dialog-focus';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
 	// Dialogue de paramètres d'une calibration (Temp_Calibration_Dlg /
 	// PA_Calibration_Dlg d'Orca) : plage, validation, puis création du projet
 	// par l'appelant.
@@ -12,7 +12,7 @@
 		type PressureAdvanceParams,
 		type TemperatureParams
 	} from './calibration';
-	import { fmtDec, locale, t } from '$lib/i18n';
+	import { fmtDec, locale, t } from '#lib/i18n';
 
 	interface Props {
 		open: boolean;

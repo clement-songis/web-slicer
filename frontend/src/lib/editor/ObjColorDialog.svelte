@@ -3,9 +3,9 @@
 	// le serveur, nombre de couleurs (fusion des plus proches), et pour chacune
 	// le filament qui l'imprimera — nouveau (couleur reprise) ou existant.
 	// « Sans les couleurs » garde l'objet sur un seul filament.
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import { swatchStyle } from '$lib/ui/color';
-	import { t } from '$lib/i18n';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import { swatchStyle } from '#lib/ui/color';
+	import { t } from '#lib/i18n';
 	import {
 		MAX_FILAMENTS,
 		defaultTargets,

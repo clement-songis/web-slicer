@@ -13,7 +13,7 @@
 		type LayerBand
 	} from './layer-height';
 	import { LayerBrushDriver, actionFor } from './layer-brush';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		profile: LayerBand[];

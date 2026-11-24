@@ -3,22 +3,22 @@
 	// liens Récent / Imprimantes / File + thème + déconnexion. Montée par la
 	// bibliothèque, la page imprimantes et la file pour garder le menu partout.
 	import { goto } from '$app/navigation';
-	import { t, tr } from '$lib/i18n';
+	import { t, tr } from '#lib/i18n';
 	import { resolve } from '$app/paths';
-	import { currentUser, logout } from '$lib/api/session';
-	import { deleteAccount } from '$lib/api/auth';
+	import { currentUser, logout } from '#lib/api/session';
+	import { deleteAccount } from '#lib/api/auth';
 	import {
 		changePassword,
 		getUsage,
 		passwordChangeError,
 		validatePasswordChange
-	} from '$lib/api/account';
-	import { gauge, usageLines } from '$lib/api/quota';
-	import type { UsageResponse } from '$lib/api/types';
+	} from '#lib/api/account';
+	import { gauge, usageLines } from '#lib/api/quota';
+	import type { UsageResponse } from '#lib/api/types';
 	import { onMount } from 'svelte';
-	import { ApiError } from '$lib/api/client';
+	import { ApiError } from '#lib/api/client';
 	import IconShield from '~icons/lucide/shield';
-	import { ThemeToggle } from '$lib/theme';
+	import { ThemeToggle } from '#lib/theme';
 	import IconClock from '~icons/lucide/clock';
 	import IconPrinter from '~icons/lucide/printer';
 	import IconQueue from '~icons/lucide/list-checks';
@@ -248,6 +248,7 @@
 						<button type="submit" class="ws-btn ws-btn-sm ws-btn-primary flex-1" disabled={busy}>
 							{$t('Change')}
 						</button>
+
 						<button
 							type="button"
 							class="ws-btn ws-btn-sm ws-btn-secondary"
@@ -323,7 +324,7 @@
 	</details>
 	<nav class="flex flex-col gap-1 p-2 text-sm">
 		<a
-			href={resolve('/library')}
+			href={resolve('library')}
 			class={active === 'recent' ? ACTIVE : IDLE}
 			aria-current={active === 'recent' ? 'page' : undefined}
 		>
@@ -331,7 +332,7 @@
 			{$t('Recent')}
 		</a>
 		<a
-			href={resolve('/printers')}
+			href={resolve('printers')}
 			class={active === 'printers' ? ACTIVE : IDLE}
 			aria-current={active === 'printers' ? 'page' : undefined}
 		>
@@ -339,7 +340,7 @@
 			{$t('Printers')}
 		</a>
 		<a
-			href={resolve('/queue')}
+			href={resolve('queue')}
 			class={active === 'queue' ? ACTIVE : IDLE}
 			aria-current={active === 'queue' ? 'page' : undefined}
 		>
@@ -348,7 +349,7 @@
 		</a>
 		{#if $currentUser?.role === 'admin'}
 			<a
-				href={resolve('/admin')}
+				href={resolve('admin')}
 				class={active === 'admin' ? ACTIVE : IDLE}
 				aria-current={active === 'admin' ? 'page' : undefined}
 				data-testid="nav-admin"

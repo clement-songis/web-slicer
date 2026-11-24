@@ -3,10 +3,10 @@
 	// l'application à la place de window.prompt, comme le GetNumberFromUser
 	// d'Orca (Plater::set_number_of_copies) — titre « Copies of the selected
 	// object », invite « Number of copies: », 0–1000, défaut = instances actuelles.
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import Button from '$lib/ui/Button.svelte';
-	import Input from '$lib/ui/Input.svelte';
-	import { t } from '$lib/i18n';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import Button from '#lib/ui/Button.svelte';
+	import Input from '#lib/ui/Input.svelte';
+	import { t } from '#lib/i18n';
 	import { MAX_INSTANCES, parseInstanceCount } from './instances';
 
 	type Props = {

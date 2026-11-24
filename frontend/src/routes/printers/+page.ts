@@ -1,8 +1,8 @@
 // Garde de session + chargement des imprimantes et des presets machine (T077).
 // Rendu client uniquement (session par cookie, WebSocket temps réel au montage).
-import { getPrinterCatalog, listPrinters } from '$lib/api/printers';
-import { listPresets } from '$lib/api/presets';
-import { requireUser } from '$lib/guards';
+import { getPrinterCatalog, listPrinters } from '#lib/api/printers';
+import { listPresets } from '#lib/api/presets';
+import { requireUser } from '#lib/guards';
 import type { PageLoad } from './$types';
 
 export const ssr = false;

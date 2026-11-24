@@ -2,8 +2,8 @@
 // PresetComboBoxes.cpp:1429) : la liste complète d'un type (sans filtre
 // d'imprimante) moins les presets compatibles déjà listés. Liste complète mise
 // en cache par type (une requête par session et par type).
-import { listPresets } from '$lib/api/presets';
-import type { PresetSummary } from '$lib/api/types';
+import { listPresets } from '#lib/api/presets';
+import type { PresetSummary } from '#lib/api/types';
 
 const cache = new Map<string, Promise<PresetSummary[]>>();
 

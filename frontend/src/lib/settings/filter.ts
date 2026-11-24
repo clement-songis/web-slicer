@@ -6,7 +6,7 @@
 
 import { PARAMS, type ParamDef, type ParamMode } from '../../generated/params';
 import type { UiOption, UiPage } from '../../generated/ui-layout';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 /** Modes exposés à l'utilisateur, dans l'ordre Orca. */
 export type DisplayMode = 'simple' | 'advanced' | 'expert' | 'develop';

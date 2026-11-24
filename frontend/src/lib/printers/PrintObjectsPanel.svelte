@@ -3,9 +3,9 @@
 	// via Klipper exclude_object) : vue de dessus des contours, liste avec état
 	// (en cours / à imprimer / exclu) et « Exclure » pendant l'impression, avec
 	// confirmation (irréversible). Section masquée si le serveur n'a pas la route.
-	import { ApiError } from '$lib/api/client';
-	import { excludePrintObject, getPrintObjects } from '$lib/api/printers';
-	import type { ExcludeObjectStatus } from '$lib/api/types';
+	import { ApiError } from '#lib/api/client';
+	import { excludePrintObject, getPrintObjects } from '#lib/api/printers';
+	import type { ExcludeObjectStatus } from '#lib/api/types';
 	import {
 		isMissingRoute,
 		objectsBounds,
@@ -13,7 +13,7 @@
 		printObjectState,
 		type PrintObjectState
 	} from './device';
-	import { t, tr } from '$lib/i18n';
+	import { t, tr } from '#lib/i18n';
 
 	interface Props {
 		printerId: string;

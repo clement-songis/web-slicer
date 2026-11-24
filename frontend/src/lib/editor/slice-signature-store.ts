@@ -6,8 +6,8 @@
 // tranchage, puis comparée à celle de la scène rouverte. Pas d'empreinte connue
 // (autre navigateur, stockage effacé) → pas de restauration : retour en Préparer.
 
-import { api, ApiError } from '$lib/api/client';
-import type { PlateSliceSignature, SliceSignatureResponse } from '$lib/api/types';
+import { api, ApiError } from '#lib/api/client';
+import type { PlateSliceSignature, SliceSignatureResponse } from '#lib/api/types';
 
 const PREFIX = 'web-slicer:slice-signatures:';
 /** G-code retenus par projet (un par plateau, plusieurs lots récents). */

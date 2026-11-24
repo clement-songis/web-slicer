@@ -4,10 +4,10 @@
 	// plus afficher » (no_warn_when_modified_gcodes, enregistrée dans les
 	// préférences du compte — le serveur ne renvoie plus l'avertissement). Si le
 	// rapport porte des métadonnées, un renvoi vers l'onglet Projet est proposé.
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import { gcodeItemLabel, warningContent } from '$lib/projects/open-3mf';
-	import { t } from '$lib/i18n';
-	import type { ImportReport } from '$lib/api/types';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import { gcodeItemLabel, warningContent } from '#lib/projects/open-3mf';
+	import { t } from '#lib/i18n';
+	import type { ImportReport } from '#lib/api/types';
 
 	interface Props {
 		report: ImportReport | null;

@@ -1,7 +1,7 @@
 // Phase 46 (audit 44 PERF-a) : objet nommé dans l'échec « couche initiale vide ».
 import { describe, expect, it } from 'vitest';
 import { emptyFirstLayerSuspects, isEmptyFirstLayerError, sectionExtent } from './first-layer';
-import type { SceneMesh } from '$lib/scene/mesh';
+import type { SceneMesh } from '#lib/scene/mesh';
 
 function mesh(points: number[][], tris: number[][]): SceneMesh {
 	return {

@@ -5,7 +5,7 @@
 	import IconUndo from '~icons/lucide/undo-2';
 	import IconRedo from '~icons/lucide/redo-2';
 	import IconChevron from '~icons/lucide/chevron-down';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		/** Lit les étapes (`undo[0]` = prochaine annulation). */

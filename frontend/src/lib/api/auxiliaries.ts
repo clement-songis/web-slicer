@@ -4,7 +4,7 @@
 import { api, API_BASE, ApiError } from './client';
 import { apiErrorMessage } from './quota';
 import type { ErrorBody } from './types';
-import type { ObjColorsResponse } from '$lib/editor/obj-colors';
+import type { ObjColorsResponse } from '#lib/editor/obj-colors';
 
 export interface AuxiliaryEntry {
 	/** « <dossier>/<fichier> ». */

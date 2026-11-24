@@ -1,7 +1,7 @@
 // Tests du réducteur de session de tranchage (T088) : transitions, progression,
 // bascule vers l'aperçu, isolation et gel des erreurs.
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { setLocale } from '$lib/i18n';
+import { setLocale } from '#lib/i18n';
 import type { ServerEvent } from '../api/types';
 import {
 	applyJobEvent,

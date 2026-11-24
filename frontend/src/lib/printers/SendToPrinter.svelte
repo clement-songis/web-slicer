@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { dialogFocus } from '$lib/ui/dialog-focus';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
 	// Envoi du G-code tranché vers une imprimante Moonraker (FR-061/FR-062) :
 	// bouton + dialogue (cible, démarrage immédiat, succès/erreur lisibles).
 	// Autonome : la page ne fournit que l'identifiant du G-code courant.
@@ -14,7 +14,7 @@
 		updatePrinter,
 		uploadToPrinter,
 		type UploadSlicedResponse
-	} from '$lib/api/printers';
+	} from '#lib/api/printers';
 	import UploadQueue from './UploadQueue.svelte';
 	import {
 		joinUploadName,
@@ -23,7 +23,7 @@
 		uploadNameReasonMessage,
 		uploadNameStem
 	} from './uploads';
-	import type { PrinterResponse } from '$lib/api/types';
+	import type { PrinterResponse } from '#lib/api/types';
 	import {
 		normalizeMoonrakerUrl,
 		printerOptionLabel,
@@ -37,8 +37,8 @@
 		sendErrorMessage,
 		sendSuccessMessage
 	} from './send';
-	import { t, tr } from '$lib/i18n';
-	import { getResolvedPreset } from '$lib/api/presets';
+	import { t, tr } from '#lib/i18n';
+	import { getResolvedPreset } from '#lib/api/presets';
 
 	interface Props {
 		/** G-code tranché courant ; absent → bouton désactivé. */
@@ -127,11 +127,13 @@
 		if (models?.key !== key) return null;
 		return presetMismatch(machinePreset, selected, machinePresets, models);
 	});
+
 	const declareHref = $derived(
 		machinePreset
-			? `${resolve('/printers')}?preset=${encodeURIComponent(machinePreset.id)}`
-			: resolve('/printers')
+			? `${resolve('printers')}?preset=${encodeURIComponent(machinePreset.id)}`
+			: resolve('printers')
 	);
+
 	// Imprimante choisie sans URL Moonraker (ex. celle créée à l'inscription) :
 	// l'URL se saisit ici, sans quitter l'éditeur (Orca : bouton de connexion
 	// à côté du choix d'imprimante, Plater.cpp `m_printer_connect`).
@@ -376,6 +378,7 @@
 					queue,
 					filename
 				);
+
 				lastUploadIds = res.files.map((f) => f.upload_id).filter((id): id is string => !!id);
 				success =
 					res.files.length === 1
@@ -482,6 +485,7 @@
 					>
 						{$t('Sliced plate')}
 					</button>
+
 					<button
 						type="button"
 						class="ws-seg-item flex-1 {scope === 'all' ? 'ws-seg-on' : ''}"
@@ -659,7 +663,7 @@
 								{$t(
 									'Saved in the printer when sending, reused afterwards. Other connection type (OctoPrint, PrusaLink…):'
 								)}
-								<a class="underline" href={resolve('/printers')} data-testid="send-host-settings">
+								<a class="underline" href={resolve('printers')} data-testid="send-host-settings">
 									{$t('Printers page')}
 								</a>.
 							</span>
@@ -826,6 +830,7 @@
 				>
 					{success ? $t('Close') : $t('Cancel')}
 				</button>
+
 				{#if meta.queue && selected && !needsUrl}
 					<!-- Orca PrintHostSendDialog « Upload to Queue » : hôtes dont
 					     get_post_upload_actions contient QueuePrint (PrusaConnect). -->

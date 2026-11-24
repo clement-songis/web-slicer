@@ -1,5 +1,5 @@
 <script module lang="ts">
-	import { registerTranslations } from '$lib/i18n';
+	import { registerTranslations } from '#lib/i18n';
 	registerTranslations('fr', { About: 'À propos' });
 	/** Version d'OrcaSlicer dont le moteur et les profils sont repris. */
 	export const ORCA_VERSION = '2.4.1';
@@ -8,10 +8,10 @@
 <script lang="ts">
 	// « À propos » (Orca AboutDialog.cpp) : version du serveur, moteur de
 	// tranchage, licences (AGPL-3.0 d'OrcaSlicer / libslic3r) et crédits.
-	import { api } from '$lib/api/client';
-	import { APP_NAME } from '$lib/version';
-	import { dialogFocus } from '$lib/ui/dialog-focus';
-	import { t } from '$lib/i18n';
+	import { api } from '#lib/api/client';
+	import { APP_NAME } from '#lib/version';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		open: boolean;

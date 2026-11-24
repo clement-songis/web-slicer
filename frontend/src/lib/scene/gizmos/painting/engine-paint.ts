@@ -4,7 +4,7 @@
 // Le TS ne fait que l'aperçu instantané ; la réponse du moteur remplace l'état
 // et c'est elle qui est persistée. Requêtes corrélées par `seq`.
 import type { PaintChannel } from './painting';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 import type { EngineStroke, PreviewReply } from './engine-paint-protocol';
 
 // Types des messages : écrits à la main dans engine-paint-protocol.ts (pas ts-rs).

@@ -2,10 +2,10 @@
 // bibliothèque par défaut, ou dernier projet modifié (« Préparer »). Les gardes
 // renvoient vers `/login` sans session et vers `/setup` sans imprimante.
 import { redirect } from '@sveltejs/kit';
-import { listProjects } from '$lib/api/projects';
-import { requireOnboardedUser } from '$lib/guards';
-import { startPath } from '$lib/library/library';
-import { currentPreferences, preferencesSettled } from '$lib/settings/preferences';
+import { listProjects } from '#lib/api/projects';
+import { requireOnboardedUser } from '#lib/guards';
+import { startPath } from '#lib/library/library';
+import { currentPreferences, preferencesSettled } from '#lib/settings/preferences';
 import type { PageLoad } from './$types';
 
 export const ssr = false;

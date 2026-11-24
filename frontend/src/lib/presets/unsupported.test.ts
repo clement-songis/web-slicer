@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { subtractCompatible } from './unsupported';
-import type { PresetSummary } from '$lib/api/types';
+import type { PresetSummary } from '#lib/api/types';
 
 const p = (id: string, instantiation = true) =>
 	({ id, name: id, kind: 'filament', origin: 'system', instantiation }) as unknown as PresetSummary;

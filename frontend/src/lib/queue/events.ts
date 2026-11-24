@@ -2,7 +2,7 @@
 // autour de `WebSocket` : reconnexion simple, décodage des `ServerEvent` typés,
 // et rappel `onEvent`. Aucune logique métier (le réducteur vit dans `queue.ts`).
 
-import type { ServerEvent } from '$lib/api/types';
+import type { ServerEvent } from '#lib/api/types';
 
 /** URL WebSocket `/api/ws` dérivée de l'origine courante (ws/wss). */
 export function wsUrl(): string {

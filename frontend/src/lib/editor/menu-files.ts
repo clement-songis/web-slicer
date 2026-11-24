@@ -2,7 +2,7 @@
 // l'écosystème Three.js : décompression ZIP locale, sans envoyer l'archive à un
 // service tiers. Seuls les fichiers réellement importables sont retournés.
 import { unzipSync } from 'fflate';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 const MODEL_EXTENSION = /\.(stl|obj|3mf|oltp|step|stp|amf|svg|drc)$/i;
 const CONFIG_EXTENSION = /\.(json|orca_printer|orca_bundle|orca_filament)$/i;

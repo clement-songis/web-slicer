@@ -2,7 +2,7 @@
 // PA_Calibration_Dlg d'OrcaSlicer) : paramètres et validation des dialogues.
 // Le projet est construit par le serveur (POST /api/projects/{id}/calibration,
 // portage des Plater::calib_* ; cf. server.ts).
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 export type CalibrationKind = 'temperature' | 'pressure_advance';
 

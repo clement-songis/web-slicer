@@ -9,8 +9,8 @@ import type { ValidationIssue } from '../../generated/api/ValidationIssue';
 import type { SliceRequest } from '../../generated/api/SliceRequest';
 import { PARAMS } from '../../generated/params';
 import { UI_LAYOUT, type PresetKind } from '../../generated/ui-layout';
-import { api } from '$lib/api/client';
-import { tr } from '$lib/i18n';
+import { api } from '#lib/api/client';
+import { tr } from '#lib/i18n';
 import { nozzleRangeError } from './nozzle-range-error';
 
 export type { ValidateResponse, ValidationIssue };

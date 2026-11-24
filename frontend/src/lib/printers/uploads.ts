@@ -1,9 +1,9 @@
 // Lot 42 (M2, M3) : nom de fichier choisi à l'envoi (Orca PrintHostSendDialog)
 // et historique des envois (Orca PrintHostQueueDialog, « Print host upload
 // queue »). Logique pure : le transport vit dans `lib/api/printers`.
-import { ApiError } from '$lib/api/client';
-import type { PrinterUploadEntry } from '$lib/api/types';
-import { numberLocale, tr } from '$lib/i18n';
+import { ApiError } from '#lib/api/client';
+import type { PrinterUploadEntry } from '#lib/api/types';
+import { numberLocale, tr } from '#lib/i18n';
 
 /** Raisons de refus d'un nom d'envoi (details.reason du 422 serveur). */
 export type UploadNameReason = 'chars' | 'empty' | 'hidden' | 'too_long';

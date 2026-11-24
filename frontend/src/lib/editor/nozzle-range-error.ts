@@ -4,7 +4,7 @@
 // (GLCanvas3D::_set_warning_notification, MultiExtruderPrintableError /
 // MultiExtruderHeightOutside) précédé de « tranchage impossible : » ; on le
 // restitue comme Orca, traduit avec les msgstr d'OrcaSlicer_fr.po.
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 const LINE =
 	/^(Filaments?) (.+?) (?:is|are) placed in the (.+?), but the generated G-code path exceeds the printable (range|height) of the (.+?)\.$/;

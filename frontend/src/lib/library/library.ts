@@ -1,8 +1,8 @@
 // Logique pure de l'accueil / bibliothèque (T118, US6 ; parité orca-home.png).
 // Le composant `routes/library/+page.svelte` reste présentational : tri,
 // formatage de date et URL de vignette sont testés ici, hors du `.svelte`.
-import type { ProjectResponse } from '$lib/api/types';
-import { tr } from '$lib/i18n';
+import type { ProjectResponse } from '#lib/api/types';
+import { tr } from '#lib/i18n';
 
 /** Réordonne par date de mise à jour décroissante (comme le backend). */
 export function sortByUpdated(list: readonly ProjectResponse[]): ProjectResponse[] {

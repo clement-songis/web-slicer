@@ -18,9 +18,9 @@
 		deleteAuxiliary,
 		listAuxiliaries,
 		putAuxiliary
-	} from '$lib/api/auxiliaries';
-	import { ApiError } from '$lib/api/client';
-	import { t, tr } from '$lib/i18n';
+	} from '#lib/api/auxiliaries';
+	import { ApiError } from '#lib/api/client';
+	import { t, tr } from '#lib/i18n';
 	import {
 		AUX_FOLDERS,
 		AUX_MAX_BYTES,

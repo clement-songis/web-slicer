@@ -5,7 +5,7 @@
 // Ce module (pur) prépare le dialogue : regroupement à N couleurs, affectation
 // de chaque couleur à un filament existant ou nouveau, puis renumérotation de
 // la peinture MMU vers les extrudeurs choisis.
-import { decodeFacet, encodeFacet } from '$lib/scene/gizmos/painting/facets';
+import { decodeFacet, encodeFacet } from '#lib/scene/gizmos/painting/facets';
 
 /** Réponse de `POST /api/models/{id}/obj-colors`. */
 export interface ObjColorsResponse {

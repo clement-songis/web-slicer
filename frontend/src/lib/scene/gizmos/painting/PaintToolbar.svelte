@@ -10,7 +10,7 @@
 	import { CHANNELS, type PaintChannel } from './painting';
 	import { ENFORCER, BLOCKER } from './facets';
 	import { CHANNEL_LABELS } from './types';
-	import { fmtNum, locale, t } from '$lib/i18n';
+	import { fmtNum, locale, t } from '#lib/i18n';
 	import {
 		FILL_ANGLE_MAX,
 		FILL_ANGLE_MIN,

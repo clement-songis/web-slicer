@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { setLocale } from '$lib/i18n';
-import { ApiError } from '$lib/api/client';
-import type { PrinterUploadEntry } from '$lib/api/types';
+import { setLocale } from '#lib/i18n';
+import { ApiError } from '#lib/api/client';
+import type { PrinterUploadEntry } from '#lib/api/types';
 import {
 	formatUploadSize,
 	hasPendingUploads,

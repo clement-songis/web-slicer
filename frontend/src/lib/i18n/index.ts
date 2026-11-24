@@ -12,13 +12,13 @@
 // sans rechargement via `reload: false`).
 
 import { derived, get, writable } from 'svelte/store';
-import { m } from '$lib/paraglide/messages';
+import { m } from '#lib/paraglide/messages';
 import {
 	baseLocale,
 	getLocale,
 	locales,
 	setLocale as setParaglideLocale
-} from '$lib/paraglide/runtime';
+} from '#lib/paraglide/runtime';
 
 /** Locales prises en charge (dérivées du projet inlang). */
 export type Locale = (typeof locales)[number];

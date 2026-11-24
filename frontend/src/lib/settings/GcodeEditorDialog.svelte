@@ -3,8 +3,8 @@
 	// d'édition + variables disponibles (spécifiques à la clé, états de
 	// tranchage, statistiques, dimensions, horodatages, réglages des presets),
 	// recherche, description, insertion au curseur (double-clic ou bouton).
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import { t } from '$lib/i18n';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import { t } from '#lib/i18n';
 	import {
 		filterPlaceholders,
 		insertAt,

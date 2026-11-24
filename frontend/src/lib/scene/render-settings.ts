@@ -4,7 +4,7 @@
 // d'images/s (Orca `max_fps`) appliqué à la boucle d'animation de Threlte
 // (`renderer.setAnimationLoop`), et compteur d'images réellement dessinées.
 import { WebGLRenderer } from 'three';
-import { appPreferences } from '$lib/settings/preferences';
+import { appPreferences } from '#lib/settings/preferences';
 
 /** Marge sous l'intervalle cible : le rafraîchissement d'écran oscille de ~1 ms. */
 const JITTER_MS = 2;

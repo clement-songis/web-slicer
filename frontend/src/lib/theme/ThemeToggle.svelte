@@ -5,8 +5,8 @@
 	import IconSun from '~icons/lucide/sun';
 	import IconMoon from '~icons/lucide/moon';
 	import IconMonitor from '~icons/lucide/monitor';
-	import { t } from '$lib/i18n';
-	import { cx, FOCUS_RING_INSET } from '$lib/ui/styles';
+	import { t } from '#lib/i18n';
+	import { cx, FOCUS_RING_INSET } from '#lib/ui/styles';
 	import { themePref, setTheme, type ThemePref } from './theme';
 
 	const options: { value: ThemePref; label: string; icon: Component }[] = [

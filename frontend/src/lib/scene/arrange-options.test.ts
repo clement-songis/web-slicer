@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARRANGE_DEFAULTS } from '$lib/settings/preferences';
+import { ARRANGE_DEFAULTS } from '#lib/settings/preferences';
 import {
 	clampSpacing,
 	effectiveOptions,
@@ -7,7 +7,7 @@ import {
 	resetOptions,
 	spacingFloor
 } from './arrange-options';
-import type { ArrangeOptionsInfo } from '$lib/api/types';
+import type { ArrangeOptionsInfo } from '#lib/api/types';
 
 const info = (over: Partial<ArrangeOptionsInfo> = {}): ArrangeOptionsInfo => ({
 	defaults: {

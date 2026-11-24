@@ -4,14 +4,14 @@
 	// `job.finished`, FR-031). La logique de file est pure (`lib/queue/queue.ts`) ;
 	// cette page orchestre chargement, abonnement et actions.
 	import { onMount } from 'svelte';
-	import { t, tr } from '$lib/i18n';
-	import { ApiError } from '$lib/api/client';
-	import { cancelJob, getJob, listJobs } from '$lib/api/jobs';
+	import { t, tr } from '#lib/i18n';
+	import { ApiError } from '#lib/api/client';
+	import { cancelJob, getJob, listJobs } from '#lib/api/jobs';
 	import { resolve } from '$app/paths';
-	import { connection } from '$lib/api/connectivity';
-	import { uploadToPrinter } from '$lib/api/printers';
-	import type { JobResponse, PrinterResponse } from '$lib/api/types';
-	import { subscribeEvents } from '$lib/queue/events';
+	import { connection } from '#lib/api/connectivity';
+	import { uploadToPrinter } from '#lib/api/printers';
+	import type { JobResponse, PrinterResponse } from '#lib/api/types';
+	import { subscribeEvents } from '#lib/queue/events';
 	import {
 		applyEvent,
 		jobErrorText,
@@ -22,9 +22,9 @@
 		statusMeta,
 		unknownJobId,
 		upsertJob
-	} from '$lib/queue/queue';
+	} from '#lib/queue/queue';
 	import type { PageData } from './$types';
-	import AppSidebar from '$lib/nav/AppSidebar.svelte';
+	import AppSidebar from '#lib/nav/AppSidebar.svelte';
 
 	let { data }: { data: PageData } = $props();
 

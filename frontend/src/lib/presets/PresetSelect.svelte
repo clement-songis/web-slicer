@@ -5,12 +5,12 @@
 	import type { PresetSummary } from '../api/types';
 	import { inheritanceLabel, isDerived, partitionByOrigin } from './catalog';
 	import { filterPresetList, type ActivePrinter } from './search';
-	import { appPreferences } from '$lib/settings/preferences';
+	import { appPreferences } from '#lib/settings/preferences';
 	import { unsupportedPresets } from './unsupported';
 	import { groupUserPresets, loadUserPresetMeta, type UserPresetMeta } from './user-grouping';
 	import { getResolvedPreset } from '../api/presets';
 	import ModifiedBadge from './ModifiedBadge.svelte';
-	import { locale, t } from '$lib/i18n';
+	import { locale, t } from '#lib/i18n';
 	import { UNSPECIFIED } from './user-grouping';
 
 	interface Props {

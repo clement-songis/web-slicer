@@ -36,7 +36,7 @@
 	import { sceneColors } from './scene-colors';
 	import { guideRotation, markerWorldRadius, MARKER_PX, type SceneGuides } from './guides';
 	import type { Footprint, PlateView } from './plate-layout';
-	import { appPreferences } from '$lib/settings/preferences';
+	import { appPreferences } from '#lib/settings/preferences';
 	import type { HoverPreview, PaintAssist } from './gizmos/painting/paint-tools';
 	import type { RealisticOptions } from './realistic';
 	import SsaoPass from './SsaoPass.svelte';

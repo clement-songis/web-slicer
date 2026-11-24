@@ -1,6 +1,6 @@
 // Tests de la logique de la grille de sélection d'imprimante (T133).
 import { describe, expect, it } from 'vitest';
-import type { PrinterCatalogModel, PrinterCatalogVendor } from '$lib/api/types';
+import type { PrinterCatalogModel, PrinterCatalogVendor } from '#lib/api/types';
 import {
 	coverUrl,
 	filterCatalog,

@@ -5,7 +5,7 @@
 	// dans l'historique PA — sans calcul à la main (Orca : wiki + saisie manuelle).
 	import { kAtHeight, type CalibrationReading } from './calibration-result';
 	import { parseK } from './pa-history';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		reading: CalibrationReading;

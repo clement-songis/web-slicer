@@ -4,7 +4,7 @@
 // colonnes du slot changé sont recalculées ; les autres valeurs, éventuellement
 // saisies à la main, sont conservées. Jamais déclenché par une saisie manuelle
 // ni par « Appliquer » du dialogue ; le multiplicateur n'est jamais modifié.
-import type { AutoFlush } from '$lib/settings/preferences';
+import type { AutoFlush } from '#lib/settings/preferences';
 
 export interface FlushSnapshot {
 	colours: readonly string[];

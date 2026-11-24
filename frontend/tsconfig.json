@@ -1,29 +1,14 @@
 {
 	"extends": "$app/tsconfig",
-	// Le build adaptateur-node, les scripts de génération et le kit généré
-	// ne sont pas type-checkés (chaîne d'imports de vite.config.ts).
 	"include": ["src/**/*"],
 	"exclude": ["src/service-worker", "build", "scripts", "server.js"],
 	"compilerOptions": {
 		"types": ["bun", "unplugin-icons/types/svelte", "$app/types"],
 		"paths": {
-			"$lib": ["./src/lib"],
-			"$lib/*": ["./src/lib/*"]
+			"#lib": ["./src/lib"],
+			"#lib/*": ["./src/lib/*"]
 		},
-		"rewriteRelativeImportExtensions": true,
-		"allowJs": true,
-		"checkJs": true,
-		"esModuleInterop": true,
-		"forceConsistentCasingInFileNames": true,
-		"resolveJsonModule": true,
-		"skipLibCheck": true,
 		"sourceMap": true,
-		"strict": true,
-		"moduleResolution": "bundler"
+		"strict": true
 	}
-	// Path aliases are handled by https://svelte.dev/docs/kit/configuration#alias
-	// except $lib which is handled by https://svelte.dev/docs/kit/configuration#files
-	//
-	// To make changes to top-level options such as include and exclude, we recommend extending
-	// the generated config; see https://svelte.dev/docs/kit/configuration#typescript
 }

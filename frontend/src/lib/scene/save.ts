@@ -5,7 +5,7 @@
 import { ApiError } from '../api/client';
 import { saveProject } from '../api/projects';
 import type { SceneDocument } from './document';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 /** Résultat d'une tentative de sauvegarde. */
 export type SaveOutcome =

@@ -3,7 +3,7 @@
 // **modèle**, compteurs `X / N` et « tout sélectionner » par marque, recherche
 // et modes de vue. Aucune dépendance au DOM : testable sous vitest ; le composant
 // `PrinterCatalog.svelte` (T134) ne fait que la disposition.
-import type { PrinterCatalogModel, PrinterCatalogVendor } from '$lib/api/types';
+import type { PrinterCatalogModel, PrinterCatalogVendor } from '#lib/api/types';
 
 /** Densité d'affichage de la grille (bascules en haut à droite du dialogue). */
 export type CatalogView = 'list' | 'grid' | 'large';

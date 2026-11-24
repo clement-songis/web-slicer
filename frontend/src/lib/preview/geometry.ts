@@ -5,7 +5,7 @@
 // dépendance Three.js) : la géométrie GPU est assemblée dans le composant.
 
 import type { PreviewSegments } from './decode';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 import {
 	DEFAULT_FILAMENT_COLORS,
 	NO_DATA_COLOR,

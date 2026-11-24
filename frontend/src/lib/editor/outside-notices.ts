@@ -8,8 +8,8 @@
 //     replacer.
 // Les deux sont des erreurs bloquantes (« Trancher » grisé, export / envoi
 // désactivés), avec l'action « Disposer ».
-import { tr } from '$lib/i18n';
-import type { VolumeState } from '$lib/scene/print-volume';
+import { tr } from '#lib/i18n';
+import type { VolumeState } from '#lib/scene/print-volume';
 import type { ValidationNotice } from './validation';
 
 export interface OutsideObject {

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { PARAMS } from '../../generated/params';
-import { queryRank } from '$lib/settings/filter';
+import { queryRank } from '#lib/settings/filter';
 import { searchOverridable } from './object-settings';
 
 describe('recherche « + Réglage » classée par pertinence (phase 26)', () => {

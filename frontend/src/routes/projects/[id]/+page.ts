@@ -2,10 +2,10 @@
 // (scène 3D, onglets réglages) arrive en phases ultérieures ; cette page sert de
 // destination réelle à « Ouvrir » et de point d'ancrage au brouillon local.
 import { error } from '@sveltejs/kit';
-import { ApiError } from '$lib/api/client';
-import { getProject } from '$lib/api/projects';
-import { requireOnboardedUser } from '$lib/guards';
-import { tr } from '$lib/i18n';
+import { ApiError } from '#lib/api/client';
+import { getProject } from '#lib/api/projects';
+import { requireOnboardedUser } from '#lib/guards';
+import { tr } from '#lib/i18n';
 import type { PageLoad } from './$types';
 
 export const ssr = false;

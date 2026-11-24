@@ -6,10 +6,10 @@
 	// autre compte écrirait dans un projet qui n'est pas le sien.
 	import { onMount } from 'svelte';
 	import Dialog from './Dialog.svelte';
-	import { t } from '$lib/i18n';
-	import { loginErrorMessage } from '$lib/api/account';
-	import { currentUser, login } from '$lib/api/session';
-	import { finishReauth, reauthState, setReauthHost, setReauthUser } from '$lib/api/reauth';
+	import { t } from '#lib/i18n';
+	import { loginErrorMessage } from '#lib/api/account';
+	import { currentUser, login } from '#lib/api/session';
+	import { finishReauth, reauthState, setReauthHost, setReauthUser } from '#lib/api/reauth';
 
 	let password = $state('');
 	let error = $state<string | null>(null);

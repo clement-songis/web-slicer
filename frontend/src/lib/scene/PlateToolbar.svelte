@@ -4,8 +4,8 @@
 	// `traceability-map.json#toolbars`. Présentational : émet l'identifiant d'action
 	// au parent (la page orchestre ajout/arrange/orient/split/instances/couches).
 	import { MAIN_TOOLBAR, ASSEMBLE_TOOLBAR, type ToolbarButton } from './menus';
-	import { t } from '$lib/i18n';
-	import { shortcutKeyFor, withShortcut } from '$lib/editor';
+	import { t } from '#lib/i18n';
+	import { shortcutKeyFor, withShortcut } from '#lib/editor';
 	import IconAdd from '~icons/lucide/plus';
 	import IconAddPlate from '~icons/lucide/copy-plus';
 	import IconOrient from '~icons/lucide/compass';

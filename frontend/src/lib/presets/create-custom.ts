@@ -1,7 +1,7 @@
 // Création de presets personnalisés (Orca CreateFilamentPresetDialog /
 // CreatePrinterPresetDialog) : noms et valeurs, logique pure testée.
 
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 /** Types de filament proposés par Orca (CreatePresetsDialog.cpp:66). */
 export const FILAMENT_TYPES = [

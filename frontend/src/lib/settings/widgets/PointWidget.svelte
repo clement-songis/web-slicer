@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 	// Point Orca `coPoint*` : un seul champ texte au format canonique `XxY`.
 	// Le contrat Playwright/Orca remplit ce contrôle avec « 172x172 » ; deux
 	// inputs number (X et Y séparés) ne peuvent pas accepter cette forme.

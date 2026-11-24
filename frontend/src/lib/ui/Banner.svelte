@@ -4,7 +4,7 @@
 	// de fermeture. `role` s'ajuste : alerte pour danger, statut sinon.
 	import type { Snippet } from 'svelte';
 	import { bannerClasses, cx, FOCUS_RING, type BannerTone } from './styles';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	type Props = {
 		tone?: BannerTone;

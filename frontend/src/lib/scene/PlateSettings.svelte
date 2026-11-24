@@ -4,8 +4,8 @@
 	// surcharge (le plateau suit les presets). Présentationnel.
 	import { PARAMS } from '../../generated/params';
 	import type { Plate } from './plates.svelte';
-	import { locale, t } from '$lib/i18n';
-	import { loadSettingsTranslations } from '$lib/settings/i18n';
+	import { locale, t } from '#lib/i18n';
+	import { loadSettingsTranslations } from '#lib/settings/i18n';
 
 	interface Props {
 		plate: Plate;

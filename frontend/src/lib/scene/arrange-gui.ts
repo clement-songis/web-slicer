@@ -2,7 +2,7 @@
 // `options`) : placements multi-plateaux avec matrice monde complète (rotation
 // et échelle conservées), réaffectation des objets aux plateaux et objets trop
 // grands (« Arrangement ignored the following objects… » d'Orca). Pur → testable.
-import type { Placement } from '$lib/api/types';
+import type { Placement } from '#lib/api/types';
 import { eulerDegFromQuaternion, type Transform } from './transform';
 import type { Plate } from './plates.svelte';
 

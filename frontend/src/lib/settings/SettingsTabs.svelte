@@ -14,7 +14,7 @@
 		type UiSection
 	} from '../../generated/ui-layout';
 	import { filterLayout, isEditorOnlyPage, MODE_RANK, type DisplayMode } from './filter';
-	import { t, locale } from '$lib/i18n';
+	import { t, locale } from '#lib/i18n';
 	import { loadSettingsTranslations } from './i18n';
 	import OptionLine from './OptionLine.svelte';
 	import { resolveDynamicOptions } from './dynamic-options';

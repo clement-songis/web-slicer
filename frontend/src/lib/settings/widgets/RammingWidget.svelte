@@ -2,7 +2,7 @@
 	// filament_ramming_parameters : résumé (durée, volume, largeur) + bouton
 	// ouvrant l'éditeur de courbe (RammingDialog, parité Orca « Ramming
 	// settings… »). La chaîne exacte est conservée tant que rien ne change.
-	import { locale, numberLocale, t } from '$lib/i18n';
+	import { locale, numberLocale, t } from '#lib/i18n';
 	import RammingDialog from '../special/RammingDialog.svelte';
 	import { parseRamming, rammingTime, rammingVolume } from '../special/ramming';
 	import type { WidgetProps } from './types';

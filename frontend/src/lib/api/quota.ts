@@ -3,7 +3,7 @@
 // 429 `slice_quota_exceeded` (details { active, max, requested }) et usage du
 // compte (GET /me/usage). Module pur (testé).
 import type { UsageResponse } from './types';
-import { numberLocale, tr } from '$lib/i18n';
+import { numberLocale, tr } from '#lib/i18n';
 
 const KB = 1024;
 

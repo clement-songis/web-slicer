@@ -3,8 +3,8 @@
 // d'Orca : bornes du slider d'espacement, Reset = ArrangeSettings + structure
 // d'imprimante, case « zone de calibration » seulement sur BBL + scan_first_layer).
 // Pur → testable ; le panneau (ArrangeOptionsPanel) et la page orchestrent.
-import type { ArrangeOptionsInfo } from '$lib/api/types';
-import type { ArrangePreferences } from '$lib/settings/preferences';
+import type { ArrangeOptionsInfo } from '#lib/api/types';
+import type { ArrangePreferences } from '#lib/settings/preferences';
 
 export type SavedArrangeOptions = ArrangePreferences;
 

@@ -5,7 +5,7 @@
 	// queue d'aronde, options après la coupe. État partagé : CutSession.
 	import type { CutSession } from './cut-session.svelte';
 	import { untrack } from 'svelte';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 	import type { CutConnectorShape } from '../../../generated/api/CutConnectorShape';
 	import type { CutConnectorType } from '../../../generated/api/CutConnectorType';
 

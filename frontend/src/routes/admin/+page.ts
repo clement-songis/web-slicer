@@ -1,8 +1,8 @@
 // Administration de l'instance (phase 32) : réservée aux comptes `admin`.
 import { error } from '@sveltejs/kit';
-import { getInstance } from '$lib/api/admin';
-import { requireUser } from '$lib/guards';
-import { tr } from '$lib/i18n';
+import { getInstance } from '#lib/api/admin';
+import { requireUser } from '#lib/guards';
+import { tr } from '#lib/i18n';
 import type { PageLoad } from './$types';
 
 export const ssr = false;

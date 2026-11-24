@@ -3,9 +3,9 @@
 	// queue » d'Orca (PrintHostQueueDialog : état, hôte, taille, fichier,
 	// message d'erreur), conservé par imprimante côté serveur. `printerId` absent
 	// = toutes les imprimantes du compte (vue unique, comme la file d'Orca).
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import { clearPrinterUploads, listAllUploads, listPrinterUploads } from '$lib/api/printers';
-	import type { PrinterUploadEntry } from '$lib/api/types';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import { clearPrinterUploads, listAllUploads, listPrinterUploads } from '#lib/api/printers';
+	import type { PrinterUploadEntry } from '#lib/api/types';
 	import { hostMeta } from './hosts';
 	import {
 		formatUploadDate,
@@ -16,7 +16,7 @@
 		uploadStatusLabel
 	} from './uploads';
 	import { sendErrorMessage } from './send';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		open: boolean;

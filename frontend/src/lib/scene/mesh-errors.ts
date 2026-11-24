@@ -6,7 +6,7 @@
 // (GET /api/projects/{id}/mesh-errors, scène enregistrée). Pur.
 import type { ObjectMeshErrors } from '../../generated/api/ObjectMeshErrors';
 import type { MeshErrorsRequest } from '../../generated/api/MeshErrorsRequest';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 /** Alerte affichée pour un objet. */
 export interface MeshWarning {

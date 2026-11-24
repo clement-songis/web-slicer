@@ -1,13 +1,13 @@
 <script lang="ts">
-	import { dialogFocus } from '$lib/ui/dialog-focus';
-	import { t, tr } from '$lib/i18n';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
+	import { t, tr } from '#lib/i18n';
 	// Page imprimantes (T077/US8) : déclaration + test de connexion, panneau
 	// d'état en direct (progression, températures) via WebSocket `printer.status`,
 	// et contrôles pause/reprise/annulation. La logique d'état est pure
 	// (`lib/printers/printers.ts`) ; cette page orchestre chargement, formulaire,
 	// abonnement temps réel et actions.
 	import { onMount } from 'svelte';
-	import { ApiError } from '$lib/api/client';
+	import { ApiError } from '#lib/api/client';
 	import {
 		cancelPrinter,
 		createPrinter,
@@ -18,14 +18,14 @@
 		resumePrinter,
 		testPrinter,
 		updatePrinter
-	} from '$lib/api/printers';
-	import { createPreset, getPreset, updatePreset } from '$lib/api/presets';
-	import type { PresetSummary, PrinterCatalogModel, PrinterResponse } from '$lib/api/types';
-	import PrinterCatalog from '$lib/printers/PrinterCatalog.svelte';
-	import CreatePrinterDialog from '$lib/presets/CreatePrinterDialog.svelte';
-	import { PresetSettingsDialog } from '$lib/settings';
-	import type { DisplayMode } from '$lib/settings/filter';
-	import { subscribeEvents } from '$lib/queue/events';
+	} from '#lib/api/printers';
+	import { createPreset, getPreset, updatePreset } from '#lib/api/presets';
+	import type { PresetSummary, PrinterCatalogModel, PrinterResponse } from '#lib/api/types';
+	import PrinterCatalog from '#lib/printers/PrinterCatalog.svelte';
+	import CreatePrinterDialog from '#lib/presets/CreatePrinterDialog.svelte';
+	import { PresetSettingsDialog } from '#lib/settings';
+	import type { DisplayMode } from '#lib/settings/filter';
+	import { subscribeEvents } from '#lib/queue/events';
 	import {
 		applyPrinterStatus,
 		canCancel,
@@ -36,13 +36,13 @@
 		progressPercent,
 		stateMeta,
 		type StatusMap
-	} from '$lib/printers/printers';
+	} from '#lib/printers/printers';
 	import type { PageData } from './$types';
-	import AppSidebar from '$lib/nav/AppSidebar.svelte';
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import PrinterHostFields from '$lib/printers/PrinterHostFields.svelte';
-	import UploadQueue from '$lib/printers/UploadQueue.svelte';
-	import { defaultDeclarePreset, hostUrlError } from '$lib/printers/send';
+	import AppSidebar from '#lib/nav/AppSidebar.svelte';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import PrinterHostFields from '#lib/printers/PrinterHostFields.svelte';
+	import UploadQueue from '#lib/printers/UploadQueue.svelte';
+	import { defaultDeclarePreset, hostUrlError } from '#lib/printers/send';
 	import {
 		emptyHostForm,
 		hasLiveControls,
@@ -56,7 +56,7 @@
 		type HostForm,
 		type TestOutcome,
 		type ProfileHost
-	} from '$lib/printers/hosts';
+	} from '#lib/printers/hosts';
 	import IconOk from '~icons/lucide/circle-check';
 	import IconFail from '~icons/lucide/circle-alert';
 	import IconPlus from '~icons/lucide/plus';

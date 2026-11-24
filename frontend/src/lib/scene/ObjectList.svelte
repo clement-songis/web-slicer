@@ -23,7 +23,7 @@
 	import type { Plate } from './plates.svelte';
 	import { searchObjects } from './object-search';
 	import { instanceListLayout } from './instances';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		tree: ObjectTree;

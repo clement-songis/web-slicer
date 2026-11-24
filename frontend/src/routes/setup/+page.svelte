@@ -4,23 +4,23 @@
 	// entre dans la bibliothèque. Aucune sortie sans imprimante (Confirmer inactif
 	// à 0) : la garde `requireOnboardedUser` ramène ici tant qu'aucune n'existe.
 	import { goto } from '$app/navigation';
-	import { t, tr } from '$lib/i18n';
+	import { t, tr } from '#lib/i18n';
 	import { resolve } from '$app/paths';
-	import { ApiError } from '$lib/api/client';
-	import { createPrinter } from '$lib/api/printers';
-	import { getResolvedPreset, listPresets } from '$lib/api/presets';
-	import { currentPreferences, flushPreferences, savePreferences } from '$lib/settings/preferences';
+	import { ApiError } from '#lib/api/client';
+	import { createPrinter } from '#lib/api/printers';
+	import { getResolvedPreset, listPresets } from '#lib/api/presets';
+	import { currentPreferences, flushPreferences, savePreferences } from '#lib/settings/preferences';
 	import {
 		defaultSelection,
 		filamentChoices,
 		filterChoices,
 		orderChoices,
 		type FilamentChoice
-	} from '$lib/printers/wizard-filaments';
-	import type { PresetSummary } from '$lib/api/types';
-	import AppSidebar from '$lib/nav/AppSidebar.svelte';
-	import PrinterCatalog from '$lib/printers/PrinterCatalog.svelte';
-	import type { PrinterCatalogModel } from '$lib/api/types';
+	} from '#lib/printers/wizard-filaments';
+	import type { PresetSummary } from '#lib/api/types';
+	import AppSidebar from '#lib/nav/AppSidebar.svelte';
+	import PrinterCatalog from '#lib/printers/PrinterCatalog.svelte';
+	import type { PrinterCatalogModel } from '#lib/api/types';
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
@@ -131,7 +131,7 @@
 				savePreferences({ ...currentPreferences(), wizardFilaments: [...chosen] });
 				await flushPreferences();
 			}
-			await goto(resolve('/library'));
+			await goto(resolve('library'));
 		} catch (e) {
 			error = e instanceof ApiError ? e.message : tr('Unexpected error');
 		} finally {
@@ -170,7 +170,7 @@
 						{onpick}
 						{busy}
 						owned={ownedIds}
-						oncancel={data.printers.length > 0 ? () => goto(resolve('/library')) : undefined}
+						oncancel={data.printers.length > 0 ? () => goto(resolve('library')) : undefined}
 					/>
 				</div>
 				<!-- Étape 2 de l'assistant d'Orca : filaments des imprimantes cochées. -->

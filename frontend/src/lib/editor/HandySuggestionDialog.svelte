@@ -2,8 +2,8 @@
 	// Suggestion après l'ajout d'un modèle pratique (Orca : « String Hell »,
 	// GUI_Factories.cpp) : réglage du traitement à appliquer, en clair, avec les
 	// valeurs avant → après.
-	import { dialogFocus } from '$lib/ui/dialog-focus';
-	import { locale, t } from '$lib/i18n';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
+	import { locale, t } from '#lib/i18n';
 	import { suggestionText, type HandyModelSuggestion } from './handy-models';
 
 	interface Props {

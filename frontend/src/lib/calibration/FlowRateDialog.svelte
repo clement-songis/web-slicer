@@ -1,8 +1,8 @@
 <script lang="ts">
-	import { dialogFocus } from '$lib/ui/dialog-focus';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
 	// FlowRateCalibrationDialog d'Orca : quatre types de test et motif de surface.
 	import type { FlowPass, FlowPattern } from './flowrate';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		open: boolean;

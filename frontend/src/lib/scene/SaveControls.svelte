@@ -9,7 +9,7 @@
 	// capté ici : il reste au dispatcher (`project.saveAs`).
 	import type { SaveOutcome } from './save';
 	import { isSaveChord } from '../editor/shortcuts';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		/** Effectue la sauvegarde et renvoie son issue (le parent bâtit la scène). */

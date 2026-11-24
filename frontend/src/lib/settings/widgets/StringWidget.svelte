@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 	// Chaîne simple (coString non G-code).
 	import { FIELD_CLASS, type WidgetProps } from './types';
 

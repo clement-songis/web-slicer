@@ -6,10 +6,10 @@
 	// est construit en amont (`buildPreviewStats`).
 	import type { PreviewStats } from './stats';
 	import { formatDuration } from './stats';
-	import { formatMoney } from '$lib/settings/preferences';
+	import { formatMoney } from '#lib/settings/preferences';
 	import type { Rgb } from './colorations';
 	// Alias : la boucle des types nomme déjà sa variable `t`.
-	import { fmtNum, locale, t as label } from '$lib/i18n';
+	import { fmtNum, locale, t as label } from '#lib/i18n';
 
 	interface Props {
 		stats: PreviewStats;

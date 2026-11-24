@@ -10,9 +10,9 @@
 		PrinterCatalogModel,
 		PrinterCatalogVendor,
 		PrinterResponse
-	} from '$lib/api/types';
-	import ModifiedBadge from '$lib/presets/ModifiedBadge.svelte';
-	import { t } from '$lib/i18n';
+	} from '#lib/api/types';
+	import ModifiedBadge from '#lib/presets/ModifiedBadge.svelte';
+	import { t } from '#lib/i18n';
 	import IconAdd from '~icons/lucide/plus';
 	import IconEdit from '~icons/lucide/pencil';
 

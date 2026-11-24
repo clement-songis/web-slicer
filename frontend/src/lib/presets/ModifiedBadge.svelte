@@ -3,7 +3,7 @@
 	// du sélecteur (Orca : suffixe « (modified) » du combo, Preset::suffix_modified,
 	// et icône d'enregistrement). Pastille plutôt que suffixe dans la liste : lisible
 	// même quand le nom du preset est tronqué, et le nom reste intact pour la recherche.
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	let { testid, onclick }: { testid?: string; onclick?: () => void } = $props();
 	const title = $derived(

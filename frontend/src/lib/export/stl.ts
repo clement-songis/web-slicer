@@ -1,4 +1,4 @@
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 // Nom de fichier sûr pour les téléchargements. L'export STL / DRC est calculé
 // côté serveur par libslic3r (POST /api/projects/{id}/export/{stl,drc},

@@ -2,9 +2,9 @@
 // lisible (grille et pièce distinctes du plateau, WCAG 1.4.11 ≥ 3:1 visé).
 import { describe, expect, it } from 'vitest';
 import { get } from 'svelte/store';
-import { resolvedTheme } from '$lib/theme/theme';
+import { resolvedTheme } from '#lib/theme/theme';
 import { SCENE_PALETTES, sceneColors } from './scene-colors';
-import { contrastRatio as ratio, parseHex, relativeLuminance } from '$lib/ui/color';
+import { contrastRatio as ratio, parseHex, relativeLuminance } from '#lib/ui/color';
 
 const lum = (h: string) => relativeLuminance(parseHex(h)!);
 const contrastRatio = (a: string, b: string) => ratio(lum(a), lum(b));

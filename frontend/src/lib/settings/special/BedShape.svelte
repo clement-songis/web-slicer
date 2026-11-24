@@ -8,7 +8,7 @@
 		rectangularBed,
 		serializePoints
 	} from './dialogs';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		/** Valeurs par clé (liable). */

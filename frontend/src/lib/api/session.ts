@@ -4,7 +4,7 @@ import { writable } from 'svelte/store';
 import * as auth from './auth';
 import { ApiError } from './client';
 import type { UserResponse } from './types';
-import { setPreferencesUser } from '$lib/settings/preferences';
+import { setPreferencesUser } from '#lib/settings/preferences';
 import { clearPresetListCache } from './presets';
 
 /** Compte connecté, ou `null` si la session est absente/expirée. */

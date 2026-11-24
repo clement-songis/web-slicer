@@ -3,9 +3,9 @@
 // choix mémorisé et passation du rapport d'import à la page projet via
 // sessionStorage (l'import crée un nouveau projet puis redirige). Pur →
 // testable ; les pages orchestrent les dialogues et l'appel API.
-import type { ProjectLoadBehaviour } from '$lib/settings/preferences';
-import type { GcodeWarning, ImportLoadMode, ImportReport } from '$lib/api/types';
-import { tr } from '$lib/i18n';
+import type { ProjectLoadBehaviour } from '#lib/settings/preferences';
+import type { GcodeWarning, ImportLoadMode, ImportReport } from '#lib/api/types';
+import { tr } from '#lib/i18n';
 
 /** Fichier projet 3MF (les autres formats s'importent comme modèles). */
 export function isProjectArchive(name: string): boolean {

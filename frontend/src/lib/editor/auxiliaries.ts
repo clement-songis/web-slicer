@@ -1,8 +1,8 @@
 // Fichiers joints au projet (Orca : onglet « Fichiers auxiliaires », dossier
 // Auxiliaries/ du 3MF) : les 4 dossiers d'Orca, regroupement de la liste du
 // serveur, noms sûrs et aperçus. Pur → testable.
-import type { AuxiliaryEntry } from '$lib/api/auxiliaries';
-import { numberLocale, tr } from '$lib/i18n';
+import type { AuxiliaryEntry } from '#lib/api/auxiliaries';
+import { numberLocale, tr } from '#lib/i18n';
 
 /**
  * Dossiers d'Orca (noms exacts du 3MF), libellés et aide — clés anglaises,

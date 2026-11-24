@@ -5,7 +5,7 @@ import type { ErrorBody } from './types';
 import { reportReachable, reportUnreachable, unreachableMessage } from './connectivity';
 import { apiErrorMessage } from './quota';
 import { readableServerMessage } from './engine-error';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 import { canReauth, requestReauth } from './reauth';
 
 /** Préfixe des routes API (le proxy Vite renvoie vers le backend en dev). */

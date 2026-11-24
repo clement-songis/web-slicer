@@ -4,7 +4,7 @@
 // pré-cochés). Logique pure : liste des filaments compatibles des imprimantes
 // choisies, pré-sélection, filtre, et ordre de préférence du filament par défaut
 // d'un nouveau projet.
-import type { PresetSummary } from '$lib/api/types';
+import type { PresetSummary } from '#lib/api/types';
 
 /** Filament proposé par l'assistant (nom de preset, comme la section « filaments » d'AppConfig). */
 export interface FilamentChoice {

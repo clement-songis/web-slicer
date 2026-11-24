@@ -5,11 +5,11 @@
 	// choisie parmi les fichiers joints « Model Pictures » ; GET/PUT
 	// /api/projects/{id}/metadata. Lecture seule : auteur affiché (Copyright),
 	// origin et profil de publication. Écrit à l'export 3MF du projet.
-	import { ApiError } from '$lib/api/client';
-	import { auxiliaryUrl, listAuxiliaries } from '$lib/api/auxiliaries';
-	import { getProjectMetadata, putProjectMetadata } from '$lib/api/projects';
-	import type { ProjectMetadataDto } from '$lib/api/types';
-	import { t, tr } from '$lib/i18n';
+	import { ApiError } from '#lib/api/client';
+	import { auxiliaryUrl, listAuxiliaries } from '#lib/api/auxiliaries';
+	import { getProjectMetadata, putProjectMetadata } from '#lib/api/projects';
+	import type { ProjectMetadataDto } from '#lib/api/types';
+	import { t, tr } from '#lib/i18n';
 
 	const PICTURES_FOLDER = 'Model Pictures';
 	const LICENSES = ['', 'CC0', 'BY', 'BY-SA', 'BY-ND', 'BY-NC', 'BY-NC-SA', 'BY-NC-ND'];

@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 // Lot 42 K1 : le serveur nomme le projet de calibration (nom unique) ; le
 // client ne renomme plus et ne code plus de libellé provisoire par type.
 const calls: string[] = [];
-vi.mock('$lib/api/projects', () => ({
+vi.mock('#lib/api/projects', () => ({
 	createProject: vi.fn(async (body: { name: string }) => {
 		calls.push('create:' + body.name);
 		return { id: 'p1', name: body.name };
@@ -16,7 +16,7 @@ vi.mock('$lib/api/projects', () => ({
 	})
 }));
 const post = vi.fn();
-vi.mock('$lib/api/client', () => ({
+vi.mock('#lib/api/client', () => ({
 	api: { post: (...args: unknown[]) => post(...args) }
 }));
 

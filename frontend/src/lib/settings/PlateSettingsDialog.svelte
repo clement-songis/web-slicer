@@ -6,10 +6,10 @@
 		readFilamentMapMode,
 		writeFilamentMap,
 		type FilamentMapMode
-	} from '$lib/editor/filament-map';
+	} from '#lib/editor/filament-map';
 	import { untrack } from 'svelte';
-	import { swatchStyle } from '$lib/ui/color';
-	import { dialogFocus } from '$lib/ui/dialog-focus';
+	import { swatchStyle } from '#lib/ui/color';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
 	// Dialogue « Réglages du plateau » (parité Orca PlateSettingsDialog, ouvert
 	// par l'icône du plateau) : type de plaque, séquence d'impression, séquence
 	// des couches, vase spirale, timelapse (audit 48 DLG48-a — réglage
@@ -17,7 +17,7 @@
 	// par « Enregistrer » ;
 	// une valeur vide = suivre le profil (pas de surcharge du plateau).
 	import { PARAMS } from '../../generated/params';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 	import { modeAllows, type DisplayMode } from './filter';
 	import { isOpenEnum } from './widgets/types';
 	import FilamentOrderEditor from './FilamentOrderEditor.svelte';

@@ -2,7 +2,7 @@
 // tableaux typés prêts pour une BufferGeometry Three.js. Pur → testable.
 import type { SceneVolume } from './volumes';
 import { rotateVectorByEulerDeg } from './transform';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 //
 // Format little-endian : magic(4)=WSMh · version(u32)=1 · vertex_count(u32) ·
 // index_count(u32) · f32 positions[vc*3] · f32 normals[vc*3] · u32 indices[ic].

@@ -4,8 +4,8 @@
 	// plateaux » après « Trancher tout » (GCodeViewer::render_all_plates_stats).
 	// Ici : une puce par plateau (✓ tranché, clic = aperçu de ce plateau) et les
 	// totaux temps / filament / coût des plateaux tranchés.
-	import { formatMoney } from '$lib/settings/preferences';
-	import { locale, numberLocale, t } from '$lib/i18n';
+	import { formatMoney } from '#lib/settings/preferences';
+	import { locale, numberLocale, t } from '#lib/i18n';
 	import { formatDuration } from './stats';
 	import type { PlatesTotals } from './plates-summary';
 	import type { PlatesStatsResponse } from './engine-data';

@@ -6,7 +6,7 @@
 	// logique vit dans `catalog.ts` (règle CLAUDE.md : le .svelte ne fait que la
 	// disposition).
 	import { untrack } from 'svelte';
-	import type { PrinterCatalogModel, PrinterCatalogVendor } from '$lib/api/types';
+	import type { PrinterCatalogModel, PrinterCatalogVendor } from '#lib/api/types';
 	import {
 		modelKey,
 		ownedSelection,
@@ -27,7 +27,7 @@
 	import PrinterIcon from '~icons/lucide/printer';
 	import Plus from '~icons/lucide/plus';
 	import Check from '~icons/lucide/check';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		/** Catalogue (marque → modèle → variantes) renvoyé par `getPrinterCatalog`. */

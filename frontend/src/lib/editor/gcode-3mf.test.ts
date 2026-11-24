@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { strToU8, zipSync } from 'fflate';
-import { ApiError } from '$lib/api/client';
+import { ApiError } from '#lib/api/client';
 import {
 	archivePlates,
 	gcode3mfRefusal,

@@ -3,8 +3,8 @@
 // des états d'impression Klipper, disponibilité des contrôles et formatage.
 // Aucun accès réseau ni DOM (testable en isolation).
 
-import type { PrinterStatusResponse, ServerEvent } from '$lib/api/types';
-import { tr } from '$lib/i18n';
+import type { PrinterStatusResponse, ServerEvent } from '#lib/api/types';
+import { tr } from '#lib/i18n';
 
 /** État d'impression affiché pour une imprimante. */
 export interface PrinterStatusView {

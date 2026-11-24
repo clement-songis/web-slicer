@@ -16,7 +16,7 @@ import type { CutConnectorStyle } from '../../../generated/api/CutConnectorStyle
 import type { CutConnectorType } from '../../../generated/api/CutConnectorType';
 import type { CutRequest } from '../../../generated/api/CutRequest';
 import { rotateVectorByEulerDeg } from '../transform';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 export type Vec3 = [number, number, number];
 export type Axis = 'x' | 'y' | 'z';

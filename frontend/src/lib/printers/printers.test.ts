@@ -1,12 +1,12 @@
 // Tests de la logique pure du suivi d'imprimantes (T077) : réducteur d'état,
 // métadonnées, disponibilité des contrôles, formatage.
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { setLocale } from '$lib/i18n';
+import { setLocale } from '#lib/i18n';
 
 // Libellés attendus en français (interface traduite).
 beforeAll(() => setLocale('fr'));
 afterAll(() => setLocale('en'));
-import type { PrinterStatusResponse, ServerEvent } from '$lib/api/types';
+import type { PrinterStatusResponse, ServerEvent } from '#lib/api/types';
 import {
 	applyPrinterStatus,
 	canCancel,

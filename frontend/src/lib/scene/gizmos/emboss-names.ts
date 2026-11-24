@@ -2,7 +2,7 @@
 // comme Orca 2.4.1 — texte : le texte lui-même, retours à la ligne remplacés
 // par des espaces (GLGizmoEmboss.cpp, create_volume_name) ; SVG : nom du
 // fichier sans extension, sinon « SVG shape » (GLGizmoSVG.cpp, volume_name).
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 export function textVolumeName(text: string): string {
 	const name = text.replace(/\r?\n/g, ' ').trim();

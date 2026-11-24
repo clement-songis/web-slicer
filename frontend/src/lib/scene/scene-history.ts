@@ -2,11 +2,11 @@
 // légers (structure + transformations, jamais les maillages) empilés dans
 // `History`. Les maillages des objets supprimés sont retrouvés par cache ou
 // rechargés via leur modèle serveur au rétablissement.
-import { History } from '$lib/stores/history';
+import { History } from '#lib/stores/history';
 import type { SceneNode } from './objects.svelte';
 import type { PlatesDocument } from './plates.svelte';
 import type { SceneVolume } from './volumes';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 export interface ObjectTransform {
 	position: [number, number, number];

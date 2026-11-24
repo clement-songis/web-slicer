@@ -3,7 +3,7 @@
 	// (`OBJECT_CONTEXT_ITEMS`). Présentational : émet l'identifiant d'action, la page
 	// l'applique sur l'objet ciblé. Fond transparent → ferme au clic extérieur.
 	import type { ObjectMenuEntry } from './menus';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 
 	interface Props {
 		open: boolean;

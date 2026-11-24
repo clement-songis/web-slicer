@@ -1,8 +1,8 @@
 // Maillage STEP (Orca : StepMeshDialog) : déflexions linéaire / angulaire et
 // découpe des compounds, envoyées à `POST /api/models/{id}/step-mesh` (lot 17).
 // Bornes et défauts du dialogue d'Orca. Pur → testable.
-import { api } from '$lib/api/client';
-import { numberLocale, tr } from '$lib/i18n';
+import { api } from '#lib/api/client';
+import { numberLocale, tr } from '#lib/i18n';
 
 export interface StepMeshOptions {
 	/** Déflexion linéaire (mm) : écart maximal corde / surface. */

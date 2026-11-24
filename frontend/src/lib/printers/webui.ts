@@ -6,7 +6,7 @@
 // préfixée de « http:// » sans schéma http/file. Le navigateur peut refuser
 // l'intégration (X-Frame-Options / CSP frame-ancestors, contenu mixte http
 // dans une page https) : repli sur un lien externe. Pur, sauf le stockage local.
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 /** URL de l'interface web (PrintHost::get_print_host_webui). '' = aucune. */
 export function webuiUrl(src: {

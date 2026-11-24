@@ -2,11 +2,11 @@
 	// Créer un filament personnalisé (Orca CreateFilamentPresetDialog) :
 	// fournisseur, type, série, à partir d'un filament existant (réglages hérités).
 	import { untrack } from 'svelte';
-	import Dialog from '$lib/ui/Dialog.svelte';
-	import { t, tr } from '$lib/i18n';
-	import { ApiError } from '$lib/api/client';
-	import { createPreset, getCreateOptions } from '$lib/api/presets';
-	import type { PresetDetail, PresetSummary } from '$lib/api/types';
+	import Dialog from '#lib/ui/Dialog.svelte';
+	import { t, tr } from '#lib/i18n';
+	import { ApiError } from '#lib/api/client';
+	import { createPreset, getCreateOptions } from '#lib/api/presets';
+	import type { PresetDetail, PresetSummary } from '#lib/api/types';
 	import {
 		FILAMENT_TYPES,
 		FILAMENT_VENDORS,

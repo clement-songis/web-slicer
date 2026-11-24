@@ -5,7 +5,7 @@
 	// vers les commandes réelles. Libellés localisés via `$t` (repli anglais).
 	import { tick } from 'svelte';
 	import type { Menu } from './menus';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 	import { altLetter, menuForMnemonic, menuMnemonic, moveIndex } from './menu-keys';
 
 	interface Props {

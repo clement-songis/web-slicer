@@ -6,7 +6,7 @@
 // colonne de réglage avec sa remise au profil. Les colonnes « objet seul »
 // (only_object d'Orca) sont vides sur les lignes de volumes. Pur.
 
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 export type TableCategory = 'all' | 'quality' | 'strength' | 'support' | 'speed';
 

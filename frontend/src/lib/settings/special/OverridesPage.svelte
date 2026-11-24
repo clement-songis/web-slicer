@@ -4,7 +4,7 @@
 	// l'imprimante/process, valeur `null`) ; cochée = valeur éditable.
 	import { PARAMS } from '../../../generated/params';
 	import OptionLine from '../OptionLine.svelte';
-	import { t } from '$lib/i18n';
+	import { t } from '#lib/i18n';
 	import { defaultFor, FILAMENT_OVERRIDES, isOverrideActive } from './groups';
 
 	interface Props {

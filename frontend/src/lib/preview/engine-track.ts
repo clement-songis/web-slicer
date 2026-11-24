@@ -8,7 +8,7 @@
 import type { PreviewTrack, TrackChannel, TrackLayer } from './track';
 import type { EngineColorPrint, FilamentTable } from './engine-data';
 import { TRACK_CHANNELS } from './track';
-import { tr } from '$lib/i18n';
+import { tr } from '#lib/i18n';
 
 /** Colonnes par mouvement (miroir de BYTES/FLOATS/INTS_PER_MOVE). */
 export const MOVE_BYTES = 4;

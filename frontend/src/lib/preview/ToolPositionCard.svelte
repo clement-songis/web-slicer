@@ -5,7 +5,7 @@
 	// largeur, hauteur, couche, vitesse, accélération, jerk, débit, ventilateur,
 	// température, avance de pression, outil, temps de couche). N/D si la grandeur
 	// n'est pas connue (début de couche, piste G-code non chargée).
-	import { locale, numberLocale, t } from '$lib/i18n';
+	import { locale, numberLocale, t } from '#lib/i18n';
 	import {
 		SEGMENT_ROLE_COLORS,
 		SEGMENT_ROLE_NAMES,

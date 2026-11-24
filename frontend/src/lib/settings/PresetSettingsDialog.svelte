@@ -1,16 +1,16 @@
 <script lang="ts">
 	import IconUnlink from '~icons/lucide/lock-open';
-	import { dialogFocus } from '$lib/ui/dialog-focus';
+	import { dialogFocus } from '#lib/ui/dialog-focus';
 	// Dialogue modal de réglages (Phase 14, T138) — parité des dialogues
 	// OrcaSlicer « Paramètres de l'imprimante » / presets filament/process : les
 	// mêmes onglets que l'édition inline (`SettingsTabs`, cadrés par type) mais
 	// dans une fenêtre modale ouverte depuis le sélecteur. Présentational : les
 	// valeurs sont liées, la persistance reste dans la page.
-	import { t, tr } from '$lib/i18n';
+	import { t, tr } from '#lib/i18n';
 	import type { PresetKind } from '../../generated/ui-layout';
 	import type { DisplayMode } from './filter';
 	import SettingsTabs from './SettingsTabs.svelte';
-	import ModifiedBadge from '$lib/presets/ModifiedBadge.svelte';
+	import ModifiedBadge from '#lib/presets/ModifiedBadge.svelte';
 	import { hasPresetChanges } from './editing';
 
 	interface Props {

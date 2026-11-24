@@ -6,7 +6,7 @@
 	import { useThrelte } from '@threlte/core';
 	import { OrbitControls, TrackballControls } from '@threlte/extras';
 	import type { OrbitControls as ThreeOrbit } from 'three/examples/jsm/controls/OrbitControls.js';
-	import { appPreferences } from '$lib/settings/preferences';
+	import { appPreferences } from '#lib/settings/preferences';
 	import { orbitConfig, touchpadGesture, trackballConfig } from './camera-controls';
 
 	interface Props {

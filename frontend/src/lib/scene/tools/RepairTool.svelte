@@ -4,7 +4,7 @@
 	import { ApiError } from '../../api/client';
 	import { repairModel } from '../../api/scene';
 	import type { RepairResponse } from '../../api/types';
-	import { t, tr } from '$lib/i18n';
+	import { t, tr } from '#lib/i18n';
 
 	interface Props {
 		modelId: string;

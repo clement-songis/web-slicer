@@ -1,6 +1,6 @@
 // Tests de la réparation de maillage côté éditeur (FR-012).
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
-import { setLocale } from '$lib/i18n';
+import { setLocale } from '#lib/i18n';
 import type { ImportItem } from '../editor/imports';
 import type { RepairResponse } from '../api/types';
 import type { SimplifyResponse } from '../api/scene';
