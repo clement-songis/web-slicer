@@ -8,7 +8,7 @@
 		"types": ["bun", "unplugin-icons/types/svelte", "$app/types"],
 		"paths": {
 			"$lib": ["./src/lib"],
-			"$lib/*": ["./src/lib/*"],
+			"$lib/*": ["./src/lib/*"]
 		},
 		"rewriteRelativeImportExtensions": true,
 		"allowJs": true,

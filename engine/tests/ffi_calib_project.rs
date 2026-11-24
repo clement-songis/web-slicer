@@ -442,7 +442,9 @@ fn orca_variants_contain_engine_output() {
         };
         let variants: Vec<String> = serde_json::from_str(&text).unwrap();
         let mut seen = Vec::new();
-        let found = (0..3).any(|_| {
+        // Sous charge CI, 3 tirages ne suffisaient pas (nondéterminisme
+        // libslic3r documenté) : 6 tirages indépendants.
+        let found = (0..6).any(|_| {
             let h = fnv(&slice_parity_3mf(kind));
             let ok = variants.contains(&h);
             seen.push(h);
