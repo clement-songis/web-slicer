@@ -175,6 +175,42 @@ fn config_value_from_json(
                 .collect::<Option<Vec<_>>>()
                 .map(C::Ints)
         }),
+        // coFloatsOrPercents : forme `Strings` dès qu'un élément est un
+        // pourcentage (« 50% » ou { value, percent: true }), cf.
+        // `orca_values::parse_orca_value` ; sinon `Floats` comme avant.
+        K::FloatsOrPercents
+            if value.as_array().is_some_and(|items| {
+                items.iter().any(|item| match item {
+                    V::String(s) => s.trim_end().ends_with('%'),
+                    V::Object(o) => o.get("percent").and_then(boolean) == Some(true),
+                    _ => false,
+                })
+            }) =>
+        {
+            value.as_array().and_then(|items| {
+                items
+                    .iter()
+                    .map(|item| match item {
+                        V::String(s) => {
+                            let s = s.trim();
+                            number(item)?;
+                            Some(s.to_string())
+                        }
+                        V::Object(o) => {
+                            let v = o.get("value").and_then(&number)?;
+                            let percent = o.get("percent").and_then(boolean).unwrap_or(false);
+                            Some(if percent {
+                                format!("{v}%")
+                            } else {
+                                v.to_string()
+                            })
+                        }
+                        other => number(other).map(|v| v.to_string()),
+                    })
+                    .collect::<Option<Vec<_>>>()
+                    .map(C::Strings)
+            })
+        }
         K::Floats | K::Percents | K::FloatsOrPercents => value.as_array().and_then(|items| {
             if def.nullable && items.iter().any(|item| item.is_null()) {
                 items
@@ -335,6 +371,15 @@ fn value_matches_kind(v: &ConfigValue, kind: ParamKind, nullable: bool) -> bool 
         | (K::Points | K::PointsGroups, V::Points(_))
         | (K::PointsGroups, V::Strings(_)) => true,
         (K::Floats | K::Percents, V::FloatsNullable(_)) => nullable,
+        // coFloatsOrPercents avec pourcentage(s) : éléments texte « 50% ».
+        (K::FloatsOrPercents, V::Strings(items)) => items.iter().all(|item| {
+            let t = item.trim();
+            t.strip_suffix('%')
+                .unwrap_or(t)
+                .trim()
+                .parse::<f64>()
+                .is_ok()
+        }),
         (K::Bools, V::BoolsNullable(_)) => nullable,
         _ => false,
     }
@@ -407,6 +452,48 @@ mod tests {
         let err = cfg.set("pas_une_cle", ConfigValue::Bool(true)).unwrap_err();
         assert_eq!(err.code, EngineErrorCode::InvalidConfig);
         assert_eq!(err.subject.as_deref(), Some("pas_une_cle"));
+    }
+
+    #[test]
+    fn floats_or_percents_keep_percent_through_json() {
+        let cfg: DynamicPrintConfig = serde_json::from_value(serde_json::json!({
+            "bridge_acceleration": ["50%", 1000],
+            "small_perimeter_speed": [{ "value": 40, "percent": true }],
+            "initial_layer_travel_speed": [100],
+        }))
+        .unwrap();
+        assert_eq!(
+            cfg.get("bridge_acceleration"),
+            Some(&ConfigValue::Strings(vec!["50%".into(), "1000".into()]))
+        );
+        assert_eq!(
+            cfg.get("small_perimeter_speed"),
+            Some(&ConfigValue::Strings(vec!["40%".into()]))
+        );
+        assert_eq!(
+            cfg.get("initial_layer_travel_speed"),
+            Some(&ConfigValue::Floats(vec![100.0]))
+        );
+        // Aller-retour JSON (transport vers engine-worker) sans perte.
+        let back: DynamicPrintConfig =
+            serde_json::from_value(serde_json::to_value(&cfg).unwrap()).unwrap();
+        assert_eq!(
+            back.get("bridge_acceleration"),
+            cfg.get("bridge_acceleration")
+        );
+        let mut cfg = cfg;
+        assert!(cfg
+            .set(
+                "bridge_acceleration",
+                ConfigValue::Strings(vec!["60%".into()])
+            )
+            .is_ok());
+        assert!(cfg
+            .set(
+                "bridge_acceleration",
+                ConfigValue::Strings(vec!["x".into()])
+            )
+            .is_err());
     }
 
     #[test]

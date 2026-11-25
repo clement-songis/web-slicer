@@ -123,7 +123,10 @@ fn pa_tower_like_orca() {
     assert_eq!(p.calib.unwrap().mode, CalibMode::PaTower);
     assert!(close(z_size(&p), 51.0, 0.05), "hauteur {}", z_size(&p)); // ceil(0,1/0,002)+1
     assert_eq!(obj_setting(&p, "wall_loops"), Some(ConfigValue::Int(2)));
-    assert!(matches!(obj_setting(&p, "outer_wall_speed"), Some(ConfigValue::Float(v)) if v > 0.0));
+    // Orca main : outer_wall_speed vectoriel par extrudeur (coFloats).
+    assert!(
+        matches!(obj_setting(&p, "outer_wall_speed"), Some(ConfigValue::Floats(v)) if v.len() == 1 && v[0] > 0.0)
+    );
     let gcode = slice(&p, cfg);
     let pa = gcode
         .lines()
@@ -469,7 +472,10 @@ fn pa_pattern_project_like_orca() {
     );
     assert_eq!(p.overrides.get("wall_loops"), Some(&ConfigValue::Int(3)));
     assert_eq!(p.overrides.get("skirt_loops"), Some(&ConfigValue::Int(0)));
-    assert!(matches!(p.overrides.get("outer_wall_speed"), Some(ConfigValue::Float(v)) if *v > 0.0));
+    // Orca main : outer_wall_speed vectoriel par extrudeur (coFloats).
+    assert!(
+        matches!(p.overrides.get("outer_wall_speed"), Some(ConfigValue::Floats(v)) if v.len() == 1 && v[0] > 0.0)
+    );
     let items = &p.model.custom_gcodes[0].items;
     assert!(
         items.len() > 2 && items.iter().all(|i| !i.extra.is_empty()),
@@ -534,7 +540,8 @@ fn input_shaping_frequency_like_orca() {
     );
     assert_eq!(
         p.overrides.get("outer_wall_acceleration"),
-        Some(&ConfigValue::Float(20000.0))
+        // Orca main : coFloats par extrudeur.
+        Some(&ConfigValue::Floats(vec![20000.0]))
     );
     assert_eq!(
         p.overrides.get("layer_height"),

@@ -106,7 +106,8 @@ fn calib(mode: CalibMode) -> CalibParams {
 fn klipper() -> Vec<(&'static str, ConfigValue)> {
     vec![
         ("gcode_flavor", ConfigValue::String("klipper".into())),
-        ("default_jerk", ConfigValue::Float(0.0)),
+        // Orca main : default_jerk vectoriel par extrudeur (coFloats).
+        ("default_jerk", ConfigValue::Floats(vec![0.0])),
     ]
 }
 

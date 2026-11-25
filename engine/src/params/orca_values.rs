@@ -40,6 +40,24 @@ pub fn parse_orca_value(def: &ParamDef, s: &str) -> Option<ConfigValue> {
             }
         }
         K::String | K::Enum => Some(ConfigValue::String(unquote(s).to_string())),
+        // coFloatsOrPercents (main : vitesses/accélérations par extrudeur,
+        // ex. bridge_acceleration = « 50% ») : un élément en pourcentage ne
+        // peut pas vivre dans `Floats` sans perdre son « % » (50 % → 50 mm/s²).
+        // Comme pour la variante nullable, la forme `Strings` (« 50% »,
+        // « 0.4 ») n'est produite qu'en présence d'un pourcentage ; sinon
+        // `Floats` reste utilisé.
+        K::FloatsOrPercents
+            if split_vector(s).any(|t| t.ends_with('%'))
+                && !split_vector(s).any(|t| t == "nil") =>
+        {
+            split_vector(s)
+                .map(|t| {
+                    parse_float(t.strip_suffix('%').unwrap_or(t))?;
+                    Some(t.to_string())
+                })
+                .collect::<Option<Vec<String>>>()
+                .map(ConfigValue::Strings)
+        }
         K::Floats | K::Percents | K::FloatsOrPercents => {
             if def.nullable && split_vector(s).any(|t| t == "nil") {
                 let v: Option<Vec<Option<f64>>> = split_vector(s)
@@ -200,6 +218,9 @@ pub fn serialize_orca_value_for(def: &ParamDef, value: &ConfigValue) -> String {
     }
     match (def.kind, value) {
         (K::PointsGroups, ConfigValue::Strings(groups)) => return groups.join("#"),
+        // coFloatsOrPercents avec pourcentage(s) : éléments « 50% »/« 0.4 »
+        // joints par « , » sans guillemets (ConfigOptionFloatsOrPercents).
+        (K::FloatsOrPercents, ConfigValue::Strings(items)) => return items.join(","),
         // ConfigOptionPoint::serialize d'Orca : « x,y » (ex. best_object_pos).
         (K::Point, ConfigValue::Point(p)) => {
             return p
@@ -368,6 +389,27 @@ mod tests {
             parse_orca_value(def, "0.4,0.4"),
             Some(ConfigValue::Floats(vec![0.4, 0.4]))
         );
+    }
+
+    /// Orca main vectorise des FloatOrPercent par extrudeur
+    /// (coFloatsOrPercents) : « 50% » doit survivre (sinon 50 mm/s² au lieu
+    /// de 50 % — écart de temps/G-code mesuré par ffi_brim_ears & co).
+    #[test]
+    fn vecteur_float_or_percent_garde_le_pourcentage() {
+        let def = get("bridge_acceleration").unwrap();
+        assert_eq!(def.kind, ParamKind::FloatsOrPercents);
+        assert_eq!(
+            parse_orca_value(def, "50%"),
+            Some(ConfigValue::Strings(vec!["50%".into()]))
+        );
+        let v = parse_orca_value(def, "50%,1000").unwrap();
+        assert_eq!(serialize_orca_value_for(def, &v), "50%,1000");
+        // Sans pourcentage : forme Floats inchangée.
+        assert_eq!(
+            parse_orca_value(def, "500,1000"),
+            Some(ConfigValue::Floats(vec![500.0, 1000.0]))
+        );
+        assert_eq!(parse_orca_value(def, "abc%"), None);
     }
 
     #[test]
