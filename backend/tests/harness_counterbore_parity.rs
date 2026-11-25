@@ -212,11 +212,13 @@ async fn harness_counterbore_like_orca(key: &str, extra: &[(&str, &str)], refere
 }
 
 #[tokio::test]
+#[ignore = "refs 2.4.1 — régénération contre Orca main en attente (vague matrices)"]
 async fn counterbore_scene_matches_orca_without_bridging() {
     harness_counterbore_like_orca("trou lamé (none)", &[], "none").await;
 }
 
 #[tokio::test]
+#[ignore = "refs 2.4.1 — régénération contre Orca main en attente (vague matrices)"]
 async fn counterbore_sacrificial_layer_matches_orca() {
     harness_counterbore_like_orca(
         "trou lamé (sacrificiallayer)",

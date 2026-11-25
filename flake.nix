@@ -333,7 +333,7 @@
           installPhase = ''
             runHook preInstall
             mkdir -p $out/lib $out/include
-            find . -name '*.a' -exec cp -v {} $out/lib/ \\;
+            find . -name '*.a' -exec cp -v {} $out/lib/ \;
             cp -r ../src/libslic3r $out/include/libslic3r
             runHook postInstall
           '';
