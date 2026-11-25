@@ -16,7 +16,10 @@ use crate::params::{self, orca_values};
 use super::import::{ImportedPreset, PresetKind};
 
 /// Aplati la chaîne (racine → feuille) en valeurs effectives typées.
-/// Les clés inconnues du registre sont ignorées (comportement handle_legacy).
+/// Chaque paire clé/valeur passe par `handle_legacy` avant placement — miroir
+/// de `ConfigBase::set_deserialize_nothrow` (Config.cpp:604 : « Both opt_key
+/// and value may be modified by handle_legacy() ») — puis les clés inconnues
+/// du registre sont ignorées.
 pub fn resolve_preset_chain(chain: &[RawPreset]) -> EngineResult<DynamicPrintConfig> {
     if chain.is_empty() {
         return Err(EngineError::new(
@@ -31,8 +34,17 @@ pub fn resolve_preset_chain(chain: &[RawPreset]) -> EngineResult<DynamicPrintCon
                 continue; // clé legacy/vendeur inconnue : ignorée comme Orca
             };
             let text = json_value_to_orca_text(value, def);
+            // handle_legacy (Config.cpp:604) : renommage éventuel de la clé,
+            // transformation de la valeur (ex. enable_arc_fitting « 1 » →
+            // « enabled », devenu coEnum dans main) ou abandon (clé obsolète).
+            let Some((key, text)) = params::handle_legacy(key, &text) else {
+                continue;
+            };
+            // Après renommage, handle_legacy garantit une clé du registre ;
+            // la définition finale pilote le parse.
+            let def = params::get(&key).unwrap_or(def);
             if let Some(parsed) = orca_values::parse_orca_value(def, &text) {
-                config.0.insert(key.clone(), parsed);
+                config.0.insert(key, parsed);
             }
         }
     }

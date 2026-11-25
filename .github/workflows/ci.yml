@@ -21,10 +21,13 @@ jobs:
           python-version: "3.12"
       - uses: DeterminateSystems/nix-installer-action@v16
       - uses: DeterminateSystems/magic-nix-cache-action@v9
-      - name: Source Orca de référence (release 2.4.1)
+      - name: Source Orca de référence (main aefb6b3d)
         run: |
-          ORCA_SRC="$(nix eval --raw .#orca-src)"
-          nix build .#orca-src
+          # La parité auditée est Orca main (vendor/OrcaSlicer, attr
+          # orca-main-src) : même source que le portage libslic3r-main. Le
+          # moteur (job rust) reste sur 2.4.1 le temps du portage.
+          ORCA_SRC="$(nix eval --raw .#orca-main-src)"
+          nix build .#orca-main-src
           echo "ORCA_SRC=$ORCA_SRC" >> "$GITHUB_ENV"
       - name: Inventaires ré-exécutables et déterministes
         run: |

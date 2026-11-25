@@ -13,9 +13,9 @@ from pathlib import Path
 
 AUDIT_DIR = Path(__file__).resolve().parent
 REPO_ROOT = AUDIT_DIR.parent
-# La référence est la même release Orca que le moteur et l'oracle CLI. Le
-# submodule vendor/ n'est qu'un repli : son pointeur peut suivre main sans
-# changer la cible de parité du projet.
+# La référence de parité est Orca main (vendor/OrcaSlicer @ aefb6b3d) ; la CI
+# l'épingle via l'attr nix orca-main-src (ORCA_SRC). Le repli sans ORCA_SRC
+# reste le submodule vendor/, qui suit main.
 ORCA_ROOT = Path(os.environ.get("ORCA_SRC", REPO_ROOT / "vendor" / "OrcaSlicer"))
 
 _STRING_RE = re.compile(r'"((?:[^"\\]|\\.)*)"')

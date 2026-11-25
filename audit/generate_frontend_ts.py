@@ -42,6 +42,8 @@ PARAM_TYPES = [
     "coInt", "coInts",
     "coPercent", "coPercents", "coPercentsNullable",
     "coPoint", "coPoints", "coPointsGroups",
+    # coNone : slot d'état sans valeur (Orca main).
+    "coNone",
     "coString", "coStrings",
 ]
 

@@ -133,11 +133,26 @@ fn apply_value_rules(key: &mut String, value: &mut String) {
                 *value = "disable".into();
             }
         }
+        // Main aefb6b3d : enable_arc_fitting devient coEnum (ArcFittingMode),
+        // les presets historiques portent encore "1"/"0"/booléens.
+        "enable_arc_fitting" => {
+            if value == "1" || value.eq_ignore_ascii_case("true") {
+                *value = "enabled".into();
+            } else if value == "0" || value.eq_ignore_ascii_case("false") {
+                *value = "disabled".into();
+            }
+        }
         "ensure_vertical_shell_thickness" => {
             if value == "1" {
                 *value = "ensure_all".into();
             } else if value == "0" {
                 *value = "ensure_moderate".into();
+            }
+        }
+        // Main aefb6b3d : -1 (auto historique) → 0.
+        "tree_support_wall_count" => {
+            if value == "-1" {
+                *value = "0".into();
             }
         }
         "rotate_solid_infill_direction" => {
@@ -263,8 +278,11 @@ mod tests {
             SOURCE_SHA1,
             "legacy_tables.rs périmé : relancer audit/generate_legacy_rs.py"
         );
-        assert_eq!(RENAMES.len(), 28, "28 renommages (audit)");
-        assert_eq!(IGNORED.len(), 44, "44 clés ignorées (audit)");
+        // Main aefb6b3d : +4 renommages (tpms_*/is_ixex) et l'ensemble
+        // ignoré passe de 44 à 56 (clés belt/preslice/first_layer_plane,
+        // −filament_prime_volume).
+        assert_eq!(RENAMES.len(), 32, "32 renommages (audit main)");
+        assert_eq!(IGNORED.len(), 56, "56 clés ignorées (audit main)");
     }
 
     #[test]
@@ -315,6 +333,16 @@ mod tests {
         assert_eq!(
             conv("enable_power_loss_recovery", "true"),
             Some(("enable_power_loss_recovery".into(), "enable".into()))
+        );
+        // Main aefb6b3d : enable_arc_fitting coEnum — booléens historiques
+        // convertis ; tree_support_wall_count : -1 (auto) → 0.
+        assert_eq!(
+            conv("enable_arc_fitting", "1"),
+            Some(("enable_arc_fitting".into(), "enabled".into()))
+        );
+        assert_eq!(
+            conv("tree_support_wall_count", "-1"),
+            Some(("tree_support_wall_count".into(), "0".into()))
         );
         // Motif "zig-zag" migré, sinon inchangé.
         assert_eq!(

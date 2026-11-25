@@ -33,6 +33,9 @@ pub enum ParamKind {
     Point,
     Points,
     PointsGroups,
+    /// Slot d'état sans valeur typée (coNone d'Orca, ex. fan_speed) :
+    /// présent dans l'inventaire de parité, pas un réglage persistable.
+    State,
 }
 
 /// Origine du paramètre dans PrintConfig.cpp.
@@ -142,10 +145,12 @@ mod tests {
         let p = get("host_type").unwrap();
         assert_eq!(
             p.enum_values.len(),
-            16,
-            "16 hôtes d'impression (v1: moonraker)"
+            17,
+            "17 hôtes d'impression (main : +elegoolink, +3dprinteros)"
         );
         assert!(p.enum_values.contains(&"moonraker"));
+        assert!(p.enum_values.contains(&"elegoolink"));
+        assert!(p.enum_values.contains(&"3dprinteros"));
     }
 
     #[test]
@@ -183,11 +188,13 @@ mod tests {
                 )
             })
             .count();
-        // 751 (Orca v2.4.2) + 202 clés main aefb6b3d (137 fff + 6 common)
-        // − silent_mode retirée = 893. Parité runtime C++ à re-vérifier par le
-        // test ffi `registre_runtime_aligne_avec_le_registre_genere` une fois
-        // le portage libslic3r-main (aefb6b3d) achevé.
-        assert_eq!(fff_common_sla, 893);
+        // État 1058 : 893 (751 v2.4.2 + 202 clés main − silent_mode). Parse
+        // complet main (1105) : +5 clés fff 2.4.2-era jamais auditées avant
+        // (machine_bed_mass_Y, machine_max_force_Y, 3 filament_retract_*
+        // de filament_extruder_override_keys) = 898. Parité runtime C++ à
+        // re-vérifier par le test ffi `registre_runtime_aligne_avec_le_registre_genere`
+        // une fois le portage libslic3r-main (aefb6b3d) achevé.
+        assert_eq!(fff_common_sla, 898);
     }
 
     /// Lot 2026-11-24 : clés d'OrcaSlicer main aefb6b3d fusionnées dans l'audit
@@ -208,18 +215,23 @@ mod tests {
 
     #[test]
     fn spot_check_orca_main_nullable_vectoriels() {
-        // coFloatsOrPercents nullable : défaut 25 % + borne basse.
+        // coFloatsOrPercents à défaut Nullable. Parse main source-fidèle :
+        // nullable vient d'add_nullable() seul (add() simple ici → false, le
+        // caractère Nullable du défaut reste dans default_type de l'audit) et
+        // le défaut C++ non litéral (FloatOrPercent(25, true)) n'est pas
+        // sérialisable statiquement → pas de default_json au registre.
         let p = get("bridge_volumetric_flow").unwrap();
         assert_eq!(p.kind, ParamKind::FloatsOrPercents);
-        assert!(p.nullable);
+        assert!(!p.nullable);
         assert_eq!(p.min, Some(0.1));
-        assert_eq!(p.default_json, Some("[{\"value\": 25, \"percent\": true}]"));
-        // coIntsNullable : 0 = auto (borne haute dynamique → pas de max statique).
+        assert_eq!(p.default_json, None);
+        // coIntsNullable en défaut : 0 = auto ; la borne haute, jadis
+        // symbolique (max_temp), est résolue par le parse (const 1500).
         let p = get("filament_flush_temp_fast").unwrap();
         assert_eq!(p.kind, ParamKind::Ints);
-        assert!(p.nullable);
+        assert!(!p.nullable);
         assert_eq!(p.min, Some(0.0));
-        assert_eq!(p.max, None);
+        assert_eq!(p.max, Some(1500.0));
         assert_eq!(p.default_json, Some("[0]"));
     }
 
@@ -266,7 +278,9 @@ mod tests {
         // PrintConfigDef (persistée, par filament) fait foi.
         let p = get("filament_retract_length_nc").unwrap();
         assert_eq!(p.kind, ParamKind::Floats);
-        assert!(p.nullable);
+        // add() simple en main (pas add_nullable) : nullable=false, le défaut
+        // FloatsNullable reste visible via default_type dans l'audit.
+        assert!(!p.nullable);
         assert_eq!(p.mode, Mode::Develop);
         assert_eq!(p.min, Some(0.0));
         assert_eq!(p.max, Some(18.0));

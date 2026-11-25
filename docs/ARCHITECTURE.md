@@ -3,8 +3,9 @@
 > Schéma complet : [architecture.html](./architecture.html) (autonome, s'ouvre dans le navigateur).
 
 web-slicer est un trancheur 3D web en parité fonctionnelle et G-code avec
-OrcaSlicer (référence : release 2.4.1 via le pin nix ; le submodule
-`vendor/OrcaSlicer` suit `main` comme référence de code).
+OrcaSlicer (référence de parité et d'audit : `main` épinglé à aefb6b3d —
+submodule `vendor/OrcaSlicer`, attr nix `orca-main-src` ; le moteur
+libslic3r reste sur la release 2.4.1 le temps du portage libslic3r-main).
 
 ## Vue d'ensemble
 
@@ -54,9 +55,11 @@ Backend axum (Rust)
 ### Toolchain Nix (`flake.nix`)
 - devShell : `LIBSLIC3R_DIR` (libslic3r-headless, statiques + headers) et
   `ORCA_SRC` (source Orca **2.4.1** épinglé par nixpkgs + patches de
-  déterminisme).
-- Le submodule `vendor/OrcaSlicer` suit la branche `main` en amont :
-  référence de **lecture** du code, pas la source du binaire.
+  déterminisme) — moteur et oracle CLI restent en 2.4.1 tant que le portage
+  libslic3r-main n'est pas terminé.
+- Le submodule `vendor/OrcaSlicer` suit la branche `main` en amont
+  (aefb6b3d) : référence de **parité et d'audit** (job CI `audit`, attr nix
+  `orca-main-src`), pas la source du binaire.
 - En CI, le job Rust source `nix print-dev-env` (l'invocation
   `nix develop --command` perd des variables et les flags du wrapper clang
   sur les runners GitHub).

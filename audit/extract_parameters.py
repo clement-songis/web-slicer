@@ -5,6 +5,16 @@ Sortie : audit/parameters.json
   { "key": { type, label, tooltip, category, mode, default, min, max, ... } }
 
 Ré-exécutable : parse le source C++ à chaque exécution.
+
+Outre les add("clé", coType) littéraux, trois mécanismes dynamiques d'Orca
+main (aefb6b3d) enregistrent des options sans littéral de clé — parsés ici,
+sinon l'inventaire les perd :
+  - macro new_def(key, type, label, tooltip) : placeholders d'état et
+    statistiques (valeurs calculées au runtime, sans défaut) ;
+  - lambda auto NAME = [this](…) { this->add(param, …) } : add_belt_remap,
+    qui enregistre gcode_remap_x/y/z (label/mode/défaut en argument) ;
+  - boucle for (const char* key : {"a", …}) : une option par clé littérale
+    de la liste (*_plugin_config_overrides).
 """
 
 from __future__ import annotations
@@ -46,6 +56,23 @@ CONST_RE = re.compile(r"const\s+(?:int|double|float)\s+(\w+)\s*=\s*([-\d.]+)\s*;
 
 STR_ATTRS = ["label", "full_label", "category", "tooltip", "sidetext"]
 NUM_ATTRS = ["min", "max", "max_literal"]
+
+# --- Définitions dynamiques (Orca main aefb6b3d) ----------------------------
+# #define new_def(OPT_KEY, TYPE, LABEL, TOOLTIP) : l'expansion est un add()
+# dont la clé n'est pas un littéral (invisible pour ADD_RE).
+NEWDEF_RE = re.compile(r"\bnew_def\s*\(")
+# auto NAME = [this](…) { … this->add(param, …) … } : lambda d'enregistrement.
+LAMBDA_DEF_RE = re.compile(r"auto\s+(\w+)\s*=\s*\[\s*this\s*\]\s*\(")
+# for (const char* key : {"a", "b", …}) { … this->add(key, …) … }
+FOR_KEYLIST_RE = re.compile(
+    r"for\s*\(\s*const\s+(?:char\s*\*+|std::string\s*&?)\s*(\w+)\s*:\s*\{"
+)
+# add(param, coType) dans le corps d'une lambda / boucle.
+ADD_PARAM_RE = re.compile(r"this->add(_nullable)?\s*\(\s*\w+\s*,\s*(co\w+)\s*\)")
+# Variables texte locales (point_tooltip = L("…")) passées à new_def.
+SYMBOL_L_RE = re.compile(
+    r'(?<![>\w])([A-Za-z_]\w*)\s*=\s*(L\(\s*"(?:[^"\\]|\\.)*"\s*(?:"(?:[^"\\]|\\.)*"\s*)*\))'
+)
 
 
 def parse_number(raw: str, consts: dict[str, float]):
@@ -154,7 +181,115 @@ def parse_default(ctor: str, args: str, consts: dict):
         return args
 
 
-def extract_block_attrs(block: str, consts: dict) -> dict:
+def split_top(expr: str) -> list[str]:
+    """Découpe une liste d'arguments C++ aux virgules de profondeur 0
+    (sensible aux littéraux et aux parenthèses/accolades imbriquées)."""
+    parts: list[str] = []
+    buf: list[str] = []
+    depth = 0
+    i, n = 0, len(expr)
+    str_re = re.compile(r'"(?:[^"\\]|\\.)*"')
+    while i < n:
+        c = expr[i]
+        if c == '"':
+            m = str_re.match(expr, i)
+            buf.append(m.group(0))
+            i = m.end()
+            continue
+        if c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+        if c == "," and depth == 0:
+            parts.append("".join(buf).strip())
+            buf = []
+        else:
+            buf.append(c)
+        i += 1
+    tail = "".join(buf).strip()
+    if tail:
+        parts.append(tail)
+    return parts
+
+
+def resolve_text(expr: str, sym_map: dict[str, str]) -> str | None:
+    """L("a" "b") / "c" / identifiant local (point_tooltip) → texte concaténé."""
+    s = concat_strings(expr)
+    if s is not None:
+        return s
+    val = sym_map.get(expr.strip())
+    return concat_strings(val) if val is not None else None
+
+
+def resolve_enum_default(entry: dict, enum_keys: dict) -> None:
+    """Résout les défauts d'enum (Enum<T>(Symbole) → clé persistée)."""
+    dt = entry.get("default_type", "")
+    mt = re.match(r"^Enums?(?:Nullable)?<(\w+)>$", dt)
+    if mt and isinstance(entry.get("default"), str):
+        table = enum_keys.get(mt.group(1), {})
+        raw = entry["default"].strip()
+        if raw.startswith("{") and raw.endswith("}"):  # vecteur d'enums
+            items = [x.strip().split("::")[-1] for x in raw[1:-1].split(",") if x.strip()]
+            if items and all(x in table for x in items):
+                entry["default"] = [table[x] for x in items]
+        elif raw.split("::")[-1] in table:
+            entry["default"] = table[raw.split("::")[-1]]
+    # EnumsGeneric{ ZHopType::zhtSlope } / { (int)Overhang_threshold_bridge } :
+    # vecteur d'enums sans paramètre de type → table déduite du préfixe, ou
+    # recherche de l'énumérateur dans toutes les tables.
+    if dt == "EnumsGeneric" and isinstance(entry.get("default"), str):
+        raw = entry["default"].strip().strip("{}")
+        keys = []
+        for item in [x.strip() for x in raw.split(",") if x.strip()]:
+            item = re.sub(r"^\(\s*int\s*\)", "", item).replace(" ", "")
+            prefix, _, name = item.rpartition("::")
+            table = enum_keys.get(prefix) if prefix else None
+            if not table:
+                table = next((t for t in enum_keys.values() if name in t), {})
+            if name in table:
+                keys.append(table[name])
+        if keys:
+            entry["default"] = keys
+
+
+def parse_key_loop(code: str, m: re.Match) -> tuple[list[str], str] | None:
+    """Boucle for (const char* key : {"a", …}) enregistrant des options →
+    (clés littérales, corps) si la boucle appelle this->add(var, …)."""
+    try:
+        close_list = code.index("}", m.end())
+        keys = re.findall(r'"([^"]+)"', code[m.end() : close_list])
+        open_brace = code.find("{", close_list)
+        close_brace = find_matching_paren(code, open_brace, "{", "}")
+    except ValueError:
+        return None
+    body = code[open_brace + 1 : close_brace]
+    var = m.group(1)
+    if not re.search(rf"this->add(?:_nullable)?\s*\(\s*{re.escape(var)}\s*,", body):
+        return None
+    return keys, body
+
+
+def parse_add_lambda(code: str, m: re.Match) -> tuple[str, list[str], str] | None:
+    """auto NAME = [this](params) { … this->add(…) … } → (nom, noms des
+    paramètres, corps) si la lambda enregistre des options."""
+    open_paren = m.end() - 1
+    close_paren = find_matching_paren(code, open_paren)
+    param_names = []
+    for p in split_top(code[open_paren + 1 : close_paren]):
+        pm = re.search(r"([A-Za-z_]\w*)\s*$", p)
+        if pm:
+            param_names.append(pm.group(1))
+    open_brace = code.find("{", close_paren)
+    if open_brace < 0:
+        return None
+    close_brace = find_matching_paren(code, open_brace, "{", "}")
+    body = code[open_brace + 1 : close_brace]
+    if not re.search(r"this->add(?:_nullable)?\s*\(", body):
+        return None
+    return m.group(1), param_names, body
+
+
+def extract_block_attrs(block: str, consts: dict, sym_map: dict | None = None) -> dict:
     """Extrait les attributs def->xxx = ...; d'un bloc de définition."""
     attrs: dict = {}
 
@@ -166,6 +301,10 @@ def extract_block_attrs(block: str, consts: dict) -> dict:
         m = re.search(rf'def->{name}\s*=\s*((?:[^;"]|"(?:[^"\\]|\\.)*")*);', block, re.S)
         if m:
             s = concat_strings(m.group(1))
+            if s is None and sym_map is not None:
+                # Variable texte locale (external_flow_tooltip = L("…")) :
+                # résolue via la carte des symboles du fichier.
+                s = resolve_text(m.group(1), sym_map)
             if s is not None:
                 attrs[name] = s
 
@@ -324,9 +463,32 @@ def main() -> None:
                 current = f"other:{cls.removesuffix('ConfigDef')}"
         return current
 
+    # Variables texte locales (point_tooltip = L("…")) : label/tooltip des
+    # new_def passés par identifiant.
+    sym_map: dict[str, str] = dict(SYMBOL_L_RE.findall(code))
+
+    # Lambdas et boucles for qui enregistrent des options : leurs corps sont
+    # découpés et re-associés aux appels (new_def/lambda/boucle ci-dessous).
+    lambda_data = []  # (match de définition, nom, paramètres, corps)
+    for m in LAMBDA_DEF_RE.finditer(code):
+        parsed = parse_add_lambda(code, m)
+        if parsed is not None:
+            lambda_data.append((m, *parsed))
+    key_loop_data = []  # (match de boucle, clés littérales, corps)
+    for m in FOR_KEYLIST_RE.finditer(code):
+        parsed = parse_key_loop(code, m)
+        if parsed is not None:
+            key_loop_data.append((m, *parsed))
+
     matches = list(ADD_RE.finditer(code))
     boundaries = [m.start() for m in matches] + [len(code)]
     func_starts = sorted(s for s, _, _ in funcs)
+    # Un corps de lambda ou de boucle for sur clés contient des def->… qui
+    # n'appartiennent pas à l'option littérale précédente : sans coupure,
+    # preset_name héritait du bloc *_plugin_config_overrides et
+    # belt_frame_tilt_angle des enum_values de la lambda gcode_remap.
+    cut_starts = sorted([m.start() for m, *_ in lambda_data]
+                        + [m.start() for m, *_ in key_loop_data])
 
     params: dict[str, dict] = {}
     for i, m in enumerate(matches):
@@ -335,6 +497,11 @@ def main() -> None:
         for fs in func_starts:
             if m.end() < fs < block_end:
                 block_end = fs
+                break
+        # Ni sur une lambda / boucle d'enregistrement dynamique
+        for cp in cut_starts:
+            if m.end() < cp < block_end:
+                block_end = cp
                 break
         block = code[m.end() : block_end]
 
@@ -345,34 +512,8 @@ def main() -> None:
         }
         if m.group("nullable"):
             entry["nullable"] = True
-        entry.update(extract_block_attrs(block, consts))
-        dt = entry.get("default_type", "")
-        mt = re.match(r"^Enums?(?:Nullable)?<(\w+)>$", dt)
-        if mt and isinstance(entry.get("default"), str):
-            table = enum_keys.get(mt.group(1), {})
-            raw = entry["default"].strip()
-            if raw.startswith("{") and raw.endswith("}"):  # vecteur d'enums
-                items = [x.strip().split("::")[-1] for x in raw[1:-1].split(",") if x.strip()]
-                if items and all(x in table for x in items):
-                    entry["default"] = [table[x] for x in items]
-            elif raw.split("::")[-1] in table:
-                entry["default"] = table[raw.split("::")[-1]]
-        # EnumsGeneric{ ZHopType::zhtSlope } / { (int)Overhang_threshold_bridge } :
-        # vecteur d'enums sans paramètre de type → table déduite du préfixe, ou
-        # recherche de l'énumérateur dans toutes les tables.
-        if dt == "EnumsGeneric" and isinstance(entry.get("default"), str):
-            raw = entry["default"].strip().strip("{}")
-            keys = []
-            for item in [x.strip() for x in raw.split(",") if x.strip()]:
-                item = re.sub(r"^\(\s*int\s*\)", "", item).replace(" ", "")
-                prefix, _, name = item.rpartition("::")
-                table = enum_keys.get(prefix) if prefix else None
-                if not table:
-                    table = next((t for t in enum_keys.values() if name in t), {})
-                if name in table:
-                    keys.append(table[name])
-            if keys:
-                entry["default"] = keys
+        entry.update(extract_block_attrs(block, consts, sym_map))
+        resolve_enum_default(entry, enum_keys)
         if "mode" not in entry:
             # ConfigOptionDef::mode vaut comSimple par défaut (Config.hpp)
             entry["mode"] = "simple"
@@ -389,6 +530,134 @@ def main() -> None:
             entry["enum_values"] = list(source["enum_values"])
             if source.get("enum_labels") and not entry.get("enum_labels"):
                 entry["enum_labels"] = list(source["enum_labels"])
+
+    # --- Définitions dynamiques de main ------------------------------------
+    # Traitées après les add() littéraux : en cas de doublon la définition
+    # littérale PrintConfigDef gagne (filament_retract_length_nc existe en
+    # add() coFloats ET en new_def coFloat ; l'add() est la version preset).
+
+    # Macro new_def(key, type, label, tooltip) : placeholders d'état et
+    # statistiques — valeurs calculées au runtime, sans défaut.
+    for m in NEWDEF_RE.finditer(code):
+        if "#define" in code[max(0, m.start() - 8) : m.start()]:
+            continue  # la définition de la macro elle-même
+        close = find_matching_paren(code, m.end() - 1)
+        args = split_top(code[m.end() : close])
+        if len(args) < 4:
+            continue
+        km = re.match(r'^"([^"]+)"$', args[0].strip())
+        tm = re.match(r"^(co\w+)$", args[1].strip())
+        if not km or not tm:
+            continue
+        key, ctype = km.group(1), tm.group(1)
+        if key in params:
+            continue
+        entry: dict = {
+            "type": ctype,
+            "group": group_at(m.start()),
+            "line": line_of(code, m.start()),
+        }
+        for field, arg in (("label", args[2]), ("tooltip", args[3])):
+            text = resolve_text(arg, sym_map)
+            if text:
+                entry[field] = text
+        # La macro ne pose ni mode ni défaut : comSimple s'applique.
+        entry["mode"] = "simple"
+        entry["mode_is_default"] = True
+        params[key] = entry
+
+    # Lambda d'enregistrement (add_belt_remap → gcode_remap_x/y/z) : le corps
+    # porte les attributs communs (category, enum_values/labels, type du
+    # set_default_value), chaque appel fournit clé/label/tooltip/mode/défaut.
+    for m, name, param_names, body in lambda_data:
+        attrs = extract_block_attrs(body, consts, sym_map)
+        am = ADD_PARAM_RE.search(body)
+        if am is None:
+            continue
+
+        def param_index(pattern: str) -> int | None:
+            """Index du paramètre de la lambda assigné à def->champ."""
+            fm = re.search(pattern, body)
+            if fm and fm.group(1) in param_names:
+                return param_names.index(fm.group(1))
+            return None
+
+        label_i = param_index(r"def->label\s*=\s*([A-Za-z_]\w*)\s*;")
+        tooltip_i = param_index(r"def->tooltip\s*=\s*([A-Za-z_]\w*)\s*;")
+        mode_i = param_index(r"def->mode\s*=\s*([A-Za-z_]\w*)\s*;")
+        dm = re.search(
+            r"def->set_default_value\s*\(\s*new\s+ConfigOption(\w+)(?:<(\w+)>)?\s*\(\s*([A-Za-z_]\w*)\s*\)\s*\)",
+            body,
+        )
+        default_i = param_names.index(dm.group(3)) if dm and dm.group(3) in param_names else None
+
+        for cm in re.finditer(rf"\b{re.escape(name)}\s*\(", code):
+            close = find_matching_paren(code, cm.end() - 1)
+            call_args = split_top(code[cm.end() : close])
+            if not call_args:
+                continue
+            km = re.match(r'^"([^"]+)"$', call_args[0].strip())
+            if not km or km.group(1) in params:
+                continue
+            entry = {
+                "type": am.group(2),
+                "group": group_at(cm.start()),
+                "line": line_of(code, cm.start()),
+            }
+            if am.group(1):
+                entry["nullable"] = True
+            if label_i is not None and len(call_args) > label_i:
+                text = resolve_text(call_args[label_i], sym_map)
+                if text:
+                    entry["label"] = text
+            if tooltip_i is not None and len(call_args) > tooltip_i:
+                text = resolve_text(call_args[tooltip_i], sym_map)
+                if text:
+                    entry["tooltip"] = text
+            for k, v in attrs.items():
+                if k not in entry:
+                    entry[k] = v
+            if mode_i is not None and len(call_args) > mode_i:
+                mm = re.match(r"^(com\w+)$", call_args[mode_i].strip())
+                if mm:
+                    entry["mode"] = MODE_MAP.get(mm.group(1), mm.group(1))
+            if default_i is not None and len(call_args) > default_i:
+                raw = call_args[default_i].strip()
+                if dm:
+                    entry["default_type"] = dm.group(1) + (
+                        f"<{dm.group(2)}>" if dm.group(2) else ""
+                    )
+                entry["default_raw"] = raw
+                entry["default"] = raw  # symbole résolu par resolve_enum_default
+            if "mode" not in entry:
+                entry["mode"] = "simple"
+                entry["mode_is_default"] = True
+            resolve_enum_default(entry, enum_keys)
+            params[km.group(1)] = entry
+
+    # Boucle for sur une liste de clés littérales (*_plugin_config_overrides) :
+    # le corps est le gabarit commun des options enregistrées.
+    for m, keys, body in key_loop_data:
+        attrs = extract_block_attrs(body, consts, sym_map)
+        am = ADD_PARAM_RE.search(body)
+        if am is None:
+            continue
+        for key in keys:
+            if key in params:
+                continue
+            entry = {
+                "type": am.group(2),
+                "group": group_at(m.start()),
+                "line": line_of(code, m.start()),
+            }
+            if am.group(1):
+                entry["nullable"] = True
+            entry.update(attrs)
+            if "mode" not in entry:
+                entry["mode"] = "simple"
+                entry["mode_is_default"] = True
+            resolve_enum_default(entry, enum_keys)
+            params[key] = entry
 
     # Définitions dynamiques : surcharges filament_* des options extrudeur
     # (boucle sur filament_extruder_override_keys dans init_filament_option_keys)
@@ -459,7 +728,9 @@ def main() -> None:
     data = {
         "source": SOURCE,
         "generated_by": "audit/extract_parameters.py",
-        "note": "mode_is_default=true : aucun def->mode explicite, comSimple s'applique (défaut de Config.hpp)",
+        "note": "mode_is_default=true : aucun def->mode explicite, comSimple s'applique (défaut de Config.hpp). "
+                "Inclut les définitions dynamiques d'Orca main : macro new_def (placeholders d'état), "
+                "lambda add_belt_remap (gcode_remap_x/y/z), boucle for (*_plugin_config_overrides).",
         "count": len(params),
         "mode_counts": dict(sorted(modes.items())),
         "parameters": dict(sorted(params.items())),

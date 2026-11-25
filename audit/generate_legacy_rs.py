@@ -26,6 +26,15 @@ def rs_str(s: str) -> str:
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
+def rename_row(old: str, new: str) -> str:
+    """Ligne de table au format rustfmt : tenant sur une ligne (≤ 100 col),
+    sinon tuple éclaté — sinon cargo fmt --check échoue sur le fichier généré."""
+    one_line = f"    ({rs_str(old)}, {rs_str(new)}),"
+    if len(one_line) <= 100:
+        return one_line
+    return f"    (\n        {rs_str(old)},\n        {rs_str(new)},\n    ),"
+
+
 def main() -> None:
     src = (AUDIT_DIR / "legacy_keys.json").read_bytes()
     data = json.loads(src)
@@ -33,10 +42,8 @@ def main() -> None:
     renames = data["renames"]
     ignored = sorted(data["ignored"])
 
-    rename_rows = ",\n".join(
-        f"    ({rs_str(old)}, {rs_str(renames[old])})" for old in sorted(renames)
-    )
-    ignored_rows = ",\n".join(f"    {rs_str(k)}" for k in ignored)
+    rename_rows = "\n".join(rename_row(old, renames[old]) for old in sorted(renames))
+    ignored_rows = "\n".join(f"    {rs_str(k)}," for k in ignored)
 
     sha1 = hashlib.sha1(src).hexdigest()
     body = f"""// GÉNÉRÉ par audit/generate_legacy_rs.py — NE PAS ÉDITER (constitution V).

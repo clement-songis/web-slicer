@@ -25,6 +25,9 @@ KIND_MAP = {
     "coFloatOrPercent": "FloatOrPercent", "coFloatsOrPercents": "FloatsOrPercents",
     "coEnum": "Enum", "coEnums": "Enums",
     "coPoint": "Point", "coPoints": "Points", "coPointsGroups": "PointsGroups",
+    # coNone : slots d'état sans valeur (ex. fan_speed) — kind State,
+    # ajouté au registre pour la parité d'inventaire, sans type de valeur.
+    "coNone": "State",
 }
 
 GROUP_MAP = {"common": "Common", "fff": "Fff", "sla": "Sla"}

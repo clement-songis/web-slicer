@@ -1,9 +1,9 @@
 // GÉNÉRÉ par audit/generate_legacy_rs.py — NE PAS ÉDITER (constitution V).
-// Source : audit/legacy_keys.json (renommages 28, ignorées 44).
+// Source : audit/legacy_keys.json (renommages 32, ignorées 56).
 // Fraîcheur verrouillée par le test `legacy_tables_synced_with_audit`.
 
 /// SHA-1 de audit/legacy_keys.json au moment de la génération.
-pub const SOURCE_SHA1: &str = "a098bfee6bf2b5b64583f9c16ac73c346dbad461";
+pub const SOURCE_SHA1: &str = "e9d29b569080f03d264ce24c553379f5bde0471f";
 
 /// Renommages inconditionnels (ancienne clé → nouvelle clé), triés par ancienne
 /// clé pour la recherche dichotomique.
@@ -25,6 +25,7 @@ pub static RENAMES: &[(&str, &str)] = &[
     ("inherits_cummulative", "inherits_group"),
     ("initial_layer_flow_ratio", "bottom_solid_infill_flow_ratio"),
     ("ironing_direction", "ironing_angle"),
+    ("is_ixex", "is_imex"),
     ("machine_switch_extruder_time", "machine_tool_change_time"),
     (
         "prime_tower_extra_rib_length",
@@ -44,6 +45,9 @@ pub static RENAMES: &[(&str, &str)] = &[
     ("thumbnail_size", "thumbnails"),
     ("timelapse_no_toolhead", "timelapse_type"),
     ("tool_change_gcode", "change_filament_gcode"),
+    ("tpms_adaptive", "adaptive_infill_mode"),
+    ("tpms_adaptive_gradient", "adaptive_infill_gradient"),
+    ("tpms_interior_density", "adaptive_infill_interior_density"),
     ("wipe_tower_brim_width", "prime_tower_brim_width"),
     ("wipe_tower_extruder", "wipe_tower_filament"),
     ("wipe_tower_width", "prime_tower_width"),
@@ -54,25 +58,37 @@ pub static RENAMES: &[(&str, &str)] = &[
 pub static IGNORED: &[&str] = &[
     "acceleration",
     "adaptive_layer_height",
+    "anisotropic_surfaces",
     "bed_size",
     "bed_temperature",
     "bed_temperature_difference",
     "bed_temperature_initial_layer",
+    "belt_preslice_global",
+    "belt_slice_rotation_global",
+    "belt_support_floor_mode",
+    "belt_support_z_offset_mode",
     "can_add_auxiliary_fan",
     "can_switch_nozzle_type",
     "duplicate",
     "duplicate_grid",
     "extra_flush_volume",
     "filament_load_time",
-    "filament_prime_volume",
     "filament_unload_time",
+    "first_layer_plane",
+    "first_layer_plane_offset",
+    "first_layer_plane_thickness",
     "g0",
+    "gcode_back_transform",
     "internal_bridge_support_thickness",
     "long_retraction_when_cut",
     "max_print_speed",
     "max_volumetric_speed",
     "overhang_speed_classic",
     "overhang_totally_speed",
+    "preslice_remap_global",
+    "preslice_remap_x",
+    "preslice_remap_y",
+    "preslice_remap_z",
     "print_center",
     "reduce_wall_solid_infill",
     "remove_bed_leveling",

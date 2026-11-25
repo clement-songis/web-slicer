@@ -118,6 +118,8 @@ fn config_value_from_json(
     };
 
     match def.kind {
+        // Slot d'état (coNone) : pas de valeur persistable.
+        K::State => None,
         K::Bool => boolean(value).map(C::Bool),
         K::Int => integer(value).map(C::Int),
         K::Float | K::Percent => number(value).map(C::Float),

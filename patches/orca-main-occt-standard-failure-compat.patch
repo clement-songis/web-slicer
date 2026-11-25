@@ -1,0 +1,12 @@
+--- a/src/libslic3r/CAD/GeometryEngine.cpp
++++ b/src/libslic3r/CAD/GeometryEngine.cpp
+@@ -86,7 +86,8 @@
+         if (out.empty())
+             out.push_back(shape);
+     } catch (const Standard_Failure& e) {
+-        err = *e.what() ? e.what() : _u8L("OCCT failed to read STEP");
++        const char* occt_msg = e.GetMessageString();
++        err = (occt_msg && *occt_msg) ? occt_msg : _u8L("OCCT failed to read STEP");
+         out.clear();
+     }
+     return out;

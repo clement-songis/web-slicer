@@ -17,7 +17,7 @@ from __future__ import annotations
 
 import re
 
-from common import concat_strings, line_of, read_source, strip_comments, write_json
+from common import ORCA_ROOT, concat_strings, line_of, read_source, strip_comments, write_json
 
 MEMBER_FUNC_RE = re.compile(r"^[\w:<>*&,\s]*?\b(\w+)::(~?\w+)\s*\([^;{]*\)\s*(?:const\s*)?\{", re.M)
 
@@ -264,6 +264,13 @@ MODIFIER_VARS = {
 
 def resolve_label_expr(expr: str) -> tuple[str | None, str | None]:
     """Résout une expression de libellé wxWidgets → (libellé, raccourci)."""
+    # _L_CONTEXT("Top", "Camera View") : seul le premier littéral est affiché,
+    # le second est un contexte de traduction (sinon « TopCamera View »).
+    expr = re.sub(
+        r'_L_CONTEXT\s*\(\s*("(?:[^"\\]|\\.)*")(?:\s*,\s*"(?:[^"\\]|\\.)*")?\s*\)',
+        r"\1",
+        expr,
+    )
     # remplace les variables de modificateur usuelles par leur littéral
     for var, lit in MODIFIER_VARS.items():
         expr = re.sub(rf"\b{var}\b(?!\()", f'"{lit}"', expr)
@@ -276,11 +283,21 @@ def resolve_label_expr(expr: str) -> tuple[str | None, str | None]:
     return s.strip(), None
 
 
-def extract_menu_items(relpath: str) -> list[dict]:
+def extract_menu_items(relpath: str, shortcut_chords: dict[str, str] | None = None) -> list[dict]:
+    """Éléments de menu : append_menu_item + append_shortcut_item (main).
+
+    append_shortcut_item(menu, Shortcut::Id, enabled, label, desc, …) : le
+    libellé est en 4e argument et l'accélérateur vient de la table des
+    raccourcis (Shortcuts.cpp), plus du texte du menu. Les branches
+    #ifndef/#else __APPLE__ dupliquent l'appel (icône seule différence) :
+    dédupliqué par (menu, Shortcut::Id), la première branche gagne."""
     code = strip_comments(read_source(relpath))
     spans = function_spans(code)
     items = []
-    for m in re.finditer(r"append_menu_(item|check_item|radio_item)\s*\(", code):
+    seen_shortcut_items: set[tuple[str, str]] = set()
+    for m in re.finditer(
+        r"append_(?:menu_(?P<mkind>item|check_item|radio_item)|(?P<skind>shortcut_item))\s*\(", code
+    ):
         open_pos = m.end() - 1
         # découpe les arguments de premier niveau
         depth = 0
@@ -309,15 +326,30 @@ def extract_menu_items(relpath: str) -> list[dict]:
             else:
                 buf.append(c)
             i += 1
-        if len(args) < 3:
-            continue
-        label, accel = resolve_label_expr(args[2])
-        desc = concat_strings(args[3]) if len(args) > 3 else None
+        if m.group("skind") is not None:
+            # append_shortcut_item(menu, Shortcut::Id, enabled, label, desc, …)
+            if len(args) < 5:
+                continue
+            sm = re.match(r"^Shortcut::(\w+)$", args[1].strip())
+            if not sm:
+                continue
+            dedupe = (args[0], sm.group(1))
+            if dedupe in seen_shortcut_items:
+                continue  # branche #else __APPLE__ du même appel
+            seen_shortcut_items.add(dedupe)
+            label, accel = resolve_label_expr(args[3])
+            desc = concat_strings(args[4])
+            accel = accel or (shortcut_chords or {}).get(sm.group(1))
+        else:
+            if len(args) < 3:
+                continue
+            label, accel = resolve_label_expr(args[2])
+            desc = concat_strings(args[3]) if len(args) > 3 else None
         if label is None:
             continue
         items.append({
             "menu_variable": args[0],
-            "kind": m.group(1),
+            "kind": m.group("skind") or m.group("mkind"),
             "label": label,
             "shortcut": accel,
             "description": desc or None,
@@ -388,9 +420,75 @@ def extract_gizmos() -> list[dict]:
     return gizmos
 
 
-# --- Raccourcis clavier (KBShortcutsDialog.cpp) -----------------------------
+# --- Raccourcis clavier (Shortcuts.cpp depuis main aefb6b3d) ----------------
+# Main a remplacé les listes statiques de KBShortcutsDialog::fill_shortcuts
+# par un registre data-driven : shortcut_table (SHORTCUT/REPEATING/STEPPING)
+# + section_table (titre de chaque section). Les raccourcis par défaut y
+# sont exprimés en accords (constants WXK_/modificateurs), les branches
+# #ifdef __APPLE__ étant écartées (dernière définition = #else).
 
-def extract_shortcuts() -> list[dict]:
+SHORTCUTS_SOURCE = "src/slic3r/GUI/Shortcuts.cpp"
+
+# Codes wxWidgets rencontrés dans shortcut_table → libellé affiché.
+WXK_KEYS = {
+    "WXK_TAB": "Tab", "WXK_RETURN": "Return", "WXK_BACK": "Backspace",
+    "WXK_DELETE": "Del", "WXK_LEFT": "Left", "WXK_RIGHT": "Right",
+    "WXK_UP": "Up", "WXK_DOWN": "Down", "WXK_PAGEUP": "PageUp",
+    "WXK_PAGEDOWN": "PageDown", "WXK_HOME": "Home", "WXK_END": "End",
+    "WXK_F5": "F5", "WXK_SPACE": "Space", "WXK_ESCAPE": "Esc",
+}
+SHORTCUT_MODIFIERS = {"CTRL": "Ctrl", "SHIFT": "Shift", "CTRL_SHIFT": "Ctrl+Shift", "ALT": "Alt"}
+
+# constexpr KeyChord NAME { … };  (deux branches #ifdef, on garde la dernière)
+CHORD_CONST_RE = re.compile(r"constexpr\s+KeyChord\s+(\w+)\s*\{([^}]*)\}")
+# SHORTCUT(Id, "config_key", L("Name"), CONTEXTS, chord)
+SHORTCUT_ROW_RE = re.compile(
+    r'\b(?:SHORTCUT|REPEATING|STEPPING)\s*\(\s*(\w+)\s*,\s*"([^"]+)"\s*,'
+    r'\s*(L\(\s*"((?:[^"\\]|\\.)*)"(?:\s*"(?:[^"\\]|\\.)*"\s*)*\))\s*,'
+    r'\s*[A-Z_]+(?:\s*\|\s*[A-Z_]+)*\s*,\s*(\{[^{}]*\}|[A-Z_][A-Z0-9_]*)\s*\)'
+)
+SECTION_ROW_RE = re.compile(r'\{\s*Shortcut::(\w+)\s*,\s*L\(\s*"((?:[^"\\]|\\.)*)"\s*\)\s*\}')
+
+# { Shortcut::FirstId, L("Titre") } — bornes de sections de section_table.
+SECTION_ROW_RE = re.compile(r'\{\s*Shortcut::(\w+)\s*,\s*L\(\s*"((?:[^"\\]|\\.)*)"\s*\)\s*\}')
+
+
+def render_chord(expr: str, chord_consts: dict[str, str]) -> str:
+    """{ 'N', CTRL } / DELETE_CHORD / {} → « Ctrl+N » / « Del » / « »."""
+    expr = expr.strip()
+    if not expr.startswith("{"):
+        return chord_consts.get(expr, expr)
+    inner = expr.strip("{}").strip()
+    if not inner:
+        return ""  # pas de touche par défaut (GoTo*)
+    mods: list[str] = []
+    key = ""
+    for part in (p.strip() for p in inner.split(",") if p.strip()):
+        if part in SHORTCUT_MODIFIERS:
+            mods.append(SHORTCUT_MODIFIERS[part])
+        elif part.startswith("'") and part.endswith("'") and len(part) >= 3:
+            key = part[1:-1]
+        elif part in WXK_KEYS:
+            key = WXK_KEYS[part]
+        else:
+            key = part
+    return "+".join(mods + ([key] if key else []))
+
+
+def extract_shortcuts() -> tuple[list[dict], dict[str, str]]:
+    """Raccourcis par défaut → (groupes, {Id → accord affiché}).
+
+    main (aefb6b3d) : registre data-driven de Shortcuts.cpp. Repli 2.4.1 :
+    listes statiques de KBShortcutsDialog::fill_shortcuts (plus d'accords
+    joints aux menus)."""
+    if (ORCA_ROOT / SHORTCUTS_SOURCE).exists():
+        return extract_shortcuts_main()
+    return extract_shortcuts_legacy(), {}
+
+
+def extract_shortcuts_legacy() -> list[dict]:
+    """Raccourcis de la 2.4.1 : m_full_shortcuts + listes Shortcuts du
+    KBShortcutsDialog (gardé pour les sources pré-main, ex. devShell 2.4.1)."""
     code = strip_comments(read_source("src/slic3r/GUI/KBShortcutsDialog.cpp"))
     body_m = re.search(r"void\s+KBShortcutsDialog::fill_shortcuts\s*\(\)\s*\{", code)
     if not body_m:
@@ -435,20 +533,65 @@ def extract_shortcuts() -> list[dict]:
             "variable": var,
             "shortcuts": entries,
         })
-    # respecte l'ordre d'affichage du dialogue quand il est connu
     order = {v: i for i, v in enumerate(group_order)}
     groups.sort(key=lambda g: order.get(g["variable"], len(order)))
     return groups
 
 
+def extract_shortcuts_main() -> tuple[list[dict], dict[str, str]]:
+    """Raccourcis par défaut de main → (groupes, {Id → accord affiché})."""
+    code = strip_comments(read_source(SHORTCUTS_SOURCE))
+
+    # Constantes d'accords : la DERNIÈRE définition gagne (branche #else,
+    # hors __Apple__).
+    chord_consts: dict[str, str] = {}
+    for m in CHORD_CONST_RE.finditer(code):
+        chord_consts[m.group(1)] = render_chord("{" + m.group(2) + "}", {})
+
+    # Bornes des sections (section_table : premier raccourci de chaque titre).
+    sections: list[tuple[str, str]] = []
+    st = re.search(r"section_table\s*=\s*\{\{(.*?)\}\}", code, re.S)
+    if st:
+        for m in SECTION_ROW_RE.finditer(st.group(1)):
+            sections.append((m.group(1), m.group(2)))
+    section_at = {sid: title for sid, title in sections}
+
+    groups: list[dict] = []
+    current: dict | None = None
+    chords: dict[str, str] = {}
+    for m in SHORTCUT_ROW_RE.finditer(code):
+        # groupes : 1 id, 2 config_key, 3 L("…") complet, 4 premier littéral, 5 accord
+        sid, config_key, name_expr, _first_literal, chord_expr = m.groups()
+        name = concat_strings(name_expr)
+        if not name:
+            continue
+        keys = render_chord(chord_expr, chord_consts)
+        chords[sid] = keys
+        if sid in section_at:
+            current = {"group": section_at[sid], "shortcuts": []}
+            groups.append(current)
+        if current is None:
+            current = {"group": "(hors section)", "shortcuts": []}
+            groups.append(current)
+        current["shortcuts"].append({
+            "keys": keys,
+            "action": name,
+            "id": sid,
+            "config_key": config_key,
+        })
+    return groups, chords
+
+
 def main() -> None:
+    # Raccourcis d'abord : la table Shortcuts.cpp fournit les accélérateurs des
+    # entrées de menu déclarées via append_shortcut_item.
+    shortcuts, shortcut_chords = extract_shortcuts()
     tabs = extract_tabs()
-    main_menu_items = extract_menu_items("src/slic3r/GUI/MainFrame.cpp")
+    main_menu_items = extract_menu_items("src/slic3r/GUI/MainFrame.cpp", shortcut_chords)
     main_menu_structure = extract_submenus("src/slic3r/GUI/MainFrame.cpp")
-    context_menu_items = extract_menu_items("src/slic3r/GUI/GUI_Factories.cpp")
+    context_menu_items = extract_menu_items("src/slic3r/GUI/GUI_Factories.cpp", shortcut_chords)
     toolbars = extract_toolbars()
     gizmos = extract_gizmos()
-    shortcuts = extract_shortcuts()
 
     n_options = sum(len(s["options"]) for p in tabs for s in p["sections"])
     n_shortcuts = sum(len(g["shortcuts"]) for g in shortcuts)
@@ -461,7 +604,7 @@ def main() -> None:
             "src/slic3r/GUI/GUI_Factories.cpp",
             "src/slic3r/GUI/GLCanvas3D.cpp",
             "src/slic3r/GUI/Gizmos/GLGizmosManager.cpp",
-            "src/slic3r/GUI/KBShortcutsDialog.cpp",
+            "src/slic3r/GUI/Shortcuts.cpp",
         ],
         "summary": {
             "settings_pages": len(tabs),

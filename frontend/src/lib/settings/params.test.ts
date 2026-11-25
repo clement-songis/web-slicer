@@ -14,6 +14,7 @@ const audit = JSON.parse(readFileSync(AUDIT, 'utf-8')) as {
 };
 
 const PARAM_TYPES = new Set<ParamType>([
+	'coNone',
 	'coBool',
 	'coBools',
 	'coBoolsNullable',

@@ -2,10 +2,10 @@
   "source": "src/libslic3r/PrintConfig.cpp",
   "generated_by": "audit/extract_legacy_keys.py",
   "summary": {
-    "renames": 28,
+    "renames": 32,
     "erased_rules": 2,
-    "value_transforms": 28,
-    "ignored": 44,
+    "value_transforms": 30,
+    "ignored": 56,
     "composite_keys": 4
   },
   "renames": {
@@ -20,6 +20,7 @@
     "inherits_cummulative": "inherits_group",
     "initial_layer_flow_ratio": "bottom_solid_infill_flow_ratio",
     "ironing_direction": "ironing_angle",
+    "is_ixex": "is_imex",
     "machine_switch_extruder_time": "machine_tool_change_time",
     "prime_tower_extra_rib_length": "wipe_tower_extra_rib_length",
     "prime_tower_fillet_wall": "wipe_tower_fillet_wall",
@@ -33,6 +34,9 @@
     "thumbnail_size": "thumbnails",
     "timelapse_no_toolhead": "timelapse_type",
     "tool_change_gcode": "change_filament_gcode",
+    "tpms_adaptive": "adaptive_infill_mode",
+    "tpms_adaptive_gradient": "adaptive_infill_gradient",
+    "tpms_interior_density": "adaptive_infill_interior_density",
     "wipe_tower_brim_width": "prime_tower_brim_width",
     "wipe_tower_extruder": "wipe_tower_filament",
     "wipe_tower_width": "prime_tower_width",
@@ -199,6 +203,16 @@
     },
     {
       "old_keys": [
+        "tree_support_wall_count"
+      ],
+      "condition_on_value": true,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "value = \"0\";",
+      "snippet_sha1": "c8154084eb5d89e6b1fff563c3f35986819dce42"
+    },
+    {
+      "old_keys": [
         "different_settings_to_system"
       ],
       "condition_on_value": false,
@@ -261,6 +275,16 @@
       "value_changed": true,
       "snippet": "if (value == \"1\" || boost::iequals(value, \"true\")) { value = \"enable\"; } else if (value == \"0\" || boost::iequals(value, \"false\")) { value = \"disable\"; }",
       "snippet_sha1": "7a397092ddc88cce14646d135a2eb7a87576e1b5"
+    },
+    {
+      "old_keys": [
+        "enable_arc_fitting"
+      ],
+      "condition_on_value": false,
+      "new_key": null,
+      "value_changed": true,
+      "snippet": "if (value == \"1\" || boost::iequals(value, \"true\")) { value = \"enabled\"; } else if (value == \"0\" || boost::iequals(value, \"false\")) { value = \"disabled\"; }",
+      "snippet_sha1": "129b1572e59cda04c943d352ee3e8056fb290cfd"
     },
     {
       "old_keys": [
@@ -361,25 +385,37 @@
   "ignored": [
     "acceleration",
     "adaptive_layer_height",
+    "anisotropic_surfaces",
     "bed_size",
     "bed_temperature",
     "bed_temperature_difference",
     "bed_temperature_initial_layer",
+    "belt_preslice_global",
+    "belt_slice_rotation_global",
+    "belt_support_floor_mode",
+    "belt_support_z_offset_mode",
     "can_add_auxiliary_fan",
     "can_switch_nozzle_type",
     "duplicate",
     "duplicate_grid",
     "extra_flush_volume",
     "filament_load_time",
-    "filament_prime_volume",
     "filament_unload_time",
+    "first_layer_plane",
+    "first_layer_plane_offset",
+    "first_layer_plane_thickness",
     "g0",
+    "gcode_back_transform",
     "internal_bridge_support_thickness",
     "long_retraction_when_cut",
     "max_print_speed",
     "max_volumetric_speed",
     "overhang_speed_classic",
     "overhang_totally_speed",
+    "preslice_remap_global",
+    "preslice_remap_x",
+    "preslice_remap_y",
+    "preslice_remap_z",
     "print_center",
     "reduce_wall_solid_infill",
     "remove_bed_leveling",
@@ -411,7 +447,7 @@
       "wiping_volumes_matrix",
       "wiping_volumes_use_custom_matrix"
     ],
-    "body_sha1": "82434e78fd9d2b386d2ee1edd201cca4009b6928",
+    "body_sha1": "022d6dfae35700300c60d02c9d184c578c490052",
     "note": "conversions composites (fusion de clés) — portage manuel dans engine::params::legacy, dérive vendor détectée par le hash"
   },
   "unknown_keys_behavior": "Le comportement final de handle_legacy efface toute clé absente du registre : les clés inconnues des presets vendeurs (fautes historiques, clés de forks) sont donc ignorées à l'import, à l'identique d'OrcaSlicer."

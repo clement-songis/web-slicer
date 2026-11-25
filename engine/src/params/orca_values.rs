@@ -18,6 +18,8 @@ pub fn parse_orca_value(def: &ParamDef, s: &str) -> Option<ConfigValue> {
         _ => s.trim(),
     };
     match def.kind {
+        // Slot d'état (coNone) : pas de valeur persistable.
+        K::State => None,
         K::Float => parse_float(s).map(ConfigValue::Float),
         K::Int => s.parse().ok().map(ConfigValue::Int),
         K::Bool => parse_bool(s).map(ConfigValue::Bool),
