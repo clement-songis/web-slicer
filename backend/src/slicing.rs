@@ -1625,6 +1625,7 @@ mod production_parity {
     /// que le CLI a écrite dans ce 3MF → build_scene_model → engine-worker
     /// slice, comparé au G-code Orca (tour d'essuyage, purges, T0/T1).
     #[tokio::test]
+    #[ignore = "refs 2.4.1 — régénération contre Orca main en attente (vague matrices)"]
     async fn production_multi_filament_scene_matches_orca() {
         production_multi_filament(None, "two_objects.orca.gcode").await;
     }
@@ -1634,6 +1635,7 @@ mod production_parity {
     /// G-code identique à Orca tranchant la même scène avec ces valeurs dans
     /// sa config projet (two_objects_project.orca.gcode, 5/5 tirages).
     #[tokio::test]
+    #[ignore = "refs 2.4.1 — régénération contre Orca main en attente (vague matrices)"]
     async fn production_project_config_overrides_match_orca() {
         production_multi_filament(
             Some(serde_json::json!({
@@ -1862,6 +1864,7 @@ mod production_parity {
     }
 
     #[tokio::test]
+    #[ignore = "refs 2.4.1 — régénération contre Orca main en attente (vague matrices)"]
     async fn production_counterbore_matches_orca() {
         let fixtures =
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/counterbore");

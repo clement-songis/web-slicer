@@ -102,7 +102,10 @@ describe('shortcuts', () => {
 });
 
 // Parité KBShortcutsDialog d'Orca (audit/ui_inventory.json › keyboard_shortcuts).
-describe('shortcuts : parité Orca (groupes Plater / Objects List / Global)', () => {
+// Post-flip (Orca main aefb6b3d, 1e4abcd) : 13 groupes × 98 raccourcis
+// (Project … Speed Dial) ; l'ancien trio Plater / Objects List / Global
+// shortcuts y est éclaté par thématique.
+describe('shortcuts : parité Orca (inventaire main : 13 groupes × 98 raccourcis)', () => {
 	test('« ? » saisi avec Maj (dispositions réelles) ouvre la liste des raccourcis', () => {
 		expect(resolveShortcut({ key: '?', shift: true }, false)).toBe('help.shortcuts');
 		expect(chordString({ key: '?', shift: true })).toBe('?');
@@ -153,13 +156,25 @@ describe('shortcuts : parité Orca (groupes Plater / Objects List / Global)', ()
 		expect(resolveShortcut({ key: 'r', ctrl: true }, true)).toBeNull();
 	});
 
-	test('chaque raccourci clavier d’Orca réalisable est résolu (inventaire)', () => {
+	test('chaque raccourci clavier d’Orca réalisable est résolu (inventaire main)', () => {
 		const inv = JSON.parse(
 			readFileSync(new URL('../../../../audit/ui_inventory.json', import.meta.url), 'utf8')
 		) as { keyboard_shortcuts: { group: string; shortcuts: { keys: string }[] }[] };
-		// Accord Orca → accord DOM ; `null` = hors clavier (souris), réservé par le
-		// navigateur, ou propriété d'un autre composant (Ctrl+S → SaveControls).
+		// Inventaire canonique main (aefb6b3d) : 13 groupes, 98 raccourcis.
+		expect(inv.keyboard_shortcuts).toHaveLength(13);
+		expect(inv.keyboard_shortcuts.reduce((n, g) => n + g.shortcuts.length, 0)).toBe(98);
+		const keysOf = (name: string) => {
+			const group = inv.keyboard_shortcuts.find((g) => g.group === name);
+			expect(group, `groupe ${name} de l'inventaire`).toBeDefined();
+			return group!.shortcuts.map((s) => s.keys);
+		};
+		// Accord Orca → accord DOM ; absent ci-dessous = hors clavier (souris,
+		// Sliders → lib/preview/sliders.ts, outils de peinture internes aux gizmos),
+		// réservé par le navigateur (Ctrl+N/F5/…, cf. exclusions.md), propriété d'un
+		// autre composant (Ctrl+S → SaveControls) ou non implémenté web
+		// (Ctrl+Shift+E, Ctrl+J, D auto-drop/texture displacement…).
 		const toChord = (keys: string) => {
+			if (keys === '+' || keys === '-') return { key: keys };
 			const parts = keys.split('+');
 			const key = parts.pop()!;
 			return {
@@ -168,66 +183,35 @@ describe('shortcuts : parité Orca (groupes Plater / Objects List / Global)', ()
 				shift: parts.includes('Shift')
 			};
 		};
-		const plater = inv.keyboard_shortcuts
-			.find((g) => g.group === 'Plater')!
-			.shortcuts.map((s) => s.keys);
-		const expected = [
-			'A',
-			'Shift+A',
-			'Q',
-			'Shift+Q',
-			'Esc',
-			'Ctrl+0',
-			'Ctrl+1',
-			'Ctrl+2',
-			'Ctrl+3',
-			'Ctrl+4',
-			'Ctrl+5',
-			'Ctrl+6',
-			'Ctrl+A',
-			'Ctrl+D',
-			'Ctrl+Z',
-			'Ctrl+Y',
-			'M',
-			'R',
-			'S',
-			'F',
-			'C',
-			'B',
-			'H',
-			'P',
-			'T',
-			'U',
-			'Y',
-			'E',
-			'Shift+Tab',
-			'I',
-			'O',
-			'V',
-			'Tab'
-		];
-		for (const keys of expected) {
-			expect(plater, keys).toContain(keys);
-			expect(resolveShortcut(toChord(keys), false), keys).not.toBeNull();
-		}
-		const global = inv.keyboard_shortcuts.find((g) => g.group === 'Global shortcuts')!.shortcuts;
-		for (const keys of [
-			'Ctrl+O',
-			'Ctrl+Shift+S',
-			'Ctrl+I',
-			'Ctrl+G',
-			'Ctrl+R',
-			'Ctrl+X',
-			'Ctrl+C',
-			'Ctrl+V',
-			'Ctrl+P',
-			'Del'
-		]) {
-			expect(
-				global.map((s) => s.keys),
-				keys
-			).toContain(keys);
-			expect(resolveShortcut(toChord(keys), false), keys).not.toBeNull();
+		const expected: Record<string, string[]> = {
+			Project: ['Ctrl+O', 'Ctrl+Shift+S', 'Ctrl+I'],
+			'Slicing and printing': ['Ctrl+R', 'Ctrl+G', 'Ctrl+Shift+G'],
+			Selection: ['Ctrl+A'],
+			Editing: ['Ctrl+Z', 'Ctrl+Y', 'Ctrl+X', 'Ctrl+C', 'Ctrl+V', 'Del', 'Ctrl+D', 'Ctrl+K'],
+			Objects: ['+', '-', 'V'],
+			Placement: ['A', 'Shift+A', 'Q', 'Shift+Q', 'PageUp', 'PageDown'],
+			Gizmos: ['M', 'R', 'S', 'F', 'C', 'B', 'L', 'P', 'H', 'N', 'T', 'U', 'Y', 'E'],
+			Camera: [
+				'Ctrl+0',
+				'Ctrl+1',
+				'Ctrl+2',
+				'Ctrl+3',
+				'Ctrl+4',
+				'Ctrl+5',
+				'Ctrl+6',
+				'Ctrl+7',
+				'I',
+				'O'
+			],
+			Display: ['Ctrl+E'],
+			Application: ['Ctrl+P', 'Tab', 'Shift+Tab', 'F5', '?']
+		};
+		for (const [group, chords] of Object.entries(expected)) {
+			const inventoryKeys = keysOf(group);
+			for (const chord of chords) {
+				expect(inventoryKeys, `${group} : ${chord}`).toContain(chord);
+				expect(resolveShortcut(toChord(chord), false), `${group} : ${chord}`).not.toBeNull();
+			}
 		}
 	});
 });

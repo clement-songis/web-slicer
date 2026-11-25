@@ -322,7 +322,21 @@
           # Économise plusieurs Go sur / (débug complet d'Orca) — le portage
           # n'a pas besoin des symboles de debug.
           separateDebugInfo = false;
-          postBuild = "";
+          # Mêmes phases que libslic3r (2.4.1) : ne construire QUE la cible
+          # libslic3r (pas l'app GUI qui exige wx/setup.h) et installer
+          # statiques + headers.
+          buildPhase = ''
+            runHook preBuild
+            cmake --build . --target libslic3r -j''${NIX_BUILD_CORES:-4}
+            runHook postBuild
+          '';
+          installPhase = ''
+            runHook preInstall
+            mkdir -p $out/lib $out/include
+            find . -name '*.a' -exec cp -v {} $out/lib/ \\;
+            cp -r ../src/libslic3r $out/include/libslic3r
+            runHook postInstall
+          '';
         });
       in
       {

@@ -34,7 +34,13 @@ export interface ContextMenuItem {
 	label: string;
 }
 
-/** Libellés du menu contextuel du plateau (Annexe B §B.3, dédupliqués). */
+/**
+ * Libellés du menu contextuel du plateau (Annexe B §B.3, dédupliqués) —
+ * recalibrés sur l'inventaire canonique d'Orca main (aefb6b3d, flip 1e4abcd) :
+ * casse (« Fix Model », « To Objects »), sous-menus titrés (« Mirror: »,
+ * « Split: ») et nouveaux libellés main. « Delete Plate » : action plateau
+ * toujours câblée web (plate.delete), absente de l'inventaire main — gardée.
+ */
 export const PLATER_MENU: ContextMenuItem[] = [
 	'HideShow',
 	'Delete',
@@ -45,12 +51,12 @@ export const PLATER_MENU: ContextMenuItem[] = [
 	'Cone',
 	'Disc',
 	'Torus',
-	'Height range Modifier',
-	'Set as an individual object',
+	'Height Range Modifier',
+	'Set as An Individual Object',
 	'Fill bed with copies',
 	'Printable',
 	'Rename',
-	'Fix model',
+	'Fix Model',
 	'Export as one STL…',
 	'Export as STLs…',
 	'Export as one DRC…',
@@ -63,23 +69,28 @@ export const PLATER_MENU: ContextMenuItem[] = [
 	'Flush into this object',
 	"Flush into objects' support",
 	'Assemble',
+	'Mirror:',
+	'Along X Axis',
+	'Along Y Axis',
+	'Along Z Axis',
+	'Split:',
+	'To Objects',
+	'To Parts',
 	'Mesh boolean',
-	'Along X axis',
-	'Along Y axis',
-	'Along Z axis',
 	'Add Models',
 	'Show Labels',
-	'To objects',
-	'To parts',
-	'Split',
 	'Auto orientation',
+	'Edit Painting',
 	'Edit',
+	'Decompose Color',
 	'Select All',
 	'Select All Plates',
 	'Delete All',
 	'Arrange',
-	'Reload All',
 	'Auto Rotate',
+	'Fix All',
+	'Fix All Plates',
+	'Reload All',
 	'Delete Plate',
 	'Add instance',
 	'Remove instance',
@@ -87,7 +98,7 @@ export const PLATER_MENU: ContextMenuItem[] = [
 	'Fill bed with instances…',
 	'Clone',
 	'Simplify Model',
-	'Subdivision mesh(Lost color)',
+	'Subdivision mesh',
 	'Center',
 	'Drop'
 ].map((label) => ({ label }));
@@ -353,7 +364,13 @@ export interface Shortcut {
 	action: string;
 }
 
-/** Raccourcis du plateau (Annexe B §B.6 « Plater »). */
+/**
+ * Raccourcis du plateau — groupe « Placement » de l'annexe B §B.6 (Orca main
+ * aefb6b3d : l'ancien groupe « Plater » y est éclaté en Placement / Editing /
+ * Gizmos / Camera / Application — 13 groupes × 98 raccourcis). Le tableau
+ * garde l'union des raccourcis plateau câblés web : formes canoniques main
+ * (« Up », « PageUp »…) et entrées souris/flèches 2.4.1 toujours vraies.
+ */
 export const PLATER_SHORTCUTS: Shortcut[] = [
 	{ keys: 'Mouse wheel', action: 'Zoom' },
 	{ keys: 'A', action: 'Arrange all objects' },
@@ -365,10 +382,12 @@ export const PLATER_SHORTCUTS: Shortcut[] = [
 	{ keys: 'Alt+Left mouse button', action: 'Select a part' },
 	{ keys: 'Ctrl+Left mouse button', action: 'Select multiple objects' },
 	{ keys: 'Shift+Left mouse button', action: 'Select by rectangle' },
-	{ keys: 'Arrow Up', action: 'Move +Y 10 mm' },
-	{ keys: 'Arrow Down', action: 'Move -Y 10 mm' },
-	{ keys: 'Arrow Left', action: 'Move -X 10 mm' },
-	{ keys: 'Arrow Right', action: 'Move +X 10 mm' },
+	{ keys: 'Up', action: 'Move selection 10mm in positive Y direction' },
+	{ keys: 'Down', action: 'Move selection 10mm in negative Y direction' },
+	{ keys: 'Left', action: 'Move selection 10mm in negative X direction' },
+	{ keys: 'Right', action: 'Move selection 10mm in positive X direction' },
+	{ keys: 'PageUp', action: 'Rotate selection 45 degrees counterclockwise' },
+	{ keys: 'PageDown', action: 'Rotate selection 45 degrees clockwise' },
 	{ keys: 'Shift+Any arrow', action: 'Movement step 1 mm' },
 	{ keys: 'Esc', action: 'Deselect all' },
 	{ keys: '1-9', action: 'Set filament for object/part' },
@@ -402,7 +421,11 @@ export const PLATER_SHORTCUTS: Shortcut[] = [
 	{ keys: 'Tab', action: 'Switch Prepare/Preview' }
 ];
 
-/** Raccourcis de la liste d'objets (Annexe B §B.6 « Objects List »). */
+/**
+ * Raccourcis de la liste d'objets — groupe « Objects » de l'annexe B §B.6
+ * (Orca main aefb6b3d) + entrées 2.4.1 (« 1-9 », Espace, clic) toujours
+ * câblées web.
+ */
 export const OBJECTS_LIST_SHORTCUTS: Shortcut[] = [
 	{ keys: '1-9', action: 'Set extruder number' },
 	{ keys: 'Del', action: 'Delete objects/parts/modifiers' },
@@ -415,11 +438,36 @@ export const OBJECTS_LIST_SHORTCUTS: Shortcut[] = [
 	{ keys: 'Ctrl+Z', action: 'Undo' },
 	{ keys: 'Ctrl+Y', action: 'Redo' },
 	{ keys: 'Space', action: 'Rename selected' },
-	{ keys: 'Mouse click', action: 'Rename on click' }
+	{ keys: 'Mouse click', action: 'Rename on click' },
+	{ keys: '+', action: 'Add instance' },
+	{ keys: '-', action: 'Remove instance' },
+	{ keys: 'V', action: 'Toggle printable for object/part' },
+	{ keys: 'D', action: 'Auto Drop' },
+	{ keys: 'Ctrl+Shift+R', action: 'Reload from disk' }
 ];
 
-/** Raccourcis du groupe Gizmo (Annexe B §B.6 « Gizmo »). */
+/**
+ * Raccourcis du groupe Gizmos (Annexe B §B.6, Orca main aefb6b3d — « Gizmo »
+ * 2.4.1 renommé « Gizmos », 15 touches) + interactions souris des gizmos de
+ * peinture (toujours présentes, hors dialogue de raccourcis).
+ */
 export const GIZMO_SHORTCUTS: Shortcut[] = [
+	{ keys: 'M', action: 'Gizmo move' },
+	{ keys: 'R', action: 'Gizmo rotate' },
+	{ keys: 'S', action: 'Gizmo scale' },
+	{ keys: 'F', action: 'Gizmo place face on bed' },
+	{ keys: 'C', action: 'Gizmo cut' },
+	{ keys: 'B', action: 'Gizmo mesh boolean' },
+	{ keys: 'L', action: 'Gizmo FDM paint-on supports' },
+	{ keys: 'P', action: 'Gizmo FDM paint-on seam' },
+	{ keys: 'H', action: 'Gizmo FDM paint-on fuzzy skin' },
+	{ keys: 'N', action: 'Gizmo multi-material painting' },
+	{ keys: 'T', action: 'Gizmo text emboss/engrave' },
+	{ keys: 'U', action: 'Gizmo measure' },
+	{ keys: 'Y', action: 'Gizmo assemble' },
+	{ keys: 'E', action: 'Gizmo brim ears' },
+	{ keys: 'D', action: 'Gizmo texture displacement painting' },
+	// Interactions souris des gizmos (2.4.1, hors KBShortcutsDialog main) :
 	{ keys: 'Esc', action: 'Deselect all' },
 	{ keys: 'Shift+', action: 'Move: snap by 1 mm' },
 	{ keys: 'Ctrl+Mouse wheel', action: 'Painting: adjust pen radius' },

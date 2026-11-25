@@ -60,10 +60,7 @@ describe('couverture FR du dialogue de réglages', () => {
 		)
 		.map((k) => PARAMS[k]);
 
-	// TODO(i18n-main) : 92 nouvelles options d'onglets et 201 paramètres d'Orca
-	// main arrivent en anglais ; la vague traduction/i18n les couvrira et
-	// réactivera ces deux tests (cf. .work/staging/audit-flip.md).
-	it.skip('titres de pages et sections du process traduits', () => {
+	it('titres de pages et sections du process traduits', () => {
 		const titles = process.flatMap((p) => [
 			p.title,
 			...p.sections.map((s) => s.title).filter(Boolean)
@@ -72,7 +69,7 @@ describe('couverture FR du dialogue de réglages', () => {
 		expect(missing).toEqual([]);
 	});
 
-	it.skip('≥ 98 % des libellés, infobulles et valeurs d’énumération traduits', () => {
+	it('≥ 98 % des libellés, infobulles et valeurs d’énumération traduits', () => {
 		const texts = defs.flatMap((d) => [d.label, d.tooltip, ...d.enumLabels].filter(Boolean));
 		const ok = texts.filter((t) => isTranslatable(t)).length;
 		expect(ok / texts.length).toBeGreaterThanOrEqual(0.98);

@@ -124,21 +124,24 @@ describe('couverture menus.ts ↔ Annexe B', () => {
 		}
 	});
 
-	test('raccourcis Plater (B.6) : toutes les touches couvertes', () => {
+	// Post-flip (Orca main aefb6b3d) : l'annexe B.6 réorganise le dialogue en
+	// 13 groupes / 98 raccourcis — « Plater » → « Placement », « Objects List »
+	// → « Objects », « Gizmo » → « Gizmos ».
+	test('raccourcis Placement (B.6) : toutes les touches couvertes', () => {
 		const covered = new Set(PLATER_SHORTCUTS.map((s) => s.keys));
-		const missing = shortcutKeys('Plater').filter((k) => !covered.has(k));
+		const missing = shortcutKeys('Placement').filter((k) => !covered.has(k));
 		expect(missing).toEqual([]);
 	});
 
-	test('raccourcis Objects List (B.6) : toutes les touches couvertes', () => {
+	test('raccourcis Objects (B.6) : toutes les touches couvertes', () => {
 		const covered = new Set(OBJECTS_LIST_SHORTCUTS.map((s) => s.keys));
-		const missing = shortcutKeys('Objects List').filter((k) => !covered.has(k));
+		const missing = shortcutKeys('Objects').filter((k) => !covered.has(k));
 		expect(missing).toEqual([]);
 	});
 
-	test('raccourcis Gizmo (B.6) : toutes les touches couvertes', () => {
+	test('raccourcis Gizmos (B.6) : toutes les touches couvertes', () => {
 		const covered = new Set(GIZMO_SHORTCUTS.map((s) => s.keys));
-		const missing = shortcutKeys('Gizmo').filter((k) => !covered.has(k));
+		const missing = shortcutKeys('Gizmos').filter((k) => !covered.has(k));
 		expect(missing).toEqual([]);
 	});
 });

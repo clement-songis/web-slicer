@@ -914,11 +914,13 @@ mod tests {
             "thumbnails".into(),
             ConfigValue::String("48x48/PNG,300x300/PNG".into()),
         );
-        // Lot 44 : défaut FloatOrPercent du registre connu (50 %) — égal au
-        // défaut : rien ; différent : surcharge même non listée (comme Orca,
-        // qui compare au preset complet).
+        // Lot 44 : défaut FloatOrPercent du registre connu — 50 % pour
+        // `overhang_reverse_threshold` en main (aefb6b3d, flip 1e4abcd :
+        // `bridge_acceleration`, utilisé avant le flip, n'y a plus de défaut
+        // registre) — égal au défaut : rien ; différent : surcharge même non
+        // listée (comme Orca, qui compare au preset complet).
         project.0.insert(
-            "bridge_acceleration".into(),
+            "overhang_reverse_threshold".into(),
             ConfigValue::FloatOrPercent {
                 value: 50.0,
                 percent: true,
@@ -930,7 +932,7 @@ mod tests {
         );
         assert!(imported_overrides(&project, &presets, true, &[], &[]).is_none());
         project.0.insert(
-            "bridge_acceleration".into(),
+            "overhang_reverse_threshold".into(),
             ConfigValue::FloatOrPercent {
                 value: 60.0,
                 percent: true,
@@ -940,7 +942,7 @@ mod tests {
         assert_eq!(
             unlisted.process,
             Some(
-                json!({ "bridge_acceleration": "60%" })
+                json!({ "overhang_reverse_threshold": "60%" })
                     .as_object()
                     .unwrap()
                     .clone()
@@ -950,14 +952,14 @@ mod tests {
             &project,
             &presets,
             true,
-            &["bridge_acceleration".to_string()],
+            &["overhang_reverse_threshold".to_string()],
             &["bed_custom_model".to_string()],
         )
         .unwrap();
         assert_eq!(
             listed.process,
             Some(
-                json!({ "bridge_acceleration": "60%" })
+                json!({ "overhang_reverse_threshold": "60%" })
                     .as_object()
                     .unwrap()
                     .clone()

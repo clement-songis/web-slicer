@@ -258,11 +258,14 @@ _IMPORT_RE = re.compile(r"""(?:from|import)\s*\(?\s*['"]([^'"]+)['"]""")
 def _resolve_import(spec: str, importer: Path) -> Path | None:
     """Résout un spécificateur d'import TS/Svelte en chemin de fichier réel.
 
-    Gère les alias SvelteKit `$lib/…` et les imports relatifs `./`/`../` ;
-    ignore l'externe (`$app`, `$env`, `~icons`, paquets nus). Essaie les
-    extensions et `index.ts` comme le résolveur Vite."""
+    Gère les alias SvelteKit `$lib/…` et `#lib/…` (alias racine du repo,
+    `tsconfig.json` `"#lib" → ./src/lib`, migration kit 3 : 735 imports) et les
+    imports relatifs `./`/`../` ; ignore l'externe (`$app`, `$env`, `~icons`,
+    paquets nus). Essaie les extensions et `index.ts` comme le résolveur Vite."""
     if spec.startswith("$lib/"):
         base = FRONTEND_SRC / "lib" / spec[len("$lib/"):]
+    elif spec.startswith("#lib/"):
+        base = FRONTEND_SRC / "lib" / spec[len("#lib/"):]
     elif spec.startswith("."):
         base = importer.parent / spec
     else:

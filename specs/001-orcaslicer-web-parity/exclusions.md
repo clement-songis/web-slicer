@@ -39,6 +39,24 @@ consignée ici avec justification. `audit/check_traceability.py` échoue sur tou
 | Menu Calibration (`Temperature`, `Max flowrate`, `Pressure advance`, `Flow ratio`, `Retraction`, `Cornering`, `VFA`, `Calibration Guide`, `Input Shaping Frequency`, `Input Shaping Damping/zeta factor`) + assistants CalibrationWizard | exclu-v1 | Backlog v2 exhaustif dans spec.md (décision utilisateur). **T110** : le menu n'est volontairement **pas** monté dans la barre de menus v1 — les générateurs de plateaux de calibration dépendent du moteur FFI (G-code de test) et souvent d'un appareil connecté ; le cadrage initial « partiel-v1 » est remplacé par cette exclusion complète (décision utilisateur, plus forte). Aucune omission : les 10 libellés + `CalibrationWizard` sont tracés ici et couverts par le vocabulaire de `check_traceability.py` |
 | Écrans « Device »/monitor Bambu (AMS, caméra) | exclu-définitif | Matériel propriétaire ; supervision assurée via Moonraker (US8) |
 
+### Post-flip Orca main (aefb6b3d, 2026-11-25)
+
+Éléments apparus dans l'inventaire canonique après la bascule de la référence
+de parité vers Orca main (commit 1e4abcd, aefb6b3d) — recalibrage post-flip.
+Chaque entrée est non implémentée web à date ; vague UI à venir.
+
+| Entrée(s) | Statut | Justification |
+|---|---|---|
+| Gizmos `PaintedModifier`, `TextureDisplacement` (B.5) | exclu-v1 | Nouveaux gizmos de peinture en main aefb6b3d (2026-11-25) : modificateurs peints / déplacement de texture — non implémentés web, vague UI à venir (les gizmos de peinture FdmSupports/Seam/FuzzySkin/MmSegmentation restent tracés) |
+| Menus objets `Edit Painting`, `Decompose Color` (B.3) | exclu-v1 | Nouveaux en main aefb6b3d (2026-11-25) : workflows des modificateurs peints — vague UI à venir |
+| Menus `Fix All`, `Fix All Plates` (B.3) | exclu-v1 | Nouveaux en main aefb6b3d (2026-11-25) : réparation de maillage par lots — vague UI à venir (le `Fix Model` unitaire reste mappé) |
+| Aide : `Migrate Filament Presets`, `Benchmark 3D Scene` | exclu-v1 | Nouveaux en main aefb6b3d (2026-11-25) — vague UI à venir (migration des presets locaux / benchmark de scène 3D) |
+| Fichier : `Publish 3MF…` | exclu-définitif | Nouveau en main aefb6b3d (2026-11-25) : publication cloud MakerWorld/BBL, hors périmètre auto-hébergé (même justification que `Upload Models` / `Download Models`) |
+| `Open Speed Dial`, `Plugins` | exclu-v1 | Nouveaux en main aefb6b3d (2026-11-25) : palette Speed Dial (raccourci `Space`) et menu Plugins — vague UI à venir |
+| Vue : `Show IDEX/IQEX Toolhead` | exclu-v1 | Nouveau en main aefb6b3d (2026-11-25) : overlay des têtes IDEX/IQEX (réglages `imex_*` déjà au registre P1) — vague UI à venir |
+| Vue : `Show 3Dconnexion Settings` | exclu-définitif | Périphérique local inaccessible depuis un navigateur (déjà exclu pour le raccourci `Ctrl+M` 3Dconnexion) |
+| Vue : `Show all collision volumes` | exclu-v1 | Nouveau en main aefb6b3d (2026-11-25) : visualisation des volumes de collision (paramètres `bed_exclude_*` au registre) — vague UI à venir |
+
 ## Presets (Annexe C)
 
 | Entrée(s) | Statut | Justification |
